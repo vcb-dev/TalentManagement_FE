@@ -16,6 +16,8 @@ export interface EmployeeTableProps {
   onDeactivate: (id: string) => void
   pagination: PaginationState & { total: number }
   onPageChange: (page: number) => void
+  /** Quản lý team: chỉ cột Xem. */
+  listMode?: 'hr' | 'team'
 }
 
 export function EmployeeTable({
@@ -26,6 +28,7 @@ export function EmployeeTable({
   onDeactivate,
   pagination,
   onPageChange,
+  listMode = 'hr',
 }: EmployeeTableProps) {
   const columns: DataTableColumn<EmployeeEntity>[] = [
     {
@@ -62,12 +65,16 @@ export function EmployeeTable({
           <Button type="button" variant="ghost" size="sm" onClick={() => onView(e.id)}>
             Xem
           </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(e.id)}>
-            Sửa
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={() => onDeactivate(e.id)}>
-            Vô hiệu
-          </Button>
+          {listMode === 'hr' ? (
+            <>
+              <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(e.id)}>
+                Sửa
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => onDeactivate(e.id)}>
+                Vô hiệu
+              </Button>
+            </>
+          ) : null}
         </div>
       ),
     },

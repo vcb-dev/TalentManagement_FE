@@ -8,4 +8,6 @@ export interface EmployeeFilters {
   role?: Role
   status?: EmployeeListStatus
   search?: string
+  /** Lọc theo team (Quản lý — UUID team). */
+  teamId?: string
 }

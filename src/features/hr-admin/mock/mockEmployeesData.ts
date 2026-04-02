@@ -8,14 +8,20 @@ export type CreateEmployeeMeta = {
 }
 
 const DEPT = '11111111-1111-4111-8111-111111111111'
-const TEAM = '22222222-2222-4222-8222-222222222222'
+/** Team NS-01 — đồng bộ lựa chọn team Quản lý */
+export const MOCK_TEAM_NS01 = '22222222-2222-4222-8222-222222222222'
+/** Team NS-02 */
+export const MOCK_TEAM_NS02 = '33333333-3333-4333-8333-333333333333'
 
-function emp(p: Omit<EmployeeEntity, 'departmentId' | 'teamIds' | 'createdAt' | 'updatedAt'>): EmployeeEntity {
+function emp(
+  p: Omit<EmployeeEntity, 'departmentId' | 'teamIds' | 'createdAt' | 'updatedAt'>,
+  teamIds: string[] = [MOCK_TEAM_NS01]
+): EmployeeEntity {
   const now = new Date().toISOString()
   return {
     ...p,
     departmentId: DEPT,
-    teamIds: [TEAM],
+    teamIds,
     createdAt: now,
     updatedAt: now,
   }
@@ -23,60 +29,78 @@ function emp(p: Omit<EmployeeEntity, 'departmentId' | 'teamIds' | 'createdAt' | 
 
 /** Danh sách cố định — có thể chỉnh sửa trong dev. */
 let rows: EmployeeEntity[] = [
-  emp({
-    id: '10000000-0000-4000-8000-000000000001',
-    name: 'Nguyễn Thành',
-    email: 'n.thanh@vcb.com',
-    role: 'MEMBER',
-    status: 'ACTIVE',
-    currentLevel: 'duoc_viec',
-    currentStar: 5,
-  }),
-  emp({
-    id: '10000000-0000-4000-8000-000000000002',
-    name: 'Trần Linh',
-    email: 't.linh@vcb.com',
-    role: 'MEMBER',
-    status: 'ACTIVE',
-    currentLevel: 'biet_viec',
-    currentStar: 3,
-  }),
-  emp({
-    id: '10000000-0000-4000-8000-000000000003',
-    name: 'Lê Minh',
-    email: 'l.minh@vcb.com',
-    role: 'MANAGER',
-    status: 'ACTIVE',
-    currentLevel: 'dong_gop_ket_qua',
-    currentStar: 6,
-  }),
-  emp({
-    id: '10000000-0000-4000-8000-000000000004',
-    name: 'Phạm Hùng',
-    email: 'p.hung@vcb.com',
-    role: 'MEMBER',
-    status: 'PROBATION',
-    currentLevel: 'tap_su',
-    currentStar: 0,
-  }),
-  emp({
-    id: '10000000-0000-4000-8000-000000000005',
-    name: 'Ngô An',
-    email: 'n.an@vcb.com',
-    role: 'MEMBER',
-    status: 'RESERVED',
-    currentLevel: 'biet_viec',
-    currentStar: 2,
-  }),
-  emp({
-    id: '10000000-0000-4000-8000-000000000006',
-    name: 'Vũ Bình',
-    email: 'v.binh@vcb.com',
-    role: 'MEMBER',
-    status: 'INACTIVE',
-    currentLevel: 'biet_viec',
-    currentStar: 0,
-  }),
+  emp(
+    {
+      id: '10000000-0000-4000-8000-000000000001',
+      name: 'Nguyễn Thành',
+      email: 'n.thanh@vcb.com',
+      role: 'MEMBER',
+      status: 'ACTIVE',
+      currentLevel: 'duoc_viec',
+      currentStar: 5,
+    },
+    [MOCK_TEAM_NS01]
+  ),
+  emp(
+    {
+      id: '10000000-0000-4000-8000-000000000002',
+      name: 'Trần Linh',
+      email: 't.linh@vcb.com',
+      role: 'MEMBER',
+      status: 'ACTIVE',
+      currentLevel: 'biet_viec',
+      currentStar: 3,
+    },
+    [MOCK_TEAM_NS02]
+  ),
+  emp(
+    {
+      id: '10000000-0000-4000-8000-000000000003',
+      name: 'Lê Minh',
+      email: 'l.minh@vcb.com',
+      role: 'MANAGER',
+      status: 'ACTIVE',
+      currentLevel: 'dong_gop_ket_qua',
+      currentStar: 6,
+    },
+    [MOCK_TEAM_NS01]
+  ),
+  emp(
+    {
+      id: '10000000-0000-4000-8000-000000000004',
+      name: 'Phạm Hùng',
+      email: 'p.hung@vcb.com',
+      role: 'MEMBER',
+      status: 'PROBATION',
+      currentLevel: 'tap_su',
+      currentStar: 0,
+    },
+    [MOCK_TEAM_NS01]
+  ),
+  emp(
+    {
+      id: '10000000-0000-4000-8000-000000000005',
+      name: 'Ngô An',
+      email: 'n.an@vcb.com',
+      role: 'MEMBER',
+      status: 'RESERVED',
+      currentLevel: 'biet_viec',
+      currentStar: 2,
+    },
+    [MOCK_TEAM_NS02]
+  ),
+  emp(
+    {
+      id: '10000000-0000-4000-8000-000000000006',
+      name: 'Vũ Bình',
+      email: 'v.binh@vcb.com',
+      role: 'MEMBER',
+      status: 'INACTIVE',
+      currentLevel: 'biet_viec',
+      currentStar: 0,
+    },
+    [MOCK_TEAM_NS01]
+  ),
 ]
 
 function statusFilter(f: EmployeeFilters['status']): EmployeeEntity['status'] | undefined {
@@ -98,6 +122,9 @@ export function getMockEmployees(filters: EmployeeFilters): {
   totalPages: number
 } {
   let list = [...rows]
+  if (filters.teamId) {
+    list = list.filter((e) => e.teamIds.includes(filters.teamId!))
+  }
   if (filters.role) list = list.filter((e) => e.role === filters.role)
   const st = statusFilter(filters.status)
   if (st) list = list.filter((e) => e.status === st)

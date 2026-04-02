@@ -14,12 +14,12 @@ type NavDef = {
   to: string
   label: string
   icon: LucideIcon
-  /** `exact` — khớp đúng path; `prefix` — path bắt đầu bằng `to` */
-  match: 'exact' | 'prefix'
+  /** `exact` — khớp đúng path; `prefix` — path bắt đầu bằng `to`; `team-hub` — danh sách team + chi tiết `/manager/team/...` */
+  match: 'exact' | 'prefix' | 'team-hub'
 }
 
 const MANAGER_NAV: NavDef[] = [
-  { to: '/manager/team-progress', label: 'Tiến độ nhóm', icon: Users, match: 'exact' },
+  { to: '/manager/team-progress', label: 'Tiến độ nhóm', icon: Users, match: 'team-hub' },
   { to: '/manager/classes', label: 'Chia lớp', icon: School, match: 'prefix' },
   { to: '/manager/review-submissions', label: 'Duyệt bài làm', icon: ClipboardCheck, match: 'prefix' },
   { to: '/manager/exam-schedule', label: 'Lịch thi', icon: CalendarClock, match: 'prefix' },
@@ -35,6 +35,9 @@ function normalizePath(p: string): string {
 function navActive(pathname: string, item: NavDef): boolean {
   const p = normalizePath(pathname)
   const t = normalizePath(item.to)
+  if (item.match === 'team-hub') {
+    return p === t || p.startsWith('/manager/team/')
+  }
   if (item.match === 'exact') return p === t
   return p === t || p.startsWith(`${t}/`)
 }

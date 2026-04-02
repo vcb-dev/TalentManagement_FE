@@ -75,9 +75,19 @@ export interface EmployeeCardProps {
   onEdit: (e: React.MouseEvent) => void
   /** Stagger animation khi hiển thị dạng lưới thẻ */
   cardIndex?: number
+  /** Quản lý: chỉ nút Xem. */
+  variant?: 'hr' | 'team'
 }
 
-export function EmployeeCard({ employee, selected, onSelect, onView, onEdit, cardIndex }: EmployeeCardProps) {
+export function EmployeeCard({
+  employee,
+  selected,
+  onSelect,
+  onView,
+  onEdit,
+  cardIndex,
+  variant = 'hr',
+}: EmployeeCardProps) {
   const { tierClass, label: tierLabel } = levelMeta(employee.currentLevel)
   const inactive = employee.status === 'INACTIVE'
   const meta = initialsFromName(employee.name)
@@ -151,7 +161,10 @@ export function EmployeeCard({ employee, selected, onSelect, onView, onEdit, car
           <>
             <button
               type="button"
-              className="flex-1 rounded-[10px] border-[1.5px] border-primary/35 bg-transparent py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 md:text-sm"
+              className={cn(
+                'rounded-[10px] border-[1.5px] border-primary/35 bg-transparent py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 md:text-sm',
+                variant === 'team' ? 'w-full' : 'flex-1'
+              )}
               onClick={(e) => {
                 e.stopPropagation()
                 onView(e)
@@ -159,21 +172,26 @@ export function EmployeeCard({ employee, selected, onSelect, onView, onEdit, car
             >
               Xem lịch sử
             </button>
-            <button
-              type="button"
-              className="flex-1 rounded-[10px] border-[1.5px] border-button bg-button py-2 text-xs font-semibold text-button-foreground md:text-sm"
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
-            >
-              Khôi phục
-            </button>
+            {variant === 'hr' ? (
+              <button
+                type="button"
+                className="flex-1 rounded-[10px] border-[1.5px] border-button bg-button py-2 text-xs font-semibold text-button-foreground md:text-sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                }}
+              >
+                Khôi phục
+              </button>
+            ) : null}
           </>
         ) : (
           <>
             <button
               type="button"
-              className="flex-1 rounded-[10px] border-[1.5px] border-button bg-button py-2 text-xs font-semibold text-button-foreground transition-colors hover:opacity-90 md:text-sm"
+              className={cn(
+                'rounded-[10px] border-[1.5px] border-button bg-button py-2 text-xs font-semibold text-button-foreground transition-colors hover:opacity-90 md:text-sm',
+                variant === 'team' ? 'w-full' : 'flex-1'
+              )}
               onClick={(e) => {
                 e.stopPropagation()
                 onView(e)
@@ -181,16 +199,18 @@ export function EmployeeCard({ employee, selected, onSelect, onView, onEdit, car
             >
               Xem hồ sơ
             </button>
-            <button
-              type="button"
-              className="flex-1 rounded-[10px] border-[1.5px] border-primary/35 bg-transparent py-2 text-xs font-semibold text-primary hover:bg-primary/10 md:text-sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                onEdit(e)
-              }}
-            >
-              {employee.status === 'RESERVED' ? 'Hỗ trợ' : 'Sửa'}
-            </button>
+            {variant === 'hr' ? (
+              <button
+                type="button"
+                className="flex-1 rounded-[10px] border-[1.5px] border-primary/35 bg-transparent py-2 text-xs font-semibold text-primary hover:bg-primary/10 md:text-sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit(e)
+                }}
+              >
+                {employee.status === 'RESERVED' ? 'Hỗ trợ' : 'Sửa'}
+              </button>
+            ) : null}
           </>
         )}
       </div>

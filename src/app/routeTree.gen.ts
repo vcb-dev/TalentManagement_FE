@@ -32,6 +32,7 @@ import { Route as ProtectedBodTeamComparisonRouteImport } from './routes/_protec
 import { Route as ProtectedBodDashboardRouteImport } from './routes/_protected/bod/dashboard'
 import { Route as ProtectedTeacherClassesIndexRouteImport } from './routes/_protected/teacher/classes/index'
 import { Route as ProtectedTeacherClassesClassIdRouteImport } from './routes/_protected/teacher/classes/$classId'
+import { Route as ProtectedManagerTeamEmployeeIdRouteImport } from './routes/_protected/manager/team/$employeeId'
 import { Route as ProtectedLearningPathLevelIdStarIdRouteImport } from './routes/_protected/learning-path/$levelId/$starId'
 import { Route as ProtectedExamExamIdResultRouteImport } from './routes/_protected/exam/$examId/result'
 import { Route as ProtectedExamExamIdGradeRouteImport } from './routes/_protected/exam/$examId/grade'
@@ -161,6 +162,12 @@ const ProtectedTeacherClassesClassIdRoute =
     path: '/teacher/classes/$classId',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
+const ProtectedManagerTeamEmployeeIdRoute =
+  ProtectedManagerTeamEmployeeIdRouteImport.update({
+    id: '/manager/team/$employeeId',
+    path: '/manager/team/$employeeId',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedLearningPathLevelIdStarIdRoute =
   ProtectedLearningPathLevelIdStarIdRouteImport.update({
     id: '/learning-path/$levelId/$starId',
@@ -210,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/exam/$examId/grade': typeof ProtectedExamExamIdGradeRoute
   '/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
+  '/manager/team/$employeeId': typeof ProtectedManagerTeamEmployeeIdRoute
   '/teacher/classes/$classId': typeof ProtectedTeacherClassesClassIdRoute
   '/teacher/classes/': typeof ProtectedTeacherClassesIndexRoute
 }
@@ -237,6 +245,7 @@ export interface FileRoutesByTo {
   '/exam/$examId/grade': typeof ProtectedExamExamIdGradeRoute
   '/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
+  '/manager/team/$employeeId': typeof ProtectedManagerTeamEmployeeIdRoute
   '/teacher/classes/$classId': typeof ProtectedTeacherClassesClassIdRoute
   '/teacher/classes': typeof ProtectedTeacherClassesIndexRoute
 }
@@ -267,6 +276,7 @@ export interface FileRoutesById {
   '/_protected/exam/$examId/grade': typeof ProtectedExamExamIdGradeRoute
   '/_protected/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
   '/_protected/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
+  '/_protected/manager/team/$employeeId': typeof ProtectedManagerTeamEmployeeIdRoute
   '/_protected/teacher/classes/$classId': typeof ProtectedTeacherClassesClassIdRoute
   '/_protected/teacher/classes/': typeof ProtectedTeacherClassesIndexRoute
 }
@@ -296,6 +306,7 @@ export interface FileRouteTypes {
     | '/exam/$examId/grade'
     | '/exam/$examId/result'
     | '/learning-path/$levelId/$starId'
+    | '/manager/team/$employeeId'
     | '/teacher/classes/$classId'
     | '/teacher/classes/'
   fileRoutesByTo: FileRoutesByTo
@@ -323,6 +334,7 @@ export interface FileRouteTypes {
     | '/exam/$examId/grade'
     | '/exam/$examId/result'
     | '/learning-path/$levelId/$starId'
+    | '/manager/team/$employeeId'
     | '/teacher/classes/$classId'
     | '/teacher/classes'
   id:
@@ -352,6 +364,7 @@ export interface FileRouteTypes {
     | '/_protected/exam/$examId/grade'
     | '/_protected/exam/$examId/result'
     | '/_protected/learning-path/$levelId/$starId'
+    | '/_protected/manager/team/$employeeId'
     | '/_protected/teacher/classes/$classId'
     | '/_protected/teacher/classes/'
   fileRoutesById: FileRoutesById
@@ -525,6 +538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedTeacherClassesClassIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/manager/team/$employeeId': {
+      id: '/_protected/manager/team/$employeeId'
+      path: '/manager/team/$employeeId'
+      fullPath: '/manager/team/$employeeId'
+      preLoaderRoute: typeof ProtectedManagerTeamEmployeeIdRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/learning-path/$levelId/$starId': {
       id: '/_protected/learning-path/$levelId/$starId'
       path: '/learning-path/$levelId/$starId'
@@ -590,6 +610,7 @@ interface ProtectedRouteRouteChildren {
   ProtectedExamExamIdGradeRoute: typeof ProtectedExamExamIdGradeRoute
   ProtectedExamExamIdResultRoute: typeof ProtectedExamExamIdResultRoute
   ProtectedLearningPathLevelIdStarIdRoute: typeof ProtectedLearningPathLevelIdStarIdRoute
+  ProtectedManagerTeamEmployeeIdRoute: typeof ProtectedManagerTeamEmployeeIdRoute
   ProtectedTeacherClassesClassIdRoute: typeof ProtectedTeacherClassesClassIdRoute
   ProtectedTeacherClassesIndexRoute: typeof ProtectedTeacherClassesIndexRoute
 }
@@ -618,6 +639,7 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedExamExamIdResultRoute: ProtectedExamExamIdResultRoute,
   ProtectedLearningPathLevelIdStarIdRoute:
     ProtectedLearningPathLevelIdStarIdRoute,
+  ProtectedManagerTeamEmployeeIdRoute: ProtectedManagerTeamEmployeeIdRoute,
   ProtectedTeacherClassesClassIdRoute: ProtectedTeacherClassesClassIdRoute,
   ProtectedTeacherClassesIndexRoute: ProtectedTeacherClassesIndexRoute,
 }
