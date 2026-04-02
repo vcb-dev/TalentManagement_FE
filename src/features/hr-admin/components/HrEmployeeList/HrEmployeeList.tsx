@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { EmployeeTable } from '@/features/hr-admin/components/EmployeeTable'
@@ -7,6 +7,8 @@ import { useEmployeeTable } from '@/features/hr-admin/components/EmployeeTable/u
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import type { Role } from '@/types/auth'
 import type { EmployeeFilters, EmployeeListStatus } from '@/features/hr-admin/types'
+import { MANAGER_TEAM_OPTIONS } from '@/features/manager/constants/managerTeams'
+import { ManagerHubNav } from '@/features/manager/components/ManagerHub/ManagerHubNav'
 import { Button } from '@/components/ui/button'
 import { SkeletonEmployeeCardGrid, SkeletonStatTile } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
@@ -26,13 +28,32 @@ const FILTERS: { key: 'all' | Role | 'reserved'; label: string }[] = [
 
 export interface HrEmployeeListProps {
   initialFilters?: Partial<EmployeeFilters>
+  /** `team` — giao diện giống HR, điều hướng & lọc theo team Quản lý. */
+  variant?: 'hr' | 'team'
+  teamOptions?: readonly { id: string; label: string }[]
 }
 
-export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
-  const navigate = useNavigate()
-  const table = useEmployeeTable({ page: 1, pageSize: 48, ...initialFilters })
+export function HrEmployeeList({
+  initialFilters,
+  variant = 'hr',
+  teamOptions = MANAGER_TEAM_OPTIONS,
+}: HrEmployeeListProps) {
+  const isTeam = variant === 'team'
+  const [teamId, setTeamId] = useState(() => teamOptions[0]?.id ?? '')
+
+  const table = useEmployeeTable(
+    isTeam
+      ? { page: 1, pageSize: 48, teamId }
+      : { page: 1, pageSize: 48, ...initialFilters },
+    isTeam ? { managerScope: true } : undefined
+  )
   const { employees, isLoading, pagination, onView, onEdit, onDeactivate, onPageChange, filters, setFilters } =
     table
+
+  useEffect(() => {
+    if (!isTeam) return
+    setFilters((f) => ({ ...f, teamId, page: 1 }))
+  }, [teamId, isTeam, setFilters])
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
@@ -94,10 +115,27 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         />
         <div className="relative text-base font-semibold tracking-tight">
           <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
-            Danh sách nhân sự
+            {isTeam ? 'Nhân sự trong team' : 'Danh sách nhân sự'}
           </span>
         </div>
         <div className="relative flex flex-wrap items-center gap-2">
+          {isTeam ? (
+            <label className="relative flex min-w-[170px] items-center gap-1.5 rounded-lg border border-primary/20 bg-card/90 px-3 py-1.5 text-sm text-foreground shadow-sm backdrop-blur-sm ring-1 ring-primary/10">
+              <span className="shrink-0 text-xs font-medium text-muted-foreground">Team</span>
+              <select
+                className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent text-sm font-semibold text-foreground outline-none"
+                value={teamId}
+                onChange={(e) => setTeamId(e.target.value)}
+                aria-label="Chọn team"
+              >
+                {teamOptions.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className="relative flex min-w-[190px] items-center gap-1.5 rounded-lg border border-primary/20 bg-card/90 px-3 py-1.5 text-sm text-muted-foreground shadow-sm backdrop-blur-sm ring-1 ring-primary/10">
             <Search className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
             <input
@@ -120,11 +158,15 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
           >
             {viewMode === 'cards' ? '☰ Dạng bảng' : '▦ Dạng thẻ'}
           </button>
-          <Button type="button" size="sm" className="h-8 rounded-lg text-xs" asChild>
-            <Link to="/hr-admin/new">+ Thêm nhân sự</Link>
-          </Button>
+          {!isTeam ? (
+            <Button type="button" size="sm" className="h-8 rounded-lg text-xs" asChild>
+              <Link to="/hr-admin/new">+ Thêm nhân sự</Link>
+            </Button>
+          ) : null}
         </div>
       </div>
+
+      {isTeam ? <ManagerHubNav /> : null}
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="page-shell">
@@ -230,6 +272,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
               onDeactivate={onDeactivate}
               pagination={pagination}
               onPageChange={onPageChange}
+              listMode={isTeam ? 'team' : 'hr'}
             />
           ) : isLoading ? (
             <div className="space-y-4">
@@ -256,12 +299,13 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
                     cardIndex={idx}
                     employee={e}
                     selected={selectedId === e.id}
+                    variant={isTeam ? 'team' : 'hr'}
                     onSelect={() => {
                       setSelectedId(e.id)
                     }}
                     onView={(ev) => {
                       ev.stopPropagation()
-                      void navigate({ to: '/hr-admin/$employeeId', params: { employeeId: e.id } })
+                      onView(e.id)
                     }}
                     onEdit={(ev) => {
                       ev.stopPropagation()
@@ -311,6 +355,8 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
 
         <EmployeeDetailSheet
           employee={selected}
+          variant={isTeam ? 'team' : 'hr'}
+          teamId={teamId}
           onClose={() => setSelectedId(null)}
           onDeactivate={(id) => {
             if (window.confirm('Vô hiệu hóa tài khoản nhân viên này?')) onDeactivate(id)

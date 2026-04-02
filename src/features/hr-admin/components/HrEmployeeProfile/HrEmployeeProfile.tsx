@@ -86,10 +86,13 @@ export interface HrEmployeeProfileProps {
   employee: EmployeeEntity
   /** Mặc định mở tab khi vào từ URL `?mode=edit`. */
   initialTab?: number
+  /** Quản lý: ẩn chỉnh sửa / thao tác HR. */
+  viewer?: 'hr' | 'manager'
 }
 
-export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfileProps) {
-  const [tab, setTab] = useState(() => Math.min(4, Math.max(0, initialTab)))
+export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: HrEmployeeProfileProps) {
+  const maxTab = viewer === 'manager' ? 3 : 4
+  const [tab, setTab] = useState(() => Math.min(maxTab, Math.max(0, initialTab)))
   const { label: tierLabel, tierClass } = levelMeta(employee.currentLevel)
   const maxStars = STARS_PER_LEVEL[employee.currentLevel as LevelCode] || 6
   const xpPct = maxStars > 0 ? Math.min(100, Math.round((employee.currentStar / maxStars) * 100)) : 0
@@ -106,6 +109,8 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
   )
 
   const onDemoAction = (msg: string) => () => toast.info(msg)
+
+  const tabLabels = viewer === 'manager' ? TABS.slice(0, 4) : TABS
 
   return (
     <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
@@ -129,46 +134,54 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
 
         <div className="relative z-[1] flex flex-wrap items-center justify-between gap-2 px-6 pb-2 pt-5">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-game-muted">
-            <Link
-              to="/hr-admin"
-              search={{ page: 1 }}
-              className="font-semibold text-primary hover:underline"
-            >
-              ← Danh sách nhân sự
-            </Link>
+            {viewer === 'manager' ? (
+              <Link to="/manager/team-progress" className="font-semibold text-primary hover:underline">
+                ← Nhân sự trong team
+              </Link>
+            ) : (
+              <Link
+                to="/hr-admin"
+                search={{ page: 1 }}
+                className="font-semibold text-primary hover:underline"
+              >
+                ← Danh sách nhân sự
+              </Link>
+            )}
             <span className="text-game-muted/50">/</span>
             <span className="font-semibold text-game-soft-foreground">{employee.name}</span>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="rounded-full border border-game-accent/25 bg-white/95 px-3.5 py-2 text-xs font-semibold text-game-soft-foreground shadow-sm transition-colors hover:bg-game-soft"
-              onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
-            >
-              Đổi phòng ban
-            </button>
-            <button
-              type="button"
-              className="rounded-full border border-game-accent/25 bg-white/95 px-3.5 py-2 text-xs font-semibold text-game-soft-foreground shadow-sm transition-colors hover:bg-game-soft"
-              onClick={onDemoAction('Đổi role: kết nối API sau.')}
-            >
-              Đổi role
-            </button>
-            <button
-              type="button"
-              className="rounded-full border border-red-300/80 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-800 transition-colors hover:bg-red-100"
-              onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
-            >
-              Hủy hoạt động
-            </button>
-            <button
-              type="button"
-              className="rounded-full bg-button px-4 py-2 text-xs font-bold text-button-foreground shadow-[0_2px_10px_rgb(106_90_224/0.35)] transition-colors hover:bg-button-hover"
-              onClick={onDemoAction('Lưu thay đổi: kết nối API sau.')}
-            >
-              Lưu thay đổi
-            </button>
-          </div>
+          {viewer === 'hr' ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="rounded-full border border-game-accent/25 bg-white/95 px-3.5 py-2 text-xs font-semibold text-game-soft-foreground shadow-sm transition-colors hover:bg-game-soft"
+                onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
+              >
+                Đổi phòng ban
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-game-accent/25 bg-white/95 px-3.5 py-2 text-xs font-semibold text-game-soft-foreground shadow-sm transition-colors hover:bg-game-soft"
+                onClick={onDemoAction('Đổi role: kết nối API sau.')}
+              >
+                Đổi role
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-red-300/80 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-800 transition-colors hover:bg-red-100"
+                onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
+              >
+                Hủy hoạt động
+              </button>
+              <button
+                type="button"
+                className="rounded-full bg-button px-4 py-2 text-xs font-bold text-button-foreground shadow-[0_2px_10px_rgb(106_90_224/0.35)] transition-colors hover:bg-button-hover"
+                onClick={onDemoAction('Lưu thay đổi: kết nối API sau.')}
+              >
+                Lưu thay đổi
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="relative z-[1] flex flex-wrap items-start justify-between gap-4 px-6 pb-0 pt-2 motion-safe:animate-[profile-hero-in_0.65s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none">
@@ -218,28 +231,30 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
               </div>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2 pb-4">
-            <button
-              type="button"
-              onClick={() => setTab(4)}
-              className="rounded-full bg-button px-5 py-2.5 text-sm font-semibold text-button-foreground shadow-[0_2px_10px_rgb(106_90_224/0.35)] transition-colors hover:bg-button-hover"
-            >
-              Chỉnh sửa hồ sơ
-            </button>
-            <button
-              type="button"
-              onClick={() => toast.info('Cài đặt nhân viên (demo)')}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-game-accent/25 bg-white text-game-soft-foreground shadow-sm transition-colors hover:bg-game-soft"
-              aria-label="Cài đặt"
-            >
-              <Settings className="h-5 w-5" strokeWidth={2} />
-            </button>
-          </div>
+          {viewer === 'hr' ? (
+            <div className="flex shrink-0 items-center gap-2 pb-4">
+              <button
+                type="button"
+                onClick={() => setTab(4)}
+                className="rounded-full bg-button px-5 py-2.5 text-sm font-semibold text-button-foreground shadow-[0_2px_10px_rgb(106_90_224/0.35)] transition-colors hover:bg-button-hover"
+              >
+                Chỉnh sửa hồ sơ
+              </button>
+              <button
+                type="button"
+                onClick={() => toast.info('Cài đặt nhân viên (demo)')}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-game-accent/25 bg-white text-game-soft-foreground shadow-sm transition-colors hover:bg-game-soft"
+                aria-label="Cài đặt"
+              >
+                <Settings className="h-5 w-5" strokeWidth={2} />
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="relative z-[1] mt-2 px-6 pb-3 motion-safe:animate-[profile-hero-in_0.55s_cubic-bezier(0.22,1,0.36,1)_0.08s_both] motion-reduce:animate-none">
           <div className="inline-flex max-w-full flex-wrap rounded-full bg-game-soft/90 p-1 shadow-[inset_0_1px_3px_rgb(106_90_224/0.08)]">
-            {TABS.map((label, i) => (
+            {tabLabels.map((label, i) => (
               <button
                 key={label}
                 type="button"
@@ -271,7 +286,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
         {tab === 1 && <LearningPathTab employee={employee} levelIdx={levelIdx} />}
         {tab === 2 && <ExamResultsTab />}
         {tab === 3 && <WorkHistoryTab />}
-        {tab === 4 && (
+        {tab === 4 && viewer === 'hr' && (
           <EditTab
             employee={employee}
             editName={editName}

@@ -69,7 +69,13 @@ const BOD_ITEMS: NavItem[] = [
 
 /** Manager: team, chia lớp, duyệt, lịch thi, thăng cấp, bài tập — không gộp menu Member trừ hồ sơ. */
 const MANAGER_OPS_ITEMS: NavItem[] = [
-  { to: '/manager/team-progress', label: 'Nhân sự trong team', icon: Users, match: 'prefix' },
+  {
+    to: '/manager/team-progress',
+    label: 'Nhân sự trong team',
+    icon: Users,
+    match: 'custom',
+    customMatch: (p) => p === '/manager/team-progress' || p.startsWith('/manager/team/'),
+  },
   { to: '/manager/classes', label: 'Chia lớp', icon: School, match: 'prefix' },
   { to: '/manager/review-submissions', label: 'Duyệt bài làm', icon: ShieldCheck, match: 'prefix' },
   { to: '/manager/exam-schedule', label: 'Lịch thi & chỉ định chấm', icon: Calendar, match: 'prefix' },

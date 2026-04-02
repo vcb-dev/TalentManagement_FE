@@ -33,6 +33,7 @@ export const employeeApi = {
         role: filters.role,
         status: statusToApi(filters.status),
         search: filters.search,
+        teamId: filters.teamId,
       },
     })
     return safeParse(employeeListApiSchema, res.data, 'GET /employees')

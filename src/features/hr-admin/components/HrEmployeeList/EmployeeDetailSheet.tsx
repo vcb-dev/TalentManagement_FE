@@ -41,9 +41,18 @@ export interface EmployeeDetailSheetProps {
   employee: EmployeeEntity | null
   onClose: () => void
   onDeactivate: (id: string) => void
+  variant?: 'hr' | 'team'
+  /** Khi variant team — truyền team đang lọc để link hồ sơ đúng ngữ cảnh. */
+  teamId?: string
 }
 
-export function EmployeeDetailSheet({ employee, onClose, onDeactivate }: EmployeeDetailSheetProps) {
+export function EmployeeDetailSheet({
+  employee,
+  onClose,
+  onDeactivate,
+  variant = 'hr',
+  teamId,
+}: EmployeeDetailSheetProps) {
   if (!employee) return null
 
   const { tierClass, label: tierLabel } = levelMeta(employee.currentLevel)
@@ -143,20 +152,33 @@ export function EmployeeDetailSheet({ employee, onClose, onDeactivate }: Employe
         </div>
       </div>
       <div className="flex shrink-0 gap-2 border-t border-border px-6 py-3.5">
-        <Link
-          to="/hr-admin/$employeeId"
-          params={{ employeeId: employee.id }}
-          className="flex-1 rounded-xl border-0 bg-gradient-to-br from-primary to-accent py-2.5 text-center text-sm font-bold text-white shadow-[var(--shadow-card)] transition-opacity hover:opacity-90"
-        >
-          Xem hồ sơ đầy đủ
-        </Link>
-        <button
-          type="button"
-          className="flex-1 rounded-xl border-[1.5px] border-[#FCA5A5] bg-[#FEE2E2] py-2.5 text-sm font-bold text-[#991B1B]"
-          onClick={() => onDeactivate(employee.id)}
-        >
-          Hủy HĐ
-        </button>
+        {variant === 'team' ? (
+          <Link
+            to="/manager/team/$employeeId"
+            params={{ employeeId: employee.id }}
+            search={teamId ? { teamId } : {}}
+            className="flex-1 rounded-xl border-0 bg-gradient-to-br from-primary to-accent py-2.5 text-center text-sm font-bold text-white shadow-[var(--shadow-card)] transition-opacity hover:opacity-90"
+          >
+            Xem hồ sơ đầy đủ
+          </Link>
+        ) : (
+          <>
+            <Link
+              to="/hr-admin/$employeeId"
+              params={{ employeeId: employee.id }}
+              className="flex-1 rounded-xl border-0 bg-gradient-to-br from-primary to-accent py-2.5 text-center text-sm font-bold text-white shadow-[var(--shadow-card)] transition-opacity hover:opacity-90"
+            >
+              Xem hồ sơ đầy đủ
+            </Link>
+            <button
+              type="button"
+              className="flex-1 rounded-xl border-[1.5px] border-[#FCA5A5] bg-[#FEE2E2] py-2.5 text-sm font-bold text-[#991B1B]"
+              onClick={() => onDeactivate(employee.id)}
+            >
+              Hủy HĐ
+            </button>
+          </>
+        )}
       </div>
     </aside>
   )
