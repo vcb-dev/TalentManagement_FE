@@ -1,0 +1,1 @@
+export { ExamHistory } from './ExamHistory'

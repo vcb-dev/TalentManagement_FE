@@ -1,0 +1,249 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-border: hsl(var(--border));
+  --color-ring: hsl(var(--ring));
+  --color-app-canvas: hsl(var(--app-canvas));
+  --color-button: hsl(var(--button));
+  --color-button-foreground: hsl(var(--button-foreground));
+  --color-button-hover: hsl(var(--button-hover));
+  --color-button-active: hsl(var(--button-active));
+  /* Sao điểm — vàng kim thương hiệu (~#D4A017, goldenrod) */
+  --color-star-gold: #d4a017;
+  --color-star-gold-mid: #e0b423;
+  --color-star-gold-deep: #b8890f;
+  --color-star-gold-soft: #f5e6b8;
+  /* Gamification UI (quiz-style): tím chủ đạo, nền lavender mềm */
+  --color-game-accent: hsl(var(--game-accent));
+  --color-game-accent-foreground: hsl(var(--game-accent-foreground));
+  --color-game-soft: hsl(var(--game-soft));
+  --color-game-soft-foreground: hsl(var(--game-soft-foreground));
+  --color-game-muted: hsl(var(--game-muted));
+}
+
+/* Cỡ gốc ~13.5px (84.375% của 16px = 3/4 của 112.5%) — text-sm/base dùng rem */
+html {
+  font-size: 88.375%;
+}
+
+/*
+  Nền trang: giống LinkedIn — #F4F2EE (xám ấm, tách lớp với card trắng).
+  Primary / accent / viền giữ tông xanh dương + teal đậm.
+*/
+:root {
+  --radius: 0.75rem;
+  /* ≈ #F4F2EE */
+  --background: 40 18% 95%;
+  --foreground: 222 55% 8%;
+  --app-canvas: 40 18% 95%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 55% 8%;
+  /* Xanh thương hiệu đậm (~#005a9e / navy professional) */
+  --primary: 210 100% 30%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 40 16% 88%;
+  --secondary-foreground: 226 48% 12%;
+  /* Teal đậm — điểm nhấn tiến độ */
+  --accent: 186 90% 26%;
+  --accent-foreground: 0 0% 100%;
+  /* Bề mặt phụ hòa với nền ấm */
+  --muted: 40 14% 91%;
+  --muted-foreground: 215 24% 28%;
+  /* Gần #E0E0E0 — viền card kiểu LinkedIn */
+  --border: 0 0% 88%;
+  --ring: 210 100% 30%;
+  /* CTA gamification — cùng tông tím với --game-accent */
+  --button: 248 75% 58%;
+  --button-foreground: 0 0% 100%;
+  --button-hover: 248 76% 51%;
+  --button-active: 248 78% 44%;
+  --shadow-card:
+    0 1px 2px rgb(15 23 42 / 0.07),
+    0 8px 24px -6px rgb(15 23 42 / 0.12),
+    0 0 0 1px rgb(15 23 42 / 0.06),
+    0 18px 48px -16px rgb(0 80 150 / 0.28);
+  /* ~#6A5AE0 — nút / tab active gamification */
+  --game-accent: 248 75% 58%;
+  --game-accent-foreground: 0 0% 100%;
+  --game-soft: 248 100% 97%;
+  --game-soft-foreground: 262 48% 28%;
+  --game-muted: 262 35% 42%;
+  --shadow-game-float:
+    0 4px 14px rgb(106 90 224 / 0.12),
+    0 12px 32px -8px rgb(79 70 150 / 0.18);
+}
+
+.dark {
+  --background: 222 40% 6%;
+  --foreground: 210 25% 96%;
+  --app-canvas: 222 38% 4%;
+  --card: 222 35% 8%;
+  --card-foreground: 210 25% 96%;
+  --primary: 210 90% 52%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 222 28% 14%;
+  --secondary-foreground: 210 20% 92%;
+  --accent: 186 75% 42%;
+  --accent-foreground: 0 0% 100%;
+  --muted: 222 20% 14%;
+  --muted-foreground: 215 15% 62%;
+  --border: 222 22% 18%;
+  --ring: 210 90% 52%;
+  --button: 248 72% 62%;
+  --button-foreground: 0 0% 100%;
+  --button-hover: 248 74% 56%;
+  --button-active: 248 76% 48%;
+  --shadow-card: 0 2px 12px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+/* Animation dùng cho dashboard học tập (motion-reduce: tắt ở component) */
+@keyframes dash-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes dash-progress-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes dash-star-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes dash-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+@keyframes profile-hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes profile-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes profile-progress-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+/* Skeleton SaaS HRM (shimmer trên thẻ — kiểu Tiimi / queue) */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: -100% 50%;
+  }
+}
+@layer components {
+  .skeleton-shimmer {
+    background: linear-gradient(
+      105deg,
+      hsl(var(--muted) / 0.55) 0%,
+      hsl(var(--muted) / 0.2) 38%,
+      hsl(var(--card)) 50%,
+      hsl(var(--muted) / 0.2) 62%,
+      hsl(var(--muted) / 0.55) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.35s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-shimmer {
+      animation: none;
+      background: hsl(var(--muted) / 0.45);
+    }
+  }
+}
+
+/* Khung & cỡ chữ UI — dùng chung thay px tùy ý */
+@layer components {
+  .page-shell {
+    @apply min-h-0 flex-1 overflow-y-auto px-6 py-4;
+  }
+  .page-toolbar-gradient {
+    @apply relative flex shrink-0 flex-wrap items-center justify-between gap-2 overflow-hidden border-b border-primary/15 bg-gradient-to-r from-primary/[0.08] via-teal-500/[0.06] to-violet-500/[0.07] px-6 py-3.5 shadow-[var(--shadow-card)];
+  }
+  .page-toolbar-flat {
+    @apply flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-6 py-3 shadow-[var(--shadow-card)];
+  }
+  .card-section-header {
+    @apply border-b border-border bg-muted/50 px-4 py-3 text-sm font-semibold text-foreground;
+  }
+  .text-ui-toolbar-btn {
+    @apply text-xs font-medium;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--app-canvas));
+    color: hsl(var(--foreground));
+    margin: 0;
+    font-family:
+      'Inter',
+      ui-sans-serif,
+      system-ui,
+      sans-serif;
+    font-size: 1rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+}

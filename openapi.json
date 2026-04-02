@@ -1,0 +1,137 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "VCB HRM API", "version": "1.0.0" },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Role": {
+        "type": "string",
+        "enum": ["MEMBER", "MANAGER", "HR_ADMIN", "TEACHER", "BOD"]
+      },
+      "Permission": {
+        "type": "object",
+        "required": ["action", "resource"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["view", "create", "edit", "deactivate", "grade", "approve", "classify"]
+          },
+          "resource": {
+            "type": "string",
+            "enum": [
+              "employee",
+              "exam",
+              "promotion",
+              "team",
+              "department",
+              "radar_chart",
+              "checklist",
+              "submission",
+              "kpi"
+            ]
+          }
+        }
+      },
+      "UserSession": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "email",
+          "role",
+          "permissions",
+          "departmentId",
+          "teamIds"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "$ref": "#/components/schemas/Role" },
+          "permissions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Permission" }
+          },
+          "departmentId": { "type": "string", "format": "uuid" },
+          "teamIds": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          }
+        }
+      },
+      "MeResponse": {
+        "type": "object",
+        "required": ["user", "accessToken"],
+        "properties": {
+          "user": { "$ref": "#/components/schemas/UserSession" },
+          "accessToken": { "type": "string" }
+        }
+      },
+      "Employee": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "email",
+          "role",
+          "status",
+          "departmentId",
+          "teamIds",
+          "currentLevel",
+          "currentStar",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "$ref": "#/components/schemas/Role" },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "INACTIVE", "PROBATION", "RESERVED"]
+          },
+          "departmentId": { "type": "string", "format": "uuid" },
+          "teamIds": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          },
+          "currentLevel": {
+            "type": "string",
+            "enum": ["tap_su", "biet_viec", "duoc_viec", "dong_gop_ket_qua", "tuong"]
+          },
+          "currentStar": { "type": "integer", "minimum": 0, "maximum": 6 },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateEmployeeInput": {
+        "type": "object",
+        "required": ["name", "email", "role", "departmentId", "teamId"],
+        "properties": {
+          "name": { "type": "string", "minLength": 2 },
+          "email": { "type": "string", "format": "email" },
+          "role": { "$ref": "#/components/schemas/Role" },
+          "departmentId": { "type": "string", "format": "uuid" },
+          "teamId": { "type": "string", "format": "uuid" },
+          "phone": { "type": "string" },
+          "birthDate": { "type": "string" }
+        }
+      },
+      "ExamResult": {
+        "type": "object",
+        "required": ["id", "examId", "employeeId", "result", "classifiedAt"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "examId": { "type": "string", "format": "uuid" },
+          "employeeId": { "type": "string", "format": "uuid" },
+          "result": {
+            "type": "string",
+            "enum": ["DAT", "BAO_LUU", "CHO_HOC_LAI", "CHIA_TAY"]
+          },
+          "classifiedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}

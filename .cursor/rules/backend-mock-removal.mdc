@@ -1,0 +1,37 @@
+---
+description: Khi nối API backend thật — gỡ mock và dữ liệu giả (checklist)
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Gỡ mock khi dùng backend thật
+
+Khi `VITE_USE_MOCK_API` tắt vĩnh viễn và chỉ gọi API thật, thực hiện lần lượt:
+
+## Cấu hình & môi trường
+
+- `.env` / `.env.example`: bỏ hoặc giữ `VITE_USE_MOCK_API=false`; không commit `true` cho production.
+- `src/vite-env.d.ts`: có thể xóa `VITE_USE_MOCK_API` nếu không còn dùng.
+
+## `src/lib/mockEnv.ts` + `src/lib/axios.ts`
+
+- Xóa `isMockApiEnabled` nếu không còn chỗ gọi; hoặc giữ file chỉ export `false` tạm thời rồi xóa file.
+- Trong `axios.ts`: interceptor 401 — xóa nhánh `sessionMock` (mock token `mock.`); luôn `logout` + redirect khi 401.
+
+## Auth (`src/features/auth/`)
+
+- `api.ts`: xóa `mockLogin`, `mockMe`, nhánh `if (isMockApiEnabled())`, import `mock/mockAccounts`.
+- Có thể xóa toàn bộ thư mục `mock/mockAccounts.ts` (hoặc giữ file rỗng nếu team chưa merge).
+- `src/app/routes/_auth/login.tsx`: xóa block UI “Dữ liệu giả”, import `MOCK_*`, `isMockApiEnabled`.
+
+## HR Admin (`src/features/hr-admin/`)
+
+- `api.ts`: xóa nhánh `isMockApiEnabled()` và import `mock/mockEmployeesData`.
+- Xóa `mock/mockEmployeesData.ts` nếu không còn dùng.
+- `hrOrgOptions.ts`: thay UUID cố định bằng API phòng ban/team khi backend có endpoint.
+- `schemas.ts`: chỉnh comment “meta mock” nếu payload API không còn meta giả.
+
+## Kiểm tra sau khi gỡ
+
+- `rg "isMockApiEnabled|MOCK_|mock/" src` — không còn kết quả (trừ test/comment có chủ đích).
+- Đăng nhập + HR list/detail/create chỉ hit backend; token không còn prefix `mock.`.

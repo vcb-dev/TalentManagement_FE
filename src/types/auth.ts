@@ -1,0 +1,37 @@
+/** HR, Member, Teacher (chấm thi theo kỳ), Manager, BOD — không còn Leader/COE cố định. */
+export type Role = 'MEMBER' | 'MANAGER' | 'HR_ADMIN' | 'TEACHER' | 'BOD'
+
+export type Action =
+  | 'view'
+  | 'create'
+  | 'edit'
+  | 'deactivate'
+  | 'grade'
+  | 'approve'
+  | 'classify'
+
+export type Resource =
+  | 'employee'
+  | 'exam'
+  | 'promotion'
+  | 'team'
+  | 'department'
+  | 'radar_chart'
+  | 'checklist'
+  | 'submission'
+  | 'kpi'
+
+export interface Permission {
+  action: Action
+  resource: Resource
+}
+
+export interface UserSession {
+  id: string
+  name: string
+  email: string
+  role: Role
+  permissions: Permission[]
+  departmentId: string
+  teamIds: string[]
+}

@@ -1,0 +1,29 @@
+import { z } from 'zod'
+import { apiClient } from '@/lib/axios'
+import { isMockApiEnabled } from '@/lib/mockEnv'
+import { safeParse } from '@/lib/utils'
+import { getMockChecklist, getMockSubmissions } from '@/features/learning-path/mock/mockChecklistData'
+import { checklistResponseSchema, levelSummaryApiSchema, submissionApiSchema } from './schemas'
+
+export const learningApi = {
+  levels: async () => {
+    const res = await apiClient.get<unknown>('/learning/levels')
+    return safeParse(z.array(levelSummaryApiSchema), res.data, 'GET /learning/levels')
+  },
+
+  checklist: async (levelId: string, starId: string) => {
+    if (isMockApiEnabled()) {
+      return safeParse(checklistResponseSchema, getMockChecklist(levelId, starId), 'GET checklist (mock)')
+    }
+    const res = await apiClient.get<unknown>(`/learning/levels/${levelId}/stars/${starId}/checklist`)
+    return safeParse(checklistResponseSchema, res.data, 'GET checklist')
+  },
+
+  submissions: async (starId: string) => {
+    if (isMockApiEnabled()) {
+      return safeParse(z.array(submissionApiSchema), getMockSubmissions(starId), 'GET /learning/submissions (mock)')
+    }
+    const res = await apiClient.get<unknown>(`/learning/submissions`, { params: { starId } })
+    return safeParse(z.array(submissionApiSchema), res.data, 'GET /learning/submissions')
+  },
+}

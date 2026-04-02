@@ -1,0 +1,18 @@
+import type { Role } from '@/types/auth'
+import { Badge } from '@/components/ui/badge'
+
+export interface RoleBadgeProps {
+  role: Role
+}
+
+const labels: Record<Role, string> = {
+  MEMBER: 'Nhân viên',
+  MANAGER: 'Quản lý',
+  HR_ADMIN: 'HR',
+  TEACHER: 'Người chấm thi',
+  BOD: 'BOD',
+}
+
+export function RoleBadge({ role }: RoleBadgeProps) {
+  return <Badge variant="outline">{labels[role]}</Badge>
+}

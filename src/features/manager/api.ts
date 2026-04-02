@@ -1,0 +1,111 @@
+import { z } from 'zod'
+import { apiClient } from '@/lib/axios'
+import { formatViDate } from '@/lib/date'
+import { isMockApiEnabled } from '@/lib/mockEnv'
+import { safeParse } from '@/lib/utils'
+import { MOCK_APPROVALS_PAGE } from '@/features/manager/mock/mockManagerApprovals'
+import { MOCK_TEAM_PROGRESS_PAGE } from '@/features/manager/mock/mockTeamProgress'
+import {
+  approvalItemApiSchema,
+  approvalsPageApiSchema,
+  kpiMonthlyApiSchema,
+  teamMemberProgressApiSchema,
+  teamProgressPageApiSchema,
+  teamProgressSummaryApiSchema,
+} from './schemas'
+
+function computeSummaryFromMembers(
+  members: z.infer<typeof teamMemberProgressApiSchema>[]
+): z.infer<typeof teamProgressSummaryApiSchema> {
+  const totalMembers = members.length
+  const eligibleExam = members.filter((m) => /đủ|ĐK/i.test(m.statusLabel ?? '')).length
+  const behind = members.filter(
+    (m) => m.rowTone === 'danger' || /bảo lưu/i.test(m.statusLabel ?? '')
+  ).length
+  const onTrack = members.filter(
+    (m) => (m.completionPercent ?? 0) >= 50 && m.rowTone !== 'danger'
+  ).length
+  const onTrackPct = totalMembers ? Math.round((onTrack / totalMembers) * 1000) / 10 : 0
+  return { totalMembers, eligibleExam, onTrack, onTrackPct, behind }
+}
+
+function legacyInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) {
+    const a = parts[0]?.[0] ?? '?'
+    const b = parts[parts.length - 1]?.[0] ?? '?'
+    return (a + b).toUpperCase()
+  }
+  return name.slice(0, 2).toUpperCase()
+}
+
+function legacyApprovalsToPage(
+  rows: z.infer<typeof approvalItemApiSchema>[]
+): z.infer<typeof approvalsPageApiSchema> {
+  const typeLabel: Record<string, string> = {
+    PROMOTION: 'Thăng cấp',
+    SUBMISSION: 'Nộp bài',
+    LEAVE: 'Nghỉ phép',
+  }
+  const pending = rows.filter((r) => r.status === 'PENDING')
+  return {
+    pendingCount: pending.length,
+    promotions: rows.map((r) => ({
+      id: r.id,
+      initials: legacyInitials(r.requesterName),
+      name: r.requesterName,
+      description: `${typeLabel[r.type] ?? r.type} · ${formatViDate(r.createdAt)}`,
+      badges: [
+        {
+          label:
+            r.status === 'PENDING'
+              ? 'Chờ duyệt'
+              : r.status === 'APPROVED'
+                ? 'Đã duyệt'
+                : 'Từ chối',
+          tone: r.status === 'PENDING' ? ('warning' as const) : ('neutral' as const),
+        },
+      ],
+      state: r.status === 'PENDING' ? ('actionable' as const) : ('done' as const),
+      highlighted: r.status === 'PENDING',
+    })),
+    graderReviews: [],
+  }
+}
+
+export const managerApi = {
+  teamProgress: async (teamId?: string) => {
+    if (isMockApiEnabled()) {
+      void teamId
+      return safeParse(teamProgressPageApiSchema, MOCK_TEAM_PROGRESS_PAGE, 'GET team-progress (mock)')
+    }
+    const res = await apiClient.get<unknown>('/manager/team-progress', { params: { teamId } })
+    const raw = res.data
+    if (Array.isArray(raw)) {
+      const members = safeParse(z.array(teamMemberProgressApiSchema), raw, 'GET team-progress members')
+      return safeParse(
+        teamProgressPageApiSchema,
+        { summary: computeSummaryFromMembers(members), members },
+        'GET team-progress wrapped'
+      )
+    }
+    return safeParse(teamProgressPageApiSchema, raw, 'GET team-progress')
+  },
+
+  approvals: async () => {
+    if (isMockApiEnabled()) {
+      return safeParse(approvalsPageApiSchema, MOCK_APPROVALS_PAGE, 'GET approvals (mock)')
+    }
+    const res = await apiClient.get<unknown>('/manager/approvals')
+    if (Array.isArray(res.data)) {
+      const rows = safeParse(z.array(approvalItemApiSchema), res.data, 'GET approvals legacy')
+      return safeParse(approvalsPageApiSchema, legacyApprovalsToPage(rows), 'GET approvals wrapped')
+    }
+    return safeParse(approvalsPageApiSchema, res.data, 'GET approvals')
+  },
+
+  kpiMonthly: async (month: string) => {
+    const res = await apiClient.get<unknown>('/manager/kpi', { params: { month } })
+    return safeParse(kpiMonthlyApiSchema, res.data, 'GET kpi')
+  },
+}

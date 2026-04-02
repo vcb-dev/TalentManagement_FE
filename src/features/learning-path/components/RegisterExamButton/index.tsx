@@ -1,0 +1,1 @@
+export { RegisterExamButton } from './RegisterExamButton'
