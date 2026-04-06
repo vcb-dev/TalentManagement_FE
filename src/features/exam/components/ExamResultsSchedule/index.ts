@@ -1,0 +1,1 @@
+export { ExamResultsSchedule } from './ExamResultsSchedule'

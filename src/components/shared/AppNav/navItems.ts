@@ -3,6 +3,7 @@ import {
   BarChart3,
   BookOpen,
   Calendar,
+  ClipboardList,
   LayoutGrid,
   LineChart,
   ListChecks,
@@ -80,6 +81,21 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
 
 const TEACHER_CLASS_ITEMS: AppNavItem[] = [
   { to: '/teacher/classes', label: 'Lớp & thành viên', icon: School, match: 'prefix' },
+]
+
+/** Teacher: header ngang (thay sidebar) — lớp + chấm thi */
+export const TEACHER_HEADER_ITEMS: AppNavItem[] = [
+  ...TEACHER_CLASS_ITEMS,
+  {
+    to: '/exam/grader',
+    label: 'Chấm bài & kỳ thi',
+    icon: ClipboardList,
+    match: 'custom',
+    customMatch: (p) =>
+      p === '/exam/grader' ||
+      p.startsWith('/exam/grader/') ||
+      /^\/exam\/[^/]+\/(grade|result)$/.test(p),
+  },
 ]
 
 /** Leader: dashboard, nhân sự team, KPI, báo cáo */

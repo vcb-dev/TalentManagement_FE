@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Search } from 'lucide-react'
+import { AlertTriangle, Filter, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { EmployeeTable } from '@/features/hr-admin/components/EmployeeTable'
 import { useEmployeeTable } from '@/features/hr-admin/components/EmployeeTable/useEmployeeTable'
@@ -8,7 +8,6 @@ import type { EmployeeEntity } from '@/features/hr-admin/api'
 import type { Role } from '@/types/auth'
 import type { EmployeeFilters, EmployeeListStatus } from '@/features/hr-admin/types'
 import { MANAGER_TEAM_OPTIONS } from '@/features/manager/constants/managerTeams'
-import { ManagerHubNav } from '@/features/manager/components/ManagerHub/ManagerHubNav'
 import { Button } from '@/components/ui/button'
 import { SkeletonEmployeeCardGrid, SkeletonStatTile } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
@@ -24,7 +23,7 @@ const FILTERS: { key: 'all' | Role | 'reserved'; label: string }[] = [
   { key: 'TEACHER', label: 'Người chấm' },
   { key: 'HR_ADMIN', label: 'HR' },
   { key: 'BOD', label: 'BOD' },
-  { key: 'reserved', label: '⚠️ Bảo lưu' },
+  { key: 'reserved', label: 'Bảo lưu' },
 ]
 
 export interface HrEmployeeListProps {
@@ -48,8 +47,17 @@ export function HrEmployeeList({
     isTeamMode ? { page: 1, pageSize: 48, teamId } : { page: 1, pageSize: 48, ...initialFilters },
     isTeamMode ? (isLeader ? { leaderScope: true } : { managerScope: true }) : undefined
   )
-  const { employees, isLoading, pagination, onView, onEdit, onDeactivate, onPageChange, filters, setFilters } =
-    table
+  const {
+    employees,
+    isLoading,
+    pagination,
+    onView,
+    onEdit,
+    onDeactivate,
+    onPageChange,
+    filters,
+    setFilters,
+  } = table
 
   useEffect(() => {
     if (!isTeamMode) return
@@ -77,9 +85,21 @@ export function HrEmployeeList({
     const onPage = employees
     const active = onPage.filter((e) => e.status === 'ACTIVE').length
     const inactive = onPage.filter((e) => e.status === 'INACTIVE').length
-    const reserved = onPage.filter((e) => e.status === 'RESERVED' || e.status === 'PROBATION').length
-    return { total, active, inactive, reserved, pageCount: onPage.length }
+    const reserved = onPage.filter(
+      (e) => e.status === 'RESERVED' || e.status === 'PROBATION'
+    ).length
+    const pageCount = onPage.length
+    const activePct = pageCount > 0 ? Math.round((active / pageCount) * 100) : 0
+    return { total, active, inactive, reserved, pageCount, activePct }
   }, [employees, pagination.total])
+
+  const totalPages = Math.max(1, Math.ceil(pagination.total / (filters.pageSize || 20)))
+
+  const scrollToFilters = () => {
+    document
+      .getElementById('hr-emp-filters')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const activeFilter = useMemo(() => {
     if (filters.status === 'reserved') return 'reserved' as const
@@ -97,171 +117,254 @@ export function HrEmployeeList({
       return
     }
     if (key === 'reserved') {
-      setFilters((f) => ({ ...f, page: 1, status: 'reserved' as EmployeeListStatus, role: undefined }))
+      setFilters((f) => ({
+        ...f,
+        page: 1,
+        status: 'reserved' as EmployeeListStatus,
+        role: undefined,
+      }))
       return
     }
     setFilters((f) => ({ ...f, page: 1, role: key as Role, status: undefined }))
   }
 
+  const pageTitle = isTeamMode ? 'Nhân sự trong team' : 'Danh mục Nhân sự'
+  const pageSubtitle = isTeamMode
+    ? 'Danh sách nhân viên thuộc team đang chọn — theo dõi nhanh trạng thái và thành tích.'
+    : 'Quản lý và theo dõi hiệu suất cũng như thành tích của nhân sự.'
+
   return (
     <div className="-m-5 flex min-h-[calc(100vh-3.5rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
-      {/* Thanh công cụ trang */}
-      <div className="page-toolbar-gradient gap-3">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-25 motion-safe:animate-[dash-shimmer_10s_ease-in-out_infinite] motion-reduce:animate-none"
-          style={{
-            background: 'linear-gradient(110deg, transparent 0%, hsl(var(--primary) / 0.1) 50%, transparent 90%)',
-            backgroundSize: '200% 100%',
-          }}
-        />
-        <div className="relative text-base font-semibold tracking-tight">
-          <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
-            {isTeamMode ? 'Nhân sự trong team' : 'Danh sách nhân sự'}
-          </span>
-        </div>
-        <div className="relative flex flex-wrap items-center gap-2">
-          {isTeamMode ? (
-            <label className="relative flex min-w-[170px] items-center gap-1.5 rounded-lg border border-primary/20 bg-card/90 px-3 py-1.5 text-sm text-foreground shadow-sm backdrop-blur-sm ring-1 ring-primary/10">
-              <span className="shrink-0 text-xs font-medium text-muted-foreground">Team</span>
-              <select
-                className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent text-sm font-semibold text-foreground outline-none"
-                value={teamId}
-                onChange={(e) => setTeamId(e.target.value)}
-                aria-label="Chọn team"
-              >
-                {teamOptions.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          <label className="relative flex min-w-[190px] items-center gap-1.5 rounded-lg border border-primary/20 bg-card/90 px-3 py-1.5 text-sm text-muted-foreground shadow-sm backdrop-blur-sm ring-1 ring-primary/10">
-            <Search className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-            <input
-              type="search"
-              placeholder="Tìm tên, email..."
-              className="min-w-0 flex-1 border-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-              value={searchDraft}
-              onChange={(e) => setSearchDraft(e.target.value)}
-            />
-          </label>
-          <button
-            type="button"
-            className={cn(
-              'whitespace-nowrap rounded-lg border px-3.5 py-1.5 text-xs font-medium transition-colors',
-              viewMode === 'table'
-                ? 'border-button bg-button text-button-foreground shadow-sm'
-                : 'border-border bg-card text-foreground hover:bg-muted'
-            )}
-            onClick={() => setViewMode((v) => (v === 'cards' ? 'table' : 'cards'))}
-          >
-            {viewMode === 'cards' ? '☰ Dạng bảng' : '▦ Dạng thẻ'}
-          </button>
-          {!isTeamMode ? (
-            <Button type="button" size="sm" className="h-8 rounded-lg text-xs" asChild>
-              <Link to="/hr-admin/new">+ Thêm nhân sự</Link>
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
-      {isTeam && !isLeader ? <ManagerHubNav /> : null}
-
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="page-shell">
-          {/* Stats */}
-          <div className="mb-4 grid grid-cols-2 gap-3 gap-y-3 md:grid-cols-4">
-            {(
-              [
-                {
-                  key: 'total',
-                  className:
-                    'rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.09] via-card to-teal-500/[0.06] px-4 py-3.5 shadow-[var(--shadow-card)] ring-1 ring-primary/10 transition-shadow motion-safe:hover:shadow-md',
-                  body: (
-                    <>
-                      <div className="mb-1 text-xs font-semibold text-primary">👥 Tổng nhân sự</div>
-                      <div className="bg-gradient-to-r from-primary to-teal-600 bg-clip-text text-[28px] font-extrabold leading-tight text-transparent">
-                        {stats.total}
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">theo bộ lọc API</div>
-                    </>
-                  ),
-                },
-                {
-                  key: 'active',
-                  className:
-                    'rounded-xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/95 via-card to-teal-50/80 px-4 py-3.5 shadow-[var(--shadow-card)] ring-1 ring-emerald-500/15 transition-shadow motion-safe:hover:shadow-md',
-                  body: (
-                    <>
-                      <div className="mb-1 text-xs font-semibold text-emerald-800">✅ Hoạt động (trang)</div>
-                      <div className="text-[28px] font-extrabold leading-tight text-emerald-700">{stats.active}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">trên {stats.pageCount} người hiển thị</div>
-                    </>
-                  ),
-                },
-                {
-                  key: 'inactive',
-                  className:
-                    'rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-card to-violet-50/50 px-4 py-3.5 shadow-[var(--shadow-card)] ring-1 ring-amber-400/20 transition-shadow motion-safe:hover:shadow-md',
-                  body: (
-                    <>
-                      <div className="mb-1 text-xs font-semibold text-amber-900">⏸ Ngừng / bảo lưu</div>
-                      <div className="text-[28px] font-extrabold leading-tight text-amber-800">
-                        {stats.inactive + stats.reserved}
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">trên trang hiện tại</div>
-                    </>
-                  ),
-                },
-                {
-                  key: 'page',
-                  className:
-                    'rounded-xl border border-violet-200/70 bg-gradient-to-br from-violet-50/90 via-card to-fuchsia-50/40 px-4 py-3.5 shadow-[var(--shadow-card)] ring-1 ring-violet-400/15 transition-shadow motion-safe:hover:shadow-md',
-                  body: (
-                    <>
-                      <div className="mb-1 text-xs font-semibold text-violet-900">📄 Trang</div>
-                      <div className="text-[28px] font-extrabold leading-tight text-violet-800">{pagination.page}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        / {Math.max(1, Math.ceil(pagination.total / (filters.pageSize || 20)))}
-                      </div>
-                    </>
-                  ),
-                },
-              ] as const
-            ).map((s, i) => (
-              <div key={s.key} className={cn(s.className, CARD_ENTRANCE_HOVER)} style={staggerStyle(i)}>
-                {s.body}
+          {/* Tiêu đề + nút + thống kê — bố cục như code.html, giữ màu ô thống kê hiện tại */}
+          <div className="mb-8 flex flex-col gap-8">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h1 className="mb-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                  <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
+                    {pageTitle}
+                  </span>
+                </h1>
+                <p className="max-w-xl text-sm text-muted-foreground">{pageSubtitle}</p>
               </div>
-            ))}
+              <div className="flex flex-wrap items-center gap-3">
+                {isTeamMode ? (
+                  <label className="relative flex min-w-[170px] items-center gap-1.5 rounded-lg border border-primary/20 bg-card px-3 py-2 text-sm text-foreground shadow-sm ring-1 ring-primary/10">
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">Team</span>
+                    <select
+                      className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent text-sm font-semibold text-foreground outline-none"
+                      value={teamId}
+                      onChange={(e) => setTeamId(e.target.value)}
+                      aria-label="Chọn team"
+                    >
+                      {teamOptions.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+                  onClick={scrollToFilters}
+                >
+                  <Filter className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  Bộ lọc
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors',
+                    viewMode === 'table'
+                      ? 'border-button bg-button text-button-foreground'
+                      : 'border-border bg-card text-foreground hover:bg-muted'
+                  )}
+                  onClick={() => setViewMode((v) => (v === 'cards' ? 'table' : 'cards'))}
+                >
+                  {viewMode === 'cards' ? 'Dạng bảng' : 'Dạng thẻ'}
+                </button>
+                {!isTeamMode ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-10 rounded-lg px-5 text-sm font-semibold shadow-sm"
+                    asChild
+                  >
+                    <Link to="/hr-admin/new">+ Thêm nhân sự</Link>
+                  </Button>
+                ) : null}
+                <button
+                  type="button"
+                  className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90"
+                  onClick={() => toast.info('Xuất Excel sẽ được kết nối API sau.')}
+                >
+                  Xuất dữ liệu
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {(
+                [
+                  {
+                    key: 'total',
+                    className:
+                      'rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.09] via-card to-teal-500/[0.06] p-5 shadow-[var(--shadow-card)] ring-1 ring-primary/10',
+                    body: (
+                      <>
+                        <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
+                          Tổng nhân sự
+                        </span>
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          <span className="bg-gradient-to-r from-primary to-teal-600 bg-clip-text text-2xl font-bold leading-none text-transparent">
+                            {stats.total}
+                          </span>
+                          <span className="text-[10px] font-bold text-primary">
+                            theo bộ lọc API
+                          </span>
+                        </div>
+                      </>
+                    ),
+                  },
+                  {
+                    key: 'active',
+                    className:
+                      'rounded-xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/95 via-card to-teal-50/80 p-5 shadow-[var(--shadow-card)] ring-1 ring-emerald-500/15',
+                    body: (
+                      <>
+                        <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
+                          Hoạt động
+                        </span>
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          <span className="text-2xl font-bold leading-none text-emerald-700">
+                            {stats.active}
+                          </span>
+                          {stats.pageCount > 0 ? (
+                            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-200">
+                              {stats.activePct}% trang
+                            </span>
+                          ) : null}
+                        </div>
+                      </>
+                    ),
+                  },
+                  {
+                    key: 'inactive',
+                    className:
+                      'rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-card to-violet-50/50 p-5 shadow-[var(--shadow-card)] ring-1 ring-amber-400/20',
+                    body: (
+                      <>
+                        <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
+                          Ngừng / bảo lưu
+                        </span>
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          <span className="text-2xl font-bold leading-none text-amber-800">
+                            {stats.inactive + stats.reserved}
+                          </span>
+                          <span className="text-[10px] font-medium text-muted-foreground">
+                            trên trang hiện tại
+                          </span>
+                        </div>
+                      </>
+                    ),
+                  },
+                  {
+                    key: 'page',
+                    className:
+                      'rounded-xl border border-violet-200/70 bg-gradient-to-br from-violet-50/90 via-card to-fuchsia-50/40 p-5 shadow-[var(--shadow-card)] ring-1 ring-violet-400/15',
+                    body: (
+                      <>
+                        <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
+                          Trang
+                        </span>
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          <span className="text-2xl font-bold leading-none text-violet-800">
+                            {pagination.page}
+                          </span>
+                          <span className="text-[10px] font-medium text-muted-foreground">
+                            trên {totalPages} trang
+                          </span>
+                        </div>
+                      </>
+                    ),
+                  },
+                ] as const
+              ).map((s, i) => (
+                <div
+                  key={s.key}
+                  className={cn(s.className, CARD_ENTRANCE_HOVER)}
+                  style={staggerStyle(i)}
+                >
+                  {s.body}
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Filter pills */}
-          <div className="mb-3 flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">Lọc:</span>
-            {FILTERS.map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                className={cn(
-                  'rounded-full border px-3.5 py-1 text-xs font-medium transition-colors',
-                  activeFilter === key
-                    ? 'border-primary/35 bg-gradient-to-r from-primary/12 to-teal-500/10 font-semibold text-primary shadow-sm ring-1 ring-primary/15'
-                    : 'border-border bg-card text-muted-foreground hover:border-primary/25 hover:bg-primary/[0.06] hover:text-foreground'
-                )}
-                onClick={() => setRoleFilter(key)}
+          {/* Bộ lọc + tìm kiếm: mobile xếp dọc, lg chia đôi 50/50 */}
+          <div
+            id="hr-emp-filters"
+            className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-stretch lg:gap-4"
+          >
+            <div className="scrollbar-hide flex min-w-0 w-full overflow-x-auto rounded-xl border border-border bg-card p-1 shadow-sm">
+              <div
+                role="tablist"
+                aria-label="Lọc theo vai trò và trạng thái"
+                className="flex min-w-min gap-0.5"
               >
-                {label}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="ml-auto rounded-lg border border-primary/20 bg-card px-3 py-1.5 text-xs font-medium text-primary shadow-sm ring-1 ring-primary/10 hover:bg-primary/[0.07] md:text-sm"
-              onClick={() => toast.info('Xuất Excel sẽ được kết nối API sau.')}
-            >
-              Xuất Excel
-            </button>
+                {FILTERS.map(({ key, label }) => {
+                  const selected = activeFilter === key
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="tab"
+                      aria-selected={selected}
+                      id={`hr-emp-filter-${key}`}
+                      className={cn(
+                        'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-xs font-semibold transition-colors md:text-[13px]',
+                        selected
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:bg-muted/70 hover:text-primary'
+                      )}
+                      onClick={() => setRoleFilter(key)}
+                    >
+                      {key === 'reserved' ? (
+                        <AlertTriangle
+                          className={cn(
+                            'size-3.5 shrink-0',
+                            selected
+                              ? 'text-primary-foreground'
+                              : 'text-amber-500 dark:text-amber-400'
+                          )}
+                          strokeWidth={2.25}
+                          aria-hidden
+                        />
+                      ) : null}
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <label className="relative flex min-h-[42px] w-full min-w-0 items-center rounded-xl border border-border bg-card px-3 shadow-sm ring-1 ring-border/60">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <input
+                type="search"
+                placeholder="Tìm kiếm nhân sự..."
+                className="min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
+                value={searchDraft}
+                onChange={(e) => setSearchDraft(e.target.value)}
+                aria-label="Tìm kiếm nhân sự"
+              />
+            </label>
           </div>
 
           {viewMode === 'table' ? (
@@ -288,10 +391,10 @@ export function HrEmployeeList({
             <>
               <div
                 className={cn(
-                  'grid gap-3',
+                  'grid gap-8 gap-y-4',
                   selectedId
-                    ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-                    : 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+                    : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
                 )}
               >
                 {employees.map((e: EmployeeEntity, idx) => (
@@ -316,7 +419,9 @@ export function HrEmployeeList({
                 ))}
               </div>
               {employees.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">Không có nhân viên phù hợp.</p>
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Không có nhân viên phù hợp.
+                </p>
               ) : null}
             </>
           )}

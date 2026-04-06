@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { CARD_HOVER } from '@/lib/cardMotion'
+import { Filter } from 'lucide-react'
+import { toast } from 'sonner'
+import { CARD_ENTRANCE_HOVER, SECTION_FADE_UP, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
@@ -21,20 +23,20 @@ const FILTERS: { key: GraderExamRow['levelKey'] | 'all'; label: string }[] = [
 function statusBadge(row: GraderExamRow) {
   if (row.status === 'pending') {
     return (
-      <span className="rounded-full border border-rose-200/70 bg-gradient-to-r from-rose-500/12 to-primary/8 px-3 py-1 text-sm font-bold text-rose-900 shadow-sm ring-1 ring-rose-500/10">
+      <span className="inline-flex rounded-full border border-rose-200/80 bg-rose-50 px-3 py-1 text-sm font-bold text-rose-700">
         Chờ chấm
       </span>
     )
   }
   if (row.status === 'grading') {
     return (
-      <span className="rounded-full border border-amber-300/60 bg-gradient-to-r from-amber-400/20 to-orange-400/15 px-3 py-1 text-sm font-bold text-amber-950 shadow-sm ring-1 ring-amber-400/20">
+      <span className="inline-flex rounded-full border border-amber-200/80 bg-amber-50 px-3 py-1 text-sm font-bold text-amber-800">
         Đang chấm
       </span>
     )
   }
   return (
-    <span className="rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-500/12 to-teal-500/10 px-3 py-1 text-sm font-bold text-emerald-900 shadow-sm ring-1 ring-emerald-500/15">
+    <span className="inline-flex rounded-full border border-emerald-200/80 bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-800">
       Đã chấm
     </span>
   )
@@ -54,11 +56,14 @@ export function GraderExamListScreen() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('all')
+  const [onlyPending, setOnlyPending] = useState(false)
 
   const rows = useMemo(() => {
-    if (filter === 'all') return MOCK_GRADER_EXAM_ROWS
-    return MOCK_GRADER_EXAM_ROWS.filter((r) => r.levelKey === filter)
-  }, [filter])
+    let list =
+      filter === 'all' ? MOCK_GRADER_EXAM_ROWS : MOCK_GRADER_EXAM_ROWS.filter((r) => r.levelKey === filter)
+    if (onlyPending) list = list.filter((r) => r.status === 'pending')
+    return list
+  }, [filter, onlyPending])
 
   const pendingTotal = countPendingGrader(MOCK_GRADER_EXAM_ROWS)
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
@@ -72,92 +77,135 @@ export function GraderExamListScreen() {
     })
   }
 
-  return (
-    <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
-      <div className="page-toolbar-gradient">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-25 motion-safe:animate-[dash-shimmer_10s_ease-in-out_infinite] motion-reduce:animate-none"
-          style={{
-            background:
-              'linear-gradient(110deg, transparent 0%, hsl(var(--primary) / 0.1) 50%, transparent 90%)',
-            backgroundSize: '200% 100%',
-          }}
-        />
-        <div className="relative text-base font-semibold tracking-tight">
-          <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
-            Danh sách kỳ thi cần chấm
-          </span>
-        </div>
-        <div className="relative flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-rose-200/70 bg-card/95 px-3 py-1.5 text-sm font-bold text-rose-800 shadow-sm backdrop-blur-sm ring-1 ring-rose-500/15 motion-safe:transition-transform motion-safe:hover:scale-[1.02]">
-            {pendingTotal} bài chờ chấm
-          </span>
-          <span className="rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-500/12 to-teal-500/10 px-3 py-1.5 text-sm font-semibold leading-snug text-emerald-950 shadow-sm ring-1 ring-emerald-500/12">
-            {displayName} ({roleLabel}) · Được chỉ định
-          </span>
-        </div>
-      </div>
+  const scrollToFilters = () => {
+    document.getElementById('grader-exam-filters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
-      <div className="page-shell">
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setFilter(f.key)}
+  const rowStaggerBase = FILTERS.length + 2
+
+  return (
+    <div className="-m-5 flex min-h-[calc(100vh-3.5rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="page-shell">
+          <div className="mb-8 flex flex-col gap-8">
+            <div
               className={cn(
-                'rounded-full border px-3.5 py-1 text-xs font-medium transition-colors',
-                filter === f.key
-                  ? 'border-primary/35 bg-gradient-to-r from-primary/12 to-teal-500/10 font-semibold text-primary shadow-sm ring-1 ring-primary/15'
-                  : 'border-border bg-card text-muted-foreground hover:border-primary/25 hover:bg-primary/[0.06]'
+                'flex flex-col gap-4 md:flex-row md:items-end md:justify-between',
+                SECTION_FADE_UP
               )}
             >
-              {f.label}
-            </button>
-          ))}
-        </div>
+              <div>
+                <h1 className="mb-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                  <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
+                    Danh sách kỳ thi cần chấm
+                  </span>
+                </h1>
+                <p className="max-w-xl text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">{pendingTotal} bài chờ chấm</span>
+                  {' · '}
+                  {displayName} ({roleLabel}) — được chỉ định chấm. Danh sách bài nộp theo lớp; mở chi tiết để
+                  chấm hoặc xem lại (dữ liệu minh họa).
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+                  onClick={scrollToFilters}
+                >
+                  <Filter className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  Bộ lọc
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors',
+                    onlyPending
+                      ? 'border-button bg-button text-button-foreground'
+                      : 'border-border bg-card text-foreground hover:bg-muted'
+                  )}
+                  onClick={() => setOnlyPending((v) => !v)}
+                >
+                  {onlyPending ? 'Hiện tất cả' : 'Chỉ chờ chấm'}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90"
+                  onClick={() => toast.info('Xuất danh sách chấm thi sẽ nối API sau.')}
+                >
+                  Xuất dữ liệu
+                </button>
+              </div>
+            </div>
 
-        <div
-          className={cn(
-            'overflow-hidden rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10',
-            CARD_HOVER
-          )}
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-sm">
-              <thead>
-                <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">
-                  {[
-                    'Thí sinh',
-                    'Cấp độ / Sao',
-                    'Lớp thi',
-                    'Ngày nộp',
-                    'Trạng thái',
-                    'Thao tác',
-                  ].map((h) => (
-                    <th
-                      key={h}
-                      className="whitespace-nowrap border-b border-border px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
+            <div id="grader-exam-filters" className="flex flex-wrap gap-2">
+              {FILTERS.map((f, i) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setFilter(f.key)}
+                  className={cn(
+                    'rounded-full border px-4 py-1.5 text-xs transition-colors',
+                    CARD_ENTRANCE_HOVER,
+                    filter === f.key
+                      ? 'border-primary/35 bg-card font-bold text-primary shadow-sm'
+                      : 'border-border bg-card font-medium text-muted-foreground hover:bg-muted/50'
+                  )}
+                  style={staggerStyle(i, 45)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div
+              className={cn(
+                'overflow-hidden rounded-xl border border-primary/15 bg-card shadow-sm',
+                SECTION_FADE_UP
+              )}
+              style={staggerStyle(FILTERS.length, 55)}
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                  <thead className="bg-primary/[0.06] text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      {[
+                        'Thí sinh',
+                        'Cấp độ / Sao',
+                        'Lớp thi',
+                        'Ngày nộp',
+                        'Trạng thái',
+                        'Thao tác',
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className={cn(
+                            'whitespace-nowrap px-6 py-4',
+                            h === 'Ngày nộp' || h === 'Trạng thái' || h === 'Thao tác'
+                              ? 'text-center'
+                              : 'text-left'
+                          )}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {rows.map((row, rowIdx) => (
                   <tr
                     key={row.examId}
                     className={cn(
-                      'border-b border-border transition-[background-color,box-shadow] duration-200 motion-safe:hover:bg-primary/[0.07]',
-                      row.status === 'done' && 'opacity-45'
+                      'transition-colors hover:bg-primary/[0.05]',
+                      CARD_ENTRANCE_HOVER
                     )}
+                    style={staggerStyle(rowStaggerBase + rowIdx, 42)}
                   >
-                    <td className="px-3 py-3 align-middle">
-                      <div className="flex items-center gap-2">
+                    <td className="px-6 py-4 align-middle">
+                      <div className="flex items-center gap-3">
                         <div
                           className={cn(
-                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                            'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold',
                             row.avatarClass
                           )}
                         >
@@ -171,7 +219,7 @@ export function GraderExamListScreen() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-3 align-middle">
+                    <td className="px-6 py-4 align-middle">
                       <span
                         className={cn(
                           'inline-flex rounded-full px-3 py-1 text-sm font-bold',
@@ -181,16 +229,16 @@ export function GraderExamListScreen() {
                         {row.levelBadge}
                       </span>
                     </td>
-                    <td className="px-3 py-3 align-middle text-foreground">{row.className}</td>
-                    <td className="px-3 py-3 align-middle text-muted-foreground">
+                    <td className="px-6 py-4 align-middle text-foreground">{row.className}</td>
+                    <td className="px-6 py-4 align-middle text-center text-muted-foreground">
                       {row.submittedAt}
                     </td>
-                    <td className="px-3 py-3 align-middle">{statusBadge(row)}</td>
-                    <td className="px-3 py-3 align-middle">
+                    <td className="px-6 py-4 align-middle text-center">{statusBadge(row)}</td>
+                    <td className="px-6 py-4 align-middle text-center">
                       {row.status === 'pending' && (
                         <button
                           type="button"
-                          className="whitespace-nowrap rounded-lg border border-button bg-button px-2.5 py-1 text-xs font-medium text-button-foreground hover:opacity-90"
+                          className="whitespace-nowrap rounded-lg border border-button bg-button px-4 py-1.5 text-xs font-bold text-button-foreground shadow-sm transition-transform hover:opacity-90 active:scale-95 motion-safe:hover:scale-[1.02]"
                           onClick={() => goGrade(row)}
                         >
                           Chấm thi
@@ -199,7 +247,7 @@ export function GraderExamListScreen() {
                       {row.status === 'grading' && (
                         <button
                           type="button"
-                          className="whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:bg-primary/10"
+                          className="whitespace-nowrap rounded-lg border border-border bg-card px-4 py-1.5 text-xs font-bold text-foreground transition-colors hover:bg-muted/60"
                           onClick={() => goGrade(row)}
                         >
                           Tiếp tục
@@ -208,7 +256,7 @@ export function GraderExamListScreen() {
                       {row.status === 'done' && (
                         <button
                           type="button"
-                          className="whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:bg-primary/10"
+                          className="whitespace-nowrap rounded-lg border border-border bg-card px-4 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted/40"
                           onClick={() => goGrade(row)}
                         >
                           Xem lại
@@ -216,9 +264,11 @@ export function GraderExamListScreen() {
                       )}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </div>

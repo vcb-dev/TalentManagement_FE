@@ -1,22 +1,82 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { GraduationCap, Plus, Users } from 'lucide-react'
+import {
+  ArrowRight,
+  BookOpen,
+  Building2,
+  Calendar,
+  PlusCircle,
+  Search,
+  SlidersHorizontal,
+  Users,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
-import { MOCK_MANAGER_CLASSES, type ManagerClassRow } from '@/features/manager/mock/mockManagerHub'
+import {
+  MOCK_MANAGER_CLASSES,
+  type ManagerClassCardVariant,
+  type ManagerClassRow,
+} from '@/features/manager/mock/mockManagerHub'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 
 const STATUS_LABEL: Record<ManagerClassRow['status'], { label: string; className: string }> = {
-  open: { label: 'Đang mở', className: 'bg-emerald-500/12 text-emerald-900 ring-1 ring-emerald-500/20' },
-  full: { label: 'Đủ chỗ', className: 'bg-amber-500/12 text-amber-950 ring-1 ring-amber-500/20' },
-  closed: { label: 'Đã đóng', className: 'bg-muted text-muted-foreground' },
+  open: { label: 'Đang mở', className: 'bg-white/20 text-white backdrop-blur-md' },
+  full: { label: 'Đủ chỗ', className: 'bg-white/20 text-white backdrop-blur-md' },
+  closed: { label: 'Đã đóng', className: 'bg-white/15 text-white/90' },
+}
+
+const HEADER_GRADIENT: Record<ManagerClassCardVariant, string> = {
+  indigo: 'from-primary via-primary-600 to-primary-700',
+  emerald: 'from-emerald-500 to-teal-600',
+  amber: 'from-amber-500 to-orange-600',
+}
+
+const PROGRESS_FILL: Record<ManagerClassCardVariant, string> = {
+  indigo: 'bg-primary',
+  emerald: 'bg-emerald-500',
+  amber: 'bg-amber-500',
+}
+
+const DOT_PATTERN =
+  'radial-gradient(circle at 2px 2px, rgb(255 255 255 / 0.35) 1px, transparent 0)'
+
+function MemberAvatarStack({ count }: { count: number }) {
+  const shown = Math.min(2, Math.max(0, count))
+  const overflow = count > shown ? count - shown : 0
+  return (
+    <div className="flex -space-x-2">
+      {Array.from({ length: shown }).map((_, i) => (
+        <div
+          key={i}
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br text-[10px] font-bold text-primary-700',
+            i === 0 ? 'from-primary-100 to-primary-200' : 'from-teal-100 to-teal-200 text-teal-800'
+          )}
+        >
+          {i === 0 ? 'HV' : 'NV'}
+        </div>
+      ))}
+      {overflow > 0 ? (
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-white bg-muted text-[10px] font-bold text-muted-foreground">
+          +{overflow}
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 export function ManagerClassesScreen() {
   const [rows] = useState(MOCK_MANAGER_CLASSES)
   const [name, setName] = useState('')
+  const [query, setQuery] = useState('')
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter((r) => r.name.toLowerCase().includes(q))
+  }, [rows, query])
 
   const totalMembers = rows.reduce((a, r) => a + r.memberCount, 0)
   const openCount = rows.filter((r) => r.status === 'open').length
@@ -31,160 +91,268 @@ export function ManagerClassesScreen() {
     setName('')
   }
 
+  const pageSubtitle =
+    'Quản lý và điều phối học viên vào các lớp đào tạo chuyên môn theo đợt tuyển dụng hoặc lộ trình thăng tiến. Dữ liệu minh họa — sẵn sàng nối API.'
+
   return (
-    <ManagerScreenLayout
-      title="Chia lớp học"
-      subtitle="Tạo lớp, xếp nhân viên vào lớp và gắn kỳ thi tương ứng. Dữ liệu minh họa — sẵn sàng nối API."
-      toolbarExtra={
-        <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
-          Sau thi, phân lớp chi tiết tại màn phân loại theo kỳ thi
-        </span>
-      }
-    >
-      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {(
-          [
-            {
-              k: 'c',
-              className:
-                'rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] via-card to-teal-500/[0.06] p-4 shadow-[var(--shadow-card)] ring-1 ring-primary/10',
-              body: (
-                <>
-                  <div className="text-xs font-semibold text-primary md:text-sm">Lớp đang mở</div>
-                  <div className="bg-gradient-to-r from-primary to-teal-600 bg-clip-text text-3xl font-extrabold text-transparent">
-                    {openCount}
-                  </div>
-                </>
-              ),
-            },
-            {
-              k: 'm',
-              className:
-                'rounded-xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/95 via-card to-teal-50/80 p-4 shadow-[var(--shadow-card)] ring-1 ring-emerald-500/15',
-              body: (
-                <>
-                  <div className="text-xs font-semibold text-emerald-800 md:text-sm">Tổng học viên</div>
-                  <div className="text-3xl font-extrabold text-emerald-700">{totalMembers}</div>
-                </>
-              ),
-            },
-            {
-              k: 'x',
-              className:
-                'rounded-xl border border-violet-200/70 bg-gradient-to-br from-violet-50/90 via-card to-fuchsia-50/40 p-4 shadow-[var(--shadow-card)] ring-1 ring-violet-400/15',
-              body: (
-                <>
-                  <div className="text-xs font-semibold text-violet-900 md:text-sm">Lớp trong kỳ</div>
-                  <div className="text-3xl font-extrabold text-violet-800">{rows.length}</div>
-                </>
-              ),
-            },
-            {
-              k: 'l',
-              className:
-                'rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)] ring-1 ring-border/80',
-              body: (
-                <>
-                  <div className="text-xs font-semibold text-muted-foreground md:text-sm">Liên kết nhanh</div>
-                  <Link
-                    to="/manager/exam-schedule"
-                    className="mt-1 inline-flex text-sm font-semibold text-primary hover:underline"
-                  >
-                    Đặt lịch thi →
-                  </Link>
-                </>
-              ),
-            },
-          ] as const
-        ).map((s) => (
-          <div key={s.k} className={cn(s.className, CARD_ENTRANCE_HOVER)}>
-            {s.body}
+    <ManagerScreenLayout hideHubNav hideToolbar>
+      <div className="mb-8 flex flex-col gap-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="mb-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
+                Chia lớp học
+              </span>
+            </h1>
+            <p className="max-w-xl text-sm text-muted-foreground">{pageSubtitle}</p>
           </div>
-        ))}
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-card px-3 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-primary/10">
+              <Calendar className="h-4 w-4 shrink-0 text-primary" strokeWidth={2} />
+              Học kỳ Q2 / 2026
+            </span>
+          </div>
+        </div>
+
+        {/* Stats — bento (cùng khối spacing với màn team-progress) */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div
+          className={cn(
+            'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
+            CARD_ENTRANCE_HOVER
+          )}
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary">
+            <Building2 className="h-6 w-6" strokeWidth={2} />
+          </div>
+          <div>
+            <div className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+              Lớp đang mở
+            </div>
+            <div className="text-2xl font-bold text-foreground">{openCount}</div>
+          </div>
+        </div>
+        <div
+          className={cn(
+            'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
+            CARD_ENTRANCE_HOVER
+          )}
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <Users className="h-6 w-6" strokeWidth={2} />
+          </div>
+          <div>
+            <div className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+              Tổng học viên
+            </div>
+            <div className="text-2xl font-bold text-foreground">{totalMembers}</div>
+          </div>
+        </div>
+        <div
+          className={cn(
+            'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
+            CARD_ENTRANCE_HOVER
+          )}
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+            <BookOpen className="h-6 w-6" strokeWidth={2} />
+          </div>
+          <div>
+            <div className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+              Lớp trong kỳ
+            </div>
+            <div className="text-2xl font-bold text-foreground">{rows.length}</div>
+          </div>
+        </div>
+        <Link
+          to="/manager/exam-schedule"
+          className={cn(
+            'group relative flex flex-col justify-between overflow-hidden rounded-xl border-none bg-gradient-to-br from-primary to-primary-600 p-5 text-white shadow-lg shadow-primary/20 transition-transform hover:scale-[1.02]',
+            CARD_ENTRANCE_HOVER
+          )}
+        >
+          <div className="relative z-10">
+            <div className="text-[0.65rem] font-bold uppercase tracking-widest text-white/70">Liên kết nhanh</div>
+            <div className="mt-1 text-lg font-bold">Đặt lịch thi</div>
+          </div>
+          <div className="relative z-10 flex justify-end">
+            <ArrowRight className="h-6 w-6 text-white/50 transition-colors group-hover:text-white" strokeWidth={2} />
+          </div>
+          <div className="pointer-events-none absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+        </Link>
+        </div>
       </div>
 
-      <div
-        className={cn(
-          'mb-6 flex flex-col gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/[0.04] p-4 md:flex-row md:items-end',
-          CARD_ENTRANCE_HOVER
-        )}
-      >
-        <div className="min-w-0 flex-1">
-          <label htmlFor="new-class" className="text-xs font-semibold text-muted-foreground">
-            Tạo lớp mới
-          </label>
+      {/* Tìm kiếm + lọc + tạo */}
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-stretch">
+        <div className="group relative min-w-0 flex-1">
+          <Search
+            className="pointer-events-none absolute left-4 top-1/2 h-[1.125rem] w-[1.125rem] -translate-y-1/2 text-muted-foreground group-focus-within:text-primary"
+            strokeWidth={2}
+          />
           <input
-            id="new-class"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ví dụ: Tập sự — Đợt Q2/2026"
-            className="mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/20"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Tìm theo tên lớp, ví dụ: Tập sự — Đợt Q2/2026"
+            className="w-full rounded-xl border border-transparent bg-muted/80 py-3 pl-11 pr-4 text-sm shadow-inner outline-none ring-offset-background transition-all placeholder:text-muted-foreground focus:border-primary/30 focus:ring-2 focus:ring-primary/20"
           />
         </div>
-        <Button type="button" className="shrink-0 gap-2" onClick={onCreate}>
-          <Plus className="h-4 w-4" strokeWidth={2} />
-          Tạo lớp
-        </Button>
+        <div className="flex shrink-0 gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            className="gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
+            onClick={() => toast.info('Bộ lọc — nối API')}
+          >
+            <SlidersHorizontal className="h-4 w-4" strokeWidth={2} />
+            Bộ lọc
+          </Button>
+          <div className="hidden min-w-[12rem] flex-1 flex-col gap-2 sm:flex sm:min-w-0 sm:flex-row sm:items-stretch">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Tên lớp mới"
+              className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/20"
+            />
+            <Button
+              type="button"
+              className="gap-2 rounded-xl px-6 py-3 text-sm font-bold shadow-md"
+              onClick={onCreate}
+            >
+              <PlusCircle className="h-4 w-4" strokeWidth={2} />
+              Tạo lớp
+            </Button>
+          </div>
+        </div>
+      </div>
+      <div className="mb-6 flex flex-col gap-2 sm:hidden">
+        <label htmlFor="new-class-mobile" className="text-xs font-semibold text-muted-foreground">
+          Tạo lớp mới
+        </label>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            id="new-class-mobile"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Tên lớp mới"
+            className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
+          <Button type="button" className="gap-2 rounded-xl font-bold" onClick={onCreate}>
+            <PlusCircle className="h-4 w-4" strokeWidth={2} />
+            Tạo lớp
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {rows.map((row) => {
+      {/* Lưới lớp */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {filtered.map((row) => {
           const st = STATUS_LABEL[row.status]
+          const header = HEADER_GRADIENT[row.cardVariant]
+          const bar = PROGRESS_FILL[row.cardVariant]
+          const done = row.progressPercent >= 100
           return (
             <div
               key={row.id}
               className={cn(
-                'flex flex-col rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-card)] ring-1 ring-primary/5',
+                'overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[var(--shadow-card)] transition-shadow duration-300 hover:shadow-xl',
                 CARD_ENTRANCE_HOVER
               )}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-teal-500/10 text-primary">
-                    <GraduationCap className="h-5 w-5" strokeWidth={2} />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-bold leading-snug text-foreground">{row.name}</h3>
-                    <p className="text-xs text-muted-foreground">{row.levelLabel}</p>
-                  </div>
-                </div>
-                <span className={cn('shrink-0 rounded-full px-2.5 py-0.5 text-[0.65rem] font-bold', st.className)}>
+              <div
+                className={cn(
+                  'relative h-24 overflow-hidden bg-gradient-to-r p-6',
+                  header
+                )}
+              >
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-[0.12]"
+                  style={{
+                    backgroundImage: DOT_PATTERN,
+                    backgroundSize: '20px 20px',
+                  }}
+                />
+                <span
+                  className={cn(
+                    'relative z-10 mb-2 inline-block rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wider',
+                    st.className
+                  )}
+                >
                   {st.label}
                 </span>
+                <h3 className="relative z-10 text-lg font-bold leading-tight text-white">{row.name}</h3>
               </div>
-              <div className="mt-4 space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Users className="h-4 w-4 shrink-0 text-primary/70" strokeWidth={2} />
-                  <span>
-                    <span className="font-semibold text-foreground">{row.memberCount}</span> thành viên
+              <div className="p-6">
+                <div className="mb-6 flex items-center gap-4">
+                  <MemberAvatarStack count={row.memberCount} />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {row.memberCount} thành viên
                   </span>
                 </div>
-                <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-                  <span className="font-medium text-foreground/90">Kỳ thi:</span> {row.examLabel}
+                <div className="mb-6 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Kỳ thi dự kiến:</span>
+                    <span className="font-bold text-foreground">{row.examDateShort}</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={cn('h-1.5 rounded-full transition-all', bar)}
+                      style={{ width: `${Math.min(100, row.progressPercent)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+                    <span>Tiến độ học</span>
+                    <span>{done ? 'Hoàn thành' : `${row.progressPercent}%`}</span>
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">Cập nhật {row.updatedAt}</div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() =>
-                    toast.info('Chi tiết lớp & danh sách học viên — nối API (Teacher xem cùng dữ liệu).')
-                  }
-                >
-                  Chi tiết lớp
-                </Button>
-                <Button type="button" variant="secondary" size="sm" className="flex-1" asChild>
-                  <Link to="/exam/$examId/classify" params={{ examId: '11111111-1111-4111-8111-111111111101' }}>
-                    Phân lớp sau thi
-                  </Link>
-                </Button>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-auto rounded-lg py-2.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground"
+                    onClick={() =>
+                      toast.info('Chi tiết lớp & danh sách học viên — nối API (Teacher xem cùng dữ liệu).')
+                    }
+                  >
+                    Chi tiết lớp
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-auto rounded-lg border-primary/25 bg-primary/5 py-2.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground"
+                    asChild
+                  >
+                    <Link to="/exam/$examId/classify" params={{ examId: '11111111-1111-4111-8111-111111111101' }}>
+                      Phân lớp sau thi
+                    </Link>
+                  </Button>
+                </div>
+                <p className="mt-4 text-xs text-muted-foreground">Cập nhật {row.updatedAt}</p>
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground/90">{row.levelLabel}</span>
+                  {' · '}
+                  {row.examLabel}
+                </p>
               </div>
             </div>
           )
         })}
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="mt-6 text-center text-sm text-muted-foreground">Không có lớp khớp tìm kiếm.</p>
+      ) : null}
+
+      <div className="mt-10 flex justify-center">
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline"
+          onClick={() => toast.info('Danh sách đầy đủ — nối API phân trang')}
+        >
+          Xem thêm tất cả các lớp
+        </button>
       </div>
     </ManagerScreenLayout>
   )

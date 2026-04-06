@@ -1,235 +1,407 @@
-import { GraduationCap } from 'lucide-react'
-import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
+import {
+  BarChart3,
+  CalendarDays,
+  Check,
+  Clock,
+  Flag,
+  Hourglass,
+  Lock,
+  Route,
+  Star,
+  TrendingUp,
+  Zap,
+} from 'lucide-react'
+import { ProgressStar } from '@/components/shared/ProgressStar/ProgressStar'
+import { CARD_ENTRANCE_HOVER, STAR_POP, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth.store'
 
-function StarIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
-      <path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z" />
-    </svg>
-  )
+function monthLabelVi(d: Date): string {
+  return `Tháng ${d.getMonth() + 1} · ${d.getFullYear()}`
 }
 
-function LevelRow({
-  tone,
-  dot,
-  title,
-  subtitle,
-  highlight,
-}: {
-  tone: 'done' | 'current' | 'locked'
-  dot: string
-  title: string
-  subtitle: string
-  highlight?: boolean
-}) {
-  const base =
-    tone === 'locked'
-      ? 'border border-slate-200/60 bg-slate-50/80 opacity-50'
-      : tone === 'current' || highlight
-        ? 'border border-primary/35 bg-gradient-to-r from-primary/12 via-sky-500/10 to-violet-500/8 shadow-[0_2px_12px_hsl(var(--primary)/0.12)] motion-safe:transition-all motion-safe:hover:border-primary/50 motion-safe:hover:shadow-md'
-        : 'border border-emerald-200/50 bg-emerald-50/70 opacity-90 motion-safe:transition-transform motion-safe:hover:translate-x-0.5'
+const quartOut = '[transition-timing-function:cubic-bezier(0.25,1,0.5,1)]'
 
-  const dotClass =
-    tone === 'done'
-      ? 'bg-emerald-200 text-emerald-800 ring-1 ring-emerald-300/60'
-      : tone === 'current'
-        ? 'bg-button text-button-foreground shadow-sm ring-2 ring-primary/25'
-        : 'bg-slate-200 text-slate-500'
+const LEVEL_STAR_FILLED = 4
+const LEVEL_STAR_TOTAL = 6
+
+/** Khối lộ trình học, sao, thi cử — bố cục theo mock dashboard, tông màu & cỡ chữ theo theme dự án. */
+export function DashboardLearningZone() {
+  const userName = useAuthStore((s) => s.user?.name)
+  const greetingName = userName?.trim() || 'bạn'
 
   return (
-    <div className={cn('flex items-center gap-2.5 rounded-[9px] px-2 py-2', base)}>
-      <div
+    <div className="space-y-8 text-sm text-foreground">
+      {/* Section: tiêu đề trang + tháng */}
+      <section
         className={cn(
-          'flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[0.65rem] font-bold',
-          dotClass
+          'flex flex-col justify-between gap-4 md:flex-row md:items-end',
+          'motion-safe:animate-[dash-fade-up_0.45s_ease-out_both] motion-reduce:animate-none'
         )}
       >
-        {dot}
-      </div>
-      <div>
-        <div
-          className={cn(
-            'text-xs font-medium',
-            tone === 'current' ? 'text-primary' : tone === 'done' ? 'text-emerald-900' : 'text-foreground'
-          )}
-        >
-          {title}
+        <div>
+          <h1 className="mb-1 text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
+            Dashboard Nhân sự
+          </h1>
+          <p className="font-medium text-muted-foreground">
+            Chào mừng trở lại, {greetingName}. Theo dõi tiến độ thăng tiến của bạn.
+          </p>
         </div>
         <div
           className={cn(
-            'text-xs',
-            tone === 'current' ? 'text-primary/90' : tone === 'done' ? 'text-emerald-800/90' : 'text-muted-foreground'
+            'inline-flex items-center gap-2 self-start rounded-xl border border-border bg-card px-4 py-2 shadow-sm md:self-auto',
+            CARD_ENTRANCE_HOVER
           )}
         >
-          {subtitle}
+          <CalendarDays className="h-5 w-5 shrink-0 text-primary" strokeWidth={2} aria-hidden />
+          <span className="font-semibold text-primary">{monthLabelVi(new Date())}</span>
         </div>
-      </div>
-    </div>
-  )
-}
+      </section>
 
-/** Khối riêng: lộ trình học, sao, thi cử — tách biệt KPI/OKR. */
-export function DashboardLearningZone() {
-  return (
-    <section
-      className={cn(
-        'overflow-hidden rounded-[15px] border-2 border-indigo-200/50 bg-gradient-to-b from-indigo-50/40 via-white to-slate-50/30 shadow-[var(--shadow-card)] ring-1 ring-indigo-100/45',
-        CARD_ENTRANCE_HOVER
-      )}
-      style={staggerStyle(1)}
-      aria-labelledby="dash-learning-zone-title"
-    >
-      <div className="border-b border-indigo-200/55 bg-gradient-to-r from-indigo-500/10 via-sky-500/8 to-transparent px-4 py-3 md:px-5">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/12 text-indigo-900">
-            <GraduationCap className="h-5 w-5" strokeWidth={2} />
+      {/* Section: hàng chỉ số */}
+      <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div
+          className={cn(
+            'rounded-2xl border border-border border-l-4 border-l-primary bg-card p-6 shadow-sm',
+            quartOut,
+            'transition-all duration-300 hover:-translate-y-1',
+            CARD_ENTRANCE_HOVER
+          )}
+          style={staggerStyle(0)}
+        >
+          <div className="mb-4 flex items-start justify-between">
+            <span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+              Cấp độ hiện tại
+            </span>
+            <span className="rounded-full bg-tier-gold-muted px-3 py-1 text-[0.65rem] font-black tracking-tighter text-tier-gold">
+              GOLD
+            </span>
           </div>
-          <div>
-            <h2 id="dash-learning-zone-title" className="text-sm font-extrabold tracking-tight text-indigo-950 md:text-base">
-              Học tập & thi cử
-            </h2>
-            <p className="text-[0.7rem] text-indigo-900/75">Lộ trình cấp bậc, checklist sao và kỳ thi</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <div
+              className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-tier-gold-muted/90 px-2.5 py-2 ring-1 ring-star-gold/20"
+              role="img"
+              aria-label={`${LEVEL_STAR_FILLED} trên ${LEVEL_STAR_TOTAL} sao đạt`}
+            >
+              {Array.from({ length: LEVEL_STAR_TOTAL }, (_, i) => (
+                <span
+                  key={i}
+                  className={cn('inline-flex rounded-sm', STAR_POP)}
+                  style={staggerStyle(i, 72)}
+                >
+                  <ProgressStar
+                    filled={i < LEVEL_STAR_FILLED}
+                    variant="gold"
+                    className="h-6 w-6 sm:h-7 sm:w-7"
+                  />
+                </span>
+              ))}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold leading-tight text-foreground">Được việc</h2>
+              <p className="mt-1 text-sm font-medium text-muted-foreground">
+                Sao {LEVEL_STAR_FILLED}/{LEVEL_STAR_TOTAL} — Gold tier
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="p-4 md:p-5">
-        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          className={cn(
+            'rounded-2xl border border-border border-l-4 border-l-primary-600 bg-card p-6 shadow-sm',
+            quartOut,
+            'transition-all duration-300 hover:-translate-y-1',
+            CARD_ENTRANCE_HOVER
+          )}
+          style={staggerStyle(1)}
+        >
+          <div className="mb-4 flex items-start justify-between">
+            <span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+              Bài đã nộp T3
+            </span>
+            <TrendingUp className="h-5 w-5 text-primary-600" strokeWidth={2} aria-hidden />
+          </div>
+          <div className="flex items-end gap-3">
+            <span className="text-4xl font-black tabular-nums text-foreground">18</span>
+            <div className="mb-1 flex items-center text-sm font-bold text-primary-600">
+              <span className="mr-0.5">+</span>
+              <span>6 so với T2</span>
+            </div>
+          </div>
+          <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div className="h-full w-3/4 rounded-full bg-primary-600" />
+          </div>
+        </div>
+
+        <div
+          className={cn(
+            'rounded-2xl border border-border border-l-4 border-l-amber-700 bg-card p-6 shadow-sm',
+            quartOut,
+            'transition-all duration-300 hover:-translate-y-1',
+            CARD_ENTRANCE_HOVER
+          )}
+          style={staggerStyle(2)}
+        >
+          <div className="mb-4 flex items-start justify-between">
+            <span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+              Tỉ lệ đạt
+            </span>
+            <BarChart3 className="h-5 w-5 text-amber-700" strokeWidth={2} aria-hidden />
+          </div>
+          <div className="flex items-end gap-3">
+            <span className="text-4xl font-black tabular-nums text-foreground">83%</span>
+            <div className="mb-1 rounded-full bg-tier-gold-muted px-2 py-0.5 text-sm font-bold text-amber-800">
+              Top 15% team
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-1">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-2 w-2 rounded-full bg-primary" />
+            ))}
+            <div className="h-2 w-2 rounded-full bg-muted" />
+            <span className="ml-2 text-[0.65rem] font-medium text-muted-foreground">Xuất sắc</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Hai cột: timeline + nội dung phải */}
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
+        <section
+          className={cn(
+            'relative overflow-hidden rounded-3xl bg-primary/5 p-6 md:p-8 lg:col-span-4',
+            CARD_ENTRANCE_HOVER
+          )}
+          style={staggerStyle(3)}
+          aria-labelledby="dash-learning-path-title"
+        >
           <div
-            className={cn(
-              'group rounded-[9px] border border-violet-300/50 bg-gradient-to-br from-white via-sky-50/95 to-violet-100/80 p-4 text-foreground shadow-[var(--shadow-card)] ring-1 ring-violet-200/40 transition-all duration-300 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-lg',
-              CARD_ENTRANCE_HOVER
-            )}
-            style={staggerStyle(0)}
+            className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/[0.07]"
+            aria-hidden
+          />
+          <h3
+            id="dash-learning-path-title"
+            className="mb-8 flex items-center gap-2 text-xl font-bold text-foreground"
           >
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="text-xs font-semibold text-violet-700/90">Cấp độ hiện tại</div>
-                <div className="mt-1 text-sm font-bold text-slate-900">⚔️ Được việc</div>
-                <div className="mt-0.5 text-xs text-muted-foreground">Sao 4 / 6 · Gold tier</div>
+            <Route className="h-6 w-6 shrink-0 text-primary" strokeWidth={2} aria-hidden />
+            Lộ trình 5 cấp độ
+          </h3>
+          <div className="relative space-y-0 pl-0">
+            <div className="absolute bottom-4 left-[19px] top-4 w-0.5 bg-border" aria-hidden />
+
+            {/* Bước 1–2: hoàn thành */}
+            {[
+              { level: '1', title: 'Tập sự', status: 'Hoàn thành' },
+              { level: '2', title: 'Biết việc', status: 'Hoàn thành' },
+            ].map((step) => (
+              <div key={step.level} className="relative pb-10 pl-12">
+                <div className="absolute left-0 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                  <Check className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                </div>
+                <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-widest text-primary">
+                  Cấp độ {step.level}
+                </p>
+                <h4 className="text-lg font-bold leading-tight text-foreground">{step.title}</h4>
+                <span className="mt-1 inline-block rounded-md bg-primary/12 px-2 py-0.5 text-sm font-semibold text-primary">
+                  {step.status}
+                </span>
               </div>
-              <span className="rounded-md bg-gradient-to-br from-amber-400 to-orange-500 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-white shadow-sm">
-                Gold
+            ))}
+
+            {/* Bước 3: đang học */}
+            <div className="relative pb-10 pl-12">
+              <div className="absolute -left-1 z-10 flex h-12 w-12 items-center justify-center rounded-full border-4 border-card bg-primary text-primary-foreground shadow-xl shadow-primary/30">
+                <Hourglass className="h-6 w-6 motion-safe:animate-pulse motion-reduce:animate-none" />
+              </div>
+              <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-widest text-primary">
+                Cấp độ 3
+              </p>
+              <h4 className="text-xl font-black leading-tight text-foreground">Được việc</h4>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
+                  Đang học
+                </span>
+                <span className="text-xs font-medium text-muted-foreground">Tiến độ: 65%</span>
+              </div>
+            </div>
+
+            {/* Bước 4: khóa */}
+            <div className="relative pb-10 pl-12 opacity-60">
+              <div className="absolute left-0 z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 border-border bg-muted text-muted-foreground">
+                <Lock className="h-5 w-5" strokeWidth={2} aria-hidden />
+              </div>
+              <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+                Cấp độ 4
+              </p>
+              <h4 className="text-lg font-bold leading-tight text-foreground">Đóng góp kết quả</h4>
+              <span className="mt-1 inline-block text-sm font-medium italic text-muted-foreground">
+                Chưa mở
+              </span>
+            </div>
+
+            {/* Bước 5 */}
+            <div className="relative pl-12">
+              <div className="absolute left-0 z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 border-border bg-muted text-muted-foreground">
+                <Flag className="h-5 w-5" strokeWidth={2} aria-hidden />
+              </div>
+              <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+                Cấp độ 5
+              </p>
+              <h4 className="text-lg font-bold leading-tight text-foreground">Tường</h4>
+              <span className="mt-1 inline-block text-sm font-medium text-muted-foreground">
+                Mục tiêu cuối
               </span>
             </div>
           </div>
+        </section>
 
+        <section className="flex flex-col gap-6 lg:col-span-8">
+          {/* Sao + tiến độ */}
           <div
             className={cn(
-              'group rounded-[9px] border border-emerald-200/80 bg-gradient-to-br from-emerald-50/95 via-white to-teal-50/90 p-4 shadow-[var(--shadow-card)] ring-1 ring-emerald-200/35 transition-all duration-300 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-lg',
-              CARD_ENTRANCE_HOVER
-            )}
-            style={staggerStyle(1)}
-          >
-            <div className="mb-1 text-xs font-semibold text-emerald-800/90">📋 Bài đã nộp T3</div>
-            <div className="bg-gradient-to-r from-emerald-700 to-teal-600 bg-clip-text text-[28px] font-extrabold leading-tight text-transparent">
-              18
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              <span className="font-medium text-emerald-600 motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5">
-                ↑ 6 so với T2
-              </span>
-            </div>
-          </div>
-
-          <div
-            className={cn(
-              'group rounded-[9px] border border-violet-200/70 bg-gradient-to-br from-violet-50/95 via-fuchsia-50/50 to-white p-4 shadow-[var(--shadow-card)] ring-1 ring-fuchsia-200/40 transition-all duration-300 sm:col-span-2 lg:col-span-1 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-lg',
-              CARD_ENTRANCE_HOVER
-            )}
-            style={staggerStyle(2)}
-          >
-            <div className="mb-1 text-xs font-semibold text-violet-800/85">🏅 Tỉ lệ đạt</div>
-            <div className="bg-gradient-to-r from-violet-700 to-fuchsia-600 bg-clip-text text-[28px] font-extrabold leading-tight text-transparent">
-              83%
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              <span className="font-medium text-fuchsia-600 motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5">
-                ↑ Top 15% team
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
-          <div
-            className={cn(
-              'overflow-hidden rounded-[13px] border border-indigo-200/60 bg-white shadow-[var(--shadow-card)] ring-1 ring-indigo-100/50 transition-shadow duration-300 motion-safe:hover:shadow-lg',
-              CARD_ENTRANCE_HOVER
-            )}
-            style={staggerStyle(3)}
-          >
-            <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-500/12 via-violet-500/8 to-transparent px-4 py-3 text-sm font-bold text-indigo-950">
-              Lộ trình 5 cấp độ
-            </div>
-            <div className="flex flex-col gap-3 p-4">
-              <LevelRow tone="done" dot="✓" title="Tập sự" subtitle="Đã hoàn thành" />
-              <LevelRow tone="done" dot="✓" title="Biết việc" subtitle="Hoàn thành · 6/6 sao" />
-              <LevelRow tone="current" dot="→" title="Được việc" subtitle="Đang học · Sao 4/6" highlight />
-              <LevelRow tone="locked" dot="🔒" title="Đóng góp kết quả" subtitle="Chưa mở" />
-              <LevelRow tone="locked" dot="🔒" title="Tướng" subtitle="Mục tiêu cuối" />
-            </div>
-          </div>
-
-          <div
-            className={cn(
-              'overflow-hidden rounded-[13px] border border-teal-200/60 bg-white shadow-[var(--shadow-card)] ring-1 ring-teal-100/50 transition-shadow duration-300 motion-safe:hover:shadow-lg',
+              'relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8',
               CARD_ENTRANCE_HOVER
             )}
             style={staggerStyle(4)}
           >
-            <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-cyan-500/8 to-transparent px-4 py-3 text-sm font-bold text-teal-950">
-              Được việc — 6 sao hiện tại
+            <div className="pointer-events-none absolute right-6 top-6 opacity-[0.12]" aria-hidden>
+              <Star className="h-28 w-28 rotate-12 fill-primary/30 text-primary" strokeWidth={1} />
             </div>
-            <div className="p-4">
-              <div className="mb-2.5 flex flex-wrap gap-1.5">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
+            <div className="relative mb-8">
+              <h3 className="mb-2 text-2xl font-black text-foreground">
+                Được việc — 6 sao hiện tại
+              </h3>
+              <p className="max-w-md text-muted-foreground">
+                Bạn đã hoàn thành 4/6 tiêu chuẩn đánh giá. Hãy hoàn thành các sao còn lại để nâng hạng
+                tiếp theo.
+              </p>
+            </div>
+            <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div
+                className="inline-flex flex-wrap items-center gap-1.5 rounded-2xl bg-tier-gold-muted/80 p-4 ring-1 ring-star-gold/15"
+                role="img"
+                aria-label={`${LEVEL_STAR_FILLED} trên ${LEVEL_STAR_TOTAL} sao đạt`}
+              >
+                {Array.from({ length: LEVEL_STAR_TOTAL }, (_, i) => (
+                  <span
                     key={i}
-                    className={cn(
-                      'flex h-[38px] w-[38px] items-center justify-center rounded-full bg-gradient-to-br from-star-gold to-star-gold-deep text-white shadow-[0_2px_12px_rgba(212,160,23,0.42)] motion-safe:animate-[dash-star-pop_0.55s_ease-out_forwards] motion-safe:transition-transform motion-safe:hover:scale-110 motion-safe:hover:shadow-md motion-reduce:animate-none',
-                      'motion-safe:active:scale-95'
-                    )}
-                    style={{ animationDelay: `${(i - 1) * 85}ms` }}
-                    title={`Sao ${i} - Đạt`}
+                    className={cn('inline-flex rounded-sm', STAR_POP)}
+                    style={staggerStyle(i, 72)}
                   >
-                    <StarIcon className="h-[70%] w-[70%] p-0.5 text-white" />
-                  </div>
+                    <ProgressStar
+                      filled={i < LEVEL_STAR_FILLED}
+                      variant="gold"
+                      className="h-9 w-9 sm:h-10 sm:w-10"
+                    />
+                  </span>
                 ))}
-                <div
-                  className="flex h-[38px] w-[38px] items-center justify-center rounded-full border-2 border-star-gold-soft bg-gradient-to-br from-star-gold-mid to-star-gold text-white shadow-[0_0_12px_rgba(212,160,23,0.4)] motion-safe:animate-[dash-star-pop_0.55s_ease-out_forwards] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:animate-none"
-                  style={{ animationDelay: '340ms' }}
-                  title="Sao 5 - Đang học"
-                >
-                  <StarIcon className="h-[70%] w-[70%] p-0.5 text-white" />
-                </div>
-                <div
-                  className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-star-gold-soft/80 bg-slate-100/90 text-star-gold-soft motion-safe:animate-[dash-star-pop_0.55s_ease-out_forwards] motion-reduce:animate-none"
-                  style={{ animationDelay: '425ms' }}
-                  title="Sao 6 - Chưa mở"
-                >
-                  <StarIcon className="h-[70%] w-[70%] p-0.5 text-star-gold-soft" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-3xl font-black tabular-nums text-foreground">4 / 6</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Ngôi sao đạt được
+                </span>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm font-bold">
+                <span className="text-foreground">Tiến trình nâng cấp</span>
+                <span className="text-primary">66.7%</span>
+              </div>
+              <div className="h-4 w-full overflow-hidden rounded-full bg-muted p-1">
+                <div className="relative h-full w-2/3 rounded-full bg-primary">
+                  <div className="absolute right-0 top-0 h-full w-2 bg-white/30 motion-safe:animate-pulse motion-reduce:animate-none" />
                 </div>
               </div>
-              <p className="mb-3 text-xs text-muted-foreground">Sao 5 đang học · Sao 6 chưa mở</p>
-              <div className="my-2.5 h-px bg-border" />
-              <p className="mb-2 text-xs font-medium text-teal-800/90">Kỳ thi tiếp theo</p>
-              <p className="mb-3 text-xs text-muted-foreground">
-                Đăng ký thi sẽ mở khi đủ điều kiện sao — xem lịch tại mục Kết quả & lịch thi.
+              <p className="text-xs font-medium text-muted-foreground">
+                Dự kiến hoàn thành:{' '}
+                <span className="font-bold text-foreground">15/05/2026</span>
               </p>
-              <button
-                type="button"
-                disabled
-                className="w-full cursor-not-allowed rounded-[9px] border border-border bg-muted/50 py-2 text-xs font-medium text-muted-foreground opacity-55"
-              >
-                Đăng ký thi — Chưa đủ điều kiện
-              </button>
-              <p className="mt-2 text-center text-xs text-muted-foreground">Cần hoàn thành sao 5 và 6</p>
             </div>
           </div>
-        </div>
+
+          {/* Kỳ thi + kỹ năng */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div
+              className={cn(
+                'rounded-3xl bg-muted/60 p-6',
+                CARD_ENTRANCE_HOVER
+              )}
+              style={staggerStyle(5)}
+            >
+              <h4 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
+                <CalendarDays className="h-5 w-5 text-primary-600" strokeWidth={2} aria-hidden />
+                Kỳ thi tiếp theo
+              </h4>
+              <div className="mb-4 rounded-2xl border border-border bg-card p-4">
+                <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-tighter text-muted-foreground">
+                  Môn thi kiến thức
+                </p>
+                <p className="font-bold text-foreground">Kỹ năng quản lý tài chính doanh nghiệp II</p>
+                <div className="mt-3 flex flex-wrap gap-4 border-t border-border/80 pt-3">
+                  <div className="flex items-center gap-1 text-xs font-semibold text-foreground">
+                    <CalendarDays className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
+                    24/04/2026
+                  </div>
+                  <div className="flex items-center gap-1 text-xs font-semibold text-foreground">
+                    <Clock className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
+                    09:00
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className={cn(
+                  'w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md shadow-primary/25',
+                  quartOut,
+                  'transition-all hover:bg-primary/90 active:scale-[0.98]'
+                )}
+              >
+                Đăng ký tham gia ngay
+              </button>
+            </div>
+
+            <div
+              className={cn(
+                'relative overflow-hidden rounded-3xl bg-muted p-6',
+                CARD_ENTRANCE_HOVER
+              )}
+              style={staggerStyle(6)}
+            >
+              <div className="pointer-events-none absolute -bottom-8 -right-8 opacity-[0.06]" aria-hidden>
+                <BarChart3 className="h-36 w-36 text-foreground" strokeWidth={1} />
+              </div>
+              <h4 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
+                <Zap className="h-5 w-5 text-accent" strokeWidth={2} aria-hidden />
+                Kỹ năng trọng yếu
+              </h4>
+              <div className="relative space-y-4">
+                {[
+                  { label: 'Giao tiếp khách hàng', pct: 80, score: '8/10' },
+                  { label: 'Xử lý nghiệp vụ', pct: 60, score: '6/10' },
+                  { label: 'Tư duy hệ thống', pct: 50, score: '5/10' },
+                ].map((row) => (
+                  <div key={row.label}>
+                    <div className="mb-1 flex justify-between text-xs font-bold text-foreground">
+                      <span>{row.label}</span>
+                      <span>{row.score}</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-border">
+                      <div
+                        className="h-full rounded-full bg-accent"
+                        style={{ width: `${row.pct}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="relative mt-6 rounded-xl border border-border/80 bg-card/80 p-3 text-[0.6875rem] font-medium leading-snug text-muted-foreground backdrop-blur-sm">
+                Gợi ý: Tham gia khóa &quot;Kỹ thuật đàm phán 4.0&quot; để tăng thêm 2 điểm kỹ năng giao
+                tiếp.
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
   )
 }

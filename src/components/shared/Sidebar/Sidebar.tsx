@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight, ClipboardList, LogOut, MessageCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, LogOut, MessageCircle } from 'lucide-react'
 import { useLogout } from '@/features/auth/hooks'
 import {
   BOD_ITEMS,
@@ -7,7 +7,6 @@ import {
   LEADER_KPI_ITEMS,
   MANAGER_OPS_ITEMS,
   MEMBER_SELF_ITEMS,
-  TEACHER_CLASS_ITEMS,
   type AppNavItem,
   isNavItemActive,
 } from '@/components/shared/AppNav/navItems'
@@ -18,21 +17,6 @@ import { useUiStore } from '@/stores/ui.store'
 import type { Role } from '@/types/auth'
 
 type NavItem = AppNavItem
-
-function graderNavItems(): NavItem[] {
-  return [
-    {
-      to: '/exam/grader',
-      label: 'Chấm bài & kỳ thi',
-      icon: ClipboardList,
-      match: 'custom',
-      customMatch: (p) =>
-        p === '/exam/grader' ||
-        p.startsWith('/exam/grader/') ||
-        /^\/exam\/[^/]+\/(grade|result)$/.test(p),
-    },
-  ]
-}
 
 type SidebarSection = { label: string; items: NavItem[] }
 
@@ -50,15 +34,9 @@ function sidebarSectionsForRole(role: Role | undefined): SidebarSection[] {
       return [{ label: 'Trưởng nhóm KPI', items: LEADER_KPI_ITEMS }]
     case 'MEMBER':
       return [{ label: 'Của tôi', items: MEMBER_SELF_ITEMS }]
-    case 'TEACHER':
-      return [{ label: 'Người chấm thi', items: TEACHER_CLASS_ITEMS }]
     default:
       return []
   }
-}
-
-function showGraderAssignmentBadge(role: Role | undefined): boolean {
-  return role === 'TEACHER'
 }
 
 function NavLink({
@@ -142,8 +120,6 @@ export function Sidebar() {
   const subtitle = `${displayName} · ${roleLabel}`
 
   const sections = sidebarSectionsForRole(user?.role)
-  const graderItems = user?.role === 'TEACHER' ? graderNavItems() : []
-  const showGraderBadge = showGraderAssignmentBadge(user?.role)
 
   return (
     <aside
@@ -180,11 +156,6 @@ export function Sidebar() {
                 VCB HRM
               </div>
               <div className="mt-1 text-sm leading-snug text-gray-500">{subtitle}</div>
-              {showGraderBadge ? (
-                <div className="mt-2 inline-block rounded-full bg-[#EAF3DE] px-2.5 py-1 text-xs font-semibold text-[#639922]">
-                  Được chỉ định chấm thi (kỳ)
-                </div>
-              ) : null}
             </div>
             <button
               type="button"
@@ -214,20 +185,6 @@ export function Sidebar() {
               ))}
             </div>
           ))}
-
-          {graderItems.length > 0 ? (
-            <div className="mt-4">
-              <SectionLabel collapsed={collapsed}>Chấm thi</SectionLabel>
-              {graderItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  item={item}
-                  active={isNavItemActive(pathname, item)}
-                  collapsed={collapsed}
-                />
-              ))}
-            </div>
-          ) : null}
 
           <div className="mt-4">
             <SectionLabel collapsed={collapsed}>Cộng đồng</SectionLabel>

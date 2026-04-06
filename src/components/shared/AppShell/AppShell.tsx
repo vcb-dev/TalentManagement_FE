@@ -36,10 +36,13 @@ export function AppShell({ children, title }: AppShellProps) {
   const { points } = useMemo(() => demoGamificationFromSeed(seed), [seed])
   /** Không dùng sidebar — điều hướng bằng header ngang. */
   const compactNavNoSidebar =
-    user?.role === 'MEMBER' || user?.role === 'LEADER' || user?.role === 'HR_ADMIN'
+    user?.role === 'MEMBER' ||
+    user?.role === 'LEADER' ||
+    user?.role === 'HR_ADMIN' ||
+    user?.role === 'TEACHER'
 
   const toolbar = (
-    <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1.5 sm:gap-3">
+    <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1.5 sm:gap-3">
       <div className="hidden items-center gap-1 rounded-full bg-rank-bg px-2.5 py-1 text-[13px] font-semibold text-rank-text sm:flex">
         <Star className="h-4 w-4 shrink-0 fill-tier-gold text-tier-gold" strokeWidth={0} />
         <span>Hạng Vàng</span>
@@ -133,32 +136,42 @@ export function AppShell({ children, title }: AppShellProps) {
         <header
           className={cn(
             'sticky top-0 z-30 shrink-0 border-b border-gray-200 bg-white/95 px-4 py-2 shadow-[var(--shadow-card)] backdrop-blur-sm sm:px-6',
-            compactNavNoSidebar ? 'flex flex-col gap-1' : 'flex min-h-14 flex-wrap items-center gap-2 sm:gap-3'
+            compactNavNoSidebar
+              ? 'flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-2'
+              : 'flex min-h-14 flex-wrap items-center gap-2 sm:gap-3'
           )}
         >
           {compactNavNoSidebar && user ? (
             <>
-              <div className="flex min-h-10 w-full min-w-0 items-center justify-between gap-3">
+              <div className="flex min-h-10 min-w-0 flex-1 items-center gap-6 sm:gap-8">
                 <Link
-                  to={user.role === 'HR_ADMIN' ? '/hr-admin' : '/dashboard'}
+                  to={
+                    user.role === 'HR_ADMIN'
+                      ? '/hr-admin'
+                      : user.role === 'TEACHER'
+                        ? '/teacher/classes'
+                        : '/dashboard'
+                  }
                   search={user.role === 'HR_ADMIN' ? { page: 1 } : undefined}
-                  className="shrink-0 text-lg font-bold tracking-tight text-primary-600 sm:text-[18px]"
+                  className="flex h-10 shrink-0 items-center text-lg font-bold leading-none tracking-tight text-primary-600 sm:text-[18px]"
                 >
                   VCB HRM
                 </Link>
-                {toolbar}
+                <div className="min-w-0 flex-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <MemberLeaderHeaderNav
+                    role={
+                      user.role === 'LEADER'
+                        ? 'LEADER'
+                        : user.role === 'HR_ADMIN'
+                          ? 'HR_ADMIN'
+                          : user.role === 'TEACHER'
+                            ? 'TEACHER'
+                            : 'MEMBER'
+                    }
+                  />
+                </div>
               </div>
-              <div className="-mx-4 min-w-0 pt-0.5 sm:-mx-6">
-                <MemberLeaderHeaderNav
-                  role={
-                    user.role === 'LEADER'
-                      ? 'LEADER'
-                      : user.role === 'HR_ADMIN'
-                        ? 'HR_ADMIN'
-                        : 'MEMBER'
-                  }
-                />
-              </div>
+              {toolbar}
             </>
           ) : (
             <>

@@ -315,6 +315,16 @@ html {
 }
 
 /* Khung & cỡ chữ UI — dùng chung thay px tùy ý */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer components {
   .page-shell {
     @apply min-h-0 flex-1 overflow-y-auto px-6 py-4;

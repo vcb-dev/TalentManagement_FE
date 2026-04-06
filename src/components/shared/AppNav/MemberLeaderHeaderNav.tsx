@@ -3,6 +3,7 @@ import {
   HR_ADMIN_ITEMS,
   LEADER_KPI_ITEMS,
   MEMBER_SELF_ITEMS,
+  TEACHER_HEADER_ITEMS,
   isNavItemActive,
   type AppNavItem,
 } from '@/components/shared/AppNav/navItems'
@@ -12,7 +13,7 @@ import type { Role } from '@/types/auth'
 function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) {
   const Icon = item.icon
   const className = cn(
-    '-mb-px flex shrink-0 items-center gap-2 whitespace-nowrap rounded-none border-b-2 border-transparent px-2 pb-2.5 pt-1 text-sm font-medium tracking-tight sm:gap-2.5 sm:px-3 sm:text-[0.9375rem] sm:leading-snug',
+    'flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-none border-b-2 border-transparent px-2 text-sm font-medium tracking-tight sm:gap-2.5 sm:px-3 sm:text-[0.9375rem]',
     active
       ? 'border-primary-600 font-semibold text-primary-600'
       : 'text-gray-700 hover:text-primary-600'
@@ -47,10 +48,10 @@ function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) 
 }
 
 export interface MemberLeaderHeaderNavProps {
-  role: Extract<Role, 'MEMBER' | 'LEADER' | 'HR_ADMIN'>
+  role: Extract<Role, 'MEMBER' | 'LEADER' | 'HR_ADMIN' | 'TEACHER'>
 }
 
-/** Điều hướng ngang trên header — thay sidebar cho Member / Leader / HR Admin. */
+/** Điều hướng ngang trên header — thay sidebar cho Member / Leader / HR Admin / Teacher. */
 export function MemberLeaderHeaderNav({ role }: MemberLeaderHeaderNavProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const items =
@@ -58,15 +59,21 @@ export function MemberLeaderHeaderNav({ role }: MemberLeaderHeaderNavProps) {
       ? LEADER_KPI_ITEMS
       : role === 'HR_ADMIN'
         ? HR_ADMIN_ITEMS
-        : MEMBER_SELF_ITEMS
+        : role === 'TEACHER'
+          ? TEACHER_HEADER_ITEMS
+          : MEMBER_SELF_ITEMS
 
   return (
     <nav
-      className="flex w-full min-w-0 items-end gap-0 overflow-x-auto overflow-y-visible border-b border-gray-200 pb-px [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden"
+      className="flex w-full min-w-0 items-center gap-0 overflow-x-auto overflow-y-visible [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden"
       aria-label="Điều hướng chính"
     >
       {items.map((item) => (
-        <HeaderNavLink key={item.to + item.label} item={item} active={isNavItemActive(pathname, item)} />
+        <HeaderNavLink
+          key={item.to + item.label}
+          item={item}
+          active={isNavItemActive(pathname, item)}
+        />
       ))}
     </nav>
   )

@@ -170,7 +170,7 @@ export function GuestLandingPage() {
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5 font-bold tracking-tight text-gray-900">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-transform duration-300 hover:scale-105 motion-reduce:hover:scale-100">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
               <Award className="h-5 w-5" aria-hidden />
             </span>
             <span className="text-lg sm:text-[1.125rem]">{appName}</span>
@@ -240,7 +240,7 @@ export function GuestLandingPage() {
               >
                 <Button
                   size="lg"
-                  className="shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98] motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
+                  className="shadow-md"
                   asChild
                 >
                   <Link to="/login">
@@ -291,7 +291,7 @@ export function GuestLandingPage() {
               >
                 <Trophy className="h-5 w-5" />
               </div>
-              <div className="relative rounded-2xl border border-gray-100 bg-white p-6 shadow-[0_8px_30px_rgb(0_0_0/_0.08)] transition-shadow duration-500 hover:shadow-[0_12px_36px_rgb(0_0_0/_0.1)] sm:rounded-3xl sm:p-7">
+              <div className="relative rounded-2xl border border-gray-100 bg-white p-6 shadow-[0_8px_30px_rgb(0_0_0/_0.08)] sm:rounded-3xl sm:p-7">
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Theo dõi nhanh
                 </p>
@@ -339,7 +339,7 @@ export function GuestLandingPage() {
                     <span
                       key={tag}
                       className={cn(
-                        'rounded-full border border-gray-200/90 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 transition-transform duration-300 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0',
+                        'rounded-full border border-gray-200/90 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700',
                         reduced
                           ? 'opacity-100'
                           : 'opacity-0 motion-reduce:opacity-100 motion-reduce:animate-none animate-[guest-landing-fade-up_0.4s_ease-out_forwards]'
@@ -383,12 +383,12 @@ export function GuestLandingPage() {
                 <Reveal key={card.title} reduced={reduced} delayMs={i * 90}>
                   <li
                     className={cn(
-                      'group flex h-full flex-col rounded-2xl border border-gray-100/90 bg-white/95 p-6 shadow-sm backdrop-blur-[2px] transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:rounded-3xl sm:p-7'
+                      'group flex h-full flex-col rounded-2xl border border-gray-100/90 bg-white/95 p-6 shadow-sm backdrop-blur-[2px] sm:rounded-3xl sm:p-7'
                     )}
                   >
                     <div
                       className={cn(
-                        'mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full transition-transform duration-300 group-hover:scale-105 motion-reduce:group-hover:scale-100',
+                        'mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full',
                         card.iconWrap
                       )}
                     >
@@ -408,7 +408,7 @@ export function GuestLandingPage() {
         <section className="relative z-10 py-14 sm:py-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <Reveal reduced={reduced}>
-              <div className="overflow-hidden rounded-3xl vcb-banner-gradient px-6 py-10 text-white shadow-lg transition-transform duration-500 hover:scale-[1.01] motion-reduce:hover:scale-100 sm:px-10 sm:py-12">
+              <div className="overflow-hidden rounded-3xl vcb-banner-gradient px-6 py-10 text-white shadow-lg sm:px-10 sm:py-12">
                 <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between lg:gap-12">
                   <div className="max-w-xl space-y-4">
                     <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
@@ -421,7 +421,7 @@ export function GuestLandingPage() {
                     <div className="pt-1">
                       <Button
                         size="lg"
-                        className="border-0 bg-white font-semibold text-primary shadow-md transition-transform hover:scale-105 hover:bg-gray-50 motion-reduce:hover:scale-100"
+                        className="border-0 bg-white font-semibold text-primary shadow-md hover:bg-gray-50"
                         asChild
                       >
                         <Link to="/login">
@@ -440,7 +440,7 @@ export function GuestLandingPage() {
                     {levelPills.map((label) => (
                       <span
                         key={label}
-                        className="rounded-full border border-white/30 bg-white/15 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-white/25 motion-reduce:hover:translate-y-0"
+                        className="rounded-full border border-white/30 bg-white/15 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/25"
                       >
                         {label}
                       </span>
