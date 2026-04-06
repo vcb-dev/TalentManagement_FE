@@ -12,6 +12,8 @@ export function defaultPathForRole(role: Role | undefined): string {
       return '/bod/dashboard'
     case 'MANAGER':
       return '/manager/team-progress'
+    case 'LEADER':
+      return '/dashboard'
     case 'TEACHER':
       return '/teacher/classes'
     case 'MEMBER':

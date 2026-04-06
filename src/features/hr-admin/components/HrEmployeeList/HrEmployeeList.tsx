@@ -19,6 +19,7 @@ import { EmployeeDetailSheet } from './EmployeeDetailSheet'
 const FILTERS: { key: 'all' | Role | 'reserved'; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
   { key: 'MEMBER', label: 'Nhân viên' },
+  { key: 'LEADER', label: 'Trưởng nhóm KPI' },
   { key: 'MANAGER', label: 'Quản lý' },
   { key: 'TEACHER', label: 'Người chấm' },
   { key: 'HR_ADMIN', label: 'HR' },
@@ -28,8 +29,8 @@ const FILTERS: { key: 'all' | Role | 'reserved'; label: string }[] = [
 
 export interface HrEmployeeListProps {
   initialFilters?: Partial<EmployeeFilters>
-  /** `team` — giao diện giống HR, điều hướng & lọc theo team Quản lý. */
-  variant?: 'hr' | 'team'
+  /** `team` — Manager; `leader` — Trưởng nhóm KPI (giao diện giống HR, không menu Manager). */
+  variant?: 'hr' | 'team' | 'leader'
   teamOptions?: readonly { id: string; label: string }[]
 }
 
@@ -39,21 +40,21 @@ export function HrEmployeeList({
   teamOptions = MANAGER_TEAM_OPTIONS,
 }: HrEmployeeListProps) {
   const isTeam = variant === 'team'
+  const isLeader = variant === 'leader'
+  const isTeamMode = isTeam || isLeader
   const [teamId, setTeamId] = useState(() => teamOptions[0]?.id ?? '')
 
   const table = useEmployeeTable(
-    isTeam
-      ? { page: 1, pageSize: 48, teamId }
-      : { page: 1, pageSize: 48, ...initialFilters },
-    isTeam ? { managerScope: true } : undefined
+    isTeamMode ? { page: 1, pageSize: 48, teamId } : { page: 1, pageSize: 48, ...initialFilters },
+    isTeamMode ? (isLeader ? { leaderScope: true } : { managerScope: true }) : undefined
   )
   const { employees, isLoading, pagination, onView, onEdit, onDeactivate, onPageChange, filters, setFilters } =
     table
 
   useEffect(() => {
-    if (!isTeam) return
+    if (!isTeamMode) return
     setFilters((f) => ({ ...f, teamId, page: 1 }))
-  }, [teamId, isTeam, setFilters])
+  }, [teamId, isTeamMode, setFilters])
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
@@ -115,11 +116,11 @@ export function HrEmployeeList({
         />
         <div className="relative text-base font-semibold tracking-tight">
           <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
-            {isTeam ? 'Nhân sự trong team' : 'Danh sách nhân sự'}
+            {isTeamMode ? 'Nhân sự trong team' : 'Danh sách nhân sự'}
           </span>
         </div>
         <div className="relative flex flex-wrap items-center gap-2">
-          {isTeam ? (
+          {isTeamMode ? (
             <label className="relative flex min-w-[170px] items-center gap-1.5 rounded-lg border border-primary/20 bg-card/90 px-3 py-1.5 text-sm text-foreground shadow-sm backdrop-blur-sm ring-1 ring-primary/10">
               <span className="shrink-0 text-xs font-medium text-muted-foreground">Team</span>
               <select
@@ -158,7 +159,7 @@ export function HrEmployeeList({
           >
             {viewMode === 'cards' ? '☰ Dạng bảng' : '▦ Dạng thẻ'}
           </button>
-          {!isTeam ? (
+          {!isTeamMode ? (
             <Button type="button" size="sm" className="h-8 rounded-lg text-xs" asChild>
               <Link to="/hr-admin/new">+ Thêm nhân sự</Link>
             </Button>
@@ -166,7 +167,7 @@ export function HrEmployeeList({
         </div>
       </div>
 
-      {isTeam ? <ManagerHubNav /> : null}
+      {isTeam && !isLeader ? <ManagerHubNav /> : null}
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="page-shell">
@@ -272,7 +273,7 @@ export function HrEmployeeList({
               onDeactivate={onDeactivate}
               pagination={pagination}
               onPageChange={onPageChange}
-              listMode={isTeam ? 'team' : 'hr'}
+              listMode={isTeamMode ? 'team' : 'hr'}
             />
           ) : isLoading ? (
             <div className="space-y-4">
@@ -299,7 +300,7 @@ export function HrEmployeeList({
                     cardIndex={idx}
                     employee={e}
                     selected={selectedId === e.id}
-                    variant={isTeam ? 'team' : 'hr'}
+                    variant={isTeamMode ? 'team' : 'hr'}
                     onSelect={() => {
                       setSelectedId(e.id)
                     }}
@@ -355,7 +356,7 @@ export function HrEmployeeList({
 
         <EmployeeDetailSheet
           employee={selected}
-          variant={isTeam ? 'team' : 'hr'}
+          variant={isLeader ? 'leader' : isTeam ? 'team' : 'hr'}
           teamId={teamId}
           onClose={() => setSelectedId(null)}
           onDeactivate={(id) => {

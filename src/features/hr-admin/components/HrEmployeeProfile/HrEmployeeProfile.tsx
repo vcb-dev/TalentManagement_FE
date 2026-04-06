@@ -1,7 +1,18 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { Building2, Clock, Crown, Settings, Star } from 'lucide-react'
+import {
+  Building2,
+  Calendar,
+  CheckCircle2,
+  ClipboardList,
+  Clock,
+  Crown,
+  GraduationCap,
+  Settings,
+  Star,
+  Users,
+} from '@/components/icons'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { levelMeta, roleShortLabel, shortId } from '@/features/hr-admin/components/HrEmployeeList/employeeListUtils'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
@@ -344,16 +355,24 @@ function OverviewTab({
       <div>
         <PfCard title="Thống kê học tập" entranceIndex={0}>
           <div className="space-y-0">
-            {[
-              ['📋 Bài đã nộp (gần nhất)', '18'],
-              ['✅ Tỉ lệ đạt', '83%'],
-              ['🎓 Kỳ thi đã qua', '6'],
-              ['📅 Thời gian làm việc', '—'],
-              ['👥 Mentee (nếu có)', '—'],
-            ].map(([a, b]) => (
-              <div key={a} className="flex items-center justify-between border-b border-border py-2 last:border-0">
-                <span className="text-xs text-muted-foreground">{a}</span>
-                <span className="text-sm font-bold text-foreground">{b}</span>
+            {(
+              [
+                { Icon: ClipboardList, label: 'Bài đã nộp (gần nhất)', value: '18' },
+                { Icon: CheckCircle2, label: 'Tỉ lệ đạt', value: '83%' },
+                { Icon: GraduationCap, label: 'Kỳ thi đã qua', value: '6' },
+                { Icon: Calendar, label: 'Thời gian làm việc', value: '—' },
+                { Icon: Users, label: 'Mentee (nếu có)', value: '—' },
+              ] as const
+            ).map(({ Icon, label, value }) => (
+              <div
+                key={label}
+                className="flex items-center justify-between border-b border-border py-2 last:border-0"
+              >
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Icon className="h-3.5 w-3.5 shrink-0 text-primary/85" strokeWidth={2} aria-hidden />
+                  {label}
+                </span>
+                <span className="text-sm font-bold text-foreground">{value}</span>
               </div>
             ))}
           </div>

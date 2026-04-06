@@ -23,12 +23,51 @@
   --color-button-foreground: hsl(var(--button-foreground));
   --color-button-hover: hsl(var(--button-hover));
   --color-button-active: hsl(var(--button-active));
-  /* Sao điểm — vàng kim thương hiệu (~#D4A017, goldenrod) */
-  --color-star-gold: #d4a017;
-  --color-star-gold-mid: #e0b423;
-  --color-star-gold-deep: #b8890f;
-  --color-star-gold-soft: #f5e6b8;
-  /* Gamification UI (quiz-style): tím chủ đạo, nền lavender mềm */
+  /* Lumina-style palette: primary violet, secondary teal, tertiary blue, neutral slate */
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-brand-secondary: #0d9488;
+  --color-brand-tertiary: #1e40af;
+  --color-gray-50: #f8fafc;
+  --color-gray-100: #f1f5f9;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-700: #374151;
+  --color-gray-900: #111827;
+  --color-success: #059669;
+  --color-success-muted: #d1fae5;
+  --color-warning: #d97706;
+  --color-warning-muted: #fef3c7;
+  --color-danger: #b91c1c;
+  --color-danger-muted: #fee2e2;
+  --color-info: #1e40af;
+  --color-info-muted: #dbeafe;
+  --color-tier-bronze: #cd7f32;
+  --color-tier-bronze-muted: #fdf2e6;
+  --color-tier-silver: #8e99a4;
+  --color-tier-silver-muted: #f0f2f5;
+  --color-tier-gold: #d97706;
+  --color-tier-gold-muted: #fffbeb;
+  --color-tier-diamond: #6366f1;
+  --color-tier-diamond-muted: #eef2ff;
+  --color-star-filled: #d97706;
+  --color-star-empty: #d1d5db;
+  --color-points-bg: #4f46e5;
+  --color-rank-text: #d97706;
+  --color-rank-bg: #fef3c7;
+  --color-reward-bg: #fff1e0;
+  --color-active-tag-bg: #dcfce7;
+  --color-active-tag-text: #15803d;
+  /* Sao / tier — align với gamification */
+  --color-star-gold: #d97706;
+  --color-star-gold-mid: #ea580c;
+  --color-star-gold-deep: #b45309;
+  --color-star-gold-soft: #fffbeb;
   --color-game-accent: hsl(var(--game-accent));
   --color-game-accent-foreground: hsl(var(--game-accent-foreground));
   --color-game-soft: hsl(var(--game-soft));
@@ -42,50 +81,44 @@ html {
 }
 
 /*
-  Nền trang: giống LinkedIn — #F4F2EE (xám ấm, tách lớp với card trắng).
-  Primary / accent / viền giữ tông xanh dương + teal đậm.
+  Theme: Lumina — violet #4F46E5, teal accent #0D9488, blue #1E40AF, neutral #F8FAFC.
 */
 :root {
   --radius: 0.75rem;
-  /* ≈ #F4F2EE */
-  --background: 40 18% 95%;
-  --foreground: 222 55% 8%;
-  --app-canvas: 40 18% 95%;
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  --app-canvas: 210 40% 98%;
   --card: 0 0% 100%;
-  --card-foreground: 222 55% 8%;
-  /* Xanh thương hiệu đậm (~#005a9e / navy professional) */
-  --primary: 210 100% 30%;
+  --card-foreground: 222 47% 11%;
+  /* Primary violet */
+  --primary: 239 84% 59%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 40 16% 88%;
-  --secondary-foreground: 226 48% 12%;
-  /* Teal đậm — điểm nhấn tiến độ */
-  --accent: 186 90% 26%;
+  /* UI “secondary” surfaces — neutral (nút phụ xám nhạt trong Lumina) */
+  --secondary: 214 32% 96%;
+  --secondary-foreground: 222 47% 11%;
+  /* Accent — teal (highlight / gradient phụ, progress phụ) */
+  --accent: 168 84% 32%;
   --accent-foreground: 0 0% 100%;
-  /* Bề mặt phụ hòa với nền ấm */
-  --muted: 40 14% 91%;
-  --muted-foreground: 215 24% 28%;
-  /* Gần #E0E0E0 — viền card kiểu LinkedIn */
-  --border: 0 0% 88%;
-  --ring: 210 100% 30%;
-  /* CTA gamification — cùng tông tím với --game-accent */
-  --button: 248 75% 58%;
+  --muted: 214 32% 96%;
+  --muted-foreground: 215 16% 47%;
+  --border: 214 32% 91%;
+  --ring: 239 84% 59%;
+  --button: 239 84% 59%;
   --button-foreground: 0 0% 100%;
-  --button-hover: 248 76% 51%;
-  --button-active: 248 78% 44%;
-  --shadow-card:
-    0 1px 2px rgb(15 23 42 / 0.07),
-    0 8px 24px -6px rgb(15 23 42 / 0.12),
-    0 0 0 1px rgb(15 23 42 / 0.06),
-    0 18px 48px -16px rgb(0 80 150 / 0.28);
-  /* ~#6A5AE0 — nút / tab active gamification */
-  --game-accent: 248 75% 58%;
+  --button-hover: 243 75% 52%;
+  --button-active: 243 55% 42%;
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-card-hover: 0 4px 12px rgb(0 0 0 / 0.08);
+  --game-accent: 239 84% 59%;
   --game-accent-foreground: 0 0% 100%;
-  --game-soft: 248 100% 97%;
-  --game-soft-foreground: 262 48% 28%;
-  --game-muted: 262 35% 42%;
-  --shadow-game-float:
-    0 4px 14px rgb(106 90 224 / 0.12),
-    0 12px 32px -8px rgb(79 70 150 / 0.18);
+  --game-soft: 226 100% 97%;
+  --game-soft-foreground: 222 47% 11%;
+  --game-muted: 215 16% 47%;
+  --shadow-game-float: 0 4px 14px rgb(79 70 229 / 0.12), 0 12px 32px -8px rgb(79 70 229 / 0.18);
+  --login-bg: linear-gradient(180deg, #eef2ff 0%, #f8fafc 100%);
+  --banner-gradient: linear-gradient(135deg, #4f46e5 0%, #1e40af 100%);
+  --cta-exam-gradient: linear-gradient(135deg, #4f46e5 0%, #0d9488 100%);
+  --font-primary: 'Be Vietnam Pro', 'Inter', system-ui, sans-serif;
 }
 
 .dark {
@@ -98,7 +131,7 @@ html {
   --primary-foreground: 0 0% 100%;
   --secondary: 222 28% 14%;
   --secondary-foreground: 210 20% 92%;
-  --accent: 186 75% 42%;
+  --accent: 168 55% 42%;
   --accent-foreground: 0 0% 100%;
   --muted: 222 20% 14%;
   --muted-foreground: 215 15% 62%;
@@ -180,6 +213,77 @@ html {
     transform: scaleX(1);
   }
 }
+
+/* Trang landing khách — hero, thẻ, reveal khi cuộn */
+@keyframes guest-landing-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes guest-landing-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes guest-landing-hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes guest-landing-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes guest-landing-float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+@keyframes guest-landing-bar-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes guest-landing-star-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  55% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* Skeleton SaaS HRM (shimmer trên thẻ — kiểu Tiimi / queue) */
 @keyframes skeleton-shimmer {
   0% {
@@ -216,7 +320,7 @@ html {
     @apply min-h-0 flex-1 overflow-y-auto px-6 py-4;
   }
   .page-toolbar-gradient {
-    @apply relative flex shrink-0 flex-wrap items-center justify-between gap-2 overflow-hidden border-b border-primary/15 bg-gradient-to-r from-primary/[0.08] via-teal-500/[0.06] to-violet-500/[0.07] px-6 py-3.5 shadow-[var(--shadow-card)];
+    @apply relative flex shrink-0 flex-wrap items-center justify-between gap-2 overflow-hidden border-b border-primary/10 bg-gradient-to-r from-primary/[0.08] via-primary/[0.05] to-primary/[0.06] px-6 py-3.5 shadow-[var(--shadow-card)];
   }
   .page-toolbar-flat {
     @apply flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-6 py-3 shadow-[var(--shadow-card)];
@@ -229,19 +333,54 @@ html {
   }
 }
 
+@layer components {
+  .login-page-bg {
+    position: relative;
+    isolation: isolate;
+    min-height: 100vh;
+    background: #64748b;
+  }
+  .login-page-bg::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background-image: url('/login-bg.png');
+    background-size: cover;
+    background-position: center;
+  }
+  .vcb-banner-gradient {
+    background: var(--banner-gradient);
+  }
+  .vcb-cta-exam-gradient {
+    background: var(--cta-exam-gradient);
+  }
+}
+
 @layer base {
   * {
     border-color: hsl(var(--border));
   }
+  a,
+  button,
+  input,
+  textarea,
+  select,
+  [role='tab'] {
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      opacity 0.2s ease;
+  }
   body {
     background-color: hsl(var(--app-canvas));
+    background-image: radial-gradient(rgb(148 163 184 / 0.12) 1px, transparent 1px);
+    background-size: 22px 22px;
     color: hsl(var(--foreground));
     margin: 0;
-    font-family:
-      'Inter',
-      ui-sans-serif,
-      system-ui,
-      sans-serif;
+    font-family: var(--font-primary);
     font-size: 1rem;
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;

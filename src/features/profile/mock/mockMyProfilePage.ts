@@ -1,23 +1,25 @@
 import type { MyProfilePage } from '@/features/profile/types'
 
-/** Dữ liệu demo — 12_NV_HoSoCuaToi.html (Nguyễn Thành · Leader) */
+/** Dữ liệu demo — 12_NV_HoSoCuaToi.html (Nguyễn Thành · Leader). Icon qua `iconKey` (Lucide), không dùng emoji trong chuỗi. */
 export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
   statsOverview: [
-    { label: '📋 Bài đã nộp T3', value: '18' },
-    { label: '✅ Tỉ lệ đạt', value: '83%', valueClass: 'text-[#166534]' },
-    { label: '🎓 Kỳ thi đã qua', value: '6' },
-    { label: '📅 Thời gian làm việc', value: '2 năm 9 tháng' },
-    { label: '👥 Mentee đang kèm', value: '3 người' },
+    { iconKey: 'clipboard', label: 'Bài đã nộp T3', value: '18' },
+    { iconKey: 'check', label: 'Tỉ lệ đạt', value: '83%', valueClass: 'text-[#166534]' },
+    { iconKey: 'graduation', label: 'Kỳ thi đã qua', value: '6' },
+    { iconKey: 'calendar', label: 'Thời gian làm việc', value: '2 năm 9 tháng' },
+    { iconKey: 'users', label: 'Mentee đang kèm', value: '3 người' },
   ],
   achievements: [
-    { icon: '⚡', name: 'Tốc độ vàng', sub: 'Đạt lần 1 không bảo lưu', earned: true },
-    { icon: '🎓', name: 'Mentor đầu tiên', sub: 'Đã kèm 3 mentee', earned: true },
-    { icon: '🏆', name: 'Top Learner', sub: 'Top 15% team T3', earned: true },
-    { icon: '👑', name: 'Tướng tiên phong', sub: 'Chưa mở khóa', earned: false },
+    { iconKey: 'zap', name: 'Tốc độ vàng', sub: 'Đạt lần 1 không bảo lưu', earned: true },
+    { iconKey: 'graduation', name: 'Mentor đầu tiên', sub: 'Đã kèm 3 mentee', earned: true },
+    { iconKey: 'trophy', name: 'Top Learner', sub: 'Top 15% team T3', earned: true },
+    { iconKey: 'crown', name: 'Tướng tiên phong', sub: 'Chưa mở khóa', earned: false },
   ],
   currentLevel: {
-    title: '⚔️ Được việc',
-    tierLabel: '🥇 Gold tier',
+    title: 'Được việc',
+    titleIconKey: 'swords',
+    tierLabel: 'Gold tier',
+    tierIconKey: 'award',
     progressLine: 'Tiến độ Sao 4/6 · Sao 5 đang học',
     filledStars: 4,
     totalStars: 6,
@@ -29,14 +31,16 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
       step: 3,
       title: 'Được việc',
       meta: 'Từ 05/01/2026 · Sao 4/6',
-      tierLabel: '🥇 Gold',
+      tierLabel: 'Gold',
+      tierIconKey: 'award',
       tierClass: 'bg-gradient-to-r from-[#92400E] to-[#D97706] text-white',
     },
     {
       step: 2,
       title: 'Biết việc',
       meta: 'Từ 20/12/2023 · Hoàn thành 6/6 sao',
-      tierLabel: '🥈 Silver',
+      tierLabel: 'Silver',
+      tierIconKey: 'medal',
       tierClass: 'bg-gradient-to-r from-[#374151] to-[#6B7280] text-white',
       dimmed: true,
     },
@@ -44,7 +48,8 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
       step: 1,
       title: 'Tập sự',
       meta: 'Từ 12/06/2023 · Hoàn thành',
-      tierLabel: '🥉 Bronze',
+      tierLabel: 'Bronze',
+      tierIconKey: 'circleDot',
       tierClass: 'bg-gradient-to-r from-[#92400E] to-[#B45309] text-white',
       dimmed: true,
     },
@@ -57,28 +62,32 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
   ],
   learningTimeline: [
     {
-      title: '🥉 Tập sự',
+      title: 'Tập sự',
+      titleIconKey: 'circleDot',
       meta: '12/06/2023 – 20/12/2023 · Không có sao',
       badge: 'Hoàn thành',
       badgeClass: 'bg-[#DCFCE7] text-[#166534]',
       cardClass: 'border-[#86EFAC] bg-[#F0FDF4]',
     },
     {
-      title: '🥈 Biết việc',
+      title: 'Biết việc',
+      titleIconKey: 'medal',
       meta: '20/12/2023 – 05/01/2026',
       badge: 'Hoàn thành',
       badgeClass: 'bg-[#DCFCE7] text-[#166534]',
       cardClass: 'border-[#86EFAC] bg-[#F0FDF4]',
     },
     {
-      title: '🥇 Được việc · Đang học',
+      title: 'Được việc · Đang học',
+      titleIconKey: 'award',
       meta: 'Từ 05/01/2026 · Sao 5 đang học, Sao 6 chưa mở',
       badge: 'Sao 4/6',
       badgeClass: 'bg-primary/10 text-primary',
       cardClass: 'border-primary/30 bg-primary/5 shadow-[var(--shadow-card)]',
     },
     {
-      title: '💎 Đóng góp kết quả',
+      title: 'Đóng góp kết quả',
+      titleIconKey: 'gem',
       meta: 'Mở sau khi hoàn thành Được việc',
       badge: 'Chưa mở',
       badgeClass: 'border border-border bg-muted text-muted-foreground',
@@ -86,7 +95,8 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
       dimmed: true,
     },
     {
-      title: '👑 Tướng',
+      title: 'Tướng',
+      titleIconKey: 'crown',
       meta: 'Mục tiêu cao nhất',
       badge: 'Chưa mở',
       badgeClass: 'border border-border bg-muted text-muted-foreground',
@@ -104,6 +114,7 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
     {
       title: 'Sao 5 — Được việc',
       badge: 'Đang chấm',
+      badgeIconKey: 'sparkles',
       badgeClass: 'bg-[#FEF3C7] text-[#92400E]',
       cardClass: 'border-primary/30 bg-primary/5',
       stats: [
@@ -114,7 +125,8 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
     },
     {
       title: 'Sao 4 — Được việc',
-      badge: '✓ Đạt',
+      badge: 'Đạt',
+      badgeIconKey: 'check',
       badgeClass: 'bg-[#DCFCE7] text-[#166534]',
       cardClass: 'border-[#86EFAC] bg-[#F0FDF4]',
       stats: [
@@ -126,7 +138,8 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
     },
     {
       title: 'Sao 2 — Được việc (lần 1)',
-      badge: '⚠ Bảo lưu',
+      badge: 'Bảo lưu',
+      badgeIconKey: 'alertTriangle',
       badgeClass: 'bg-[#FEF3C7] text-[#92400E]',
       cardClass: 'border-[#FCD34D] bg-[#FFFBEB]',
       stats: [
@@ -138,7 +151,8 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
     },
     {
       title: 'Tập sự → Biết việc',
-      badge: '✓ Thăng cấp',
+      badge: 'Thăng cấp',
+      badgeIconKey: 'check',
       badgeClass: 'bg-[#DCFCE7] text-[#166534]',
       cardClass: 'border-[#86EFAC] bg-[#F0FDF4]',
       stats: [

@@ -54,6 +54,8 @@ export function levelMeta(level: EmployeeLevel) {
 /** Màu avatar theo vai trò (giống mock). */
 export function avatarClassForRole(role: Role): string {
   switch (role) {
+    case 'LEADER':
+      return 'bg-sky-100 text-sky-900'
     case 'MANAGER':
       return 'bg-amber-100 text-amber-900'
     case 'HR_ADMIN':
@@ -96,6 +98,8 @@ export function statusLabelVi(status: EmployeeEntity['status']): string {
 
 export function roleBadgeClass(role: Role): string {
   switch (role) {
+    case 'LEADER':
+      return 'border border-sky-300/70 bg-sky-100 text-sky-950 shadow-sm ring-1 ring-sky-400/25'
     case 'MANAGER':
       return 'border border-amber-300/70 bg-amber-100 text-amber-950 shadow-sm ring-1 ring-amber-400/25'
     case 'HR_ADMIN':
@@ -111,6 +115,8 @@ export function roleShortLabel(role: Role): string {
   switch (role) {
     case 'MEMBER':
       return 'NV'
+    case 'LEADER':
+      return 'TN KPI'
     case 'MANAGER':
       return 'QL'
     case 'HR_ADMIN':

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed": "#100069",
+                    "outline": "#777587",
+                    "tertiary-container": "#934e00",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed-dim": "#c3c0ff",
+                    "inverse-surface": "#273140",
+                    "outline-variant": "#c7c4d8",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-container": "#ffd2b1",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "surface-tint": "#4d44e3",
+                    "error-container": "#ffdad6",
+                    "surface-container-high": "#dee9fd",
+                    "on-secondary-container": "#fffbff",
+                    "on-tertiary-fixed-variant": "#6e3900",
+                    "surface-container": "#e6eeff",
+                    "secondary-container": "#6860ef",
+                    "inverse-primary": "#c3c0ff",
+                    "on-secondary": "#ffffff",
+                    "surface-dim": "#d0daef",
+                    "on-background": "#121c2a",
+                    "on-secondary-fixed-variant": "#372abf",
+                    "surface-container-highest": "#d9e3f7",
+                    "error": "#ba1a1a",
+                    "surface": "#f9f9ff",
+                    "on-surface": "#121c2a",
+                    "on-primary-fixed": "#0f0069",
+                    "surface-variant": "#d9e3f7",
+                    "primary": "#3525cd",
+                    "on-primary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed": "#2f1500",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "secondary": "#4e45d5",
+                    "on-surface-variant": "#464555",
+                    "on-primary-container": "#dad7ff",
+                    "tertiary": "#703a00",
+                    "tertiary-fixed-dim": "#ffb77d",
+                    "background": "#f9f9ff",
+                    "surface-container-low": "#eff3ff",
+                    "secondary-fixed": "#e3dfff",
+                    "on-error-container": "#93000a",
+                    "primary-fixed": "#e2dfff",
+                    "tertiary-fixed": "#ffdcc3",
+                    "inverse-on-surface": "#ebf1ff",
+                    "primary-container": "#4f46e5",
+                    "surface-bright": "#f9f9ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Be Vietnam Pro"],
+                    "body": ["Be Vietnam Pro"],
+                    "label": ["Be Vietnam Pro"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen">
+<!-- TopNavBar -->
+<nav class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-sm docked full-width top-0 z-50 sticky">
+<div class="flex justify-between items-center px-6 py-3 w-full max-w-[1440px] mx-auto">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-indigo-700 dark:text-indigo-300">VCB HRM</span>
+<div class="hidden md:flex items-center gap-6 font-be-vietnam-pro text-sm font-medium tracking-wide">
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-500 transition-colors" href="#">Dashboard</a>
+<a class="text-indigo-700 dark:text-indigo-300 border-b-2 border-indigo-600 pb-1 font-semibold" href="#">Personnel</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-500 transition-colors" href="#">Checklist</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-500 transition-colors" href="#">Training</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-500 transition-colors" href="#">Reports</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<button class="p-2 text-slate-500 hover:bg-slate-100/50 rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100/50 rounded-lg transition-all active:scale-95">
+<span class="material-symbols-outlined">military_tech</span>
+</button>
+</div>
+<button class="bg-indigo-600 text-white px-5 py-2 rounded-lg font-semibold text-sm transition-all active:scale-95 hover:bg-indigo-700 shadow-md">Check In</button>
+<img alt="User Avatar" class="w-9 h-9 rounded-full ring-2 ring-indigo-100" data-alt="Professional user profile avatar wearing a formal suit with a small rank pin on the lapel, studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJKEhc4R6Hd2M76aTmC3St3FoLcAz_R3cfbQuV96j3CBXZA5q4PdUU-wB6ve9ps1yXI7NyiXsrSt-ngPr4siSRRqHoBVGRLiHYptGWfIHrzCkqyAkV3dSlpYJ_Rv6fAUbAz8bDrWFzmTwaSRvVmN4_1fh8vDCQokT-7xx0UM03omSLK3AQJf9_CBzaOadnjJsxB-OJJn1sg7S8RLCjqtjIi_xmTIs0gPfACyD1iRv1Wel1Ic1u7ULdacDFcZiGPmW6Qoak0ugYltA"/>
+</div>
+</div>
+</nav>
+<div class="flex">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 z-40 bg-slate-50 dark:bg-slate-950 flex flex-col h-full p-4 gap-2 hidden lg:flex pt-20">
+<div class="mb-6 px-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+</div>
+<div>
+<h2 class="text-lg font-black text-indigo-800 dark:text-indigo-200 leading-none">VCB HRM</h2>
+<span class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Elite Performance</span>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">Overview</span>
+</a>
+<a class="flex items-center gap-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-200 rounded-xl font-semibold px-4 py-3 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-medium text-sm">Employee Directory</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">workspace_premium</span>
+<span class="font-medium text-sm">Skill Matrix</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-medium text-sm">Learning Path</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">trending_up</span>
+<span class="font-medium text-sm">Performance</span>
+</a>
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium text-sm">Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-4 space-y-1 border-t border-slate-200/50">
+<a class="flex items-center gap-3 text-slate-600 dark:text-slate-400 px-4 py-3 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-medium text-sm">Support</span>
+</a>
+<a class="flex items-center gap-3 text-error px-4 py-3 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-medium text-sm">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 lg:ml-64 p-4 md:p-8">
+<div class="max-w-6xl mx-auto">
+<!-- Breadcrumb -->
+<nav class="flex items-center gap-2 mb-6">
+<span class="text-xs font-bold uppercase tracking-widest text-slate-400">Tập sự</span>
+<span class="material-symbols-outlined text-slate-300 text-sm">chevron_right</span>
+<span class="text-xs font-bold uppercase tracking-widest text-primary">Sao 1</span>
+</nav>
+<!-- Header Hero Section -->
+<div class="relative overflow-hidden rounded-3xl bg-primary-container p-8 mb-8 shadow-xl">
+<div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+<div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">Level 1</span>
+<div class="flex gap-0.5">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-white/30 text-sm">star</span>
+<span class="material-symbols-outlined text-white/30 text-sm">star</span>
+<span class="material-symbols-outlined text-white/30 text-sm">star</span>
+<span class="material-symbols-outlined text-white/30 text-sm">star</span>
+<span class="material-symbols-outlined text-white/30 text-sm">star</span>
+</div>
+</div>
+<h1 class="text-3xl font-extrabold text-white tracking-tight">Sao 1 — Tập sự</h1>
+<p class="text-indigo-100/80 mt-1 font-medium">Bắt đầu hành trình chinh phục kỹ năng chuyên môn tại VCB</p>
+</div>
+<div class="flex items-center gap-4 bg-white/10 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/10">
+<div class="text-right">
+<span class="block text-indigo-100 text-[10px] font-bold uppercase tracking-widest">Tiến độ</span>
+<span class="text-2xl font-black text-white">0/5</span>
+</div>
+<div class="w-12 h-12 rounded-full border-4 border-white/20 flex items-center justify-center relative">
+<span class="material-symbols-outlined text-white">checklist</span>
+<!-- Circular Progress Placeholder -->
+<svg class="absolute inset-0 -rotate-90 w-12 h-12">
+<circle class="text-white" cx="24" cy="24" fill="none" r="20" stroke="currentColor" stroke-dasharray="0 126" stroke-width="4"></circle>
+</svg>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left Column: Task List -->
+<div class="lg:col-span-7 space-y-4">
+<div class="flex items-center justify-between mb-2">
+<h3 class="text-lg font-bold text-on-surface">Danh sách nhiệm vụ</h3>
+<span class="text-xs font-semibold text-primary px-3 py-1 bg-primary/10 rounded-full">Đang thực hiện</span>
+</div>
+<!-- Task Items -->
+<div class="group relative bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 border-l-4 border-primary ring-1 ring-slate-100">
+<div class="flex items-start gap-4">
+<div class="w-6 h-6 rounded-md border-2 border-primary flex items-center justify-center mt-1">
+<div class="w-3 h-3 bg-primary rounded-sm opacity-0 group-hover:opacity-20"></div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-primary text-base">Đọc tài liệu quy trình vận hành</h4>
+<span class="text-[10px] font-black text-primary px-2 py-0.5 bg-primary-fixed-dim/30 rounded uppercase">Active</span>
+</div>
+<p class="text-sm text-slate-500 mt-1 leading-relaxed">Tìm hiểu chi tiết các bước vận hành hệ thống core và quy định an toàn bảo mật.</p>
+<div class="mt-4 flex items-center justify-between">
+<div class="flex -space-x-2">
+<img alt="Mentor" class="w-6 h-6 rounded-full border-2 border-white" data-alt="Close-up of a professional female mentor with glasses and a friendly smile, office background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpwtpJ3hq3oxIYTIAvR7sPZnSfsK7d1dI-PicidnE87iDjVh7waMNDQye4J2Os5V6xtv_6WkM7h1f6KcEzRvwwJgJ_NWgzAh37Hw6qD5Vuy_E24Tu8PWeYgt6l3ipdj7CnBLngILIII-U-MnXdLN79kpYndD8bD6l_OMhlOIXPuj8qLeWqKYXOuyG57q6enXNCYUL_vvK8FcOWAey57HqxH1Ao2vLBXjQOYI1qnfk-E-twuMrclufuP7URjN8J6g9FcmQaZSSxrsI"/>
+<span class="text-[10px] font-medium text-slate-400 pl-4">Hướng dẫn bởi Ms. Linh</span>
+</div>
+<button class="text-xs font-bold text-white bg-primary px-4 py-2 rounded-lg shadow-sm hover:translate-y-[-1px] active:scale-95 transition-all">Nộp bằng chứng</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Inactive Tasks -->
+<div class="bg-surface-container-low/50 rounded-xl p-5 ring-1 ring-slate-100/50 opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex items-start gap-4">
+<div class="w-6 h-6 rounded-md border-2 border-slate-300 flex items-center justify-center mt-1"></div>
+<div class="flex-1">
+<h4 class="font-bold text-slate-600 text-base">Hoàn thành bài kiểm tra</h4>
+<p class="text-sm text-slate-400 mt-1">Vượt qua bài test trắc nghiệm 20 câu về kiến thức đã học.</p>
+</div>
+<span class="material-symbols-outlined text-slate-300">lock</span>
+</div>
+</div>
+<div class="bg-surface-container-low/50 rounded-xl p-5 ring-1 ring-slate-100/50 opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex items-start gap-4">
+<div class="w-6 h-6 rounded-md border-2 border-slate-300 flex items-center justify-center mt-1"></div>
+<div class="flex-1">
+<h4 class="font-bold text-slate-600 text-base">Thực hiện dự án thực tế</h4>
+<p class="text-sm text-slate-400 mt-1">Tham gia hỗ trợ triển khai module thanh toán cho khách hàng.</p>
+</div>
+<span class="material-symbols-outlined text-slate-300">lock</span>
+</div>
+</div>
+<div class="bg-surface-container-low/50 rounded-xl p-5 ring-1 ring-slate-100/50 opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex items-start gap-4">
+<div class="w-6 h-6 rounded-md border-2 border-slate-300 flex items-center justify-center mt-1"></div>
+<div class="flex-1">
+<h4 class="font-bold text-slate-600 text-base">Trình bày kết quả</h4>
+<p class="text-sm text-slate-400 mt-1">Thuyết trình về những gì đã học được sau quá trình tập sự.</p>
+</div>
+<span class="material-symbols-outlined text-slate-300">lock</span>
+</div>
+</div>
+<div class="bg-surface-container-low/50 rounded-xl p-5 ring-1 ring-slate-100/50 opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex items-start gap-4">
+<div class="w-6 h-6 rounded-md border-2 border-slate-300 flex items-center justify-center mt-1"></div>
+<div class="flex-1">
+<h4 class="font-bold text-slate-600 text-base">Viết báo cáo</h4>
+<p class="text-sm text-slate-400 mt-1">Hoàn thiện báo cáo tổng kết giai đoạn Sao 1.</p>
+</div>
+<span class="material-symbols-outlined text-slate-300">lock</span>
+</div>
+</div>
+</div>
+<!-- Right Column: Evidence Submission -->
+<div class="lg:col-span-5">
+<div class="sticky top-24 space-y-6">
+<div class="bg-white rounded-[12px] p-6 shadow-lg ring-1 ring-slate-100">
+<h3 class="text-lg font-bold text-on-surface mb-6 flex items-center gap-2"><span class="material-symbols-outlined text-primary">upload_file</span>
+                                    Nộp bằng chứng
+                                </h3>
+<div class="space-y-6">
+<!-- Upload Box -->
+<div class="border-2 border-dashed border-indigo-200 bg-indigo-50/50 rounded-[8px] p-8 text-center hover:bg-indigo-50 transition-colors cursor-pointer group">
+<div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary">cloud_upload</span>
+</div>
+<p class="text-sm font-bold text-indigo-900">Tải tệp lên</p>
+<p class="text-xs text-indigo-400 mt-1">Hoặc nhấn để chọn từ máy tính (Tối đa 25MB)</p>
+</div>
+<!-- Description Area -->
+<div>
+<label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Mô tả</label>
+<textarea class="w-full bg-surface-container-low border-0 focus:ring-2 focus:ring-primary rounded-[8px] p-3 text-sm placeholder:text-slate-400" placeholder="Mô tả ngắn gọn về tài liệu bạn nộp..." rows="4"></textarea>
+</div>
+<!-- Action Button -->
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-white font-bold py-[10px] px-[20px] rounded-[8px] shadow-lg shadow-indigo-200 hover:shadow-indigo-300 active:scale-[0.98] transition-all">
+                                        Nộp bài
+                                    </button>
+</div>
+</div>
+<!-- Recent Submission Panel -->
+<div class="bg-surface-container rounded-[12px] p-6 text-center border border-indigo-100/50">
+<h4 class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-4">Bài đã nộp gần nhất</h4>
+<div class="py-6">
+<div class="w-16 h-16 bg-white/50 rounded-full flex items-center justify-center mx-auto mb-3">
+<span class="material-symbols-outlined text-slate-300 text-3xl">history</span>
+</div>
+<p class="text-sm font-medium text-slate-500">Chưa có bài nộp</p>
+<p class="text-[10px] text-slate-400 mt-1">Các bài nộp của bạn sẽ xuất hiện tại đây sau khi được hệ thống ghi nhận.</p>
+</div>
+</div>
+<!-- Gamification Card -->
+<div class="relative overflow-hidden bg-tertiary-fixed text-on-tertiary-fixed rounded-2xl p-6 shadow-lg group">
+<div class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
+<span class="material-symbols-outlined text-9xl">emoji_events</span>
+</div>
+<div class="relative z-10">
+<span class="text-[10px] font-black uppercase tracking-widest bg-on-tertiary-fixed/10 px-2 py-1 rounded">Reward Preview</span>
+<h4 class="text-xl font-bold mt-3">Huy hiệu Sao 1</h4>
+<p class="text-sm opacity-80 mt-1">Hoàn thành 5 nhiệm vụ để nhận ngay huy hiệu Bronze Elite và +500 XP vào Skill Matrix của bạn.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Mobile Bottom Navigation -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-6 py-3 flex justify-between items-center z-50">
+<button class="flex flex-col items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-bold">Trang chủ</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">checklist</span>
+<span class="text-[10px] font-bold">Nhiệm vụ</span>
+</button>
+<div class="relative -top-8">
+<button class="w-14 h-14 bg-primary text-white rounded-full shadow-xl flex items-center justify-center border-4 border-white">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<button class="flex flex-col items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined">military_tech</span>
+<span class="text-[10px] font-bold">Thành tích</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-bold">Cá nhân</span>
+</button>
+</nav>
+</body></html>

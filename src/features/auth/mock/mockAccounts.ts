@@ -48,6 +48,12 @@ export const MOCK_ACCOUNT_LIST: {
     description: 'Nhân viên — lộ trình, checklist',
   },
   {
+    email: 'leader@vcb.com',
+    role: 'LEADER',
+    name: 'Trần Trưởng Nhóm',
+    description: 'Leader — nhân sự team, KPI/OKR, báo cáo tháng',
+  },
+  {
     email: 'manager@vcb.com',
     role: 'MANAGER',
     name: 'Lê Quản Lý',

@@ -41,7 +41,7 @@ export interface EmployeeDetailSheetProps {
   employee: EmployeeEntity | null
   onClose: () => void
   onDeactivate: (id: string) => void
-  variant?: 'hr' | 'team'
+  variant?: 'hr' | 'team' | 'leader'
   /** Khi variant team — truyền team đang lọc để link hồ sơ đúng ngữ cảnh. */
   teamId?: string
 }
@@ -152,9 +152,9 @@ export function EmployeeDetailSheet({
         </div>
       </div>
       <div className="flex shrink-0 gap-2 border-t border-border px-6 py-3.5">
-        {variant === 'team' ? (
+        {variant === 'team' || variant === 'leader' ? (
           <Link
-            to="/manager/team/$employeeId"
+            to={variant === 'leader' ? '/leader/team/$employeeId' : '/manager/team/$employeeId'}
             params={{ employeeId: employee.id }}
             search={teamId ? { teamId } : {}}
             className="flex-1 rounded-xl border-0 bg-gradient-to-br from-primary to-accent py-2.5 text-center text-sm font-bold text-white shadow-[var(--shadow-card)] transition-opacity hover:opacity-90"

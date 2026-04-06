@@ -6,7 +6,7 @@
     "schemas": {
       "Role": {
         "type": "string",
-        "enum": ["MEMBER", "MANAGER", "HR_ADMIN", "TEACHER", "BOD"]
+        "enum": ["MEMBER", "LEADER", "MANAGER", "HR_ADMIN", "TEACHER", "BOD"]
       },
       "Permission": {
         "type": "object",
@@ -27,7 +27,9 @@
               "radar_chart",
               "checklist",
               "submission",
-              "kpi"
+              "kpi",
+              "okr",
+              "monthly_report"
             ]
           }
         }

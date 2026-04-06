@@ -8,6 +8,7 @@ import { HR_DEPARTMENT_OPTIONS, HR_TEAM_OPTIONS } from '@/features/hr-admin/hrOr
 
 const ROLE_OPTIONS: { value: CreateEmployeeForm['role']; label: string }[] = [
   { value: 'MEMBER', label: 'Nhân viên' },
+  { value: 'LEADER', label: 'Trưởng nhóm KPI' },
   { value: 'MANAGER', label: 'Quản lý' },
   { value: 'HR_ADMIN', label: 'HR' },
   { value: 'TEACHER', label: 'Người chấm thi' },
