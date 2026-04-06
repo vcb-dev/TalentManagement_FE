@@ -7,10 +7,10 @@ import {
   Hourglass,
   Lock,
   Route,
-  Star,
   TrendingUp,
   Zap,
 } from 'lucide-react'
+import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -270,15 +270,15 @@ export function DashboardLearningZone() {
             style={staggerStyle(4)}
           >
             <div className="pointer-events-none absolute right-6 top-6 opacity-[0.12]" aria-hidden>
-              <Star className="h-28 w-28 rotate-12 fill-primary/30 text-primary" strokeWidth={1} />
+              <StarEmblem className="h-28 w-28 rotate-12" aria-hidden />
             </div>
             <div className="relative mb-8">
               <h3 className="mb-2 text-2xl font-black text-foreground">
                 Được việc — 6 sao hiện tại
               </h3>
               <p className="max-w-md text-muted-foreground">
-                Bạn đã hoàn thành 4/6 tiêu chuẩn đánh giá. Hãy hoàn thành các sao còn lại để nâng hạng
-                tiếp theo.
+                Bạn đã hoàn thành 4/6 tiêu chuẩn đánh giá. Hãy hoàn thành các sao còn lại để nâng
+                hạng tiếp theo.
               </p>
             </div>
             <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -319,8 +319,7 @@ export function DashboardLearningZone() {
                 </div>
               </div>
               <p className="text-xs font-medium text-muted-foreground">
-                Dự kiến hoàn thành:{' '}
-                <span className="font-bold text-foreground">15/05/2026</span>
+                Dự kiến hoàn thành: <span className="font-bold text-foreground">15/05/2026</span>
               </p>
             </div>
           </div>
@@ -328,10 +327,7 @@ export function DashboardLearningZone() {
           {/* Kỳ thi + kỹ năng */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div
-              className={cn(
-                'rounded-3xl bg-muted/60 p-6',
-                CARD_ENTRANCE_HOVER
-              )}
+              className={cn('rounded-3xl bg-muted/60 p-6', CARD_ENTRANCE_HOVER)}
               style={staggerStyle(5)}
             >
               <h4 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
@@ -342,7 +338,9 @@ export function DashboardLearningZone() {
                 <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-tighter text-muted-foreground">
                   Môn thi kiến thức
                 </p>
-                <p className="font-bold text-foreground">Kỹ năng quản lý tài chính doanh nghiệp II</p>
+                <p className="font-bold text-foreground">
+                  Kỹ năng quản lý tài chính doanh nghiệp II
+                </p>
                 <div className="mt-3 flex flex-wrap gap-4 border-t border-border/80 pt-3">
                   <div className="flex items-center gap-1 text-xs font-semibold text-foreground">
                     <CalendarDays className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
@@ -373,7 +371,10 @@ export function DashboardLearningZone() {
               )}
               style={staggerStyle(6)}
             >
-              <div className="pointer-events-none absolute -bottom-8 -right-8 opacity-[0.06]" aria-hidden>
+              <div
+                className="pointer-events-none absolute -bottom-8 -right-8 opacity-[0.06]"
+                aria-hidden
+              >
                 <BarChart3 className="h-36 w-36 text-foreground" strokeWidth={1} />
               </div>
               <h4 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
@@ -401,8 +402,8 @@ export function DashboardLearningZone() {
                 ))}
               </div>
               <div className="relative mt-6 rounded-xl border border-border/80 bg-card/80 p-3 text-[0.6875rem] font-medium leading-snug text-muted-foreground backdrop-blur-sm">
-                Gợi ý: Tham gia khóa &quot;Kỹ thuật đàm phán 4.0&quot; để tăng thêm 2 điểm kỹ năng giao
-                tiếp.
+                Gợi ý: Tham gia khóa &quot;Kỹ thuật đàm phán 4.0&quot; để tăng thêm 2 điểm kỹ năng
+                giao tiếp.
               </div>
             </div>
           </div>

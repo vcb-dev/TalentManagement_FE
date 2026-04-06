@@ -16,13 +16,13 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
-  Star,
   Terminal,
   Trash2,
   Trophy,
   UserPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -108,7 +108,7 @@ export function ManagerExercisesScreen() {
   const stars = useMemo(() => starOptionsForLevel(level), [level])
   const [star, setStar] = useState(1)
 
-  const safeStar = stars.includes(star) ? star : stars[0] ?? 1
+  const safeStar = stars.includes(star) ? star : (stars[0] ?? 1)
   const items = getItems(level, safeStar)
   const totalInLevel = useMemo(() => countTasksForLevel(level), [level])
 
@@ -231,7 +231,7 @@ export function ManagerExercisesScreen() {
                         : 'border-border bg-card text-muted-foreground hover:border-[#D4A017]/50'
                     )}
                   >
-                    {STARS_PER_LEVEL[level] <= 0 ? `Mục ${s}` : `${s}★`}
+                    {STARS_PER_LEVEL[level] <= 0 ? `Mục ${s}` : `Sao ${s}`}
                   </button>
                 ))}
               </div>
@@ -390,8 +390,7 @@ export function ManagerExercisesScreen() {
                   {milestoneLabel}
                 </span>
                 <span className="font-bold tabular-nums">
-                  {safeStar}/{stars.length}{' '}
-                  {STARS_PER_LEVEL[level] <= 0 ? 'mục' : 'sao'}
+                  {safeStar}/{stars.length} {STARS_PER_LEVEL[level] <= 0 ? 'mục' : 'sao'}
                 </span>
               </div>
               <div className="mb-6 h-2 w-full overflow-hidden rounded-full bg-white/20">
@@ -418,9 +417,16 @@ export function ManagerExercisesScreen() {
                               : 'border-2 border-dashed border-white/35 text-white/50'
                         )}
                       >
-                        <Star
-                          className={cn('h-5 w-5', active ? 'fill-current' : '')}
-                          strokeWidth={2}
+                        <StarEmblem
+                          variant={active ? 'filled' : 'empty'}
+                          className={cn(
+                            'h-5 w-5',
+                            !active
+                              ? 'opacity-45 brightness-0 invert'
+                              : current
+                                ? ''
+                                : 'brightness-0 invert opacity-95'
+                          )}
                         />
                       </div>
                       <span
@@ -451,7 +457,9 @@ export function ManagerExercisesScreen() {
                     <p className="text-sm font-bold leading-tight text-foreground">
                       Siêu cấp {LEVEL_LABELS[level].toLowerCase()}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">Gắn với cấp đang chọn (demo)</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Gắn với cấp đang chọn (demo)
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">

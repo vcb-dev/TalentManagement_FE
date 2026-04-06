@@ -3,6 +3,7 @@ import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { CARD_ENTRANCE, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
+import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
   avatarClassForRole,
   initialsFromName,
@@ -24,7 +25,6 @@ function StarRow({
   align?: 'center' | 'end'
   compact?: boolean
 }) {
-  const sz = compact ? 12 : 15
   return (
     <div
       className={cn(
@@ -36,56 +36,14 @@ function StarRow({
       {Array.from({ length: 6 }, (_, i) => {
         const full = i < Math.floor(filled)
         const partial = i === Math.floor(filled) && filled % 1 >= 0.5
-        if (full) {
-          return (
-            <svg
-              key={i}
-              viewBox="0 0 24 24"
-              width={sz}
-              height={sz}
-              className="shrink-0 text-star-gold drop-shadow-[0_1px_2px_rgba(180,120,0,0.35)]"
-              aria-hidden
-            >
-              <path
-                fill="currentColor"
-                d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"
-              />
-            </svg>
-          )
-        }
-        if (partial) {
-          return (
-            <svg
-              key={i}
-              viewBox="0 0 24 24"
-              width={sz}
-              height={sz}
-              className="shrink-0 text-star-gold-mid drop-shadow-[0_0_4px_rgba(212,160,23,0.45)]"
-              aria-hidden
-            >
-              <path
-                fill="currentColor"
-                d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"
-              />
-            </svg>
-          )
-        }
+        const variant = full ? 'filled' : partial ? 'current' : 'empty'
         return (
-          <svg
+          <StarEmblem
             key={i}
-            viewBox="0 0 24 24"
-            width={sz}
-            height={sz}
-            className="shrink-0 text-star-gold-soft"
+            variant={variant}
+            className={cn('shrink-0', compact ? 'h-3 w-3' : 'h-[15px] w-[15px]')}
             aria-hidden
-          >
-            <path
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"
-            />
-          </svg>
+          />
         )
       })}
     </div>
@@ -133,9 +91,7 @@ export function EmployeeCard({
       className={cn(
         'group relative flex w-full cursor-pointer flex-col rounded-2xl border bg-card p-5 text-left shadow-sm',
         cardIndex !== undefined && CARD_ENTRANCE,
-        selected
-          ? 'border-2 border-primary shadow-md ring-1 ring-primary/15'
-          : 'border-border',
+        selected ? 'border-2 border-primary shadow-md ring-1 ring-primary/15' : 'border-border',
         inactive && 'opacity-[0.55]'
       )}
       style={cardIndex !== undefined ? staggerStyle(Math.min(cardIndex, 16)) : undefined}

@@ -1,7 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { ChevronRight, Clock, CloudUpload, ListChecks, Lock, Paperclip, Trophy } from 'lucide-react'
-import { useLearningChecklist, useStarSubmissions, useSubmitEvidence } from '@/features/learning-path/hooks'
+import { StarEmblem } from '@/components/icons/StarEmblem'
+import {
+  useLearningChecklist,
+  useStarSubmissions,
+  useSubmitEvidence,
+} from '@/features/learning-path/hooks'
 import { useChecklistItem } from '@/features/learning-path/components/ChecklistItem/useChecklistItem'
 import { Skeleton, SkeletonApprovalCardRow } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
@@ -17,7 +22,10 @@ const LEVEL_VI: Record<string, string> = {
 
 /** Phụ đề theo thứ tự nhiệm vụ (mock 05_NV_Checklist). */
 const ROW_SUB: Record<number, { done?: string; current?: string; locked?: string }> = {
-  1: { done: 'Hoàn thành 15/03/2026 · Người chấm đã duyệt', current: 'Tìm hiểu chi tiết các bước vận hành theo quy định nội bộ.' },
+  1: {
+    done: 'Hoàn thành 15/03/2026 · Người chấm đã duyệt',
+    current: 'Tìm hiểu chi tiết các bước vận hành theo quy định nội bộ.',
+  },
   2: { done: 'Đạt 8.5/10 · 18/03/2026' },
   3: { current: 'Nhiệm vụ hiện tại · Upload file kết quả' },
   4: { locked: 'Hoàn thành nhiệm vụ trước để mở' },
@@ -46,9 +54,11 @@ function BannerStars({ filled, total = 5 }: { filled: number; total?: number }) 
   return (
     <div className="flex gap-0.5" aria-hidden>
       {Array.from({ length: total }, (_, i) => (
-        <span key={i} className={cn('text-base leading-none', i < filled ? 'text-star-filled' : 'text-white/30')}>
-          ★
-        </span>
+        <StarEmblem
+          key={i}
+          variant={i < filled ? 'filled' : 'muted'}
+          className={cn('h-4 w-4', i < filled ? 'opacity-100 drop-shadow-sm' : 'opacity-30')}
+        />
       ))}
     </div>
   )
@@ -61,8 +71,20 @@ function HeroProgressRing({ done, total }: { done: number; total: number }) {
   const c = 2 * Math.PI * r
   const offset = c * (1 - pct)
   return (
-    <svg className="pointer-events-none absolute inset-0 h-12 w-12 -rotate-90" viewBox="0 0 48 48" aria-hidden>
-      <circle className="text-white/20" cx="24" cy="24" fill="none" r={r} stroke="currentColor" strokeWidth="4" />
+    <svg
+      className="pointer-events-none absolute inset-0 h-12 w-12 -rotate-90"
+      viewBox="0 0 48 48"
+      aria-hidden
+    >
+      <circle
+        className="text-white/20"
+        cx="24"
+        cy="24"
+        fill="none"
+        r={r}
+        stroke="currentColor"
+        strokeWidth="4"
+      />
       <circle
         className="text-white transition-[stroke-dashoffset] duration-500 ease-out"
         cx="24"
@@ -79,7 +101,11 @@ function HeroProgressRing({ done, total }: { done: number; total: number }) {
   )
 }
 
-export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = false }: ChecklistStarScreenProps) {
+export function ChecklistStarScreen({
+  levelId,
+  starId,
+  embedInLearningPath = false,
+}: ChecklistStarScreenProps) {
   const navigate = useNavigate()
   const { data, isLoading } = useLearningChecklist(levelId, starId)
   const sortedItems = useMemo(() => {
@@ -97,7 +123,9 @@ export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = fal
   const total = sortedItems.length
   const doneCount = sortedItems.filter((i) => checklist.isCompleted(i.id)).length
 
-  const currentItem = sortedItems.find((i) => checklist.isUnlocked(i.id) && !checklist.isCompleted(i.id))
+  const currentItem = sortedItems.find(
+    (i) => checklist.isUnlocked(i.id) && !checklist.isCompleted(i.id)
+  )
 
   const onPickFile = () => fileRef.current?.click()
 
@@ -119,9 +147,7 @@ export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = fal
     <div
       className={cn(
         'flex flex-col bg-app-canvas text-base text-foreground',
-        embedInLearningPath
-          ? 'min-h-0'
-          : '-m-5 min-h-[calc(100vh-3rem)] md:-m-6 lg:-m-8',
+        embedInLearningPath ? 'min-h-0' : '-m-5 min-h-[calc(100vh-3rem)] md:-m-6 lg:-m-8'
       )}
     >
       {!embedInLearningPath ? (
@@ -129,7 +155,8 @@ export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = fal
           <div
             className="pointer-events-none absolute inset-0 opacity-30 motion-safe:animate-[dash-shimmer_10s_ease-in-out_infinite] motion-reduce:animate-none"
             style={{
-              background: 'linear-gradient(110deg, transparent 0%, rgb(79 70 229 / 0.08) 50%, transparent 90%)',
+              background:
+                'linear-gradient(110deg, transparent 0%, rgb(79 70 229 / 0.08) 50%, transparent 90%)',
               backgroundSize: '200% 100%',
             }}
           />
@@ -141,7 +168,12 @@ export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = fal
                 void navigate({
                   to: '/learning-path',
                   search: {
-                    levelId: levelId as 'tap_su' | 'biet_viec' | 'duoc_viec' | 'dong_gop_ket_qua' | 'tuong',
+                    levelId: levelId as
+                      | 'tap_su'
+                      | 'biet_viec'
+                      | 'duoc_viec'
+                      | 'dong_gop_ket_qua'
+                      | 'tuong',
                     starId: Number(starId) || 1,
                   },
                 })
@@ -180,7 +212,9 @@ export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = fal
             <nav className="mb-6 flex flex-wrap items-center gap-2 text-[13px]">
               <span className="font-bold uppercase tracking-widest text-gray-500">{levelName}</span>
               <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden />
-              <span className="font-bold uppercase tracking-widest text-primary-600">Sao {starId}</span>
+              <span className="font-bold uppercase tracking-widest text-primary-600">
+                Sao {starId}
+              </span>
             </nav>
 
             <div className="relative mb-8 overflow-hidden rounded-3xl vcb-banner-gradient px-6 py-8 text-white shadow-xl sm:px-8">
@@ -202,13 +236,19 @@ export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = fal
                 </div>
                 <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-white/10 bg-white/10 px-6 py-4 backdrop-blur-md">
                   <div className="text-right">
-                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-white/60">Tiến độ</span>
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-white/60">
+                      Tiến độ
+                    </span>
                     <span className="text-[36px] font-bold leading-none tabular-nums text-white">
                       {doneCount}/{total || 5}
                     </span>
                   </div>
                   <div className="relative flex h-12 w-12 items-center justify-center rounded-full border-4 border-white/20">
-                    <ListChecks className="relative z-[1] h-5 w-5 text-white" strokeWidth={2} aria-hidden />
+                    <ListChecks
+                      className="relative z-[1] h-5 w-5 text-white"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
                     <HeroProgressRing done={doneCount} total={total || 5} />
                   </div>
                 </div>
@@ -238,7 +278,7 @@ export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = fal
                             ? sub?.done
                             : kind === 'current'
                               ? sub?.current
-                              : sub?.locked ?? 'Hoàn thành nhiệm vụ trước để mở'
+                              : (sub?.locked ?? 'Hoàn thành nhiệm vụ trước để mở')
                         }
                         primaryAction={
                           kind === 'done'
@@ -258,11 +298,18 @@ export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = fal
               <div className="lg:col-span-5">
                 <div className="sticky top-24 flex flex-col gap-6">
                   <div
-                    className={cn('rounded-[12px] bg-white p-6 shadow-lg ring-1 ring-gray-100', CARD_ENTRANCE_HOVER)}
+                    className={cn(
+                      'rounded-[12px] bg-white p-6 shadow-lg ring-1 ring-gray-100',
+                      CARD_ENTRANCE_HOVER
+                    )}
                     style={staggerStyle(0)}
                   >
                     <h3 className="mb-6 flex items-center gap-2 text-lg font-bold text-gray-900">
-                      <Paperclip className="h-5 w-5 shrink-0 text-primary-600" strokeWidth={2} aria-hidden />
+                      <Paperclip
+                        className="h-5 w-5 shrink-0 text-primary-600"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
                       Nộp bằng chứng
                     </h3>
                     <div className="space-y-6">
@@ -273,7 +320,11 @@ export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = fal
                         disabled={!currentItem || submit.isPending}
                       >
                         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110">
-                          <CloudUpload className="h-6 w-6 text-primary-600" strokeWidth={2} aria-hidden />
+                          <CloudUpload
+                            className="h-6 w-6 text-primary-600"
+                            strokeWidth={2}
+                            aria-hidden
+                          />
                         </div>
                         <p className="text-sm font-bold text-primary-700">Tải tệp lên</p>
                         <p className="mt-1 text-[13px] text-primary-600/80">
@@ -332,7 +383,11 @@ export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = fal
                             <div className="mt-0.5 text-[13px] text-gray-500">
                               {new Date(s.createdAt).toLocaleDateString('vi-VN')} ·{' '}
                               <span className="font-medium text-primary-600">
-                                {s.status === 'ACCEPTED' ? 'Đã duyệt' : s.status === 'PENDING' ? 'Chờ duyệt' : 'Từ chối'}
+                                {s.status === 'ACCEPTED'
+                                  ? 'Đã duyệt'
+                                  : s.status === 'PENDING'
+                                    ? 'Chờ duyệt'
+                                    : 'Từ chối'}
                               </span>
                             </div>
                           </li>
@@ -357,7 +412,8 @@ export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = fal
                     </span>
                     <h4 className="mt-3 text-lg font-bold text-gray-900">Huy hiệu Sao {starId}</h4>
                     <p className="mt-2 max-w-[18rem] text-sm text-gray-700">
-                      Hoàn thành {total || 5} nhiệm vụ để nhận ngay huy hiệu Bronze Elite và +500 XP vào Skill Matrix của bạn.
+                      Hoàn thành {total || 5} nhiệm vụ để nhận ngay huy hiệu Bronze Elite và +500 XP
+                      vào Skill Matrix của bạn.
                     </p>
                     <Trophy
                       className="pointer-events-none absolute -bottom-2 -right-2 h-24 w-24 text-warning/20 transition-transform duration-500 group-hover:scale-110"
@@ -402,7 +458,9 @@ function ChecklistTaskCard({
           <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-gray-300 bg-white" />
           <div className="min-w-0 flex-1">
             <h4 className="text-base font-bold text-gray-600">{title}</h4>
-            {subtitle ? <p className="mt-1 text-sm leading-relaxed text-gray-400">{subtitle}</p> : null}
+            {subtitle ? (
+              <p className="mt-1 text-sm leading-relaxed text-gray-400">{subtitle}</p>
+            ) : null}
           </div>
           <Lock className="mt-0.5 h-5 w-5 shrink-0 text-gray-300" strokeWidth={2} aria-hidden />
         </div>
@@ -420,7 +478,9 @@ function ChecklistTaskCard({
             </div>
             <div className="min-w-0">
               <h4 className="text-base font-bold text-gray-900">{title}</h4>
-              {subtitle ? <p className="mt-1 text-sm leading-relaxed text-gray-600">{subtitle}</p> : null}
+              {subtitle ? (
+                <p className="mt-1 text-sm leading-relaxed text-gray-600">{subtitle}</p>
+              ) : null}
             </div>
           </div>
           {primaryAction ? (
@@ -441,7 +501,10 @@ function ChecklistTaskCard({
     <div className="group relative rounded-xl border-l-4 border-primary-600 bg-white p-5 shadow-sm ring-1 ring-gray-100 transition-all duration-300 hover:shadow-md">
       <div className="flex items-start gap-4">
         <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-primary-600 bg-white">
-          <span className="h-2 w-2 rounded-sm bg-primary-600 opacity-0 transition-opacity group-hover:opacity-20" aria-hidden />
+          <span
+            className="h-2 w-2 rounded-sm bg-primary-600 opacity-0 transition-opacity group-hover:opacity-20"
+            aria-hidden
+          />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -450,7 +513,9 @@ function ChecklistTaskCard({
               Active
             </span>
           </div>
-          {subtitle ? <p className="mt-1 text-sm leading-relaxed text-gray-500">{subtitle}</p> : null}
+          {subtitle ? (
+            <p className="mt-1 text-sm leading-relaxed text-gray-500">{subtitle}</p>
+          ) : null}
           <div
             className={cn(
               'mt-4 flex flex-col gap-3 sm:flex-row sm:items-center',
@@ -463,7 +528,9 @@ function ChecklistTaskCard({
                   className="h-6 w-6 shrink-0 rounded-full border-2 border-white bg-primary-100 ring-1 ring-primary-200"
                   aria-hidden
                 />
-                <span className="text-[13px] font-medium text-gray-500">Hướng dẫn bởi Ms. Linh</span>
+                <span className="text-[13px] font-medium text-gray-500">
+                  Hướng dẫn bởi Ms. Linh
+                </span>
               </div>
             ) : null}
             {primaryAction ? (

@@ -3,7 +3,10 @@
  */
 export { PROFILE_TAB_ICONS } from './profileTabIcons'
 export { FiveStarRank } from './FiveStarRank'
-export { ProfileStarTier, GAME_STAR_PATH } from './ProfileStarTier'
+export { ProfileStarTier } from './ProfileStarTier'
+export { StarEmblem, STAR_EMBLEM_SRC } from './StarEmblem'
+/** Alias tương thích — huy hiệu sao thay Lucide `Star`. */
+export { StarEmblem as Star } from './StarEmblem'
 
 export {
   Award,
@@ -18,7 +21,6 @@ export {
   GraduationCap,
   LayoutGrid,
   Settings,
-  Star,
   Target,
   UserCircle,
   Users,

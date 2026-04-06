@@ -1,3 +1,4 @@
+import { StarEmblem } from '@/components/icons/StarEmblem'
 import { Skeleton, SkeletonStatTile } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE_HOVER, CARD_HOVER, PROGRESS_BAR_FILL, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -6,10 +7,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { ManagerHubNav } from '@/features/manager/components/ManagerHub/ManagerHubNav'
 import type { TeamMemberProgress } from '@/features/manager/types'
 
-const STATUS_BADGE: Record<
-  NonNullable<TeamMemberProgress['statusVariant']>,
-  string
-> = {
+const STATUS_BADGE: Record<NonNullable<TeamMemberProgress['statusVariant']>, string> = {
   success: 'bg-[#DCFCE7] text-[#166534]',
   warning: 'bg-[#FEF3C7] text-[#92400E]',
   info: 'bg-primary/10 text-primary',
@@ -34,9 +32,6 @@ function initialsFromName(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
-const STAR_PATH =
-  'M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z'
-
 function StarRowMini({ filled, max }: { filled: number; max: number }) {
   const n = Math.min(Math.max(max, 1), 6)
   const f = Math.min(Math.max(filled, 0), n)
@@ -45,39 +40,8 @@ function StarRowMini({ filled, max }: { filled: number; max: number }) {
       {Array.from({ length: n }, (_, i) => {
         const full = i < Math.floor(f)
         const partial = i === Math.floor(f) && f % 1 >= 0.5
-        if (full) {
-          return (
-            <svg
-              key={i}
-              viewBox="0 0 24 24"
-              width={14}
-              height={14}
-              className="shrink-0 text-star-gold drop-shadow-[0_1px_2px_rgba(180,120,0,0.35)]"
-              aria-hidden
-            >
-              <path fill="currentColor" d={STAR_PATH} />
-            </svg>
-          )
-        }
-        if (partial) {
-          return (
-            <svg
-              key={i}
-              viewBox="0 0 24 24"
-              width={14}
-              height={14}
-              className="shrink-0 text-star-gold-mid"
-              aria-hidden
-            >
-              <path fill="currentColor" d={STAR_PATH} />
-            </svg>
-          )
-        }
-        return (
-          <svg key={i} viewBox="0 0 24 24" width={14} height={14} className="shrink-0 text-star-gold-soft" aria-hidden>
-            <path fill="none" stroke="currentColor" strokeWidth={1.5} d={STAR_PATH} />
-          </svg>
-        )
+        const variant = full ? 'filled' : partial ? 'current' : 'empty'
+        return <StarEmblem key={i} variant={variant} className="h-3.5 w-3.5 shrink-0" aria-hidden />
       })}
       <span className="ml-1 text-sm font-semibold tabular-nums text-star-gold md:text-base">
         {filled}/{max}
@@ -88,7 +52,9 @@ function StarRowMini({ filled, max }: { filled: number; max: number }) {
 
 function StarsCell({ row }: { row: TeamMemberProgress }) {
   if (row.starLabel) {
-    return <span className="text-sm font-semibold text-star-gold md:text-base">{row.starLabel}</span>
+    return (
+      <span className="text-sm font-semibold text-star-gold md:text-base">{row.starLabel}</span>
+    )
   }
   const max = row.starMax ?? 6
   if (row.currentLevel === 'Tập sự' && row.currentStar === 0) {
@@ -141,7 +107,8 @@ export function TeamProgressTable({
         <div
           className="pointer-events-none absolute inset-0 opacity-25 motion-safe:animate-[dash-shimmer_10s_ease-in-out_infinite] motion-reduce:animate-none"
           style={{
-            background: 'linear-gradient(110deg, transparent 0%, hsl(var(--primary) / 0.1) 50%, transparent 90%)',
+            background:
+              'linear-gradient(110deg, transparent 0%, hsl(var(--primary) / 0.1) 50%, transparent 90%)',
             backgroundSize: '200% 100%',
           }}
         />
@@ -215,7 +182,9 @@ export function TeamProgressTable({
                       'rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.09] via-card to-teal-500/[0.06] p-3.5 shadow-[var(--shadow-card)] ring-1 ring-primary/10',
                     body: (
                       <>
-                        <div className="mb-1 text-xs font-semibold text-primary md:text-sm">👥 Tổng thành viên</div>
+                        <div className="mb-1 text-xs font-semibold text-primary md:text-sm">
+                          👥 Tổng thành viên
+                        </div>
                         <div className="bg-gradient-to-r from-primary to-teal-600 bg-clip-text text-[28px] font-extrabold leading-tight text-transparent">
                           {summary.totalMembers}
                         </div>
@@ -228,9 +197,15 @@ export function TeamProgressTable({
                       'rounded-xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/95 via-card to-teal-50/80 p-3.5 shadow-[var(--shadow-card)] ring-1 ring-emerald-500/15',
                     body: (
                       <>
-                        <div className="mb-1 text-xs font-semibold text-emerald-800 md:text-sm">✅ Đủ điều kiện thi</div>
-                        <div className="text-[28px] font-extrabold leading-tight text-emerald-700">{summary.eligibleExam}</div>
-                        <div className="mt-1 text-xs text-emerald-800 md:text-sm">Cần duyệt ngay</div>
+                        <div className="mb-1 text-xs font-semibold text-emerald-800 md:text-sm">
+                          ✅ Đủ điều kiện thi
+                        </div>
+                        <div className="text-[28px] font-extrabold leading-tight text-emerald-700">
+                          {summary.eligibleExam}
+                        </div>
+                        <div className="mt-1 text-xs text-emerald-800 md:text-sm">
+                          Cần duyệt ngay
+                        </div>
                       </>
                     ),
                   },
@@ -240,9 +215,15 @@ export function TeamProgressTable({
                       'rounded-xl border border-violet-200/70 bg-gradient-to-br from-violet-50/90 via-card to-fuchsia-50/40 p-3.5 shadow-[var(--shadow-card)] ring-1 ring-violet-400/15',
                     body: (
                       <>
-                        <div className="mb-1 text-xs font-semibold text-violet-900 md:text-sm">⚡ Đúng tiến độ</div>
-                        <div className="text-[28px] font-extrabold leading-tight text-violet-800">{summary.onTrack}</div>
-                        <div className="mt-1 text-xs text-muted-foreground md:text-sm">{summary.onTrackPct}% team</div>
+                        <div className="mb-1 text-xs font-semibold text-violet-900 md:text-sm">
+                          ⚡ Đúng tiến độ
+                        </div>
+                        <div className="text-[28px] font-extrabold leading-tight text-violet-800">
+                          {summary.onTrack}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground md:text-sm">
+                          {summary.onTrackPct}% team
+                        </div>
                       </>
                     ),
                   },
@@ -252,15 +233,23 @@ export function TeamProgressTable({
                       'rounded-xl border border-rose-200/80 bg-gradient-to-br from-rose-50/95 via-card to-orange-50/50 p-3.5 shadow-[var(--shadow-card)] ring-1 ring-rose-400/20',
                     body: (
                       <>
-                        <div className="mb-1 text-xs font-semibold text-rose-900 md:text-sm">⚠️ Chậm tiến độ</div>
-                        <div className="text-[28px] font-extrabold leading-tight text-rose-800">{summary.behind}</div>
+                        <div className="mb-1 text-xs font-semibold text-rose-900 md:text-sm">
+                          ⚠️ Chậm tiến độ
+                        </div>
+                        <div className="text-[28px] font-extrabold leading-tight text-rose-800">
+                          {summary.behind}
+                        </div>
                         <div className="mt-1 text-xs text-rose-800 md:text-sm">Cần hỗ trợ</div>
                       </>
                     ),
                   },
                 ] as const
               ).map((s, i) => (
-                <div key={s.key} className={cn(s.className, CARD_ENTRANCE_HOVER)} style={staggerStyle(i)}>
+                <div
+                  key={s.key}
+                  className={cn(s.className, CARD_ENTRANCE_HOVER)}
+                  style={staggerStyle(i)}
+                >
                   {s.body}
                 </div>
               ))}
@@ -276,16 +265,21 @@ export function TeamProgressTable({
                 <table className="w-full min-w-[920px] border-collapse text-sm md:text-base">
                   <thead>
                     <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">
-                      {['Nhân viên', 'Cấp độ hiện tại', 'Sao', 'Tiến độ', 'Trạng thái', 'Cập nhật'].map(
-                        (h) => (
-                          <th
-                            key={h}
-                            className="whitespace-nowrap border-b border-border px-3 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground md:text-sm"
-                          >
-                            {h}
-                          </th>
-                        )
-                      )}
+                      {[
+                        'Nhân viên',
+                        'Cấp độ hiện tại',
+                        'Sao',
+                        'Tiến độ',
+                        'Trạng thái',
+                        'Cập nhật',
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="whitespace-nowrap border-b border-border px-3 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground md:text-sm"
+                        >
+                          {h}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -313,12 +307,18 @@ export function TeamProgressTable({
                                 {row.initials ?? initialsFromName(row.name)}
                               </div>
                               <div className="min-w-0">
-                                <div className="font-bold text-foreground md:text-base">{row.name}</div>
-                                <div className="text-xs text-muted-foreground md:text-sm">{row.roleLabel ?? '—'}</div>
+                                <div className="font-bold text-foreground md:text-base">
+                                  {row.name}
+                                </div>
+                                <div className="text-xs text-muted-foreground md:text-sm">
+                                  {row.roleLabel ?? '—'}
+                                </div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-3 py-3.5 align-middle font-medium text-foreground">{row.currentLevel}</td>
+                          <td className="px-3 py-3.5 align-middle font-medium text-foreground">
+                            {row.currentLevel}
+                          </td>
                           <td className="px-3 py-3.5 align-middle">
                             <StarsCell row={row} />
                           </td>
@@ -326,7 +326,11 @@ export function TeamProgressTable({
                             <div className="flex min-w-[120px] items-center gap-2">
                               <div className="h-2 min-w-[60px] flex-1 overflow-hidden rounded-full bg-primary/15">
                                 <div
-                                  className={cn('h-full rounded-full', BAR_FILL[bar], PROGRESS_BAR_FILL)}
+                                  className={cn(
+                                    'h-full rounded-full',
+                                    BAR_FILL[bar],
+                                    PROGRESS_BAR_FILL
+                                  )}
                                   style={{
                                     width: `${Math.min(100, row.completionPercent)}%`,
                                     transformOrigin: '0 50%',

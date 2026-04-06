@@ -347,7 +347,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
                 <FiveStarRank filled={rankStarsFive} />
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary ring-1 ring-primary/15">
-                    <Star className="h-3.5 w-3.5 fill-[#EAB308] text-[#EAB308]" strokeWidth={0} />
+                    <Star className="h-3.5 w-3.5" variant="filled" />
                     {points.toLocaleString('vi-VN')} pts
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-900 ring-1 ring-amber-500/20">
@@ -839,10 +839,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
                           </div>
                           <div className="mt-2 grid grid-cols-3 gap-1.5">
                             {ex.stats.map((s) => (
-                              <div
-                                key={s.label}
-                                className="rounded-lg bg-white/70 p-2.5"
-                              >
+                              <div key={s.label} className="rounded-lg bg-white/70 p-2.5">
                                 <div className="text-xs font-semibold uppercase text-muted-foreground md:text-sm">
                                   {s.label}
                                 </div>
