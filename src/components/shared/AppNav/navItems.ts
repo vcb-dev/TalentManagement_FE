@@ -6,7 +6,6 @@ import {
   ClipboardList,
   LayoutGrid,
   LineChart,
-  ListChecks,
   ListOrdered,
   School,
   ShieldCheck,
@@ -29,12 +28,6 @@ export type AppNavItem = {
 export const MEMBER_SELF_ITEMS: AppNavItem[] = [
   { to: '/dashboard', label: 'Dashboard cá nhân', icon: LayoutGrid, match: 'exact' },
   { to: '/learning-path', label: 'Lộ trình học', icon: ListOrdered, match: 'exact' },
-  {
-    to: '/learning-path/tap_su/1',
-    label: 'Checklist theo sao',
-    icon: ListChecks,
-    match: 'prefix',
-  },
   {
     to: '/exam',
     label: 'Kết quả & lịch thi',

@@ -4,6 +4,12 @@ import { ArrowLeft, Filter, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Button } from '@/components/ui/button'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { TeacherClassMemberCard } from './TeacherClassMemberCard'
@@ -74,20 +80,18 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
         <div className="page-shell">
           <div className="mb-8 flex flex-col gap-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div>
+              <div className={cn('min-w-0 flex-1 space-y-3', PAGE_HEADER_SURFACE)}>
                 <Link
                   to="/teacher/classes"
-                  className="mb-3 inline-flex items-center gap-2 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+                  className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
                 >
                   <ArrowLeft className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
                   Danh sách lớp
                 </Link>
-                <h1 className="mb-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                  <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
-                    {title}
-                  </span>
+                <h1 className={PAGE_HEADER_TITLE}>
+                  <span className={PAGE_HEADER_GRADIENT}>{title}</span>
                 </h1>
-                <p className="max-w-xl text-sm text-muted-foreground">
+                <p className={PAGE_HEADER_DESCRIPTION}>
                   Thông tin đầy đủ thành viên trong lớp — lịch sử thi từng người sẽ mở từ đây (nối API).
                 </p>
               </div>

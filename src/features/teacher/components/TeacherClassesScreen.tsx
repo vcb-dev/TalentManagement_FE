@@ -2,6 +2,12 @@ import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Filter, Search } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -78,13 +84,11 @@ export function TeacherClassesScreen() {
         <div className="page-shell">
           <div className="mb-8 flex flex-col gap-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div>
-                <h1 className="mb-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                  <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
-                    Lớp được phân công
-                  </span>
+              <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+                <h1 className={PAGE_HEADER_TITLE}>
+                  <span className={PAGE_HEADER_GRADIENT}>Lớp được phân công</span>
                 </h1>
-                <p className="max-w-xl text-sm text-muted-foreground">
+                <p className={PAGE_HEADER_DESCRIPTION}>
                   Danh sách lớp do quản lý đào tạo xếp — cùng giao diện danh mục như HR, tối ưu cho giảng
                   viên theo dõi và mở chi tiết (dữ liệu minh họa).
                 </p>

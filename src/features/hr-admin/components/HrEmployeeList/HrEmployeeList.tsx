@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { AlertTriangle, Filter, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { EmployeeTable } from '@/features/hr-admin/components/EmployeeTable'
@@ -140,13 +146,11 @@ export function HrEmployeeList({
           {/* Tiêu đề + nút + thống kê — bố cục như code.html, giữ màu ô thống kê hiện tại */}
           <div className="mb-8 flex flex-col gap-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div>
-                <h1 className="mb-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                  <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
-                    {pageTitle}
-                  </span>
+              <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+                <h1 className={PAGE_HEADER_TITLE}>
+                  <span className={PAGE_HEADER_GRADIENT}>{pageTitle}</span>
                 </h1>
-                <p className="max-w-xl text-sm text-muted-foreground">{pageSubtitle}</p>
+                <p className={PAGE_HEADER_DESCRIPTION}>{pageSubtitle}</p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 {isTeamMode ? (

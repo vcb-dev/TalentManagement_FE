@@ -1,3 +1,4 @@
+import type { LevelCode } from '@/lib/constants'
 import type { ProfileIconKey } from './profileContentIcons'
 
 export interface ProfileAchievement {
@@ -52,6 +53,11 @@ export interface ProfileWorkSummaryRow {
 }
 
 export interface MyProfilePage {
+  /**
+   * Mã cấp & sao do quản lý gán — dùng để điều hướng checklist lộ trình.
+   * Khi không có (API cũ), client suy ra từ `currentLevel.title` và `currentStarIndex`.
+   */
+  placement?: { levelId: LevelCode; starId: number }
   statsOverview: ProfileStatRow[]
   achievements: ProfileAchievement[]
   currentLevel: {

@@ -38,6 +38,8 @@ function rowKind(
 export interface ChecklistStarScreenProps {
   levelId: string
   starId: string
+  /** Gắn trong `/learning-path` (member): bỏ nút về hub, không full-bleed âm lề. */
+  embedInLearningPath?: boolean
 }
 
 function BannerStars({ filled, total = 5 }: { filled: number; total?: number }) {
@@ -77,7 +79,7 @@ function HeroProgressRing({ done, total }: { done: number; total: number }) {
   )
 }
 
-export function ChecklistStarScreen({ levelId, starId }: ChecklistStarScreenProps) {
+export function ChecklistStarScreen({ levelId, starId, embedInLearningPath = false }: ChecklistStarScreenProps) {
   const navigate = useNavigate()
   const { data, isLoading } = useLearningChecklist(levelId, starId)
   const sortedItems = useMemo(() => {
@@ -114,36 +116,45 @@ export function ChecklistStarScreen({ levelId, starId }: ChecklistStarScreenProp
   }
 
   return (
-    <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
-      <div className="page-toolbar-gradient">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-30 motion-safe:animate-[dash-shimmer_10s_ease-in-out_infinite] motion-reduce:animate-none"
-          style={{
-            background: 'linear-gradient(110deg, transparent 0%, rgb(79 70 229 / 0.08) 50%, transparent 90%)',
-            backgroundSize: '200% 100%',
-          }}
-        />
-        <div className="relative flex min-w-0 flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="whitespace-nowrap rounded-[10px] border border-primary-600/20 bg-white px-3.5 py-2 text-sm font-semibold text-primary-600 shadow-sm transition-colors hover:bg-primary-50 md:text-base"
-            onClick={() =>
-              void navigate({
-                to: '/learning-path',
-                search: {
-                  levelId: levelId as 'tap_su' | 'biet_viec' | 'duoc_viec' | 'dong_gop_ket_qua' | 'tuong',
-                  starId: Number(starId) || 1,
-                },
-              })
-            }
-          >
-            ← Học tập
-          </button>
+    <div
+      className={cn(
+        'flex flex-col bg-app-canvas text-base text-foreground',
+        embedInLearningPath
+          ? 'min-h-0'
+          : '-m-5 min-h-[calc(100vh-3rem)] md:-m-6 lg:-m-8',
+      )}
+    >
+      {!embedInLearningPath ? (
+        <div className="page-toolbar-gradient">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-30 motion-safe:animate-[dash-shimmer_10s_ease-in-out_infinite] motion-reduce:animate-none"
+            style={{
+              background: 'linear-gradient(110deg, transparent 0%, rgb(79 70 229 / 0.08) 50%, transparent 90%)',
+              backgroundSize: '200% 100%',
+            }}
+          />
+          <div className="relative flex min-w-0 flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="whitespace-nowrap rounded-[10px] border border-primary-600/20 bg-white px-3.5 py-2 text-sm font-semibold text-primary-600 shadow-sm transition-colors hover:bg-primary-50 md:text-base"
+              onClick={() =>
+                void navigate({
+                  to: '/learning-path',
+                  search: {
+                    levelId: levelId as 'tap_su' | 'biet_viec' | 'duoc_viec' | 'dong_gop_ket_qua' | 'tuong',
+                    starId: Number(starId) || 1,
+                  },
+                })
+              }
+            >
+              ← Học tập
+            </button>
+          </div>
+          <span className="relative rounded-full border border-primary-600/15 bg-primary-50 px-3 py-1 text-sm font-semibold text-primary-700">
+            Đang học
+          </span>
         </div>
-        <span className="relative rounded-full border border-primary-600/15 bg-primary-50 px-3 py-1 text-sm font-semibold text-primary-700">
-          Đang học
-        </span>
-      </div>
+      ) : null}
 
       <div className="page-shell">
         {isLoading ? (

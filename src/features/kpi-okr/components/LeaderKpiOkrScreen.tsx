@@ -1,4 +1,10 @@
 import { BarChart3, Target, Users } from 'lucide-react'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 
@@ -6,11 +12,11 @@ import { cn } from '@/lib/utils'
 export function LeaderKpiOkrScreen() {
   return (
     <div className="mx-auto max-w-[1000px] px-3 py-6 md:px-4">
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold tracking-tight text-game-soft-foreground md:text-3xl">
-          KPI & OKR trong team
+      <div className={cn('mb-6', PAGE_HEADER_SURFACE)}>
+        <h1 className={PAGE_HEADER_TITLE}>
+          <span className={PAGE_HEADER_GRADIENT}>KPI & OKR trong team</span>
         </h1>
-        <p className="mt-1.5 text-sm text-game-muted">
+        <p className={PAGE_HEADER_DESCRIPTION}>
           Phân bổ chỉ tiêu cho từng thành viên và theo dõi báo cáo hàng tháng.
         </p>
       </div>

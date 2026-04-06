@@ -11,6 +11,12 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { ProgressStar } from '@/components/shared/ProgressStar/ProgressStar'
 import { CARD_ENTRANCE_HOVER, STAR_POP, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -39,11 +45,11 @@ export function DashboardLearningZone() {
           'motion-safe:animate-[dash-fade-up_0.45s_ease-out_both] motion-reduce:animate-none'
         )}
       >
-        <div>
-          <h1 className="mb-1 text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
-            Dashboard Nhân sự
+        <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+          <h1 className={PAGE_HEADER_TITLE}>
+            <span className={PAGE_HEADER_GRADIENT}>Dashboard Nhân sự</span>
           </h1>
-          <p className="font-medium text-muted-foreground">
+          <p className={PAGE_HEADER_DESCRIPTION}>
             Chào mừng trở lại, {greetingName}. Theo dõi tiến độ thăng tiến của bạn.
           </p>
         </div>

@@ -8,6 +8,12 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -63,13 +69,11 @@ export function ManagerReviewSubmissionsScreen() {
     <ManagerScreenLayout hideHubNav hideToolbar>
       <div className="mb-8 flex flex-col gap-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="mb-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
-                Duyệt bài làm sau chấm
-              </span>
+          <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+            <h1 className={PAGE_HEADER_TITLE}>
+              <span className={PAGE_HEADER_GRADIENT}>Duyệt bài làm sau chấm</span>
             </h1>
-            <p className="max-w-xl text-sm text-muted-foreground">{pageSubtitle}</p>
+            <p className={PAGE_HEADER_DESCRIPTION}>{pageSubtitle}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-card px-3 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-primary/10">

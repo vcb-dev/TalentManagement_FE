@@ -2,6 +2,12 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Filter } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { CARD_ENTRANCE_HOVER, SECTION_FADE_UP, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
@@ -94,13 +100,11 @@ export function GraderExamListScreen() {
                 SECTION_FADE_UP
               )}
             >
-              <div>
-                <h1 className="mb-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                  <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
-                    Danh sách kỳ thi cần chấm
-                  </span>
+              <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+                <h1 className={PAGE_HEADER_TITLE}>
+                  <span className={PAGE_HEADER_GRADIENT}>Danh sách kỳ thi cần chấm</span>
                 </h1>
-                <p className="max-w-xl text-sm text-muted-foreground">
+                <p className={PAGE_HEADER_DESCRIPTION}>
                   <span className="font-semibold text-foreground">{pendingTotal} bài chờ chấm</span>
                   {' · '}
                   {displayName} ({roleLabel}) — được chỉ định chấm. Danh sách bài nộp theo lớp; mở chi tiết để

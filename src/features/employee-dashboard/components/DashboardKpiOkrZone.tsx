@@ -11,6 +11,11 @@ import {
   TrendingUp,
   Trophy,
 } from 'lucide-react'
+import {
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/auth'
@@ -118,15 +123,15 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
           'motion-safe:animate-[dash-fade-up_0.45s_ease-out_both] motion-reduce:animate-none'
         )}
       >
-        <div>
-          <h1 className="mb-1 text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
-            KPI · OKR · Báo cáo
+        <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+          <h1 className={PAGE_HEADER_TITLE}>
+            <span className={PAGE_HEADER_GRADIENT}>KPI · OKR · Báo cáo</span>
           </h1>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="mt-2 flex flex-wrap items-center gap-3">
             <span className="inline-flex rounded-md bg-primary/12 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-primary">
               Kỳ báo cáo
             </span>
-            <p className="font-medium text-muted-foreground">
+            <p className="text-sm font-medium leading-relaxed text-muted-foreground">
               {isLeader
                 ? `Phân bổ chỉ tiêu và báo cáo hàng tháng · ${monthLabelVi(now)}`
                 : `Chỉ tiêu được giao và báo cáo tiến độ hàng tháng · ${monthLabelVi(now)}`}

@@ -1,6 +1,12 @@
 import { Link } from '@tanstack/react-router'
 import { Award, CalendarPlus, FileQuestion, FileText, UserX } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -83,13 +89,11 @@ export function ManagerExamScheduleScreen() {
     <ManagerScreenLayout hideHubNav hideToolbar>
       <div className="mb-8 flex flex-col gap-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="mb-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              <span className="bg-gradient-to-r from-primary via-teal-700 to-violet-700 bg-clip-text text-transparent">
-                Lịch thi & chỉ định người chấm
-              </span>
+          <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+            <h1 className={PAGE_HEADER_TITLE}>
+              <span className={PAGE_HEADER_GRADIENT}>Lịch thi & chỉ định người chấm</span>
             </h1>
-            <p className="max-w-xl text-sm text-muted-foreground">{PAGE_SUBTITLE}</p>
+            <p className={PAGE_HEADER_DESCRIPTION}>{PAGE_SUBTITLE}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button

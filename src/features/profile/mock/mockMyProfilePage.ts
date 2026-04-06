@@ -2,6 +2,7 @@ import type { MyProfilePage } from '@/features/profile/types'
 
 /** Dữ liệu demo — 12_NV_HoSoCuaToi.html (Nguyễn Thành · Leader). Icon qua `iconKey` (Lucide), không dùng emoji trong chuỗi. */
 export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
+  placement: { levelId: 'duoc_viec', starId: 4 },
   statsOverview: [
     { iconKey: 'clipboard', label: 'Bài đã nộp T3', value: '18' },
     { iconKey: 'check', label: 'Tỉ lệ đạt', value: '83%', valueClass: 'text-[#166534]' },

@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Award, CheckCircle2, ChevronRight, Info, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
@@ -142,9 +147,11 @@ export function GraderPhanLopScreen({ examId, employeeId, passCount, totalCount 
             </span>
           </nav>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <h1 className="text-balance text-xl font-bold tracking-tight text-foreground md:text-2xl">
-              Xác nhận kết quả kỳ thi
-            </h1>
+            <div className={cn('min-w-0 flex-1 text-balance', PAGE_HEADER_SURFACE)}>
+              <h1 className={cn(PAGE_HEADER_TITLE, 'text-xl md:text-2xl')}>
+                <span className={PAGE_HEADER_GRADIENT}>Xác nhận kết quả kỳ thi</span>
+              </h1>
+            </div>
             <span className="w-fit rounded-[10px] bg-active-tag-bg px-2 py-0.5 text-xs font-medium text-active-tag-text">
               Bạn đang chấm với vai trò: {roleLabel} (được chỉ định)
             </span>
