@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { useMemo } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Bell, ChevronDown, LogOut, Star, UserCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -16,7 +15,6 @@ import {
 import { MemberLeaderHeaderNav } from '@/components/shared/AppNav/MemberLeaderHeaderNav'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Sidebar } from '@/components/shared/Sidebar'
-import { demoGamificationFromSeed } from '@/lib/demoGamification'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { cn } from '@/lib/utils'
@@ -32,8 +30,6 @@ export function AppShell({ children, title }: AppShellProps) {
   const { mutate: logout, isPending: logoutPending } = useLogout()
   const displayName = user?.name ?? 'Người dùng'
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
-  const seed = user?.email ?? user?.name ?? 'demo'
-  const { points } = useMemo(() => demoGamificationFromSeed(seed), [seed])
   /** Không dùng sidebar — điều hướng bằng header ngang. */
   const compactNavNoSidebar =
     user?.role === 'MEMBER' ||
@@ -46,9 +42,6 @@ export function AppShell({ children, title }: AppShellProps) {
       <div className="hidden items-center gap-1 rounded-full bg-rank-bg px-2.5 py-1 text-[13px] font-semibold text-rank-text sm:flex">
         <Star className="h-4 w-4 shrink-0 fill-tier-gold text-tier-gold" strokeWidth={0} />
         <span>Hạng Vàng</span>
-      </div>
-      <div className="hidden items-center gap-1 rounded-full bg-points-bg px-2.5 py-1 text-[13px] font-semibold text-white md:flex">
-        <span>{points.toLocaleString('vi-VN')} pts</span>
       </div>
       <Button
         type="button"

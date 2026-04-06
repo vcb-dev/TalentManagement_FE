@@ -1,6 +1,5 @@
-import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight, LogOut, MessageCircle } from 'lucide-react'
-import { useLogout } from '@/features/auth/hooks'
+import { Link, useRouterState } from '@tanstack/react-router'
+import { ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react'
 import {
   BOD_ITEMS,
   HR_ADMIN_ITEMS,
@@ -98,22 +97,12 @@ function SectionLabel({ children, collapsed }: { children: string; collapsed: bo
 
 export function Sidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const navigate = useNavigate()
-  const { mutate: logout, isPending: logoutPending } = useLogout()
   const sidebarOpen = useUiStore((s) => s.sidebarOpen)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
   const user = useAuthStore((s) => s.user)
   const collapsed = !sidebarOpen
 
   if (user?.role === 'MEMBER' || user?.role === 'LEADER') return null
-
-  const handleLogout = () => {
-    logout(undefined, {
-      onSuccess: () => {
-        void navigate({ to: '/login' })
-      },
-    })
-  }
 
   const displayName = user?.name ?? 'Người dùng'
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
@@ -204,24 +193,6 @@ export function Sidebar() {
             </div>
           </div>
         </nav>
-
-        <div className="shrink-0 border-t border-gray-200 px-2 pb-4 pt-2">
-          <button
-            type="button"
-            disabled={logoutPending}
-            onClick={handleLogout}
-            title={collapsed ? 'Đăng xuất' : undefined}
-            className={cn(
-              'flex w-full items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors',
-              collapsed ? 'justify-center px-0' : 'px-3',
-              'text-gray-600 hover:bg-red-50 hover:text-red-700',
-              logoutPending && 'pointer-events-none opacity-60'
-            )}
-          >
-            <LogOut className="h-[18px] w-[18px] shrink-0 text-gray-500" strokeWidth={2} />
-            {!collapsed ? <span>Đăng xuất</span> : null}
-          </button>
-        </div>
       </div>
     </aside>
   )
