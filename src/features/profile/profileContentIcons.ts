@@ -1,0 +1,66 @@
+import type { LucideIcon } from 'lucide-react'
+import {
+  AlertTriangle,
+  Award,
+  BookOpen,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  ClipboardList,
+  CircleDot,
+  Crown,
+  Flag,
+  Gem,
+  GraduationCap,
+  Medal,
+  Sparkles,
+  Swords,
+  Trophy,
+  Users,
+  Zap,
+} from 'lucide-react'
+
+/** Khóa icon nội dung hồ sơ — map sang Lucide (cùng bộ icon dự án). */
+export const PROFILE_ICON_KEYS = [
+  'clipboard',
+  'check',
+  'graduation',
+  'calendar',
+  'users',
+  'zap',
+  'trophy',
+  'crown',
+  'award',
+  'swords',
+  'medal',
+  'gem',
+  'book',
+  'sparkles',
+  'flag',
+  'alertTriangle',
+  'building',
+  'circleDot',
+] as const
+
+export type ProfileIconKey = (typeof PROFILE_ICON_KEYS)[number]
+
+export const PROFILE_CONTENT_ICONS: Record<ProfileIconKey, LucideIcon> = {
+  clipboard: ClipboardList,
+  check: CheckCircle2,
+  graduation: GraduationCap,
+  calendar: Calendar,
+  users: Users,
+  zap: Zap,
+  trophy: Trophy,
+  crown: Crown,
+  award: Award,
+  swords: Swords,
+  medal: Medal,
+  gem: Gem,
+  book: BookOpen,
+  sparkles: Sparkles,
+  flag: Flag,
+  alertTriangle: AlertTriangle,
+  building: Building2,
+  circleDot: CircleDot,
+}

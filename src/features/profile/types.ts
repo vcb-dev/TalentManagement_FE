@@ -1,5 +1,8 @@
+import type { LevelCode } from '@/lib/constants'
+import type { ProfileIconKey } from './profileContentIcons'
+
 export interface ProfileAchievement {
-  icon: string
+  iconKey: ProfileIconKey
   name: string
   sub: string
   earned: boolean
@@ -9,6 +12,7 @@ export interface ProfileStatRow {
   label: string
   value: string
   valueClass?: string
+  iconKey?: ProfileIconKey
 }
 
 export interface ProfileLevelHistoryRow {
@@ -16,6 +20,7 @@ export interface ProfileLevelHistoryRow {
   title: string
   meta: string
   tierLabel: string
+  tierIconKey?: ProfileIconKey
   tierClass: string
   dimmed?: boolean
 }
@@ -23,6 +28,7 @@ export interface ProfileLevelHistoryRow {
 export interface ProfileExamCard {
   title: string
   badge: string
+  badgeIconKey?: ProfileIconKey
   badgeClass: string
   cardClass: string
   stats: { label: string; value: string; valueClass?: string }[]
@@ -31,6 +37,7 @@ export interface ProfileExamCard {
 
 export interface ProfileTimelineItem {
   title: string
+  titleIconKey?: ProfileIconKey
   meta: string
   badge: string
   badgeClass: string
@@ -46,11 +53,18 @@ export interface ProfileWorkSummaryRow {
 }
 
 export interface MyProfilePage {
+  /**
+   * Mã cấp & sao do quản lý gán — dùng để điều hướng checklist lộ trình.
+   * Khi không có (API cũ), client suy ra từ `currentLevel.title` và `currentStarIndex`.
+   */
+  placement?: { levelId: LevelCode; starId: number }
   statsOverview: ProfileStatRow[]
   achievements: ProfileAchievement[]
   currentLevel: {
     title: string
+    titleIconKey?: ProfileIconKey
     tierLabel: string
+    tierIconKey?: ProfileIconKey
     progressLine: string
     filledStars: number
     totalStars: number

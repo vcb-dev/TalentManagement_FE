@@ -8,10 +8,13 @@ const defaultFilters: EmployeeFilters = { page: 1, pageSize: 20 }
 export type UseEmployeeTableOptions = {
   /** Điều hướng Xem/Sửa tới màn Quản lý (team) thay vì HR. */
   managerScope?: boolean
+  /** Điều hướng tới màn Leader (`/leader/team/...`). */
+  leaderScope?: boolean
 }
 
 export function useEmployeeTable(initial?: Partial<EmployeeFilters>, options?: UseEmployeeTableOptions) {
   const managerScope = options?.managerScope === true
+  const leaderScope = options?.leaderScope === true
   const [filters, setFilters] = useState<EmployeeFilters>({ ...defaultFilters, ...initial })
   const { data, isLoading } = useEmployees(filters)
   const deactivate = useDeactivateEmployee()
@@ -21,28 +24,33 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>, options?: U
     deactivate.mutate(id)
   }
 
+  const teamSearch = filters.teamId ? { teamId: filters.teamId } : {}
+
+  const toTeamEmployee = (id: string) =>
+    leaderScope
+      ? ({
+          to: '/leader/team/$employeeId',
+          params: { employeeId: id },
+          search: teamSearch,
+        } as const)
+      : ({
+          to: '/manager/team/$employeeId',
+          params: { employeeId: id },
+          search: teamSearch,
+        } as const)
+
   return {
     employees: data?.data ?? [],
     isLoading,
     pagination: { page: filters.page, pageSize: filters.pageSize, total: data?.total ?? 0 },
     onView: (id: string) =>
       void navigate(
-        managerScope
-          ? {
-              to: '/manager/team/$employeeId',
-              params: { employeeId: id },
-              search: filters.teamId ? { teamId: filters.teamId } : {},
-            }
-          : { to: '/hr-admin/$employeeId', params: { employeeId: id } }
+        managerScope || leaderScope ? toTeamEmployee(id) : { to: '/hr-admin/$employeeId', params: { employeeId: id } }
       ),
     onEdit: (id: string) =>
       void navigate(
-        managerScope
-          ? {
-              to: '/manager/team/$employeeId',
-              params: { employeeId: id },
-              search: filters.teamId ? { teamId: filters.teamId } : {},
-            }
+        managerScope || leaderScope
+          ? toTeamEmployee(id)
           : {
               to: '/hr-admin/$employeeId',
               params: { employeeId: id },

@@ -3,9 +3,7 @@ import { cn } from '@/lib/utils'
 
 /** Nền shimmer — class `.skeleton-shimmer` trong index.css */
 export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className={cn('skeleton-shimmer rounded-md', className)} {...props} />
-  )
+  return <div className={cn('skeleton-shimmer rounded-md', className)} {...props} />
 }
 
 export function SkeletonAvatar({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
@@ -50,22 +48,36 @@ export function SkeletonApprovalCardList({ count = 5 }: { count?: number }) {
   )
 }
 
-/** Lưới thẻ nhân viên (ảnh + vài dòng) */
+/** Lưới thẻ nhân viên — bố cục giống EmployeeCard (mock HTML) */
 export function SkeletonEmployeeCard({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        'flex min-h-[240px] flex-col items-center rounded-2xl border border-border/90 bg-card p-4 shadow-[var(--shadow-card)]',
+        'flex min-h-[260px] flex-col rounded-2xl border border-border/90 bg-card p-5 shadow-sm',
         className
       )}
       {...props}
     >
-      <Skeleton className="mb-3 h-[72px] w-[72px] rounded-[20px]" />
-      <Skeleton className="mb-2 h-4 w-3/4 max-w-[140px] rounded" />
-      <Skeleton className="mb-4 h-3 w-1/2 max-w-[100px] rounded" />
-      <div className="mt-auto w-full space-y-2 border-t border-border/60 pt-3">
-        <Skeleton className="mx-auto h-3 w-full rounded" />
-        <Skeleton className="mx-auto h-3 w-4/5 rounded" />
+      <div className="mb-5 flex justify-between gap-3">
+        <Skeleton className="h-[5.25rem] w-[5.25rem] shrink-0 rounded-2xl sm:h-[5.75rem] sm:w-[5.75rem]" />
+        <div className="flex flex-col items-end gap-2">
+          <Skeleton className="h-5 w-[6.5rem] rounded-md" />
+          <Skeleton className="h-5 w-20 rounded-md" />
+          <Skeleton className="h-4 w-24 rounded" />
+        </div>
+      </div>
+      <div className="mb-5 space-y-2">
+        <Skeleton className="h-5 w-3/4 rounded" />
+        <Skeleton className="h-3.5 w-1/2 rounded" />
+        <Skeleton className="h-3.5 w-2/3 rounded" />
+      </div>
+      <div className="mb-5 flex items-center gap-2">
+        <Skeleton className="h-1.5 flex-1 rounded-full" />
+        <Skeleton className="h-4 w-8 shrink-0 rounded" />
+      </div>
+      <div className="mt-auto flex gap-2">
+        <Skeleton className="h-9 min-h-9 flex-1 rounded-lg" />
+        <Skeleton className="h-9 w-10 shrink-0 rounded-lg" />
       </div>
     </div>
   )
@@ -74,7 +86,7 @@ export function SkeletonEmployeeCard({ className, ...props }: HTMLAttributes<HTM
 export function SkeletonEmployeeCardGrid({ count = 8 }: { count?: number }) {
   return (
     <div
-      className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+      className="grid gap-4 gap-y-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
       role="status"
       aria-busy
       aria-label="Đang tải danh sách nhân viên"

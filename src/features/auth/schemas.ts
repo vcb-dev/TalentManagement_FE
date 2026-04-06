@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const roleSchema = z.enum(['MEMBER', 'MANAGER', 'HR_ADMIN', 'TEACHER', 'BOD'])
+const roleSchema = z.enum(['MEMBER', 'LEADER', 'MANAGER', 'HR_ADMIN', 'TEACHER', 'BOD'])
 
 const permissionSchema = z.object({
   action: z.enum(['view', 'create', 'edit', 'deactivate', 'grade', 'approve', 'classify']),
@@ -14,6 +14,8 @@ const permissionSchema = z.object({
     'checklist',
     'submission',
     'kpi',
+    'okr',
+    'monthly_report',
   ]),
 })
 
