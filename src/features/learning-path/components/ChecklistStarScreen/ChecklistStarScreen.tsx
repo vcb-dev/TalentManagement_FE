@@ -1,9 +1,15 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useLearningChecklist, useStarSubmissions, useSubmitEvidence } from '@/features/learning-path/hooks'
+import { ChevronRight, Clock, CloudUpload, ListChecks, Lock, Paperclip, Trophy } from 'lucide-react'
+import { StarEmblem } from '@/components/icons/StarEmblem'
+import {
+  useLearningChecklist,
+  useStarSubmissions,
+  useSubmitEvidence,
+} from '@/features/learning-path/hooks'
 import { useChecklistItem } from '@/features/learning-path/components/ChecklistItem/useChecklistItem'
 import { Skeleton, SkeletonApprovalCardRow } from '@/components/ui/skeleton'
-import { CARD_ENTRANCE_HOVER, PROGRESS_BAR_FILL, staggerStyle } from '@/lib/cardMotion'
+import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 
 const LEVEL_VI: Record<string, string> = {
@@ -16,11 +22,14 @@ const LEVEL_VI: Record<string, string> = {
 
 /** Phụ đề theo thứ tự nhiệm vụ (mock 05_NV_Checklist). */
 const ROW_SUB: Record<number, { done?: string; current?: string; locked?: string }> = {
-  1: { done: 'Hoàn thành 15/03/2026 · Người chấm đã duyệt' },
+  1: {
+    done: 'Hoàn thành 15/03/2026 · Người chấm đã duyệt',
+    current: 'Tìm hiểu chi tiết các bước vận hành theo quy định nội bộ.',
+  },
   2: { done: 'Đạt 8.5/10 · 18/03/2026' },
   3: { current: 'Nhiệm vụ hiện tại · Upload file kết quả' },
-  4: { locked: '🔒 Hoàn thành nhiệm vụ trước mới mở' },
-  5: { locked: '🔒 Chưa mở' },
+  4: { locked: 'Hoàn thành nhiệm vụ trước để mở' },
+  5: { locked: 'Chưa mở' },
 }
 
 function rowKind(
@@ -37,9 +46,66 @@ function rowKind(
 export interface ChecklistStarScreenProps {
   levelId: string
   starId: string
+  /** Gắn trong `/learning-path` (member): bỏ nút về hub, không full-bleed âm lề. */
+  embedInLearningPath?: boolean
 }
 
-export function ChecklistStarScreen({ levelId, starId }: ChecklistStarScreenProps) {
+function BannerStars({ filled, total = 5 }: { filled: number; total?: number }) {
+  return (
+    <div className="flex gap-0.5" aria-hidden>
+      {Array.from({ length: total }, (_, i) => (
+        <StarEmblem
+          key={i}
+          variant={i < filled ? 'filled' : 'muted'}
+          className={cn('h-4 w-4', i < filled ? 'opacity-100 drop-shadow-sm' : 'opacity-30')}
+        />
+      ))}
+    </div>
+  )
+}
+
+function HeroProgressRing({ done, total }: { done: number; total: number }) {
+  const t = Math.max(total || 1, 1)
+  const pct = Math.min(1, Math.max(0, done / t))
+  const r = 20
+  const c = 2 * Math.PI * r
+  const offset = c * (1 - pct)
+  return (
+    <svg
+      className="pointer-events-none absolute inset-0 h-12 w-12 -rotate-90"
+      viewBox="0 0 48 48"
+      aria-hidden
+    >
+      <circle
+        className="text-white/20"
+        cx="24"
+        cy="24"
+        fill="none"
+        r={r}
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <circle
+        className="text-white transition-[stroke-dashoffset] duration-500 ease-out"
+        cx="24"
+        cy="24"
+        fill="none"
+        r={r}
+        stroke="currentColor"
+        strokeWidth="4"
+        strokeDasharray={c}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+export function ChecklistStarScreen({
+  levelId,
+  starId,
+  embedInLearningPath = false,
+}: ChecklistStarScreenProps) {
   const navigate = useNavigate()
   const { data, isLoading } = useLearningChecklist(levelId, starId)
   const sortedItems = useMemo(() => {
@@ -56,9 +122,10 @@ export function ChecklistStarScreen({ levelId, starId }: ChecklistStarScreenProp
   const levelName = LEVEL_VI[levelId] ?? levelId
   const total = sortedItems.length
   const doneCount = sortedItems.filter((i) => checklist.isCompleted(i.id)).length
-  const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0
 
-  const currentItem = sortedItems.find((i) => checklist.isUnlocked(i.id) && !checklist.isCompleted(i.id))
+  const currentItem = sortedItems.find(
+    (i) => checklist.isUnlocked(i.id) && !checklist.isCompleted(i.id)
+  )
 
   const onPickFile = () => fileRef.current?.click()
 
@@ -77,49 +144,63 @@ export function ChecklistStarScreen({ levelId, starId }: ChecklistStarScreenProp
   }
 
   return (
-    <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
-      <div className="page-toolbar-gradient">
-        <div className="pointer-events-none absolute inset-0 opacity-30 motion-safe:animate-[dash-shimmer_10s_ease-in-out_infinite] motion-reduce:animate-none" style={{ background: 'linear-gradient(110deg, transparent 0%, hsl(var(--primary) / 0.1) 50%, transparent 90%)', backgroundSize: '200% 100%' }} />
-        <div className="relative flex min-w-0 flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="whitespace-nowrap rounded-lg border border-primary/25 bg-card/95 px-3.5 py-2 text-sm font-semibold text-primary shadow-sm backdrop-blur-sm transition-all motion-safe:hover:border-primary/40 motion-safe:hover:bg-primary/10 motion-safe:hover:shadow-md md:text-base"
-            onClick={() =>
-              void navigate({
-                to: '/learning-path',
-                search: {
-                  levelId: levelId as 'tap_su' | 'biet_viec' | 'duoc_viec' | 'dong_gop_ket_qua' | 'tuong',
-                  starId: Number(starId) || 1,
-                },
-              })
-            }
-          >
-            ← Học tập
-          </button>
-          <span className="text-sm text-muted-foreground md:text-base">
-            {levelName} /{' '}
-            <b className="bg-gradient-to-r from-primary to-violet-700 bg-clip-text text-transparent">Sao {starId}</b>
+    <div
+      className={cn(
+        'flex flex-col bg-app-canvas text-base text-foreground',
+        embedInLearningPath ? 'min-h-0' : '-m-5 min-h-[calc(100vh-3rem)] md:-m-6 lg:-m-8'
+      )}
+    >
+      {!embedInLearningPath ? (
+        <div className="page-toolbar-gradient">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-30 motion-safe:animate-[dash-shimmer_10s_ease-in-out_infinite] motion-reduce:animate-none"
+            style={{
+              background:
+                'linear-gradient(110deg, transparent 0%, rgb(79 70 229 / 0.08) 50%, transparent 90%)',
+              backgroundSize: '200% 100%',
+            }}
+          />
+          <div className="relative flex min-w-0 flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="whitespace-nowrap rounded-[10px] border border-primary-600/20 bg-white px-3.5 py-2 text-sm font-semibold text-primary-600 shadow-sm transition-colors hover:bg-primary-50 md:text-base"
+              onClick={() =>
+                void navigate({
+                  to: '/learning-path',
+                  search: {
+                    levelId: levelId as
+                      | 'tap_su'
+                      | 'biet_viec'
+                      | 'duoc_viec'
+                      | 'dong_gop_ket_qua'
+                      | 'tuong',
+                    starId: Number(starId) || 1,
+                  },
+                })
+              }
+            >
+              ← Học tập
+            </button>
+          </div>
+          <span className="relative rounded-full border border-primary-600/15 bg-primary-50 px-3 py-1 text-sm font-semibold text-primary-700">
+            Đang học
           </span>
         </div>
-        <span className="relative rounded-full border border-teal-500/30 bg-gradient-to-r from-teal-500/15 to-primary/12 px-3 py-1 text-sm font-bold text-teal-900 shadow-sm ring-1 ring-teal-500/15 dark:text-teal-100">
-          Đang học
-        </span>
-      </div>
+      ) : null}
 
       <div className="page-shell">
         {isLoading ? (
-          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 lg:grid-cols-[1fr_minmax(280px,320px)]">
-            <div className="space-y-4">
+          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-12">
+            <div className="space-y-4 lg:col-span-7">
               <div>
                 <Skeleton className="mb-2 h-5 w-48 rounded-md" />
-                <Skeleton className="mb-1.5 h-2 w-full max-w-md rounded-full" />
-                <Skeleton className="h-4 w-32 rounded" />
+                <Skeleton className="mb-4 h-40 w-full max-w-3xl rounded-3xl" />
               </div>
-              {Array.from({ length: 5 }, (_, i) => (
+              {Array.from({ length: 4 }, (_, i) => (
                 <SkeletonApprovalCardRow key={i} />
               ))}
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4 lg:col-span-5">
               <div className="overflow-hidden rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
                 <Skeleton className="mb-3 h-10 w-full rounded-lg" />
                 <Skeleton className="h-24 w-full rounded-lg" />
@@ -127,146 +208,228 @@ export function ChecklistStarScreen({ levelId, starId }: ChecklistStarScreenProp
             </div>
           </div>
         ) : (
-          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 lg:grid-cols-[1fr_minmax(280px,320px)]">
-            <div>
-              <div className="mb-4">
-                <div className="mb-1.5 text-base font-semibold text-foreground md:text-lg">
-                  Sao {starId} — {levelName}
-                </div>
-                <div className="group/pb mb-1.5 h-2 overflow-hidden rounded-full bg-primary/15 transition-[box-shadow] duration-200 hover:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.2)]">
-                  <div
-                    className={cn(
-                      'h-full rounded-full bg-gradient-to-r from-primary via-sky-600 to-accent',
-                      PROGRESS_BAR_FILL
-                    )}
-                    style={{ width: `${pct}%`, transformOrigin: '0 50%', animationDelay: '80ms' }}
-                  />
-                </div>
-                <div className="text-sm text-muted-foreground md:text-base">
-                  {doneCount}/{total} nhiệm vụ hoàn thành
-                </div>
-              </div>
+          <div className="mx-auto max-w-6xl">
+            <nav className="mb-6 flex flex-wrap items-center gap-2 text-[13px]">
+              <span className="font-bold uppercase tracking-widest text-gray-500">{levelName}</span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden />
+              <span className="font-bold uppercase tracking-widest text-primary-600">
+                Sao {starId}
+              </span>
+            </nav>
 
-              <div className="space-y-2">
-                {sortedItems.map((it) => {
-                  const kind = rowKind(sortedItems, it.id, checklist)
-                  const sub = ROW_SUB[it.order]
-                  return (
-                    <ChecklistRow
-                      key={it.id}
-                      title={it.title}
-                      kind={kind}
-                      subtitle={
-                        kind === 'done'
-                          ? sub?.done
-                          : kind === 'current'
-                            ? sub?.current
-                            : sub?.locked ?? '🔒 Chưa mở'
-                      }
-                      primaryAction={
-                        kind === 'done'
-                          ? it.order === 2
-                            ? { label: 'Xem kết quả', onClick: () => {} }
-                            : { label: 'Xem bằng chứng', onClick: () => {} }
-                          : kind === 'current'
-                            ? { label: 'Nộp bằng chứng', onClick: onPickFile }
-                            : undefined
-                      }
+            <div className="relative mb-8 overflow-hidden rounded-3xl vcb-banner-gradient px-6 py-8 text-white shadow-xl sm:px-8">
+              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+              <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0 space-y-2">
+                  <div className="mb-2 flex flex-wrap items-center gap-3">
+                    <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-tighter text-white">
+                      Level 1
+                    </span>
+                    <BannerStars filled={Math.min(doneCount, 5)} total={5} />
+                  </div>
+                  <h1 className="text-[22px] font-extrabold leading-tight tracking-tight">
+                    Sao {starId} — {levelName}
+                  </h1>
+                  <p className="max-w-xl text-sm font-medium text-white/80">
+                    Bắt đầu hành trình chinh phục kỹ năng chuyên môn tại VCB.
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-white/10 bg-white/10 px-6 py-4 backdrop-blur-md">
+                  <div className="text-right">
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-white/60">
+                      Tiến độ
+                    </span>
+                    <span className="text-[36px] font-bold leading-none tabular-nums text-white">
+                      {doneCount}/{total || 5}
+                    </span>
+                  </div>
+                  <div className="relative flex h-12 w-12 items-center justify-center rounded-full border-4 border-white/20">
+                    <ListChecks
+                      className="relative z-[1] h-5 w-5 text-white"
+                      strokeWidth={2}
+                      aria-hidden
                     />
-                  )
-                })}
+                    <HeroProgressRing done={doneCount} total={total || 5} />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <div
-                className={cn(
-                  'overflow-hidden rounded-xl border border-teal-200/60 bg-card shadow-[var(--shadow-card)] ring-1 ring-teal-100/40',
-                  CARD_ENTRANCE_HOVER
-                )}
-                style={staggerStyle(0)}
-              >
-                <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-primary/8 to-transparent px-4 py-3.5 text-sm font-semibold text-teal-950 md:text-base">
-                  Nộp bằng chứng
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+              <div className="space-y-4 lg:col-span-7">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-bold text-gray-900">Danh sách nhiệm vụ</h2>
+                  <span className="rounded-full bg-primary-100 px-3 py-1 text-[12px] font-semibold text-primary-700">
+                    Đang thực hiện
+                  </span>
                 </div>
-                <div className="p-4">
-                  <div className="mb-3 rounded-[9px] border-2 border-dashed border-primary/35 bg-gradient-to-br from-primary/[0.07] via-teal-50/80 to-cyan-50/50 px-4 py-6 text-center transition-colors motion-safe:hover:border-primary/50">
-                    <div className="mb-2 text-[32px] opacity-35">📁</div>
-                    <div className="text-sm font-medium text-foreground/90 md:text-base">Kéo thả file vào đây</div>
-                    <div className="mt-1 text-xs text-muted-foreground md:text-sm">PDF, DOCX, PNG, MP4 · Tối đa 50MB</div>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4"
-                      onChange={onFileChange}
-                    />
-                    <button
-                      type="button"
-                      className="mt-3 rounded-lg border border-button bg-button px-4 py-2 text-sm font-medium text-button-foreground hover:opacity-90 disabled:opacity-50"
-                      onClick={onPickFile}
-                      disabled={!currentItem || submit.isPending}
-                    >
-                      Chọn file
-                    </button>
-                  </div>
-                  <div className="mb-3 flex flex-col gap-1">
-                    <label className="text-sm font-semibold text-foreground/85 md:text-base" htmlFor="evidence-note">
-                      Mô tả bằng chứng
-                    </label>
-                    <textarea
-                      id="evidence-note"
-                      className="min-h-[72px] w-full resize-y rounded-lg border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 md:text-base"
-                      placeholder="Mô tả ngắn về bằng chứng..."
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    className="w-full rounded-lg border border-button bg-button py-2.5 text-sm font-medium text-button-foreground hover:opacity-90 disabled:opacity-50 md:text-base"
-                    disabled={!currentItem || submit.isPending}
-                    onClick={onPickFile}
+                <div className="space-y-4">
+                  {sortedItems.map((it) => {
+                    const kind = rowKind(sortedItems, it.id, checklist)
+                    const sub = ROW_SUB[it.order]
+                    return (
+                      <ChecklistTaskCard
+                        key={it.id}
+                        title={it.title}
+                        kind={kind}
+                        showMentor={kind === 'current' && it.order === 1}
+                        subtitle={
+                          kind === 'done'
+                            ? sub?.done
+                            : kind === 'current'
+                              ? sub?.current
+                              : (sub?.locked ?? 'Hoàn thành nhiệm vụ trước để mở')
+                        }
+                        primaryAction={
+                          kind === 'done'
+                            ? it.order === 2
+                              ? { label: 'Xem kết quả', onClick: () => {} }
+                              : { label: 'Xem bằng chứng', onClick: () => {} }
+                            : kind === 'current'
+                              ? { label: 'Nộp bằng chứng', onClick: onPickFile }
+                              : undefined
+                        }
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="lg:col-span-5">
+                <div className="sticky top-24 flex flex-col gap-6">
+                  <div
+                    className={cn(
+                      'rounded-[12px] bg-white p-6 shadow-lg ring-1 ring-gray-100',
+                      CARD_ENTRANCE_HOVER
+                    )}
+                    style={staggerStyle(0)}
                   >
-                    {submit.isPending ? 'Đang gửi…' : 'Nộp bài'}
-                  </button>
-                </div>
-              </div>
-
-              <div
-                className={cn(
-                  'overflow-hidden rounded-xl border border-indigo-200/55 bg-card shadow-[var(--shadow-card)] ring-1 ring-indigo-100/40',
-                  CARD_ENTRANCE_HOVER
-                )}
-                style={staggerStyle(1)}
-              >
-                <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-500/12 via-violet-500/8 to-transparent px-4 py-3.5 text-sm font-semibold text-indigo-950 md:text-base">
-                  Bài đã nộp gần nhất
-                </div>
-                <div className="divide-y divide-border p-4 text-sm md:text-base">
-                  {(submissions ?? []).slice(0, 5).map((s) => (
-                    <div key={s.id} className="py-2 first:pt-0 last:pb-0">
-                      <div className="font-semibold text-foreground">{s.fileName}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(s.createdAt).toLocaleDateString('vi-VN')} ·{' '}
-                        <span className="font-medium text-primary">
-                          {s.status === 'ACCEPTED' ? 'Đã duyệt' : s.status === 'PENDING' ? 'Chờ duyệt' : 'Từ chối'}
-                        </span>
+                    <h3 className="mb-6 flex items-center gap-2 text-lg font-bold text-gray-900">
+                      <Paperclip
+                        className="h-5 w-5 shrink-0 text-primary-600"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                      Nộp bằng chứng
+                    </h3>
+                    <div className="space-y-6">
+                      <button
+                        type="button"
+                        className="group w-full cursor-pointer rounded-lg border-2 border-dashed border-primary-200 bg-primary-50/50 p-8 text-center transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={onPickFile}
+                        disabled={!currentItem || submit.isPending}
+                      >
+                        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110">
+                          <CloudUpload
+                            className="h-6 w-6 text-primary-600"
+                            strokeWidth={2}
+                            aria-hidden
+                          />
+                        </div>
+                        <p className="text-sm font-bold text-primary-700">Tải tệp lên</p>
+                        <p className="mt-1 text-[13px] text-primary-600/80">
+                          Hoặc nhấn để chọn từ máy tính (Tối đa 25MB)
+                        </p>
+                        <input
+                          ref={fileRef}
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4"
+                          onChange={onFileChange}
+                        />
+                      </button>
+                      <div>
+                        <label
+                          className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-gray-500"
+                          htmlFor="evidence-note"
+                        >
+                          Mô tả
+                        </label>
+                        <textarea
+                          id="evidence-note"
+                          className="w-full resize-y rounded-lg border-0 bg-primary-50/40 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600"
+                          placeholder="Mô tả ngắn gọn về tài liệu bạn nộp…"
+                          rows={4}
+                          value={note}
+                          onChange={(e) => setNote(e.target.value)}
+                        />
                       </div>
+                      <button
+                        type="button"
+                        className="w-full rounded-lg bg-gradient-to-br from-primary-600 to-primary-700 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all hover:shadow-primary-600/35 active:scale-[0.98] disabled:opacity-50"
+                        disabled={!currentItem || submit.isPending}
+                        onClick={onPickFile}
+                      >
+                        {submit.isPending ? 'Đang gửi…' : 'Nộp bài'}
+                      </button>
                     </div>
-                  ))}
-                  {(!submissions || submissions.length === 0) && (
-                    <div className="text-muted-foreground">Chưa có bài nộp.</div>
-                  )}
+                  </div>
+
+                  <div
+                    className={cn(
+                      'rounded-[12px] border border-primary-100/50 bg-primary-50/50 p-6 text-center',
+                      CARD_ENTRANCE_HOVER
+                    )}
+                    style={staggerStyle(1)}
+                  >
+                    <h4 className="mb-4 text-[11px] font-bold uppercase tracking-widest text-primary-600">
+                      Bài đã nộp gần nhất
+                    </h4>
+                    {(submissions ?? []).length > 0 ? (
+                      <ul className="divide-y divide-primary-100/60 text-left text-sm">
+                        {(submissions ?? []).slice(0, 5).map((s) => (
+                          <li key={s.id} className="py-3 first:pt-0 last:pb-0">
+                            <div className="font-semibold text-gray-900">{s.fileName}</div>
+                            <div className="mt-0.5 text-[13px] text-gray-500">
+                              {new Date(s.createdAt).toLocaleDateString('vi-VN')} ·{' '}
+                              <span className="font-medium text-primary-600">
+                                {s.status === 'ACCEPTED'
+                                  ? 'Đã duyệt'
+                                  : s.status === 'PENDING'
+                                    ? 'Chờ duyệt'
+                                    : 'Từ chối'}
+                              </span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="py-4">
+                        <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/60">
+                          <Clock className="h-8 w-8 text-gray-300" strokeWidth={1.5} aria-hidden />
+                        </div>
+                        <p className="text-sm font-medium text-gray-600">Chưa có bài nộp</p>
+                        <p className="mt-1 text-[13px] text-gray-500">
+                          Các bài nộp của bạn sẽ xuất hiện tại đây sau khi được hệ thống ghi nhận.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="group relative overflow-hidden rounded-2xl bg-reward-bg p-6 shadow-[var(--shadow-card)]">
+                    <span className="inline-block rounded-full bg-warning/20 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-warning">
+                      Reward preview
+                    </span>
+                    <h4 className="mt-3 text-lg font-bold text-gray-900">Huy hiệu Sao {starId}</h4>
+                    <p className="mt-2 max-w-[18rem] text-sm text-gray-700">
+                      Hoàn thành {total || 5} nhiệm vụ để nhận ngay huy hiệu Bronze Elite và +500 XP
+                      vào Skill Matrix của bạn.
+                    </p>
+                    <Trophy
+                      className="pointer-events-none absolute -bottom-2 -right-2 h-24 w-24 text-warning/20 transition-transform duration-500 group-hover:scale-110"
+                      strokeWidth={1.25}
+                      aria-hidden
+                    />
+                  </div>
+
+                  <Link
+                    to="/dashboard"
+                    className="block text-center text-sm font-semibold text-primary-600 hover:underline"
+                  >
+                    ← Về Dashboard học tập
+                  </Link>
                 </div>
               </div>
-
-              <Link
-                to="/dashboard"
-                className="text-center text-sm font-semibold text-primary hover:underline md:text-base"
-              >
-                ← Về Dashboard học tập
-              </Link>
             </div>
           </div>
         )}
@@ -275,69 +438,113 @@ export function ChecklistStarScreen({ levelId, starId }: ChecklistStarScreenProp
   )
 }
 
-function ChecklistRow({
+function ChecklistTaskCard({
   title,
   kind,
   subtitle,
   primaryAction,
+  showMentor,
 }: {
   title: string
   kind: 'done' | 'current' | 'locked'
   subtitle?: string
   primaryAction?: { label: string; onClick: () => void }
+  showMentor?: boolean
 }) {
-  const wrap = cn(
-    'flex items-start gap-3 rounded-[9px] border p-3.5 motion-safe:transition-[transform,box-shadow] motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md md:p-4',
-    kind === 'done' && 'border-emerald-200/80 bg-emerald-50/85',
-    kind === 'current' &&
-      'border-primary/35 bg-gradient-to-r from-primary/12 via-sky-500/10 to-violet-500/8 shadow-[0_2px_12px_hsl(var(--primary)/0.12)]',
-    kind === 'locked' && 'pointer-events-none border-slate-200/60 bg-slate-50/80 opacity-45'
-  )
+  if (kind === 'locked') {
+    return (
+      <div className="rounded-xl bg-gray-50/80 p-5 opacity-90 ring-1 ring-gray-100/80 transition-opacity hover:opacity-100">
+        <div className="flex items-start gap-4">
+          <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-gray-300 bg-white" />
+          <div className="min-w-0 flex-1">
+            <h4 className="text-base font-bold text-gray-600">{title}</h4>
+            {subtitle ? (
+              <p className="mt-1 text-sm leading-relaxed text-gray-400">{subtitle}</p>
+            ) : null}
+          </div>
+          <Lock className="mt-0.5 h-5 w-5 shrink-0 text-gray-300" strokeWidth={2} aria-hidden />
+        </div>
+      </div>
+    )
+  }
 
-  const chk = cn(
-    'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-[1.5px] text-[10px] font-bold md:h-[22px] md:w-[22px] md:text-xs',
-    kind === 'done' && 'border-button bg-button text-button-foreground shadow-sm',
-    kind === 'current' && 'border-primary bg-card text-primary shadow-sm ring-2 ring-primary/20',
-    kind === 'locked' && 'border-border bg-muted/50'
-  )
+  if (kind === 'done') {
+    return (
+      <div className="rounded-xl border-l-4 border-success bg-success-muted/40 p-5 shadow-sm ring-1 ring-gray-100 transition-shadow hover:shadow-md">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 flex-1 gap-4">
+            <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-success bg-success text-[11px] font-bold text-white">
+              ✓
+            </div>
+            <div className="min-w-0">
+              <h4 className="text-base font-bold text-gray-900">{title}</h4>
+              {subtitle ? (
+                <p className="mt-1 text-sm leading-relaxed text-gray-600">{subtitle}</p>
+              ) : null}
+            </div>
+          </div>
+          {primaryAction ? (
+            <button
+              type="button"
+              className="shrink-0 rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-800 shadow-sm transition-all hover:bg-gray-50 active:scale-95"
+              onClick={primaryAction.onClick}
+            >
+              {primaryAction.label}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className={wrap}>
-      <div className={chk}>{kind === 'done' ? '✓' : kind === 'current' ? '→' : ''}</div>
-      <div className="min-w-0 flex-1">
-        <div
-          className={cn(
-            'text-sm font-semibold leading-snug md:text-base',
-            kind === 'current' ? 'text-primary' : kind === 'done' ? 'text-emerald-900' : 'text-foreground'
-          )}
-        >
-          {title}
+    <div className="group relative rounded-xl border-l-4 border-primary-600 bg-white p-5 shadow-sm ring-1 ring-gray-100 transition-all duration-300 hover:shadow-md">
+      <div className="flex items-start gap-4">
+        <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-primary-600 bg-white">
+          <span
+            className="h-2 w-2 rounded-sm bg-primary-600 opacity-0 transition-opacity group-hover:opacity-20"
+            aria-hidden
+          />
         </div>
-        {subtitle ? (
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <h4 className="text-base font-bold text-primary-600">{title}</h4>
+            <span className="shrink-0 rounded bg-primary-100/80 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-primary-700">
+              Active
+            </span>
+          </div>
+          {subtitle ? (
+            <p className="mt-1 text-sm leading-relaxed text-gray-500">{subtitle}</p>
+          ) : null}
           <div
             className={cn(
-              'mt-1.5 text-xs leading-snug md:text-sm',
-              kind === 'current' ? 'text-primary/80' : kind === 'done' ? 'text-emerald-800/90' : 'text-muted-foreground'
+              'mt-4 flex flex-col gap-3 sm:flex-row sm:items-center',
+              showMentor ? 'sm:justify-between' : 'sm:justify-end'
             )}
           >
-            {subtitle}
+            {showMentor ? (
+              <div className="flex items-center gap-2">
+                <div
+                  className="h-6 w-6 shrink-0 rounded-full border-2 border-white bg-primary-100 ring-1 ring-primary-200"
+                  aria-hidden
+                />
+                <span className="text-[13px] font-medium text-gray-500">
+                  Hướng dẫn bởi Ms. Linh
+                </span>
+              </div>
+            ) : null}
+            {primaryAction ? (
+              <button
+                type="button"
+                className="rounded-lg bg-primary-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-primary-700 active:scale-95"
+                onClick={primaryAction.onClick}
+              >
+                {primaryAction.label}
+              </button>
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </div>
-      {primaryAction ? (
-        <button
-          type="button"
-          className={cn(
-            'shrink-0 whitespace-nowrap rounded-[9px] px-3 py-1.5 text-sm font-medium motion-safe:transition-colors md:text-base',
-            kind === 'done' &&
-              'border border-teal-300/70 bg-teal-50 text-teal-900 hover:bg-teal-100/90 dark:border-teal-600/50 dark:bg-teal-950/40 dark:text-teal-100',
-            kind === 'current' && 'border border-button bg-button text-button-foreground hover:opacity-90'
-          )}
-          onClick={primaryAction.onClick}
-        >
-          {primaryAction.label}
-        </button>
-      ) : null}
     </div>
   )
 }

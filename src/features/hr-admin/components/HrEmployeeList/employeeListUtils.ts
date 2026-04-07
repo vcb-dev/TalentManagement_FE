@@ -51,9 +51,51 @@ export function levelMeta(level: EmployeeLevel) {
   return LEVEL_META[level] ?? LEVEL_META.tap_su
 }
 
+/** Nhãn cấp độ trên thẻ danh sách (không emoji, gọn cho pill). */
+const LEVEL_PILL_TEXT: Record<EmployeeLevel, string> = {
+  tap_su: 'Tập sự',
+  biet_viec: 'Biết việc',
+  duoc_viec: 'Được việc',
+  dong_gop_ket_qua: 'Đóng góp KQ',
+  tuong: 'Tướng',
+}
+
+export function levelPillText(level: EmployeeLevel): string {
+  return LEVEL_PILL_TEXT[level] ?? LEVEL_PILL_TEXT.tap_su
+}
+
+/**
+ * Thứ hạng thành tích theo số sao (0–6): Đồng → Vàng → Kim cương.
+ * Dùng chung thẻ danh sách / sheet (không phụ thuộc API thêm).
+ */
+export function memberStarRank(star: number): { label: string; badgeClass: string } {
+  const s = Math.min(6, Math.max(0, star))
+  if (s >= 5) {
+    return {
+      label: 'Hạng Kim cương',
+      badgeClass:
+        'bg-gradient-to-br from-cyan-500 via-sky-500 to-indigo-600 text-white shadow-sm ring-1 ring-cyan-300/50',
+    }
+  }
+  if (s >= 3) {
+    return {
+      label: 'Hạng Vàng',
+      badgeClass:
+        'bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-600 text-amber-950 shadow-sm ring-1 ring-amber-500/45',
+    }
+  }
+  return {
+    label: 'Hạng Đồng',
+    badgeClass:
+      'bg-gradient-to-br from-orange-800 via-amber-900 to-orange-950 text-amber-100 shadow-sm ring-1 ring-orange-700/40',
+  }
+}
+
 /** Màu avatar theo vai trò (giống mock). */
 export function avatarClassForRole(role: Role): string {
   switch (role) {
+    case 'LEADER':
+      return 'bg-sky-100 text-sky-900'
     case 'MANAGER':
       return 'bg-amber-100 text-amber-900'
     case 'HR_ADMIN':
@@ -96,6 +138,8 @@ export function statusLabelVi(status: EmployeeEntity['status']): string {
 
 export function roleBadgeClass(role: Role): string {
   switch (role) {
+    case 'LEADER':
+      return 'border border-sky-300/70 bg-sky-100 text-sky-950 shadow-sm ring-1 ring-sky-400/25'
     case 'MANAGER':
       return 'border border-amber-300/70 bg-amber-100 text-amber-950 shadow-sm ring-1 ring-amber-400/25'
     case 'HR_ADMIN':
@@ -111,6 +155,8 @@ export function roleShortLabel(role: Role): string {
   switch (role) {
     case 'MEMBER':
       return 'NV'
+    case 'LEADER':
+      return 'TN KPI'
     case 'MANAGER':
       return 'QL'
     case 'HR_ADMIN':

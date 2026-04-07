@@ -2,12 +2,20 @@
 
 import type { LevelCode } from '@/lib/constants'
 
+export type ManagerClassCardVariant = 'indigo' | 'emerald' | 'amber'
+
 export type ManagerClassRow = {
   id: string
   name: string
   levelLabel: string
   memberCount: number
   examLabel: string
+  /** Ngày hiển thị dòng “Kỳ thi dự kiến” */
+  examDateShort: string
+  /** Tiến độ học 0–100 */
+  progressPercent: number
+  /** Màu gradient header thẻ lớp */
+  cardVariant: ManagerClassCardVariant
   status: 'open' | 'full' | 'closed'
   updatedAt: string
 }
@@ -19,6 +27,9 @@ export const MOCK_MANAGER_CLASSES: ManagerClassRow[] = [
     levelLabel: 'Tập sự → Biết việc',
     memberCount: 12,
     examLabel: 'Kỳ thi Tập sự — 15/04/2026',
+    examDateShort: '15/04/2026',
+    progressPercent: 75,
+    cardVariant: 'indigo',
     status: 'open',
     updatedAt: '28/03/2026',
   },
@@ -28,6 +39,9 @@ export const MOCK_MANAGER_CLASSES: ManagerClassRow[] = [
     levelLabel: 'Biết việc',
     memberCount: 8,
     examLabel: 'Kỳ giữa kỳ — 22/04/2026',
+    examDateShort: '22/05/2026',
+    progressPercent: 40,
+    cardVariant: 'emerald',
     status: 'open',
     updatedAt: '27/03/2026',
   },
@@ -37,6 +51,9 @@ export const MOCK_MANAGER_CLASSES: ManagerClassRow[] = [
     levelLabel: 'Được việc',
     memberCount: 6,
     examLabel: '—',
+    examDateShort: '10/06/2026',
+    progressPercent: 100,
+    cardVariant: 'amber',
     status: 'full',
     updatedAt: '20/03/2026',
   },
@@ -111,6 +128,8 @@ export type ManagerReviewRow = {
   id: string
   employeeName: string
   examTitle: string
+  /** Lộ trình / khóa (hiển thị dòng thứ hai cạnh icon GraduationCap) — giống mockup HTML */
+  cohortLabel?: string
   teacherName: string
   gradedAt: string
   summary: string
@@ -123,6 +142,7 @@ export const MOCK_REVIEW_QUEUE: ManagerReviewRow[] = [
     id: 'rv-1',
     employeeName: 'Trần Linh',
     examTitle: 'Biết việc — Sao 6',
+    cohortLabel: 'Tập sự — Mục 3',
     teacherName: 'Phạm Người Chấm',
     gradedAt: '23/03/2026 14:20',
     summary: '6/6 mục đạt. Nhận xét: trình bày tốt, cần củng cố báo cáo.',
@@ -132,20 +152,22 @@ export const MOCK_REVIEW_QUEUE: ManagerReviewRow[] = [
   {
     id: 'rv-2',
     employeeName: 'Quang Đạt',
-    examTitle: 'Tập sự — Mục 3',
-    teacherName: 'Phạm Người Chấm',
-    gradedAt: '22/03/2026 09:10',
-    summary: '2/4 mục đạt. Cần bổ sung minh chứng.',
+    examTitle: 'Nghiệp vụ — Sao 4',
+    cohortLabel: 'Học việc — Mục 2',
+    teacherName: 'Nguyễn Minh Tú',
+    gradedAt: '22/03/2026 10:15',
+    summary: '4/5 mục đạt. Học viên nắm chắc kiến thức cơ bản nhưng cần thêm thời gian thực hành phần mềm quản lý kho.',
     outcomeLabel: 'Bảo lưu',
     state: 'pending',
   },
   {
     id: 'rv-3',
     employeeName: 'Minh Hương',
-    examTitle: 'Tập sự — Mục 1',
-    teacherName: 'Phạm Người Chấm',
-    gradedAt: '20/03/2026 16:00',
-    summary: 'Đạt yêu cầu.',
+    examTitle: 'Chuyên gia — Sao 6',
+    cohortLabel: 'Nâng cao — Mục 5',
+    teacherName: 'Trần Hoàng Oanh',
+    gradedAt: '21/03/2026 16:50',
+    summary: 'Hoàn thành xuất sắc tất cả các module. Khả năng tư duy logic và giải quyết vấn đề vượt kỳ vọng. Sẵn sàng thăng cấp.',
     outcomeLabel: 'Đạt',
     state: 'approved',
   },

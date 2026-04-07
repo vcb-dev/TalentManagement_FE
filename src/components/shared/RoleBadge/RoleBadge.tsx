@@ -7,6 +7,7 @@ export interface RoleBadgeProps {
 
 const labels: Record<Role, string> = {
   MEMBER: 'Nhân viên',
+  LEADER: 'Trưởng nhóm KPI',
   MANAGER: 'Quản lý',
   HR_ADMIN: 'HR',
   TEACHER: 'Người chấm thi',

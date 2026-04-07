@@ -4,7 +4,7 @@ import type { UserSession } from '@/types/auth'
 export interface AuthStore {
   user: UserSession | null
   accessToken: string | null
-  setSession: (user: UserSession, accessToken: string) => void
+  setSession: (user: UserSession, accessToken: string | null) => void
   setUser: (user: UserSession) => void
   setAccessToken: (token: string | null) => void
   logout: () => void

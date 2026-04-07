@@ -1,5 +1,5 @@
-/** HR, Member, Teacher (chấm thi theo kỳ), Manager, BOD — không còn Leader/COE cố định. */
-export type Role = 'MEMBER' | 'MANAGER' | 'HR_ADMIN' | 'TEACHER' | 'BOD'
+/** HR, Member, Teacher (chấm thi theo kỳ), Manager, Leader (KPI/OKR team), BOD. */
+export type Role = 'MEMBER' | 'LEADER' | 'MANAGER' | 'HR_ADMIN' | 'TEACHER' | 'BOD'
 
 export type Action =
   | 'view'
@@ -20,6 +20,8 @@ export type Resource =
   | 'checklist'
   | 'submission'
   | 'kpi'
+  | 'okr'
+  | 'monthly_report'
 
 export interface Permission {
   action: Action

@@ -1,4 +1,11 @@
 import type { ReactNode } from 'react'
+import { cn } from '@/lib/utils'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from './pageHeaderStyles'
 
 export interface PageHeaderProps {
   title: string
@@ -8,14 +15,19 @@ export interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
-    <div className="mb-8 flex flex-wrap items-start justify-between gap-4 md:gap-6">
-      <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-[1.75rem]">{title}</h1>
-        {description ? (
-          <p className="mt-2 max-w-3xl text-base leading-relaxed text-muted-foreground">{description}</p>
-        ) : null}
+    <div
+      className={cn(
+        'mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-6',
+        actions ? undefined : 'w-full',
+      )}
+    >
+      <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+        <h1 className={PAGE_HEADER_TITLE}>
+          <span className={PAGE_HEADER_GRADIENT}>{title}</span>
+        </h1>
+        {description ? <p className={PAGE_HEADER_DESCRIPTION}>{description}</p> : null}
       </div>
-      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div> : null}
     </div>
   )
 }

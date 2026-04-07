@@ -1,10 +1,14 @@
+import { CircleHelp, Pencil } from 'lucide-react'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { CARD_ENTRANCE, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
+import { ROLE_LABEL_VI } from '@/lib/roleLabels'
+import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
   avatarClassForRole,
   initialsFromName,
-  levelMeta,
+  levelPillText,
+  memberStarRank,
   roleBadgeClass,
   roleShortLabel,
   shortId,
@@ -12,55 +16,34 @@ import {
   statusLabelVi,
 } from './employeeListUtils'
 
-function StarRow({ filled }: { filled: number }) {
+function StarRow({
+  filled,
+  align = 'center',
+  compact,
+}: {
+  filled: number
+  align?: 'center' | 'end'
+  compact?: boolean
+}) {
   return (
-    <div className="mt-1 flex items-center justify-center gap-0.5">
+    <div
+      className={cn(
+        'flex items-center gap-px',
+        align === 'end' ? 'justify-end' : 'justify-center',
+        compact ? '' : 'mt-1'
+      )}
+    >
       {Array.from({ length: 6 }, (_, i) => {
         const full = i < Math.floor(filled)
         const partial = i === Math.floor(filled) && filled % 1 >= 0.5
-        if (full) {
-          return (
-            <svg key={i} viewBox="0 0 24 24" width={15} height={15} className="shrink-0 text-star-gold drop-shadow-[0_1px_2px_rgba(180,120,0,0.35)]" aria-hidden>
-              <path
-                fill="currentColor"
-                d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"
-              />
-            </svg>
-          )
-        }
-        if (partial) {
-          return (
-            <svg
-              key={i}
-              viewBox="0 0 24 24"
-              width={15}
-              height={15}
-              className="shrink-0 text-star-gold-mid drop-shadow-[0_0_4px_rgba(212,160,23,0.45)]"
-              aria-hidden
-            >
-              <path
-                fill="currentColor"
-                d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"
-              />
-            </svg>
-          )
-        }
+        const variant = full ? 'filled' : partial ? 'current' : 'empty'
         return (
-          <svg
+          <StarEmblem
             key={i}
-            viewBox="0 0 24 24"
-            width={15}
-            height={15}
-            className="shrink-0 text-star-gold-soft"
+            variant={variant}
+            className={cn('shrink-0', compact ? 'h-3 w-3' : 'h-[15px] w-[15px]')}
             aria-hidden
-          >
-            <path
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l7.1-1.01L12 2z"
-            />
-          </svg>
+          />
         )
       })}
     </div>
@@ -73,9 +56,7 @@ export interface EmployeeCardProps {
   onSelect: () => void
   onView: (e: React.MouseEvent) => void
   onEdit: (e: React.MouseEvent) => void
-  /** Stagger animation khi hiển thị dạng lưới thẻ */
   cardIndex?: number
-  /** Quản lý: chỉ nút Xem. */
   variant?: 'hr' | 'team'
 }
 
@@ -88,10 +69,13 @@ export function EmployeeCard({
   cardIndex,
   variant = 'hr',
 }: EmployeeCardProps) {
-  const { tierClass, label: tierLabel } = levelMeta(employee.currentLevel)
+  const tierLine = levelPillText(employee.currentLevel)
+  const rank = memberStarRank(employee.currentStar)
   const inactive = employee.status === 'INACTIVE'
   const meta = initialsFromName(employee.name)
   const deptLine = `PB · ${shortId(employee.departmentId)}`
+  const positionLabel = ROLE_LABEL_VI[employee.role]
+  const starProgressPct = Math.min(100, Math.round((employee.currentStar / 6) * 100))
 
   return (
     <div
@@ -105,65 +89,112 @@ export function EmployeeCard({
         }
       }}
       className={cn(
-        'relative flex min-h-[288px] w-full cursor-pointer flex-col items-center overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-b from-card via-card to-primary/[0.04] px-3 pb-4 pt-4 text-center shadow-[var(--shadow-card)] ring-1 ring-primary/10 transition-all duration-300 sm:px-4 sm:pt-5',
+        'group relative flex w-full cursor-pointer flex-col rounded-2xl border bg-card p-5 text-left shadow-sm',
         cardIndex !== undefined && CARD_ENTRANCE,
-        'before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:bg-gradient-to-r before:from-primary before:via-teal-500 before:to-violet-500 before:opacity-40 before:transition-opacity',
-        'hover:-translate-y-1 hover:border-primary/35 hover:shadow-[0_12px_28px_-4px_hsl(var(--primary)/0.18)] hover:ring-primary/20 hover:before:opacity-100',
-        selected && 'border-primary/50 shadow-[0_12px_32px_-6px_hsl(var(--primary)/0.22)] ring-primary/25 before:opacity-100',
+        selected ? 'border-2 border-primary shadow-md ring-1 ring-primary/15' : 'border-border',
         inactive && 'opacity-[0.55]'
       )}
       style={cardIndex !== undefined ? staggerStyle(Math.min(cardIndex, 16)) : undefined}
     >
-      <div className="relative mb-2.5 inline-flex">
-        <div
+      {/* Hàng 1: avatar | cấp + sao (theo mock HTML) */}
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="relative shrink-0">
+          <div
+            className={cn(
+              'flex h-[5.25rem] w-[5.25rem] items-center justify-center rounded-2xl text-xl font-extrabold leading-tight shadow-md ring-2 ring-background sm:h-[5.75rem] sm:w-[5.75rem] sm:text-2xl',
+              avatarClassForRole(employee.role),
+              inactive && 'grayscale-[0.35]'
+            )}
+          >
+            {meta}
+          </div>
+          <span
+            className={cn(
+              'absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-[3px] border-card shadow-sm',
+              statusDotClass(employee.status)
+            )}
+          />
+        </div>
+        <div className="flex min-w-0 flex-col items-end gap-1.5">
+          <span
+            className={cn(
+              'max-w-[10.5rem] truncate rounded-md px-2 py-0.5 text-center text-[10px] font-bold tracking-tight sm:max-w-[11rem] sm:text-[11px]',
+              rank.badgeClass
+            )}
+            title={rank.label}
+          >
+            {rank.label}
+          </span>
+          <span
+            className="max-w-[9rem] truncate rounded-md bg-primary/10 px-2 py-0.5 text-center text-[10px] font-bold tracking-tight text-primary sm:max-w-[10rem]"
+            title={tierLine}
+          >
+            {tierLine}
+          </span>
+          <div className="min-w-[4.5rem]">
+            {employee.currentStar > 0 ? (
+              <StarRow filled={employee.currentStar} align="end" compact />
+            ) : (
+              <p className="text-right text-[10px] italic text-muted-foreground">
+                {inactive ? '—' : 'Chưa có sao'}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Hàng 2: tên + vị trí + PB */}
+      <div className="mb-5 min-w-0">
+        <h3
           className={cn(
-            'flex h-[92px] w-[92px] shrink-0 items-center justify-center rounded-2xl text-[1.125rem] font-extrabold leading-tight shadow-md ring-2 ring-white/90 sm:h-[96px] sm:w-[96px] sm:text-[1.3rem]',
-            avatarClassForRole(employee.role)
+            'text-base font-bold leading-snug text-foreground',
+            inactive && 'text-muted-foreground'
           )}
         >
-          {meta}
+          {employee.name}
+        </h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">{positionLabel}</p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+          <span
+            className={cn(
+              'inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold',
+              roleBadgeClass(employee.role)
+            )}
+          >
+            {roleShortLabel(employee.role)}
+          </span>
+          <span className="text-border">·</span>
+          <span className="text-foreground/80">{deptLine}</span>
+        </div>
+      </div>
+
+      <div className="mb-5 flex items-center gap-2">
+        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-300"
+            style={{ width: `${starProgressPct}%` }}
+          />
         </div>
         <span
           className={cn(
-            'absolute bottom-1 right-1 h-2.5 w-2.5 rounded-full border-2 border-white shadow-sm sm:h-3 sm:w-3',
-            statusDotClass(employee.status)
+            'shrink-0 tabular-nums text-[10px] font-bold sm:text-xs',
+            starProgressPct > 0 ? 'text-primary' : 'text-muted-foreground'
           )}
-        />
-      </div>
-      <div className={cn('mb-0.5 text-sm font-bold text-foreground md:text-base', inactive && 'text-muted-foreground')}>
-        {employee.name}
-      </div>
-      <div className="mb-1.5 flex flex-wrap items-center justify-center gap-1 text-xs font-medium text-muted-foreground md:text-sm">
-        <span className={cn('inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold md:text-sm', roleBadgeClass(employee.role))}>
-          {roleShortLabel(employee.role)}
-        </span>
-        <span className="text-border">·</span>
-        <span className="text-foreground/80">{deptLine}</span>
-      </div>
-      <div className="mb-1 h-px w-full shrink-0 bg-gradient-to-r from-transparent via-border to-transparent" />
-      <div className="mb-1 flex w-full items-center justify-between gap-1">
-        <span className="text-xs font-semibold text-muted-foreground md:text-sm">Cấp độ</span>
-        <span className={cn('max-w-[58%] truncate rounded-full px-2 py-0.5 text-xs font-bold md:text-xs', tierClass)}>
-          {tierLabel}
+        >
+          {starProgressPct}%
         </span>
       </div>
-      <div className="min-h-[28px] w-full">
-        {employee.currentStar > 0 ? (
-          <StarRow filled={employee.currentStar} />
-        ) : (
-          <p className="mt-1.5 text-center text-xs italic text-muted-foreground md:text-sm">
-            {inactive ? '—' : 'Chưa có sao — đang học'}
-          </p>
-        )}
-      </div>
-      <div className="mt-auto flex w-full gap-1.5 pt-2">
+
+      <div className="mt-auto flex gap-2">
         {inactive ? (
           <>
             <button
               type="button"
               className={cn(
-                'rounded-[10px] border-[1.5px] border-primary/35 bg-transparent py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 md:text-sm',
-                variant === 'team' ? 'w-full' : 'flex-1'
+                'flex min-h-9 flex-1 items-center justify-center rounded-lg py-2 text-xs font-bold transition-colors',
+                selected
+                  ? 'bg-primary/15 text-primary hover:bg-primary/20'
+                  : 'bg-muted/80 text-foreground hover:bg-muted'
               )}
               onClick={(e) => {
                 e.stopPropagation()
@@ -175,7 +206,7 @@ export function EmployeeCard({
             {variant === 'hr' ? (
               <button
                 type="button"
-                className="flex-1 rounded-[10px] border-[1.5px] border-button bg-button py-2 text-xs font-semibold text-button-foreground md:text-sm"
+                className="min-h-9 min-w-0 flex-1 rounded-lg border-[1.5px] border-button bg-button py-2 text-xs font-semibold text-button-foreground"
                 onClick={(e) => {
                   e.stopPropagation()
                 }}
@@ -189,8 +220,10 @@ export function EmployeeCard({
             <button
               type="button"
               className={cn(
-                'rounded-[10px] border-[1.5px] border-button bg-button py-2 text-xs font-semibold text-button-foreground transition-colors hover:opacity-90 md:text-sm',
-                variant === 'team' ? 'w-full' : 'flex-1'
+                'flex min-h-9 flex-1 items-center justify-center rounded-lg py-2 text-xs font-bold transition-colors',
+                selected
+                  ? 'bg-primary/15 text-primary hover:bg-primary/20'
+                  : 'bg-muted/80 text-foreground hover:bg-muted'
               )}
               onClick={(e) => {
                 e.stopPropagation()
@@ -202,13 +235,19 @@ export function EmployeeCard({
             {variant === 'hr' ? (
               <button
                 type="button"
-                className="flex-1 rounded-[10px] border-[1.5px] border-primary/35 bg-transparent py-2 text-xs font-semibold text-primary hover:bg-primary/10 md:text-sm"
+                className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card px-2.5 py-2 text-primary transition-colors hover:bg-muted"
+                title={employee.status === 'RESERVED' ? 'Hỗ trợ' : 'Sửa'}
+                aria-label={employee.status === 'RESERVED' ? 'Hỗ trợ' : 'Sửa'}
                 onClick={(e) => {
                   e.stopPropagation()
                   onEdit(e)
                 }}
               >
-                {employee.status === 'RESERVED' ? 'Hỗ trợ' : 'Sửa'}
+                {employee.status === 'RESERVED' ? (
+                  <CircleHelp className="size-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
+                ) : (
+                  <Pencil className="size-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
+                )}
               </button>
             ) : null}
           </>

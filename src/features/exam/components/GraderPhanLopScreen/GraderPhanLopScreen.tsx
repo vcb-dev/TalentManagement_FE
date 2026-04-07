@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { Award, CheckCircle2, ChevronRight, Info, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
@@ -9,42 +15,60 @@ import { useClassifyExam } from '@/features/exam/hooks'
 import { findGraderExamRow } from '@/features/exam/mock/mockGraderExamRows'
 import type { ExamResultCode } from '@/lib/constants'
 
+const COMMENT_TEMPLATE_PASS =
+  'Thí sinh đạt yêu cầu kỳ thi. Trình bày rõ ràng, đáp ứng đủ các tiêu chí chấm và thể hiện thái độ học tập tích cực.'
+const COMMENT_TEMPLATE_FAIL =
+  'Thí sinh chưa đạt yêu cầu. Cần bổ sung kiến thức, luyện tập thêm và xem lại tài liệu trước khi thi lại.'
+
 const OPTIONS: {
   result: ExamResultCode
   title: string
   description: string
   titleClass: string
   borderActive: string
+  danger?: boolean
 }[] = [
   {
     result: 'DAT',
-    title: '✅ Đạt — Lên cấp độ / sao tiếp theo',
-    description: 'Hệ thống cập nhật profile, mở checklist mới, thông báo Manager.',
-    titleClass: 'text-[#166534]',
-    borderActive: 'border-[#86EFAC] bg-[#F0FDF4]',
+    title: 'Đạt — Lên cấp độ / sao tiếp theo',
+    description:
+      'Hệ thống cập nhật profile, mở checklist mới, tự động gửi thông báo chúc mừng tới Manager trực tiếp.',
+    titleClass: 'text-success',
+    borderActive: 'border-success/40 bg-success-muted/80',
   },
   {
     result: 'BAO_LUU',
-    title: '⚠️ Rớt lần 1 → Bảo lưu',
-    description: 'Được thi lại sau thời gian chờ quy định. Vẫn học bình thường trong thời gian chờ.',
-    titleClass: 'text-[#92400E]',
-    borderActive: 'border-[#FCD34D] bg-[#FFFBEB]',
+    title: 'Rớt lần 1 — Bảo lưu',
+    description:
+      'Kết quả được bảo lưu. Thí sinh được quyền đăng ký thi lại sau thời gian chờ quy định (thường là 14 ngày).',
+    titleClass: 'text-warning',
+    borderActive: 'border-amber-300 bg-warning-muted/90',
   },
   {
     result: 'CHO_HOC_LAI',
-    title: '⚠️ Rớt lần 2 → Chờ lớp bảo lưu',
-    description: 'Phải học lại toàn bộ nội dung sao đó. Hệ thống khóa nút thi đến khi hoàn thành lại.',
-    titleClass: 'text-[#991B1B]',
-    borderActive: 'border-[#FCA5A5] bg-[#FEF2F2]',
+    title: 'Rớt lần 2 — Chờ lớp bảo lưu',
+    description:
+      'Bắt buộc phải tham gia học lại toàn bộ nội dung của cấp độ sao hiện tại trước khi được phép đăng ký thi lại lần cuối.',
+    titleClass: 'text-danger',
+    borderActive: 'border-red-300 bg-danger-muted/90',
   },
   {
     result: 'CHIA_TAY',
-    title: '🚫 Rớt lần 3 → Giải pháp chia tay',
-    description: 'Kích hoạt quy trình offboard. Cần Manager và BOD xác nhận trước khi thực hiện.',
-    titleClass: 'text-[#991B1B]',
-    borderActive: 'border-[#FCA5A5] bg-[#FEF2F2]',
+    title: 'Rớt lần 3 — Giải pháp chia tay',
+    description:
+      'Kích hoạt quy trình offboard chuyên nghiệp. Thông báo cho bộ phận nhân sự và quản lý trực tiếp để xử lý thủ tục.',
+    titleClass: 'text-danger',
+    borderActive: 'border-red-400 bg-danger-muted',
+    danger: true,
   },
 ]
+
+function tierLabelFromPct(pct: number): string {
+  if (pct >= 100) return 'XUẤT SẮC'
+  if (pct >= 80) return 'TỐT'
+  if (pct >= 60) return 'KHÁ'
+  return 'CẦN CẢI THIỆN'
+}
 
 export interface GraderPhanLopScreenProps {
   examId: string
@@ -70,6 +94,8 @@ export function GraderPhanLopScreen({ examId, employeeId, passCount, totalCount 
   const pass = passCount ?? 3
   const fail = Math.max(0, total - pass)
   const pct = total > 0 ? Math.round((pass / total) * 100) : 0
+  const tierLabel = tierLabelFromPct(pct)
+  const bonusPts = Math.min(150, Math.round((pct / 100) * 150))
 
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
 
@@ -97,152 +123,243 @@ export function GraderPhanLopScreen({ examId, employeeId, passCount, totalCount 
     <div
       className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8"
     >
-      <div className="page-toolbar-flat">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="page-toolbar-flat flex-col items-stretch gap-0 border-b-0 py-0 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-b border-border px-6 py-3.5">
+          <nav className="flex flex-wrap items-center gap-1.5 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            <button
+              type="button"
+              className="text-foreground hover:text-primary"
+              onClick={() =>
+                void navigate({
+                  to: '/exam/$examId/grade',
+                  params: { examId },
+                  search: { employeeId },
+                })
+              }
+            >
+              Chấm thi
+            </button>
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
+            <span>Phân lớp</span>
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
+            <span className="normal-case tracking-normal text-primary">
+              Thí sinh — {examineeName} (đang chấm)
+            </span>
+          </nav>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div className={cn('min-w-0 flex-1 text-balance', PAGE_HEADER_SURFACE)}>
+              <h1 className={cn(PAGE_HEADER_TITLE, 'text-xl md:text-2xl')}>
+                <span className={PAGE_HEADER_GRADIENT}>Xác nhận kết quả kỳ thi</span>
+              </h1>
+            </div>
+            <span className="w-fit rounded-[10px] bg-active-tag-bg px-2 py-0.5 text-xs font-medium text-active-tag-text">
+              Bạn đang chấm với vai trò: {roleLabel} (được chỉ định)
+            </span>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border px-6 py-3">
           <button
             type="button"
-            className="whitespace-nowrap rounded-lg border border-border bg-card px-3.5 py-1.5 text-xs font-medium text-foreground hover:bg-primary/10"
-            onClick={() =>
-              void navigate({
-                to: '/exam/$examId/grade',
-                params: { examId },
-                search: { employeeId },
-              })
-            }
+            disabled={classify.isPending}
+            className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl border border-button bg-button px-5 py-2.5 text-xs font-semibold text-button-foreground shadow-[var(--shadow-card)] transition-opacity hover:opacity-90 disabled:opacity-60"
+            onClick={onConfirm}
           >
-            ← Chấm thi
+            {classify.isPending ? 'Đang gửi…' : 'Xác nhận phân lớp'}
+            <CheckCircle2 className="h-4 w-4 opacity-90" aria-hidden />
           </button>
-          <span className="text-xs text-muted-foreground">
-            Phân lớp · <b className="text-foreground">{examineeName}</b> · {levelBadge}
-          </span>
-          <span className="ml-1 rounded-[10px] bg-[#EAF3DE] px-2 py-0.5 text-xs font-medium text-[#375623]">
-            Bạn đang chấm với vai trò: {roleLabel} (được chỉ định)
-          </span>
         </div>
-        <button
-          type="button"
-          disabled={classify.isPending}
-          className="whitespace-nowrap rounded-lg border border-button bg-button px-3.5 py-1.5 text-xs font-medium text-button-foreground hover:opacity-90 disabled:opacity-60"
-          onClick={onConfirm}
-        >
-          {classify.isPending ? 'Đang gửi…' : 'Xác nhận phân lớp'}
-        </button>
       </div>
 
       <div className="page-shell">
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 lg:grid-cols-[1fr_230px]">
-          <div>
-            <div className="mb-3 text-xs font-semibold text-foreground">Chọn kết quả kỳ thi:</div>
-            <div className="space-y-2">
-              {OPTIONS.map((opt) => {
-                const active = selected === opt.result
-                return (
-                  <button
-                    key={opt.result}
-                    type="button"
-                    onClick={() => setSelected(opt.result)}
-                    className={cn(
-                      'w-full rounded-[9px] border p-3 text-left transition-colors',
-                      active ? cn('border-2', opt.borderActive) : 'border border-border bg-card hover:border-primary/30'
-                    )}
-                  >
-                    <div className="flex items-start gap-2.5">
-                      <span
+        <div className="mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            <div className="space-y-6 lg:col-span-8">
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-card)] md:p-8">
+                <h2 className="mb-6 flex items-center gap-2 text-base font-bold text-foreground">
+                  <span className="h-6 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
+                  Quyết định kết quả phân lớp
+                </h2>
+                <div className="space-y-3">
+                  {OPTIONS.map((opt, idx) => {
+                    const active = selected === opt.result
+                    return (
+                      <label
+                        key={opt.result}
                         className={cn(
-                          'mt-0.5 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full border-2',
-                          active ? 'border-button bg-button' : 'border-border bg-card'
+                          'group relative flex cursor-pointer items-start gap-4 rounded-2xl border border-transparent p-4 transition-all md:p-5',
+                          opt.danger
+                            ? 'hover:border-danger-muted hover:bg-danger-muted/40'
+                            : 'hover:border-primary/15 hover:bg-primary/5',
+                          active && cn('border-2', opt.borderActive)
                         )}
-                        aria-hidden
                       >
-                        {active ? <span className="h-2 w-2 rounded-full bg-white" /> : null}
-                      </span>
-                      <div>
-                        <div className={cn('text-xs font-medium', opt.titleClass)}>{opt.title}</div>
-                        <div className="mt-1 text-sm text-muted-foreground">{opt.description}</div>
-                      </div>
-                    </div>
+                        <input
+                          type="radio"
+                          name="phanlop-result"
+                          className={cn(
+                            'mt-1 h-4 w-4 shrink-0 border-border text-primary focus:ring-primary/30',
+                            opt.danger && 'text-danger focus:ring-danger/30'
+                          )}
+                          checked={active}
+                          onChange={() => setSelected(opt.result)}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <span className={cn('block text-sm font-bold', opt.titleClass)}>{opt.title}</span>
+                          <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
+                            {opt.description}
+                          </span>
+                        </div>
+                        {idx === 0 ? (
+                          <Sparkles
+                            className="h-5 w-5 shrink-0 text-success opacity-0 transition-opacity group-hover:opacity-100"
+                            aria-hidden
+                          />
+                        ) : null}
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-card)] md:p-8">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-base font-bold text-foreground">Nhận xét tổng kết kỳ thi</h2>
+                  <span className="rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
+                    Bắt buộc
+                  </span>
+                </div>
+                <textarea
+                  id="phanlop-comment"
+                  className="h-40 w-full resize-y rounded-xl border-0 bg-muted/80 px-4 py-3 text-sm text-foreground outline-none ring-1 ring-border transition-[box-shadow] placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/35"
+                  placeholder="Nhập những lưu ý quan trọng, điểm mạnh và điểm cần cải thiện của thí sinh trong kỳ thi này..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                />
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg bg-primary/10 px-4 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
+                    onClick={() => setComment(COMMENT_TEMPLATE_PASS)}
+                  >
+                    Dùng mẫu nhận xét Đạt
                   </button>
-                )
-              })}
-            </div>
-            <div className="mt-4 flex flex-col gap-1">
-              <label className="text-xs font-semibold text-muted-foreground" htmlFor="phanlop-comment">
-                Nhận xét tổng kết kỳ thi (bắt buộc)
-              </label>
-              <textarea
-                id="phanlop-comment"
-                className="min-h-[80px] w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                placeholder="Lý do phân lớp, nhận xét chung về kỳ thi..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <div
-              className={cn(
-                'overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-card)]',
-                CARD_ENTRANCE_HOVER
-              )}
-              style={staggerStyle(0)}
-            >
-              <div className="card-section-header font-bold">
-                Tổng kết chấm
-              </div>
-              <div className="space-y-0 p-4 text-xs">
-                <div className="flex justify-between border-b border-border py-1.5">
-                  <span className="text-[#6B7F96]">Tổng mục</span>
-                  <span className="font-medium">{total}</span>
-                </div>
-                <div className="flex justify-between border-b border-border py-1.5">
-                  <span className="text-[#6B7F96]">Đạt</span>
-                  <span className="font-semibold text-[#0E7490]">{pass}</span>
-                </div>
-                <div className="flex justify-between py-1.5">
-                  <span className="text-[#6B7F96]">Không đạt</span>
-                  <span className="font-medium">{fail}</span>
-                </div>
-                <div className="my-2 h-px bg-border" />
-                <div className="rounded-[9px] bg-[#DCFCE7] px-3 py-2 text-center">
-                  <div className="text-xs text-[#166534]">Tỉ lệ đạt</div>
-                  <div className="text-[22px] font-bold text-[#166534]">{pct}%</div>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-muted px-4 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted/80"
+                    onClick={() => setComment(COMMENT_TEMPLATE_FAIL)}
+                  >
+                    Dùng mẫu nhận xét Rớt
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div
-              className={cn(
-                'overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-card)]',
-                CARD_ENTRANCE_HOVER
-              )}
-              style={staggerStyle(1)}
-            >
-              <div className="card-section-header font-bold">
-                Thí sinh
+            <div className="space-y-6 lg:col-span-4">
+              <div
+                className={cn(
+                  'relative overflow-hidden rounded-2xl border border-primary/10 bg-card p-6 shadow-[var(--shadow-card)]',
+                  CARD_ENTRANCE_HOVER
+                )}
+                style={staggerStyle(0)}
+              >
+                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/[0.06]" aria-hidden />
+                <p className="mb-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Thông tin thí sinh
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="relative shrink-0">
+                    <div
+                      className={cn(
+                        'flex h-16 w-16 items-center justify-center rounded-2xl text-base font-bold ring-4 ring-primary/10',
+                        avatarClass
+                      )}
+                    >
+                      {initials}
+                    </div>
+                    <div
+                      className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-success text-[10px] font-bold text-white"
+                      aria-hidden
+                    >
+                      ✓
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-bold text-foreground">{examineeName}</h3>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Thông tin: <span className="text-primary">{examineeLine}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-between gap-4 border-t border-border pt-6">
+                  <div>
+                    <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Cấp / sao (mục tiêu)</p>
+                    <p className="text-sm font-bold text-foreground">{levelBadge}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Lớp thi</p>
+                    <p className="text-sm font-bold text-primary">{className}</p>
+                  </div>
+                </div>
               </div>
-              <div className="p-4 text-center">
-                <div
-                  className={cn(
-                    'mx-auto mb-1.5 flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold',
-                    avatarClass
-                  )}
-                >
-                  {initials}
-                </div>
-                <div className="text-xs font-semibold text-foreground">{examineeName}</div>
-                <div className="text-sm text-[#6B7F96]">{examineeLine}</div>
-                <div className="my-3 h-px bg-border" />
-                <div className="space-y-1 text-left text-xs">
-                  <div className="flex justify-between gap-2 py-0.5">
-                    <span className="text-[#6B7F96]">Lớp thi</span>
-                    <span className="font-medium text-foreground">{className}</span>
+
+              <div
+                className={cn(
+                  'relative overflow-hidden rounded-2xl bg-primary-700 p-6 text-primary-foreground shadow-[var(--shadow-game-float)]',
+                  CARD_ENTRANCE_HOVER
+                )}
+                style={staggerStyle(1)}
+              >
+                <div className="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-white/5" aria-hidden />
+                <div className="relative mb-6 flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="mb-1 text-[10px] font-bold uppercase tracking-widest text-primary-100/90">
+                      Tổng kết chấm bài
+                    </h4>
+                    <p className="text-xl font-black tracking-tight">Xếp loại: {tierLabel}</p>
                   </div>
-                  <div className="flex justify-between gap-2 py-0.5">
-                    <span className="text-[#6B7F96]">Lần thi</span>
-                    <span className="font-medium text-foreground">Lần 1</span>
+                  <Award className="h-10 w-10 shrink-0 text-amber-300" aria-hidden />
+                </div>
+                <div className="relative space-y-4">
+                  <div>
+                    <div className="mb-2 flex justify-between text-xs font-bold">
+                      <span className="text-primary-100/85">Tỷ lệ đạt mục tiêu</span>
+                      <span>{pct}%</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-amber-400 transition-[width]"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <p className="mt-2 text-[11px] font-medium text-primary-100/75">
+                      Không đạt: {fail} mục
+                    </p>
+                  </div>
+                  <div className="mt-6 grid grid-cols-2 gap-4">
+                    <div className="rounded-xl bg-white/5 p-3">
+                      <p className="text-[10px] font-bold uppercase text-primary-100/80">Mục tiêu đạt</p>
+                      <p className="text-xl font-bold">
+                        {pass}/{total}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-white/5 p-3">
+                      <p className="text-[10px] font-bold uppercase text-primary-100/80">Điểm thưởng</p>
+                      <p className="text-xl font-bold">+{bonusPts}</p>
+                    </div>
                   </div>
                 </div>
+              </div>
+
+              <div
+                className="flex gap-4 rounded-2xl border border-amber-200/80 bg-warning-muted/60 p-5"
+                style={staggerStyle(2)}
+              >
+                <Info className="h-5 w-5 shrink-0 text-warning" aria-hidden />
+                <p className="text-xs leading-relaxed text-foreground">
+                  <span className="font-bold">Lưu ý cho Quản lý:</span> Việc phê duyệt kết quả này sẽ ảnh hưởng trực
+                  tiếp đến lộ trình thăng tiến và lương thưởng của nhân sự. Vui lòng kiểm tra kỹ nhận xét trước khi
+                  xác nhận.
+                </p>
               </div>
             </div>
           </div>

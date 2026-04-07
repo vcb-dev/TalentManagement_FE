@@ -5,17 +5,13 @@ export const CARD_ENTRANCE =
   'motion-safe:opacity-0 motion-safe:animate-[profile-card-in_0.55s_cubic-bezier(0.22,1,0.36,1)_forwards] motion-reduce:opacity-100 motion-reduce:animate-none'
 
 /**
- * Card / panel: vào trang (fade + trượt nhẹ) + hover nâng — dùng chung toàn app.
+ * Card / panel: chỉ animation vào trang (fade + trượt nhẹ) — không hiệu ứng hover.
  * Keyframes: `profile-card-in` trong index.css
  */
-export const CARD_ENTRANCE_HOVER = [
-  CARD_ENTRANCE,
-  'transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/25',
-].join(' ')
+export const CARD_ENTRANCE_HOVER = CARD_ENTRANCE
 
-/** Chỉ hover (không animation vào) — list/table ô cần phản hồi nhanh */
-export const CARD_HOVER =
-  'transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl hover:border-primary/20'
+/** Giữ export cho Card / list; không còn transition khi hover */
+export const CARD_HOVER = ''
 
 /** Strip / section title — fade-up ngắn */
 export const SECTION_FADE_UP =
@@ -28,8 +24,7 @@ export const PROGRESS_BAR_FILL =
 /** Sao pop lần lượt — keyframes `dash-star-pop` */
 export const STAR_POP = 'motion-safe:animate-[dash-star-pop_0.42s_ease-out_both] motion-reduce:animate-none'
 
-export const STAR_HOVER =
-  'transition-transform duration-200 ease-out will-change-transform hover:z-10 hover:scale-125 hover:rotate-12'
+export const STAR_HOVER = ''
 
 export function staggerStyle(index: number, stepMs = 65): CSSProperties {
   return { animationDelay: `${index * stepMs}ms` }

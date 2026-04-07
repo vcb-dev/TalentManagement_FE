@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const roleSchema = z.enum(['MEMBER', 'MANAGER', 'HR_ADMIN', 'TEACHER', 'BOD'])
+const roleSchema = z.enum(['MEMBER', 'LEADER', 'MANAGER', 'HR_ADMIN', 'TEACHER', 'BOD'])
 
 const permissionSchema = z.object({
   action: z.enum(['view', 'create', 'edit', 'deactivate', 'grade', 'approve', 'classify']),
@@ -14,6 +14,8 @@ const permissionSchema = z.object({
     'checklist',
     'submission',
     'kpi',
+    'okr',
+    'monthly_report',
   ]),
 })
 
@@ -29,7 +31,8 @@ export const userSessionSchema = z.object({
 
 export const meResponseSchema = z.object({
   user: userSessionSchema,
-  accessToken: z.string().min(1),
+  /** Có khi mock hoặc tương lai trả JWT trong body; session thật dùng cookie httpOnly. */
+  accessToken: z.string().min(1).optional(),
 })
 
 export const loginRequestSchema = z.object({

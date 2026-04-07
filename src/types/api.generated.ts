@@ -8,12 +8,12 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** @enum {string} */
-        Role: "MEMBER" | "MANAGER" | "HR_ADMIN" | "TEACHER" | "BOD";
+        Role: "MEMBER" | "LEADER" | "MANAGER" | "HR_ADMIN" | "TEACHER" | "BOD";
         Permission: {
             /** @enum {string} */
             action: "view" | "create" | "edit" | "deactivate" | "grade" | "approve" | "classify";
             /** @enum {string} */
-            resource: "employee" | "exam" | "promotion" | "team" | "department" | "radar_chart" | "checklist" | "submission" | "kpi";
+            resource: "employee" | "exam" | "promotion" | "team" | "department" | "radar_chart" | "checklist" | "submission" | "kpi" | "okr" | "monthly_report";
         };
         UserSession: {
             id: string;
