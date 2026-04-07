@@ -7,9 +7,11 @@ import {
   MANAGER_OPS_ITEMS,
   MEMBER_SELF_ITEMS,
   type AppNavItem,
+  filterNavByPermissions,
   isNavItemActive,
 } from '@/components/shared/AppNav/navItems'
 import { cn } from '@/lib/utils'
+import { usePermission } from '@/hooks/usePermission'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
@@ -19,20 +21,23 @@ type NavItem = AppNavItem
 
 type SidebarSection = { label: string; items: NavItem[] }
 
-function sidebarSectionsForRole(role: Role | undefined): SidebarSection[] {
+function sidebarSectionsForRole(
+  role: Role | undefined,
+  canId: (id: string) => boolean
+): SidebarSection[] {
   if (!role) return []
 
   switch (role) {
     case 'HR_ADMIN':
-      return [{ label: 'HR', items: HR_ADMIN_ITEMS }]
+      return [{ label: 'HR', items: filterNavByPermissions(HR_ADMIN_ITEMS, canId) }]
     case 'BOD':
-      return [{ label: 'BOD', items: BOD_ITEMS }]
+      return [{ label: 'BOD', items: filterNavByPermissions(BOD_ITEMS, canId) }]
     case 'MANAGER':
-      return [{ label: 'Quản lý', items: MANAGER_OPS_ITEMS }]
+      return [{ label: 'Quản lý', items: filterNavByPermissions(MANAGER_OPS_ITEMS, canId) }]
     case 'LEADER':
-      return [{ label: 'Trưởng nhóm KPI', items: LEADER_KPI_ITEMS }]
+      return [{ label: 'Trưởng nhóm KPI', items: filterNavByPermissions(LEADER_KPI_ITEMS, canId) }]
     case 'MEMBER':
-      return [{ label: 'Của tôi', items: MEMBER_SELF_ITEMS }]
+      return [{ label: 'Của tôi', items: filterNavByPermissions(MEMBER_SELF_ITEMS, canId) }]
     default:
       return []
   }
@@ -59,10 +64,7 @@ function NavLink({
   const inner = (
     <>
       <Icon
-        className={cn(
-          'h-[18px] w-[18px] shrink-0',
-          active ? 'text-primary-600' : 'text-gray-500'
-        )}
+        className={cn('h-[18px] w-[18px] shrink-0', active ? 'text-primary-600' : 'text-gray-500')}
         strokeWidth={2}
       />
       {!collapsed ? <span>{item.label}</span> : null}
@@ -100,6 +102,7 @@ export function Sidebar() {
   const sidebarOpen = useUiStore((s) => s.sidebarOpen)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
   const user = useAuthStore((s) => s.user)
+  const { canId } = usePermission()
   const collapsed = !sidebarOpen
 
   if (user?.role === 'MEMBER' || user?.role === 'LEADER') return null
@@ -108,7 +111,7 @@ export function Sidebar() {
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const subtitle = `${displayName} · ${roleLabel}`
 
-  const sections = sidebarSectionsForRole(user?.role)
+  const sections = sidebarSectionsForRole(user?.role, canId)
 
   return (
     <aside
@@ -118,10 +121,7 @@ export function Sidebar() {
       )}
     >
       <div
-        className={cn(
-          'border-b border-gray-200',
-          collapsed ? 'px-2 pb-3 pt-4' : 'px-3 pb-3 pt-4'
-        )}
+        className={cn('border-b border-gray-200', collapsed ? 'px-2 pb-3 pt-4' : 'px-3 pb-3 pt-4')}
       >
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
@@ -141,9 +141,7 @@ export function Sidebar() {
         ) : (
           <div className="flex items-start gap-1">
             <div className="min-w-0 flex-1 pl-1">
-              <div className="text-lg font-extrabold tracking-tight text-primary-600">
-                VCB HRM
-              </div>
+              <div className="text-lg font-extrabold tracking-tight text-primary-600">VCB HRM</div>
               <div className="mt-1 text-sm leading-snug text-gray-500">{subtitle}</div>
             </div>
             <button
@@ -185,10 +183,7 @@ export function Sidebar() {
               title={collapsed ? 'Diễn đàn (sắp có)' : undefined}
               aria-disabled
             >
-              <MessageCircle
-                className="h-[18px] w-[18px] shrink-0 text-gray-300"
-                strokeWidth={2}
-              />
+              <MessageCircle className="h-[18px] w-[18px] shrink-0 text-gray-300" strokeWidth={2} />
               {!collapsed ? <span>Diễn đàn</span> : null}
             </div>
           </div>

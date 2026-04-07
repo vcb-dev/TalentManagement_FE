@@ -196,10 +196,10 @@ export function EmployeeLearningDashboard() {
           </div>
         </section>
 
-        {/* Khung trên: 1/3 avatar + sao | 2/3 thông tin */}
+        {/* Khung trên: 1/4 avatar + sao | 3/4 thông tin */}
         <section
           className={cn(
-            'grid grid-cols-1 gap-6 lg:grid-cols-3',
+            'grid grid-cols-1 gap-6 lg:grid-cols-4',
             'motion-safe:animate-[dash-fade-up_0.6s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none'
           )}
           style={{ animationDelay: '100ms' }}
@@ -207,51 +207,69 @@ export function EmployeeLearningDashboard() {
         >
           <div
             className={cn(
-              'group relative overflow-hidden rounded-[1.75rem] p-[1.5px] shadow-[var(--shadow-game-float)]',
-              'bg-gradient-to-br from-primary/70 via-accent/50 to-primary-600/60',
+              'group relative overflow-hidden rounded-[1.75rem] p-[1.5px] shadow-[0_20px_50px_-24px_hsl(var(--primary)/0.45)]',
+              'bg-gradient-to-br from-accent/55 via-primary/50 to-primary-600/70',
               quartOut,
-              'transition-all duration-500 hover:shadow-[0_20px_50px_-15px_rgb(79_70_229/0.35)] motion-reduce:transition-none'
+              'transition-all duration-500 hover:shadow-[0_24px_56px_-20px_hsl(var(--accent)/0.35),0_16px_40px_-20px_hsl(var(--primary)/0.3)] motion-reduce:transition-none'
             )}
           >
-            <div className="relative flex h-full flex-col items-center justify-center gap-6 overflow-hidden rounded-[1.6875rem] bg-gradient-to-b from-card via-card to-game-soft/40 px-6 py-8">
+            <div
+              className={cn(
+                'relative flex h-full flex-col items-center justify-center gap-7 overflow-hidden rounded-[1.6875rem] px-6 py-9',
+                'bg-gradient-to-br from-[hsl(var(--accent)/0.11)] via-card to-[hsl(var(--primary)/0.12)]',
+                'ring-1 ring-inset ring-white/60 dark:ring-white/10'
+              )}
+            >
               <div
-                className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/15 blur-2xl motion-safe:animate-[dash-glow-orb_6s_ease-in-out_infinite] motion-reduce:animate-none"
+                className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-primary/20 blur-3xl"
                 aria-hidden
               />
               <div
-                className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-accent/20 blur-2xl motion-safe:animate-[dash-glow-orb_7s_ease-in-out_infinite_0.5s] motion-reduce:animate-none"
+                className="pointer-events-none absolute -bottom-12 -left-14 h-40 w-40 rounded-full bg-accent/25 blur-3xl"
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute left-1/2 top-8 h-px w-3/4 max-w-[200px] -translate-x-1/2 bg-gradient-to-r from-transparent via-primary/25 to-transparent"
                 aria-hidden
               />
 
               {user ? (
                 <div className="relative">
                   <div
-                    className="absolute inset-0 scale-110 rounded-full bg-gradient-to-tr from-primary/45 via-accent/35 to-primary-600/50 opacity-80 blur-xl motion-safe:animate-[dash-glow-orb_4.5s_ease-in-out_infinite] motion-reduce:hidden"
+                    className="pointer-events-none absolute inset-0 scale-110 rounded-full bg-gradient-to-tr from-primary/40 via-accent/30 to-primary-600/45 opacity-90 blur-xl"
                     aria-hidden
                   />
-                  <div className="relative motion-safe:animate-[dash-float-slow_5.5s_ease-in-out_infinite] motion-reduce:animate-none">
-                    <EmployeeAvatar
-                      name={user.name}
-                      className="h-28 w-28 text-2xl ring-4 ring-primary/25 ring-offset-4 ring-offset-card transition-all duration-300 group-hover:ring-primary/45"
-                    />
-                  </div>
-                  <span
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border border-primary/20 bg-gradient-to-r from-primary to-accent px-3 py-0.5 text-[0.6rem] font-black uppercase tracking-tighter text-primary-foreground shadow-md"
-                    style={{ boxShadow: '0 4px 14px hsl(var(--primary) / 0.35)' }}
-                  >
+                  <EmployeeAvatar
+                    name={user.name}
+                    className="relative z-10 h-28 w-28 text-2xl ring-[3px] ring-white/90 shadow-[0_12px_40px_-12px_hsl(var(--primary)/0.45)] ring-offset-[3px] ring-offset-[hsl(var(--accent)/0.08)] transition-all duration-300 group-hover:ring-primary/35"
+                  />
+                  <span className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/40 bg-gradient-to-r from-primary to-accent px-3.5 py-1 text-[0.58rem] font-black uppercase tracking-wide text-primary-foreground shadow-[0_6px_20px_hsl(var(--primary)/0.4)]">
                     {levelLabel}
                   </span>
                 </div>
               ) : null}
 
               <div className="relative w-full text-center">
-                <p className="mb-3 text-[0.65rem] font-bold uppercase tracking-widest text-primary/80">
+                <p className="mb-1 inline-flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-primary">
+                  <span
+                    className="h-px w-6 bg-gradient-to-r from-transparent to-primary/50"
+                    aria-hidden
+                  />
                   Huy hiệu sao
+                  <span
+                    className="h-px w-6 bg-gradient-to-l from-transparent to-accent/50"
+                    aria-hidden
+                  />
                 </p>
                 {maxStars > 0 ? (
                   <>
                     <div
-                      className="inline-flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-primary/15 bg-gradient-to-b from-primary/[0.09] to-transparent px-3 py-3 shadow-inner shadow-primary/5"
+                      className={cn(
+                        'mt-4 inline-flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-gradient-to-b from-white/80 to-primary/[0.06] px-4 py-3.5',
+                        'shadow-[inset_0_1px_0_0_rgb(255_255_255/0.85),0_12px_32px_-16px_hsl(var(--primary)/0.35)]',
+                        'dark:from-card/90 dark:to-primary/[0.08]',
+                        'motion-safe:transition-[box-shadow,transform] motion-safe:duration-300 group-hover:shadow-[0_16px_40px_-14px_hsl(var(--accent)/0.3)] motion-reduce:transition-none'
+                      )}
                       role="img"
                       aria-label={`${filledStars} trên ${maxStars} sao`}
                     >
@@ -269,18 +287,13 @@ export function EmployeeLearningDashboard() {
                         </span>
                       ))}
                     </div>
-                    <div className="mt-4 space-y-1.5">
-                      <p className="text-lg font-black tabular-nums text-foreground">
-                        {filledStars}/{maxStars}{' '}
-                        <span className="text-sm font-bold text-muted-foreground">sao</span>
-                      </p>
-                      <div className="mx-auto h-2.5 max-w-[200px] overflow-hidden rounded-full bg-muted p-0.5 shadow-inner">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-primary via-amber-500 to-accent motion-safe:transition-[width] motion-safe:duration-1000 motion-safe:ease-out"
-                          style={{ width: `${starPct}%` }}
-                        />
-                      </div>
-                    </div>
+                    <p className="mt-5 text-lg font-black tabular-nums tracking-tight text-foreground">
+                      <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                        {filledStars}
+                      </span>
+                      <span className="text-muted-foreground/80">/{maxStars}</span>{' '}
+                      <span className="text-sm font-bold text-muted-foreground">sao</span>
+                    </p>
                   </>
                 ) : (
                   <p className="text-sm font-medium text-muted-foreground">
@@ -293,7 +306,7 @@ export function EmployeeLearningDashboard() {
 
           <div
             className={cn(
-              'relative overflow-hidden rounded-[1.75rem] border border-primary/15 bg-gradient-to-br from-card via-card to-primary/[0.06] p-6 shadow-[var(--shadow-game-float)] sm:p-8 lg:col-span-2',
+              'relative overflow-hidden rounded-[1.75rem] border border-primary/15 bg-gradient-to-br from-card via-card to-primary/[0.06] p-6 shadow-[var(--shadow-game-float)] sm:p-8 lg:col-span-3',
               quartOut,
               'transition-all duration-300 hover:border-primary/25 hover:shadow-[0_20px_44px_-18px_rgb(79_70_229/0.28)] motion-reduce:transition-none',
               CARD_ENTRANCE_HOVER

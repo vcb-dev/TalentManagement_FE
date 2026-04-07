@@ -17,9 +17,11 @@ import { Route as ProtectedMonthlyReportRouteImport } from './routes/_protected/
 import { Route as ProtectedKpiOkrRouteImport } from './routes/_protected/kpi-okr'
 import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as ProtectedPermissionsIndexRouteImport } from './routes/_protected/permissions/index'
 import { Route as ProtectedLearningPathIndexRouteImport } from './routes/_protected/learning-path/index'
 import { Route as ProtectedHrAdminIndexRouteImport } from './routes/_protected/hr-admin/index'
 import { Route as ProtectedExamIndexRouteImport } from './routes/_protected/exam/index'
+import { Route as ProtectedPermissionsEmployeeIdRouteImport } from './routes/_protected/permissions/$employeeId'
 import { Route as ProtectedManagerTeamProgressRouteImport } from './routes/_protected/manager/team-progress'
 import { Route as ProtectedManagerReviewSubmissionsRouteImport } from './routes/_protected/manager/review-submissions'
 import { Route as ProtectedManagerExercisesRouteImport } from './routes/_protected/manager/exercises'
@@ -81,6 +83,12 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AuthRouteRoute,
 } as any)
+const ProtectedPermissionsIndexRoute =
+  ProtectedPermissionsIndexRouteImport.update({
+    id: '/permissions/',
+    path: '/permissions/',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedLearningPathIndexRoute =
   ProtectedLearningPathIndexRouteImport.update({
     id: '/learning-path/',
@@ -97,6 +105,12 @@ const ProtectedExamIndexRoute = ProtectedExamIndexRouteImport.update({
   path: '/exam/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProtectedPermissionsEmployeeIdRoute =
+  ProtectedPermissionsEmployeeIdRouteImport.update({
+    id: '/permissions/$employeeId',
+    path: '/permissions/$employeeId',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedManagerTeamProgressRoute =
   ProtectedManagerTeamProgressRouteImport.update({
     id: '/manager/team-progress',
@@ -245,9 +259,11 @@ export interface FileRoutesByFullPath {
   '/manager/exercises': typeof ProtectedManagerExercisesRoute
   '/manager/review-submissions': typeof ProtectedManagerReviewSubmissionsRoute
   '/manager/team-progress': typeof ProtectedManagerTeamProgressRoute
+  '/permissions/$employeeId': typeof ProtectedPermissionsEmployeeIdRoute
   '/exam/': typeof ProtectedExamIndexRoute
   '/hr-admin/': typeof ProtectedHrAdminIndexRoute
   '/learning-path/': typeof ProtectedLearningPathIndexRoute
+  '/permissions/': typeof ProtectedPermissionsIndexRoute
   '/exam/$examId/classify': typeof ProtectedExamExamIdClassifyRoute
   '/exam/$examId/grade': typeof ProtectedExamExamIdGradeRoute
   '/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
@@ -278,9 +294,11 @@ export interface FileRoutesByTo {
   '/manager/exercises': typeof ProtectedManagerExercisesRoute
   '/manager/review-submissions': typeof ProtectedManagerReviewSubmissionsRoute
   '/manager/team-progress': typeof ProtectedManagerTeamProgressRoute
+  '/permissions/$employeeId': typeof ProtectedPermissionsEmployeeIdRoute
   '/exam': typeof ProtectedExamIndexRoute
   '/hr-admin': typeof ProtectedHrAdminIndexRoute
   '/learning-path': typeof ProtectedLearningPathIndexRoute
+  '/permissions': typeof ProtectedPermissionsIndexRoute
   '/exam/$examId/classify': typeof ProtectedExamExamIdClassifyRoute
   '/exam/$examId/grade': typeof ProtectedExamExamIdGradeRoute
   '/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
@@ -314,9 +332,11 @@ export interface FileRoutesById {
   '/_protected/manager/exercises': typeof ProtectedManagerExercisesRoute
   '/_protected/manager/review-submissions': typeof ProtectedManagerReviewSubmissionsRoute
   '/_protected/manager/team-progress': typeof ProtectedManagerTeamProgressRoute
+  '/_protected/permissions/$employeeId': typeof ProtectedPermissionsEmployeeIdRoute
   '/_protected/exam/': typeof ProtectedExamIndexRoute
   '/_protected/hr-admin/': typeof ProtectedHrAdminIndexRoute
   '/_protected/learning-path/': typeof ProtectedLearningPathIndexRoute
+  '/_protected/permissions/': typeof ProtectedPermissionsIndexRoute
   '/_protected/exam/$examId/classify': typeof ProtectedExamExamIdClassifyRoute
   '/_protected/exam/$examId/grade': typeof ProtectedExamExamIdGradeRoute
   '/_protected/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
@@ -349,9 +369,11 @@ export interface FileRouteTypes {
     | '/manager/exercises'
     | '/manager/review-submissions'
     | '/manager/team-progress'
+    | '/permissions/$employeeId'
     | '/exam/'
     | '/hr-admin/'
     | '/learning-path/'
+    | '/permissions/'
     | '/exam/$examId/classify'
     | '/exam/$examId/grade'
     | '/exam/$examId/result'
@@ -382,9 +404,11 @@ export interface FileRouteTypes {
     | '/manager/exercises'
     | '/manager/review-submissions'
     | '/manager/team-progress'
+    | '/permissions/$employeeId'
     | '/exam'
     | '/hr-admin'
     | '/learning-path'
+    | '/permissions'
     | '/exam/$examId/classify'
     | '/exam/$examId/grade'
     | '/exam/$examId/result'
@@ -417,9 +441,11 @@ export interface FileRouteTypes {
     | '/_protected/manager/exercises'
     | '/_protected/manager/review-submissions'
     | '/_protected/manager/team-progress'
+    | '/_protected/permissions/$employeeId'
     | '/_protected/exam/'
     | '/_protected/hr-admin/'
     | '/_protected/learning-path/'
+    | '/_protected/permissions/'
     | '/_protected/exam/$examId/classify'
     | '/_protected/exam/$examId/grade'
     | '/_protected/exam/$examId/result'
@@ -495,6 +521,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof AuthRouteRoute
     }
+    '/_protected/permissions/': {
+      id: '/_protected/permissions/'
+      path: '/permissions'
+      fullPath: '/permissions/'
+      preLoaderRoute: typeof ProtectedPermissionsIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/learning-path/': {
       id: '/_protected/learning-path/'
       path: '/learning-path'
@@ -514,6 +547,13 @@ declare module '@tanstack/react-router' {
       path: '/exam'
       fullPath: '/exam/'
       preLoaderRoute: typeof ProtectedExamIndexRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/permissions/$employeeId': {
+      id: '/_protected/permissions/$employeeId'
+      path: '/permissions/$employeeId'
+      fullPath: '/permissions/$employeeId'
+      preLoaderRoute: typeof ProtectedPermissionsEmployeeIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/manager/team-progress': {
@@ -703,9 +743,11 @@ interface ProtectedRouteRouteChildren {
   ProtectedManagerExercisesRoute: typeof ProtectedManagerExercisesRoute
   ProtectedManagerReviewSubmissionsRoute: typeof ProtectedManagerReviewSubmissionsRoute
   ProtectedManagerTeamProgressRoute: typeof ProtectedManagerTeamProgressRoute
+  ProtectedPermissionsEmployeeIdRoute: typeof ProtectedPermissionsEmployeeIdRoute
   ProtectedExamIndexRoute: typeof ProtectedExamIndexRoute
   ProtectedHrAdminIndexRoute: typeof ProtectedHrAdminIndexRoute
   ProtectedLearningPathIndexRoute: typeof ProtectedLearningPathIndexRoute
+  ProtectedPermissionsIndexRoute: typeof ProtectedPermissionsIndexRoute
   ProtectedExamExamIdClassifyRoute: typeof ProtectedExamExamIdClassifyRoute
   ProtectedExamExamIdGradeRoute: typeof ProtectedExamExamIdGradeRoute
   ProtectedExamExamIdResultRoute: typeof ProtectedExamExamIdResultRoute
@@ -736,9 +778,11 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedManagerReviewSubmissionsRoute:
     ProtectedManagerReviewSubmissionsRoute,
   ProtectedManagerTeamProgressRoute: ProtectedManagerTeamProgressRoute,
+  ProtectedPermissionsEmployeeIdRoute: ProtectedPermissionsEmployeeIdRoute,
   ProtectedExamIndexRoute: ProtectedExamIndexRoute,
   ProtectedHrAdminIndexRoute: ProtectedHrAdminIndexRoute,
   ProtectedLearningPathIndexRoute: ProtectedLearningPathIndexRoute,
+  ProtectedPermissionsIndexRoute: ProtectedPermissionsIndexRoute,
   ProtectedExamExamIdClassifyRoute: ProtectedExamExamIdClassifyRoute,
   ProtectedExamExamIdGradeRoute: ProtectedExamExamIdGradeRoute,
   ProtectedExamExamIdResultRoute: ProtectedExamExamIdResultRoute,

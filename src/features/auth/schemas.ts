@@ -24,7 +24,10 @@ export const userSessionSchema = z.object({
   name: z.string(),
   email: z.string().email(),
   role: roleSchema,
+  roles: z.array(roleSchema).optional(),
   permissions: z.array(permissionSchema),
+  permissionIds: z.array(z.string()).optional(),
+  dataScopeFlags: z.record(z.string(), z.boolean()).optional(),
   departmentId: z.string().uuid(),
   teamIds: z.array(z.string().uuid()),
 })

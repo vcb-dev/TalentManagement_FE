@@ -2,16 +2,23 @@ import { apiClient } from '@/lib/axios'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { safeParse } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
-import { decodeMockToken, encodeMockToken, findMockUser, MOCK_PASSWORD } from './mock/mockAccounts'
+import {
+  buildSessionWithAssignments,
+  decodeMockToken,
+  encodeMockToken,
+  findMockUser,
+  MOCK_PASSWORD,
+} from './mock/mockAccounts'
 import { meResponseSchema, type LoginRequest } from './schemas'
 
 function mockLogin(body: LoginRequest) {
-  const user = findMockUser(body.email)
-  if (!user || body.password !== MOCK_PASSWORD) {
+  const raw = findMockUser(body.email)
+  if (!raw || body.password !== MOCK_PASSWORD) {
     const err = new Error('Sai email hoặc mật khẩu') as Error & { status?: number }
     err.status = 401
     throw err
   }
+  const user = buildSessionWithAssignments(raw)
   const accessToken = encodeMockToken(user.email)
   return safeParse(meResponseSchema, { user, accessToken }, 'mock login')
 }
@@ -29,12 +36,13 @@ function mockMe() {
     err.status = 401
     throw err
   }
-  const user = findMockUser(email)
-  if (!user) {
+  const raw = findMockUser(email)
+  if (!raw) {
     const err = new Error('Unauthorized') as Error & { status?: number }
     err.status = 401
     throw err
   }
+  const user = buildSessionWithAssignments(raw)
   return safeParse(meResponseSchema, { user, accessToken: token }, 'mock me')
 }
 

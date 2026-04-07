@@ -84,23 +84,30 @@
       },
       "UserSession": {
         "type": "object",
-        "required": [
-          "id",
-          "name",
-          "email",
-          "role",
-          "permissions",
-          "departmentId",
-          "teamIds"
-        ],
+        "required": ["id", "name", "email", "role", "permissions", "departmentId", "teamIds"],
         "properties": {
           "id": { "type": "string" },
           "name": { "type": "string" },
           "email": { "type": "string", "format": "email" },
           "role": { "$ref": "#/components/schemas/Role" },
+          "roles": {
+            "description": "Đa vai trò (RBAC động); khi có thì union quyền theo các role + permissionIds.",
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Role" }
+          },
           "permissions": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/Permission" }
+          },
+          "permissionIds": {
+            "description": "Quyền chức năng theo id catalog (chuỗi ổn định, ví dụ hr.employees.view).",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "dataScopeFlags": {
+            "description": "Cờ giới hạn dữ liệu (ABAC), ví dụ chỉ xem bản ghi phụ trách.",
+            "type": "object",
+            "additionalProperties": { "type": "boolean" }
           },
           "departmentId": { "type": "string", "format": "uuid" },
           "teamIds": {

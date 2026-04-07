@@ -1,4 +1,7 @@
 import type { Role, UserSession } from '@/types/auth'
+import { applyMandatoryViewRules } from '@/features/permissions/effectivePermissions'
+import { getDefaultPermissionIdsForRole } from '@/features/permissions/defaultPermissionIds'
+import { mergeStoredAssignmentsForUser } from '@/features/permissions/assignmentStore'
 
 /** UUID cố định cho mock */
 const DEPT = '11111111-1111-4111-8111-111111111111'
@@ -11,14 +14,31 @@ function session(
   role: Role,
   permissions: UserSession['permissions'] = []
 ): UserSession {
+  const permissionIds = getDefaultPermissionIdsForRole(role)
   return {
     id,
     name,
     email,
     role,
+    roles: [role],
     permissions,
+    permissionIds,
     departmentId: DEPT,
     teamIds: [TEAM],
+  }
+}
+
+/** Gộp assignment đã lưu (localStorage) vào session mock. */
+export function buildSessionWithAssignments(user: UserSession): UserSession {
+  const merged = mergeStoredAssignmentsForUser(user.id)
+  const base = new Set(user.permissionIds ?? getDefaultPermissionIdsForRole(user.role))
+  for (const id of merged.permissionIds) base.add(id)
+  const permissionIds = [...applyMandatoryViewRules(base)]
+  return {
+    ...user,
+    roles: user.roles ?? [user.role],
+    permissionIds,
+    dataScopeFlags: { ...user.dataScopeFlags, ...merged.dataScopeFlags },
   }
 }
 

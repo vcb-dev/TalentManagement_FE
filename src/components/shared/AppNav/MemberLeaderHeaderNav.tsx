@@ -4,9 +4,11 @@ import {
   LEADER_KPI_ITEMS,
   MEMBER_SELF_ITEMS,
   TEACHER_HEADER_ITEMS,
+  filterNavByPermissions,
   isNavItemActive,
   type AppNavItem,
 } from '@/components/shared/AppNav/navItems'
+import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/auth'
 
@@ -54,7 +56,8 @@ export interface MemberLeaderHeaderNavProps {
 /** Điều hướng ngang trên header — thay sidebar cho Member / Leader / HR Admin / Teacher. */
 export function MemberLeaderHeaderNav({ role }: MemberLeaderHeaderNavProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const items =
+  const { canId } = usePermission()
+  const rawItems =
     role === 'LEADER'
       ? LEADER_KPI_ITEMS
       : role === 'HR_ADMIN'
@@ -62,6 +65,7 @@ export function MemberLeaderHeaderNav({ role }: MemberLeaderHeaderNavProps) {
         : role === 'TEACHER'
           ? TEACHER_HEADER_ITEMS
           : MEMBER_SELF_ITEMS
+  const items = filterNavByPermissions(rawItems, canId)
 
   return (
     <nav

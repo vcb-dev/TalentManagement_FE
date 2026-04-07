@@ -73,11 +73,17 @@
   --color-game-soft: hsl(var(--game-soft));
   --color-game-soft-foreground: hsl(var(--game-soft-foreground));
   --color-game-muted: hsl(var(--game-muted));
+
+  /* Typography: cỡ xs/sm lớn hơn mặc định Tailwind (item, card, bảng, nhãn) */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: calc(1.125 / 0.8125);
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: calc(1.375 / 0.9375);
 }
 
-/* Cỡ gốc ~13.5px (84.375% của 16px = 3/4 của 112.5%) — text-sm/base dùng rem */
+/* Cỡ gốc 16px — mọi rem (text-sm, base, v.v.) đọc rõ trên item/card */
 html {
-  font-size: 88.375%;
+  font-size: 100%;
 }
 
 /*
@@ -100,7 +106,8 @@ html {
   --accent: 168 84% 32%;
   --accent-foreground: 0 0% 100%;
   --muted: 214 32% 96%;
-  --muted-foreground: 215 16% 47%;
+  /* Hơi nhạt hơn để chữ foreground / emphasis nổi bật hơn */
+  --muted-foreground: 215 14% 50%;
   --border: 214 32% 91%;
   --ring: 239 84% 59%;
   --button: 239 84% 59%;
@@ -134,7 +141,7 @@ html {
   --accent: 168 55% 42%;
   --accent-foreground: 0 0% 100%;
   --muted: 222 20% 14%;
-  --muted-foreground: 215 15% 62%;
+  --muted-foreground: 215 12% 58%;
   --border: 222 22% 18%;
   --ring: 210 90% 52%;
   --button: 248 72% 62%;
@@ -352,6 +359,17 @@ html {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Nội dung quan trọng — dùng trong card, bảng, dashboard (ưu tiên foreground / đậm) */
+  .text-emphasis {
+    @apply font-semibold text-foreground;
+  }
+  .text-kpi {
+    @apply font-semibold tabular-nums tracking-tight text-primary;
+  }
+  .text-value {
+    @apply font-semibold tabular-nums text-foreground;
+  }
 }
 
 @layer components {
@@ -365,10 +383,10 @@ html {
     @apply flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-6 py-3 shadow-[var(--shadow-card)];
   }
   .card-section-header {
-    @apply border-b border-border bg-muted/50 px-4 py-3 text-sm font-semibold text-foreground;
+    @apply border-b border-border bg-muted/50 px-4 py-3 text-base font-semibold text-foreground;
   }
   .text-ui-toolbar-btn {
-    @apply text-xs font-medium;
+    @apply text-sm font-medium;
   }
 }
 
