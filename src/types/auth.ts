@@ -1,5 +1,6 @@
 /** HR, Member, Teacher (chấm thi theo kỳ), Manager, Leader (KPI/OKR team), BOD. */
 export type Role = 'MEMBER' | 'LEADER' | 'MANAGER' | 'HR' | 'TEACHER' | 'BOD'
+export type StaffLevel = 'PROBATION' | 'PROFICIENT' | 'GENERAL' | 'UNKNOWN'
 
 export type Action =
   | 'view'
@@ -36,4 +37,5 @@ export interface UserSession {
   permissions: Permission[]
   departmentId: string
   teamIds: string[]
+  staffLevel: StaffLevel
 }

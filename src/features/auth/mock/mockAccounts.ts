@@ -1,4 +1,4 @@
-import type { Role, UserSession } from '@/types/auth'
+import type { Role, StaffLevel, UserSession } from '@/types/auth'
 
 /** UUID cố định cho mock */
 const DEPT = '11111111-1111-4111-8111-111111111111'
@@ -9,6 +9,7 @@ function session(
   name: string,
   email: string,
   role: Role,
+  staffLevel: StaffLevel,
   permissions: UserSession['permissions'] = []
 ): UserSession {
   return {
@@ -19,7 +20,14 @@ function session(
     permissions,
     departmentId: DEPT,
     teamIds: [TEAM],
+    staffLevel,
   }
+}
+
+function inferMockStaffLevel(role: Role): StaffLevel {
+  if (role === 'BOD' || role === 'MANAGER') return 'GENERAL'
+  if (role === 'HR') return 'PROFICIENT'
+  return 'PROBATION'
 }
 
 /** Mật khẩu chung cho mọi tài khoản demo (chỉ khi VITE_USE_MOCK_API=true). */
@@ -76,7 +84,10 @@ export const MOCK_ACCOUNT_LIST: {
 const byEmail = new Map<string, UserSession>(
   MOCK_ACCOUNT_LIST.map((a, i) => {
     const id = `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`
-    return [a.email.toLowerCase(), session(id, a.name, a.email, a.role)] as const
+    return [
+      a.email.toLowerCase(),
+      session(id, a.name, a.email, a.role, inferMockStaffLevel(a.role)),
+    ] as const
   })
 )
 

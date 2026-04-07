@@ -8,12 +8,21 @@ import { LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { cn } from '@/lib/utils'
 import { useMyDashboard } from '@/features/dashboard/hooks'
+import { useAuthStore } from '@/stores/auth.store'
+import type { StaffLevel } from '@/types/auth'
 
 function parseLevel(v: unknown): LevelCode {
   if (typeof v === 'string' && Object.prototype.hasOwnProperty.call(LEVEL_LABELS, v)) {
     return v as LevelCode
   }
   return 'tap_su'
+}
+
+function levelFromStaffLevel(staffLevel: StaffLevel | undefined): LevelCode | null {
+  if (staffLevel === 'GENERAL') return 'tuong'
+  if (staffLevel === 'PROFICIENT') return 'biet_viec'
+  if (staffLevel === 'PROBATION') return 'tap_su'
+  return null
 }
 
 function InfoRow({
@@ -40,6 +49,7 @@ function InfoRow({
 
 export function MyDashboardScreen() {
   const { data, isLoading, isError } = useMyDashboard()
+  const staffLevel = useAuthStore((s) => s.user?.staffLevel)
 
   if (isLoading) {
     return (
@@ -73,7 +83,7 @@ export function MyDashboardScreen() {
 
   const u = data.user
   const displayName = u.displayName?.trim() || u.fullNameLegal?.trim() || 'Nhân viên'
-  const level = parseLevel(data.career?.careerLevel)
+  const level = levelFromStaffLevel(staffLevel) ?? parseLevel(data.career?.careerLevel)
   const stars = data.career?.currentStars ?? 0
   const maxStars = STARS_PER_LEVEL[level] || 6
   const levelLabel = LEVEL_LABELS[level]

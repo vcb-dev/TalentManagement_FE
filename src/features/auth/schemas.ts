@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 const roleSchema = z.enum(['MEMBER', 'LEADER', 'MANAGER', 'HR', 'TEACHER', 'BOD'])
+const staffLevelSchema = z.enum(['PROBATION', 'PROFICIENT', 'GENERAL', 'UNKNOWN'])
 
 const permissionSchema = z.object({
   action: z.enum(['view', 'create', 'edit', 'deactivate', 'grade', 'approve', 'classify']),
@@ -27,6 +28,7 @@ export const userSessionSchema = z.object({
   permissions: z.array(permissionSchema),
   departmentId: z.string().uuid(),
   teamIds: z.array(z.string().uuid()),
+  staffLevel: staffLevelSchema,
 })
 
 export const meResponseSchema = z.object({
