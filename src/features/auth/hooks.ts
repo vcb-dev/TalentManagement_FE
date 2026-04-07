@@ -31,6 +31,23 @@ export function useLogin() {
   })
 }
 
+export function useGoogleLogin() {
+  const qc = useQueryClient()
+  const setSession = useAuthStore((s) => s.setSession)
+
+  return useMutation({
+    mutationFn: (idToken: string) => authApi.googleLogin(idToken),
+    onSuccess: (data) => {
+      setSession(data.user, data.accessToken)
+      void qc.invalidateQueries({ queryKey: authKeys.me() })
+      toast.success('Đăng nhập Google thành công')
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err) || 'Đăng nhập Google thất bại')
+    },
+  })
+}
+
 export function useLogout() {
   const qc = useQueryClient()
   const logout = useAuthStore((s) => s.logout)

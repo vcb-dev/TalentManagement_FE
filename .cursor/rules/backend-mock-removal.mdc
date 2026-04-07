@@ -10,7 +10,7 @@ Khi `VITE_USE_MOCK_API` tắt vĩnh viễn và chỉ gọi API thật, thực hi
 
 ## Cấu hình & môi trường
 
-- `.env` / `.env.example`: bỏ hoặc giữ `VITE_USE_MOCK_API=false`; không commit `true` cho production.
+- `.env`: bỏ hoặc giữ `VITE_USE_MOCK_API=false`; không commit `true` cho production.
 - `src/vite-env.d.ts`: có thể xóa `VITE_USE_MOCK_API` nếu không còn dùng.
 
 ## `src/lib/mockEnv.ts` + `src/lib/axios.ts`

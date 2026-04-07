@@ -53,4 +53,16 @@ export const authApi = {
     const res = await apiClient.post<unknown>('/auth/login', body)
     return safeParse(meResponseSchema, res.data, 'POST /auth/login')
   },
+
+  googleLogin: async (idToken: string) => {
+    if (isMockApiEnabled()) {
+      const err = new Error('Đăng nhập Google không dùng được khi bật mock API') as Error & {
+        status?: number
+      }
+      err.status = 400
+      throw err
+    }
+    const res = await apiClient.post<unknown>('/auth/google', { idToken })
+    return safeParse(meResponseSchema, res.data, 'POST /auth/google')
+  },
 }

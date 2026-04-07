@@ -7,7 +7,8 @@ import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 import { loginRequestSchema } from '@/features/auth/schemas'
 import { MOCK_ACCOUNT_LIST, MOCK_PASSWORD } from '@/features/auth/mock/mockAccounts'
-import { useLogin } from '@/features/auth/hooks'
+import { GoogleLogin } from '@react-oauth/google'
+import { useGoogleLogin, useLogin } from '@/features/auth/hooks'
 import { defaultPathForRole } from '@/lib/routeGuards'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 
@@ -79,13 +80,25 @@ const inputClass =
 function LoginPage() {
   const navigate = useNavigate()
   const login = useLogin()
+  const googleLogin = useGoogleLogin()
   const search = Route.useSearch()
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginRequestSchema),
     defaultValues: { email: '', password: '' },
   })
 
   const appName = import.meta.env.VITE_APP_NAME ?? 'VCB HRM'
+
+  const onAuthSuccess = () => {
+    if (search.redirect && isSafeInternalRedirect(search.redirect)) {
+      void navigate({ href: search.redirect })
+      return
+    }
+    const role = useAuthStore.getState().user?.role
+    if (role === 'HR_ADMIN') void navigate({ to: '/hr-admin', search: { page: 1 } })
+    else void navigate({ to: defaultPathForRole(role) })
+  }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app-canvas p-4 text-sm leading-relaxed text-foreground">
@@ -117,20 +130,43 @@ function LoginPage() {
           </div>
         </div>
 
+        {!isMockApiEnabled() && googleClientId ? (
+          <div className="mb-4 flex flex-col items-center gap-2">
+            <GoogleLogin
+              onSuccess={(credential) => {
+                const token = credential.credential
+                if (!token) return
+                googleLogin.mutate(token, { onSuccess: onAuthSuccess })
+              }}
+              onError={() => {
+                // toast từ hook
+              }}
+              useOneTap={false}
+              theme="outline"
+              size="large"
+              width="100%"
+              text="continue_with"
+              shape="rectangular"
+            />
+            <p className="text-center text-[11px] text-muted-foreground">
+              Email Google phải trùng email trong hồ sơ. Role lấy từ cột hợp đồng/vị trí trên hệ thống.
+            </p>
+          </div>
+        ) : null}
+
+        {!isMockApiEnabled() && googleClientId ? (
+          <div className="mb-3 flex items-center gap-2">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-[11px] text-muted-foreground">hoặc</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+        ) : null}
+
         <form
           className="space-y-0"
           onSubmit={form.handleSubmit((v) =>
             login.mutate(v, {
-              onSuccess: () => {
-                if (search.redirect && isSafeInternalRedirect(search.redirect)) {
-                  // Không dùng window.location: reload sẽ xóa Zustand → mất token → bị guard đẩy lại /login
-                  void navigate({ href: search.redirect })
-                  return
-                }
-                const role = useAuthStore.getState().user?.role
-                if (role === 'HR_ADMIN') void navigate({ to: '/hr-admin', search: { page: 1 } })
-                else void navigate({ to: defaultPathForRole(role) })
-              },
+              onSuccess: onAuthSuccess,
             })
           )}
         >
