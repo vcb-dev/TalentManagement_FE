@@ -68,7 +68,7 @@ export function avatarClassForRole(role: Role): string {
       return 'bg-sky-100 text-sky-900'
     case 'MANAGER':
       return 'bg-amber-100 text-amber-900'
-    case 'HR_ADMIN':
+    case 'HR':
     case 'TEACHER':
     case 'BOD':
       return 'bg-primary/8 text-primary'
@@ -112,7 +112,7 @@ export function roleBadgeClass(role: Role): string {
       return 'border border-sky-300/70 bg-sky-100 text-sky-950 shadow-sm ring-1 ring-sky-400/25'
     case 'MANAGER':
       return 'border border-amber-300/70 bg-amber-100 text-amber-950 shadow-sm ring-1 ring-amber-400/25'
-    case 'HR_ADMIN':
+    case 'HR':
     case 'TEACHER':
     case 'BOD':
       return 'border border-violet-300/60 bg-violet-500/12 text-violet-900 ring-1 ring-violet-500/15'
@@ -129,7 +129,7 @@ export function roleShortLabel(role: Role): string {
       return 'TN KPI'
     case 'MANAGER':
       return 'QL'
-    case 'HR_ADMIN':
+    case 'HR':
       return 'HR'
     case 'TEACHER':
       return 'Chấm thi'

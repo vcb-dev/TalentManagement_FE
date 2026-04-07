@@ -5,7 +5,7 @@ import { requireHrAdmin } from '@/features/hr-admin/requireHrAdmin'
 
 const hrAdminSearchSchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
-  role: z.enum(['MEMBER', 'MANAGER', 'HR_ADMIN', 'TEACHER', 'BOD']).optional(),
+  role: z.enum(['MEMBER', 'MANAGER', 'HR', 'TEACHER', 'BOD']).optional(),
   status: z.enum(['active', 'inactive', 'probation', 'reserved']).optional(),
   mode: z.enum(['view', 'edit']).optional(),
 })

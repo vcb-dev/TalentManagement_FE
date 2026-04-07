@@ -42,7 +42,7 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
   { to: '/monthly-report', label: 'Báo cáo hàng tháng', icon: BarChart3, match: 'prefix' },
 ]
 
-const HR_ADMIN_ITEMS: AppNavItem[] = [
+const HR_ITEMS: AppNavItem[] = [
   { to: '/hr-admin', label: 'Nhân sự', icon: Users, match: 'prefix', search: { page: 1 } },
 ]
 
@@ -100,7 +100,7 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
 ]
 
 export {
-  HR_ADMIN_ITEMS,
+  HR_ITEMS,
   BOD_ITEMS,
   MANAGER_OPS_ITEMS,
   TEACHER_CLASS_ITEMS,

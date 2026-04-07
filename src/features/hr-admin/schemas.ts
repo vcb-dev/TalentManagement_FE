@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const createEmployeeSchema = z.object({
   name: z.string().min(2, 'Tên phải có ít nhất 2 ký tự'),
   email: z.string().email('Email không hợp lệ'),
-  role: z.enum(['MEMBER', 'LEADER', 'MANAGER', 'HR_ADMIN', 'TEACHER', 'BOD']),
+  role: z.enum(['MEMBER', 'LEADER', 'MANAGER', 'HR', 'TEACHER', 'BOD']),
   departmentId: z.string().uuid(),
   teamId: z.string().uuid(),
   phone: z.string().optional(),
@@ -27,7 +27,7 @@ export const employeeApiSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   email: z.string().email(),
-  role: z.enum(['MEMBER', 'LEADER', 'MANAGER', 'HR_ADMIN', 'TEACHER', 'BOD']),
+  role: z.enum(['MEMBER', 'LEADER', 'MANAGER', 'HR', 'TEACHER', 'BOD']),
   status: z.enum(['ACTIVE', 'INACTIVE', 'PROBATION', 'RESERVED']),
   departmentId: z.string().uuid(),
   teamIds: z.array(z.string().uuid()),

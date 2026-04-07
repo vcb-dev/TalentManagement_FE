@@ -9,7 +9,7 @@ export const Route = createFileRoute('/')({
     await ensureSessionFromCookie()
     const { accessToken: token, user } = useAuthStore.getState()
     if (!user && !token) return
-    if (user?.role === 'HR_ADMIN') throw redirect({ to: '/hr-admin', search: { page: 1 } })
+    if (user?.role === 'HR') throw redirect({ to: '/hr-admin', search: { page: 1 } })
     throw redirect({ to: defaultPathForRole(user?.role) })
   },
   component: GuestLandingPage,

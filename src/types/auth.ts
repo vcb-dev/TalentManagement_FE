@@ -1,5 +1,5 @@
 /** HR, Member, Teacher (chấm thi theo kỳ), Manager, Leader (KPI/OKR team), BOD. */
-export type Role = 'MEMBER' | 'LEADER' | 'MANAGER' | 'HR_ADMIN' | 'TEACHER' | 'BOD'
+export type Role = 'MEMBER' | 'LEADER' | 'MANAGER' | 'HR' | 'TEACHER' | 'BOD'
 
 export type Action =
   | 'view'

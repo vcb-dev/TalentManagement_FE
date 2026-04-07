@@ -5,7 +5,7 @@ export const ROLE_LABEL_VI: Record<Role, string> = {
   MEMBER: 'Nhân viên',
   LEADER: 'Trưởng nhóm KPI',
   MANAGER: 'Quản lý',
-  HR_ADMIN: 'HR',
+  HR: 'HR',
   TEACHER: 'Người chấm thi',
   BOD: 'BOD',
 }

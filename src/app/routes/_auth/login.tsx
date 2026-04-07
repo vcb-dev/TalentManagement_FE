@@ -29,7 +29,7 @@ export const Route = createFileRoute('/_auth/login')({
     const { accessToken, user } = useAuthStore.getState()
     if (user || accessToken) {
       const target = defaultPathForRole(user?.role)
-      if (user?.role === 'HR_ADMIN') throw redirect({ to: '/hr-admin', search: { page: 1 } })
+      if (user?.role === 'HR') throw redirect({ to: '/hr-admin', search: { page: 1 } })
       throw redirect({ to: target })
     }
   },
@@ -66,7 +66,7 @@ function LoginPage() {
       return
     }
     const role = useAuthStore.getState().user?.role
-    if (role === 'HR_ADMIN') void navigate({ to: '/hr-admin', search: { page: 1 } })
+    if (role === 'HR') void navigate({ to: '/hr-admin', search: { page: 1 } })
     else void navigate({ to: defaultPathForRole(role) })
   }, [navigate, search.redirect])
 

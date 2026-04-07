@@ -27,7 +27,7 @@ const FILTERS: { key: 'all' | Role | 'reserved'; label: string }[] = [
   { key: 'LEADER', label: 'Trưởng nhóm KPI' },
   { key: 'MANAGER', label: 'Quản lý' },
   { key: 'TEACHER', label: 'Người chấm' },
-  { key: 'HR_ADMIN', label: 'HR' },
+  { key: 'HR', label: 'HR' },
   { key: 'BOD', label: 'BOD' },
   { key: 'reserved', label: 'Bảo lưu' },
 ]

@@ -78,7 +78,7 @@ const ROLE_BADGE_ICONS: Record<Role, LucideIcon> = {
   MEMBER: UserCircle,
   LEADER: Target,
   MANAGER: Briefcase,
-  HR_ADMIN: Building2,
+  HR: Building2,
   TEACHER: ClipboardList,
   BOD: BarChart3,
 }

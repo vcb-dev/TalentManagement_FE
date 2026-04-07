@@ -2,7 +2,7 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react'
 import {
   BOD_ITEMS,
-  HR_ADMIN_ITEMS,
+  HR_ITEMS,
   LEADER_KPI_ITEMS,
   MANAGER_OPS_ITEMS,
   MEMBER_SELF_ITEMS,
@@ -23,8 +23,8 @@ function sidebarSectionsForRole(role: Role | undefined): SidebarSection[] {
   if (!role) return []
 
   switch (role) {
-    case 'HR_ADMIN':
-      return [{ label: 'HR', items: HR_ADMIN_ITEMS }]
+    case 'HR':
+      return [{ label: 'HR', items: HR_ITEMS }]
     case 'BOD':
       return [{ label: 'BOD', items: BOD_ITEMS }]
     case 'MANAGER':

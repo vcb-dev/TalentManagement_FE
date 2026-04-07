@@ -43,7 +43,7 @@ function getTempDevPermissionsForRole(role: Role | undefined): Permission[] {
       { action: 'view', resource: 'kpi' },
       { action: 'classify', resource: 'exam' },
     ],
-    HR_ADMIN: [
+    HR: [
       ...allEmployee,
       { action: 'view', resource: 'department' },
       { action: 'grade', resource: 'exam' },

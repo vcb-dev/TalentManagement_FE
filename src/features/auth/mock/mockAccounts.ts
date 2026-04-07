@@ -37,7 +37,7 @@ export const MOCK_ACCOUNT_LIST: {
 }[] = [
   {
     email: 'hr.admin@vcb.com',
-    role: 'HR_ADMIN',
+    role: 'HR',
     name: 'Phòng HR Demo',
     description: 'HR Admin — danh sách nhân sự',
   },

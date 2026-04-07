@@ -8,7 +8,7 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** @enum {string} */
-        Role: "MEMBER" | "LEADER" | "MANAGER" | "HR_ADMIN" | "TEACHER" | "BOD";
+        Role: "MEMBER" | "LEADER" | "MANAGER" | "HR" | "TEACHER" | "BOD";
         Permission: {
             /** @enum {string} */
             action: "view" | "create" | "edit" | "deactivate" | "grade" | "approve" | "classify";

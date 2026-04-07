@@ -54,7 +54,7 @@
     "schemas": {
       "Role": {
         "type": "string",
-        "enum": ["MEMBER", "LEADER", "MANAGER", "HR_ADMIN", "TEACHER", "BOD"]
+        "enum": ["MEMBER", "LEADER", "MANAGER", "HR", "TEACHER", "BOD"]
       },
       "Permission": {
         "type": "object",

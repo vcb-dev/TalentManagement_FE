@@ -1,1169 +1,421 @@
-import { useMemo, useState } from 'react'
-import { TrendingUp, type LucideIcon } from 'lucide-react'
+import { type Dispatch, type SetStateAction, useEffect, useId, useMemo, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import {
-  Award,
-  BarChart3,
-  Briefcase,
-  Building2,
-  CheckCircle2,
-  ClipboardList,
-  Crown,
-  FiveStarRank,
-  GraduationCap,
-  LayoutGrid,
-  PROFILE_TAB_ICONS,
-  ProfileStarTier,
-  Settings,
-  Star,
-  Target,
-  UserCircle,
-} from '@/components/icons'
+import { Building2, Upload } from 'lucide-react'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
-import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
-import { demoGamificationFromSeed } from '@/lib/demoGamification'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
-import type { Role } from '@/types/auth'
-import { PROFILE_CONTENT_ICONS, type ProfileIconKey } from '@/features/profile/profileContentIcons'
+import { type PatchMeUserBody, usePatchMeUser, useUploadMePortrait } from '@/features/profile/hooks'
 import type { MyProfilePage } from '@/features/profile/types'
-
-type ProfileTabId = 'overview' | 'learning' | 'exams' | 'work' | 'info'
-
-const TAB_LABELS: Record<ProfileTabId, string> = {
-  overview: 'Tổng quan',
-  learning: 'Lộ trình học',
-  exams: 'Kết quả thi',
-  work: 'Lịch sử làm việc',
-  info: 'Thông tin',
-}
-
-/** Quản lý: không hiển thị lộ trình học & kết quả thi (trọng tâm vận hành team, không phải lộ trình nhân viên). */
-function profileTabIdsForRole(role: Role): ProfileTabId[] {
-  if (role === 'MANAGER' || role === 'LEADER') {
-    return ['overview', 'work', 'info']
-  }
-  return ['overview', 'learning', 'exams', 'work', 'info']
-}
-
-type HeroBadgeItem = { key: string; Icon: LucideIcon; label: string }
-
-function heroBadges(role: Role): HeroBadgeItem[] {
-  const base: HeroBadgeItem[] = [
-    { key: 'tier', Icon: Award, label: 'Được việc' },
-    { key: 'active', Icon: CheckCircle2, label: 'Hoạt động' },
-  ]
-  switch (role) {
-    case 'MANAGER':
-      return [
-        { key: 'role', Icon: Briefcase, label: 'Quản lý' },
-        ...base,
-        { key: 'mentor', Icon: GraduationCap, label: 'Mentor' },
-      ]
-    case 'LEADER':
-      return [
-        { key: 'role', Icon: Target, label: 'Trưởng nhóm KPI' },
-        ...base,
-        { key: 'mentor', Icon: GraduationCap, label: 'Mentor' },
-      ]
-    case 'TEACHER':
-      return [{ key: 'role', Icon: ClipboardList, label: 'Người chấm thi' }, ...base]
-    case 'HR_ADMIN':
-      return [{ key: 'role', Icon: Building2, label: 'HR' }, ...base]
-    case 'BOD':
-      return [{ key: 'role', Icon: BarChart3, label: 'BOD' }, ...base]
-    default:
-      return [{ key: 'role', Icon: UserCircle, label: 'Nhân viên' }, ...base]
-  }
-}
-
-function starVariants(level: MyProfilePage['currentLevel']): ('filled' | 'current' | 'empty')[] {
-  const out: ('filled' | 'current' | 'empty')[] = []
-  for (let i = 0; i < level.totalStars; i++) {
-    if (i < level.filledStars) out.push('filled')
-    else if (i === level.filledStars) out.push('current')
-    else out.push('empty')
-  }
-  return out
-}
-
-/** Tông màu pill / badge lịch sử cấp — thống nhất theme primary. */
-function tierBadgeTone(
-  _tierIconKey: ProfileIconKey | undefined,
-  _variant: 'pill' | 'history'
-): { wrap: string; icon: string } {
-  return {
-    wrap: 'border border-primary/25 bg-primary/10 text-primary',
-    icon: 'text-primary',
-  }
-}
-
-function tierMilestoneCircleClass(_tierIconKey: ProfileIconKey | undefined): string {
-  return 'bg-gradient-to-br from-primary via-sky-600 to-accent shadow-[0_0_0_2px_rgba(255,255,255,0.95),0_2px_8px_hsl(var(--primary)_/_0.35)]'
-}
-
-function tierLearningAccentClass(_tierIconKey: ProfileIconKey | undefined): string {
-  return 'text-primary'
-}
+import { formatUserDateForReadonlyDisplay, parseStoredDateToInputValue } from '@/features/profile/profileDateUtils'
+import type { MeUserDisplayKey, MeUserPatchKey, MeUserSelf } from '@/features/profile/userSelf.types'
+import { ME_USER_PATCH_KEYS } from '@/features/profile/userSelf.types'
+import {
+  USER_SELF_FORM_SECTIONS,
+  isDateFormField,
+  isWorkOrgReadonlyField,
+  type UserSelfFieldSpec,
+} from '@/features/profile/userSelfFormLayout'
 
 export interface MyProfileScreenProps {
   page: MyProfilePage | undefined
   isLoading: boolean
 }
 
+const inputEditable =
+  'border-input bg-background ring-offset-background focus-visible:ring-2 focus-visible:ring-ring'
+
+const inputReadOnly =
+  'cursor-not-allowed border-muted bg-muted/70 text-muted-foreground shadow-none'
+
+function workOrgReadonlyValue(u: MeUserSelf, key: MeUserDisplayKey): string {
+  if (key === 'startDateWork') return formatUserDateForReadonlyDisplay(u.startDateWork)
+  const v = u[key]
+  return v == null ? '' : String(v)
+}
+
+type EditRecord = Record<MeUserPatchKey, string>
+
+function emptyEditRecord(): EditRecord {
+  return Object.fromEntries(ME_USER_PATCH_KEYS.map((k) => [k, ''])) as EditRecord
+}
+
+function userToEdit(u: MeUserSelf): EditRecord {
+  const r = emptyEditRecord()
+  for (const k of ME_USER_PATCH_KEYS) {
+    if (isDateFormField(k)) {
+      r[k] = parseStoredDateToInputValue(u[k])
+    } else {
+      r[k] = u[k] == null ? '' : String(u[k])
+    }
+  }
+  return r
+}
+
+function toPatch(edit: EditRecord): PatchMeUserBody {
+  const nz = (s: string) => (s.trim() === '' ? null : s.trim())
+  const body = {} as PatchMeUserBody
+  for (const k of ME_USER_PATCH_KEYS) {
+    body[k] = nz(edit[k] ?? '')
+  }
+  return body
+}
+
+function ProfileReadonlyInput({ label, value }: { label: string; value: string }) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <input
+        type="text"
+        readOnly
+        disabled
+        autoComplete="off"
+        className={cn(
+          'w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors',
+          inputReadOnly
+        )}
+        value={value}
+      />
+    </label>
+  )
+}
+
+function ProfileEditableText({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <input
+        type="text"
+        autoComplete="off"
+        className={cn('w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors', inputEditable)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  )
+}
+
+function ProfileEditableTextarea({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <label className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-2">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <textarea
+        className={cn(
+          'min-h-[88px] w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none transition-colors',
+          inputEditable
+        )}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  )
+}
+
+function ProfileEditableDate({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <input
+        type="date"
+        className={cn(
+          'w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors [color-scheme:light]',
+          inputEditable
+        )}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  )
+}
+
+function PortraitUploadBlock({
+  label,
+  uploading,
+  onFile,
+}: {
+  label: string
+  uploading: boolean
+  onFile: (file: File) => void
+}) {
+  const uploadInputId = useId()
+
+  const titleId = `${uploadInputId}-title`
+
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2 lg:col-span-2">
+      <span id={titleId} className="text-xs font-medium text-muted-foreground">
+        {label}
+      </span>
+      <input
+        id={uploadInputId}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="sr-only"
+        disabled={uploading}
+        aria-labelledby={titleId}
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) onFile(f)
+          e.target.value = ''
+        }}
+      />
+      <label
+        htmlFor={uploadInputId}
+        className={cn(
+          'flex min-h-10 w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed border-input bg-background px-3 py-2 text-sm transition-colors',
+          'hover:border-primary/45 hover:bg-muted/25',
+          uploading && 'pointer-events-none opacity-60'
+        )}
+      >
+        <Upload className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
+        <span className="min-w-0 truncate font-medium text-foreground">
+          {uploading ? 'Đang tải ảnh đại diện…' : 'Chọn ảnh đại diện'}
+        </span>
+      </label>
+      <p className="text-[11px] leading-snug text-muted-foreground">
+        JPEG, PNG, WebP hoặc GIF — tối đa 5 MB
+      </p>
+    </div>
+  )
+}
+
+function renderField(
+  field: UserSelfFieldSpec,
+  ctx: {
+    u: MeUserSelf
+    edit: EditRecord
+    setEdit: Dispatch<SetStateAction<EditRecord>>
+    onPortraitFile: (file: File) => void
+    portraitUploading: boolean
+  }
+) {
+  const { u, edit, setEdit, onPortraitFile, portraitUploading } = ctx
+
+  if (field.kind === 'portrait') {
+    return (
+      <PortraitUploadBlock
+        key={field.key}
+        label={field.label}
+        uploading={portraitUploading}
+        onFile={onPortraitFile}
+      />
+    )
+  }
+
+  if (isWorkOrgReadonlyField(field.key)) {
+    return (
+      <ProfileReadonlyInput
+        key={field.key}
+        label={field.label}
+        value={workOrgReadonlyValue(u, field.key)}
+      />
+    )
+  }
+
+  const key = field.key as MeUserPatchKey
+  const setVal = (v: string) => setEdit((s) => ({ ...s, [key]: v }))
+
+  if (isDateFormField(field.key)) {
+    return (
+      <ProfileEditableDate key={field.key} label={field.label} value={edit[key] ?? ''} onChange={setVal} />
+    )
+  }
+
+  if (field.multiline) {
+    return (
+      <ProfileEditableTextarea key={field.key} label={field.label} value={edit[key] ?? ''} onChange={setVal} />
+    )
+  }
+
+  return <ProfileEditableText key={field.key} label={field.label} value={edit[key] ?? ''} onChange={setVal} />
+}
+
 export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
   const user = useAuthStore((s) => s.user)
-  const [tab, setTab] = useState<ProfileTabId>('overview')
-  const [phoneDraft, setPhoneDraft] = useState<string | undefined>(undefined)
+  const { mutate: patchUser, isPending: patchPending } = usePatchMeUser()
+  const { mutate: uploadPortrait, isPending: portraitUploading } = useUploadMePortrait()
+  const [edit, setEdit] = useState<EditRecord>(() => emptyEditRecord())
 
   const role = user?.role ?? 'MEMBER'
-  /** HR được cập nhật số điện thoại & thao tác đổi mật khẩu (demo) trên hồ sơ của chính mình. */
-  const hrCanEditSelf = role === 'HR_ADMIN'
-  const visibleTabs = useMemo(() => profileTabIdsForRole(role), [role])
-  const activeTab = visibleTabs.includes(tab) ? tab : (visibleTabs[0] ?? 'overview')
+  const u = page?.userRecord
 
-  const displayName = user?.name ?? 'Nhân viên'
-  const email = user?.email ?? '—'
-  const badges = heroBadges(role)
-  const { points, rank } = useMemo(
-    () => demoGamificationFromSeed(user?.email ?? displayName),
-    [user?.email, displayName]
-  )
+  useEffect(() => {
+    if (!u) return
+    setEdit(userToEdit(u))
+  }, [u])
 
-  const pageFiltered = useMemo(() => {
-    if (!page) return undefined
-    let achievements = page.achievements
-    let statsOverview = page.statsOverview
-    let workSummary = page.workSummary
-    if (role === 'MEMBER') {
-      achievements = achievements.filter((a) => !a.name.includes('Mentor'))
-      statsOverview = statsOverview.filter((s) => !s.label.includes('Mentee'))
-      workSummary = workSummary.filter((w) => !w.label.includes('Nâng role'))
-    }
-    return { ...page, achievements, statsOverview, workSummary }
-  }, [page, role])
-
-  const skillsList = useMemo(() => {
-    if (!pageFiltered) return [] as { key: string; label: string; iconKey?: ProfileIconKey }[]
-    const px = pageFiltered
-    const rows: { key: string; label: string; iconKey?: ProfileIconKey }[] = []
-    if (px.currentLevel.tierLabel) {
-      rows.push({
-        key: 'tier',
-        label: px.currentLevel.tierLabel,
-        iconKey: px.currentLevel.tierIconKey,
-      })
-    }
-    px.achievements
-      .filter((a) => a.earned)
-      .forEach((a) => {
-        rows.push({ key: a.name, label: a.name, iconKey: a.iconKey })
-      })
-    return rows
-  }, [pageFiltered])
-
-  const phoneValue = pageFiltered?.personalInfo.phone ?? ''
-  const phoneInput = phoneDraft !== undefined ? phoneDraft : phoneValue
-
-  if (isLoading || !pageFiltered) {
+  const displayName = useMemo(() => {
+    const fromForm = edit.displayName.trim() || edit.fullNameLegal.trim()
+    if (fromForm) return fromForm
+    if (!u) return user?.name ?? 'Nhân viên'
     return (
-      <div className="-m-5 flex min-h-[calc(100vh-3rem)] items-center justify-center bg-app-canvas p-8 text-base text-muted-foreground md:-m-6 lg:-m-8">
+      u.displayName?.trim() ||
+      u.fullNameLegal?.trim() ||
+      user?.name ||
+      'Nhân viên'
+    )
+  }, [u, user?.name, edit.displayName, edit.fullNameLegal])
+
+  const email = useMemo(() => {
+    if (!u) return user?.email ?? '—'
+    return u.email?.trim() || user?.email || '—'
+  }, [u, user?.email])
+
+  const onPortraitFile = (file: File) => {
+    uploadPortrait(file, {
+      onSuccess: () => toast.success('Đã cập nhật ảnh đại diện'),
+      onError: () => toast.error('Không tải được ảnh. Thử lại sau.'),
+    })
+  }
+
+  if (isLoading || !page || !u) {
+    return (
+      <div className="-m-5 flex min-h-[calc(100vh-3rem)] items-center justify-center bg-app-canvas p-8 text-muted-foreground md:-m-6 lg:-m-8">
         {isLoading ? 'Đang tải hồ sơ…' : 'Không có dữ liệu'}
       </div>
     )
   }
 
-  const p = pageFiltered
-  const levelStarVariants = starVariants(p.currentLevel)
-  const profileScoreDisplay = (points / 1000).toFixed(1).replace('.', ',')
-  const rankStarsFive = (p.currentLevel.levelProgressPct / 100) * 5
-  const CurrentTitleIcon = p.currentLevel.titleIconKey
-    ? PROFILE_CONTENT_ICONS[p.currentLevel.titleIconKey]
-    : null
-  const CurrentTierIcon = p.currentLevel.tierIconKey
-    ? PROFILE_CONTENT_ICONS[p.currentLevel.tierIconKey]
-    : null
-  const tierPill = tierBadgeTone(p.currentLevel.tierIconKey, 'pill')
-  const showTierPill = Boolean(p.currentLevel.tierLabel.trim())
+  const workSection = USER_SELF_FORM_SECTIONS[0]!
+  const detailSections = USER_SELF_FORM_SECTIONS.slice(1)
+
+  const fieldCtx = { u, edit, setEdit, onPortraitFile, portraitUploading }
 
   return (
-    <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-slate-50/80 via-app-canvas to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
-      <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 px-4 pb-6 pt-6 md:px-6 lg:flex-row lg:items-start lg:gap-8 lg:pt-8">
-        {/* Cột trái — avatar, phân công, kỹ năng (layout tham chiếu gamification) */}
-        <aside className="w-full shrink-0 lg:w-[280px]">
-          <div className="flex flex-col gap-6 rounded-2xl border border-primary/10 bg-card p-5 shadow-[var(--shadow-card)] ring-1 ring-primary/5">
-            <div className="relative mx-auto">
+    <div className="-m-5 bg-app-canvas pb-12 pt-6 text-foreground md:-m-6 lg:-m-8">
+      <div className="mx-auto w-full max-w-[min(100%,96rem)] px-4 md:px-6">
+        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight">Hồ sơ cá nhân</h1>
+            <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              Toàn bộ các trường dưới đây đều có thể chỉnh sửa khi vào trang. Nhấn{' '}
+              <span className="font-medium text-foreground">Lưu thay đổi</span> để gửi lên hệ thống; ảnh đại
+              diện có thể tải lên trực tiếp. Dữ liệu đồng bộ HR có thể ghi đè theo lịch.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={patchPending}
+            onClick={() =>
+              patchUser(toPatch(edit), {
+                onSuccess: () => toast.success('Đã lưu'),
+                onError: () => toast.error('Không lưu được. Thử lại sau.'),
+              })
+            }
+            className="h-11 shrink-0 rounded-lg bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60 sm:min-w-[180px]"
+          >
+            {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
+          </button>
+        </header>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
+          <section className="rounded-xl border border-border/80 bg-card p-4 shadow-sm">
+            <div className="flex flex-wrap items-start gap-4">
               <EmployeeAvatar
                 name={displayName}
-                showOnlineDot
-                className="h-44 w-44 rounded-2xl border-[3px] border-white text-4xl shadow-[var(--shadow-game-float)] ring-4 ring-primary/15"
+                photoUrl={resolvePublicAssetUrl(edit.portraitRef)}
+                className="h-16 w-16 shrink-0 rounded-xl text-base ring-2 ring-border"
               />
-            </div>
-
-            <div>
-              <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                Phân công
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold leading-snug text-foreground">
-                      {p.orgInfo.department}
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-semibold leading-tight">{displayName}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">{email}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded-full bg-muted px-2.5 py-1 font-medium text-foreground">
+                    {ROLE_LABEL_VI[role]}
+                  </span>
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <Building2 className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                    <span>
+                      {edit.departmentName.trim() || '—'} · {edit.teamGroup.trim() || '—'}
                     </span>
-                    <span className="shrink-0 rounded-md bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-800">
-                      Chính
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    VP · Ngân hàng TMCP Ngoại thương VCB
-                  </p>
-                </div>
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold leading-snug text-foreground">
-                      {p.orgInfo.team}
-                    </span>
-                    <span className="shrink-0 rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
-                      Phụ
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Mã {p.orgInfo.employeeCode} · Vào {p.orgInfo.startDate}
-                  </p>
+                  </span>
                 </div>
               </div>
             </div>
+          </section>
 
-            <div className="h-px bg-border" />
+          <section className="rounded-lg border border-dashed border-border bg-muted/25 px-4 py-3 text-sm">
+            <p>
+              <span className="text-muted-foreground">Cấp độ: </span>
+              <span className="font-medium text-foreground">{page.currentLevel.title}</span>
+              <span className="text-muted-foreground"> — </span>
+              <span className="text-foreground/90">{page.currentLevel.progressLine}</span>
+            </p>
+            <p className="mt-2">
+              <Link
+                to="/learning-path"
+                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Lộ trình học
+              </Link>
+              <span className="text-muted-foreground"> · </span>
+              <Link
+                to="/exam"
+                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Kết quả thi
+              </Link>
+            </p>
+          </section>
+        </div>
 
-            <div>
-              <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                Kỹ năng &amp; huy hiệu
+        <section className="mt-10">
+          <h2 className="text-base font-semibold">Chi tiết hồ sơ</h2>
+
+          <div className="mt-6 space-y-12">
+            <div className="min-w-0">
+              <h3 className="border-b border-border pb-2 text-sm font-semibold text-foreground">
+                {workSection.title}
+              </h3>
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {workSection.fields.map((f) => renderField(f, fieldCtx))}
               </div>
-              <ul className="space-y-2">
-                {skillsList.map((s) => {
-                  const Si = s.iconKey ? PROFILE_CONTENT_ICONS[s.iconKey] : null
-                  return (
-                    <li
-                      key={s.key}
-                      className="flex items-start gap-2 text-sm leading-snug text-foreground"
-                    >
-                      {Si ? (
-                        <Si
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                          strokeWidth={2}
-                          aria-hidden
-                        />
-                      ) : null}
-                      <span>{s.label}</span>
-                    </li>
-                  )
-                })}
-              </ul>
-              {skillsList.length === 0 ? <p className="text-sm text-muted-foreground">—</p> : null}
+            </div>
+
+            <div className="grid grid-cols-1 gap-10 xl:grid-cols-2 xl:gap-x-10 2xl:gap-x-12">
+              {detailSections.map((section) => (
+                <div key={section.title} className="min-w-0">
+                  <h3 className="border-b border-border pb-2 text-sm font-semibold text-foreground">
+                    {section.title}
+                  </h3>
+                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {section.fields.map((f) => renderField(f, fieldCtx))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </aside>
+        </section>
 
-        <main className="min-w-0 flex-1">
-          <div className="overflow-hidden rounded-2xl border border-primary/10 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/5">
-            <div className="border-b border-border/80 px-5 py-5 md:px-6">
-              <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
-                {displayName}
-              </h1>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                <Building2
-                  className="h-4 w-4 shrink-0 text-primary/70"
-                  strokeWidth={2}
-                  aria-hidden
-                />
-                <span>
-                  {p.orgInfo.department} · {p.orgInfo.team}
-                </span>
-              </div>
-              <p className="mt-2 text-lg font-semibold text-primary md:text-xl">
-                {ROLE_LABEL_VI[role]} · {p.currentLevel.title}
-              </p>
-
-              <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border/60 pt-4">
-                <span className="text-3xl font-bold tabular-nums tracking-tight text-foreground">
-                  {profileScoreDisplay}
-                </span>
-                <FiveStarRank filled={rankStarsFive} />
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary ring-1 ring-primary/15">
-                    <Star className="h-3.5 w-3.5" variant="filled" />
-                    {points.toLocaleString('vi-VN')} pts
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-900 ring-1 ring-amber-500/20">
-                    <Crown className="h-3.5 w-3.5 text-amber-600" strokeWidth={2} />#{rank}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                {badges.map(({ key, Icon, label }) => (
-                  <span
-                    key={key}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground"
-                  >
-                    <Icon
-                      className="h-3.5 w-3.5 shrink-0 text-primary/90"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    {label}
-                  </span>
-                ))}
-              </div>
-
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                {hrCanEditSelf ? (
-                  <button
-                    type="button"
-                    onClick={() => setTab('info')}
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-                  >
-                    Chỉnh sửa thông tin cá nhân
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      toast.info(
-                        'Để đổi mật khẩu hoặc cập nhật số điện thoại, vui lòng liên hệ IT hoặc HR theo quy trình nội bộ.'
-                      )
-                    }
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-                  >
-                    Liên hệ IT / HR
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => toast.info('Cài đặt (demo)')}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-muted"
-                  aria-label="Cài đặt"
-                >
-                  <Settings className="h-5 w-5" strokeWidth={2} />
-                </button>
-              </div>
-            </div>
-
-            <nav
-              className="flex flex-wrap gap-0 border-b border-border px-2 md:px-4"
-              aria-label="Mục hồ sơ"
-            >
-              {visibleTabs.map((id) => {
-                const Icon = PROFILE_TAB_ICONS[id]
-                const active = activeTab === id
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setTab(id)}
-                    className={cn(
-                      'relative flex items-center gap-2 px-3 py-3.5 text-sm font-semibold transition-colors md:px-4',
-                      active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0 opacity-85" strokeWidth={2} />
-                    {TAB_LABELS[id]}
-                    {active ? (
-                      <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary md:left-4 md:right-4" />
-                    ) : null}
-                  </button>
-                )
-              })}
-            </nav>
-
-            <div className="page-shell">
-              {activeTab === 'overview' && (
-                <div className="grid gap-5 lg:grid-cols-[minmax(260px,300px)_1fr]">
-                  <div className="space-y-4">
-                    <div
-                      className={cn(
-                        'overflow-hidden rounded-[14px] border border-border bg-white shadow-[var(--shadow-card)]',
-                        CARD_ENTRANCE_HOVER
-                      )}
-                      style={staggerStyle(0)}
-                    >
-                      <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-primary/8 to-transparent px-3.5 py-3 text-xs font-bold uppercase tracking-[0.7px] text-primary md:text-sm">
-                        Thống kê học tập
-                      </div>
-                      <div className="space-y-0 px-3.5 py-3">
-                        {p.statsOverview.map((row) => {
-                          const Ri = row.iconKey ? PROFILE_CONTENT_ICONS[row.iconKey] : null
-                          return (
-                            <div
-                              key={row.label}
-                              className="flex justify-between border-b border-border py-2.5 text-sm last:border-0 md:text-base"
-                            >
-                              <span className="flex items-center gap-2 text-muted-foreground">
-                                {Ri ? (
-                                  <Ri
-                                    className="h-3.5 w-3.5 shrink-0 text-primary/85"
-                                    strokeWidth={2}
-                                    aria-hidden
-                                  />
-                                ) : null}
-                                {row.label}
-                              </span>
-                              <span className={cn('font-semibold text-foreground', row.valueClass)}>
-                                {row.value}
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                    <div
-                      className={cn(
-                        'overflow-hidden rounded-[14px] border border-border bg-white shadow-[var(--shadow-card)]',
-                        CARD_ENTRANCE_HOVER
-                      )}
-                      style={staggerStyle(1)}
-                    >
-                      <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-primary/8 to-transparent px-3.5 py-3 text-xs font-bold uppercase tracking-[0.7px] text-primary md:text-sm">
-                        Thành tích
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 p-3">
-                        {p.achievements.map((a, achIdx) => {
-                          const Ai = PROFILE_CONTENT_ICONS[a.iconKey]
-                          return (
-                            <div
-                              key={a.name}
-                              className={cn(
-                                'rounded-xl border p-2.5 text-center',
-                                'motion-safe:opacity-0 motion-safe:animate-[profile-card-in_0.45s_cubic-bezier(0.22,1,0.36,1)_forwards] motion-reduce:opacity-100 motion-reduce:animate-none',
-                                a.earned
-                                  ? 'border-primary/30 bg-gradient-to-br from-app-canvas to-primary/10'
-                                  : 'border-border opacity-40 grayscale'
-                              )}
-                              style={staggerStyle(2 + achIdx, 45)}
-                            >
-                              <div className="flex justify-center">
-                                <Ai
-                                  className={cn(
-                                    'h-8 w-8 md:h-9 md:w-9',
-                                    a.earned ? 'text-primary' : 'text-muted-foreground'
-                                  )}
-                                  strokeWidth={2}
-                                  aria-hidden
-                                />
-                              </div>
-                              <div className="mt-1 text-xs font-bold text-foreground md:text-sm">
-                                {a.name}
-                              </div>
-                              <div className="mt-0.5 text-xs text-muted-foreground md:text-sm">
-                                {a.sub}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div
-                      className={cn(
-                        'rounded-2xl border border-primary/20 bg-gradient-to-br from-white via-sky-50/90 to-teal-50/80 p-5 text-foreground shadow-[var(--shadow-card)] ring-1 ring-primary/15',
-                        CARD_ENTRANCE_HOVER
-                      )}
-                      style={staggerStyle(2)}
-                    >
-                      <div className="mb-3 flex items-start justify-between gap-2">
-                        <div>
-                          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
-                            Cấp độ hiện tại
-                          </div>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[22px] font-extrabold text-slate-900 md:text-2xl">
-                            {CurrentTitleIcon ? (
-                              <CurrentTitleIcon
-                                className="h-7 w-7 shrink-0 text-primary md:h-8 md:w-8"
-                                strokeWidth={2}
-                                aria-hidden
-                              />
-                            ) : null}
-                            <span>{p.currentLevel.title}</span>
-                          </div>
-                        </div>
-                        {showTierPill ? (
-                          <span
-                            className={cn(
-                              'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold md:text-sm',
-                              tierPill.wrap
-                            )}
-                          >
-                            {CurrentTierIcon ? (
-                              <CurrentTierIcon
-                                className={cn('h-3.5 w-3.5 shrink-0', tierPill.icon)}
-                                strokeWidth={2}
-                                aria-hidden
-                              />
-                            ) : null}
-                            {p.currentLevel.tierLabel}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mb-2 text-sm text-muted-foreground md:text-base">
-                        {p.currentLevel.progressLine}
-                      </p>
-                      <div className="mb-2.5 flex flex-wrap gap-1">
-                        {levelStarVariants.map((v, i) => (
-                          <span
-                            key={i}
-                            className="inline-flex cursor-default rounded-sm motion-safe:animate-[dash-star-pop_0.42s_ease-out_both] motion-reduce:animate-none"
-                            style={{ animationDelay: `${i * 72}ms` }}
-                          >
-                            <ProfileStarTier variant={v} />
-                          </span>
-                        ))}
-                      </div>
-                      <div className="group/pb relative h-2 overflow-hidden rounded-full bg-primary/15">
-                        <div
-                          className="h-full origin-left rounded-full bg-gradient-to-r from-primary via-sky-600 to-accent motion-safe:animate-[profile-progress-fill_1.05s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none"
-                          style={{
-                            width: `${p.currentLevel.levelProgressPct}%`,
-                            transformOrigin: '0 50%',
-                            animationDelay: `${levelStarVariants.length * 72 + 80}ms`,
-                          }}
-                        />
-                      </div>
-                      <div className="mt-1.5 text-right text-xs text-muted-foreground md:text-sm">
-                        {p.currentLevel.levelProgressPct}% hoàn thành cấp độ
-                      </div>
-                    </div>
-
-                    <div
-                      className={cn(
-                        'overflow-hidden rounded-[14px] border border-border bg-white shadow-[var(--shadow-card)]',
-                        CARD_ENTRANCE_HOVER
-                      )}
-                      style={staggerStyle(3)}
-                    >
-                      <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-primary/8 to-transparent px-3.5 py-3 text-xs font-bold uppercase tracking-[0.7px] text-primary md:text-sm">
-                        Lịch sử thăng cấp
-                      </div>
-                      <div className="relative px-3 py-4 pl-10">
-                        <div
-                          className="absolute bottom-4 left-[23px] top-4 w-0.5 rounded-full bg-gradient-to-b from-primary via-sky-500 to-accent opacity-[0.92]"
-                          aria-hidden
-                        />
-                        {p.levelHistory.map((h) => {
-                          const Hi = h.tierIconKey ? PROFILE_CONTENT_ICONS[h.tierIconKey] : null
-                          return (
-                            <div
-                              key={h.step}
-                              className={cn(
-                                'relative mb-3.5 flex items-center gap-2.5 last:mb-0',
-                                h.dimmed && 'opacity-75'
-                              )}
-                            >
-                              <div
-                                className={cn(
-                                  'z-[1] flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white md:h-10 md:w-10 md:text-base',
-                                  tierMilestoneCircleClass(h.tierIconKey)
-                                )}
-                              >
-                                {h.step}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-bold text-foreground md:text-base">
-                                  {h.title}{' '}
-                                  {h.step === 3 && (
-                                    <span className={tierLearningAccentClass(h.tierIconKey)}>
-                                      · Đang học
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-xs text-muted-foreground md:text-sm">
-                                  {h.meta}
-                                </div>
-                              </div>
-                              {h.tierLabel.trim() ? (
-                                <span
-                                  className={cn(
-                                    'ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold md:text-sm',
-                                    h.tierIconKey
-                                      ? tierBadgeTone(h.tierIconKey, 'history').wrap
-                                      : h.tierClass
-                                  )}
-                                >
-                                  {Hi ? (
-                                    <Hi
-                                      className={cn(
-                                        'h-3 w-3 shrink-0 opacity-95',
-                                        h.tierIconKey
-                                          ? tierBadgeTone(h.tierIconKey, 'history').icon
-                                          : undefined
-                                      )}
-                                      strokeWidth={2}
-                                      aria-hidden
-                                    />
-                                  ) : null}
-                                  {h.tierLabel}
-                                </span>
-                              ) : null}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'learning' && (
-                <div className="grid gap-5 lg:grid-cols-[minmax(260px,300px)_1fr]">
-                  <div
-                    className={cn(
-                      'overflow-hidden rounded-[14px] border border-border bg-white shadow-[var(--shadow-card)]',
-                      CARD_ENTRANCE_HOVER
-                    )}
-                    style={staggerStyle(0)}
-                  >
-                    <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-primary/8 to-transparent px-3.5 py-3 text-xs font-bold uppercase tracking-[0.7px] text-primary md:text-sm">
-                      Tiến độ tổng thể
-                    </div>
-                    <div className="space-y-0 px-3.5 py-3">
-                      {p.learningPathSummary.map((row) => (
-                        <div
-                          key={row.label}
-                          className="flex justify-between border-b border-border py-2.5 text-sm last:border-0 md:text-base"
-                        >
-                          <span className="text-muted-foreground">{row.label}</span>
-                          <span className={cn('font-semibold text-foreground', row.valueClass)}>
-                            {row.value}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <div
-                      className="pointer-events-none absolute left-5 top-3 bottom-3 z-0 w-[3px] -translate-x-1/2 rounded-full bg-gradient-to-b from-[#22C55E] via-primary to-primary/25 shadow-[0_0_12px_hsl(var(--primary)/0.14)]"
-                      aria-hidden
-                    />
-                    <div className="relative z-[1] flex flex-col gap-5">
-                      {p.learningTimeline.map((item, idx) => {
-                        const Li = item.titleIconKey
-                          ? PROFILE_CONTENT_ICONS[item.titleIconKey]
-                          : null
-                        return (
-                          <div
-                            key={`${item.title}-${idx}`}
-                            className={cn(
-                              'group flex items-start gap-2 sm:gap-3',
-                              item.dimmed && 'opacity-45'
-                            )}
-                          >
-                            <div className="flex w-10 shrink-0 flex-col items-center pt-1">
-                              {idx === 2 ? (
-                                <span
-                                  className="relative flex h-4 w-4 items-center justify-center"
-                                  aria-hidden
-                                >
-                                  <span className="absolute inset-0 rounded-full border-2 border-primary/50 bg-white shadow-sm" />
-                                  <span className="relative h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_3px_white]" />
-                                </span>
-                              ) : (
-                                <span
-                                  className={cn(
-                                    'relative z-[2] h-3 w-3 rounded-full border-2 border-white shadow-sm ring-1 ring-black/[0.06]',
-                                    idx >= 3 ? 'border-border bg-primary/15' : 'bg-[#22C55E]'
-                                  )}
-                                  aria-hidden
-                                />
-                              )}
-                            </div>
-                            <div
-                              className="mt-2.5 h-px w-2.5 shrink-0 rounded-full bg-gradient-to-r from-primary/35 via-primary/15 to-transparent sm:w-3.5 max-sm:hidden"
-                              aria-hidden
-                            />
-                            <div
-                              className={cn(
-                                'min-w-0 flex-1 rounded-xl border p-3',
-                                'motion-safe:opacity-0 motion-safe:animate-[profile-card-in_0.5s_cubic-bezier(0.22,1,0.36,1)_forwards] motion-reduce:opacity-100 motion-reduce:animate-none',
-                                item.cardClass
-                              )}
-                              style={staggerStyle(idx + 1)}
-                            >
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-foreground md:text-base">
-                                  {Li ? (
-                                    <Li
-                                      className="h-4 w-4 shrink-0 text-primary md:h-[18px] md:w-[18px]"
-                                      strokeWidth={2}
-                                      aria-hidden
-                                    />
-                                  ) : null}
-                                  <span>{item.title}</span>
-                                </span>
-                                <span
-                                  className={cn(
-                                    'rounded-full px-2.5 py-0.5 text-xs font-bold md:text-sm',
-                                    item.badgeClass
-                                  )}
-                                >
-                                  {item.badge}
-                                </span>
-                              </div>
-                              <div className="mt-1 text-xs text-muted-foreground md:text-sm">
-                                {item.meta}
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'exams' && (
-                <div className="grid gap-5 lg:grid-cols-[minmax(220px,280px)_1fr]">
-                  <div
-                    className={cn(
-                      'overflow-hidden rounded-[14px] border border-border bg-white shadow-[var(--shadow-card)]',
-                      CARD_ENTRANCE_HOVER
-                    )}
-                    style={staggerStyle(0)}
-                  >
-                    <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-primary/8 to-transparent px-3.5 py-3 text-xs font-bold uppercase tracking-[0.7px] text-primary md:text-sm">
-                      Tổng kết
-                    </div>
-                    <div className="space-y-0 px-3.5 py-3">
-                      {p.examSummary.map((row) => (
-                        <div
-                          key={row.label}
-                          className="flex justify-between border-b border-border py-2.5 text-sm last:border-0 md:text-base"
-                        >
-                          <span className="text-muted-foreground">{row.label}</span>
-                          <span className={cn('font-semibold text-foreground', row.valueClass)}>
-                            {row.value}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    {p.exams.map((ex, exIdx) => {
-                      const Bi = ex.badgeIconKey ? PROFILE_CONTENT_ICONS[ex.badgeIconKey] : null
-                      return (
-                        <div
-                          key={ex.title}
-                          className={cn(
-                            'rounded-xl border p-3.5',
-                            CARD_ENTRANCE_HOVER,
-                            ex.cardClass
-                          )}
-                          style={staggerStyle(1 + exIdx)}
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-sm font-bold text-foreground md:text-base">
-                              {ex.title}
-                            </span>
-                            <span
-                              className={cn(
-                                'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold md:text-sm',
-                                ex.badgeClass
-                              )}
-                            >
-                              {Bi ? (
-                                <Bi className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                              ) : null}
-                              {ex.badge}
-                            </span>
-                          </div>
-                          <div className="mt-2 grid grid-cols-3 gap-1.5">
-                            {ex.stats.map((s) => (
-                              <div key={s.label} className="rounded-lg bg-white/70 p-2.5">
-                                <div className="text-xs font-semibold uppercase text-muted-foreground md:text-sm">
-                                  {s.label}
-                                </div>
-                                <div
-                                  className={cn(
-                                    'mt-0.5 text-sm font-bold text-foreground md:text-base',
-                                    s.valueClass
-                                  )}
-                                >
-                                  {s.value}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          {ex.note ? (
-                            <div className="mt-2 border-t border-black/[0.06] pt-2 text-xs italic text-muted-foreground md:text-sm">
-                              {ex.note}
-                            </div>
-                          ) : null}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'work' && (
-                <div className="grid gap-5 lg:grid-cols-[minmax(260px,300px)_1fr]">
-                  <div
-                    className={cn(
-                      'overflow-hidden rounded-[14px] border border-border bg-white shadow-[var(--shadow-card)]',
-                      CARD_ENTRANCE_HOVER
-                    )}
-                    style={staggerStyle(0)}
-                  >
-                    <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-primary/8 to-transparent px-3.5 py-3 text-xs font-bold uppercase tracking-[0.7px] text-primary md:text-sm">
-                      Tóm tắt
-                    </div>
-                    <div className="space-y-0 px-3.5 py-3">
-                      {p.workSummary.map((row) => (
-                        <div
-                          key={row.label}
-                          className="flex justify-between border-b border-border py-2.5 text-sm last:border-0 md:text-base"
-                        >
-                          <span className="text-muted-foreground">{row.label}</span>
-                          <span className="font-semibold text-foreground">{row.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="mb-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-bold text-foreground md:text-lg">
-                          Lộ trình thăng tiến tại VCB
-                        </h3>
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 md:text-xs">
-                          <TrendingUp className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                          Phát triển nghề nghiệp
-                        </span>
-                      </div>
-                      <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-muted-foreground md:text-sm">
-                        Quỹ đạo thăng tiến:{' '}
-                        <span className="font-medium text-foreground">phía trên</span> là các mốc
-                        gần nhất, <span className="font-medium text-foreground">phía dưới</span> là
-                        điểm khởi đầu tại VCB — mỗi bước gắn với một giai đoạn phát triển.
-                      </p>
-                    </div>
-                    <div className="relative">
-                      {/* Trục dọc — căn giữa cột mốc (w-12, tâm tại left-6) */}
-                      <div
-                        className="pointer-events-none absolute left-6 top-3 bottom-3 z-0 w-[3px] -translate-x-1/2 rounded-full bg-gradient-to-b from-primary via-accent to-teal-300/80 shadow-[0_0_16px_hsl(var(--primary)/0.2)]"
-                        aria-hidden
-                      />
-                      <div className="relative z-[1] flex flex-col gap-5">
-                        {p.workTimeline.map((item, idx) => {
-                          const stepTotal = p.workTimeline.length
-                          const stepUp = stepTotal - idx
-                          const workDot =
-                            idx === 1
-                              ? 'bg-primary'
-                              : idx === 2
-                                ? 'bg-[#22C55E]'
-                                : idx === 3
-                                  ? 'bg-[#D97706]'
-                                  : idx === 4
-                                    ? 'bg-[#22C55E]'
-                                    : idx === 5
-                                      ? 'bg-primary'
-                                      : idx === 6
-                                        ? 'bg-[#06B6D4]'
-                                        : 'bg-[#94A3B8]'
-                          return (
-                            <div
-                              key={idx}
-                              className={cn(
-                                'group flex items-start gap-2 sm:gap-3',
-                                item.dimmed && 'opacity-90'
-                              )}
-                            >
-                              <div className="flex w-12 shrink-0 flex-col items-center gap-1.5 pt-0.5">
-                                <span
-                                  className="inline-flex min-h-[1.375rem] min-w-[2.25rem] items-center justify-center rounded-lg bg-primary/12 px-1.5 text-[10px] font-bold tabular-nums text-primary ring-1 ring-primary/15 sm:text-[11px]"
-                                  title={`Bước thăng tiến ${stepUp} trên ${stepTotal}`}
-                                >
-                                  {stepUp}/{stepTotal}
-                                </span>
-                                {idx === 0 ? (
-                                  <span className="text-[9px] font-semibold uppercase tracking-wide text-primary">
-                                    Mới nhất
-                                  </span>
-                                ) : idx === stepTotal - 1 ? (
-                                  <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Khởi đầu
-                                  </span>
-                                ) : null}
-                                {idx === 0 ? (
-                                  <span
-                                    className="relative mt-0.5 flex h-4 w-4 items-center justify-center"
-                                    aria-hidden
-                                  >
-                                    <span className="absolute inset-0 rounded-full border-2 border-primary/50 bg-white shadow-sm" />
-                                    <span className="relative h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_3px_white]" />
-                                  </span>
-                                ) : (
-                                  <span
-                                    className={cn(
-                                      'relative z-[2] mt-0.5 h-3 w-3 rounded-full border-2 border-white shadow-sm ring-1 ring-black/[0.06]',
-                                      workDot
-                                    )}
-                                    aria-hidden
-                                  />
-                                )}
-                              </div>
-                              <div
-                                className="mt-6 h-px w-2.5 shrink-0 self-start rounded-full bg-gradient-to-r from-primary/35 via-primary/15 to-transparent sm:mt-7 sm:w-3.5 max-sm:hidden"
-                                aria-hidden
-                              />
-                              <div
-                                className={cn(
-                                  'min-w-0 flex-1 rounded-xl border p-3',
-                                  'motion-safe:opacity-0 motion-safe:animate-[profile-card-in_0.5s_cubic-bezier(0.22,1,0.36,1)_forwards] motion-reduce:opacity-100 motion-reduce:animate-none',
-                                  item.cardClass
-                                )}
-                                style={staggerStyle(idx + 1)}
-                              >
-                                <div className="flex flex-wrap items-start justify-between gap-2">
-                                  <div>
-                                    <div className="text-sm font-bold text-foreground md:text-base">
-                                      {item.title}
-                                    </div>
-                                    <div className="mt-1 text-xs text-muted-foreground md:text-sm">
-                                      {item.meta}
-                                    </div>
-                                  </div>
-                                  <span
-                                    className={cn(
-                                      'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold md:text-sm',
-                                      item.badgeClass
-                                    )}
-                                  >
-                                    {item.badge}
-                                  </span>
-                                </div>
-                                {item.extra ? (
-                                  <div className="mt-2 flex items-center gap-2 rounded-lg bg-primary/10 px-2.5 py-2 text-sm text-primary md:text-base">
-                                    <LayoutGrid className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-                                    {item.extra}
-                                  </div>
-                                ) : null}
-                                {item.footnote ? (
-                                  <div className="mt-1.5 text-xs text-muted-foreground md:text-sm">
-                                    {item.footnote}
-                                  </div>
-                                ) : null}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'info' && (
-                <div className="grid gap-5 lg:grid-cols-2">
-                  <div
-                    className={cn(
-                      'overflow-hidden rounded-[14px] border border-border bg-white shadow-[var(--shadow-card)]',
-                      CARD_ENTRANCE_HOVER
-                    )}
-                    style={staggerStyle(0)}
-                  >
-                    <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-primary/8 to-transparent px-3.5 py-3 text-xs font-bold uppercase tracking-[0.7px] text-primary md:text-sm">
-                      Phân công tổ chức
-                    </div>
-                    <div className="px-3.5 py-3">
-                      <div className="mb-2.5 flex gap-2 rounded-lg border border-[#FCA5A5] bg-[#FEE2E2] px-3 py-2.5 text-sm text-[#991B1B] md:text-base">
-                        <span>🔒</span>
-                        <span>Bạn không có quyền thay đổi. Liên hệ HR Admin nếu có sai sót.</span>
-                      </div>
-                      <div className="space-y-0">
-                        <div className="flex flex-col border-b border-border py-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
-                            Role
-                          </span>
-                          <span className="mt-1 inline-flex w-fit rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary md:text-sm">
-                            {ROLE_LABEL_VI[role]}
-                          </span>
-                        </div>
-                        <div className="flex flex-col border-b border-border py-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
-                            Phòng ban
-                          </span>
-                          <span className="mt-0.5 text-sm font-semibold md:text-base">
-                            {p.orgInfo.department}
-                          </span>
-                        </div>
-                        <div className="flex flex-col border-b border-border py-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
-                            Team chính
-                          </span>
-                          <span className="mt-0.5 text-sm font-semibold md:text-base">
-                            {p.orgInfo.team}
-                          </span>
-                        </div>
-                        <div className="flex flex-col border-b border-border py-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
-                            Mã nhân viên
-                          </span>
-                          <span className="mt-0.5 text-sm font-semibold md:text-base">
-                            {p.orgInfo.employeeCode}
-                          </span>
-                        </div>
-                        <div className="flex flex-col py-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
-                            Ngày bắt đầu
-                          </span>
-                          <span className="mt-0.5 text-sm font-semibold md:text-base">
-                            {p.orgInfo.startDate}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div
-                      className={cn(
-                        'overflow-hidden rounded-[14px] border border-border bg-white shadow-[var(--shadow-card)]',
-                        CARD_ENTRANCE_HOVER
-                      )}
-                      style={staggerStyle(1)}
-                    >
-                      <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-primary/8 to-transparent px-3.5 py-3 text-xs font-bold uppercase tracking-[0.7px] text-primary md:text-sm">
-                        Thông tin cá nhân
-                      </div>
-                      <div className="space-y-0 px-3.5 py-3">
-                        <div className="flex flex-col border-b border-border py-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
-                            Họ và tên
-                          </span>
-                          <span className="mt-0.5 text-sm font-semibold md:text-base">
-                            {displayName}
-                          </span>
-                        </div>
-                        <div className="flex flex-col border-b border-border py-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
-                            Email công ty
-                          </span>
-                          <span className="mt-0.5 text-sm font-semibold md:text-base">{email}</span>
-                        </div>
-                        <div className="flex flex-col border-b border-border py-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
-                            Số điện thoại
-                            {hrCanEditSelf ? (
-                              <span className="text-xs text-primary md:text-sm">
-                                {' '}
-                                — Bạn có thể cập nhật
-                              </span>
-                            ) : null}
-                          </span>
-                          {hrCanEditSelf ? (
-                            <div className="mt-2 space-y-2">
-                              <div className="flex flex-wrap gap-2">
-                                <input
-                                  className="min-w-0 flex-1 rounded-lg border border-primary/30 px-2.5 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 md:text-base"
-                                  value={phoneInput}
-                                  onChange={(e) => setPhoneDraft(e.target.value)}
-                                  autoComplete="tel"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => toast.success('Đã lưu số điện thoại (demo)')}
-                                  className="shrink-0 rounded-lg border border-button bg-button px-3 py-2 text-sm font-medium text-button-foreground hover:opacity-90 md:text-base"
-                                >
-                                  Lưu
-                                </button>
-                              </div>
-                              <p className="text-xs leading-relaxed text-muted-foreground md:text-sm">
-                                Với vai trò HR bạn có thể cập nhật số điện thoại của chính mình tại
-                                đây. Họ tên và email công ty thường đồng bộ từ hệ thống danh tính —
-                                đổi qua quy trình IT/HR nếu cần.
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="mt-2 space-y-2">
-                              <span className="block text-sm font-semibold md:text-base">
-                                {phoneValue || '—'}
-                              </span>
-                              <p className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2.5 text-xs leading-relaxed text-amber-950 md:text-sm dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-100">
-                                Số điện thoại do HR hoặc quản lý trực tiếp cập nhật. Để thay đổi,
-                                vui lòng liên hệ bộ phận nhân sự (HR) hoặc quản lý của bạn — không
-                                chỉnh sửa trên hệ thống này.
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col py-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
-                            Ngày sinh
-                          </span>
-                          <span className="mt-0.5 text-sm font-semibold md:text-base">
-                            {p.personalInfo.birthDate}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      className={cn(
-                        'overflow-hidden rounded-[14px] border border-border bg-white shadow-[var(--shadow-card)]',
-                        CARD_ENTRANCE_HOVER
-                      )}
-                      style={staggerStyle(2)}
-                    >
-                      <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-primary/8 to-transparent px-3.5 py-3 text-xs font-bold uppercase tracking-[0.7px] text-primary md:text-sm">
-                        Bảo mật
-                      </div>
-                      <div className="space-y-3 px-3.5 py-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div>
-                            <div className="text-sm font-semibold text-foreground md:text-base">
-                              Mật khẩu đăng nhập
-                            </div>
-                            <div className="mt-1 text-xs text-muted-foreground md:text-sm">
-                              Lần đổi gần nhất: {p.security.lastPasswordChange}
-                            </div>
-                          </div>
-                          {hrCanEditSelf ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                toast.info(
-                                  'Đổi mật khẩu cho tài khoản HR: kết nối API hoặc cổng IT theo quy trình nội bộ (demo).'
-                                )
-                              }
-                              className="shrink-0 rounded-lg border border-button bg-button px-3 py-2 text-sm font-medium text-button-foreground hover:opacity-90 md:text-base"
-                            >
-                              Đổi mật khẩu
-                            </button>
-                          ) : null}
-                        </div>
-                        {hrCanEditSelf ? (
-                          <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-foreground md:text-sm">
-                            Vai trò HR có thể khởi tạo đổi mật khẩu tại đây khi tích hợp hệ thống;
-                            hiện là bản demo.
-                          </p>
-                        ) : (
-                          <p className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2.5 text-xs leading-relaxed text-amber-950 md:text-sm dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-100">
-                            Đổi mật khẩu không thực hiện trên trang này. Vui lòng liên hệ bộ phận IT
-                            hoặc HR theo quy trình nội bộ của đơn vị.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </main>
+        <p className="mt-10 text-center text-xs text-muted-foreground">
+          Nhớ nhấn Lưu sau khi sửa. Đồng bộ Lark/HR có thể cập nhật lại một số trường theo lịch nội bộ.
+        </p>
       </div>
     </div>
   )
