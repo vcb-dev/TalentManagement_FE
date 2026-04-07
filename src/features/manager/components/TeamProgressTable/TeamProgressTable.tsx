@@ -43,7 +43,7 @@ function StarRowMini({ filled, max }: { filled: number; max: number }) {
         const variant = full ? 'filled' : partial ? 'current' : 'empty'
         return <StarEmblem key={i} variant={variant} className="h-3.5 w-3.5 shrink-0" aria-hidden />
       })}
-      <span className="ml-1 text-sm font-semibold tabular-nums text-star-gold md:text-base">
+      <span className="ml-1 text-sm font-semibold tabular-nums text-primary md:text-base">
         {filled}/{max}
       </span>
     </div>
@@ -52,9 +52,7 @@ function StarRowMini({ filled, max }: { filled: number; max: number }) {
 
 function StarsCell({ row }: { row: TeamMemberProgress }) {
   if (row.starLabel) {
-    return (
-      <span className="text-sm font-semibold text-star-gold md:text-base">{row.starLabel}</span>
-    )
+    return <span className="text-sm font-semibold text-primary md:text-base">{row.starLabel}</span>
   }
   const max = row.starMax ?? 6
   if (row.currentLevel === 'Tập sự' && row.currentStar === 0) {

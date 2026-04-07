@@ -412,8 +412,8 @@ export function ChecklistStarScreen({
                     </span>
                     <h4 className="mt-3 text-lg font-bold text-gray-900">Huy hiệu Sao {starId}</h4>
                     <p className="mt-2 max-w-[18rem] text-sm text-gray-700">
-                      Hoàn thành {total || 5} nhiệm vụ để nhận ngay huy hiệu Bronze Elite và +500 XP
-                      vào Skill Matrix của bạn.
+                      Hoàn thành {total || 5} nhiệm vụ để nhận huy hiệu mốc và +500 XP vào Skill
+                      Matrix của bạn.
                     </p>
                     <Trophy
                       className="pointer-events-none absolute -bottom-2 -right-2 h-24 w-24 text-warning/20 transition-transform duration-500 group-hover:scale-110"

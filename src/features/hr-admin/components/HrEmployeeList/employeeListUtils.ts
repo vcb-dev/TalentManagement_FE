@@ -17,10 +17,7 @@ export function shortId(id: string): string {
   return id.replace(/-/g, '').slice(0, 6)
 }
 
-const LEVEL_META: Record<
-  EmployeeLevel,
-  { tierClass: string; label: string }
-> = {
+const LEVEL_META: Record<EmployeeLevel, { tierClass: string; label: string }> = {
   tap_su: {
     tierClass:
       'bg-gradient-to-br from-amber-600 to-orange-600 text-white shadow-sm ring-1 ring-amber-400/40',
@@ -62,33 +59,6 @@ const LEVEL_PILL_TEXT: Record<EmployeeLevel, string> = {
 
 export function levelPillText(level: EmployeeLevel): string {
   return LEVEL_PILL_TEXT[level] ?? LEVEL_PILL_TEXT.tap_su
-}
-
-/**
- * Thứ hạng thành tích theo số sao (0–6): Đồng → Vàng → Kim cương.
- * Dùng chung thẻ danh sách / sheet (không phụ thuộc API thêm).
- */
-export function memberStarRank(star: number): { label: string; badgeClass: string } {
-  const s = Math.min(6, Math.max(0, star))
-  if (s >= 5) {
-    return {
-      label: 'Hạng Kim cương',
-      badgeClass:
-        'bg-gradient-to-br from-cyan-500 via-sky-500 to-indigo-600 text-white shadow-sm ring-1 ring-cyan-300/50',
-    }
-  }
-  if (s >= 3) {
-    return {
-      label: 'Hạng Vàng',
-      badgeClass:
-        'bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-600 text-amber-950 shadow-sm ring-1 ring-amber-500/45',
-    }
-  }
-  return {
-    label: 'Hạng Đồng',
-    badgeClass:
-      'bg-gradient-to-br from-orange-800 via-amber-900 to-orange-950 text-amber-100 shadow-sm ring-1 ring-orange-700/40',
-  }
 }
 
 /** Màu avatar theo vai trò (giống mock). */

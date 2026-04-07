@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Bell, ChevronDown, LogOut, UserCircle } from 'lucide-react'
-import { StarEmblem } from '@/components/icons/StarEmblem'
 import { toast } from 'sonner'
 import { useLogout } from '@/features/auth/hooks'
 import { Button } from '@/components/ui/button'
@@ -40,10 +39,6 @@ export function AppShell({ children, title }: AppShellProps) {
 
   const toolbar = (
     <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1.5 sm:gap-3">
-      <div className="hidden items-center gap-1 rounded-full bg-rank-bg px-2.5 py-1 text-[13px] font-semibold text-rank-text sm:flex">
-        <StarEmblem className="h-4 w-4 shrink-0" variant="filled" aria-hidden />
-        <span>Hạng Vàng</span>
-      </div>
       <Button
         type="button"
         variant="ghost"

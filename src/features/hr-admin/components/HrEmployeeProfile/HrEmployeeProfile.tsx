@@ -120,7 +120,6 @@ export function HrEmployeeProfile({
   const profileScoreDisplay = (points / 1000).toFixed(1).replace('.', ',')
   const rankStarsFive = (xpPct / 100) * 5
   const levelStarVariants = starVariants(employee.currentStar, maxStars)
-  const isGoldTier = employee.currentLevel === 'tuong'
   const RoleBadgeIcon = ROLE_BADGE_ICONS[employee.role]
   const deptName = `PB ${shortId(employee.departmentId)}`
   const teamName = `Team ${shortId(employee.teamIds[0] ?? employee.departmentId)}`
@@ -403,7 +402,6 @@ export function HrEmployeeProfile({
                   xpPct={xpPct}
                   maxStars={maxStars}
                   levelStarVariants={levelStarVariants}
-                  isGoldTier={isGoldTier}
                 />
               )}
               {tab === 1 && <LearningPathTab employee={employee} levelIdx={levelIdx} />}
@@ -459,7 +457,6 @@ function OverviewTab({
   xpPct,
   maxStars,
   levelStarVariants,
-  isGoldTier,
 }: {
   employee: EmployeeEntity
   tierLabel: string
@@ -467,7 +464,6 @@ function OverviewTab({
   xpPct: number
   maxStars: number
   levelStarVariants: ('filled' | 'current' | 'empty')[]
-  isGoldTier: boolean
 }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(260px,300px)_1fr]">
@@ -503,7 +499,7 @@ function OverviewTab({
         <PfCard title="Thành tích" entranceIndex={1}>
           <div className="grid grid-cols-2 gap-2">
             {[
-              ['⚡', 'Tốc độ vàng', 'Đạt lần 1'],
+              ['⚡', 'Hoàn thành nhanh', 'Đạt lần 1'],
               ['🎓', 'Mentor', 'Kèm mentee'],
               ['🏆', 'Top Learner', 'Top 15%'],
               ['👑', 'Tướng', 'Chưa mở'],
@@ -530,11 +526,8 @@ function OverviewTab({
       <div className="space-y-4">
         <div
           className={cn(
-            'rounded-2xl p-5 text-foreground shadow-[var(--shadow-card)]',
-            CARD_ENTRANCE_HOVER,
-            isGoldTier
-              ? 'border border-amber-200/70 bg-gradient-to-br from-white via-amber-50/85 to-yellow-50/75 ring-1 ring-amber-200/45'
-              : 'border border-primary/20 bg-gradient-to-br from-white via-sky-50/90 to-teal-50/80 ring-1 ring-primary/15'
+            'rounded-2xl border border-primary/20 bg-gradient-to-br from-white via-sky-50/90 to-teal-50/80 p-5 text-foreground shadow-[var(--shadow-card)] ring-1 ring-primary/15',
+            CARD_ENTRANCE_HOVER
           )}
           style={staggerStyle(2)}
         >
@@ -572,19 +565,9 @@ function OverviewTab({
               </span>
             ))}
           </div>
-          <div
-            className={cn(
-              'group/pb relative h-2 overflow-hidden rounded-full',
-              isGoldTier ? 'bg-amber-200/50' : 'bg-primary/15'
-            )}
-          >
+          <div className="group/pb relative h-2 overflow-hidden rounded-full bg-primary/15">
             <div
-              className={cn(
-                'h-full origin-left rounded-full motion-safe:animate-[profile-progress-fill_1.05s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none',
-                isGoldTier
-                  ? 'bg-gradient-to-r from-star-gold via-star-gold-mid to-star-gold-deep'
-                  : 'bg-gradient-to-r from-primary via-sky-600 to-accent'
-              )}
+              className="h-full origin-left rounded-full bg-gradient-to-r from-primary via-sky-600 to-accent motion-safe:animate-[profile-progress-fill_1.05s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none"
               style={{
                 width: `${xpPct}%`,
                 transformOrigin: '0 50%',
@@ -599,7 +582,7 @@ function OverviewTab({
         <PfCard title="Lịch sử thăng cấp" entranceIndex={3}>
           <div className="relative px-3 py-1 pl-10">
             <div
-              className="absolute bottom-4 left-[23px] top-4 w-0.5 rounded-full bg-gradient-to-b from-amber-500 via-slate-500 to-orange-800 opacity-[0.92]"
+              className="absolute bottom-4 left-[23px] top-4 w-0.5 rounded-full bg-gradient-to-b from-primary via-sky-500 to-accent opacity-[0.92]"
               aria-hidden
             />
             <div className="relative mb-3.5">

@@ -11,7 +11,7 @@ export function FiveStarRank({ filled }: FiveStarRankProps) {
   return (
     <div className="flex items-center gap-0.5" aria-label={`Xếp hạng ${n}/5 sao`}>
       {Array.from({ length: 5 }, (_, i) => (
-        <ProgressStar key={i} filled={i < n} variant="gold" className="h-5 w-5" />
+        <ProgressStar key={i} filled={i < n} variant="primary" className="h-5 w-5" />
       ))}
     </div>
   )

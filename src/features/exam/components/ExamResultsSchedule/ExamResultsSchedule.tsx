@@ -163,7 +163,9 @@ export function ExamResultsSchedule({
                 </div>
                 <div className="mb-6">
                   <Icon className="mb-4 block h-9 w-9 text-primary" strokeWidth={2} aria-hidden />
-                  <h3 className="mb-2 text-lg font-bold leading-tight text-foreground">{exam.title}</h3>
+                  <h3 className="mb-2 text-lg font-bold leading-tight text-foreground">
+                    {exam.title}
+                  </h3>
                   <p className="text-sm text-muted-foreground">
                     {STATUS_LABEL[exam.status]} · {formatViWeekdayDate(exam.scheduledAt)}
                   </p>
@@ -327,7 +329,12 @@ export function ExamResultsSchedule({
                       <td className="px-6 py-5">
                         <div className="flex gap-1" aria-hidden>
                           {Array.from({ length: 6 }, (_, s) => (
-                            <ProgressStar key={s} filled={false} variant="gold" className="h-5 w-5" />
+                            <ProgressStar
+                              key={s}
+                              filled={false}
+                              variant="primary"
+                              className="h-5 w-5"
+                            />
                           ))}
                         </div>
                         <span className="sr-only">Chưa có dữ liệu xếp hạng sao</span>

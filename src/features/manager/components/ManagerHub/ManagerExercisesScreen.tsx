@@ -3,7 +3,7 @@ import {
   Badge,
   Castle,
   CheckCircle2,
-  Diamond,
+  Gem,
   Download,
   GraduationCap,
   Handshake,
@@ -411,7 +411,7 @@ export function ManagerExercisesScreen() {
                         className={cn(
                           'flex h-10 w-10 items-center justify-center rounded-full',
                           current
-                            ? 'bg-amber-400/90 text-amber-950 shadow-[0_0_15px_rgba(251,191,36,0.45)]'
+                            ? 'bg-white text-primary shadow-[0_0_15px_rgba(255,255,255,0.35)]'
                             : active
                               ? 'bg-white/25 text-white'
                               : 'border-2 border-dashed border-white/35 text-white/50'
@@ -432,10 +432,10 @@ export function ManagerExercisesScreen() {
                       <span
                         className={cn(
                           'text-[9px] font-bold uppercase tracking-tighter',
-                          current ? 'text-amber-200' : 'text-primary-foreground/80'
+                          current ? 'text-white' : 'text-primary-foreground/80'
                         )}
                       >
-                        {['Bronze', 'Silver', 'Gold', 'Elite'][slot - 1]}
+                        {`Mốc ${slot}`}
                       </span>
                     </div>
                   )
@@ -477,11 +477,11 @@ export function ManagerExercisesScreen() {
                 </div>
                 <div className="flex items-center gap-4 opacity-40 grayscale">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-dashed border-border bg-card">
-                    <Diamond className="h-6 w-6 text-muted-foreground" strokeWidth={2} />
+                    <Gem className="h-6 w-6 text-muted-foreground" strokeWidth={2} />
                   </div>
                   <div>
                     <p className="text-sm font-bold leading-tight text-foreground">Tinh hoa VCB</p>
-                    <p className="text-[11px] text-muted-foreground">Cần đạt hạng Tướng</p>
+                    <p className="text-[11px] text-muted-foreground">Mở khi đạt cấp Tướng</p>
                   </div>
                 </div>
               </div>
