@@ -150,7 +150,11 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
           icon={<Activity className="h-16 w-16 text-primary" strokeWidth={1.25} aria-hidden />}
           footer={
             <span className="flex items-center gap-1">
-              <TrendingUp className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2} aria-hidden />
+              <TrendingUp
+                className="h-3.5 w-3.5 shrink-0 text-primary"
+                strokeWidth={2}
+                aria-hidden
+              />
               {kpi.trend}
             </span>
           }
@@ -164,7 +168,11 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
           icon={<Flag className="h-16 w-16 text-primary-600" strokeWidth={1.25} aria-hidden />}
           footer={
             <span className="flex items-center gap-1">
-              <RefreshCw className="h-3.5 w-3.5 shrink-0 text-primary-600" strokeWidth={2} aria-hidden />
+              <RefreshCw
+                className="h-3.5 w-3.5 shrink-0 text-primary-600"
+                strokeWidth={2}
+                aria-hidden
+              />
               {okr.note}
             </span>
           }
@@ -178,7 +186,11 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
           icon={<FileText className="h-16 w-16 text-accent" strokeWidth={1.25} aria-hidden />}
           footer={
             <span className="flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-accent" strokeWidth={2} aria-hidden />
+              <CheckCircle2
+                className="h-3.5 w-3.5 shrink-0 text-accent"
+                strokeWidth={2}
+                aria-hidden
+              />
               {report.note}
             </span>
           }
@@ -190,10 +202,7 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
         <div className="space-y-6 lg:col-span-8">
           <div
-            className={cn(
-              'rounded-3xl bg-muted/50 p-6 md:p-8',
-              CARD_ENTRANCE_HOVER
-            )}
+            className={cn('rounded-3xl bg-muted/50 p-6 md:p-8', CARD_ENTRANCE_HOVER)}
             style={staggerStyle(3)}
           >
             <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -335,7 +344,9 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
                 <span className="inline-block rounded-full bg-primary/12 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
                   {isLeader ? 'Team tiến tới mốc lộ trình chung' : 'Tiến tới cấp độ tiếp theo'}
                 </span>
-                <span className="shrink-0 text-xs font-bold tabular-nums text-primary">{milestonePct}%</span>
+                <span className="shrink-0 text-xs font-bold tabular-nums text-primary">
+                  {milestonePct}%
+                </span>
               </div>
               <div className="mb-1 h-2 overflow-hidden rounded-full bg-muted">
                 <div
@@ -345,7 +356,7 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
               </div>
             </div>
             <div className="relative mt-6 flex items-center gap-4 rounded-2xl border border-border bg-muted/50 p-4">
-              <Trophy className="h-10 w-10 shrink-0 text-tier-gold" strokeWidth={1.75} aria-hidden />
+              <Trophy className="h-10 w-10 shrink-0 text-primary" strokeWidth={1.75} aria-hidden />
               <div className="min-w-0">
                 <p className="text-sm font-bold text-foreground">Còn 1.240 XP để thăng cấp</p>
                 <p className="mt-0.5 text-[0.65rem] font-medium uppercase tracking-tighter text-muted-foreground">
@@ -356,7 +367,10 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
           </div>
 
           <div
-            className={cn('rounded-3xl border border-border bg-card p-6 shadow-sm', CARD_ENTRANCE_HOVER)}
+            className={cn(
+              'rounded-3xl border border-border bg-card p-6 shadow-sm',
+              CARD_ENTRANCE_HOVER
+            )}
             style={staggerStyle(5)}
           >
             <h3 className="mb-6 text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
@@ -383,7 +397,10 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
                 },
               ].map((row) => (
                 <div key={row.title} className="flex gap-4">
-                  <div className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', row.dot)} aria-hidden />
+                  <div
+                    className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', row.dot)}
+                    aria-hidden
+                  />
                   <div>
                     <p className="text-sm font-semibold text-foreground">{row.title}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{row.meta}</p>

@@ -9,7 +9,7 @@ export const MOCK_BOD_DASHBOARD_PAGE: BodDashboardPage = {
     goldTierPct: 46,
     goldDeltaLabel: '↑ 4% tháng này',
     diamondCount: 3,
-    diamondSubLabel: 'Top tier',
+    diamondSubLabel: 'So với kỳ trước',
     resignations: 1,
     turnoverLabel: 'Turnover 2.1%',
     reserveCount: 5,

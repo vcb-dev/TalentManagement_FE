@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Bell, ChevronDown, LogOut, Star, UserCircle } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, UserCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLogout } from '@/features/auth/hooks'
 import { Button } from '@/components/ui/button'
@@ -39,10 +39,6 @@ export function AppShell({ children, title }: AppShellProps) {
 
   const toolbar = (
     <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1.5 sm:gap-3">
-      <div className="hidden items-center gap-1 rounded-full bg-rank-bg px-2.5 py-1 text-[13px] font-semibold text-rank-text sm:flex">
-        <Star className="h-4 w-4 shrink-0 fill-tier-gold text-tier-gold" strokeWidth={0} />
-        <span>Hạng Vàng</span>
-      </div>
       <Button
         type="button"
         variant="ghost"
@@ -126,61 +122,61 @@ export function AppShell({ children, title }: AppShellProps) {
     <div className="flex h-screen min-h-0 overflow-hidden bg-app-canvas">
       {!compactNavNoSidebar ? <Sidebar /> : null}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header
-          className={cn(
-            'sticky top-0 z-30 shrink-0 border-b border-gray-200 bg-white/95 px-4 py-2 shadow-[var(--shadow-card)] backdrop-blur-sm sm:px-6',
-            compactNavNoSidebar
-              ? 'flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-2'
-              : 'flex min-h-14 flex-wrap items-center gap-2 sm:gap-3'
-          )}
-        >
-          {compactNavNoSidebar && user ? (
-            <>
-              <div className="flex min-h-10 min-w-0 flex-1 items-center gap-6 sm:gap-8">
-                <Link
-                  to={
-                    user.role === 'HR_ADMIN'
-                      ? '/hr-admin'
-                      : user.role === 'TEACHER'
-                        ? '/teacher/classes'
-                        : '/dashboard'
-                  }
-                  search={user.role === 'HR_ADMIN' ? { page: 1 } : undefined}
-                  className="flex h-10 shrink-0 items-center text-lg font-bold leading-none tracking-tight text-primary-600 sm:text-[18px]"
-                >
-                  VCB HRM
-                </Link>
-                <div className="min-w-0 flex-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <MemberLeaderHeaderNav
-                    role={
-                      user.role === 'LEADER'
-                        ? 'LEADER'
-                        : user.role === 'HR_ADMIN'
-                          ? 'HR_ADMIN'
-                          : user.role === 'TEACHER'
-                            ? 'TEACHER'
-                            : 'MEMBER'
+        <header className="sticky top-0 z-30 shrink-0 border-b border-gray-200 bg-white/95 shadow-[var(--shadow-card)] backdrop-blur-sm">
+          <div
+            className={cn(
+              'mx-auto flex w-full max-w-[1400px] min-h-14 flex-wrap items-center px-5 py-2 md:px-6',
+              compactNavNoSidebar ? 'justify-between gap-x-3 gap-y-2' : 'gap-2 sm:gap-3'
+            )}
+          >
+            {compactNavNoSidebar && user ? (
+              <>
+                <div className="flex min-h-10 min-w-0 flex-1 items-center gap-6 sm:gap-8">
+                  <Link
+                    to={
+                      user.role === 'HR_ADMIN'
+                        ? '/hr-admin'
+                        : user.role === 'TEACHER'
+                          ? '/teacher/classes'
+                          : '/dashboard'
                     }
-                  />
+                    search={user.role === 'HR_ADMIN' ? { page: 1 } : undefined}
+                    className="flex h-10 shrink-0 items-center text-lg font-bold leading-none tracking-tight text-primary-600 sm:text-[18px]"
+                  >
+                    VCB HRM
+                  </Link>
+                  <div className="min-w-0 flex-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <MemberLeaderHeaderNav
+                      role={
+                        user.role === 'LEADER'
+                          ? 'LEADER'
+                          : user.role === 'HR_ADMIN'
+                            ? 'HR_ADMIN'
+                            : user.role === 'TEACHER'
+                              ? 'TEACHER'
+                              : 'MEMBER'
+                      }
+                    />
+                  </div>
                 </div>
-              </div>
-              {toolbar}
-            </>
-          ) : (
-            <>
-              {title ? (
-                <span className="min-w-0 flex-1 truncate text-lg font-bold tracking-tight text-primary-600 sm:text-[18px]">
-                  {title}
-                </span>
-              ) : (
-                <span className="min-w-0 flex-1" aria-hidden />
-              )}
-              {toolbar}
-            </>
-          )}
+                {toolbar}
+              </>
+            ) : (
+              <>
+                {title ? (
+                  <span className="min-w-0 flex-1 truncate text-lg font-bold tracking-tight text-primary-600 sm:text-[18px]">
+                    {title}
+                  </span>
+                ) : (
+                  <span className="min-w-0 flex-1" aria-hidden />
+                )}
+                {toolbar}
+              </>
+            )}
+          </div>
         </header>
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-5 md:p-6">
-          {children}
+          <div className="mx-auto w-full max-w-[1400px]">{children}</div>
         </main>
       </div>
     </div>

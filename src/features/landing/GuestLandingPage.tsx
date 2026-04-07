@@ -7,10 +7,10 @@ import {
   ChevronRight,
   Layers,
   Shield,
-  Star,
   Target,
   Trophy,
 } from 'lucide-react'
+import { StarEmblem } from '@/components/icons/StarEmblem'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { LEVEL_LABELS } from '@/lib/constants'
@@ -198,7 +198,7 @@ export function GuestLandingPage() {
         )}
       >
         <span className="flex items-center gap-1.5 transition-colors hover:text-amber-700">
-          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" aria-hidden />
+          <StarEmblem className="h-3.5 w-3.5" variant="filled" aria-hidden />
           Học tập & năng lực
         </span>
         <span className="flex items-center gap-1.5 transition-colors hover:text-emerald-700">
@@ -238,11 +238,7 @@ export function GuestLandingPage() {
                 reduced={reduced}
                 className="flex flex-wrap items-center gap-3"
               >
-                <Button
-                  size="lg"
-                  className="shadow-md"
-                  asChild
-                >
+                <Button size="lg" className="shadow-md" asChild>
                   <Link to="/login">
                     Bắt đầu
                     <ChevronRight className="h-4 w-4" aria-hidden />
@@ -320,11 +316,11 @@ export function GuestLandingPage() {
                 </div>
                 <div className="mt-4 flex gap-0.5" aria-label="Đánh giá sao">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <Star
+                    <StarEmblem
                       key={i}
+                      variant={i <= 4 ? 'filled' : 'empty'}
                       className={cn(
                         'h-5 w-5',
-                        i <= 4 ? 'fill-amber-400 text-amber-400' : 'fill-gray-100 text-gray-200',
                         reduced
                           ? 'opacity-100'
                           : 'opacity-0 motion-reduce:opacity-100 motion-reduce:animate-none animate-[guest-landing-star-pop_0.45s_ease-out_forwards]'
@@ -367,39 +363,41 @@ export function GuestLandingPage() {
                 'p-6 shadow-[0_4px_28px_-6px_rgb(79_70_229/0.14)] sm:p-8 lg:p-10'
               )}
             >
-            <Reveal reduced={reduced}>
-              <div className="mx-auto max-w-2xl text-center">
-                <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-                  Trọng tâm của dự án
-                </h2>
-                <p className="mt-3 text-pretty text-gray-600 sm:text-lg">
-                  Đào tạo, đo lường kết quả và phối hợp giữa các cấp quản lý — không chỉ ghi nhận
-                  thông tin tĩnh.
-                </p>
-              </div>
-            </Reveal>
-            <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {featureCards.map((card, i) => (
-                <Reveal key={card.title} reduced={reduced} delayMs={i * 90}>
-                  <li
-                    className={cn(
-                      'group flex h-full flex-col rounded-2xl border border-gray-100/90 bg-white/95 p-6 shadow-sm backdrop-blur-[2px] sm:rounded-3xl sm:p-7'
-                    )}
-                  >
-                    <div
+              <Reveal reduced={reduced}>
+                <div className="mx-auto max-w-2xl text-center">
+                  <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+                    Trọng tâm của dự án
+                  </h2>
+                  <p className="mt-3 text-pretty text-gray-600 sm:text-lg">
+                    Đào tạo, đo lường kết quả và phối hợp giữa các cấp quản lý — không chỉ ghi nhận
+                    thông tin tĩnh.
+                  </p>
+                </div>
+              </Reveal>
+              <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {featureCards.map((card, i) => (
+                  <Reveal key={card.title} reduced={reduced} delayMs={i * 90}>
+                    <li
                       className={cn(
-                        'mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full',
-                        card.iconWrap
+                        'group flex h-full flex-col rounded-2xl border border-gray-100/90 bg-white/95 p-6 shadow-sm backdrop-blur-[2px] sm:rounded-3xl sm:p-7'
                       )}
                     >
-                      <card.icon className="h-6 w-6" aria-hidden />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900">{card.title}</h3>
-                    <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-600">{card.desc}</p>
-                  </li>
-                </Reveal>
-              ))}
-            </ul>
+                      <div
+                        className={cn(
+                          'mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full',
+                          card.iconWrap
+                        )}
+                      >
+                        <card.icon className="h-6 w-6" aria-hidden />
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-900">{card.title}</h3>
+                      <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-600">
+                        {card.desc}
+                      </p>
+                    </li>
+                  </Reveal>
+                ))}
+              </ul>
             </div>
           </div>
         </section>

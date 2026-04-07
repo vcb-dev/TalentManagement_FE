@@ -51,7 +51,7 @@ type HeroBadgeItem = { key: string; Icon: LucideIcon; label: string }
 
 function heroBadges(role: Role): HeroBadgeItem[] {
   const base: HeroBadgeItem[] = [
-    { key: 'tier', Icon: Award, label: 'Được việc · Gold' },
+    { key: 'tier', Icon: Award, label: 'Được việc' },
     { key: 'active', Icon: CheckCircle2, label: 'Hoạt động' },
   ]
   switch (role) {
@@ -88,79 +88,23 @@ function starVariants(level: MyProfilePage['currentLevel']): ('filled' | 'curren
   return out
 }
 
-/** Tông màu theo bậc tier (Gold / Silver / Bronze) — pill trên card vs badge timeline. */
+/** Tông màu pill / badge lịch sử cấp — thống nhất theme primary. */
 function tierBadgeTone(
-  tierIconKey: ProfileIconKey | undefined,
-  variant: 'pill' | 'history'
+  _tierIconKey: ProfileIconKey | undefined,
+  _variant: 'pill' | 'history'
 ): { wrap: string; icon: string } {
-  switch (tierIconKey) {
-    case 'award':
-      if (variant === 'pill') {
-        return {
-          wrap: 'border border-amber-400/45 bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-100/90 text-amber-950 ring-1 ring-amber-300/40 shadow-[0_2px_10px_rgba(245,158,11,0.15)]',
-          icon: 'text-amber-700',
-        }
-      }
-      return {
-        wrap: 'border border-amber-500/35 bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 text-white shadow-sm ring-1 ring-amber-400/35',
-        icon: 'text-amber-50',
-      }
-    case 'medal':
-      if (variant === 'pill') {
-        return {
-          wrap: 'border border-slate-300/60 bg-gradient-to-r from-slate-100 to-slate-200/90 text-slate-800 ring-1 ring-slate-300/50',
-          icon: 'text-slate-600',
-        }
-      }
-      return {
-        wrap: 'border border-slate-400/40 bg-gradient-to-r from-slate-500 to-slate-600 text-white ring-1 ring-slate-400/30',
-        icon: 'text-slate-100',
-      }
-    case 'circleDot':
-      if (variant === 'pill') {
-        return {
-          wrap: 'border border-amber-800/25 bg-gradient-to-r from-amber-100 to-orange-50 text-amber-950 ring-1 ring-amber-300/40',
-          icon: 'text-amber-800',
-        }
-      }
-      return {
-        wrap: 'border border-amber-900/20 bg-gradient-to-r from-[#92400e] to-[#b45309] text-white ring-1 ring-amber-900/20',
-        icon: 'text-amber-100',
-      }
-    default:
-      return {
-        wrap: 'border border-primary/25 bg-primary/10 text-primary',
-        icon: 'text-primary',
-      }
+  return {
+    wrap: 'border border-primary/25 bg-primary/10 text-primary',
+    icon: 'text-primary',
   }
 }
 
-/** Vòng số mốc timeline — đồng bộ Bronze / Silver / Gold với badge bên phải. */
-function tierMilestoneCircleClass(tierIconKey: ProfileIconKey | undefined): string {
-  switch (tierIconKey) {
-    case 'award':
-      return 'bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 shadow-[0_0_0_2px_rgba(255,255,255,0.95),0_2px_8px_rgba(217,119,6,0.38)]'
-    case 'medal':
-      return 'bg-gradient-to-br from-slate-400 to-slate-600 shadow-[0_0_0_2px_rgba(255,255,255,0.95),0_2px_8px_rgba(71,85,105,0.32)]'
-    case 'circleDot':
-      return 'bg-gradient-to-br from-amber-800 via-orange-800 to-orange-950 shadow-[0_0_0_2px_rgba(255,255,255,0.95),0_2px_8px_rgba(124,45,18,0.35)]'
-    default:
-      return 'bg-primary shadow-[0_0_0_2px_rgba(255,255,255,0.95)]'
-  }
+function tierMilestoneCircleClass(_tierIconKey: ProfileIconKey | undefined): string {
+  return 'bg-gradient-to-br from-primary via-sky-600 to-accent shadow-[0_0_0_2px_rgba(255,255,255,0.95),0_2px_8px_hsl(var(--primary)_/_0.35)]'
 }
 
-/** Chữ nhấn “Đang học” theo tier mốc hiện tại. */
-function tierLearningAccentClass(tierIconKey: ProfileIconKey | undefined): string {
-  switch (tierIconKey) {
-    case 'award':
-      return 'text-amber-700'
-    case 'medal':
-      return 'text-slate-600'
-    case 'circleDot':
-      return 'text-orange-800'
-    default:
-      return 'text-primary'
-  }
+function tierLearningAccentClass(_tierIconKey: ProfileIconKey | undefined): string {
+  return 'text-primary'
 }
 
 export interface MyProfileScreenProps {
@@ -174,6 +118,8 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
   const [phoneDraft, setPhoneDraft] = useState<string | undefined>(undefined)
 
   const role = user?.role ?? 'MEMBER'
+  /** HR được cập nhật số điện thoại & thao tác đổi mật khẩu (demo) trên hồ sơ của chính mình. */
+  const hrCanEditSelf = role === 'HR_ADMIN'
   const visibleTabs = useMemo(() => profileTabIdsForRole(role), [role])
   const activeTab = visibleTabs.includes(tab) ? tab : (visibleTabs[0] ?? 'overview')
 
@@ -238,8 +184,8 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
   const CurrentTierIcon = p.currentLevel.tierIconKey
     ? PROFILE_CONTENT_ICONS[p.currentLevel.tierIconKey]
     : null
-  const isGoldTier = p.currentLevel.tierIconKey === 'award'
   const tierPill = tierBadgeTone(p.currentLevel.tierIconKey, 'pill')
+  const showTierPill = Boolean(p.currentLevel.tierLabel.trim())
 
   return (
     <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-slate-50/80 via-app-canvas to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
@@ -347,7 +293,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
                 <FiveStarRank filled={rankStarsFive} />
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary ring-1 ring-primary/15">
-                    <Star className="h-3.5 w-3.5 fill-[#EAB308] text-[#EAB308]" strokeWidth={0} />
+                    <Star className="h-3.5 w-3.5" variant="filled" />
                     {points.toLocaleString('vi-VN')} pts
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-900 ring-1 ring-amber-500/20">
@@ -373,20 +319,27 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
               </div>
 
               <div className="mt-5 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => toast.info('Liên hệ IT để đổi mật khẩu (demo)')}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-                >
-                  Đổi mật khẩu
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toast.info('Liên hệ HR / IT (demo)')}
-                  className="rounded-lg border border-primary/25 bg-card px-4 py-2.5 text-sm font-semibold text-primary shadow-sm hover:bg-primary/[0.06]"
-                >
-                  Liên hệ hỗ trợ
-                </button>
+                {hrCanEditSelf ? (
+                  <button
+                    type="button"
+                    onClick={() => setTab('info')}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                  >
+                    Chỉnh sửa thông tin cá nhân
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      toast.info(
+                        'Để đổi mật khẩu hoặc cập nhật số điện thoại, vui lòng liên hệ IT hoặc HR theo quy trình nội bộ.'
+                      )
+                    }
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                  >
+                    Liên hệ IT / HR
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => toast.info('Cài đặt (demo)')}
@@ -516,11 +469,8 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
                   <div className="space-y-4">
                     <div
                       className={cn(
-                        'rounded-2xl p-5 text-foreground shadow-[var(--shadow-card)]',
-                        CARD_ENTRANCE_HOVER,
-                        isGoldTier
-                          ? 'border border-amber-200/70 bg-gradient-to-br from-white via-amber-50/85 to-yellow-50/75 ring-1 ring-amber-200/45'
-                          : 'border border-primary/20 bg-gradient-to-br from-white via-sky-50/90 to-teal-50/80 ring-1 ring-primary/15'
+                        'rounded-2xl border border-primary/20 bg-gradient-to-br from-white via-sky-50/90 to-teal-50/80 p-5 text-foreground shadow-[var(--shadow-card)] ring-1 ring-primary/15',
+                        CARD_ENTRANCE_HOVER
                       )}
                       style={staggerStyle(2)}
                     >
@@ -532,10 +482,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
                           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[22px] font-extrabold text-slate-900 md:text-2xl">
                             {CurrentTitleIcon ? (
                               <CurrentTitleIcon
-                                className={cn(
-                                  'h-7 w-7 shrink-0 md:h-8 md:w-8',
-                                  isGoldTier ? 'text-amber-700' : 'text-primary'
-                                )}
+                                className="h-7 w-7 shrink-0 text-primary md:h-8 md:w-8"
                                 strokeWidth={2}
                                 aria-hidden
                               />
@@ -543,21 +490,23 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
                             <span>{p.currentLevel.title}</span>
                           </div>
                         </div>
-                        <span
-                          className={cn(
-                            'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold md:text-sm',
-                            tierPill.wrap
-                          )}
-                        >
-                          {CurrentTierIcon ? (
-                            <CurrentTierIcon
-                              className={cn('h-3.5 w-3.5 shrink-0', tierPill.icon)}
-                              strokeWidth={2}
-                              aria-hidden
-                            />
-                          ) : null}
-                          {p.currentLevel.tierLabel}
-                        </span>
+                        {showTierPill ? (
+                          <span
+                            className={cn(
+                              'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold md:text-sm',
+                              tierPill.wrap
+                            )}
+                          >
+                            {CurrentTierIcon ? (
+                              <CurrentTierIcon
+                                className={cn('h-3.5 w-3.5 shrink-0', tierPill.icon)}
+                                strokeWidth={2}
+                                aria-hidden
+                              />
+                            ) : null}
+                            {p.currentLevel.tierLabel}
+                          </span>
+                        ) : null}
                       </div>
                       <p className="mb-2 text-sm text-muted-foreground md:text-base">
                         {p.currentLevel.progressLine}
@@ -573,19 +522,9 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
                           </span>
                         ))}
                       </div>
-                      <div
-                        className={cn(
-                          'group/pb relative h-2 overflow-hidden rounded-full',
-                          isGoldTier ? 'bg-amber-200/50' : 'bg-primary/15'
-                        )}
-                      >
+                      <div className="group/pb relative h-2 overflow-hidden rounded-full bg-primary/15">
                         <div
-                          className={cn(
-                            'h-full origin-left rounded-full motion-safe:animate-[profile-progress-fill_1.05s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none',
-                            isGoldTier
-                              ? 'bg-gradient-to-r from-star-gold via-star-gold-mid to-star-gold-deep'
-                              : 'bg-gradient-to-r from-primary via-sky-600 to-accent'
-                          )}
+                          className="h-full origin-left rounded-full bg-gradient-to-r from-primary via-sky-600 to-accent motion-safe:animate-[profile-progress-fill_1.05s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none"
                           style={{
                             width: `${p.currentLevel.levelProgressPct}%`,
                             transformOrigin: '0 50%',
@@ -610,7 +549,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
                       </div>
                       <div className="relative px-3 py-4 pl-10">
                         <div
-                          className="absolute bottom-4 left-[23px] top-4 w-0.5 rounded-full bg-gradient-to-b from-amber-500 via-slate-500 to-orange-800 opacity-[0.92]"
+                          className="absolute bottom-4 left-[23px] top-4 w-0.5 rounded-full bg-gradient-to-b from-primary via-sky-500 to-accent opacity-[0.92]"
                           aria-hidden
                         />
                         {p.levelHistory.map((h) => {
@@ -644,28 +583,30 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
                                   {h.meta}
                                 </div>
                               </div>
-                              <span
-                                className={cn(
-                                  'ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold md:text-sm',
-                                  h.tierIconKey
-                                    ? tierBadgeTone(h.tierIconKey, 'history').wrap
-                                    : h.tierClass
-                                )}
-                              >
-                                {Hi ? (
-                                  <Hi
-                                    className={cn(
-                                      'h-3 w-3 shrink-0 opacity-95',
-                                      h.tierIconKey
-                                        ? tierBadgeTone(h.tierIconKey, 'history').icon
-                                        : undefined
-                                    )}
-                                    strokeWidth={2}
-                                    aria-hidden
-                                  />
-                                ) : null}
-                                {h.tierLabel}
-                              </span>
+                              {h.tierLabel.trim() ? (
+                                <span
+                                  className={cn(
+                                    'ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold md:text-sm',
+                                    h.tierIconKey
+                                      ? tierBadgeTone(h.tierIconKey, 'history').wrap
+                                      : h.tierClass
+                                  )}
+                                >
+                                  {Hi ? (
+                                    <Hi
+                                      className={cn(
+                                        'h-3 w-3 shrink-0 opacity-95',
+                                        h.tierIconKey
+                                          ? tierBadgeTone(h.tierIconKey, 'history').icon
+                                          : undefined
+                                      )}
+                                      strokeWidth={2}
+                                      aria-hidden
+                                    />
+                                  ) : null}
+                                  {h.tierLabel}
+                                </span>
+                              ) : null}
                             </div>
                           )
                         })}
@@ -839,10 +780,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
                           </div>
                           <div className="mt-2 grid grid-cols-3 gap-1.5">
                             {ex.stats.map((s) => (
-                              <div
-                                key={s.label}
-                                className="rounded-lg bg-white/70 p-2.5"
-                              >
+                              <div key={s.label} className="rounded-lg bg-white/70 p-2.5">
                                 <div className="text-xs font-semibold uppercase text-muted-foreground md:text-sm">
                                   {s.label}
                                 </div>
@@ -1118,23 +1056,49 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
                         </div>
                         <div className="flex flex-col border-b border-border py-2">
                           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
-                            Số điện thoại{' '}
-                            <span className="text-xs text-primary md:text-sm">✏️ Có thể sửa</span>
+                            Số điện thoại
+                            {hrCanEditSelf ? (
+                              <span className="text-xs text-primary md:text-sm">
+                                {' '}
+                                — Bạn có thể cập nhật
+                              </span>
+                            ) : null}
                           </span>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <input
-                              className="min-w-0 flex-1 rounded-lg border border-primary/30 px-2.5 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 md:text-base"
-                              value={phoneInput}
-                              onChange={(e) => setPhoneDraft(e.target.value)}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => toast.success('Đã lưu số điện thoại (demo)')}
-                              className="shrink-0 rounded-lg border border-button bg-button px-3 py-2 text-sm font-medium text-button-foreground hover:opacity-90 md:text-base"
-                            >
-                              Lưu
-                            </button>
-                          </div>
+                          {hrCanEditSelf ? (
+                            <div className="mt-2 space-y-2">
+                              <div className="flex flex-wrap gap-2">
+                                <input
+                                  className="min-w-0 flex-1 rounded-lg border border-primary/30 px-2.5 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 md:text-base"
+                                  value={phoneInput}
+                                  onChange={(e) => setPhoneDraft(e.target.value)}
+                                  autoComplete="tel"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => toast.success('Đã lưu số điện thoại (demo)')}
+                                  className="shrink-0 rounded-lg border border-button bg-button px-3 py-2 text-sm font-medium text-button-foreground hover:opacity-90 md:text-base"
+                                >
+                                  Lưu
+                                </button>
+                              </div>
+                              <p className="text-xs leading-relaxed text-muted-foreground md:text-sm">
+                                Với vai trò HR bạn có thể cập nhật số điện thoại của chính mình tại
+                                đây. Họ tên và email công ty thường đồng bộ từ hệ thống danh tính —
+                                đổi qua quy trình IT/HR nếu cần.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="mt-2 space-y-2">
+                              <span className="block text-sm font-semibold md:text-base">
+                                {phoneValue || '—'}
+                              </span>
+                              <p className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2.5 text-xs leading-relaxed text-amber-950 md:text-sm dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-100">
+                                Số điện thoại do HR hoặc quản lý trực tiếp cập nhật. Để thay đổi,
+                                vui lòng liên hệ bộ phận nhân sự (HR) hoặc quản lý của bạn — không
+                                chỉnh sửa trên hệ thống này.
+                              </p>
+                            </div>
+                          )}
                         </div>
                         <div className="flex flex-col py-2">
                           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
@@ -1157,22 +1121,41 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
                       <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-primary/8 to-transparent px-3.5 py-3 text-xs font-bold uppercase tracking-[0.7px] text-primary md:text-sm">
                         Bảo mật
                       </div>
-                      <div className="flex items-center justify-between gap-3 px-3.5 py-4">
-                        <div>
-                          <div className="text-sm font-semibold text-foreground md:text-base">
-                            Mật khẩu đăng nhập
+                      <div className="space-y-3 px-3.5 py-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <div className="text-sm font-semibold text-foreground md:text-base">
+                              Mật khẩu đăng nhập
+                            </div>
+                            <div className="mt-1 text-xs text-muted-foreground md:text-sm">
+                              Lần đổi gần nhất: {p.security.lastPasswordChange}
+                            </div>
                           </div>
-                          <div className="mt-1 text-xs text-muted-foreground md:text-sm">
-                            Lần đổi gần nhất: {p.security.lastPasswordChange}
-                          </div>
+                          {hrCanEditSelf ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toast.info(
+                                  'Đổi mật khẩu cho tài khoản HR: kết nối API hoặc cổng IT theo quy trình nội bộ (demo).'
+                                )
+                              }
+                              className="shrink-0 rounded-lg border border-button bg-button px-3 py-2 text-sm font-medium text-button-foreground hover:opacity-90 md:text-base"
+                            >
+                              Đổi mật khẩu
+                            </button>
+                          ) : null}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => toast.info('Liên hệ IT để đổi mật khẩu (demo)')}
-                          className="shrink-0 rounded-lg border border-button bg-button px-3 py-2 text-sm font-medium text-button-foreground hover:opacity-90 md:text-base"
-                        >
-                          Đổi mật khẩu
-                        </button>
+                        {hrCanEditSelf ? (
+                          <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-foreground md:text-sm">
+                            Vai trò HR có thể khởi tạo đổi mật khẩu tại đây khi tích hợp hệ thống;
+                            hiện là bản demo.
+                          </p>
+                        ) : (
+                          <p className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2.5 text-xs leading-relaxed text-amber-950 md:text-sm dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-100">
+                            Đổi mật khẩu không thực hiện trên trang này. Vui lòng liên hệ bộ phận IT
+                            hoặc HR theo quy trình nội bộ của đơn vị.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

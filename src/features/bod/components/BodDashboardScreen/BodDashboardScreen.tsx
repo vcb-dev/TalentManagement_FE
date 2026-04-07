@@ -6,10 +6,7 @@ import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import type { BodDashboardPage } from '@/features/bod/types'
 
-const BAR_FILL: Record<
-  BodDashboardPage['levelRows'][number]['barTone'],
-  string
-> = {
+const BAR_FILL: Record<BodDashboardPage['levelRows'][number]['barTone'], string> = {
   gray: 'bg-[#888780]',
   indigo: 'bg-primary',
   teal: 'bg-[#0E7490]',
@@ -17,10 +14,7 @@ const BAR_FILL: Record<
   red: 'bg-[#991B1B]',
 }
 
-const HR_BADGE: Record<
-  BodDashboardPage['hrMovement'][number]['badgeTone'],
-  string
-> = {
+const HR_BADGE: Record<BodDashboardPage['hrMovement'][number]['badgeTone'], string> = {
   green: 'bg-[#DCFCE7] text-[#166534]',
   red: 'bg-[#FEE2E2] text-[#991B1B]',
   blue: 'bg-primary/10 text-primary',
@@ -83,10 +77,24 @@ function BodRadarSvg() {
         <circle cx="-12" cy="60" r={3.5} fill="#2B579A" />
         <circle cx="-56" cy="22" r={3.5} fill="#2B579A" />
         <circle cx="-42" cy="-32" r={3.5} fill="#2B579A" />
-        <text x="0" y="-84" textAnchor="middle" fontSize={10} fill="#5F5E5A" fontFamily="sans-serif">
+        <text
+          x="0"
+          y="-84"
+          textAnchor="middle"
+          fontSize={10}
+          fill="#5F5E5A"
+          fontFamily="sans-serif"
+        >
           Kinh doanh
         </text>
-        <text x="74" y="-28" textAnchor="start" fontSize={10} fill="#5F5E5A" fontFamily="sans-serif">
+        <text
+          x="74"
+          y="-28"
+          textAnchor="start"
+          fontSize={10}
+          fill="#5F5E5A"
+          fontFamily="sans-serif"
+        >
           Marketing
         </text>
         <text x="74" y="38" textAnchor="start" fontSize={10} fill="#5F5E5A" fontFamily="sans-serif">
@@ -188,61 +196,82 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
                 [
                   {
                     k: 't',
-                    className: 'rounded-[9px] border border-border bg-card p-3.5 shadow-[var(--shadow-card)]',
+                    className:
+                      'rounded-[9px] border border-border bg-card p-3.5 shadow-[var(--shadow-card)]',
                     body: (
                       <>
-                        <div className="mb-1 text-xs font-semibold text-muted-foreground">👥 Tổng nhân sự</div>
+                        <div className="mb-1 text-xs font-semibold text-muted-foreground">
+                          👥 Tổng nhân sự
+                        </div>
                         <div className="text-[28px] font-extrabold leading-tight text-foreground">
                           {page.stats.totalHeadcount}
                         </div>
-                        <div className="mt-1 text-xs text-[#0E7490]">{page.stats.totalDeltaLabel}</div>
+                        <div className="mt-1 text-xs text-[#0E7490]">
+                          {page.stats.totalDeltaLabel}
+                        </div>
                       </>
                     ),
                   },
                   {
                     k: 'g',
-                    className: 'rounded-[9px] border border-[#FCD34D] p-3.5 shadow-[var(--shadow-card)]',
+                    className:
+                      'rounded-[9px] border border-[#FCD34D] p-3.5 shadow-[var(--shadow-card)]',
                     style: { background: 'linear-gradient(135deg,#FEF9C3,#FEF3C7)' } as const,
                     body: (
                       <>
-                        <div className="mb-1 text-xs font-semibold text-[#92400E]">🥇 Gold+ tier</div>
+                        <div className="mb-1 text-xs font-semibold text-[#92400E]">
+                          Chỉ số hoàn thành mục tiêu
+                        </div>
                         <div className="text-[28px] font-extrabold leading-tight text-[#92400E]">
                           {page.stats.goldTierPct}%
                         </div>
-                        <div className="mt-1 text-xs text-[#B45309]">{page.stats.goldDeltaLabel}</div>
+                        <div className="mt-1 text-xs text-[#B45309]">
+                          {page.stats.goldDeltaLabel}
+                        </div>
                       </>
                     ),
                   },
                   {
                     k: 'd',
-                    className: 'rounded-[9px] border border-[#C4B5FD] p-3.5 shadow-[var(--shadow-card)]',
+                    className:
+                      'rounded-[9px] border border-[#C4B5FD] p-3.5 shadow-[var(--shadow-card)]',
                     style: { background: 'linear-gradient(135deg,#EDE9FE,#DDD6FE)' } as const,
                     body: (
                       <>
-                        <div className="mb-1 text-xs font-semibold text-primary">👑 Tướng Diamond</div>
+                        <div className="mb-1 text-xs font-semibold text-primary">
+                          Nhân sự cấp Tướng
+                        </div>
                         <div className="text-[28px] font-extrabold leading-tight text-primary">
                           {page.stats.diamondCount}
                         </div>
-                        <div className="mt-1 text-xs text-primary">{page.stats.diamondSubLabel}</div>
+                        <div className="mt-1 text-xs text-primary">
+                          {page.stats.diamondSubLabel}
+                        </div>
                       </>
                     ),
                   },
                   {
                     k: 'r',
-                    className: 'rounded-[9px] border border-border bg-card p-3.5 shadow-[var(--shadow-card)]',
+                    className:
+                      'rounded-[9px] border border-border bg-card p-3.5 shadow-[var(--shadow-card)]',
                     body: (
                       <>
-                        <div className="mb-1 text-xs font-semibold text-muted-foreground">📉 Nghỉ việc T3</div>
+                        <div className="mb-1 text-xs font-semibold text-muted-foreground">
+                          📉 Nghỉ việc T3
+                        </div>
                         <div className="text-[28px] font-extrabold leading-tight text-foreground">
                           {page.stats.resignations}
                         </div>
-                        <div className="mt-1 text-xs text-muted-foreground">{page.stats.turnoverLabel}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {page.stats.turnoverLabel}
+                        </div>
                       </>
                     ),
                   },
                   {
                     k: 'v',
-                    className: 'rounded-[9px] border border-[#FCA5A5] p-3.5 shadow-[var(--shadow-card)]',
+                    className:
+                      'rounded-[9px] border border-[#FCA5A5] p-3.5 shadow-[var(--shadow-card)]',
                     style: { background: 'linear-gradient(135deg,#FEF2F2,#FEE2E2)' } as const,
                     body: (
                       <>
@@ -250,7 +279,9 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
                         <div className="text-[28px] font-extrabold leading-tight text-[#991B1B]">
                           {page.stats.reserveCount}
                         </div>
-                        <div className="mt-1 text-xs text-[#991B1B]">{page.stats.reserveSubLabel}</div>
+                        <div className="mt-1 text-xs text-[#991B1B]">
+                          {page.stats.reserveSubLabel}
+                        </div>
                       </>
                     ),
                   },
@@ -298,7 +329,9 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
                       <div className="mb-1 flex justify-between text-xs">
                         <span
                           className={cn(
-                            row.barTone === 'red' ? 'font-medium text-[#991B1B]' : 'text-muted-foreground'
+                            row.barTone === 'red'
+                              ? 'font-medium text-[#991B1B]'
+                              : 'text-muted-foreground'
                           )}
                         >
                           {row.label}
@@ -366,16 +399,16 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
                 )}
                 style={staggerStyle(3)}
               >
-                <div className="card-section-header font-bold">
-                  Phòng ban cần chú ý
-                </div>
+                <div className="card-section-header font-bold">Phòng ban cần chú ý</div>
                 <div className="space-y-2 p-4">
                   {page.deptAlerts.map((a) => {
                     const st = ALERT_STYLE[a.tone]
                     return (
                       <div key={a.title} className={cn('rounded-r-[9px] py-2 pl-3 pr-2', st.wrap)}>
                         <div className={cn('text-xs font-semibold', st.title)}>{a.title}</div>
-                        <div className="mt-1 text-xs leading-snug text-muted-foreground">{a.body}</div>
+                        <div className="mt-1 text-xs leading-snug text-muted-foreground">
+                          {a.body}
+                        </div>
                       </div>
                     )
                   })}

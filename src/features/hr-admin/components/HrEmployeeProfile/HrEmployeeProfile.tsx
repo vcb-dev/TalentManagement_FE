@@ -91,12 +91,17 @@ export interface HrEmployeeProfileProps {
   viewer?: 'hr' | 'manager'
 }
 
-export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: HrEmployeeProfileProps) {
+export function HrEmployeeProfile({
+  employee,
+  initialTab = 0,
+  viewer = 'hr',
+}: HrEmployeeProfileProps) {
   const maxTab = viewer === 'manager' ? 3 : 4
   const [tab, setTab] = useState(() => Math.min(maxTab, Math.max(0, initialTab)))
   const { label: tierLabel, tierClass } = levelMeta(employee.currentLevel)
   const maxStars = STARS_PER_LEVEL[employee.currentLevel as LevelCode] || 6
-  const xpPct = maxStars > 0 ? Math.min(100, Math.round((employee.currentStar / maxStars) * 100)) : 0
+  const xpPct =
+    maxStars > 0 ? Math.min(100, Math.round((employee.currentStar / maxStars) * 100)) : 0
   const levelIdx = LEVEL_ORDER.indexOf(employee.currentLevel)
 
   const [editName, setEditName] = useState(employee.name)
@@ -115,7 +120,6 @@ export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: H
   const profileScoreDisplay = (points / 1000).toFixed(1).replace('.', ',')
   const rankStarsFive = (xpPct / 100) * 5
   const levelStarVariants = starVariants(employee.currentStar, maxStars)
-  const isGoldTier = employee.currentLevel === 'tuong'
   const RoleBadgeIcon = ROLE_BADGE_ICONS[employee.role]
   const deptName = `PB ${shortId(employee.departmentId)}`
   const teamName = `Team ${shortId(employee.teamIds[0] ?? employee.departmentId)}`
@@ -127,7 +131,10 @@ export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: H
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:mb-0 lg:block">
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               {viewer === 'manager' ? (
-                <Link to="/manager/team-progress" className="font-semibold text-primary hover:underline">
+                <Link
+                  to="/manager/team-progress"
+                  className="font-semibold text-primary hover:underline"
+                >
                   ← Nhân sự trong team
                 </Link>
               ) : (
@@ -178,7 +185,9 @@ export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: H
               <div className="space-y-4">
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold leading-snug text-foreground">{deptName}</span>
+                    <span className="text-sm font-semibold leading-snug text-foreground">
+                      {deptName}
+                    </span>
                     <span className="shrink-0 rounded-md bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-800">
                       Chính
                     </span>
@@ -189,7 +198,9 @@ export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: H
                 </div>
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold leading-snug text-foreground">{teamName}</span>
+                    <span className="text-sm font-semibold leading-snug text-foreground">
+                      {teamName}
+                    </span>
                     <span className="shrink-0 rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
                       Phụ
                     </span>
@@ -209,15 +220,27 @@ export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: H
               </div>
               <ul className="space-y-2">
                 <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                  <Award className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90" strokeWidth={2} aria-hidden />
+                  <Award
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
                   <span>{levelPillText(employee.currentLevel)}</span>
                 </li>
                 <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                  <RoleBadgeIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90" strokeWidth={2} aria-hidden />
+                  <RoleBadgeIcon
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
                   <span>{ROLE_LABEL_VI[employee.role]}</span>
                 </li>
                 <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90" strokeWidth={2} aria-hidden />
+                  <CheckCircle2
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
                   <span>{statusLabelVi(employee.status)}</span>
                 </li>
               </ul>
@@ -261,9 +284,15 @@ export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: H
 
           <div className="overflow-hidden rounded-2xl border border-primary/10 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/5">
             <div className="border-b border-border/80 px-5 py-5 md:px-6">
-              <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">{employee.name}</h1>
+              <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
+                {employee.name}
+              </h1>
               <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                <Building2 className="h-4 w-4 shrink-0 text-primary/70" strokeWidth={2} aria-hidden />
+                <Building2
+                  className="h-4 w-4 shrink-0 text-primary/70"
+                  strokeWidth={2}
+                  aria-hidden
+                />
                 <span>
                   {deptName} · {teamName}
                 </span>
@@ -279,7 +308,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: H
                 <FiveStarRank filled={rankStarsFive} />
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary ring-1 ring-primary/15">
-                    <Star className="h-3.5 w-3.5 fill-[#EAB308] text-[#EAB308]" strokeWidth={0} />
+                    <Star className="h-3.5 w-3.5" variant="filled" />
                     {points.toLocaleString('vi-VN')} pts
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-900 ring-1 ring-amber-500/20">
@@ -290,7 +319,11 @@ export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: H
 
               <div className="mt-3 flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
-                  <RoleBadgeIcon className="h-3.5 w-3.5 shrink-0 text-primary/90" strokeWidth={2} aria-hidden />
+                  <RoleBadgeIcon
+                    className="h-3.5 w-3.5 shrink-0 text-primary/90"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
                   {ROLE_LABEL_VI[employee.role]}
                 </span>
                 <span
@@ -303,7 +336,11 @@ export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: H
                   {tierLabel}
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary/90" strokeWidth={2} aria-hidden />
+                  <CheckCircle2
+                    className="h-3.5 w-3.5 shrink-0 text-primary/90"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
                   {statusLabelVi(employee.status)}
                 </span>
               </div>
@@ -329,7 +366,10 @@ export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: H
               ) : null}
             </div>
 
-            <nav className="flex flex-wrap gap-0 border-b border-border px-2 md:px-4" aria-label="Mục hồ sơ nhân viên">
+            <nav
+              className="flex flex-wrap gap-0 border-b border-border px-2 md:px-4"
+              aria-label="Mục hồ sơ nhân viên"
+            >
               {tabLabels.map((label, i) => {
                 const Icon = tabIcons[i]!
                 const active = tab === i
@@ -362,7 +402,6 @@ export function HrEmployeeProfile({ employee, initialTab = 0, viewer = 'hr' }: H
                   xpPct={xpPct}
                   maxStars={maxStars}
                   levelStarVariants={levelStarVariants}
-                  isGoldTier={isGoldTier}
                 />
               )}
               {tab === 1 && <LearningPathTab employee={employee} levelIdx={levelIdx} />}
@@ -418,7 +457,6 @@ function OverviewTab({
   xpPct,
   maxStars,
   levelStarVariants,
-  isGoldTier,
 }: {
   employee: EmployeeEntity
   tierLabel: string
@@ -426,7 +464,6 @@ function OverviewTab({
   xpPct: number
   maxStars: number
   levelStarVariants: ('filled' | 'current' | 'empty')[]
-  isGoldTier: boolean
 }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(260px,300px)_1fr]">
@@ -447,7 +484,11 @@ function OverviewTab({
                 className="flex justify-between border-b border-border py-2.5 text-sm last:border-0 md:text-base"
               >
                 <span className="flex items-center gap-2 text-muted-foreground">
-                  <Icon className="h-3.5 w-3.5 shrink-0 text-primary/85" strokeWidth={2} aria-hidden />
+                  <Icon
+                    className="h-3.5 w-3.5 shrink-0 text-primary/85"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
                   {label}
                 </span>
                 <span className="font-semibold text-foreground">{value}</span>
@@ -458,7 +499,7 @@ function OverviewTab({
         <PfCard title="Thành tích" entranceIndex={1}>
           <div className="grid grid-cols-2 gap-2">
             {[
-              ['⚡', 'Tốc độ vàng', 'Đạt lần 1'],
+              ['⚡', 'Hoàn thành nhanh', 'Đạt lần 1'],
               ['🎓', 'Mentor', 'Kèm mentee'],
               ['🏆', 'Top Learner', 'Top 15%'],
               ['👑', 'Tướng', 'Chưa mở'],
@@ -468,7 +509,9 @@ function OverviewTab({
                 className={cn(
                   'rounded-xl border p-2.5 text-center',
                   CARD_ENTRANCE_HOVER,
-                  i < 3 ? 'border-primary/30 bg-gradient-to-br from-app-canvas to-primary/10' : 'opacity-40 grayscale'
+                  i < 3
+                    ? 'border-primary/30 bg-gradient-to-br from-app-canvas to-primary/10'
+                    : 'opacity-40 grayscale'
                 )}
                 style={staggerStyle(i + 2)}
               >
@@ -483,11 +526,8 @@ function OverviewTab({
       <div className="space-y-4">
         <div
           className={cn(
-            'rounded-2xl p-5 text-foreground shadow-[var(--shadow-card)]',
-            CARD_ENTRANCE_HOVER,
-            isGoldTier
-              ? 'border border-amber-200/70 bg-gradient-to-br from-white via-amber-50/85 to-yellow-50/75 ring-1 ring-amber-200/45'
-              : 'border border-primary/20 bg-gradient-to-br from-white via-sky-50/90 to-teal-50/80 ring-1 ring-primary/15'
+            'rounded-2xl border border-primary/20 bg-gradient-to-br from-white via-sky-50/90 to-teal-50/80 p-5 text-foreground shadow-[var(--shadow-card)] ring-1 ring-primary/15',
+            CARD_ENTRANCE_HOVER
           )}
           style={staggerStyle(2)}
         >
@@ -511,7 +551,8 @@ function OverviewTab({
             </span>
           </div>
           <p className="mb-2 text-sm text-muted-foreground md:text-base">
-            Tiến độ Sao {employee.currentStar}/{maxStars} · {LEVEL_LABELS[employee.currentLevel as LevelCode]}
+            Tiến độ Sao {employee.currentStar}/{maxStars} ·{' '}
+            {LEVEL_LABELS[employee.currentLevel as LevelCode]}
           </p>
           <div className="mb-2.5 flex flex-wrap gap-1">
             {levelStarVariants.map((v, i) => (
@@ -524,19 +565,9 @@ function OverviewTab({
               </span>
             ))}
           </div>
-          <div
-            className={cn(
-              'group/pb relative h-2 overflow-hidden rounded-full',
-              isGoldTier ? 'bg-amber-200/50' : 'bg-primary/15'
-            )}
-          >
+          <div className="group/pb relative h-2 overflow-hidden rounded-full bg-primary/15">
             <div
-              className={cn(
-                'h-full origin-left rounded-full motion-safe:animate-[profile-progress-fill_1.05s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none',
-                isGoldTier
-                  ? 'bg-gradient-to-r from-star-gold via-star-gold-mid to-star-gold-deep'
-                  : 'bg-gradient-to-r from-primary via-sky-600 to-accent'
-              )}
+              className="h-full origin-left rounded-full bg-gradient-to-r from-primary via-sky-600 to-accent motion-safe:animate-[profile-progress-fill_1.05s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none"
               style={{
                 width: `${xpPct}%`,
                 transformOrigin: '0 50%',
@@ -551,7 +582,7 @@ function OverviewTab({
         <PfCard title="Lịch sử thăng cấp" entranceIndex={3}>
           <div className="relative px-3 py-1 pl-10">
             <div
-              className="absolute bottom-4 left-[23px] top-4 w-0.5 rounded-full bg-gradient-to-b from-amber-500 via-slate-500 to-orange-800 opacity-[0.92]"
+              className="absolute bottom-4 left-[23px] top-4 w-0.5 rounded-full bg-gradient-to-b from-primary via-sky-500 to-accent opacity-[0.92]"
               aria-hidden
             />
             <div className="relative mb-3.5">
@@ -566,7 +597,12 @@ function OverviewTab({
                 <div className="text-xs text-muted-foreground md:text-sm">
                   Cập nhật {new Date(employee.updatedAt).toLocaleDateString('vi-VN')}
                 </div>
-                <span className={cn('mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-bold', tierClass)}>
+                <span
+                  className={cn(
+                    'mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-bold',
+                    tierClass
+                  )}
+                >
                   {tierLabel}
                 </span>
               </div>
@@ -588,7 +624,9 @@ function LearningPathTab({ employee, levelIdx }: { employee: EmployeeEntity; lev
         <div className="space-y-0">
           <div className="flex justify-between border-b border-border py-2">
             <span className="text-xs text-muted-foreground">Cấp đang học</span>
-            <span className="text-sm font-bold">{LEVEL_LABELS[employee.currentLevel as LevelCode]}</span>
+            <span className="text-sm font-bold">
+              {LEVEL_LABELS[employee.currentLevel as LevelCode]}
+            </span>
           </div>
           <div className="flex justify-between border-b border-border py-2">
             <span className="text-xs text-muted-foreground">Sao hiện tại</span>
@@ -629,7 +667,8 @@ function LearningPathTab({ employee, levelIdx }: { employee: EmployeeEntity; lev
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold">
-                      {LEVEL_LABELS[lv]} {active && <span className="text-primary">· Đang học</span>}
+                      {LEVEL_LABELS[lv]}{' '}
+                      {active && <span className="text-primary">· Đang học</span>}
                     </span>
                     <span
                       className={cn(
@@ -724,7 +763,9 @@ function ExamCard({
     <div className={cn('rounded-xl border p-3.5', bg)}>
       <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-bold">{title}</span>
-        <span className={cn('rounded-full px-2 py-0.5 text-xs font-bold', badgeClass)}>{badge}</span>
+        <span className={cn('rounded-full px-2 py-0.5 text-xs font-bold', badgeClass)}>
+          {badge}
+        </span>
       </div>
       <div className="grid grid-cols-3 gap-1.5">
         {stats.map(([l, v]) => (
@@ -734,7 +775,11 @@ function ExamCard({
           </div>
         ))}
       </div>
-      {note ? <p className="mt-2 border-t border-black/5 pt-2 text-xs italic text-muted-foreground">{note}</p> : null}
+      {note ? (
+        <p className="mt-2 border-t border-black/5 pt-2 text-xs italic text-muted-foreground">
+          {note}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -762,19 +807,31 @@ function WorkHistoryTab() {
         <div className="relative pl-7">
           <div className="absolute bottom-2 left-2.5 top-2 w-0.5 rounded-sm bg-gradient-to-b from-primary via-accent to-teal-200/55" />
           {[
-            ['Hoàn thành mốc học tập', '20/03/2026 · Người chấm: Lê Thu Hà', 'Đạt', 'bg-emerald-500'],
+            [
+              'Hoàn thành mốc học tập',
+              '20/03/2026 · Người chấm: Lê Thu Hà',
+              'Đạt',
+              'bg-emerald-500',
+            ],
             ['Thăng cấp bậc', '05/01/2026 · Manager phê duyệt', 'Thăng cấp', 'bg-primary'],
             ['Gia nhập & onboard', 'Theo dữ liệu hệ thống', 'Onboard', 'bg-slate-400'],
           ].map(([t, m, b, dot], idx) => (
             <div key={idx} className="relative mb-5">
-              <div className={cn('absolute -left-[22px] top-1 h-3 w-3 rounded-full border-2 border-white', dot)} />
+              <div
+                className={cn(
+                  'absolute -left-[22px] top-1 h-3 w-3 rounded-full border-2 border-white',
+                  dot
+                )}
+              />
               <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 shadow-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="text-sm font-bold">{t}</div>
                     <div className="mt-1 text-xs text-muted-foreground">{m}</div>
                   </div>
-                  <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-xs font-bold text-primary">{b}</span>
+                  <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-xs font-bold text-primary">
+                    {b}
+                  </span>
                 </div>
               </div>
             </div>
@@ -809,11 +866,20 @@ function EditTab({
             <span>HR Admin có thể chỉnh sửa phân công khi đã kết nối API.</span>
           </div>
           <label className="mb-2 block text-xs font-semibold text-muted-foreground">Role</label>
-          <select className="mb-3 w-full rounded-[9px] border border-border bg-white px-3 py-2 text-sm" disabled defaultValue={employee.role}>
+          <select
+            className="mb-3 w-full rounded-[9px] border border-border bg-white px-3 py-2 text-sm"
+            disabled
+            defaultValue={employee.role}
+          >
             <option value={employee.role}>{roleShortLabel(employee.role)}</option>
           </select>
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">Phòng ban</label>
-          <select className="w-full rounded-[9px] border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground" disabled>
+          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
+            Phòng ban
+          </label>
+          <select
+            className="w-full rounded-[9px] border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
+            disabled
+          >
             <option>PB {shortId(employee.departmentId)}</option>
           </select>
         </PfCard>
@@ -837,7 +903,9 @@ function EditTab({
       <PfCard title="Thông tin cá nhân" entranceIndex={1}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Họ và tên</label>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+              Họ và tên
+            </label>
             <input
               className="w-full rounded-[9px] border border-border px-3 py-2 text-sm"
               value={editName}
@@ -853,8 +921,14 @@ function EditTab({
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Mã nhân viên</label>
-            <input className="w-full rounded-[9px] border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground" readOnly value={empCode} />
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+              Mã nhân viên
+            </label>
+            <input
+              className="w-full rounded-[9px] border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
+              readOnly
+              value={empCode}
+            />
           </div>
         </div>
       </PfCard>
