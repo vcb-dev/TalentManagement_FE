@@ -31,7 +31,8 @@ export const userSessionSchema = z.object({
 
 export const meResponseSchema = z.object({
   user: userSessionSchema,
-  accessToken: z.string().min(1),
+  /** Có khi mock hoặc tương lai trả JWT trong body; session thật dùng cookie httpOnly. */
+  accessToken: z.string().min(1).optional(),
 })
 
 export const loginRequestSchema = z.object({

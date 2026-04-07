@@ -1,8 +1,56 @@
 {
   "openapi": "3.1.0",
   "info": { "title": "VCB HRM API", "version": "1.0.0" },
-  "paths": {},
+  "paths": {
+    "/auth/google": {
+      "get": {
+        "summary": "Bắt đầu OAuth Google (redirect)",
+        "responses": {
+          "302": { "description": "Redirect tới Google" }
+        }
+      }
+    },
+    "/auth/google/callback": {
+      "get": {
+        "summary": "Google OAuth callback (redirect, set cookie)",
+        "parameters": [
+          { "name": "code", "in": "query", "schema": { "type": "string" } },
+          { "name": "state", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "302": { "description": "Redirect về FRONTEND_URL/login?oauth=success|error" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Đăng xuất (xóa cookie session)",
+        "responses": {
+          "200": { "description": "OK" }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Phiên hiện tại",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Session",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MeResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
     "schemas": {
       "Role": {
         "type": "string",
@@ -63,7 +111,7 @@
       },
       "MeResponse": {
         "type": "object",
-        "required": ["user", "accessToken"],
+        "required": ["user"],
         "properties": {
           "user": { "$ref": "#/components/schemas/UserSession" },
           "accessToken": { "type": "string" }

@@ -53,4 +53,10 @@ export const authApi = {
     const res = await apiClient.post<unknown>('/auth/login', body)
     return safeParse(meResponseSchema, res.data, 'POST /auth/login')
   },
+
+  logout: async () => {
+    if (!isMockApiEnabled()) {
+      await apiClient.post<unknown>('/auth/logout')
+    }
+  },
 }

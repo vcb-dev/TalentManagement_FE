@@ -10,6 +10,9 @@ export const apiClient = axios.create({
 })
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  if (!isMockApiEnabled()) {
+    config.withCredentials = true
+  }
   const token = useAuthStore.getState().accessToken
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
