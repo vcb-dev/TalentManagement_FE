@@ -47,7 +47,7 @@ export function DashboardLearningZone() {
       >
         <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
           <h1 className={PAGE_HEADER_TITLE}>
-            <span className={PAGE_HEADER_GRADIENT}>Dashboard Nhân sự</span>
+            <span className={PAGE_HEADER_GRADIENT}>Dashboard Cá nhân</span>
           </h1>
           <p className={PAGE_HEADER_DESCRIPTION}>
             Chào mừng trở lại, {greetingName}. Theo dõi tiến độ thăng tiến của bạn.
@@ -79,13 +79,13 @@ export function DashboardLearningZone() {
             <span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
               Cấp độ hiện tại
             </span>
-            <span className="rounded-full bg-tier-gold-muted px-3 py-1 text-[0.65rem] font-black tracking-tighter text-tier-gold">
-              GOLD
+            <span className="rounded-full bg-primary/10 px-3 py-1 text-[0.65rem] font-black tracking-tighter text-primary">
+              Được việc
             </span>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <div
-              className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-tier-gold-muted/90 px-2.5 py-2 ring-1 ring-star-gold/20"
+              className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-primary/[0.07] px-2.5 py-2 ring-1 ring-primary/20"
               role="img"
               aria-label={`${LEVEL_STAR_FILLED} trên ${LEVEL_STAR_TOTAL} sao đạt`}
             >
@@ -97,7 +97,7 @@ export function DashboardLearningZone() {
                 >
                   <ProgressStar
                     filled={i < LEVEL_STAR_FILLED}
-                    variant="gold"
+                    variant="primary"
                     className="h-6 w-6 sm:h-7 sm:w-7"
                   />
                 </span>
@@ -106,7 +106,7 @@ export function DashboardLearningZone() {
             <div className="min-w-0">
               <h2 className="text-xl font-bold leading-tight text-foreground">Được việc</h2>
               <p className="mt-1 text-sm font-medium text-muted-foreground">
-                Sao {LEVEL_STAR_FILLED}/{LEVEL_STAR_TOTAL} — Gold tier
+                Sao {LEVEL_STAR_FILLED}/{LEVEL_STAR_TOTAL}
               </p>
             </div>
           </div>
@@ -156,7 +156,7 @@ export function DashboardLearningZone() {
           </div>
           <div className="flex items-end gap-3">
             <span className="text-4xl font-black tabular-nums text-foreground">83%</span>
-            <div className="mb-1 rounded-full bg-tier-gold-muted px-2 py-0.5 text-sm font-bold text-amber-800">
+            <div className="mb-1 rounded-full bg-primary/10 px-2 py-0.5 text-sm font-bold text-primary">
               Top 15% team
             </div>
           </div>
@@ -277,13 +277,13 @@ export function DashboardLearningZone() {
                 Được việc — 6 sao hiện tại
               </h3>
               <p className="max-w-md text-muted-foreground">
-                Bạn đã hoàn thành 4/6 tiêu chuẩn đánh giá. Hãy hoàn thành các sao còn lại để nâng
-                hạng tiếp theo.
+                Bạn đã hoàn thành 4/6 tiêu chuẩn đánh giá. Hãy hoàn thành các sao còn lại để đạt mốc
+                tiếp theo trong cấp hiện tại.
               </p>
             </div>
             <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center">
               <div
-                className="inline-flex flex-wrap items-center gap-1.5 rounded-2xl bg-tier-gold-muted/80 p-4 ring-1 ring-star-gold/15"
+                className="inline-flex flex-wrap items-center gap-1.5 rounded-2xl bg-primary/[0.07] p-4 ring-1 ring-primary/15"
                 role="img"
                 aria-label={`${LEVEL_STAR_FILLED} trên ${LEVEL_STAR_TOTAL} sao đạt`}
               >
@@ -295,7 +295,7 @@ export function DashboardLearningZone() {
                   >
                     <ProgressStar
                       filled={i < LEVEL_STAR_FILLED}
-                      variant="gold"
+                      variant="primary"
                       className="h-9 w-9 sm:h-10 sm:w-10"
                     />
                   </span>

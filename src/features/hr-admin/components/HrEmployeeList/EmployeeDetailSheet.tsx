@@ -10,7 +10,6 @@ import {
   avatarClassForRole,
   initialsFromName,
   levelPillText,
-  memberStarRank,
   roleBadgeClass,
   roleShortLabel,
   shortId,
@@ -63,7 +62,6 @@ export function EmployeeDetailSheet({
   const xpPct = Math.min(100, Math.round((employee.currentStar / 6) * 100))
   const ini = initialsFromName(employee.name)
   const tierLine = levelPillText(employee.currentLevel)
-  const rank = memberStarRank(employee.currentStar)
   const positionLabel = ROLE_LABEL_VI[employee.role]
   const idShort = shortId(employee.id)
 
@@ -117,14 +115,6 @@ export function EmployeeDetailSheet({
           <h3 className="mb-1 text-xl font-bold text-foreground">{employee.name}</h3>
           <p className="mb-3 text-sm font-medium text-primary">{positionLabel}</p>
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <span
-              className={cn(
-                'rounded-full px-3 py-1 text-[10px] font-bold tracking-tight',
-                rank.badgeClass
-              )}
-            >
-              {rank.label}
-            </span>
             <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[10px] font-bold tracking-tight text-primary">
               {tierLine}
             </span>
@@ -133,7 +123,9 @@ export function EmployeeDetailSheet({
             </span>
             {statusBadge(employee.status)}
           </div>
-          <p className="mt-3 max-w-full break-all text-xs text-muted-foreground">{employee.email}</p>
+          <p className="mt-3 max-w-full break-all text-xs text-muted-foreground">
+            {employee.email}
+          </p>
           <div className="mt-2 flex flex-wrap justify-center gap-1.5">
             <span
               className={cn(
@@ -143,7 +135,9 @@ export function EmployeeDetailSheet({
             >
               {roleShortLabel(employee.role)}
             </span>
-            <span className="text-[10px] text-muted-foreground">PB · {shortId(employee.departmentId)}</span>
+            <span className="text-[10px] text-muted-foreground">
+              PB · {shortId(employee.departmentId)}
+            </span>
           </div>
         </div>
 
@@ -152,9 +146,7 @@ export function EmployeeDetailSheet({
             <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Cấp sao
             </span>
-            <span className="text-xl font-bold text-primary">
-              {employee.currentStar}/6
-            </span>
+            <span className="text-xl font-bold text-primary">{employee.currentStar}/6</span>
           </div>
           <div className="rounded-xl border border-border bg-muted/40 p-4">
             <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -215,7 +207,10 @@ export function EmployeeDetailSheet({
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40" aria-hidden />
+              <div
+                className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40"
+                aria-hidden
+              />
               <div>
                 <p className="text-xs font-medium text-foreground">Đồng bộ từ hệ thống HRM</p>
                 <p className="text-[10px] text-muted-foreground">Theo dữ liệu API</p>

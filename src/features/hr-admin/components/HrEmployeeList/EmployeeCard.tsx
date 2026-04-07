@@ -8,7 +8,6 @@ import {
   avatarClassForRole,
   initialsFromName,
   levelPillText,
-  memberStarRank,
   roleBadgeClass,
   roleShortLabel,
   shortId,
@@ -70,7 +69,6 @@ export function EmployeeCard({
   variant = 'hr',
 }: EmployeeCardProps) {
   const tierLine = levelPillText(employee.currentLevel)
-  const rank = memberStarRank(employee.currentStar)
   const inactive = employee.status === 'INACTIVE'
   const meta = initialsFromName(employee.name)
   const deptLine = `PB · ${shortId(employee.departmentId)}`
@@ -116,15 +114,6 @@ export function EmployeeCard({
           />
         </div>
         <div className="flex min-w-0 flex-col items-end gap-1.5">
-          <span
-            className={cn(
-              'max-w-[10.5rem] truncate rounded-md px-2 py-0.5 text-center text-[10px] font-bold tracking-tight sm:max-w-[11rem] sm:text-[11px]',
-              rank.badgeClass
-            )}
-            title={rank.label}
-          >
-            {rank.label}
-          </span>
           <span
             className="max-w-[9rem] truncate rounded-md bg-primary/10 px-2 py-0.5 text-center text-[10px] font-bold tracking-tight text-primary sm:max-w-[10rem]"
             title={tierLine}
