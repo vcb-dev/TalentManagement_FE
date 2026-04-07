@@ -302,6 +302,11 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
     )
   }
 
+  const learningSearch = {
+    levelId: page.placement?.levelId ?? 'biet_viec',
+    starId: page.placement?.starId ?? 1,
+  } as const
+
   const workSection = USER_SELF_FORM_SECTIONS[0]!
   const detailSections = USER_SELF_FORM_SECTIONS.slice(1)
 
@@ -370,6 +375,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
             <p className="mt-2">
               <Link
                 to="/learning-path"
+                search={learningSearch}
                 className="text-sm font-medium text-primary underline-offset-4 hover:underline"
               >
                 Lộ trình học
