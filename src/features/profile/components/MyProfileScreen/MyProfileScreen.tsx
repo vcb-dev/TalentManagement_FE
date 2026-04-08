@@ -25,24 +25,26 @@ export interface MyProfileScreenProps {
 }
 
 const inputEditable =
-  'border-input bg-muted/35 text-[0.9375rem] ring-offset-background placeholder:text-muted-foreground/75 focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary/40'
+  'border-primary/35 bg-slate-200/95 text-[0.9375rem] ring-offset-background placeholder:text-muted-foreground/75 focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary/60'
 
 const inputReadOnly =
-  'cursor-not-allowed border-muted-foreground/20 bg-muted/55 text-foreground/85 shadow-none'
+  'cursor-not-allowed border-slate-400/80 bg-slate-200/95 text-foreground/80 shadow-none'
 
 const fieldControlClass =
   'min-h-12 w-full rounded-xl border px-4 py-3 leading-snug outline-none transition-colors'
 
-const fieldStackGap = 'gap-2.5'
+const fieldStackGap = 'gap-1.5'
+const fieldBoxClass = ''
+const fieldBoxReadonlyClass = ''
 
 function FieldLabel({ children }: { children: string }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-2.5">
+    <span className="inline-flex max-w-full items-center gap-2">
       <span
         className="h-4 w-1 shrink-0 rounded-full bg-gradient-to-b from-primary via-sky-500 to-accent shadow-[0_0_10px_-2px_hsl(var(--primary)/0.55)]"
         aria-hidden
       />
-      <span className="min-w-0 rounded-md bg-gradient-to-r from-primary/[0.14] via-primary/[0.07] to-accent/[0.1] px-2 py-0.5 text-sm font-bold tracking-wide text-primary ring-1 ring-primary/20">
+      <span className="min-w-0 rounded-md bg-primary/10 px-2 py-0.5 text-sm font-semibold tracking-wide text-primary ring-1 ring-primary/20">
         {children}
       </span>
     </span>
@@ -97,7 +99,7 @@ function toPatch(edit: EditRecord): PatchMeUserBody {
 
 function ProfileReadonlyInput({ label, value }: { label: string; value: string }) {
   return (
-    <label className={cn('flex flex-col', fieldStackGap)}>
+    <label className={cn('flex flex-col', fieldStackGap, fieldBoxReadonlyClass)}>
       <FieldLabel>{label}</FieldLabel>
       <input
         type="text"
@@ -124,7 +126,7 @@ function ProfileEditableText({
   onChange: (v: string) => void
 }) {
   return (
-    <label className={cn('flex flex-col', fieldStackGap)}>
+    <label className={cn('flex flex-col', fieldStackGap, fieldBoxClass)}>
       <FieldLabel>{label}</FieldLabel>
       <input
         type="text"
@@ -147,7 +149,7 @@ function ProfileEditableTextarea({
   onChange: (v: string) => void
 }) {
   return (
-    <label className={cn('flex flex-col sm:col-span-2 lg:col-span-2', fieldStackGap)}>
+    <label className={cn('flex flex-col sm:col-span-2 lg:col-span-2', fieldStackGap, fieldBoxClass)}>
       <FieldLabel>{label}</FieldLabel>
       <textarea
         className={cn(
@@ -171,7 +173,7 @@ function ProfileEditableDate({
   onChange: (v: string) => void
 }) {
   return (
-    <label className={cn('flex flex-col', fieldStackGap)}>
+    <label className={cn('flex flex-col', fieldStackGap, fieldBoxClass)}>
       <FieldLabel>{label}</FieldLabel>
       <input
         type="date"
@@ -201,7 +203,7 @@ function PortraitUploadBlock({
   const titleId = `${uploadInputId}-title`
 
   return (
-    <div className={cn('flex min-w-0 flex-col sm:col-span-2 lg:col-span-2', fieldStackGap)}>
+    <div className={cn('flex min-w-0 flex-col sm:col-span-2 lg:col-span-2', fieldStackGap, fieldBoxClass)}>
       <span id={titleId} className="block">
         <FieldLabel>{label}</FieldLabel>
       </span>
@@ -249,6 +251,7 @@ function renderField(
   }
 ) {
   const { u, edit, setEdit, onPortraitFile, portraitUploading } = ctx
+  const forceReadonly = field.key === 'directManager'
 
   if (field.kind === 'portrait') {
     return (
@@ -261,7 +264,7 @@ function renderField(
     )
   }
 
-  if (isWorkOrgReadonlyField(field.key)) {
+  if (isWorkOrgReadonlyField(field.key) || forceReadonly) {
     return (
       <ProfileReadonlyInput
         key={field.key}
@@ -336,7 +339,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
   }
 
   const workSection = USER_SELF_FORM_SECTIONS[0]!
-  const detailSections = USER_SELF_FORM_SECTIONS.slice(1)
+  const detailSections = USER_SELF_FORM_SECTIONS.slice(1).filter((s) => s.title.trim() !== 'Khác')
 
   const fieldCtx = { u, edit, setEdit, onPortraitFile, portraitUploading }
 
@@ -359,7 +362,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
         className="pointer-events-none absolute inset-0 opacity-[0.25] [background-image:linear-gradient(hsl(var(--primary)/0.08)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--primary)/0.08)_1px,transparent_1px)] [background-size:56px_56px]"
         aria-hidden
       />
-      <div className="mx-auto w-full max-w-[min(100%,96rem)] px-4 md:px-6">
+      <div className="mx-auto w-full max-w-[min(100%,80rem)] px-4 md:px-6">
         <header className="relative mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
           <div className="min-w-0">
             <h1 className="bg-gradient-to-r from-primary via-primary-600 to-accent bg-clip-text text-3xl font-bold tracking-tight text-transparent">
@@ -438,7 +441,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
           </section>
         </div>
 
-        <section className="mt-8 rounded-3xl border border-primary/12 bg-card/80 p-5 shadow-[var(--shadow-card)] backdrop-blur-[2px] md:p-7">
+        <section className="mt-7 rounded-3xl border border-primary/12 bg-card/80 p-5 shadow-[var(--shadow-card)] backdrop-blur-[2px] md:p-7">
           <h2 className="flex items-center gap-3 text-lg font-bold tracking-tight">
             <span className="h-7 w-1 shrink-0 rounded-full bg-gradient-to-b from-primary to-accent shadow-[0_0_14px_-3px_hsl(var(--primary)/0.5)]" aria-hidden />
             <span className="bg-gradient-to-r from-primary via-foreground to-primary/80 bg-clip-text text-transparent">
@@ -446,19 +449,22 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
             </span>
           </h2>
 
-          <div className="mt-6 space-y-9">
-            <div className="min-w-0">
+          <div className="mt-5 space-y-6">
+            <div className="min-w-0 rounded-2xl border border-border/70 bg-background/65 p-4 shadow-sm md:p-5">
               <SectionTitle>{workSection.title}</SectionTitle>
-              <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
                 {workSection.fields.map((f) => renderField(f, fieldCtx))}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-8 xl:grid-cols-2 xl:gap-x-8 2xl:gap-x-10">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               {detailSections.map((section) => (
-                <div key={section.title} className="min-w-0">
+                <div
+                  key={section.title}
+                  className="min-w-0 rounded-2xl border border-border/70 bg-background/65 p-4 shadow-sm md:p-5"
+                >
                   <SectionTitle>{section.title}</SectionTitle>
-                  <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
                     {section.fields.map((f) => renderField(f, fieldCtx))}
                   </div>
                 </div>
