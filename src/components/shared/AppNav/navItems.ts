@@ -45,7 +45,7 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
   { to: '/monthly-report', label: 'Báo cáo hàng tháng', icon: BarChart3, match: 'prefix' },
 ]
 
-const HR_ADMIN_ITEMS: AppNavItem[] = [
+const HR_ITEMS: AppNavItem[] = [
   {
     to: '/hr-admin',
     label: 'Nhân sự',
@@ -174,7 +174,7 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
   { to: '/monthly-report', label: 'Báo cáo hàng tháng', icon: BarChart3, match: 'prefix' },
 ]
 
-export { HR_ADMIN_ITEMS, BOD_ITEMS, MANAGER_OPS_ITEMS, TEACHER_CLASS_ITEMS }
+export { HR_ITEMS, BOD_ITEMS, MANAGER_OPS_ITEMS, TEACHER_CLASS_ITEMS }
 
 export function normalizePath(p: string): string {
   if (p.length > 1 && p.endsWith('/')) return p.slice(0, -1)

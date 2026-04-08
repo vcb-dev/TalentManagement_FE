@@ -71,8 +71,8 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
   },
   {
     id: 'tpl.hr',
-    name: ROLE_LABEL_VI.HR_ADMIN,
-    linkedRole: 'HR_ADMIN',
+    name: ROLE_LABEL_VI.HR,
+    linkedRole: 'HR',
     permissionIds: [
       'home.view',
       'dashboard.view',

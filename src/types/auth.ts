@@ -1,5 +1,6 @@
 /** HR, Member, Teacher (chấm thi theo kỳ), Manager, Leader (KPI/OKR team), BOD. */
-export type Role = 'MEMBER' | 'LEADER' | 'MANAGER' | 'HR_ADMIN' | 'TEACHER' | 'BOD'
+export type Role = 'MEMBER' | 'LEADER' | 'MANAGER' | 'HR' | 'TEACHER' | 'BOD'
+export type StaffLevel = 'PROBATION' | 'PROFICIENT' | 'GENERAL' | 'UNKNOWN'
 
 export type Action = 'view' | 'create' | 'edit' | 'deactivate' | 'grade' | 'approve' | 'classify'
 
@@ -36,4 +37,5 @@ export interface UserSession {
   dataScopeFlags?: Record<string, boolean>
   departmentId: string
   teamIds: string[]
+  staffLevel: StaffLevel
 }

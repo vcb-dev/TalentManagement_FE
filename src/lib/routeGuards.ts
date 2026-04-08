@@ -6,7 +6,7 @@ import type { Role } from '@/types/auth'
 export function defaultPathForRole(role: Role | undefined): string {
   if (!role) return '/login'
   switch (role) {
-    case 'HR_ADMIN':
+    case 'HR':
       return '/hr-admin'
     case 'BOD':
       return '/bod/dashboard'

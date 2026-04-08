@@ -69,7 +69,7 @@ function heroBadges(role: Role): HeroBadgeItem[] {
       ]
     case 'TEACHER':
       return [{ key: 'role', Icon: ClipboardList, label: 'Người chấm thi' }, ...base]
-    case 'HR_ADMIN':
+    case 'HR':
       return [{ key: 'role', Icon: Building2, label: 'HR' }, ...base]
     case 'BOD':
       return [{ key: 'role', Icon: BarChart3, label: 'BOD' }, ...base]
@@ -119,7 +119,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
 
   const role = user?.role ?? 'MEMBER'
   /** HR được cập nhật số điện thoại & thao tác đổi mật khẩu (demo) trên hồ sơ của chính mình. */
-  const hrCanEditSelf = role === 'HR_ADMIN'
+  const hrCanEditSelf = role === 'HR'
   const visibleTabs = useMemo(() => profileTabIdsForRole(role), [role])
   const activeTab = visibleTabs.includes(tab) ? tab : (visibleTabs[0] ?? 'overview')
 

@@ -34,7 +34,7 @@ export function AppShell({ children, title }: AppShellProps) {
   const compactNavNoSidebar =
     user?.role === 'MEMBER' ||
     user?.role === 'LEADER' ||
-    user?.role === 'HR_ADMIN' ||
+    user?.role === 'HR' ||
     user?.role === 'TEACHER'
 
   const toolbar = (
@@ -134,13 +134,13 @@ export function AppShell({ children, title }: AppShellProps) {
                 <div className="flex min-h-10 min-w-0 flex-1 items-center gap-6 sm:gap-8">
                   <Link
                     to={
-                      user.role === 'HR_ADMIN'
+                      user.role === 'HR'
                         ? '/hr-admin'
                         : user.role === 'TEACHER'
                           ? '/teacher/classes'
                           : '/dashboard'
                     }
-                    search={user.role === 'HR_ADMIN' ? { page: 1 } : undefined}
+                    search={user.role === 'HR' ? { page: 1 } : undefined}
                     className="flex h-10 shrink-0 items-center text-lg font-bold leading-none tracking-tight text-primary-600 sm:text-[18px]"
                   >
                     VCB HRM
@@ -150,8 +150,8 @@ export function AppShell({ children, title }: AppShellProps) {
                       role={
                         user.role === 'LEADER'
                           ? 'LEADER'
-                          : user.role === 'HR_ADMIN'
-                            ? 'HR_ADMIN'
+                          : user.role === 'HR'
+                            ? 'HR'
                             : user.role === 'TEACHER'
                               ? 'TEACHER'
                               : 'MEMBER'

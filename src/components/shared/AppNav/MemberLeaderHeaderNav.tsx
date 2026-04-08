@@ -1,6 +1,6 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
-  HR_ADMIN_ITEMS,
+  HR_ITEMS,
   LEADER_KPI_ITEMS,
   MEMBER_SELF_ITEMS,
   TEACHER_HEADER_ITEMS,
@@ -50,7 +50,7 @@ function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) 
 }
 
 export interface MemberLeaderHeaderNavProps {
-  role: Extract<Role, 'MEMBER' | 'LEADER' | 'HR_ADMIN' | 'TEACHER'>
+  role: Extract<Role, 'MEMBER' | 'LEADER' | 'HR' | 'TEACHER'>
 }
 
 /** Điều hướng ngang trên header — thay sidebar cho Member / Leader / HR Admin / Teacher. */
@@ -60,8 +60,8 @@ export function MemberLeaderHeaderNav({ role }: MemberLeaderHeaderNavProps) {
   const rawItems =
     role === 'LEADER'
       ? LEADER_KPI_ITEMS
-      : role === 'HR_ADMIN'
-        ? HR_ADMIN_ITEMS
+      : role === 'HR'
+        ? HR_ITEMS
         : role === 'TEACHER'
           ? TEACHER_HEADER_ITEMS
           : MEMBER_SELF_ITEMS

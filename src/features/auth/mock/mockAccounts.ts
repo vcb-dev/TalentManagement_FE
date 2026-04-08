@@ -1,4 +1,4 @@
-import type { Role, UserSession } from '@/types/auth'
+import type { Role, StaffLevel, UserSession } from '@/types/auth'
 import { applyMandatoryViewRules } from '@/features/permissions/effectivePermissions'
 import { getDefaultPermissionIdsForRole } from '@/features/permissions/defaultPermissionIds'
 import { mergeStoredAssignmentsForUser } from '@/features/permissions/assignmentStore'
@@ -12,6 +12,7 @@ function session(
   name: string,
   email: string,
   role: Role,
+  staffLevel: StaffLevel,
   permissions: UserSession['permissions'] = []
 ): UserSession {
   const permissionIds = getDefaultPermissionIdsForRole(role)
@@ -25,7 +26,14 @@ function session(
     permissionIds,
     departmentId: DEPT,
     teamIds: [TEAM],
+    staffLevel,
   }
+}
+
+function inferMockStaffLevel(role: Role): StaffLevel {
+  if (role === 'BOD' || role === 'MANAGER') return 'GENERAL'
+  if (role === 'HR') return 'PROFICIENT'
+  return 'PROBATION'
 }
 
 /** Gộp assignment đã lưu (localStorage) vào session mock. */
@@ -57,7 +65,7 @@ export const MOCK_ACCOUNT_LIST: {
 }[] = [
   {
     email: 'hr.admin@vcb.com',
-    role: 'HR_ADMIN',
+    role: 'HR',
     name: 'Phòng HR Demo',
     description: 'HR Admin — danh sách nhân sự',
   },
@@ -96,7 +104,10 @@ export const MOCK_ACCOUNT_LIST: {
 const byEmail = new Map<string, UserSession>(
   MOCK_ACCOUNT_LIST.map((a, i) => {
     const id = `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`
-    return [a.email.toLowerCase(), session(id, a.name, a.email, a.role)] as const
+    return [
+      a.email.toLowerCase(),
+      session(id, a.name, a.email, a.role, inferMockStaffLevel(a.role)),
+    ] as const
   })
 )
 

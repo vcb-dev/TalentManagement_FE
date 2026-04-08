@@ -13,7 +13,7 @@ export interface EmployeeFiltersProps {
   onApply: () => void
 }
 
-const roles: Role[] = ['MEMBER', 'LEADER', 'MANAGER', 'HR_ADMIN', 'TEACHER', 'BOD']
+const roles: Role[] = ['MEMBER', 'LEADER', 'MANAGER', 'HR', 'TEACHER', 'BOD']
 const statuses: EmployeeListStatus[] = ['active', 'inactive', 'probation', 'reserved']
 
 export function EmployeeFilters({
