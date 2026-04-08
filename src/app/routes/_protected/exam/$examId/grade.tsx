@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { requireRole } from '@/lib/routeGuards'
+import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
 import { GraderChamThiScreen } from '@/features/exam/components/GraderChamThiScreen'
 
 const gradeSearchSchema = z.object({
@@ -9,7 +9,7 @@ const gradeSearchSchema = z.object({
 
 export const Route = createFileRoute('/_protected/exam/$examId/grade')({
   validateSearch: (raw) => gradeSearchSchema.parse(raw),
-  beforeLoad: () => requireRole('TEACHER'),
+  beforeLoad: () => requireRoleOrPermissionPrefixes(['TEACHER'], ['teacher.']),
   component: ExamGradePage,
 })
 

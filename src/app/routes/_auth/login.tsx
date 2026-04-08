@@ -10,7 +10,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { authApi } from '@/features/auth/api'
 import { loginRequestSchema } from '@/features/auth/schemas'
 import { useLogin } from '@/features/auth/hooks'
-import { defaultPathForRole } from '@/lib/routeGuards'
+import { defaultEntryPathFromSession } from '@/lib/routeGuards'
 import { MOCK_ACCOUNT_LIST, MOCK_PASSWORD } from '@/features/auth/mock/mockAccounts'
 import { ensureSessionFromCookie } from '@/features/auth/sessionBootstrap'
 import { isMockApiEnabled } from '@/lib/mockEnv'
@@ -28,8 +28,8 @@ export const Route = createFileRoute('/_auth/login')({
     await ensureSessionFromCookie()
     const { accessToken, user } = useAuthStore.getState()
     if (user || accessToken) {
-      const target = defaultPathForRole(user?.role)
-      if (user?.role === 'HR') throw redirect({ to: '/hr-admin', search: { page: 1 } })
+      const target = defaultEntryPathFromSession(user ?? undefined)
+      if (target === '/hr-admin') throw redirect({ to: '/hr-admin', search: { page: 1 } })
       throw redirect({ to: target })
     }
   },
@@ -65,9 +65,10 @@ function LoginPage() {
       void navigate({ href: search.redirect })
       return
     }
-    const role = useAuthStore.getState().user?.role
-    if (role === 'HR') void navigate({ to: '/hr-admin', search: { page: 1 } })
-    else void navigate({ to: defaultPathForRole(role) })
+    const u = useAuthStore.getState().user
+    const target = defaultEntryPathFromSession(u ?? undefined)
+    if (target === '/hr-admin') void navigate({ to: '/hr-admin', search: { page: 1 } })
+    else void navigate({ to: target })
   }, [navigate, search.redirect])
 
   useEffect(() => {
@@ -156,8 +157,8 @@ function LoginPage() {
             </div>
           ) : !mockApi && !googleOAuthHref ? (
             <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
-              Cấu hình <code className="font-mono text-[11px]">VITE_API_URL</code> trỏ tới BE và trên BE bật{' '}
-              <code className="font-mono text-[11px]">GOOGLE_CLIENT_ID</code>,{' '}
+              Cấu hình <code className="font-mono text-[11px]">VITE_API_URL</code> trỏ tới BE và
+              trên BE bật <code className="font-mono text-[11px]">GOOGLE_CLIENT_ID</code>,{' '}
               <code className="font-mono text-[11px]">GOOGLE_CLIENT_SECRET</code>,{' '}
               <code className="font-mono text-[11px]">FRONTEND_URL</code>. Hoặc bật{' '}
               <code className="font-mono text-[11px]">VITE_USE_MOCK_API</code> để demo.
@@ -302,7 +303,9 @@ function LoginPage() {
                         {acc.email}
                       </span>
                       <span className="mt-0.5 block text-[10px] text-gray-500 sm:text-[11px]">
-                        <span className="font-medium text-primary/90">{ROLE_LABEL_VI[acc.role]}</span>
+                        <span className="font-medium text-primary/90">
+                          {ROLE_LABEL_VI[acc.role]}
+                        </span>
                         {' — '}
                         {acc.description}
                       </span>

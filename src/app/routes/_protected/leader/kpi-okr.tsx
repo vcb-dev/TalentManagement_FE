@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { LeaderKpiOkrScreen } from '@/features/kpi-okr'
-import { requireRole } from '@/lib/routeGuards'
+import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
 
 export const Route = createFileRoute('/_protected/leader/kpi-okr')({
-  beforeLoad: () => requireRole('LEADER'),
+  beforeLoad: () => requireRoleOrPermissionPrefixes(['LEADER'], ['kpi.team_']),
   component: LeaderKpiOkrScreen,
 })

@@ -1,8 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { HrEmployeeList } from '@/features/hr-admin/components/HrEmployeeList'
-import { requireHrAdmin } from '@/features/hr-admin/requireHrAdmin'
-import { requirePermissionPrefix } from '@/lib/permissionGuards'
+import { requireEmployeeDirectoryAccess } from '@/features/hr-admin/requireHrAdmin'
 
 const hrAdminSearchSchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
@@ -14,8 +13,7 @@ const hrAdminSearchSchema = z.object({
 export const Route = createFileRoute('/_protected/hr-admin/')({
   validateSearch: (raw) => hrAdminSearchSchema.parse(raw),
   beforeLoad: () => {
-    requireHrAdmin()
-    requirePermissionPrefix('hr.')
+    requireEmployeeDirectoryAccess()
   },
   component: HrAdminIndexPage,
 })

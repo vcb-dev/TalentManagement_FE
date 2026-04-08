@@ -87,16 +87,10 @@ export interface HrEmployeeProfileProps {
   employee: EmployeeEntity
   /** Mặc định mở tab khi vào từ URL `?mode=edit`. */
   initialTab?: number
-  /** Quản lý: ẩn chỉnh sửa / thao tác HR. */
-  viewer?: 'hr' | 'manager'
 }
 
-export function HrEmployeeProfile({
-  employee,
-  initialTab = 0,
-  viewer = 'hr',
-}: HrEmployeeProfileProps) {
-  const maxTab = viewer === 'manager' ? 3 : 4
+export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfileProps) {
+  const maxTab = 4
   const [tab, setTab] = useState(() => Math.min(maxTab, Math.max(0, initialTab)))
   const { label: tierLabel, tierClass } = levelMeta(employee.currentLevel)
   const maxStars = STARS_PER_LEVEL[employee.currentLevel as LevelCode] || 6
@@ -115,8 +109,8 @@ export function HrEmployeeProfile({
 
   const onDemoAction = (msg: string) => () => toast.info(msg)
 
-  const tabLabels = viewer === 'manager' ? TABS.slice(0, 4) : TABS
-  const tabIcons = viewer === 'manager' ? TAB_ICONS_HR.slice(0, 4) : TAB_ICONS_HR
+  const tabLabels = TABS
+  const tabIcons = TAB_ICONS_HR
   const profileScoreDisplay = (points / 1000).toFixed(1).replace('.', ',')
   const rankStarsFive = (xpPct / 100) * 5
   const levelStarVariants = starVariants(employee.currentStar, maxStars)
@@ -130,43 +124,32 @@ export function HrEmployeeProfile({
         <aside className="w-full shrink-0 lg:w-[280px]">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:mb-0 lg:block">
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              {viewer === 'manager' ? (
-                <Link
-                  to="/manager/team-progress"
-                  className="font-semibold text-primary hover:underline"
-                >
-                  ← Nhân sự trong team
-                </Link>
-              ) : (
-                <Link
-                  to="/hr-admin"
-                  search={{ page: 1 }}
-                  className="font-semibold text-primary hover:underline"
-                >
-                  ← Danh sách nhân sự
-                </Link>
-              )}
+              <Link
+                to="/hr-admin"
+                search={{ page: 1 }}
+                className="font-semibold text-primary hover:underline"
+              >
+                ← Danh sách nhân sự
+              </Link>
               <span className="text-muted-foreground/50">/</span>
               <span className="font-semibold text-foreground">{employee.name}</span>
             </div>
-            {viewer === 'hr' ? (
-              <div className="flex flex-wrap items-center gap-1.5 lg:hidden">
-                <button
-                  type="button"
-                  className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold shadow-sm hover:bg-muted"
-                  onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
-                >
-                  Đổi PB
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold shadow-sm hover:bg-muted"
-                  onClick={onDemoAction('Đổi role: kết nối API sau.')}
-                >
-                  Role
-                </button>
-              </div>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-1.5 lg:hidden">
+              <button
+                type="button"
+                className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold shadow-sm hover:bg-muted"
+                onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
+              >
+                Đổi PB
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold shadow-sm hover:bg-muted"
+                onClick={onDemoAction('Đổi role: kết nối API sau.')}
+              >
+                Role
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col gap-6 rounded-2xl border border-primary/10 bg-card p-5 shadow-[var(--shadow-card)] ring-1 ring-primary/5">
@@ -249,38 +232,36 @@ export function HrEmployeeProfile({
         </aside>
 
         <main className="min-w-0 flex-1">
-          {viewer === 'hr' ? (
-            <div className="mb-4 hidden flex-wrap items-center justify-end gap-2 lg:flex">
-              <button
-                type="button"
-                className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
-                onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
-              >
-                Đổi phòng ban
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
-                onClick={onDemoAction('Đổi role: kết nối API sau.')}
-              >
-                Đổi role
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-red-300/80 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-800 transition-colors hover:bg-red-100"
-                onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
-              >
-                Hủy hoạt động
-              </button>
-              <button
-                type="button"
-                className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-                onClick={onDemoAction('Lưu thay đổi: kết nối API sau.')}
-              >
-                Lưu thay đổi
-              </button>
-            </div>
-          ) : null}
+          <div className="mb-4 hidden flex-wrap items-center justify-end gap-2 lg:flex">
+            <button
+              type="button"
+              className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+              onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
+            >
+              Đổi phòng ban
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+              onClick={onDemoAction('Đổi role: kết nối API sau.')}
+            >
+              Đổi role
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-red-300/80 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-800 transition-colors hover:bg-red-100"
+              onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
+            >
+              Hủy hoạt động
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+              onClick={onDemoAction('Lưu thay đổi: kết nối API sau.')}
+            >
+              Lưu thay đổi
+            </button>
+          </div>
 
           <div className="overflow-hidden rounded-2xl border border-primary/10 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/5">
             <div className="border-b border-border/80 px-5 py-5 md:px-6">
@@ -345,25 +326,23 @@ export function HrEmployeeProfile({
                 </span>
               </div>
 
-              {viewer === 'hr' ? (
-                <div className="mt-5 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTab(4)}
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-                  >
-                    Chỉnh sửa hồ sơ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toast.info('Cài đặt nhân viên (demo)')}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-muted"
-                    aria-label="Cài đặt"
-                  >
-                    <Settings className="h-5 w-5" strokeWidth={2} />
-                  </button>
-                </div>
-              ) : null}
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTab(4)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                >
+                  Chỉnh sửa hồ sơ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toast.info('Cài đặt nhân viên (demo)')}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-muted"
+                  aria-label="Cài đặt"
+                >
+                  <Settings className="h-5 w-5" strokeWidth={2} />
+                </button>
+              </div>
             </div>
 
             <nav
@@ -407,7 +386,7 @@ export function HrEmployeeProfile({
               {tab === 1 && <LearningPathTab employee={employee} levelIdx={levelIdx} />}
               {tab === 2 && <ExamResultsTab />}
               {tab === 3 && <WorkHistoryTab />}
-              {tab === 4 && viewer === 'hr' && (
+              {tab === 4 && (
                 <EditTab
                   employee={employee}
                   editName={editName}

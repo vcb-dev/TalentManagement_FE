@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useEffect, useId, useMemo, useState } from 'react'
+import { type Dispatch, type SetStateAction, useId, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { Building2, Upload } from 'lucide-react'
@@ -9,8 +9,15 @@ import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { type PatchMeUserBody, usePatchMeUser, useUploadMePortrait } from '@/features/profile/hooks'
 import type { MyProfilePage } from '@/features/profile/types'
-import { formatUserDateForReadonlyDisplay, parseStoredDateToInputValue } from '@/features/profile/profileDateUtils'
-import type { MeUserDisplayKey, MeUserPatchKey, MeUserSelf } from '@/features/profile/userSelf.types'
+import {
+  formatUserDateForReadonlyDisplay,
+  parseStoredDateToInputValue,
+} from '@/features/profile/profileDateUtils'
+import type {
+  MeUserDisplayKey,
+  MeUserPatchKey,
+  MeUserSelf,
+} from '@/features/profile/userSelf.types'
 import { ME_USER_PATCH_KEYS } from '@/features/profile/userSelf.types'
 import {
   USER_SELF_FORM_SECTIONS,
@@ -97,7 +104,10 @@ function ProfileEditableText({
       <input
         type="text"
         autoComplete="off"
-        className={cn('w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors', inputEditable)}
+        className={cn(
+          'w-full rounded-lg border px-3 py-2 text-sm outline-none transition-colors',
+          inputEditable
+        )}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -243,43 +253,49 @@ function renderField(
 
   if (isDateFormField(field.key)) {
     return (
-      <ProfileEditableDate key={field.key} label={field.label} value={edit[key] ?? ''} onChange={setVal} />
+      <ProfileEditableDate
+        key={field.key}
+        label={field.label}
+        value={edit[key] ?? ''}
+        onChange={setVal}
+      />
     )
   }
 
   if (field.multiline) {
     return (
-      <ProfileEditableTextarea key={field.key} label={field.label} value={edit[key] ?? ''} onChange={setVal} />
+      <ProfileEditableTextarea
+        key={field.key}
+        label={field.label}
+        value={edit[key] ?? ''}
+        onChange={setVal}
+      />
     )
   }
 
-  return <ProfileEditableText key={field.key} label={field.label} value={edit[key] ?? ''} onChange={setVal} />
+  return (
+    <ProfileEditableText
+      key={field.key}
+      label={field.label}
+      value={edit[key] ?? ''}
+      onChange={setVal}
+    />
+  )
 }
 
-export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
+function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf }) {
   const user = useAuthStore((s) => s.user)
   const { mutate: patchUser, isPending: patchPending } = usePatchMeUser()
   const { mutate: uploadPortrait, isPending: portraitUploading } = useUploadMePortrait()
-  const [edit, setEdit] = useState<EditRecord>(() => emptyEditRecord())
+  const [edit, setEdit] = useState(() => userToEdit(u))
 
   const role = user?.role ?? 'MEMBER'
-  const u = page?.userRecord
-
-  useEffect(() => {
-    if (!u) return
-    setEdit(userToEdit(u))
-  }, [u])
 
   const displayName = useMemo(() => {
     const fromForm = edit.displayName.trim() || edit.fullNameLegal.trim()
     if (fromForm) return fromForm
     if (!u) return user?.name ?? 'Nhân viên'
-    return (
-      u.displayName?.trim() ||
-      u.fullNameLegal?.trim() ||
-      user?.name ||
-      'Nhân viên'
-    )
+    return u.displayName?.trim() || u.fullNameLegal?.trim() || user?.name || 'Nhân viên'
   }, [u, user?.name, edit.displayName, edit.fullNameLegal])
 
   const email = useMemo(() => {
@@ -292,14 +308,6 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
       onSuccess: () => toast.success('Đã cập nhật ảnh đại diện'),
       onError: () => toast.error('Không tải được ảnh. Thử lại sau.'),
     })
-  }
-
-  if (isLoading || !page || !u) {
-    return (
-      <div className="-m-5 flex min-h-[calc(100vh-3rem)] items-center justify-center bg-app-canvas p-8 text-muted-foreground md:-m-6 lg:-m-8">
-        {isLoading ? 'Đang tải hồ sơ…' : 'Không có dữ liệu'}
-      </div>
-    )
   }
 
   const workSection = USER_SELF_FORM_SECTIONS[0]!
@@ -315,8 +323,8 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
             <h1 className="text-2xl font-semibold tracking-tight">Hồ sơ cá nhân</h1>
             <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
               Toàn bộ các trường dưới đây đều có thể chỉnh sửa khi vào trang. Nhấn{' '}
-              <span className="font-medium text-foreground">Lưu thay đổi</span> để gửi lên hệ thống; ảnh đại
-              diện có thể tải lên trực tiếp. Dữ liệu đồng bộ HR có thể ghi đè theo lịch.
+              <span className="font-medium text-foreground">Lưu thay đổi</span> để gửi lên hệ thống;
+              ảnh đại diện có thể tải lên trực tiếp. Dữ liệu đồng bộ HR có thể ghi đè theo lịch.
             </p>
           </div>
           <button
@@ -415,9 +423,24 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
         </section>
 
         <p className="mt-10 text-center text-xs text-muted-foreground">
-          Nhớ nhấn Lưu sau khi sửa. Đồng bộ Lark/HR có thể cập nhật lại một số trường theo lịch nội bộ.
+          Nhớ nhấn Lưu sau khi sửa. Đồng bộ Lark/HR có thể cập nhật lại một số trường theo lịch nội
+          bộ.
         </p>
       </div>
     </div>
   )
+}
+
+export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
+  const u = page?.userRecord
+
+  if (isLoading || !page || !u) {
+    return (
+      <div className="-m-5 flex min-h-[calc(100vh-3rem)] items-center justify-center bg-app-canvas p-8 text-muted-foreground md:-m-6 lg:-m-8">
+        {isLoading ? 'Đang tải hồ sơ…' : 'Không có dữ liệu'}
+      </div>
+    )
+  }
+
+  return <MyProfileScreenLoaded key={`${u.id}-${u.updatedAt}`} page={page} u={u} />
 }

@@ -87,8 +87,7 @@ export function ApprovalQueue({ page, isLoading, onApprove, onReject }: Approval
     toast.success('Đã duyệt nhanh (demo)')
   }
 
-  const pageSubtitle =
-    'Phê duyệt khi nhân viên đủ điều kiện; có thể từ chối kèm lý do (nối API).'
+  const pageSubtitle = 'Phê duyệt khi nhân viên đủ điều kiện; có thể từ chối kèm lý do (nối API).'
 
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
@@ -114,7 +113,10 @@ export function ApprovalQueue({ page, isLoading, onApprove, onReject }: Approval
               Duyệt nhanh
             </Button>
             <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-50/90 px-3 py-2.5 text-sm font-semibold text-emerald-950 shadow-sm ring-1 ring-emerald-500/10 dark:bg-emerald-950/30 dark:text-emerald-50">
-              <User className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" strokeWidth={2} />
+              <User
+                className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300"
+                strokeWidth={2}
+              />
               {displayName} ({roleLabel})
             </span>
           </div>
@@ -165,7 +167,8 @@ export function ApprovalQueue({ page, isLoading, onApprove, onReject }: Approval
                 </p>
                 <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                   <Link
-                    to="/manager/team-progress"
+                    to="/hr-admin"
+                    search={{ page: 1 }}
                     className="rounded-xl border border-primary/20 px-4 py-2 text-xs font-semibold text-primary transition hover:bg-card"
                   >
                     <span className="inline-flex items-center gap-1.5">

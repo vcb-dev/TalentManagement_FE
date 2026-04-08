@@ -1,16 +1,11 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
-  HR_ITEMS,
-  LEADER_KPI_ITEMS,
-  MEMBER_SELF_ITEMS,
-  TEACHER_HEADER_ITEMS,
-  filterNavByPermissions,
   isNavItemActive,
+  mergeCompactHeaderNavItems,
   type AppNavItem,
 } from '@/components/shared/AppNav/navItems'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
-import type { Role } from '@/types/auth'
 
 function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) {
   const Icon = item.icon
@@ -49,23 +44,11 @@ function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) 
   )
 }
 
-export interface MemberLeaderHeaderNavProps {
-  role: Extract<Role, 'MEMBER' | 'LEADER' | 'HR' | 'TEACHER'>
-}
-
-/** Điều hướng ngang trên header — thay sidebar cho Member / Leader / HR Admin / Teacher. */
-export function MemberLeaderHeaderNav({ role }: MemberLeaderHeaderNavProps) {
+/** Điều hướng ngang trên header — gộp theo quyền hiệu lực (RBAC động). */
+export function MemberLeaderHeaderNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { canId } = usePermission()
-  const rawItems =
-    role === 'LEADER'
-      ? LEADER_KPI_ITEMS
-      : role === 'HR'
-        ? HR_ITEMS
-        : role === 'TEACHER'
-          ? TEACHER_HEADER_ITEMS
-          : MEMBER_SELF_ITEMS
-  const items = filterNavByPermissions(rawItems, canId)
+  const items = mergeCompactHeaderNavItems(canId)
 
   return (
     <nav
