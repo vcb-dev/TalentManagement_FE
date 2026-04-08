@@ -1,9 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { requireRole } from '@/lib/routeGuards'
 import { BodTraineeRankingScreen } from '@/features/bod/components/BodAnalyticsScreens'
+import { requirePermissionPrefix } from '@/lib/permissionGuards'
+import { requireRole } from '@/lib/routeGuards'
 
 export const Route = createFileRoute('/_protected/bod/trainee-ranking')({
-  beforeLoad: () => requireRole('BOD'),
+  beforeLoad: () => {
+    requireRole('BOD')
+    requirePermissionPrefix('bod.')
+  },
   component: BodTraineeRankingPage,
 })
 

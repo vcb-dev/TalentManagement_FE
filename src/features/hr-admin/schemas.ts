@@ -1,4 +1,9 @@
 import { z } from 'zod'
+import type { Role } from '@/types/auth'
+
+const apiRoleSchema = z
+  .enum(['MEMBER', 'LEADER', 'MANAGER', 'HR', 'TEACHER', 'BOD'])
+  .transform((role) => role as Role)
 
 export const createEmployeeSchema = z.object({
   name: z.string().min(2, 'Tên phải có ít nhất 2 ký tự'),
@@ -27,7 +32,7 @@ export const employeeApiSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   email: z.string().email(),
-  role: z.enum(['MEMBER', 'LEADER', 'MANAGER', 'HR', 'TEACHER', 'BOD']),
+  role: apiRoleSchema,
   status: z.enum(['ACTIVE', 'INACTIVE', 'PROBATION', 'RESERVED']),
   departmentId: z.string().uuid(),
   teamIds: z.array(z.string().uuid()),

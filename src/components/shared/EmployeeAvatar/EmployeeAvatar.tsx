@@ -3,13 +3,11 @@ import { cn } from '@/lib/utils'
 export interface EmployeeAvatarProps {
   name: string
   className?: string
-  /** Ảnh đại diện (URL) — nếu có thì ưu tiên hiển thị thay chữ cái. */
-  photoUrl?: string | null
   /** Chấm xanh “đang online” như UI quiz */
   showOnlineDot?: boolean
 }
 
-export function EmployeeAvatar({ name, className, photoUrl, showOnlineDot }: EmployeeAvatarProps) {
+export function EmployeeAvatar({ name, className, showOnlineDot }: EmployeeAvatarProps) {
   const initials = name
     .split(' ')
     .map((p) => p[0])
@@ -17,27 +15,15 @@ export function EmployeeAvatar({ name, className, photoUrl, showOnlineDot }: Emp
     .slice(0, 2)
     .toUpperCase()
 
-  const trimmedPhoto = photoUrl?.trim()
-  const showPhoto = Boolean(trimmedPhoto)
-
   return (
     <div className={cn('relative inline-flex shrink-0', showOnlineDot && 'pb-0.5 pr-0.5')}>
       <div
         className={cn(
-          'flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-game-soft to-[hsl(248_90%_92%)] text-xs font-bold text-game-soft-foreground shadow-[0_2px_8px_rgb(106_90_224/0.2)] ring-2 ring-white',
+          'flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-game-soft to-[hsl(248_90%_92%)] text-xs font-bold text-game-soft-foreground shadow-[0_2px_8px_rgb(106_90_224/0.2)] ring-2 ring-white',
           className
         )}
       >
-        {showPhoto ? (
-          <img
-            src={trimmedPhoto}
-            alt=""
-            className="h-full w-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          (initials || '?')
-        )}
+        {initials || '?'}
       </div>
       {showOnlineDot ? (
         <span

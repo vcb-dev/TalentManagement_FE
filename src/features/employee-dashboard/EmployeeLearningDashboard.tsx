@@ -8,16 +8,16 @@ import {
   Target,
   Trophy,
 } from 'lucide-react'
-import { useEmployee } from '@/features/hr-admin/hooks'
-import { MOCK_TEAM_NS01, MOCK_TEAM_NS02 } from '@/features/hr-admin/mock/mockEmployeesData'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { ProgressStar } from '@/components/shared/ProgressStar/ProgressStar'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
   PAGE_HEADER_SURFACE,
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
+import { useMyDashboard } from '@/features/dashboard/hooks'
 import { DashboardKpiOkrZone } from '@/features/employee-dashboard/components/DashboardKpiOkrZone'
 import { DashboardLearningZone } from '@/features/employee-dashboard/components/DashboardLearningZone'
 import { CARD_ENTRANCE_HOVER, STAR_POP, staggerStyle } from '@/lib/cardMotion'
@@ -25,7 +25,7 @@ import { LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
-import type { Role } from '@/types/auth'
+import type { Role, StaffLevel } from '@/types/auth'
 
 function kpiOkrPaths(role: Role | undefined): { kpiOkr: string } {
   if (role === 'LEADER') return { kpiOkr: '/leader/kpi-okr' }
@@ -34,16 +34,8 @@ function kpiOkrPaths(role: Role | undefined): { kpiOkr: string } {
 
 type DashboardTab = 'learning' | 'kpi'
 
-const MOCK_DEPT_ID = '11111111-1111-4111-8111-111111111111'
-
-const DEPARTMENT_LABEL: Record<string, string> = {
-  [MOCK_DEPT_ID]: 'Vận hành & Nhân sự',
-}
-
-const TEAM_LABEL: Record<string, string> = {
-  [MOCK_TEAM_NS01]: 'NS-01',
-  [MOCK_TEAM_NS02]: 'NS-02',
-}
+/** Tạm thời khóa tab KPI/OKR — chỉ xem khu vực học tập. */
+const KPI_DASHBOARD_TAB_DISABLED = true
 
 function shortId(id: string): string {
   return id.replace(/-/g, '').slice(0, 8).toUpperCase()
@@ -55,59 +47,58 @@ function monthLabelVi(d: Date): string {
 
 function formatTeams(teamIds: string[]): string {
   if (teamIds.length === 0) return 'Chưa gán team'
-  return teamIds.map((id) => TEAM_LABEL[id] ?? `Team · ${shortId(id)}`).join(', ')
+  return teamIds.map((id) => `Team · ${shortId(id)}`).join(', ')
 }
 
 function formatDepartment(departmentId: string): string {
-  return DEPARTMENT_LABEL[departmentId] ?? `PB · ${shortId(departmentId)}`
+  return `PB · ${shortId(departmentId)}`
 }
 
 const quartOut = '[transition-timing-function:cubic-bezier(0.25,1,0.48,1)]'
 
-const achievementPresets = [
+function parseLevelFromStaff(staffLevel: StaffLevel | undefined): LevelCode | null {
+  if (staffLevel === 'PROBATION') return 'tap_su'
+  if (staffLevel === 'PROFICIENT') return 'biet_viec'
+  if (staffLevel === 'GENERAL') return 'tuong'
+  return null
+}
+
+function formatDateVi(raw: string | null | undefined): string {
+  const text = raw?.trim()
+  if (!text) return '—'
+  const asDate = new Date(text)
+  if (!Number.isNaN(asDate.getTime())) return asDate.toLocaleDateString('vi-VN')
+  return text
+}
+
+const achievementCardStyles = [
   {
-    title: 'KPI nổi bật',
-    desc: 'Đạt 112% chỉ tiêu doanh số quý — top 10% khối.',
     icon: Trophy,
-    chip: '+320 điểm',
     panel:
       'border-amber-500/25 bg-gradient-to-br from-primary/12 via-card to-amber-50/90 shadow-[0_12px_40px_-12px_rgb(217_119_6/0.22)]',
     iconWrap:
       'bg-gradient-to-br from-amber-400 to-tier-gold text-white shadow-lg shadow-amber-500/35',
-    delay: 0,
   },
   {
-    title: 'OKR then chốt',
-    desc: 'Hoàn thành 3/4 KR tháng; KR “Tối ưu quy trình” đạt 95%.',
     icon: Target,
-    chip: 'Boss fight',
     panel:
       'border-primary/30 bg-gradient-to-br from-primary/[0.14] via-card to-accent/15 shadow-[var(--shadow-game-float)]',
     iconWrap:
       'bg-gradient-to-br from-primary to-primary-600 text-primary-foreground shadow-lg shadow-primary/40',
-    delay: 1,
   },
   {
-    title: 'Học tập & chứng chỉ',
-    desc: 'Hoàn thành 2 khóa bắt buộc cấp độ hiện tại trong hạn.',
     icon: GraduationCap,
-    chip: '×2 huy hiệu',
     panel:
       'border-accent/30 bg-gradient-to-br from-accent/12 via-card to-info-muted/50 shadow-[0_12px_36px_-14px_rgb(13_148_136/0.25)]',
     iconWrap:
       'bg-gradient-to-br from-accent to-[#0f766e] text-accent-foreground shadow-lg shadow-accent/30',
-    delay: 2,
   },
   {
-    title: 'Mốc lộ trình',
-    desc: 'Xếp hạng học tập cao trong team; duy trì tỉ lệ đạt 83%.',
     icon: BarChart3,
-    chip: 'Top 15%',
     panel:
       'border-emerald-500/25 bg-gradient-to-br from-emerald-500/[0.08] via-card to-primary/[0.06] shadow-[0_12px_36px_-12px_rgb(5_150_105/0.2)]',
     iconWrap:
       'bg-gradient-to-br from-emerald-500 to-[#047857] text-white shadow-lg shadow-emerald-600/30',
-    delay: 3,
   },
 ] as const
 
@@ -117,18 +108,23 @@ export function EmployeeLearningDashboard() {
   const showKpiZone = role === 'MEMBER' || role === 'LEADER'
   const paths = kpiOkrPaths(role)
   const [tab, setTab] = useState<DashboardTab>('learning')
-
-  const { data: employee } = useEmployee(user?.id ?? '')
+  const { data: meDashboard, isLoading } = useMyDashboard({ enabled: Boolean(user) })
   const greetingName = user?.name?.trim() || 'bạn'
-
-  const levelKey: LevelCode = employee?.currentLevel ?? 'duoc_viec'
+  const apiUser = meDashboard?.user
+  const apiCareer = meDashboard?.career
+  const levelFromStaff = parseLevelFromStaff(meDashboard?.staffLevel)
+  const levelKey: LevelCode = levelFromStaff ?? apiCareer?.careerLevel ?? 'tap_su'
   const levelLabel = LEVEL_LABELS[levelKey]
   const maxStars = STARS_PER_LEVEL[levelKey]
-  const filledStars = employee?.currentStar ?? 0
+  const filledStars = apiCareer?.currentStars ?? meDashboard?.levelSource?.starCount ?? 0
 
-  const deptLine = user ? formatDepartment(user.departmentId) : '—'
-  const teamLine = user ? formatTeams(user.teamIds) : '—'
+  const deptLine = apiUser?.departmentName?.trim() || (user ? formatDepartment(user.departmentId) : '—')
+  const teamLine = apiUser?.teamGroup?.trim() || (user ? formatTeams(user.teamIds) : '—')
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
+  const fullName = apiUser?.fullNameLegal?.trim() || user?.name || '—'
+  const birthDate = formatDateVi(apiUser?.birthDate)
+  const promotionHistory = meDashboard?.promotionHistory ?? []
+  const highlightAchievements = meDashboard?.highlightAchievements ?? []
 
   const starPct = maxStars > 0 ? Math.round((filledStars / maxStars) * 100) : 0
 
@@ -196,10 +192,10 @@ export function EmployeeLearningDashboard() {
           </div>
         </section>
 
-        {/* Khung trên: 1/3 avatar + sao | 2/3 thông tin */}
+        {/* Khung trên: 1/4 avatar + sao | 3/4 thông tin */}
         <section
           className={cn(
-            'grid grid-cols-1 gap-6 lg:grid-cols-3',
+            'grid grid-cols-1 gap-6 lg:grid-cols-4',
             'motion-safe:animate-[dash-fade-up_0.6s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none'
           )}
           style={{ animationDelay: '100ms' }}
@@ -207,51 +203,69 @@ export function EmployeeLearningDashboard() {
         >
           <div
             className={cn(
-              'group relative overflow-hidden rounded-[1.75rem] p-[1.5px] shadow-[var(--shadow-game-float)]',
-              'bg-gradient-to-br from-primary/70 via-accent/50 to-primary-600/60',
+              'group relative overflow-hidden rounded-[1.75rem] p-[1.5px] shadow-[0_20px_50px_-24px_hsl(var(--primary)/0.45)]',
+              'bg-gradient-to-br from-accent/55 via-primary/50 to-primary-600/70',
               quartOut,
-              'transition-all duration-500 hover:shadow-[0_20px_50px_-15px_rgb(79_70_229/0.35)] motion-reduce:transition-none'
+              'transition-all duration-500 hover:shadow-[0_24px_56px_-20px_hsl(var(--accent)/0.35),0_16px_40px_-20px_hsl(var(--primary)/0.3)] motion-reduce:transition-none'
             )}
           >
-            <div className="relative flex h-full flex-col items-center justify-center gap-6 overflow-hidden rounded-[1.6875rem] bg-gradient-to-b from-card via-card to-game-soft/40 px-6 py-8">
+            <div
+              className={cn(
+                'relative flex h-full flex-col items-center justify-center gap-7 overflow-hidden rounded-[1.6875rem] px-6 py-9',
+                'bg-gradient-to-br from-[hsl(var(--accent)/0.11)] via-card to-[hsl(var(--primary)/0.12)]',
+                'ring-1 ring-inset ring-white/60 dark:ring-white/10'
+              )}
+            >
               <div
-                className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/15 blur-2xl motion-safe:animate-[dash-glow-orb_6s_ease-in-out_infinite] motion-reduce:animate-none"
+                className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-primary/20 blur-3xl"
                 aria-hidden
               />
               <div
-                className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-accent/20 blur-2xl motion-safe:animate-[dash-glow-orb_7s_ease-in-out_infinite_0.5s] motion-reduce:animate-none"
+                className="pointer-events-none absolute -bottom-12 -left-14 h-40 w-40 rounded-full bg-accent/25 blur-3xl"
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute left-1/2 top-8 h-px w-3/4 max-w-[200px] -translate-x-1/2 bg-gradient-to-r from-transparent via-primary/25 to-transparent"
                 aria-hidden
               />
 
               {user ? (
                 <div className="relative">
                   <div
-                    className="absolute inset-0 scale-110 rounded-full bg-gradient-to-tr from-primary/45 via-accent/35 to-primary-600/50 opacity-80 blur-xl motion-safe:animate-[dash-glow-orb_4.5s_ease-in-out_infinite] motion-reduce:hidden"
+                    className="pointer-events-none absolute inset-0 scale-110 rounded-full bg-gradient-to-tr from-primary/40 via-accent/30 to-primary-600/45 opacity-90 blur-xl"
                     aria-hidden
                   />
-                  <div className="relative motion-safe:animate-[dash-float-slow_5.5s_ease-in-out_infinite] motion-reduce:animate-none">
-                    <EmployeeAvatar
-                      name={user.name}
-                      className="h-28 w-28 text-2xl ring-4 ring-primary/25 ring-offset-4 ring-offset-card transition-all duration-300 group-hover:ring-primary/45"
-                    />
-                  </div>
-                  <span
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border border-primary/20 bg-gradient-to-r from-primary to-accent px-3 py-0.5 text-[0.6rem] font-black uppercase tracking-tighter text-primary-foreground shadow-md"
-                    style={{ boxShadow: '0 4px 14px hsl(var(--primary) / 0.35)' }}
-                  >
+                  <EmployeeAvatar
+                    name={fullName}
+                    className="relative z-10 h-28 w-28 text-2xl ring-[3px] ring-white/90 shadow-[0_12px_40px_-12px_hsl(var(--primary)/0.45)] ring-offset-[3px] ring-offset-[hsl(var(--accent)/0.08)] transition-all duration-300 group-hover:ring-primary/35"
+                  />
+                  <span className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/40 bg-gradient-to-r from-primary to-accent px-3.5 py-1 text-[0.58rem] font-black uppercase tracking-wide text-primary-foreground shadow-[0_6px_20px_hsl(var(--primary)/0.4)]">
                     {levelLabel}
                   </span>
                 </div>
               ) : null}
 
               <div className="relative w-full text-center">
-                <p className="mb-3 text-[0.65rem] font-bold uppercase tracking-widest text-primary/80">
+                <p className="mb-1 inline-flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-primary">
+                  <span
+                    className="h-px w-6 bg-gradient-to-r from-transparent to-primary/50"
+                    aria-hidden
+                  />
                   Huy hiệu sao
+                  <span
+                    className="h-px w-6 bg-gradient-to-l from-transparent to-accent/50"
+                    aria-hidden
+                  />
                 </p>
                 {maxStars > 0 ? (
                   <>
                     <div
-                      className="inline-flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-primary/15 bg-gradient-to-b from-primary/[0.09] to-transparent px-3 py-3 shadow-inner shadow-primary/5"
+                      className={cn(
+                        'mt-4 inline-flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-gradient-to-b from-white/80 to-primary/[0.06] px-4 py-3.5',
+                        'shadow-[inset_0_1px_0_0_rgb(255_255_255/0.85),0_12px_32px_-16px_hsl(var(--primary)/0.35)]',
+                        'dark:from-card/90 dark:to-primary/[0.08]',
+                        'motion-safe:transition-[box-shadow,transform] motion-safe:duration-300 group-hover:shadow-[0_16px_40px_-14px_hsl(var(--accent)/0.3)] motion-reduce:transition-none'
+                      )}
                       role="img"
                       aria-label={`${filledStars} trên ${maxStars} sao`}
                     >
@@ -269,18 +283,13 @@ export function EmployeeLearningDashboard() {
                         </span>
                       ))}
                     </div>
-                    <div className="mt-4 space-y-1.5">
-                      <p className="text-lg font-black tabular-nums text-foreground">
-                        {filledStars}/{maxStars}{' '}
-                        <span className="text-sm font-bold text-muted-foreground">sao</span>
-                      </p>
-                      <div className="mx-auto h-2.5 max-w-[200px] overflow-hidden rounded-full bg-muted p-0.5 shadow-inner">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-primary via-amber-500 to-accent motion-safe:transition-[width] motion-safe:duration-1000 motion-safe:ease-out"
-                          style={{ width: `${starPct}%` }}
-                        />
-                      </div>
-                    </div>
+                    <p className="mt-5 text-lg font-black tabular-nums tracking-tight text-foreground">
+                      <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                        {filledStars}
+                      </span>
+                      <span className="text-muted-foreground/80">/{maxStars}</span>{' '}
+                      <span className="text-sm font-bold text-muted-foreground">sao</span>
+                    </p>
                   </>
                 ) : (
                   <p className="text-sm font-medium text-muted-foreground">
@@ -293,7 +302,7 @@ export function EmployeeLearningDashboard() {
 
           <div
             className={cn(
-              'relative overflow-hidden rounded-[1.75rem] border border-primary/15 bg-gradient-to-br from-card via-card to-primary/[0.06] p-6 shadow-[var(--shadow-game-float)] sm:p-8 lg:col-span-2',
+              'relative overflow-hidden rounded-[1.75rem] border border-primary/15 bg-gradient-to-br from-card via-card to-primary/[0.06] p-6 shadow-[var(--shadow-game-float)] sm:p-8 lg:col-span-3',
               quartOut,
               'transition-all duration-300 hover:border-primary/25 hover:shadow-[0_20px_44px_-18px_rgb(79_70_229/0.28)] motion-reduce:transition-none',
               CARD_ENTRANCE_HOVER
@@ -313,8 +322,8 @@ export function EmployeeLearningDashboard() {
             </div>
             <dl className="relative grid grid-cols-1 gap-3 sm:grid-cols-2">
               {[
-                ['Họ và tên', user?.name ?? '—'],
-                ['Ngày sinh', 'Chưa cập nhật'],
+                ['Họ và tên', fullName],
+                ['Ngày sinh', birthDate],
                 ['Phòng ban', deptLine],
                 ['Team', teamLine],
                 ['Chức vụ', roleLabel],
@@ -339,6 +348,40 @@ export function EmployeeLearningDashboard() {
           </div>
         </section>
 
+        <section
+          className="rounded-2xl border border-border/80 bg-card/95 p-5 shadow-[var(--shadow-card)]"
+          aria-label="Lịch sử thăng cấp"
+        >
+          <div className="mb-3 text-sm font-bold uppercase tracking-wider text-primary">
+            Lịch sử thăng cấp
+          </div>
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+            </div>
+          ) : promotionHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Chưa có lịch sử thăng cấp.</p>
+          ) : (
+            <ul className="space-y-2">
+              {promotionHistory.map((p, idx) => (
+                <li
+                  key={`${p.promotedAt}-${idx}`}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/25 px-3 py-2"
+                >
+                  <span className="text-sm font-semibold text-foreground">
+                    {p.fromLevel ? LEVEL_LABELS[p.fromLevel] : '—'} -&gt; {LEVEL_LABELS[p.toLevel]}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDateVi(p.promotedAt)}
+                    {p.note ? ` · ${p.note}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         {/* Thành tựu — thẻ quest */}
         <section aria-labelledby="dash-highlight-achievements">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -356,50 +399,60 @@ export function EmployeeLearningDashboard() {
             </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {achievementPresets.map((card) => (
-              <div
-                key={card.title}
-                className={cn(
-                  'group relative overflow-hidden rounded-2xl border p-5',
-                  card.panel,
-                  quartOut,
-                  'motion-safe:animate-[profile-card-in_0.65s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none',
-                  'transition-all duration-300 hover:-translate-y-1 hover:shadow-xl motion-reduce:transition-none motion-reduce:hover:translate-y-0'
-                )}
-                style={staggerStyle(card.delay, 70)}
-              >
-                <div
-                  className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100 motion-reduce:hidden"
-                  aria-hidden
-                >
-                  <div className="absolute inset-y-0 -left-1/3 w-1/2 skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent motion-safe:animate-[dash-card-shimmer_1.4s_ease-in-out_infinite] motion-reduce:animate-none" />
-                </div>
-                <div className="relative mb-3 flex items-start justify-between gap-2">
-                  <div
-                    className={cn(
-                      'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
-                      card.iconWrap,
-                      'motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-110 group-hover:rotate-3'
-                    )}
-                  >
-                    <card.icon className="h-5 w-5" strokeWidth={2.5} aria-hidden />
-                  </div>
-                  <span className="rounded-full bg-background/70 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-tight text-foreground shadow-sm backdrop-blur-sm">
-                    {card.chip}
-                  </span>
-                </div>
-                <h3 className="relative text-[0.65rem] font-bold uppercase tracking-widest text-foreground/80">
-                  {card.title}
-                </h3>
-                <p className="relative mt-2 text-sm font-semibold leading-snug text-foreground">
-                  {card.desc}
-                </p>
-                <div className="relative mt-4 flex items-center gap-1.5 text-xs font-bold text-primary">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse motion-reduce:animate-none" />
-                  Nhiệm vụ đã mở khóa
-                </div>
+            {highlightAchievements.length === 0 ? (
+              <div className="rounded-2xl border border-border/80 bg-card px-4 py-5 text-sm text-muted-foreground sm:col-span-2 xl:col-span-4">
+                Chưa có thành tựu nổi bật.
               </div>
-            ))}
+            ) : (
+              highlightAchievements.map((achievement, idx) => {
+                const style =
+                  achievementCardStyles[idx % achievementCardStyles.length] ?? achievementCardStyles[0]!
+                return (
+                  <div
+                    key={achievement.id}
+                    className={cn(
+                      'group relative overflow-hidden rounded-2xl border p-5',
+                      style.panel,
+                      quartOut,
+                      'motion-safe:animate-[profile-card-in_0.65s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none',
+                      'transition-all duration-300 hover:-translate-y-1 hover:shadow-xl motion-reduce:transition-none motion-reduce:hover:translate-y-0'
+                    )}
+                    style={staggerStyle(idx, 70)}
+                  >
+                    <div
+                      className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100 motion-reduce:hidden"
+                      aria-hidden
+                    >
+                      <div className="absolute inset-y-0 -left-1/3 w-1/2 skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent motion-safe:animate-[dash-card-shimmer_1.4s_ease-in-out_infinite] motion-reduce:animate-none" />
+                    </div>
+                    <div className="relative mb-3 flex items-start justify-between gap-2">
+                      <div
+                        className={cn(
+                          'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
+                          style.iconWrap,
+                          'motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-110 group-hover:rotate-3'
+                        )}
+                      >
+                        <style.icon className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                      </div>
+                      <span className="rounded-full bg-background/70 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-tight text-foreground shadow-sm backdrop-blur-sm">
+                        {achievement.badge?.trim() || (achievement.score != null ? `+${achievement.score}` : 'Nổi bật')}
+                      </span>
+                    </div>
+                    <h3 className="relative text-[0.65rem] font-bold uppercase tracking-widest text-foreground/80">
+                      {achievement.title}
+                    </h3>
+                    <p className="relative mt-2 text-sm font-semibold leading-snug text-foreground">
+                      {achievement.description?.trim() || 'Đã ghi nhận một thành tựu nổi bật.'}
+                    </p>
+                    <div className="relative mt-4 flex items-center gap-1.5 text-xs font-bold text-primary">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse motion-reduce:animate-none" />
+                      {achievement.levelScope?.trim() || 'Thành tựu cá nhân'}
+                    </div>
+                  </div>
+                )
+              })
+            )}
           </div>
         </section>
 
@@ -421,13 +474,13 @@ export function EmployeeLearningDashboard() {
                   type="button"
                   role="tab"
                   id="dash-tab-learning"
-                  aria-selected={tab === 'learning'}
+                  aria-selected={KPI_DASHBOARD_TAB_DISABLED ? true : tab === 'learning'}
                   aria-controls="dash-panel-learning"
-                  tabIndex={tab === 'learning' ? 0 : -1}
+                  tabIndex={KPI_DASHBOARD_TAB_DISABLED || tab === 'learning' ? 0 : -1}
                   onClick={() => setTab('learning')}
                   className={cn(
                     'inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-all duration-300',
-                    tab === 'learning'
+                    KPI_DASHBOARD_TAB_DISABLED || tab === 'learning'
                       ? 'scale-[1.02] bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-[var(--shadow-game-float)] ring-2 ring-primary/25 ring-offset-2 ring-offset-background motion-reduce:scale-100 motion-reduce:ring-0 motion-reduce:ring-offset-0'
                       : 'text-muted-foreground hover:bg-background/80 hover:text-foreground hover:shadow-sm'
                   )}
@@ -439,15 +492,22 @@ export function EmployeeLearningDashboard() {
                   type="button"
                   role="tab"
                   id="dash-tab-kpi"
-                  aria-selected={tab === 'kpi'}
+                  disabled={KPI_DASHBOARD_TAB_DISABLED}
+                  aria-disabled={KPI_DASHBOARD_TAB_DISABLED}
+                  aria-selected={false}
                   aria-controls="dash-panel-kpi"
-                  tabIndex={tab === 'kpi' ? 0 : -1}
-                  onClick={() => setTab('kpi')}
+                  tabIndex={-1}
+                  title="Tạm thời chưa mở"
+                  onClick={
+                    KPI_DASHBOARD_TAB_DISABLED ? undefined : () => setTab('kpi')
+                  }
                   className={cn(
                     'inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-all duration-300',
-                    tab === 'kpi'
-                      ? 'scale-[1.02] bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-[var(--shadow-game-float)] ring-2 ring-primary/25 ring-offset-2 ring-offset-background motion-reduce:scale-100 motion-reduce:ring-0 motion-reduce:ring-offset-0'
-                      : 'text-muted-foreground hover:bg-background/80 hover:text-foreground hover:shadow-sm'
+                    KPI_DASHBOARD_TAB_DISABLED
+                      ? 'cursor-not-allowed opacity-45 grayscale-[0.35] text-muted-foreground shadow-none ring-0'
+                      : tab === 'kpi'
+                        ? 'scale-[1.02] bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-[var(--shadow-game-float)] ring-2 ring-primary/25 ring-offset-2 ring-offset-background motion-reduce:scale-100 motion-reduce:ring-0 motion-reduce:ring-offset-0'
+                        : 'text-muted-foreground hover:bg-background/80 hover:text-foreground hover:shadow-sm'
                   )}
                 >
                   <Target className="h-4 w-4 shrink-0" strokeWidth={2} />
@@ -460,23 +520,31 @@ export function EmployeeLearningDashboard() {
               id="dash-panel-learning"
               role="tabpanel"
               aria-labelledby="dash-tab-learning"
-              hidden={tab !== 'learning'}
+              hidden={KPI_DASHBOARD_TAB_DISABLED ? false : tab !== 'learning'}
               className="motion-safe:animate-[dash-fade-up_0.4s_ease-out_both] motion-reduce:animate-none"
             >
-              <DashboardLearningZone />
+              <DashboardLearningZone
+                isLoading={isLoading}
+                currentLevel={levelKey}
+                currentStars={filledStars}
+              />
             </div>
             <div
               id="dash-panel-kpi"
               role="tabpanel"
               aria-labelledby="dash-tab-kpi"
-              hidden={tab !== 'kpi'}
+              hidden={KPI_DASHBOARD_TAB_DISABLED ? true : tab !== 'kpi'}
               className="motion-safe:animate-[dash-fade-up_0.4s_ease-out_both] motion-reduce:animate-none"
             >
               <DashboardKpiOkrZone role={role as 'MEMBER' | 'LEADER'} paths={paths} />
             </div>
           </>
         ) : (
-          <DashboardLearningZone />
+          <DashboardLearningZone
+            isLoading={isLoading}
+            currentLevel={levelKey}
+            currentStars={filledStars}
+          />
         )}
       </div>
     </div>

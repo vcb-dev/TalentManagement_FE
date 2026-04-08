@@ -1,6 +1,9 @@
 import { z } from 'zod'
+import type { Role } from '@/types/auth'
 
-const roleSchema = z.enum(['MEMBER', 'LEADER', 'MANAGER', 'HR', 'TEACHER', 'BOD'])
+const roleSchema = z
+  .enum(['MEMBER', 'LEADER', 'MANAGER', 'HR', 'TEACHER', 'BOD'])
+  .transform((role) => role as Role)
 const staffLevelSchema = z.enum(['PROBATION', 'PROFICIENT', 'GENERAL', 'UNKNOWN'])
 
 const permissionSchema = z.object({
@@ -25,7 +28,10 @@ export const userSessionSchema = z.object({
   name: z.string(),
   email: z.string().email(),
   role: roleSchema,
+  roles: z.array(roleSchema).optional(),
   permissions: z.array(permissionSchema),
+  permissionIds: z.array(z.string()).optional(),
+  dataScopeFlags: z.record(z.string(), z.boolean()).optional(),
   departmentId: z.string().uuid(),
   teamIds: z.array(z.string().uuid()),
   staffLevel: staffLevelSchema,

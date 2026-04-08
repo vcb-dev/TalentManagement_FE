@@ -863,7 +863,7 @@ function EditTab({
         <PfCard title="Phân công tổ chức" entranceIndex={0}>
           <div className="mb-2.5 flex items-start gap-2 rounded-lg border border-primary/25 bg-primary/10 px-2.5 py-2 text-xs text-primary">
             <span>✏️</span>
-            <span>HR Admin có thể chỉnh sửa phân công khi đã kết nối API.</span>
+            <span>HR có thể chỉnh sửa phân công khi đã kết nối API.</span>
           </div>
           <label className="mb-2 block text-xs font-semibold text-muted-foreground">Role</label>
           <select

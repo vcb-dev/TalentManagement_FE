@@ -1,6 +1,5 @@
 import type { LevelCode } from '@/lib/constants'
 import type { ProfileIconKey } from './profileContentIcons'
-import type { MeUserSelf } from '@/features/profile/userSelf.types'
 
 export interface ProfileAchievement {
   iconKey: ProfileIconKey
@@ -54,15 +53,6 @@ export interface ProfileWorkSummaryRow {
 }
 
 export interface MyProfilePage {
-  /** Đồng bộ từ HR / Lark — ưu tiên hiển thị tên khi có. */
-  hrSnapshot?: {
-    displayName: string | null
-    fullNameLegal: string | null
-    email: string | null
-    phonePrimary: string | null
-  }
-  /** Toàn bộ bản ghi `users` (GET /me/user) — form hồ sơ chỉnh các trường này. */
-  userRecord: MeUserSelf
   /**
    * Mã cấp & sao do quản lý gán — dùng để điều hướng checklist lộ trình.
    * Khi không có (API cũ), client suy ra từ `currentLevel.title` và `currentStarIndex`.

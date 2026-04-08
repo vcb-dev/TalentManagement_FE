@@ -1,5 +1,4 @@
 import type { MyProfilePage } from '@/features/profile/types'
-import { MOCK_USER_SELF } from '@/features/profile/mock/mockUserSelf'
 
 /** Dữ liệu demo — 12_NV_HoSoCuaToi.html (Nguyễn Thành · Leader). Icon qua `iconKey` (Lucide), không dùng emoji trong chuỗi. */
 export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
@@ -246,5 +245,4 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
   security: {
     lastPasswordChange: '01/01/2026',
   },
-  userRecord: MOCK_USER_SELF,
 }

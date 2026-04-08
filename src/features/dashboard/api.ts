@@ -1,8 +1,6 @@
 import { z } from 'zod'
 import { apiClient } from '@/lib/axios'
-import { isMockApiEnabled } from '@/lib/mockEnv'
 import { safeParse } from '@/lib/utils'
-import { MOCK_MY_DASHBOARD } from '@/features/dashboard/mock/mockMyDashboard'
 
 const levelCodeSchema = z.enum([
   'tap_su',
@@ -12,56 +10,70 @@ const levelCodeSchema = z.enum([
   'tuong',
 ])
 
-const mePublicUserSchema = z.object({
+const dashboardUserSchema = z.object({
   id: z.string(),
-  email: z.string().nullable(),
-  displayName: z.string().nullable(),
-  fullNameLegal: z.string().nullable(),
-  jobTitle: z.string().nullable(),
-  teamGroup: z.string().nullable(),
-  departmentName: z.string().nullable(),
-  portraitRef: z.string().nullable(),
-  phonePrimary: z.string().nullable(),
-  employeeCodePrimary: z.string().nullable(),
-  birthDate: z.string().nullable(),
-  startDateWork: z.string().nullable(),
+  email: z.string().nullable().optional(),
+  displayName: z.string().nullable().optional(),
+  fullNameLegal: z.string().nullable().optional(),
+  jobTitle: z.string().nullable().optional(),
+  teamGroup: z.string().nullable().optional(),
+  departmentName: z.string().nullable().optional(),
+  portraitRef: z.string().nullable().optional(),
+  phonePrimary: z.string().nullable().optional(),
+  employeeCodePrimary: z.string().nullable().optional(),
+  birthDate: z.string().nullable().optional(),
+  startDateWork: z.string().nullable().optional(),
 })
 
-const meCareerSchema = z
+const careerSchema = z
   .object({
     careerLevel: levelCodeSchema,
     currentStars: z.number().int().nonnegative(),
-    eligiblePromote: z.boolean(),
+    eligiblePromote: z.boolean().optional(),
   })
   .nullable()
+  .optional()
 
-const mePromotionSchema = z.object({
-  fromLevel: levelCodeSchema.nullable(),
-  toLevel: levelCodeSchema,
+const promotionSchema = z.object({
   promotedAt: z.string(),
-  note: z.string().nullable(),
+  fromLevel: levelCodeSchema.nullable().optional(),
+  toLevel: levelCodeSchema,
+  note: z.string().nullable().optional(),
 })
 
-export const meDashboardApiSchema = z.object({
-  user: mePublicUserSchema,
-  appProfile: z.unknown().nullable(),
-  career: meCareerSchema,
-  promotionHistory: z.array(mePromotionSchema),
-  learningStats: z.object({
-    milestonesByStatus: z.record(z.number()),
-    examsByOutcome: z.record(z.number()),
-  }),
+const levelSourceSchema = z
+  .object({
+    source: z.string().nullable().optional(),
+    starCount: z.number().int().nullable().optional(),
+    levelExercises: z.unknown().nullable().optional(),
+    snapshotAt: z.string().datetime().nullable().optional(),
+  })
+  .optional()
+
+const highlightAchievementSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().nullable().optional(),
+  badge: z.string().nullable().optional(),
+  score: z.number().int().nullable().optional(),
+  levelScope: z.string().nullable().optional(),
+  achievedAt: z.string(),
 })
 
-export type MeDashboardApi = z.infer<typeof meDashboardApiSchema>
+export const myDashboardSchema = z.object({
+  staffLevel: z.enum(['PROBATION', 'PROFICIENT', 'GENERAL', 'UNKNOWN']).optional(),
+  levelSource: levelSourceSchema,
+  user: dashboardUserSchema,
+  career: careerSchema,
+  promotionHistory: z.array(promotionSchema).default([]),
+  highlightAchievements: z.array(highlightAchievementSchema).default([]),
+})
+
+export type MyDashboardResponse = z.infer<typeof myDashboardSchema>
 
 export const dashboardApi = {
   me: async () => {
-    if (isMockApiEnabled()) {
-      return safeParse(meDashboardApiSchema, MOCK_MY_DASHBOARD, 'GET /me/dashboard (mock)')
-    }
     const res = await apiClient.get<unknown>('/me/dashboard')
-    return safeParse(meDashboardApiSchema, res.data, 'GET /me/dashboard')
+    return safeParse(myDashboardSchema, res.data, 'GET /me/dashboard')
   },
 }
-

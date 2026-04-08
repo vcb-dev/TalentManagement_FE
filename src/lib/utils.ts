@@ -6,7 +6,11 @@ export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs))
 }
 
-export function safeParse<T>(schema: z.ZodSchema<T>, data: unknown, context: string): T {
+export function safeParse<T>(
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+  data: unknown,
+  context: string
+): T {
   const result = schema.safeParse(data)
   if (!result.success) {
     console.error(`[API Contract Violation] ${context}`, result.error.flatten())
