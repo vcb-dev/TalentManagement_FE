@@ -13,11 +13,18 @@ export function useLearningLevels() {
   })
 }
 
-export function useLearningChecklist(levelId: string, starId: string) {
+export function useMyLearningPath() {
+  return useQuery({
+    queryKey: learningKeys.myPath(),
+    queryFn: () => learningApi.myLearningPath(),
+  })
+}
+
+export function useLearningChecklist(levelId: string, starId: string, enabled = true) {
   return useQuery({
     queryKey: learningKeys.checklist(levelId, starId),
     queryFn: () => learningApi.checklist(levelId, starId),
-    enabled: levelId.length > 0 && starId.length > 0,
+    enabled: enabled && levelId.length > 0 && starId.length > 0,
   })
 }
 

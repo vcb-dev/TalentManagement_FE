@@ -3,7 +3,12 @@ import { apiClient } from '@/lib/axios'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { safeParse } from '@/lib/utils'
 import { getMockChecklist, getMockSubmissions } from '@/features/learning-path/mock/mockChecklistData'
-import { checklistResponseSchema, levelSummaryApiSchema, submissionApiSchema } from './schemas'
+import {
+  checklistResponseSchema,
+  levelSummaryApiSchema,
+  meLearningPathSchema,
+  submissionApiSchema,
+} from './schemas'
 
 export const learningApi = {
   levels: async () => {
@@ -25,5 +30,10 @@ export const learningApi = {
     }
     const res = await apiClient.get<unknown>(`/learning/submissions`, { params: { starId } })
     return safeParse(z.array(submissionApiSchema), res.data, 'GET /learning/submissions')
+  },
+
+  myLearningPath: async () => {
+    const res = await apiClient.get<unknown>('/me/learning-path')
+    return safeParse(meLearningPathSchema, res.data, 'GET /me/learning-path')
   },
 }
