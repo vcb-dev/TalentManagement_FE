@@ -46,17 +46,9 @@ export interface EmployeeDetailSheetProps {
   employee: EmployeeEntity | null
   onClose: () => void
   onDeactivate: (id: string) => void
-  variant?: 'hr' | 'team' | 'leader'
-  teamId?: string
 }
 
-export function EmployeeDetailSheet({
-  employee,
-  onClose,
-  onDeactivate,
-  variant = 'hr',
-  teamId,
-}: EmployeeDetailSheetProps) {
+export function EmployeeDetailSheet({ employee, onClose, onDeactivate }: EmployeeDetailSheetProps) {
   if (!employee) return null
 
   const xpPct = Math.min(100, Math.round((employee.currentStar / 6) * 100))
@@ -221,33 +213,20 @@ export function EmployeeDetailSheet({
       </div>
 
       <div className="flex shrink-0 flex-col gap-2 border-t border-border px-6 py-4">
-        {variant === 'team' || variant === 'leader' ? (
-          <Link
-            to={variant === 'leader' ? '/leader/team/$employeeId' : '/manager/team/$employeeId'}
-            params={{ employeeId: employee.id }}
-            search={teamId ? { teamId } : {}}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md transition-opacity hover:opacity-90"
-          >
-            Xem hồ sơ đầy đủ
-          </Link>
-        ) : (
-          <>
-            <Link
-              to="/hr-admin/$employeeId"
-              params={{ employeeId: employee.id }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md transition-opacity hover:opacity-90"
-            >
-              Xem hồ sơ đầy đủ
-            </Link>
-            <button
-              type="button"
-              className="w-full rounded-xl border border-destructive/40 bg-destructive/10 py-3 text-sm font-bold text-destructive transition-colors hover:bg-destructive/15"
-              onClick={() => onDeactivate(employee.id)}
-            >
-              Hủy hoạt động
-            </button>
-          </>
-        )}
+        <Link
+          to="/hr-admin/$employeeId"
+          params={{ employeeId: employee.id }}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-md transition-opacity hover:opacity-90"
+        >
+          Xem hồ sơ đầy đủ
+        </Link>
+        <button
+          type="button"
+          className="w-full rounded-xl border border-destructive/40 bg-destructive/10 py-3 text-sm font-bold text-destructive transition-colors hover:bg-destructive/15"
+          onClick={() => onDeactivate(employee.id)}
+        >
+          Hủy hoạt động
+        </button>
       </div>
     </aside>
   )

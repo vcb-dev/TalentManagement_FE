@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { Role } from '@/types/auth'
+import type { Role, StaffLevel } from '@/types/auth'
 
 const roleSchema = z
   .enum(['MEMBER', 'LEADER', 'MANAGER', 'HR', 'TEACHER', 'BOD'])
@@ -34,7 +34,8 @@ export const userSessionSchema = z.object({
   dataScopeFlags: z.record(z.string(), z.boolean()).optional(),
   departmentId: z.string().uuid(),
   teamIds: z.array(z.string().uuid()),
-  staffLevel: staffLevelSchema,
+  /** BE có thể bỏ qua hoặc null khi chưa có phân loại staff — chuẩn hóa UNKNOWN */
+  staffLevel: staffLevelSchema.nullish().transform((v): StaffLevel => (v == null ? 'UNKNOWN' : v)),
 })
 
 export const meResponseSchema = z.object({

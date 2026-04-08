@@ -1,5 +1,6 @@
-import { requireRole } from '@/lib/routeGuards'
+import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
 
+/** BOD / Quản lý, hoặc được gán quyền phân quyền (`admin.*`). */
 export function requireBodOrManager() {
-  requireRole('BOD', 'MANAGER')
+  requireRoleOrPermissionPrefixes(['BOD', 'MANAGER'], ['admin.'])
 }

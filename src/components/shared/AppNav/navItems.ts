@@ -25,6 +25,8 @@ export type AppNavItem = {
   customMatch?: (normalizedPath: string) => boolean
   /** Nếu có — chỉ hiển thị khi user có quyền catalog id này */
   permissionId?: string
+  /** Nếu có — hiển thị khi user có ít nhất một trong các quyền (ưu tiên hơn `permissionId` nếu cả hai đều có). */
+  permissionIdsAny?: string[]
 }
 
 /** Member: dashboard, lộ trình, thi, KPI, báo cáo */
@@ -48,11 +50,11 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
 const HR_ITEMS: AppNavItem[] = [
   {
     to: '/hr-admin',
-    label: 'Nhân sự',
+    label: 'Danh sách nhân sự',
     icon: Users,
     match: 'prefix',
     search: { page: 1 },
-    permissionId: 'hr.employees.view',
+    permissionIdsAny: ['hr.employees.view', 'manager.team.view', 'kpi.team_view', 'kpi.team_edit'],
   },
 ]
 
@@ -88,14 +90,6 @@ const BOD_ITEMS: AppNavItem[] = [
 ]
 
 const MANAGER_OPS_ITEMS: AppNavItem[] = [
-  {
-    to: '/manager/team-progress',
-    label: 'Nhân sự trong team',
-    icon: Users,
-    match: 'custom',
-    customMatch: (p) => p === '/manager/team-progress' || p.startsWith('/manager/team/'),
-    permissionId: 'manager.team.view',
-  },
   {
     to: '/manager/classes',
     label: 'Chia lớp',
@@ -169,7 +163,6 @@ export const TEACHER_HEADER_ITEMS: AppNavItem[] = [
 /** Leader: dashboard, nhân sự team, KPI, báo cáo */
 export const LEADER_KPI_ITEMS: AppNavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutGrid, match: 'exact' },
-  { to: '/leader/team', label: 'Nhân sự trong team', icon: Users, match: 'prefix' },
   { to: '/leader/kpi-okr', label: 'KPI & OKR trong team', icon: Target, match: 'prefix' },
   { to: '/monthly-report', label: 'Báo cáo hàng tháng', icon: BarChart3, match: 'prefix' },
 ]
@@ -186,9 +179,36 @@ export function filterNavByPermissions(
   hasPermission: (permissionId: string) => boolean
 ): AppNavItem[] {
   return items.filter((item) => {
+    if (item.permissionIdsAny?.length) {
+      return item.permissionIdsAny.some((id) => hasPermission(id))
+    }
     if (!item.permissionId) return true
     return hasPermission(item.permissionId)
   })
+}
+
+/**
+ * Gộp menu header (layout compact) theo quyền catalog — không phụ thuộc một `user.role` duy nhất.
+ * Thứ tự: cá nhân → BOD → HR → trưởng nhóm KPI → quản lý → giảng viên/chấm thi.
+ */
+export function mergeCompactHeaderNavItems(canId: (permissionId: string) => boolean): AppNavItem[] {
+  const seen = new Set<string>()
+  const out: AppNavItem[] = []
+  const push = (items: AppNavItem[]) => {
+    for (const item of filterNavByPermissions(items, canId)) {
+      const key = item.to + (item.search ? JSON.stringify(item.search) : '')
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(item)
+    }
+  }
+  push(MEMBER_SELF_ITEMS)
+  push(BOD_ITEMS)
+  push(HR_ITEMS)
+  push(LEADER_KPI_ITEMS)
+  push(MANAGER_OPS_ITEMS)
+  push(TEACHER_HEADER_ITEMS)
+  return out
 }
 
 export function isNavItemActive(pathname: string, item: AppNavItem): boolean {

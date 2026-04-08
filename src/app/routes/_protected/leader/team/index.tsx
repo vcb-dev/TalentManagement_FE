@@ -1,12 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { HrEmployeeList } from '@/features/hr-admin/components/HrEmployeeList'
-import { requireRole } from '@/lib/routeGuards'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
+/** Đã gộp vào `/hr-admin` — giữ URL cũ để bookmark không gãy. */
 export const Route = createFileRoute('/_protected/leader/team/')({
-  beforeLoad: () => requireRole('LEADER'),
-  component: LeaderTeamPersonnelPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/hr-admin', search: { page: 1 } })
+  },
+  component: () => null,
 })
-
-function LeaderTeamPersonnelPage() {
-  return <HrEmployeeList variant="leader" />
-}

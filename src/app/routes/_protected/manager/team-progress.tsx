@@ -1,16 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { HrEmployeeList } from '@/features/hr-admin/components/HrEmployeeList'
-import { requirePermissionPrefix } from '@/lib/permissionGuards'
-import { requireRole } from '@/lib/routeGuards'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
+/** Đã gộp vào `/hr-admin` — giữ URL cũ để bookmark không gãy. */
 export const Route = createFileRoute('/_protected/manager/team-progress')({
   beforeLoad: () => {
-    requireRole('MANAGER')
-    requirePermissionPrefix('manager.')
+    throw redirect({ to: '/hr-admin', search: { page: 1 } })
   },
-  component: ManagerTeamPersonnelPage,
+  component: () => null,
 })
-
-function ManagerTeamPersonnelPage() {
-  return <HrEmployeeList variant="team" />
-}

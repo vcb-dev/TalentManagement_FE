@@ -15,32 +15,24 @@ import { usePermission } from '@/hooks/usePermission'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
-import type { Role } from '@/types/auth'
-
 type NavItem = AppNavItem
 
 type SidebarSection = { label: string; items: NavItem[] }
 
-function sidebarSectionsForRole(
-  role: Role | undefined,
-  canId: (id: string) => boolean
-): SidebarSection[] {
-  if (!role) return []
-
-  switch (role) {
-    case 'HR':
-      return [{ label: 'HR', items: filterNavByPermissions(HR_ITEMS, canId) }]
-    case 'BOD':
-      return [{ label: 'BOD', items: filterNavByPermissions(BOD_ITEMS, canId) }]
-    case 'MANAGER':
-      return [{ label: 'Quản lý', items: filterNavByPermissions(MANAGER_OPS_ITEMS, canId) }]
-    case 'LEADER':
-      return [{ label: 'Trưởng nhóm KPI', items: filterNavByPermissions(LEADER_KPI_ITEMS, canId) }]
-    case 'MEMBER':
-      return [{ label: 'Của tôi', items: filterNavByPermissions(MEMBER_SELF_ITEMS, canId) }]
-    default:
-      return []
-  }
+/** Sidebar (BOD / Quản lý): hiển thị từng nhóm nếu có ít nhất một mục sau lọc quyền. */
+function sidebarSectionsFromPermissions(canId: (id: string) => boolean): SidebarSection[] {
+  const out: SidebarSection[] = []
+  const bod = filterNavByPermissions(BOD_ITEMS, canId)
+  if (bod.length) out.push({ label: 'BOD', items: bod })
+  const mgr = filterNavByPermissions(MANAGER_OPS_ITEMS, canId)
+  if (mgr.length) out.push({ label: 'Quản lý', items: mgr })
+  const hr = filterNavByPermissions(HR_ITEMS, canId)
+  if (hr.length) out.push({ label: 'HR', items: hr })
+  const leader = filterNavByPermissions(LEADER_KPI_ITEMS, canId)
+  if (leader.length) out.push({ label: 'Trưởng nhóm KPI', items: leader })
+  const self = filterNavByPermissions(MEMBER_SELF_ITEMS, canId)
+  if (self.length) out.push({ label: 'Của tôi', items: self })
+  return out
 }
 
 function NavLink({
@@ -111,7 +103,7 @@ export function Sidebar() {
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const subtitle = `${displayName} · ${roleLabel}`
 
-  const sections = sidebarSectionsForRole(user?.role, canId)
+  const sections = sidebarSectionsFromPermissions(canId)
 
   return (
     <aside

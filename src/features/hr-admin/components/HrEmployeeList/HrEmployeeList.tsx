@@ -13,7 +13,6 @@ import { useEmployeeTable } from '@/features/hr-admin/components/EmployeeTable/u
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import type { Role } from '@/types/auth'
 import type { EmployeeFilters, EmployeeListStatus } from '@/features/hr-admin/types'
-import { MANAGER_TEAM_OPTIONS } from '@/features/manager/constants/managerTeams'
 import { Button } from '@/components/ui/button'
 import { SkeletonEmployeeCardGrid, SkeletonStatTile } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
@@ -34,25 +33,10 @@ const FILTERS: { key: 'all' | Role | 'reserved'; label: string }[] = [
 
 export interface HrEmployeeListProps {
   initialFilters?: Partial<EmployeeFilters>
-  /** `team` — Manager; `leader` — Trưởng nhóm KPI (giao diện giống HR, không menu Manager). */
-  variant?: 'hr' | 'team' | 'leader'
-  teamOptions?: readonly { id: string; label: string }[]
 }
 
-export function HrEmployeeList({
-  initialFilters,
-  variant = 'hr',
-  teamOptions = MANAGER_TEAM_OPTIONS,
-}: HrEmployeeListProps) {
-  const isTeam = variant === 'team'
-  const isLeader = variant === 'leader'
-  const isTeamMode = isTeam || isLeader
-  const [teamId, setTeamId] = useState(() => teamOptions[0]?.id ?? '')
-
-  const table = useEmployeeTable(
-    isTeamMode ? { page: 1, pageSize: 48, teamId } : { page: 1, pageSize: 48, ...initialFilters },
-    isTeamMode ? (isLeader ? { leaderScope: true } : { managerScope: true }) : undefined
-  )
+export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
+  const table = useEmployeeTable({ page: 1, pageSize: 48, ...initialFilters })
   const {
     employees,
     isLoading,
@@ -65,11 +49,6 @@ export function HrEmployeeList({
     setFilters,
   } = table
 
-  useEffect(() => {
-    if (!isTeamMode) return
-    setFilters((f) => ({ ...f, teamId, page: 1 }))
-  }, [teamId, isTeamMode, setFilters])
-
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [searchDraft, setSearchDraft] = useState(filters.search ?? '')
@@ -77,6 +56,7 @@ export function HrEmployeeList({
   useEffect(() => {
     const t = window.setTimeout(() => {
       setFilters((f) => ({ ...f, search: searchDraft || undefined, page: 1 }))
+      setSelectedId(null)
     }, 320)
     return () => window.clearTimeout(t)
   }, [searchDraft, setFilters])
@@ -113,11 +93,13 @@ export function HrEmployeeList({
     return 'all' as const
   }, [filters.role, filters.status])
 
-  useEffect(() => {
+  const handlePageChange = (nextPage: number) => {
     setSelectedId(null)
-  }, [pagination.page])
+    onPageChange(nextPage)
+  }
 
   const setRoleFilter = (key: (typeof FILTERS)[number]['key']) => {
+    setSelectedId(null)
     if (key === 'all') {
       setFilters((f) => ({ ...f, page: 1, role: undefined, status: undefined }))
       return
@@ -134,10 +116,9 @@ export function HrEmployeeList({
     setFilters((f) => ({ ...f, page: 1, role: key as Role, status: undefined }))
   }
 
-  const pageTitle = isTeamMode ? 'Nhân sự trong team' : 'Danh mục Nhân sự'
-  const pageSubtitle = isTeamMode
-    ? 'Danh sách nhân viên thuộc team đang chọn — theo dõi nhanh trạng thái và thành tích.'
-    : 'Quản lý và theo dõi hiệu suất cũng như thành tích của nhân sự.'
+  const pageTitle = 'Danh sách nhân sự'
+  const pageSubtitle =
+    'Quản lý và theo dõi hiệu suất cũng như thành tích của nhân sự (HR, BOD, Quản lý dùng chung).'
 
   return (
     <div className="-m-5 flex min-h-[calc(100vh-3.5rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
@@ -153,23 +134,6 @@ export function HrEmployeeList({
                 <p className={PAGE_HEADER_DESCRIPTION}>{pageSubtitle}</p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                {isTeamMode ? (
-                  <label className="relative flex min-w-[170px] items-center gap-1.5 rounded-lg border border-primary/20 bg-card px-3 py-2 text-sm text-foreground shadow-sm ring-1 ring-primary/10">
-                    <span className="shrink-0 text-xs font-medium text-muted-foreground">Team</span>
-                    <select
-                      className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent text-sm font-semibold text-foreground outline-none"
-                      value={teamId}
-                      onChange={(e) => setTeamId(e.target.value)}
-                      aria-label="Chọn team"
-                    >
-                      {teamOptions.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
@@ -190,17 +154,15 @@ export function HrEmployeeList({
                 >
                   {viewMode === 'cards' ? 'Dạng bảng' : 'Dạng thẻ'}
                 </button>
-                {!isTeamMode ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-10 rounded-lg px-5 text-sm font-semibold shadow-sm"
-                    asChild
-                  >
-                    <Link to="/hr-admin/new">+ Thêm nhân sự</Link>
-                  </Button>
-                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-10 rounded-lg px-5 text-sm font-semibold shadow-sm"
+                  asChild
+                >
+                  <Link to="/hr-admin/new">+ Thêm nhân sự</Link>
+                </Button>
                 <button
                   type="button"
                   className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90"
@@ -379,8 +341,8 @@ export function HrEmployeeList({
               onEdit={onEdit}
               onDeactivate={onDeactivate}
               pagination={pagination}
-              onPageChange={onPageChange}
-              listMode={isTeamMode ? 'team' : 'hr'}
+              onPageChange={handlePageChange}
+              listMode="hr"
             />
           ) : isLoading ? (
             <div className="space-y-4">
@@ -407,7 +369,7 @@ export function HrEmployeeList({
                     cardIndex={idx}
                     employee={e}
                     selected={selectedId === e.id}
-                    variant={isTeamMode ? 'team' : 'hr'}
+                    variant="hr"
                     onSelect={() => {
                       setSelectedId(e.id)
                     }}
@@ -440,7 +402,7 @@ export function HrEmployeeList({
                   type="button"
                   className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
                   disabled={pagination.page <= 1}
-                  onClick={() => onPageChange(pagination.page - 1)}
+                  onClick={() => handlePageChange(pagination.page - 1)}
                 >
                   ← Trước
                 </button>
@@ -454,7 +416,7 @@ export function HrEmployeeList({
                   type="button"
                   className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
                   disabled={pagination.page * (filters.pageSize ?? 20) >= pagination.total}
-                  onClick={() => onPageChange(pagination.page + 1)}
+                  onClick={() => handlePageChange(pagination.page + 1)}
                 >
                   Tiếp →
                 </button>
@@ -465,8 +427,6 @@ export function HrEmployeeList({
 
         <EmployeeDetailSheet
           employee={selected}
-          variant={isLeader ? 'leader' : isTeam ? 'team' : 'hr'}
-          teamId={teamId}
           onClose={() => setSelectedId(null)}
           onDeactivate={(id) => {
             if (window.confirm('Vô hiệu hóa tài khoản nhân viên này?')) onDeactivate(id)

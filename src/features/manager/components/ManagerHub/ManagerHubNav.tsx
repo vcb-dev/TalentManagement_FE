@@ -1,27 +1,24 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import type { LucideIcon } from 'lucide-react'
-import {
-  BookOpen,
-  CalendarClock,
-  ClipboardCheck,
-  LayoutList,
-  School,
-  Users,
-} from 'lucide-react'
+import { BookOpen, CalendarClock, ClipboardCheck, LayoutList, School, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type NavDef = {
   to: string
   label: string
   icon: LucideIcon
-  /** `exact` — khớp đúng path; `prefix` — path bắt đầu bằng `to`; `team-hub` — danh sách team + chi tiết `/manager/team/...` */
-  match: 'exact' | 'prefix' | 'team-hub'
+  match: 'exact' | 'prefix'
 }
 
 const MANAGER_NAV: NavDef[] = [
-  { to: '/manager/team-progress', label: 'Tiến độ nhóm', icon: Users, match: 'team-hub' },
+  { to: '/hr-admin', label: 'Danh sách nhân sự', icon: Users, match: 'prefix' },
   { to: '/manager/classes', label: 'Chia lớp', icon: School, match: 'prefix' },
-  { to: '/manager/review-submissions', label: 'Duyệt bài làm', icon: ClipboardCheck, match: 'prefix' },
+  {
+    to: '/manager/review-submissions',
+    label: 'Duyệt bài làm',
+    icon: ClipboardCheck,
+    match: 'prefix',
+  },
   { to: '/manager/exam-schedule', label: 'Lịch thi', icon: CalendarClock, match: 'prefix' },
   { to: '/manager/approvals', label: 'Thăng cấp / sao', icon: LayoutList, match: 'prefix' },
   { to: '/manager/exercises', label: 'Bài tập lộ trình', icon: BookOpen, match: 'prefix' },
@@ -35,9 +32,6 @@ function normalizePath(p: string): string {
 function navActive(pathname: string, item: NavDef): boolean {
   const p = normalizePath(pathname)
   const t = normalizePath(item.to)
-  if (item.match === 'team-hub') {
-    return p === t || p.startsWith('/manager/team/')
-  }
   if (item.match === 'exact') return p === t
   return p === t || p.startsWith(`${t}/`)
 }

@@ -15,6 +15,7 @@ import {
 import { MemberLeaderHeaderNav } from '@/components/shared/AppNav/MemberLeaderHeaderNav'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Sidebar } from '@/components/shared/Sidebar'
+import { defaultEntryPathFromSession } from '@/lib/routeGuards'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { cn } from '@/lib/utils'
@@ -30,6 +31,8 @@ export function AppShell({ children, title }: AppShellProps) {
   const { mutate: logout, isPending: logoutPending } = useLogout()
   const displayName = user?.name ?? 'Người dùng'
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
+  const brandHomeTo = user ? defaultEntryPathFromSession(user) : '/dashboard'
+  const brandHomeSearch = brandHomeTo === '/hr-admin' ? { page: 1 } : undefined
   /** Không dùng sidebar — điều hướng bằng header ngang. */
   const compactNavNoSidebar =
     user?.role === 'MEMBER' ||
@@ -133,30 +136,14 @@ export function AppShell({ children, title }: AppShellProps) {
               <>
                 <div className="flex min-h-10 min-w-0 flex-1 items-center gap-6 sm:gap-8">
                   <Link
-                    to={
-                      user.role === 'HR'
-                        ? '/hr-admin'
-                        : user.role === 'TEACHER'
-                          ? '/teacher/classes'
-                          : '/dashboard'
-                    }
-                    search={user.role === 'HR' ? { page: 1 } : undefined}
+                    to={brandHomeTo}
+                    search={brandHomeSearch}
                     className="flex h-10 shrink-0 items-center text-lg font-bold leading-none tracking-tight text-primary-600 sm:text-[18px]"
                   >
                     VCB HRM
                   </Link>
                   <div className="min-w-0 flex-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <MemberLeaderHeaderNav
-                      role={
-                        user.role === 'LEADER'
-                          ? 'LEADER'
-                          : user.role === 'HR'
-                            ? 'HR'
-                            : user.role === 'TEACHER'
-                              ? 'TEACHER'
-                              : 'MEMBER'
-                      }
-                    />
+                    <MemberLeaderHeaderNav />
                   </div>
                 </div>
                 {toolbar}

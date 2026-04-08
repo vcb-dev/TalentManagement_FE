@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { requirePermissionPrefix } from '@/lib/permissionGuards'
-import { requireRole } from '@/lib/routeGuards'
+import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
 import { TeacherClassesScreen } from '@/features/teacher/components/TeacherClassesScreen'
 
 export const Route = createFileRoute('/_protected/teacher/classes/')({
   beforeLoad: () => {
-    requireRole('TEACHER')
+    requireRoleOrPermissionPrefixes(['TEACHER'], ['teacher.'])
     requirePermissionPrefix('teacher.')
   },
   component: TeacherClassesPage,
