@@ -1,5 +1,6 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react'
 import {
   BOD_ITEMS,
   HR_ITEMS,
@@ -19,19 +20,28 @@ type NavItem = AppNavItem
 
 type SidebarSection = { label: string; items: NavItem[] }
 
-/** Sidebar (BOD / Quản lý): hiển thị từng nhóm nếu có ít nhất một mục sau lọc quyền. */
+function navItemDedupeKey(item: NavItem): string {
+  return item.to + (item.search !== undefined ? JSON.stringify(item.search) : '')
+}
+
+/** Sidebar (BOD / Quản lý): hiển thị từng nhóm nếu có ít nhất một mục sau lọc quyền. Trùng `to` giữa các nhóm chỉ hiển thị một lần (thứ tự: BOD → Quản lý → HR → …). */
 function sidebarSectionsFromPermissions(canId: (id: string) => boolean): SidebarSection[] {
   const out: SidebarSection[] = []
-  const bod = filterNavByPermissions(BOD_ITEMS, canId)
-  if (bod.length) out.push({ label: 'BOD', items: bod })
-  const mgr = filterNavByPermissions(MANAGER_OPS_ITEMS, canId)
-  if (mgr.length) out.push({ label: 'Quản lý', items: mgr })
-  const hr = filterNavByPermissions(HR_ITEMS, canId)
-  if (hr.length) out.push({ label: 'HR', items: hr })
-  const leader = filterNavByPermissions(LEADER_KPI_ITEMS, canId)
-  if (leader.length) out.push({ label: 'Trưởng nhóm KPI', items: leader })
-  const self = filterNavByPermissions(MEMBER_SELF_ITEMS, canId)
-  if (self.length) out.push({ label: 'Của tôi', items: self })
+  const seenTo = new Set<string>()
+  const pushSection = (label: string, source: NavItem[]) => {
+    const items = filterNavByPermissions(source, canId).filter((item) => {
+      const key = navItemDedupeKey(item)
+      if (seenTo.has(key)) return false
+      seenTo.add(key)
+      return true
+    })
+    if (items.length) out.push({ label, items })
+  }
+  pushSection('BOD', BOD_ITEMS)
+  pushSection('Quản lý', MANAGER_OPS_ITEMS)
+  pushSection('HR', HR_ITEMS)
+  pushSection('Trưởng nhóm KPI', LEADER_KPI_ITEMS)
+  pushSection('Của tôi', MEMBER_SELF_ITEMS)
   return out
 }
 
@@ -89,7 +99,87 @@ function SectionLabel({ children, collapsed }: { children: string; collapsed: bo
   )
 }
 
+function SidebarNavSection({
+  label,
+  sectionDomId,
+  items,
+  pathname,
+  collapsed,
+  open,
+  onToggle,
+  sectionIndex,
+}: {
+  label: string
+  /** id HTML ổn định (tránh ký tự đặc biệt trong nhãn tiếng Việt). */
+  sectionDomId: string
+  items: NavItem[]
+  pathname: string
+  collapsed: boolean
+  open: boolean
+  onToggle: () => void
+  sectionIndex: number
+}) {
+  if (collapsed) {
+    return (
+      <div className={cn(sectionIndex > 0 && 'mt-4')}>
+        <SectionLabel collapsed={collapsed}>{label}</SectionLabel>
+        {items.map((item) => (
+          <NavLink
+            key={navItemDedupeKey(item) + item.label}
+            item={item}
+            active={isNavItemActive(pathname, item)}
+            collapsed={collapsed}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  const triggerId = `${sectionDomId}-trigger`
+
+  return (
+    <div className={cn(sectionIndex > 0 && 'mt-1')}>
+      <button
+        type="button"
+        id={triggerId}
+        aria-expanded={open}
+        aria-controls={sectionDomId}
+        onClick={onToggle}
+        className="mb-1 flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+      >
+        <span className="min-w-0 truncate pl-1">{label}</span>
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200',
+            open ? 'rotate-0' : '-rotate-90'
+          )}
+          strokeWidth={2}
+          aria-hidden
+        />
+      </button>
+      {open ? (
+        <div id={sectionDomId} role="region" aria-labelledby={triggerId} className="space-y-0">
+          {items.map((item) => (
+            <NavLink
+              key={navItemDedupeKey(item) + item.label}
+              item={item}
+              active={isNavItemActive(pathname, item)}
+              collapsed={collapsed}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function Sidebar() {
+  const user = useAuthStore((s) => s.user)
+  if (user?.role === 'MEMBER' || user?.role === 'LEADER') return null
+  return <SidebarInner />
+}
+
+function SidebarInner() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const sidebarOpen = useUiStore((s) => s.sidebarOpen)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
@@ -97,13 +187,40 @@ export function Sidebar() {
   const { canId } = usePermission()
   const collapsed = !sidebarOpen
 
-  if (user?.role === 'MEMBER' || user?.role === 'LEADER') return null
+  const sections = useMemo(() => sidebarSectionsFromPermissions(canId), [canId])
+
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    // Mở accordion của section chứa route sau khi điều hướng (không có cách derive thuần thay thế hành vi này).
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- đồng bộ mở section theo pathname
+    setOpenSections((prev) => {
+      const next = { ...prev }
+      let changed = false
+      for (const s of sections) {
+        if (s.items.some((item) => isNavItemActive(pathname, item))) {
+          if (next[s.label] !== true) {
+            next[s.label] = true
+            changed = true
+          }
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [pathname, sections])
 
   const displayName = user?.name ?? 'Người dùng'
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const subtitle = `${displayName} · ${roleLabel}`
 
-  const sections = sidebarSectionsFromPermissions(canId)
+  const isSectionOpen = (label: string) => openSections[label] ?? true
+
+  const toggleSection = (label: string) => {
+    setOpenSections((prev) => {
+      const cur = prev[label] ?? true
+      return { ...prev, [label]: !cur }
+    })
+  }
 
   return (
     <aside
@@ -150,22 +267,25 @@ export function Sidebar() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <nav className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-3">
+        <nav
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-3"
+          aria-label="Menu điều hướng"
+        >
           {sections.map((section, sIdx) => (
-            <div key={section.label} className={cn(sIdx > 0 && 'mt-4')}>
-              <SectionLabel collapsed={collapsed}>{section.label}</SectionLabel>
-              {section.items.map((item) => (
-                <NavLink
-                  key={item.to + item.label}
-                  item={item}
-                  active={isNavItemActive(pathname, item)}
-                  collapsed={collapsed}
-                />
-              ))}
-            </div>
+            <SidebarNavSection
+              key={section.label}
+              label={section.label}
+              sectionDomId={`sidebar-nav-section-${sIdx}`}
+              items={section.items}
+              pathname={pathname}
+              collapsed={collapsed}
+              open={isSectionOpen(section.label)}
+              onToggle={() => toggleSection(section.label)}
+              sectionIndex={sIdx}
+            />
           ))}
 
-          <div className="mt-4">
+          <div className={cn(sections.length > 0 && 'mt-3')}>
             <SectionLabel collapsed={collapsed}>Cộng đồng</SectionLabel>
             <div
               className={cn(

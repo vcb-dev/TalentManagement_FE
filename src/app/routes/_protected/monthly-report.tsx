@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { MonthlyReportScreen } from '@/features/kpi-okr'
-import { requireRole } from '@/lib/routeGuards'
+import { requireMonthlyReportRoute } from '@/lib/routeGuards'
 
 export const Route = createFileRoute('/_protected/monthly-report')({
-  beforeLoad: () => requireRole('MEMBER', 'LEADER'),
+  beforeLoad: () => requireMonthlyReportRoute(),
   component: MonthlyReportScreen,
 })

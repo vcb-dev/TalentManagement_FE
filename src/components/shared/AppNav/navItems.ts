@@ -29,10 +29,22 @@ export type AppNavItem = {
   permissionIdsAny?: string[]
 }
 
-/** Member: dashboard, lộ trình, thi, KPI, báo cáo */
+/** Member: dashboard, lộ trình, thi, KPI, báo cáo — quyền bám route + catalog (tránh link tới màn không vào được). */
 export const MEMBER_SELF_ITEMS: AppNavItem[] = [
-  { to: '/dashboard', label: 'Dashboard cá nhân', icon: LayoutGrid, match: 'exact' },
-  { to: '/learning-path', label: 'Lộ trình học', icon: ListOrdered, match: 'exact' },
+  {
+    to: '/dashboard',
+    label: 'Dashboard cá nhân',
+    icon: LayoutGrid,
+    match: 'exact',
+    permissionIdsAny: ['dashboard.view', 'home.view'],
+  },
+  {
+    to: '/learning-path',
+    label: 'Lộ trình học',
+    icon: ListOrdered,
+    match: 'prefix',
+    permissionId: 'learning.view',
+  },
   {
     to: '/exam',
     label: 'Kết quả & lịch thi',
@@ -42,9 +54,23 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
       if (p === '/exam/grader' || p.startsWith('/exam/grader')) return false
       return p === '/exam' || (p.startsWith('/exam/') && !p.startsWith('/exam/grader'))
     },
+    permissionId: 'exam.view',
   },
-  { to: '/kpi-okr', label: 'KPI & OKR của tôi', icon: Target, match: 'prefix' },
-  { to: '/monthly-report', label: 'Báo cáo hàng tháng', icon: BarChart3, match: 'prefix' },
+  /** Route `/_protected/kpi-okr` chỉ MEMBER — dùng `kpi.edit_own` (không dùng chung `kpi.view` với trưởng nhóm). */
+  {
+    to: '/kpi-okr',
+    label: 'KPI & OKR của tôi',
+    icon: Target,
+    match: 'prefix',
+    permissionId: 'kpi.edit_own',
+  },
+  {
+    to: '/monthly-report',
+    label: 'Báo cáo hàng tháng',
+    icon: BarChart3,
+    match: 'prefix',
+    permissionId: 'report.view',
+  },
 ]
 
 const HR_ITEMS: AppNavItem[] = [
@@ -160,11 +186,29 @@ export const TEACHER_HEADER_ITEMS: AppNavItem[] = [
   },
 ]
 
-/** Leader: dashboard, nhân sự team, KPI, báo cáo */
+/** Leader / quản lý có quyền team KPI: dashboard, KPI team, báo cáo — khớp `/_protected/leader/kpi-okr` và `monthly-report`. */
 export const LEADER_KPI_ITEMS: AppNavItem[] = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutGrid, match: 'exact' },
-  { to: '/leader/kpi-okr', label: 'KPI & OKR trong team', icon: Target, match: 'prefix' },
-  { to: '/monthly-report', label: 'Báo cáo hàng tháng', icon: BarChart3, match: 'prefix' },
+  {
+    to: '/dashboard',
+    label: 'Dashboard',
+    icon: LayoutGrid,
+    match: 'exact',
+    permissionIdsAny: ['dashboard.view', 'home.view'],
+  },
+  {
+    to: '/leader/kpi-okr',
+    label: 'KPI & OKR trong team',
+    icon: Target,
+    match: 'prefix',
+    permissionIdsAny: ['kpi.team_view', 'kpi.team_edit'],
+  },
+  {
+    to: '/monthly-report',
+    label: 'Báo cáo hàng tháng',
+    icon: BarChart3,
+    match: 'prefix',
+    permissionId: 'report.view',
+  },
 ]
 
 export { HR_ITEMS, BOD_ITEMS, MANAGER_OPS_ITEMS, TEACHER_CLASS_ITEMS }

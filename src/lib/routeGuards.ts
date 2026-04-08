@@ -49,6 +49,32 @@ export function requireRole(...allowed: Role[]) {
 }
 
 /**
+ * Màn KPI/OKR cá nhân (`/kpi-okr`): nhân viên (MEMBER) hoặc ai có quyền chỉnh KPI của chính mình
+ * (`kpi.edit_own` trong catalog) — khớp menu & tránh nhảy về Dashboard khi role không phải MEMBER.
+ */
+export function requireMemberKpiOkrRoute() {
+  const user = useAuthStore.getState().user
+  if (!user?.role) throw redirect({ to: '/login' })
+  if (user.role === 'MEMBER') return
+  const eff = resolveEffectivePermissionSet(user)
+  if (eff.has('kpi.edit_own')) return
+  throw redirect({ to: defaultEntryPathFromSession(user) })
+}
+
+/**
+ * Báo cáo hàng tháng (`/monthly-report`): MEMBER/LEADER như trước, hoặc bất kỳ ai có quyền catalog
+ * `report.view` / `report.edit` — tránh redirect về `/bod/dashboard` khi menu hiện mục báo cáo nhưng role là BOD/MANAGER/HR.
+ */
+export function requireMonthlyReportRoute() {
+  const user = useAuthStore.getState().user
+  if (!user?.role) throw redirect({ to: '/login' })
+  if (user.role === 'MEMBER' || user.role === 'LEADER') return
+  const eff = resolveEffectivePermissionSet(user)
+  if (eff.has('report.view') || eff.has('report.edit')) return
+  throw redirect({ to: defaultEntryPathFromSession(user) })
+}
+
+/**
  * Cho phép vào nếu đúng một trong các `allowedRoles`, hoặc có ít nhất một quyền
  * có id bắt đầu bằng một chuỗi trong `permissionIdPrefixes` (khớp RBAC động).
  */
