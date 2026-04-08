@@ -370,6 +370,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
             <p className="mt-2">
               <Link
                 to="/learning-path"
+                search={{ levelId: 'biet_viec', starId: 1 }}
                 className="text-sm font-medium text-primary underline-offset-4 hover:underline"
               >
                 Lộ trình học
