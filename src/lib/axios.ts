@@ -39,10 +39,20 @@ apiClient.interceptors.response.use(
   }
 )
 
+function nestMessage(data: unknown): string | undefined {
+  if (!data || typeof data !== 'object') return undefined
+  const m = (data as { message?: string | string[] }).message
+  if (m == null) return undefined
+  return Array.isArray(m) ? m.join(', ') : m
+}
+
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    const data = error.response?.data as ApiError | undefined
-    if (data?.message) return data.message
+    const data = error.response?.data as ApiError | Record<string, unknown> | undefined
+    const raw = data && typeof data === 'object' ? nestMessage(data) : undefined
+    if (raw) return raw
+    const legacy = data as ApiError | undefined
+    if (legacy?.message) return legacy.message
     if (error.message) return error.message
   }
   if (error instanceof Error) return error.message

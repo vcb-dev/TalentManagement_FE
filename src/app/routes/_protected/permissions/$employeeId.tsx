@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { EmployeePermissionsScreen } from '@/features/permissions/components/EmployeePermissionsScreen'
-import { useEmployee } from '@/features/hr-admin/hooks'
+import { usePermissionsEmployee } from '@/features/permissions/employeeDirectoryHooks'
 import { requireBodOrManager } from '@/features/hr-admin/requireBodOrManager'
 import { requirePermissionPrefix } from '@/lib/permissionGuards'
 
@@ -14,7 +14,7 @@ export const Route = createFileRoute('/_protected/permissions/$employeeId')({
 
 function EmployeePermissionsDetailPage() {
   const { employeeId } = Route.useParams()
-  const { data, isLoading } = useEmployee(employeeId)
+  const { data, isLoading } = usePermissionsEmployee(employeeId)
 
   if (isLoading) {
     return (

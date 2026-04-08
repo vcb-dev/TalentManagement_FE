@@ -1,16 +1,18 @@
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { apiClient } from '@/lib/axios'
+import { safeParse } from '@/lib/utils'
 import type { ScopeKey } from './branches'
 import type { PermissionAssignmentRecord } from './assignmentStore'
 import { getAssignment, saveAssignment } from './assignmentStore'
+import { permissionAssignmentRecordSchema } from './permissionAssignment.schema'
 
 /**
- * GET/PUT phân quyền theo nhân viên + scope — mock: localStorage key `hrm.v1.permissionAssignments`.
+ * GET/PUT phân quyền theo nhân viên + scope — mock: localStorage `hrm.v1.permissionAssignments`.
  *
- * **Contract backend dự kiến (khi tắt mock):**
- * - `GET /users/{userId}/permissions?scope=global` → `PermissionAssignmentRecord`
- * - `PUT /users/{userId}/permissions?scope=global` body: cùng shape; server merge effective + audit.
- * - `GET /auth/me` trả `UserSession` kèm `permissionIds[]`, `roles[]`, `dataScopeFlags` (đã mở rộng trong openapi.json).
+ * **Backend thật (TalentManagement_BE):** tắt `VITE_USE_MOCK_API`.
+ * - `GET /users/{userId}/permissions?scope=global` → record hoặc `null` (chưa gán — FE fallback theo role).
+ * - `PUT` cùng path + body; cần quyền BOD/MANAGER hoặc `admin.permissions.assign`.
+ * - Session: `GET /auth/me` — `permissionIds`, `dataScopeFlags` (xem `authApi.me`).
  */
 export const permissionApi = {
   getAssignment: async (
@@ -23,7 +25,11 @@ export const permissionApi = {
     const res = await apiClient.get<unknown>(`/users/${userId}/permissions`, {
       params: { scope: scopeKey },
     })
-    return res.data as PermissionAssignmentRecord
+    const data = res.data
+    if (data === null || data === undefined) {
+      return null
+    }
+    return safeParse(permissionAssignmentRecordSchema, data, 'GET /users/.../permissions')
   },
 
   saveAssignment: async (record: PermissionAssignmentRecord): Promise<void> => {
@@ -31,7 +37,8 @@ export const permissionApi = {
       saveAssignment(record)
       return
     }
-    await apiClient.put(`/users/${record.userId}/permissions`, record, {
+    const body = permissionAssignmentRecordSchema.parse(record)
+    await apiClient.put(`/users/${record.userId}/permissions`, body, {
       params: { scope: record.scopeKey },
     })
   },

@@ -23,6 +23,7 @@ import {
   getTemplateByLinkedRole,
 } from '@/features/permissions/roleTemplates'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
+import { getApiErrorMessage } from '@/lib/axios'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/auth'
 import { PermissionTree } from './PermissionTree'
@@ -126,8 +127,8 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
         const me = await authApi.me()
         useAuthStore.getState().setSession(me.user, me.accessToken ?? null)
       }
-    } catch {
-      toast.error('Không lưu được')
+    } catch (e) {
+      toast.error(getApiErrorMessage(e) || 'Không lưu được')
     }
   }
 

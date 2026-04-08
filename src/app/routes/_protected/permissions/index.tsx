@@ -23,11 +23,12 @@ import {
   statusDotClass,
   statusLabelVi,
 } from '@/features/hr-admin/components/HrEmployeeList/employeeListUtils'
-import { useEmployees } from '@/features/hr-admin/hooks'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
+import { usePermissionsEmployeeList } from '@/features/permissions/employeeDirectoryHooks'
 import { requireBodOrManager } from '@/features/hr-admin/requireBodOrManager'
 import { ManagerScreenLayout } from '@/features/manager/components/ManagerHub/ManagerScreenLayout'
 import { requirePermissionPrefix } from '@/lib/permissionGuards'
+import { getApiErrorMessage } from '@/lib/axios'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/auth'
@@ -161,7 +162,10 @@ function EmployeeTableRow({ row }: { row: EmployeeEntity }) {
 }
 
 function PermissionsIndexPage() {
-  const { data, isLoading } = useEmployees({ page: 1, pageSize: 100 })
+  const { data, isLoading, isError, error, refetch, isFetching } = usePermissionsEmployeeList({
+    page: 1,
+    pageSize: 100,
+  })
   const rows = data?.data ?? []
 
   return (
@@ -181,7 +185,24 @@ function PermissionsIndexPage() {
           </p>
         </div>
 
-        {isLoading ? (
+        {isError ? (
+          <Card className="border-destructive/30 bg-destructive/5 p-6 shadow-[var(--shadow-card)]">
+            <p className="text-sm font-medium text-destructive">
+              Không tải được danh sách nhân sự. Kiểm tra kết nối API (GET /employees) và quyền
+              BOD/Quản lý.
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">{getApiErrorMessage(error)}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => void refetch()}
+            >
+              Thử lại {isFetching ? '…' : ''}
+            </Button>
+          </Card>
+        ) : isLoading ? (
           <PermissionsTableSkeleton />
         ) : (
           <Card className="overflow-hidden p-0 shadow-[var(--shadow-card)]">
