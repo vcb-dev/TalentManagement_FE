@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
+import { useTeacherClasses } from '@/features/teacher/hooks'
 import { TeacherClassCard } from './TeacherClassCard'
 import type { TeacherClassRow, TeacherClassTrack } from './teacherClassTypes'
 
@@ -18,30 +19,6 @@ const FILTERS: { key: 'all' | TeacherClassTrack; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
   { key: 'tap_su', label: 'Tập sự' },
   { key: 'biet_viec', label: 'Biết việc' },
-]
-
-/** Lớp do Manager/HR xếp — giảng viên xem & hỗ trợ; dữ liệu sẽ nối API. */
-const MOCK_CLASSES: TeacherClassRow[] = [
-  {
-    id: 'c1',
-    title: 'Lớp Tập sự',
-    periodBadge: 'Kỳ Q1/2026',
-    examLine: 'Kỳ thi Tập sự → Biết việc',
-    memberCount: 12,
-    metaIcon: 'trending',
-    accent: 'primary',
-    track: 'tap_su',
-  },
-  {
-    id: 'c2',
-    title: 'Lớp Biết việc – Nhóm A',
-    periodBadge: 'Kỳ thi Biết việc',
-    examLine: 'Đào tạo kỹ năng chuyên sâu',
-    memberCount: 8,
-    metaIcon: 'school',
-    accent: 'amber',
-    track: 'biet_viec',
-  },
 ]
 
 const REPUTATION_SCORE = '4.8/5'
@@ -52,9 +29,27 @@ export function TeacherClassesScreen() {
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
+  const { data: teacherClassesRaw = [] } = useTeacherClasses()
+  const rows: TeacherClassRow[] = useMemo(
+    () =>
+      teacherClassesRaw
+        .filter((r) => r.levelFrom === 'tap_su' || r.levelFrom === 'biet_viec')
+        .map((r) => ({
+          id: r.id,
+          title: r.name,
+          periodBadge: r.examDate ? `Thi: ${new Date(r.examDate).toLocaleDateString('vi-VN')}` : 'Chưa có lịch thi',
+          examLine: `${r.levelFrom === 'tap_su' ? 'Tập sự' : 'Biết việc'} -> ${r.levelTo}`,
+          memberCount: r.memberCount,
+          metaIcon: r.levelFrom === 'tap_su' ? 'trending' : 'school',
+          accent: r.levelFrom === 'tap_su' ? 'primary' : 'amber',
+          track: r.levelFrom as TeacherClassTrack,
+        })),
+    [teacherClassesRaw]
+  )
+
   const filtered = useMemo(() => {
     const q = searchDraft.trim().toLowerCase()
-    return MOCK_CLASSES.filter((c) => {
+    return rows.filter((c) => {
       if (filterKey !== 'all' && c.track !== filterKey) return false
       if (!q) return true
       return (
@@ -63,10 +58,10 @@ export function TeacherClassesScreen() {
         c.periodBadge.toLowerCase().includes(q)
       )
     })
-  }, [filterKey, searchDraft])
+  }, [rows, filterKey, searchDraft])
 
-  const totalMembers = MOCK_CLASSES.reduce((a, c) => a + c.memberCount, 0)
-  const classCount = MOCK_CLASSES.length
+  const totalMembers = rows.reduce((a, c) => a + c.memberCount, 0)
+  const classCount = rows.length
   const avgPerClass =
     classCount > 0 ? Math.round((totalMembers / classCount) * 10) / 10 : 0
   const totalPages = 1
@@ -337,7 +332,7 @@ export function TeacherClassesScreen() {
           {viewMode === 'cards' && filtered.length > 0 ? (
             <div className="mt-4 flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground">
-                Hiển thị {filtered.length} / {MOCK_CLASSES.length} lớp
+                Hiển thị {filtered.length} / {rows.length} lớp
               </span>
               <div className="flex gap-1">
                 <button

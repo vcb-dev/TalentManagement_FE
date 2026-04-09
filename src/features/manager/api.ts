@@ -126,6 +126,7 @@ export const managerApi = {
     capacity?: number | null
     examDate?: string | null
     memberUserIds?: string[]
+    teacherUserId?: string | null
   }) => {
     const res = await apiClient.post<unknown>('/manager/classes', input)
     return safeParse(managerClassCreateResponseSchema, res.data, 'POST /manager/classes')
@@ -133,7 +134,13 @@ export const managerApi = {
 
   updateClass: async (
     classId: string,
-    input: { name?: string; status?: string; capacity?: number | null; examDate?: string | null }
+    input: {
+      name?: string
+      status?: string
+      capacity?: number | null
+      examDate?: string | null
+      teacherUserId?: string | null
+    }
   ) => {
     const res = await apiClient.patch<unknown>(`/manager/classes/${classId}`, input)
     return safeParse(managerClassActionResponseSchema, res.data, 'PATCH /manager/classes/:id')
@@ -149,6 +156,11 @@ export const managerApi = {
       params: { query, levelFrom },
     })
     return safeParse(z.array(managerMemberOptionApiSchema), res.data, 'GET /manager/classes/member-options')
+  },
+
+  teacherOptions: async (query: string) => {
+    const res = await apiClient.get<unknown>('/manager/classes/teacher-options', { params: { query } })
+    return safeParse(z.array(managerMemberOptionApiSchema), res.data, 'GET /manager/classes/teacher-options')
   },
 
   addClassMember: async (classId: string, userId: string) => {

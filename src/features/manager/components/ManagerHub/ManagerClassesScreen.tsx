@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from '@tanstack/react-router'
 import {
-  ArrowRight,
   Calendar,
   Loader2,
   PlusCircle,
@@ -28,6 +26,8 @@ import {
   useDeleteManagerClass,
   useManagerClasses,
   useRemoveClassMember,
+  useTeacherOptions,
+  useUpdateManagerClass,
 } from '@/features/manager/hooks'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 
@@ -79,6 +79,11 @@ function toViDate(iso: string | null): string {
   return d.toLocaleDateString('vi-VN')
 }
 
+function toLocalDatetimeInputValue(value: Date): string {
+  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 16)
+}
+
 export function ManagerClassesScreen() {
   const [search, setSearch] = useState('')
   const [name, setName] = useState('')
@@ -86,14 +91,21 @@ export function ManagerClassesScreen() {
   const [createLevelFrom, setCreateLevelFrom] = useState<CreateLevel>('tap_su')
   const [createMemberQuery, setCreateMemberQuery] = useState('')
   const [selectedCreateMembers, setSelectedCreateMembers] = useState<Array<{ userId: string; name: string; email: string }>>([])
+  const [createTeacherQuery, setCreateTeacherQuery] = useState('')
+  const [selectedCreateTeacher, setSelectedCreateTeacher] = useState<{ userId: string; name: string; email: string } | null>(null)
   const [memberQueries, setMemberQueries] = useState<Record<string, string>>({})
   const [activeClassForDropdown, setActiveClassForDropdown] = useState<string | null>(null)
+  const [scheduleClassId, setScheduleClassId] = useState<string | null>(null)
+  const [scheduleDate, setScheduleDate] = useState('')
+  const [teacherQuery, setTeacherQuery] = useState('')
+  const [selectedTeacher, setSelectedTeacher] = useState<{ userId: string; name: string; email: string } | null>(null)
 
   const { data: rows = [], isLoading } = useManagerClasses({ search })
   const createClass = useCreateManagerClass()
   const deleteClass = useDeleteManagerClass()
   const addMember = useAddClassMember()
   const removeMember = useRemoveClassMember()
+  const updateClass = useUpdateManagerClass()
 
   const activeQuery = activeClassForDropdown ? (memberQueries[activeClassForDropdown] ?? '') : ''
   const { data: memberOptions = [], isFetching: fetchingMemberOptions } = useClassMemberOptions(activeQuery)
@@ -101,6 +113,8 @@ export function ManagerClassesScreen() {
     createMemberQuery,
     createLevelFrom
   )
+  const { data: createTeacherOptions = [], isFetching: fetchingCreateTeacherOptions } = useTeacherOptions(createTeacherQuery)
+  const { data: teacherOptions = [], isFetching: fetchingTeacherOptions } = useTeacherOptions(teacherQuery)
 
   const totalMembers = rows.reduce((a, r) => a + r.memberCount, 0)
   const openCount = rows.filter((r) => r.status === 'open').length
@@ -118,6 +132,7 @@ export function ManagerClassesScreen() {
         levelTo: NEXT_LEVEL_BY_FROM[createLevelFrom],
         status: 'open',
         memberUserIds: selectedCreateMembers.map((m) => m.userId),
+        teacherUserId: selectedCreateTeacher?.userId ?? null,
       },
       {
         onSuccess: () => {
@@ -126,6 +141,8 @@ export function ManagerClassesScreen() {
           setCreateMemberQuery('')
           setSelectedCreateMembers([])
           setCreateLevelFrom('tap_su')
+          setCreateTeacherQuery('')
+          setSelectedCreateTeacher(null)
         },
       }
     )
@@ -140,6 +157,9 @@ export function ManagerClassesScreen() {
     const joined = new Set((cls?.members ?? []).map((m) => m.userId))
     return memberOptions.filter((o) => !joined.has(o.userId))
   }, [activeClassForDropdown, rows, memberOptions])
+  const scheduleClass = useMemo(() => rows.find((r) => r.id === scheduleClassId) ?? null, [rows, scheduleClassId])
+  const isTapSuToBietViecSchedule =
+    scheduleClass?.levelFrom === 'tap_su' && scheduleClass?.levelTo === 'biet_viec'
 
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
@@ -159,7 +179,7 @@ export function ManagerClassesScreen() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div
           className={cn(
             'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
@@ -208,22 +228,6 @@ export function ManagerClassesScreen() {
             <div className="text-2xl font-bold text-foreground">{rows.length}</div>
           </div>
         </div>
-        <Link
-          to="/manager/exam-schedule"
-          className={cn(
-            'group relative flex flex-col justify-between overflow-hidden rounded-xl border-none bg-gradient-to-br from-primary to-primary-600 p-5 text-white shadow-lg shadow-primary/20 transition-transform hover:scale-[1.02]',
-            CARD_ENTRANCE_HOVER
-          )}
-        >
-          <div className="relative z-10">
-            <div className="text-[0.65rem] font-bold uppercase tracking-widest text-white/70">Liên kết nhanh</div>
-            <div className="mt-1 text-lg font-bold">Đặt lịch thi</div>
-          </div>
-          <div className="relative z-10 flex justify-end">
-            <ArrowRight className="h-6 w-6 text-white/50 transition-colors group-hover:text-white" strokeWidth={2} />
-          </div>
-          <div className="pointer-events-none absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
-        </Link>
         </div>
       </div>
 
@@ -265,6 +269,8 @@ export function ManagerClassesScreen() {
                   setName('')
                   setCreateMemberQuery('')
                   setSelectedCreateMembers([])
+                  setCreateTeacherQuery('')
+                  setSelectedCreateTeacher(null)
                 }}
                 aria-label="Đóng"
               >
@@ -306,6 +312,46 @@ export function ManagerClassesScreen() {
                 <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm font-medium text-foreground">
                   {LEVEL_LABELS[createLevelFrom]} → {LEVEL_LABELS[NEXT_LEVEL_BY_FROM[createLevelFrom]]}
                 </div>
+              </div>
+
+              <div className="relative md:col-span-2">
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Giáo viên phụ trách lớp</label>
+                <input
+                  value={createTeacherQuery}
+                  onChange={(e) => setCreateTeacherQuery(e.target.value)}
+                  placeholder="Gõ tên/email giáo viên..."
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+                {createTeacherQuery.trim().length > 0 ? (
+                  <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                    {fetchingCreateTeacherOptions ? (
+                      <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Đang tìm...
+                      </div>
+                    ) : createTeacherOptions.length === 0 ? (
+                      <div className="px-2 py-2 text-xs text-muted-foreground">Không có kết quả phù hợp</div>
+                    ) : (
+                      createTeacherOptions.map((opt) => (
+                        <button
+                          key={opt.userId}
+                          type="button"
+                          className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-primary/10"
+                          onClick={() => {
+                            setSelectedCreateTeacher(opt)
+                            setCreateTeacherQuery('')
+                          }}
+                        >
+                          <p className="font-semibold text-foreground">{opt.name}</p>
+                          <p className="text-muted-foreground">{opt.email}</p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                ) : null}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Đã chọn giáo viên: <span className="font-semibold text-foreground">{selectedCreateTeacher?.name || 'Chưa chọn'}</span>
+                </p>
               </div>
 
               <div className="relative md:col-span-2">
@@ -384,6 +430,8 @@ export function ManagerClassesScreen() {
                   setName('')
                   setCreateMemberQuery('')
                   setSelectedCreateMembers([])
+                  setCreateTeacherQuery('')
+                  setSelectedCreateTeacher(null)
                 }}
                 disabled={createClass.isPending}
               >
@@ -441,10 +489,15 @@ export function ManagerClassesScreen() {
                 </div>
 
                 <div className="mb-4 rounded-lg border border-border/70 bg-muted/30 p-3">
-                  <p className="text-xs font-semibold text-muted-foreground">
+                  <p className="text-sm font-extrabold text-foreground">
                     {LEVEL_LABELS[row.levelFrom]} → {LEVEL_LABELS[row.levelTo]}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">Kỳ thi dự kiến: {toViDate(row.examDate)}</p>
+                  <p className="mt-1 text-sm font-bold text-foreground">
+                    Kỳ thi dự kiến: {toViDate(row.examDate)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Giáo viên: <span className="font-semibold text-foreground">{row.teacher?.name || 'Chưa gán'}</span>
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -523,11 +576,14 @@ export function ManagerClassesScreen() {
                     variant="outline"
                     size="sm"
                     className="h-auto rounded-lg border-primary/25 bg-primary/5 py-2.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground"
-                    asChild
+                    onClick={() => {
+                      setScheduleClassId(row.id)
+                      setScheduleDate(row.examDate ? new Date(row.examDate).toISOString().slice(0, 16) : '')
+                      setSelectedTeacher(row.teacher ?? null)
+                      setTeacherQuery('')
+                    }}
                   >
-                    <Link to="/exam/$examId/classify" params={{ examId: '11111111-1111-4111-8111-111111111101' }}>
-                      Phân lớp sau thi
-                    </Link>
+                    Tạo lịch thi
                   </Button>
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">Cập nhật {toViDate(row.updatedAt)}</p>
@@ -552,6 +608,137 @@ export function ManagerClassesScreen() {
           Xem thêm tất cả các lớp
         </button>
       </div>
+
+      {scheduleClassId ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-xl rounded-2xl border bg-card p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-foreground">Tạo lịch thi cho lớp</h3>
+              <button
+                type="button"
+                className="rounded p-1 text-muted-foreground hover:bg-muted"
+                onClick={() => {
+                  setScheduleClassId(null)
+                  setTeacherQuery('')
+                  setSelectedTeacher(null)
+                }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Thời gian thi</label>
+                <input
+                  type="datetime-local"
+                  lang="vi-VN"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  min={toLocalDatetimeInputValue(new Date())}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="relative">
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Người chấm thi</label>
+                {isTapSuToBietViecSchedule ? (
+                  <input
+                    value={selectedTeacher?.name || 'Chưa gán giáo viên phụ trách lớp'}
+                    disabled
+                    className="w-full rounded-xl border border-border bg-muted px-3 py-2.5 text-sm text-muted-foreground outline-none"
+                  />
+                ) : (
+                  <>
+                    <input
+                      value={teacherQuery}
+                      onChange={(e) => setTeacherQuery(e.target.value)}
+                      placeholder="Gõ tên/email teacher..."
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                    {teacherQuery.trim().length > 0 ? (
+                      <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                        {fetchingTeacherOptions ? (
+                          <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Đang tìm...
+                          </div>
+                        ) : teacherOptions.length === 0 ? (
+                          <div className="px-2 py-2 text-xs text-muted-foreground">Không có kết quả phù hợp</div>
+                        ) : (
+                          teacherOptions.map((opt) => (
+                            <button
+                              key={opt.userId}
+                              type="button"
+                              className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-primary/10"
+                              onClick={() => {
+                                setSelectedTeacher(opt)
+                                setTeacherQuery('')
+                              }}
+                            >
+                              <p className="font-semibold text-foreground">{opt.name}</p>
+                              <p className="text-muted-foreground">{opt.email}</p>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setScheduleClassId(null)
+                  setTeacherQuery('')
+                  setSelectedTeacher(null)
+                }}
+              >
+                Hủy
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (!scheduleClassId) return
+                  if (!scheduleDate) {
+                    toast.error('Vui lòng chọn thời gian thi')
+                    return
+                  }
+                  if (!selectedTeacher) {
+                    toast.error(
+                      isTapSuToBietViecSchedule
+                        ? 'Lớp này chưa có giáo viên phụ trách để tự động gán người chấm'
+                        : 'Vui lòng chọn người chấm thi'
+                    )
+                    return
+                  }
+                  updateClass.mutate(
+                    {
+                      classId: scheduleClassId,
+                      input: {
+                        examDate: new Date(scheduleDate).toISOString(),
+                        teacherUserId: selectedTeacher.userId,
+                        status: 'open',
+                      },
+                    },
+                    {
+                      onSuccess: () => {
+                        setScheduleClassId(null)
+                        setTeacherQuery('')
+                        setSelectedTeacher(null)
+                      },
+                    }
+                  )
+                }}
+                disabled={updateClass.isPending}
+              >
+                {updateClass.isPending ? 'Đang lưu...' : 'Lưu lịch thi'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </ManagerScreenLayout>
   )
 }

@@ -186,13 +186,22 @@ export function ExamResultsSchedule({
                 </div>
                 <button
                   type="button"
-                  onClick={() => onOpenExam(exam.id)}
+                  onClick={() => {
+                    if (exam.status === 'COMPLETED' || exam.status === 'IN_PROGRESS') {
+                      onOpenExam(exam.id)
+                    }
+                  }}
+                  disabled={exam.status === 'UPCOMING'}
                   className={cn(
                     'flex w-full items-center justify-center gap-2 rounded-lg py-3 text-base font-bold text-white shadow-sm transition-all',
-                    'vcb-cta-exam-gradient hover:opacity-95'
+                    'vcb-cta-exam-gradient hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70'
                   )}
                 >
-                  {exam.status === 'IN_PROGRESS' ? 'Vào thi' : 'Xem chi tiết'}
+                  {exam.status === 'IN_PROGRESS'
+                    ? 'Vào thi'
+                    : exam.status === 'COMPLETED'
+                      ? 'Xem chi tiết'
+                      : 'Đã lên lịch'}
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </button>
               </div>

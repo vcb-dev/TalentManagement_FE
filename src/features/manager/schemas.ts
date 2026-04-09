@@ -101,6 +101,13 @@ export const managerClassApiSchema = z.object({
   status: z.enum(['open', 'full', 'closed']),
   capacity: z.number().int().nullable(),
   examDate: z.string().datetime().nullable(),
+  teacher: z
+    .object({
+      userId: z.string().uuid(),
+      name: z.string(),
+      email: z.string(),
+    })
+    .nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   memberCount: z.number().int().nonnegative(),

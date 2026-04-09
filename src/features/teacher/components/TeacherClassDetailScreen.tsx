@@ -12,16 +12,9 @@ import {
 } from '@/components/shared/PageHeader'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
+import { useTeacherClassDetail, useTeacherGrade } from '@/features/teacher/hooks'
 import { TeacherClassMemberCard } from './TeacherClassMemberCard'
 import type { ClassMemberRow } from './teacherClassMemberTypes'
-
-const MOCK_MEMBERS: ClassMemberRow[] = [
-  { id: '1', name: 'Nguyễn Văn A', email: 'a@vcb.com', examResult: 'Đạt' },
-  { id: '2', name: 'Trần Thị B', email: 'b@vcb.com', examResult: null },
-  { id: '3', name: 'Lê Văn C', email: 'c@vcb.com', examResult: 'Bảo lưu' },
-  { id: '4', name: 'Phạm Thị D', email: 'd@vcb.com', examResult: null },
-  { id: '5', name: 'Hoàng Văn E', email: 'e@vcb.com', examResult: 'Đạt' },
-]
 
 const FILTERS: { key: 'all' | 'has' | 'none'; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
@@ -29,20 +22,29 @@ const FILTERS: { key: 'all' | 'has' | 'none'; label: string }[] = [
   { key: 'none', label: 'Chưa có KQ' },
 ]
 
-function membersForClass(classId: string): ClassMemberRow[] {
-  if (classId === 'c1' || classId === 'c2') return MOCK_MEMBERS
-  return MOCK_MEMBERS.slice(0, 2)
-}
-
-function classTitle(classId: string): string {
-  if (classId === 'c1') return 'Lớp Tập sự — Kỳ Q1/2026'
-  if (classId === 'c2') return 'Lớp Biết việc — Nhóm A'
-  return `Lớp ${classId}`
-}
-
 export function TeacherClassDetailScreen({ classId }: { classId: string }) {
-  const title = classTitle(classId)
-  const members = membersForClass(classId)
+  const { data } = useTeacherClassDetail(classId)
+  const grade = useTeacherGrade(classId)
+  const title = data?.name || `Lớp ${classId}`
+  const members: ClassMemberRow[] = useMemo(
+    () =>
+      (data?.members ?? []).map((m) => ({
+        id: m.userId,
+        name: m.name,
+        email: m.email,
+        examResult:
+          m.latestResult?.outcome === 'DAT'
+            ? 'Đạt'
+            : m.latestResult?.outcome === 'BAO_LUU'
+              ? 'Bảo lưu'
+              : m.latestResult?.outcome === 'CHO_HOC_LAI'
+                ? 'Chờ học lại'
+                : m.latestResult?.outcome === 'CHIA_TAY'
+                  ? 'Chia tay'
+                  : null,
+      })),
+    [data?.members]
+  )
 
   const [filterKey, setFilterKey] = useState<(typeof FILTERS)[number]['key']>('all')
   const [searchDraft, setSearchDraft] = useState('')
@@ -290,9 +292,11 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                             variant="outline"
                             size="sm"
                             className="font-semibold"
-                            onClick={() => toast.info('Lịch sử thi chi tiết — nối API')}
+                            onClick={() =>
+                              grade.mutate({ userId: m.id, outcome: 'DAT', score: 10, note: 'Đạt' })
+                            }
                           >
-                            Lịch sử
+                            Chấm đạt
                           </Button>
                         </td>
                       </tr>
@@ -331,7 +335,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     cardIndex={idx}
                     selected={selectedId === m.id}
                     onSelect={() => setSelectedId((id) => (id === m.id ? null : m.id))}
-                    onViewDetail={() => toast.info('Lịch sử thi chi tiết — nối API')}
+                    onViewDetail={() => grade.mutate({ userId: m.id, outcome: 'DAT', score: 10, note: 'Đạt' })}
                   />
                 ))}
               </div>

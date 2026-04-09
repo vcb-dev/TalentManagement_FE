@@ -107,7 +107,19 @@ export function useCreateManagerClass() {
 export function useUpdateManagerClass() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ classId, input }: { classId: string; input: { name?: string; status?: string; capacity?: number | null; examDate?: string | null } }) =>
+    mutationFn: ({
+      classId,
+      input,
+    }: {
+      classId: string
+      input: {
+        name?: string
+        status?: string
+        capacity?: number | null
+        examDate?: string | null
+        teacherUserId?: string | null
+      }
+    }) =>
       managerApi.updateClass(classId, input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
@@ -133,6 +145,14 @@ export function useClassMemberOptions(query: string, levelFrom?: string) {
   return useQuery({
     queryKey: managerKeys.classMemberOptions(query, levelFrom),
     queryFn: () => managerApi.memberOptions(query, levelFrom),
+    enabled: query.trim().length >= 1,
+  })
+}
+
+export function useTeacherOptions(query: string) {
+  return useQuery({
+    queryKey: [...managerKeys.all, 'teacher-options', query],
+    queryFn: () => managerApi.teacherOptions(query),
     enabled: query.trim().length >= 1,
   })
 }

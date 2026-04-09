@@ -7,8 +7,8 @@ import type { ClassifyExamInput, ExamFilters, GradeExamInput } from './types'
 
 export const examApi = {
   list: async (filters: ExamFilters) => {
-    const res = await apiClient.get<unknown>('/exams', { params: filters })
-    return safeParse(examListApiSchema, res.data, 'GET /exams')
+    const res = await apiClient.get<unknown>('/me/exam-schedule', { params: filters })
+    return safeParse(examListApiSchema, res.data, 'GET /me/exam-schedule')
   },
 
   get: async (examId: string) => {
