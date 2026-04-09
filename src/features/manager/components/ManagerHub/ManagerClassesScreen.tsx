@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   ArrowRight,
-  BookOpen,
-  Building2,
   Calendar,
+  Loader2,
   PlusCircle,
   Search,
-  SlidersHorizontal,
+  Trash2,
+  UserPlus2,
   Users,
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -21,68 +22,85 @@ import { Button } from '@/components/ui/button'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import {
-  MOCK_MANAGER_CLASSES,
-  type ManagerClassCardVariant,
-  type ManagerClassRow,
-} from '@/features/manager/mock/mockManagerHub'
+  useAddClassMember,
+  useClassMemberOptions,
+  useCreateManagerClass,
+  useDeleteManagerClass,
+  useManagerClasses,
+  useRemoveClassMember,
+} from '@/features/manager/hooks'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 
-const STATUS_LABEL: Record<ManagerClassRow['status'], { label: string; className: string }> = {
+const STATUS_LABEL: Record<'open' | 'full' | 'closed', { label: string; className: string }> = {
   open: { label: 'Đang mở', className: 'bg-white/20 text-white backdrop-blur-md' },
   full: { label: 'Đủ chỗ', className: 'bg-white/20 text-white backdrop-blur-md' },
   closed: { label: 'Đã đóng', className: 'bg-white/15 text-white/90' },
 }
 
-const HEADER_GRADIENT: Record<ManagerClassCardVariant, string> = {
-  indigo: 'from-primary via-primary-600 to-primary-700',
-  emerald: 'from-emerald-500 to-teal-600',
-  amber: 'from-amber-500 to-orange-600',
+const HEADER_GRADIENT: Record<'open' | 'full' | 'closed', string> = {
+  open: 'from-primary via-primary-600 to-primary-700',
+  full: 'from-amber-500 to-orange-600',
+  closed: 'from-gray-500 to-gray-700',
 }
 
-const PROGRESS_FILL: Record<ManagerClassCardVariant, string> = {
-  indigo: 'bg-primary',
-  emerald: 'bg-emerald-500',
-  amber: 'bg-amber-500',
+const LEVEL_LABELS: Record<string, string> = {
+  tap_su: 'Tập sự',
+  biet_viec: 'Biết việc',
+  duoc_viec: 'Được việc',
+  dong_gop_ket_qua: 'Đóng góp kết quả',
+  tuong: 'Tướng',
+}
+
+type CreateLevel = 'tap_su' | 'biet_viec' | 'duoc_viec' | 'dong_gop_ket_qua' | 'tuong'
+
+const LEVEL_FLOW_OPTIONS: Array<{ value: CreateLevel; label: string }> = [
+  { value: 'tap_su', label: 'Tập sự' },
+  { value: 'biet_viec', label: 'Biết việc' },
+  { value: 'duoc_viec', label: 'Được việc' },
+  { value: 'dong_gop_ket_qua', label: 'Đóng góp kết quả' },
+  { value: 'tuong', label: 'Tướng' },
+]
+
+const NEXT_LEVEL_BY_FROM: Record<CreateLevel, CreateLevel> = {
+  tap_su: 'biet_viec',
+  biet_viec: 'duoc_viec',
+  duoc_viec: 'dong_gop_ket_qua',
+  dong_gop_ket_qua: 'tuong',
+  tuong: 'tuong',
 }
 
 const DOT_PATTERN =
   'radial-gradient(circle at 2px 2px, rgb(255 255 255 / 0.35) 1px, transparent 0)'
 
-function MemberAvatarStack({ count }: { count: number }) {
-  const shown = Math.min(2, Math.max(0, count))
-  const overflow = count > shown ? count - shown : 0
-  return (
-    <div className="flex -space-x-2">
-      {Array.from({ length: shown }).map((_, i) => (
-        <div
-          key={i}
-          className={cn(
-            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br text-[10px] font-bold text-primary-700',
-            i === 0 ? 'from-primary-100 to-primary-200' : 'from-teal-100 to-teal-200 text-teal-800'
-          )}
-        >
-          {i === 0 ? 'HV' : 'NV'}
-        </div>
-      ))}
-      {overflow > 0 ? (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-white bg-muted text-[10px] font-bold text-muted-foreground">
-          +{overflow}
-        </div>
-      ) : null}
-    </div>
-  )
+function toViDate(iso: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('vi-VN')
 }
 
 export function ManagerClassesScreen() {
-  const [rows] = useState(MOCK_MANAGER_CLASSES)
+  const [search, setSearch] = useState('')
   const [name, setName] = useState('')
-  const [query, setQuery] = useState('')
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [createLevelFrom, setCreateLevelFrom] = useState<CreateLevel>('tap_su')
+  const [createMemberQuery, setCreateMemberQuery] = useState('')
+  const [selectedCreateMembers, setSelectedCreateMembers] = useState<Array<{ userId: string; name: string; email: string }>>([])
+  const [memberQueries, setMemberQueries] = useState<Record<string, string>>({})
+  const [activeClassForDropdown, setActiveClassForDropdown] = useState<string | null>(null)
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter((r) => r.name.toLowerCase().includes(q))
-  }, [rows, query])
+  const { data: rows = [], isLoading } = useManagerClasses({ search })
+  const createClass = useCreateManagerClass()
+  const deleteClass = useDeleteManagerClass()
+  const addMember = useAddClassMember()
+  const removeMember = useRemoveClassMember()
+
+  const activeQuery = activeClassForDropdown ? (memberQueries[activeClassForDropdown] ?? '') : ''
+  const { data: memberOptions = [], isFetching: fetchingMemberOptions } = useClassMemberOptions(activeQuery)
+  const { data: createMemberOptions = [], isFetching: fetchingCreateOptions } = useClassMemberOptions(
+    createMemberQuery,
+    createLevelFrom
+  )
 
   const totalMembers = rows.reduce((a, r) => a + r.memberCount, 0)
   const openCount = rows.filter((r) => r.status === 'open').length
@@ -93,12 +111,35 @@ export function ManagerClassesScreen() {
       toast.error('Tên lớp ít nhất 3 ký tự')
       return
     }
-    toast.success(`Đã tạo lớp “${n}” (demo — chưa lưu server)`)
-    setName('')
+    createClass.mutate(
+      {
+        name: n,
+        levelFrom: createLevelFrom,
+        levelTo: NEXT_LEVEL_BY_FROM[createLevelFrom],
+        status: 'open',
+        memberUserIds: selectedCreateMembers.map((m) => m.userId),
+      },
+      {
+        onSuccess: () => {
+          setName('')
+          setIsCreateOpen(false)
+          setCreateMemberQuery('')
+          setSelectedCreateMembers([])
+          setCreateLevelFrom('tap_su')
+        },
+      }
+    )
   }
 
   const pageSubtitle =
-    'Quản lý và điều phối học viên vào các lớp đào tạo chuyên môn theo đợt tuyển dụng hoặc lộ trình thăng tiến. Dữ liệu minh họa — sẵn sàng nối API.'
+    'Quản lý và điều phối nhân sự vào các lớp đào tạo. Dữ liệu lấy trực tiếp từ API manager/classes.'
+
+  const optionsByClass = useMemo(() => {
+    if (!activeClassForDropdown) return []
+    const cls = rows.find((r) => r.id === activeClassForDropdown)
+    const joined = new Set((cls?.members ?? []).map((m) => m.userId))
+    return memberOptions.filter((o) => !joined.has(o.userId))
+  }, [activeClassForDropdown, rows, memberOptions])
 
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
@@ -118,7 +159,6 @@ export function ManagerClassesScreen() {
           </div>
         </div>
 
-        {/* Stats — bento (cùng khối spacing với màn team-progress) */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div
           className={cn(
@@ -127,7 +167,7 @@ export function ManagerClassesScreen() {
           )}
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary">
-            <Building2 className="h-6 w-6" strokeWidth={2} />
+            <Users className="h-6 w-6" strokeWidth={2} />
           </div>
           <div>
             <div className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
@@ -143,7 +183,7 @@ export function ManagerClassesScreen() {
           )}
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-            <Users className="h-6 w-6" strokeWidth={2} />
+            <UserPlus2 className="h-6 w-6" strokeWidth={2} />
           </div>
           <div>
             <div className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
@@ -159,7 +199,7 @@ export function ManagerClassesScreen() {
           )}
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-            <BookOpen className="h-6 w-6" strokeWidth={2} />
+            <Calendar className="h-6 w-6" strokeWidth={2} />
           </div>
           <div>
             <div className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
@@ -187,7 +227,6 @@ export function ManagerClassesScreen() {
         </div>
       </div>
 
-      {/* Tìm kiếm + lọc + tạo */}
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-stretch">
         <div className="group relative min-w-0 flex-1">
           <Search
@@ -195,8 +234,8 @@ export function ManagerClassesScreen() {
             strokeWidth={2}
           />
           <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm theo tên lớp, ví dụ: Tập sự — Đợt Q2/2026"
             className="w-full rounded-xl border border-transparent bg-muted/80 py-3 pl-11 pr-4 text-sm shadow-inner outline-none ring-offset-background transition-all placeholder:text-muted-foreground focus:border-primary/30 focus:ring-2 focus:ring-primary/20"
           />
@@ -204,57 +243,167 @@ export function ManagerClassesScreen() {
         <div className="flex shrink-0 gap-3">
           <Button
             type="button"
-            variant="secondary"
-            className="gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
-            onClick={() => toast.info('Bộ lọc — nối API')}
+            className="gap-2 rounded-xl px-6 py-3 text-sm font-bold shadow-md"
+            onClick={() => setIsCreateOpen((v) => !v)}
           >
-            <SlidersHorizontal className="h-4 w-4" strokeWidth={2} />
-            Bộ lọc
-          </Button>
-          <div className="hidden min-w-[12rem] flex-1 flex-col gap-2 sm:flex sm:min-w-0 sm:flex-row sm:items-stretch">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Tên lớp mới"
-              className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/20"
-            />
-            <Button
-              type="button"
-              className="gap-2 rounded-xl px-6 py-3 text-sm font-bold shadow-md"
-              onClick={onCreate}
-            >
-              <PlusCircle className="h-4 w-4" strokeWidth={2} />
-              Tạo lớp
-            </Button>
-          </div>
-        </div>
-      </div>
-      <div className="mb-6 flex flex-col gap-2 sm:hidden">
-        <label htmlFor="new-class-mobile" className="text-xs font-semibold text-muted-foreground">
-          Tạo lớp mới
-        </label>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <input
-            id="new-class-mobile"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Tên lớp mới"
-            className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
-          <Button type="button" className="gap-2 rounded-xl font-bold" onClick={onCreate}>
             <PlusCircle className="h-4 w-4" strokeWidth={2} />
             Tạo lớp
           </Button>
         </div>
       </div>
 
-      {/* Lưới lớp */}
+      {isCreateOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border bg-card p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-foreground">Tạo lớp học mới</h3>
+              <button
+                type="button"
+                className="rounded p-1 text-muted-foreground hover:bg-muted"
+                onClick={() => {
+                  setIsCreateOpen(false)
+                  setName('')
+                  setCreateMemberQuery('')
+                  setSelectedCreateMembers([])
+                }}
+                aria-label="Đóng"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label htmlFor="new-class-name" className="mb-1 block text-xs font-semibold text-muted-foreground">
+                  Tên lớp
+                </label>
+                <input
+                  id="new-class-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ví dụ: Tập sự — Đợt Q2/2026"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Cấp lớp</label>
+                <select
+                  value={createLevelFrom}
+                  onChange={(e) => setCreateLevelFrom(e.target.value as typeof createLevelFrom)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                >
+                  {LEVEL_FLOW_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Lộ trình</label>
+                <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm font-medium text-foreground">
+                  {LEVEL_LABELS[createLevelFrom]} → {LEVEL_LABELS[NEXT_LEVEL_BY_FROM[createLevelFrom]]}
+                </div>
+              </div>
+
+              <div className="relative md:col-span-2">
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                  Thêm nhân sự cho lớp (theo cấp đã chọn)
+                </label>
+                <input
+                  value={createMemberQuery}
+                  onChange={(e) => setCreateMemberQuery(e.target.value)}
+                  placeholder="Gõ tên/email để tìm nhân sự..."
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+                {createMemberQuery.trim().length > 0 ? (
+                  <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                    {fetchingCreateOptions ? (
+                      <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Đang tìm...
+                      </div>
+                    ) : createMemberOptions.filter((opt) => !selectedCreateMembers.some((m) => m.userId === opt.userId))
+                        .length === 0 ? (
+                      <div className="px-2 py-2 text-xs text-muted-foreground">Không có kết quả phù hợp</div>
+                    ) : (
+                      createMemberOptions
+                        .filter((opt) => !selectedCreateMembers.some((m) => m.userId === opt.userId))
+                        .map((opt) => (
+                          <button
+                            key={opt.userId}
+                            type="button"
+                            className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-primary/10"
+                            onClick={() => {
+                              setSelectedCreateMembers((prev) => [...prev, opt])
+                              setCreateMemberQuery('')
+                            }}
+                          >
+                            <p className="font-semibold text-foreground">{opt.name}</p>
+                            <p className="text-muted-foreground">{opt.email}</p>
+                          </button>
+                        ))
+                    )}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="md:col-span-2">
+                <p className="mb-1 text-xs font-semibold text-muted-foreground">Nhân sự đã chọn</p>
+                {selectedCreateMembers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Chưa chọn nhân sự nào.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCreateMembers.map((m) => (
+                      <span key={m.userId} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs">
+                        {m.name}
+                        <button
+                          type="button"
+                          className="rounded p-0.5 hover:bg-primary/20"
+                          onClick={() =>
+                            setSelectedCreateMembers((prev) => prev.filter((x) => x.userId !== m.userId))
+                          }
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsCreateOpen(false)
+                  setName('')
+                  setCreateMemberQuery('')
+                  setSelectedCreateMembers([])
+                }}
+                disabled={createClass.isPending}
+              >
+                Hủy
+              </Button>
+              <Button type="button" className="gap-2 font-bold" onClick={onCreate} disabled={createClass.isPending}>
+                <PlusCircle className="h-4 w-4" />
+                {createClass.isPending ? 'Đang tạo…' : 'Tạo lớp'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((row) => {
+        {rows.map((row) => {
           const st = STATUS_LABEL[row.status]
-          const header = HEADER_GRADIENT[row.cardVariant]
-          const bar = PROGRESS_FILL[row.cardVariant]
-          const done = row.progressPercent >= 100
+          const header = HEADER_GRADIENT[row.status]
+          const memberQuery = memberQueries[row.id] ?? ''
+          const showDropdown = activeClassForDropdown === row.id && memberQuery.trim().length > 0
           return (
             <div
               key={row.id}
@@ -288,38 +437,86 @@ export function ManagerClassesScreen() {
               </div>
               <div className="p-6">
                 <div className="mb-6 flex items-center gap-4">
-                  <MemberAvatarStack count={row.memberCount} />
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {row.memberCount} thành viên
-                  </span>
+                  <span className="text-xs font-medium text-muted-foreground">{row.memberCount} thành viên</span>
                 </div>
-                <div className="mb-6 space-y-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Kỳ thi dự kiến:</span>
-                    <span className="font-bold text-foreground">{row.examDateShort}</span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={cn('h-1.5 rounded-full transition-all', bar)}
-                      style={{ width: `${Math.min(100, row.progressPercent)}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
-                    <span>Tiến độ học</span>
-                    <span>{done ? 'Hoàn thành' : `${row.progressPercent}%`}</span>
-                  </div>
+
+                <div className="mb-4 rounded-lg border border-border/70 bg-muted/30 p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    {LEVEL_LABELS[row.levelFrom]} → {LEVEL_LABELS[row.levelTo]}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Kỳ thi dự kiến: {toViDate(row.examDate)}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+
+                <div className="space-y-2">
+                  {(row.members ?? []).slice(0, 6).map((m) => (
+                    <div key={m.userId} className="flex items-center justify-between rounded-md border bg-white px-2 py-1.5 text-xs">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-foreground">{m.name}</p>
+                        <p className="truncate text-muted-foreground">{m.email}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        onClick={() => removeMember.mutate({ classId: row.id, userId: m.userId })}
+                        title="Xóa khỏi lớp"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="relative mt-3">
+                  <input
+                    value={memberQuery}
+                    onFocus={() => setActiveClassForDropdown(row.id)}
+                    onChange={(e) => {
+                      setActiveClassForDropdown(row.id)
+                      setMemberQueries((prev) => ({ ...prev, [row.id]: e.target.value }))
+                    }}
+                    placeholder="Gõ tên/email để thêm nhân sự..."
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
+                  {showDropdown ? (
+                    <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                      {fetchingMemberOptions ? (
+                        <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Đang tìm...
+                        </div>
+                      ) : optionsByClass.length === 0 ? (
+                        <div className="px-2 py-2 text-xs text-muted-foreground">Không có kết quả phù hợp</div>
+                      ) : (
+                        optionsByClass.map((opt) => (
+                          <button
+                            type="button"
+                            key={opt.userId}
+                            className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-primary/10"
+                            onClick={() => {
+                              addMember.mutate({ classId: row.id, userId: opt.userId })
+                              setMemberQueries((prev) => ({ ...prev, [row.id]: '' }))
+                              setActiveClassForDropdown(null)
+                            }}
+                          >
+                            <p className="font-semibold text-foreground">{opt.name}</p>
+                            <p className="text-muted-foreground">{opt.email}</p>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
                   <Button
                     type="button"
-                    variant="secondary"
+                    variant="outline"
                     size="sm"
-                    className="h-auto rounded-lg py-2.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground"
-                    onClick={() =>
-                      toast.info('Chi tiết lớp & danh sách học viên — nối API (Teacher xem cùng dữ liệu).')
-                    }
+                    className="h-auto rounded-lg py-2.5 text-xs font-bold text-destructive"
+                    onClick={() => deleteClass.mutate(row.id)}
                   >
-                    Chi tiết lớp
+                    <Trash2 className="mr-1 h-3.5 w-3.5" />
+                    Xóa lớp
                   </Button>
                   <Button
                     type="button"
@@ -333,19 +530,16 @@ export function ManagerClassesScreen() {
                     </Link>
                   </Button>
                 </div>
-                <p className="mt-4 text-xs text-muted-foreground">Cập nhật {row.updatedAt}</p>
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground/90">{row.levelLabel}</span>
-                  {' · '}
-                  {row.examLabel}
-                </p>
+                <p className="mt-3 text-xs text-muted-foreground">Cập nhật {toViDate(row.updatedAt)}</p>
               </div>
             </div>
           )
         })}
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <p className="mt-6 text-center text-sm text-muted-foreground">Đang tải danh sách lớp...</p>
+      ) : rows.length === 0 ? (
         <p className="mt-6 text-center text-sm text-muted-foreground">Không có lớp khớp tìm kiếm.</p>
       ) : null}
 

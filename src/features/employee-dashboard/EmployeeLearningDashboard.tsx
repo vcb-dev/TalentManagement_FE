@@ -45,11 +45,6 @@ function monthLabelVi(d: Date): string {
   return `Tháng ${d.getMonth() + 1} · ${d.getFullYear()}`
 }
 
-function formatTeams(teamIds: string[]): string {
-  if (teamIds.length === 0) return 'Chưa gán team'
-  return teamIds.map((id) => `Team · ${shortId(id)}`).join(', ')
-}
-
 function formatDepartment(departmentId: string): string {
   return `PB · ${shortId(departmentId)}`
 }
@@ -119,7 +114,7 @@ export function EmployeeLearningDashboard() {
   const filledStars = apiCareer?.currentStars ?? meDashboard?.levelSource?.starCount ?? 0
 
   const deptLine = apiUser?.departmentName?.trim() || (user ? formatDepartment(user.departmentId) : '—')
-  const teamLine = apiUser?.teamGroup?.trim() || (user ? formatTeams(user.teamIds) : '—')
+  const classLine = apiUser?.learningClassName?.trim() || 'Không có'
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const fullName = apiUser?.fullNameLegal?.trim() || user?.name || '—'
   const birthDate = formatDateVi(apiUser?.birthDate)
@@ -325,7 +320,7 @@ export function EmployeeLearningDashboard() {
                 ['Họ và tên', fullName],
                 ['Ngày sinh', birthDate],
                 ['Phòng ban', deptLine],
-                ['Team', teamLine],
+                ['Lớp', classLine],
                 ['Chức vụ', roleLabel],
                 ['Cấp độ học tập', levelLabel],
               ].map(([label, value], idx) => (
