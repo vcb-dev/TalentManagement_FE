@@ -85,3 +85,38 @@ export const kpiMonthlyApiSchema = z.object({
     })
   ),
 })
+
+export const managerClassMemberApiSchema = z.object({
+  userId: z.string().uuid(),
+  name: z.string(),
+  email: z.string(),
+  joinedAt: z.string().datetime(),
+})
+
+export const managerClassApiSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  levelFrom: z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong']),
+  levelTo: z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong']),
+  status: z.enum(['open', 'full', 'closed']),
+  capacity: z.number().int().nullable(),
+  examDate: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  memberCount: z.number().int().nonnegative(),
+  members: z.array(managerClassMemberApiSchema),
+})
+
+export const managerClassCreateResponseSchema = z.object({
+  id: z.string().uuid(),
+})
+
+export const managerClassActionResponseSchema = z.object({
+  ok: z.boolean(),
+})
+
+export const managerMemberOptionApiSchema = z.object({
+  userId: z.string().uuid(),
+  name: z.string(),
+  email: z.string(),
+})

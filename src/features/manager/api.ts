@@ -9,6 +9,10 @@ import {
   approvalItemApiSchema,
   approvalsPageApiSchema,
   kpiMonthlyApiSchema,
+  managerClassActionResponseSchema,
+  managerClassApiSchema,
+  managerClassCreateResponseSchema,
+  managerMemberOptionApiSchema,
   teamMemberProgressApiSchema,
   teamProgressPageApiSchema,
   teamProgressSummaryApiSchema,
@@ -107,5 +111,53 @@ export const managerApi = {
   kpiMonthly: async (month: string) => {
     const res = await apiClient.get<unknown>('/manager/kpi', { params: { month } })
     return safeParse(kpiMonthlyApiSchema, res.data, 'GET kpi')
+  },
+
+  classes: async (params?: { search?: string; levelFrom?: string; status?: string }) => {
+    const res = await apiClient.get<unknown>('/manager/classes', { params })
+    return safeParse(z.array(managerClassApiSchema), res.data, 'GET /manager/classes')
+  },
+
+  createClass: async (input: {
+    name: string
+    levelFrom?: string
+    levelTo?: string
+    status?: string
+    capacity?: number | null
+    examDate?: string | null
+    memberUserIds?: string[]
+  }) => {
+    const res = await apiClient.post<unknown>('/manager/classes', input)
+    return safeParse(managerClassCreateResponseSchema, res.data, 'POST /manager/classes')
+  },
+
+  updateClass: async (
+    classId: string,
+    input: { name?: string; status?: string; capacity?: number | null; examDate?: string | null }
+  ) => {
+    const res = await apiClient.patch<unknown>(`/manager/classes/${classId}`, input)
+    return safeParse(managerClassActionResponseSchema, res.data, 'PATCH /manager/classes/:id')
+  },
+
+  deleteClass: async (classId: string) => {
+    const res = await apiClient.delete<unknown>(`/manager/classes/${classId}`)
+    return safeParse(managerClassActionResponseSchema, res.data, 'DELETE /manager/classes/:id')
+  },
+
+  memberOptions: async (query: string, levelFrom?: string) => {
+    const res = await apiClient.get<unknown>('/manager/classes/member-options', {
+      params: { query, levelFrom },
+    })
+    return safeParse(z.array(managerMemberOptionApiSchema), res.data, 'GET /manager/classes/member-options')
+  },
+
+  addClassMember: async (classId: string, userId: string) => {
+    const res = await apiClient.post<unknown>(`/manager/classes/${classId}/members`, { userId })
+    return safeParse(managerClassActionResponseSchema, res.data, 'POST /manager/classes/:id/members')
+  },
+
+  removeClassMember: async (classId: string, userId: string) => {
+    const res = await apiClient.delete<unknown>(`/manager/classes/${classId}/members/${userId}`)
+    return safeParse(managerClassActionResponseSchema, res.data, 'DELETE /manager/classes/:id/members/:userId')
   },
 }
