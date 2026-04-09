@@ -14,6 +14,8 @@ import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProtectedProfileRouteImport } from './routes/_protected/profile'
 import { Route as ProtectedMonthlyReportRouteImport } from './routes/_protected/monthly-report'
+import { Route as ProtectedLearningScheduleRouteImport } from './routes/_protected/learning-schedule'
+import { Route as ProtectedLearningClassesRouteImport } from './routes/_protected/learning-classes'
 import { Route as ProtectedKpiOkrRouteImport } from './routes/_protected/kpi-okr'
 import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
@@ -68,6 +70,18 @@ const ProtectedMonthlyReportRoute = ProtectedMonthlyReportRouteImport.update({
   path: '/monthly-report',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProtectedLearningScheduleRoute =
+  ProtectedLearningScheduleRouteImport.update({
+    id: '/learning-schedule',
+    path: '/learning-schedule',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedLearningClassesRoute =
+  ProtectedLearningClassesRouteImport.update({
+    id: '/learning-classes',
+    path: '/learning-classes',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedKpiOkrRoute = ProtectedKpiOkrRouteImport.update({
   id: '/kpi-okr',
   path: '/kpi-okr',
@@ -244,6 +258,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/dashboard': typeof ProtectedDashboardRoute
   '/kpi-okr': typeof ProtectedKpiOkrRoute
+  '/learning-classes': typeof ProtectedLearningClassesRoute
+  '/learning-schedule': typeof ProtectedLearningScheduleRoute
   '/monthly-report': typeof ProtectedMonthlyReportRoute
   '/profile': typeof ProtectedProfileRoute
   '/bod/dashboard': typeof ProtectedBodDashboardRoute
@@ -279,6 +295,8 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/dashboard': typeof ProtectedDashboardRoute
   '/kpi-okr': typeof ProtectedKpiOkrRoute
+  '/learning-classes': typeof ProtectedLearningClassesRoute
+  '/learning-schedule': typeof ProtectedLearningScheduleRoute
   '/monthly-report': typeof ProtectedMonthlyReportRoute
   '/profile': typeof ProtectedProfileRoute
   '/bod/dashboard': typeof ProtectedBodDashboardRoute
@@ -317,6 +335,8 @@ export interface FileRoutesById {
   '/_auth/login': typeof AuthLoginRoute
   '/_protected/dashboard': typeof ProtectedDashboardRoute
   '/_protected/kpi-okr': typeof ProtectedKpiOkrRoute
+  '/_protected/learning-classes': typeof ProtectedLearningClassesRoute
+  '/_protected/learning-schedule': typeof ProtectedLearningScheduleRoute
   '/_protected/monthly-report': typeof ProtectedMonthlyReportRoute
   '/_protected/profile': typeof ProtectedProfileRoute
   '/_protected/bod/dashboard': typeof ProtectedBodDashboardRoute
@@ -354,6 +374,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/kpi-okr'
+    | '/learning-classes'
+    | '/learning-schedule'
     | '/monthly-report'
     | '/profile'
     | '/bod/dashboard'
@@ -389,6 +411,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/kpi-okr'
+    | '/learning-classes'
+    | '/learning-schedule'
     | '/monthly-report'
     | '/profile'
     | '/bod/dashboard'
@@ -426,6 +450,8 @@ export interface FileRouteTypes {
     | '/_auth/login'
     | '/_protected/dashboard'
     | '/_protected/kpi-okr'
+    | '/_protected/learning-classes'
+    | '/_protected/learning-schedule'
     | '/_protected/monthly-report'
     | '/_protected/profile'
     | '/_protected/bod/dashboard'
@@ -498,6 +524,20 @@ declare module '@tanstack/react-router' {
       path: '/monthly-report'
       fullPath: '/monthly-report'
       preLoaderRoute: typeof ProtectedMonthlyReportRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/learning-schedule': {
+      id: '/_protected/learning-schedule'
+      path: '/learning-schedule'
+      fullPath: '/learning-schedule'
+      preLoaderRoute: typeof ProtectedLearningScheduleRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/learning-classes': {
+      id: '/_protected/learning-classes'
+      path: '/learning-classes'
+      fullPath: '/learning-classes'
+      preLoaderRoute: typeof ProtectedLearningClassesRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/kpi-okr': {
@@ -728,6 +768,8 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 interface ProtectedRouteRouteChildren {
   ProtectedDashboardRoute: typeof ProtectedDashboardRoute
   ProtectedKpiOkrRoute: typeof ProtectedKpiOkrRoute
+  ProtectedLearningClassesRoute: typeof ProtectedLearningClassesRoute
+  ProtectedLearningScheduleRoute: typeof ProtectedLearningScheduleRoute
   ProtectedMonthlyReportRoute: typeof ProtectedMonthlyReportRoute
   ProtectedProfileRoute: typeof ProtectedProfileRoute
   ProtectedBodDashboardRoute: typeof ProtectedBodDashboardRoute
@@ -762,6 +804,8 @@ interface ProtectedRouteRouteChildren {
 const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedDashboardRoute: ProtectedDashboardRoute,
   ProtectedKpiOkrRoute: ProtectedKpiOkrRoute,
+  ProtectedLearningClassesRoute: ProtectedLearningClassesRoute,
+  ProtectedLearningScheduleRoute: ProtectedLearningScheduleRoute,
   ProtectedMonthlyReportRoute: ProtectedMonthlyReportRoute,
   ProtectedProfileRoute: ProtectedProfileRoute,
   ProtectedBodDashboardRoute: ProtectedBodDashboardRoute,
