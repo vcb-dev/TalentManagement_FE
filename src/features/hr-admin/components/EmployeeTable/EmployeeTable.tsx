@@ -14,10 +14,14 @@ export interface EmployeeTableProps {
   onView: (id: string) => void
   onEdit: (id: string) => void
   onDeactivate: (id: string) => void
+  /** Kích hoạt lại (status ACTIVE) — cần quyền chỉnh sửa. */
+  onReactivate?: (id: string) => void
   pagination: PaginationState & { total: number }
   onPageChange: (page: number) => void
   /** Quản lý team: chỉ cột Xem. */
   listMode?: 'hr' | 'team'
+  canEdit?: boolean
+  canDeactivate?: boolean
 }
 
 export function EmployeeTable({
@@ -26,10 +30,19 @@ export function EmployeeTable({
   onView,
   onEdit,
   onDeactivate,
+  onReactivate,
   pagination,
   onPageChange,
   listMode = 'hr',
+  canEdit = true,
+  canDeactivate = true,
 }: EmployeeTableProps) {
+  const pageSize = Math.max(1, pagination.pageSize)
+  const totalPages = pagination.totalPages ?? Math.max(1, Math.ceil(pagination.total / pageSize))
+  const from = pagination.total === 0 ? 0 : (pagination.page - 1) * pageSize + 1
+  const to = Math.min(pagination.page * pageSize, pagination.total)
+  const canGoNext = pagination.page < totalPages
+
   const columns: DataTableColumn<EmployeeEntity>[] = [
     {
       id: 'name',
@@ -67,12 +80,21 @@ export function EmployeeTable({
           </Button>
           {listMode === 'hr' ? (
             <>
-              <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(e.id)}>
-                Sửa
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => onDeactivate(e.id)}>
-                Vô hiệu
-              </Button>
+              {canEdit ? (
+                <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(e.id)}>
+                  Sửa
+                </Button>
+              ) : null}
+              {e.status === 'INACTIVE' && onReactivate && canEdit ? (
+                <Button type="button" variant="ghost" size="sm" onClick={() => onReactivate(e.id)}>
+                  Kích hoạt
+                </Button>
+              ) : null}
+              {e.status !== 'INACTIVE' && canDeactivate ? (
+                <Button type="button" variant="ghost" size="sm" onClick={() => onDeactivate(e.id)}>
+                  Vô hiệu
+                </Button>
+              ) : null}
             </>
           ) : null}
         </div>
@@ -83,9 +105,11 @@ export function EmployeeTable({
   return (
     <div className="space-y-3">
       <DataTable columns={columns} data={employees} isLoading={isLoading} />
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>
-          Trang {pagination.page} — {pagination.total} bản ghi
+          {pagination.total === 0
+            ? 'Không có bản ghi'
+            : `Hiển thị ${from}–${to} trong ${pagination.total} · Trang ${pagination.page}/${totalPages}`}
         </span>
         <div className="flex gap-2">
           <Button
@@ -97,7 +121,13 @@ export function EmployeeTable({
           >
             Trước
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => onPageChange(pagination.page + 1)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!canGoNext}
+            onClick={() => onPageChange(pagination.page + 1)}
+          >
             Sau
           </Button>
         </div>

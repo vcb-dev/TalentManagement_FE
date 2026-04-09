@@ -213,11 +213,12 @@ function SidebarInner() {
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const subtitle = `${displayName} · ${roleLabel}`
 
-  const isSectionOpen = (label: string) => openSections[label] ?? true
+  /** Mặc định đóng để menu không kéo dài tràn màn hình; section chứa route hiện tại được mở trong effect theo pathname. */
+  const isSectionOpen = (label: string) => openSections[label] ?? false
 
   const toggleSection = (label: string) => {
     setOpenSections((prev) => {
-      const cur = prev[label] ?? true
+      const cur = prev[label] ?? false
       return { ...prev, [label]: !cur }
     })
   }

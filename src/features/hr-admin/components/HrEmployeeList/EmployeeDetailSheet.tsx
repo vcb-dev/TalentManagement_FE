@@ -46,9 +46,19 @@ export interface EmployeeDetailSheetProps {
   employee: EmployeeEntity | null
   onClose: () => void
   onDeactivate: (id: string) => void
+  onReactivate?: (id: string) => void
+  canDeactivate?: boolean
+  canReactivate?: boolean
 }
 
-export function EmployeeDetailSheet({ employee, onClose, onDeactivate }: EmployeeDetailSheetProps) {
+export function EmployeeDetailSheet({
+  employee,
+  onClose,
+  onDeactivate,
+  onReactivate,
+  canDeactivate = true,
+  canReactivate = true,
+}: EmployeeDetailSheetProps) {
   if (!employee) return null
 
   const xpPct = Math.min(100, Math.round((employee.currentStar / 6) * 100))
@@ -220,13 +230,24 @@ export function EmployeeDetailSheet({ employee, onClose, onDeactivate }: Employe
         >
           Xem hồ sơ đầy đủ
         </Link>
-        <button
-          type="button"
-          className="w-full rounded-xl border border-destructive/40 bg-destructive/10 py-3 text-sm font-bold text-destructive transition-colors hover:bg-destructive/15"
-          onClick={() => onDeactivate(employee.id)}
-        >
-          Hủy hoạt động
-        </button>
+        {employee.status === 'INACTIVE' && onReactivate && canReactivate ? (
+          <button
+            type="button"
+            className="w-full rounded-xl border border-primary/30 bg-primary/10 py-3 text-sm font-bold text-primary transition-colors hover:bg-primary/15"
+            onClick={() => onReactivate(employee.id)}
+          >
+            Kích hoạt lại
+          </button>
+        ) : null}
+        {employee.status !== 'INACTIVE' && canDeactivate ? (
+          <button
+            type="button"
+            className="w-full rounded-xl border border-destructive/40 bg-destructive/10 py-3 text-sm font-bold text-destructive transition-colors hover:bg-destructive/15"
+            onClick={() => onDeactivate(employee.id)}
+          >
+            Hủy hoạt động
+          </button>
+        ) : null}
       </div>
     </aside>
   )

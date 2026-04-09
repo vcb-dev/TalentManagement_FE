@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import type { CreateEmployeeInput } from '@/types/api'
+import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
 import { employeeApi, type CreateEmployeeMeta } from './api'
 import { employeeKeys } from './queryKeys'
 import type { EmployeeFilters } from './types'
@@ -33,6 +33,22 @@ export function useCreateEmployee() {
     },
     onError: () => {
       toast.error('Không thể tạo nhân viên')
+    },
+  })
+}
+
+export function useUpdateEmployee() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { id: string; patch: PatchEmployeeInput }) =>
+      employeeApi.update(args.id, args.patch),
+    onSuccess: (_data, { id }) => {
+      void qc.invalidateQueries({ queryKey: employeeKeys.detail(id) })
+      void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
+      toast.success('Đã cập nhật nhân viên')
+    },
+    onError: () => {
+      toast.error('Không thể cập nhật nhân viên')
     },
   })
 }

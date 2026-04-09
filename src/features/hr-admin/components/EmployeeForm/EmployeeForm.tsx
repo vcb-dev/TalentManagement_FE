@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { ArrowLeft, Bell, ClipboardCheck, Info, Network, User } from 'lucide-react'
+import { ArrowLeft, Bell, Network, User } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Controller, FormProvider, type UseFormReturn } from 'react-hook-form'
 import {
@@ -19,7 +19,6 @@ const ROLE_OPTIONS: { value: CreateEmployeeForm['role']; label: string }[] = [
   { value: 'LEADER', label: 'Trưởng nhóm KPI' },
   { value: 'MANAGER', label: 'Quản lý' },
   { value: 'HR', label: 'HR' },
-  { value: 'TEACHER', label: 'Người chấm thi' },
   { value: 'BOD', label: 'BOD' },
 ]
 
@@ -42,7 +41,6 @@ export interface EmployeeFormProps {
 export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps) {
   const navigate = useNavigate()
   const { register, handleSubmit, control, formState } = form
-  const assignGrader = form.watch('assignGrader')
 
   return (
     <FormProvider {...form}>
@@ -76,7 +74,11 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
               <SectionCard icon={User} title="Thông tin cơ bản" entranceIndex={0}>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <Field label="Họ và tên *" error={formState.errors.name?.message}>
-                    <input className={inputClass} placeholder="Nhập họ và tên..." {...register('name')} />
+                    <input
+                      className={inputClass}
+                      placeholder="Nhập họ và tên..."
+                      {...register('name')}
+                    />
                   </Field>
                   <Field label="Email công ty *" error={formState.errors.email?.message}>
                     <input
@@ -88,7 +90,11 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                     />
                   </Field>
                   <Field label="Số điện thoại" error={formState.errors.phone?.message}>
-                    <input className={inputClass} placeholder="09xx xxx xxx" {...register('phone')} />
+                    <input
+                      className={inputClass}
+                      placeholder="09xx xxx xxx"
+                      {...register('phone')}
+                    />
                   </Field>
                   <Field label="Ngày sinh" error={formState.errors.birthDate?.message}>
                     <input className={inputClass} type="date" {...register('birthDate')} />
@@ -146,7 +152,10 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       )}
                     />
                   </Field>
-                  <Field label="Team phụ (tùy chọn)" error={formState.errors.secondaryTeamId?.message}>
+                  <Field
+                    label="Team phụ (tùy chọn)"
+                    error={formState.errors.secondaryTeamId?.message}
+                  >
                     <Controller
                       name="secondaryTeamId"
                       control={control}
@@ -196,85 +205,14 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       )}
                     />
                     <div>
-                      <p className="text-sm font-semibold text-foreground">Gửi email thông tin đăng nhập</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        Gửi email thông tin đăng nhập
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Tự động gửi thông tin đăng nhập tới nhân viên sau khi tạo tài khoản.
                       </p>
                     </div>
                   </label>
-                  <label className="group flex cursor-pointer items-center gap-4 rounded-lg p-4 transition-colors hover:bg-muted/50">
-                    <Controller
-                      name="notifyManager"
-                      control={control}
-                      render={({ field }) => (
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 shrink-0 rounded border-border text-primary focus:ring-primary/40"
-                          checked={field.value}
-                          onChange={field.onChange}
-                        />
-                      )}
-                    />
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Thông báo quản lý phòng ban</p>
-                      <p className="text-xs text-muted-foreground">
-                        Thông báo Manager phòng ban về nhân viên mới.
-                      </p>
-                    </div>
-                  </label>
-                </div>
-              </SectionCard>
-
-              <SectionCard
-                icon={ClipboardCheck}
-                entranceIndex={3}
-                title={
-                  <span className="flex flex-wrap items-center gap-2">
-                    Chỉ định chấm thi
-                    <span className="text-sm font-normal text-muted-foreground">(Tùy chọn)</span>
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
-                      Không phải role cố định
-                    </span>
-                  </span>
-                }
-              >
-                <div className="mb-6 flex gap-3 rounded-lg bg-primary/5 p-4">
-                  <Info className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Người chấm thi là vai trò <span className="font-semibold text-foreground">Teacher</span> (hoặc
-                    tài khoản được Manager chỉ định tạm theo từng kỳ thi). Quyền chấm gắn với kỳ thi, không phải gán
-                    vĩnh viễn trên hồ sơ nếu không có role Teacher.
-                  </p>
-                </div>
-                <label className="mb-4 flex cursor-pointer items-center gap-3 rounded-lg border border-border/80 p-3 transition-colors hover:border-primary/40">
-                  <Controller
-                    name="assignGrader"
-                    control={control}
-                    render={({ field }) => (
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 shrink-0 rounded border-border text-primary focus:ring-primary/20"
-                        checked={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
-                  <span className="text-sm font-medium text-foreground">
-                    Chỉ định nhân viên này làm người chấm thi ngay khi tạo tài khoản
-                  </span>
-                </label>
-                <div className={cn(!assignGrader && 'pointer-events-none opacity-40')}>
-                  <div className={labelClass}>Phạm vi chấm thi (nếu được chỉ định)</div>
-                  <Controller
-                    name="graderScope"
-                    control={control}
-                    render={({ field }) => (
-                      <select {...field} className={cn(inputClass, 'mt-2 cursor-pointer')} disabled={!assignGrader}>
-                        <option value="all">Tất cả lớp (không giới hạn phòng ban)</option>
-                        <option value="own_dept">Chỉ phòng ban của mình</option>
-                      </select>
-                    )}
-                  />
                 </div>
               </SectionCard>
             </div>
@@ -298,7 +236,11 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
 
             <p className="text-center text-xs text-muted-foreground">
               Cần quay về danh sách?{' '}
-              <Link to="/hr-admin" search={{ page: 1 }} className="font-semibold text-primary hover:underline">
+              <Link
+                to="/hr-admin"
+                search={{ page: 1 }}
+                className="font-semibold text-primary hover:underline"
+              >
                 Danh sách nhân sự
               </Link>
             </p>

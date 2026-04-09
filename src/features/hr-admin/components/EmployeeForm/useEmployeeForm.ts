@@ -12,11 +12,15 @@ function toApiPayload(values: CreateEmployeeForm): CreateEmployeeInput {
     role: values.role,
     departmentId: values.departmentId,
     teamId: values.teamId,
+    initialLevel: values.initialLevel,
+    notifyEmail: values.notifyEmail,
   }
   const phone = values.phone?.trim()
   if (phone) payload.phone = phone
   const birth = values.birthDate?.trim()
   if (birth) payload.birthDate = birth
+  const start = values.startDate?.trim()
+  if (start) payload.startDate = start
   return payload
 }
 
@@ -35,9 +39,6 @@ export function useEmployeeForm(onSuccess?: () => void) {
       initialLevel: 'tap_su',
       startDate: '',
       notifyEmail: true,
-      notifyManager: true,
-      assignGrader: false,
-      graderScope: 'all',
     },
   })
 

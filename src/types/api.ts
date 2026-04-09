@@ -2,6 +2,7 @@ import type { components } from './api.generated'
 
 export type Employee = components['schemas']['Employee']
 export type CreateEmployeeInput = components['schemas']['CreateEmployeeInput']
+export type PatchEmployeeInput = components['schemas']['PatchEmployeeInput']
 export type ExamResult = components['schemas']['ExamResult']
 
 export interface ApiResponse<T> {

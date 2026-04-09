@@ -1,13 +1,14 @@
 import { apiClient } from '@/lib/axios'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { safeParse } from '@/lib/utils'
-import type { CreateEmployeeInput } from '@/types/api'
+import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
 import type { z } from 'zod'
 import {
   getMockEmployeeById,
   getMockEmployees,
   mockCreateEmployee,
   mockDeactivateEmployee,
+  mockPatchEmployee,
   type CreateEmployeeMeta,
 } from './mock/mockEmployeesData'
 import { employeeApiSchema, employeeListApiSchema } from './schemas'
@@ -73,6 +74,20 @@ export const employeeApi = {
     }
     const res = await apiClient.patch<unknown>(`/employees/${id}/deactivate`)
     return safeParse(employeeApiSchema, res.data, `PATCH /employees/${id}/deactivate`)
+  },
+
+  update: async (id: string, patch: PatchEmployeeInput) => {
+    if (isMockApiEnabled()) {
+      const row = mockPatchEmployee(id, patch)
+      if (!row) {
+        const err = new Error('Not found') as Error & { status?: number }
+        err.status = 404
+        throw err
+      }
+      return safeParse(employeeApiSchema, row, `PATCH /employees/${id} (mock)`)
+    }
+    const res = await apiClient.patch<unknown>(`/employees/${id}`, patch)
+    return safeParse(employeeApiSchema, res.data, `PATCH /employees/${id}`)
   },
 }
 

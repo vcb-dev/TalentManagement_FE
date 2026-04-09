@@ -54,7 +54,7 @@
     "schemas": {
       "Role": {
         "type": "string",
-        "enum": ["MEMBER", "LEADER", "MANAGER", "HR_ADMIN", "TEACHER", "BOD"]
+        "enum": ["MEMBER", "LEADER", "MANAGER", "HR", "TEACHER", "BOD"]
       },
       "Permission": {
         "type": "object",
@@ -159,7 +159,14 @@
           },
           "currentStar": { "type": "integer", "minimum": 0, "maximum": 6 },
           "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "phone": { "type": "string", "nullable": true },
+          "birthDate": { "type": "string", "nullable": true },
+          "startDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ngày bắt đầu (start_date_work)"
+          }
         }
       },
       "CreateEmployeeInput": {
@@ -172,7 +179,44 @@
           "departmentId": { "type": "string", "format": "uuid" },
           "teamId": { "type": "string", "format": "uuid" },
           "phone": { "type": "string" },
-          "birthDate": { "type": "string" }
+          "birthDate": { "type": "string" },
+          "startDate": {
+            "type": "string",
+            "description": "Ngày bắt đầu làm việc (start_date_work)"
+          },
+          "initialLevel": {
+            "type": "string",
+            "enum": ["tap_su", "biet_viec", "duoc_viec", "dong_gop_ket_qua", "tuong"]
+          },
+          "notifyEmail": {
+            "type": "boolean",
+            "description": "false = không gửi email thông báo tạo tài khoản"
+          }
+        }
+      },
+      "PatchEmployeeInput": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 2 },
+          "email": { "type": "string", "format": "email" },
+          "role": { "$ref": "#/components/schemas/Role" },
+          "departmentId": { "type": "string", "format": "uuid" },
+          "teamId": { "type": "string", "format": "uuid" },
+          "phone": { "type": "string" },
+          "birthDate": { "type": "string" },
+          "startDate": { "type": "string", "description": "Ngày bắt đầu làm việc" },
+          "secondaryTeamId": {
+            "type": "string",
+            "description": "UUID team phụ trên FE; gửi chuỗi rỗng để xóa"
+          },
+          "currentLevel": {
+            "type": "string",
+            "enum": ["tap_su", "biet_viec", "duoc_viec", "dong_gop_ket_qua", "tuong"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "INACTIVE", "PROBATION", "RESERVED"]
+          }
         }
       },
       "ExamResult": {

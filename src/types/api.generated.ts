@@ -199,6 +199,10 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+            phone?: string | null;
+            birthDate?: string | null;
+            /** @description Ngày bắt đầu (start_date_work) */
+            startDate?: string | null;
         };
         CreateEmployeeInput: {
             name: string;
@@ -211,6 +215,32 @@ export interface components {
             teamId: string;
             phone?: string;
             birthDate?: string;
+            /** @description Ngày bắt đầu làm việc (start_date_work) */
+            startDate?: string;
+            /** @enum {string} */
+            initialLevel?: "tap_su" | "biet_viec" | "duoc_viec" | "dong_gop_ket_qua" | "tuong";
+            /** @description false = không gửi email thông báo tạo tài khoản */
+            notifyEmail?: boolean;
+        };
+        PatchEmployeeInput: {
+            name?: string;
+            /** Format: email */
+            email?: string;
+            role?: components["schemas"]["Role"];
+            /** Format: uuid */
+            departmentId?: string;
+            /** Format: uuid */
+            teamId?: string;
+            phone?: string;
+            birthDate?: string;
+            /** @description Ngày bắt đầu làm việc */
+            startDate?: string;
+            /** @description UUID team phụ trên FE; gửi chuỗi rỗng để xóa */
+            secondaryTeamId?: string;
+            /** @enum {string} */
+            currentLevel?: "tap_su" | "biet_viec" | "duoc_viec" | "dong_gop_ket_qua" | "tuong";
+            /** @enum {string} */
+            status?: "ACTIVE" | "INACTIVE" | "PROBATION" | "RESERVED";
         };
         ExamResult: {
             /** Format: uuid */

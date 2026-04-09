@@ -1,6 +1,6 @@
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import type { EmployeeFilters } from '@/features/hr-admin/types'
-import type { CreateEmployeeInput } from '@/types/api'
+import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
 
 export type CreateEmployeeMeta = {
   initialLevel?: 'tap_su' | 'biet_viec'
@@ -133,8 +133,8 @@ export function getMockEmployees(filters: EmployeeFilters): {
     list = list.filter((e) => e.name.toLowerCase().includes(q) || e.email.toLowerCase().includes(q))
   }
   const total = list.length
-  const pageSize = filters.pageSize
-  const page = filters.page
+  const pageSize = Math.min(200, Math.max(1, filters.pageSize || 20))
+  const page = Math.max(1, filters.page || 1)
   const start = (page - 1) * pageSize
   const data = list.slice(start, start + pageSize)
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -153,7 +153,40 @@ export function mockDeactivateEmployee(id: string): EmployeeEntity | undefined {
   return rows[i]
 }
 
-export function mockCreateEmployee(input: CreateEmployeeInput, meta?: CreateEmployeeMeta): EmployeeEntity {
+export function mockPatchEmployee(
+  id: string,
+  patch: PatchEmployeeInput
+): EmployeeEntity | undefined {
+  const i = rows.findIndex((e) => e.id === id)
+  if (i < 0) return undefined
+  const now = new Date().toISOString()
+  const cur = rows[i]!
+  const next: EmployeeEntity = { ...cur, updatedAt: now }
+  if (patch.name !== undefined) next.name = patch.name.trim()
+  if (patch.email !== undefined) next.email = patch.email.trim()
+  if (patch.role !== undefined) next.role = patch.role
+  if (patch.departmentId !== undefined) next.departmentId = patch.departmentId
+  if (patch.teamId !== undefined) {
+    next.teamIds = [patch.teamId, ...cur.teamIds.slice(1)]
+  }
+  if (patch.secondaryTeamId !== undefined) {
+    const primary = next.teamIds[0] ?? MOCK_TEAM_NS01
+    const s = patch.secondaryTeamId.trim()
+    next.teamIds = s ? [primary, s] : [primary]
+  }
+  if (patch.status !== undefined) next.status = patch.status
+  if (patch.phone !== undefined) next.phone = patch.phone.trim() || null
+  if (patch.birthDate !== undefined) next.birthDate = patch.birthDate.trim() || null
+  if (patch.startDate !== undefined) next.startDate = patch.startDate.trim() || null
+  if (patch.currentLevel !== undefined) next.currentLevel = patch.currentLevel
+  rows[i] = next
+  return next
+}
+
+export function mockCreateEmployee(
+  input: CreateEmployeeInput,
+  meta?: CreateEmployeeMeta
+): EmployeeEntity {
   const now = new Date().toISOString()
   const id = crypto.randomUUID()
   const teamIds = [input.teamId]
@@ -169,6 +202,9 @@ export function mockCreateEmployee(input: CreateEmployeeInput, meta?: CreateEmpl
     teamIds,
     currentLevel: meta?.initialLevel ?? 'tap_su',
     currentStar: 0,
+    phone: input.phone?.trim() || null,
+    birthDate: input.birthDate?.trim() || null,
+    startDate: input.startDate?.trim() || null,
     createdAt: now,
     updatedAt: now,
   }

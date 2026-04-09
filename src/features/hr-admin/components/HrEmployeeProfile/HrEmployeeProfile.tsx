@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
@@ -22,20 +22,27 @@ import {
   Users,
 } from '@/components/icons'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
+import { useDeactivateEmployee, useUpdateEmployee } from '@/features/hr-admin/hooks'
+import {
+  DEFAULT_TEAM_ID,
+  HR_DEPARTMENT_OPTIONS,
+  HR_TEAM_OPTIONS,
+} from '@/features/hr-admin/hrOrgOptions'
 import {
   levelMeta,
   levelPillText,
-  roleShortLabel,
   shortId,
   statusLabelVi,
 } from '@/features/hr-admin/components/HrEmployeeList/employeeListUtils'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
-import { LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
+import { LEVEL_LABELS, LEVELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { CARD_ENTRANCE_HOVER, CARD_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { demoGamificationFromSeed } from '@/lib/demoGamification'
 import type { EmployeeLevel } from '@/types/employee'
 import type { Role } from '@/types/auth'
+import type { PatchEmployeeInput } from '@/types/api'
+import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 
 const LEVEL_ORDER: EmployeeLevel[] = [
@@ -83,6 +90,9 @@ const ROLE_BADGE_ICONS: Record<Role, LucideIcon> = {
   BOD: BarChart3,
 }
 
+/** Role có thể chọn khi sửa hồ sơ (không gán Người chấm từ đây). */
+const PROFILE_EDIT_ROLE_OPTIONS_BASE: Role[] = ['MEMBER', 'LEADER', 'MANAGER', 'HR', 'BOD']
+
 export interface HrEmployeeProfileProps {
   employee: EmployeeEntity
   /** Mặc định mở tab khi vào từ URL `?mode=edit`. */
@@ -90,6 +100,13 @@ export interface HrEmployeeProfileProps {
 }
 
 export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfileProps) {
+  const { canId } = usePermission()
+  const canEdit = canId('hr.employees.edit')
+  const canDeactivate = canId('hr.employees.deactivate')
+  const updateEmployee = useUpdateEmployee()
+  const deactivateEmployee = useDeactivateEmployee()
+  const isSaving = updateEmployee.isPending || deactivateEmployee.isPending
+
   const maxTab = 4
   const [tab, setTab] = useState(() => Math.min(maxTab, Math.max(0, initialTab)))
   const { label: tierLabel, tierClass } = levelMeta(employee.currentLevel)
@@ -100,6 +117,88 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
 
   const [editName, setEditName] = useState(employee.name)
   const [editEmail, setEditEmail] = useState(employee.email)
+  const [editRole, setEditRole] = useState<Role>(employee.role)
+  const [editDepartmentId, setEditDepartmentId] = useState(employee.departmentId)
+  const [editTeamId, setEditTeamId] = useState(() => employee.teamIds[0] ?? DEFAULT_TEAM_ID)
+  const [editPhone, setEditPhone] = useState(() => employee.phone?.trim() ?? '')
+  const [editBirthDate, setEditBirthDate] = useState(() => employee.birthDate?.trim() ?? '')
+  const [editStartDate, setEditStartDate] = useState(() => employee.startDate?.trim() ?? '')
+  const [editSecondaryTeamId, setEditSecondaryTeamId] = useState(() => employee.teamIds[1] ?? '')
+  const [editCurrentLevel, setEditCurrentLevel] = useState(employee.currentLevel)
+
+  /* Đồng bộ form sửa khi nhân viên được refetch sau lưu / điều hướng. */
+  /* eslint-disable react-hooks/set-state-in-effect -- bản ghi từ server đổi sau PATCH/refetch */
+  useEffect(() => {
+    setEditName(employee.name)
+    setEditEmail(employee.email)
+    setEditRole(employee.role)
+    setEditDepartmentId(employee.departmentId)
+    setEditTeamId(employee.teamIds[0] ?? DEFAULT_TEAM_ID)
+    setEditPhone(employee.phone?.trim() ?? '')
+    setEditBirthDate(employee.birthDate?.trim() ?? '')
+    setEditStartDate(employee.startDate?.trim() ?? '')
+    setEditSecondaryTeamId(employee.teamIds[1] ?? '')
+    setEditCurrentLevel(employee.currentLevel)
+  }, [
+    employee.id,
+    employee.updatedAt,
+    employee.name,
+    employee.email,
+    employee.role,
+    employee.departmentId,
+    employee.teamIds,
+    employee.phone,
+    employee.birthDate,
+    employee.startDate,
+    employee.currentLevel,
+  ])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const buildEditPatch = (): PatchEmployeeInput | null => {
+    const patch: PatchEmployeeInput = {}
+    if (editName.trim() !== employee.name) patch.name = editName.trim()
+    if (editEmail.trim() !== employee.email) patch.email = editEmail.trim()
+    if (editRole !== employee.role) {
+      patch.role = editRole as NonNullable<PatchEmployeeInput['role']>
+    }
+    if (editDepartmentId !== employee.departmentId) patch.departmentId = editDepartmentId
+    const origTeam = employee.teamIds[0] ?? DEFAULT_TEAM_ID
+    if (editTeamId !== origTeam) patch.teamId = editTeamId
+    const origPhone = employee.phone?.trim() ?? ''
+    if (editPhone.trim() !== origPhone) patch.phone = editPhone.trim()
+    const origBirth = employee.birthDate?.trim() ?? ''
+    if (editBirthDate.trim() !== origBirth) patch.birthDate = editBirthDate.trim()
+    const origStart = employee.startDate?.trim() ?? ''
+    if (editStartDate.trim() !== origStart) patch.startDate = editStartDate.trim()
+    const origSec = employee.teamIds[1]?.trim() ?? ''
+    if (editSecondaryTeamId.trim() !== origSec) {
+      patch.secondaryTeamId = editSecondaryTeamId.trim()
+    }
+    if (editCurrentLevel !== employee.currentLevel) patch.currentLevel = editCurrentLevel
+    return Object.keys(patch).length > 0 ? patch : null
+  }
+
+  const handleSaveProfile = () => {
+    if (!canEdit) return
+    const patch = buildEditPatch()
+    if (!patch) {
+      toast.info('Không có thay đổi để lưu.')
+      return
+    }
+    updateEmployee.mutate({ id: employee.id, patch })
+  }
+
+  const handleDeactivateProfile = () => {
+    if (!canDeactivate) return
+    if (!window.confirm('Vô hiệu hóa tài khoản nhân viên này?')) return
+    deactivateEmployee.mutate(employee.id)
+  }
+
+  const handleReactivateProfile = () => {
+    if (!canEdit) return
+    if (!window.confirm('Kích hoạt lại tài khoản nhân viên này?')) return
+    updateEmployee.mutate({ id: employee.id, patch: { status: 'ACTIVE' } })
+  }
 
   const empCode = `VCB-${shortId(employee.id).toUpperCase()}`
   const { points, rank } = useMemo(
@@ -126,7 +225,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               <Link
                 to="/hr-admin"
-                search={{ page: 1 }}
+                search={{ page: 1, pageSize: 48 }}
                 className="font-semibold text-primary hover:underline"
               >
                 ← Danh sách nhân sự
@@ -391,9 +490,31 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                   employee={employee}
                   editName={editName}
                   editEmail={editEmail}
+                  editRole={editRole}
+                  editDepartmentId={editDepartmentId}
+                  editTeamId={editTeamId}
+                  editPhone={editPhone}
+                  editBirthDate={editBirthDate}
+                  editStartDate={editStartDate}
+                  editSecondaryTeamId={editSecondaryTeamId}
+                  editCurrentLevel={editCurrentLevel}
                   empCode={empCode}
                   onName={setEditName}
                   onEmail={setEditEmail}
+                  onRole={setEditRole}
+                  onDepartmentId={setEditDepartmentId}
+                  onTeamId={setEditTeamId}
+                  onPhone={setEditPhone}
+                  onBirthDate={setEditBirthDate}
+                  onStartDate={setEditStartDate}
+                  onSecondaryTeamId={setEditSecondaryTeamId}
+                  onCurrentLevel={setEditCurrentLevel}
+                  canEdit={canEdit}
+                  canDeactivate={canDeactivate}
+                  isSaving={isSaving}
+                  onSave={handleSaveProfile}
+                  onDeactivate={handleDeactivateProfile}
+                  onReactivate={handleReactivateProfile}
                 />
               )}
             </div>
@@ -825,57 +946,223 @@ function EditTab({
   employee,
   editName,
   editEmail,
+  editRole,
+  editDepartmentId,
+  editTeamId,
+  editPhone,
+  editBirthDate,
+  editStartDate,
+  editSecondaryTeamId,
+  editCurrentLevel,
   empCode,
   onName,
   onEmail,
+  onRole,
+  onDepartmentId,
+  onTeamId,
+  onPhone,
+  onBirthDate,
+  onStartDate,
+  onSecondaryTeamId,
+  onCurrentLevel,
+  canEdit,
+  canDeactivate,
+  isSaving,
+  onSave,
+  onDeactivate,
+  onReactivate,
 }: {
   employee: EmployeeEntity
   editName: string
   editEmail: string
+  editRole: Role
+  editDepartmentId: string
+  editTeamId: string
+  editPhone: string
+  editBirthDate: string
+  editStartDate: string
+  editSecondaryTeamId: string
+  editCurrentLevel: EmployeeEntity['currentLevel']
   empCode: string
   onName: (v: string) => void
   onEmail: (v: string) => void
+  onRole: (v: Role) => void
+  onDepartmentId: (v: string) => void
+  onTeamId: (v: string) => void
+  onPhone: (v: string) => void
+  onBirthDate: (v: string) => void
+  onStartDate: (v: string) => void
+  onSecondaryTeamId: (v: string) => void
+  onCurrentLevel: (v: EmployeeEntity['currentLevel']) => void
+  canEdit: boolean
+  canDeactivate: boolean
+  isSaving: boolean
+  onSave: () => void
+  onDeactivate: () => void
+  onReactivate: () => void
 }) {
+  const orgDisabled = !canEdit || isSaving
+  const inactive = employee.status === 'INACTIVE'
+
+  const departmentOptions = useMemo(() => {
+    const base = [...HR_DEPARTMENT_OPTIONS]
+    if (!base.some((o) => o.value === editDepartmentId)) {
+      return [
+        { value: editDepartmentId, label: `Phòng ban (${shortId(editDepartmentId)})` },
+        ...base,
+      ]
+    }
+    return base
+  }, [editDepartmentId])
+
+  const teamOptions = useMemo(() => {
+    const base = [...HR_TEAM_OPTIONS]
+    if (!base.some((o) => o.value === editTeamId)) {
+      return [{ value: editTeamId, label: `Nhóm (${shortId(editTeamId)})` }, ...base]
+    }
+    return base
+  }, [editTeamId])
+
+  const secondaryTeamOptions = useMemo(() => {
+    const base = [...HR_TEAM_OPTIONS]
+    const v = editSecondaryTeamId.trim()
+    if (v && !base.some((o) => o.value === v)) {
+      return [{ value: v, label: `Nhóm phụ (${shortId(v)})` }, ...base]
+    }
+    return base
+  }, [editSecondaryTeamId])
+
+  const roleSelectOptions = useMemo((): Role[] => {
+    if (editRole === 'TEACHER') {
+      return ['TEACHER', ...PROFILE_EDIT_ROLE_OPTIONS_BASE]
+    }
+    return PROFILE_EDIT_ROLE_OPTIONS_BASE
+  }, [editRole])
+
+  const levelSelectOptions = useMemo(
+    () => LEVELS.map((lv) => ({ value: lv, label: LEVEL_LABELS[lv] })),
+    []
+  )
+
+  const inputCls =
+    'w-full rounded-[9px] border border-border bg-white px-3 py-2 text-sm disabled:opacity-60'
+
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
       <div>
         <PfCard title="Phân công tổ chức" entranceIndex={0}>
-          <div className="mb-2.5 flex items-start gap-2 rounded-lg border border-primary/25 bg-primary/10 px-2.5 py-2 text-xs text-primary">
-            <span>✏️</span>
-            <span>HR có thể chỉnh sửa phân công khi đã kết nối API.</span>
-          </div>
           <label className="mb-2 block text-xs font-semibold text-muted-foreground">Role</label>
           <select
-            className="mb-3 w-full rounded-[9px] border border-border bg-white px-3 py-2 text-sm"
-            disabled
-            defaultValue={employee.role}
+            className={cn(inputCls, 'mb-3')}
+            value={editRole}
+            disabled={orgDisabled}
+            onChange={(e) => onRole(e.target.value as Role)}
           >
-            <option value={employee.role}>{roleShortLabel(employee.role)}</option>
+            {roleSelectOptions.map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABEL_VI[r]}
+              </option>
+            ))}
           </select>
           <label className="mb-2 block text-xs font-semibold text-muted-foreground">
             Phòng ban
           </label>
           <select
-            className="w-full rounded-[9px] border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
-            disabled
+            className={cn(inputCls, 'mb-3')}
+            value={editDepartmentId}
+            disabled={orgDisabled}
+            onChange={(e) => onDepartmentId(e.target.value)}
           >
-            <option>PB {shortId(employee.departmentId)}</option>
+            {departmentOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
+            Team chính
+          </label>
+          <select
+            className={cn(inputCls, 'mb-3')}
+            value={editTeamId}
+            disabled={orgDisabled}
+            onChange={(e) => onTeamId(e.target.value)}
+          >
+            {teamOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
+            Team phụ (tùy chọn)
+          </label>
+          <select
+            className={cn(inputCls, 'mb-3')}
+            value={editSecondaryTeamId}
+            disabled={orgDisabled}
+            onChange={(e) => onSecondaryTeamId(e.target.value)}
+          >
+            <option value="">— Không gán —</option>
+            {secondaryTeamOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
+            Ngày bắt đầu
+          </label>
+          <input
+            type="date"
+            className={cn(inputCls, 'mb-3')}
+            value={editStartDate}
+            disabled={orgDisabled}
+            onChange={(e) => onStartDate(e.target.value)}
+          />
+          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
+            Cấp năng lực (career)
+          </label>
+          <select
+            className={inputCls}
+            value={editCurrentLevel}
+            disabled={orgDisabled}
+            onChange={(e) => onCurrentLevel(e.target.value as EmployeeEntity['currentLevel'])}
+          >
+            {levelSelectOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </PfCard>
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          {inactive ? (
+            <button
+              type="button"
+              className="flex-1 rounded-[9px] border border-primary/35 bg-primary/10 py-2.5 text-sm font-bold text-primary hover:bg-primary/15 disabled:opacity-50"
+              disabled={!canEdit || isSaving}
+              onClick={onReactivate}
+            >
+              Kích hoạt lại
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="flex-1 rounded-[9px] border border-[#FCA5A5] bg-[#FEE2E2] py-2.5 text-sm font-bold text-[#991B1B] hover:bg-[#FECACA] disabled:opacity-50"
+              disabled={!canDeactivate || isSaving}
+              onClick={onDeactivate}
+            >
+              Hủy hoạt động
+            </button>
+          )}
           <button
             type="button"
-            className="flex-1 rounded-[9px] border border-[#FCA5A5] bg-[#FEE2E2] py-2.5 text-sm font-bold text-[#991B1B]"
-            onClick={() => toast.info('Hủy hoạt động: cần API.')}
+            className="flex-[2] rounded-lg border border-button bg-button py-2.5 text-sm font-bold text-button-foreground hover:opacity-90 disabled:opacity-50"
+            disabled={!canEdit || isSaving}
+            onClick={onSave}
           >
-            Hủy hoạt động
-          </button>
-          <button
-            type="button"
-            className="flex-[2] rounded-lg border border-button bg-button py-2.5 text-sm font-bold text-button-foreground hover:opacity-90"
-            onClick={() => toast.success('Đã ghi nhận (demo — chưa gọi API).')}
-          >
-            Lưu thay đổi
+            {isSaving ? 'Đang lưu…' : 'Lưu thay đổi'}
           </button>
         </div>
       </div>
@@ -886,25 +1173,52 @@ function EditTab({
               Họ và tên
             </label>
             <input
-              className="w-full rounded-[9px] border border-border px-3 py-2 text-sm"
+              className={inputCls}
               value={editName}
+              disabled={orgDisabled}
               onChange={(e) => onName(e.target.value)}
             />
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">Email</label>
             <input
-              className="w-full rounded-[9px] border border-border px-3 py-2 text-sm"
+              type="email"
+              className={inputCls}
               value={editEmail}
+              disabled={orgDisabled}
               onChange={(e) => onEmail(e.target.value)}
             />
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-              Mã nhân viên
+              Số điện thoại
             </label>
             <input
-              className="w-full rounded-[9px] border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
+              className={inputCls}
+              value={editPhone}
+              disabled={orgDisabled}
+              placeholder="09xx xxx xxx"
+              onChange={(e) => onPhone(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+              Ngày sinh
+            </label>
+            <input
+              type="date"
+              className={inputCls}
+              value={editBirthDate}
+              disabled={orgDisabled}
+              onChange={(e) => onBirthDate(e.target.value)}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+              Mã nhân viên (hệ thống)
+            </label>
+            <input
+              className={cn(inputCls, 'bg-muted/50 text-muted-foreground')}
               readOnly
               value={empCode}
             />
