@@ -127,3 +127,22 @@ export const managerMemberOptionApiSchema = z.object({
   name: z.string(),
   email: z.string(),
 })
+
+export const managerRoadmapItemApiSchema = z.object({
+  id: z.string().uuid(),
+  levelLabel: z.string(),
+  topic: z.string(),
+  objective: z.string(),
+  materialRef: z.string().nullable(),
+  trainer: z.string().nullable(),
+  assessment: z.string().nullable(),
+  sourceFile: z.string(),
+  sheetName: z.string(),
+  rowOrder: z.number().int(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+})
+
+export const managerRoadmapItemCreateResponseSchema = z.object({
+  id: z.string().uuid(),
+})

@@ -7,4 +7,6 @@ export const managerKeys = {
     [...managerKeys.all, 'classes', params?.search ?? '', params?.levelFrom ?? '', params?.status ?? ''] as const,
   classMemberOptions: (query: string, levelFrom?: string) =>
     [...managerKeys.all, 'class-member-options', query, levelFrom ?? ''] as const,
+  roadmapItems: (params?: { levelLabel?: string; topic?: string; q?: string }) =>
+    [...managerKeys.all, 'roadmap-items', params?.levelLabel ?? '', params?.topic ?? '', params?.q ?? ''] as const,
 }

@@ -79,9 +79,25 @@ function toViDate(iso: string | null): string {
   return d.toLocaleDateString('vi-VN')
 }
 
-function toLocalDatetimeInputValue(value: Date): string {
+function toLocalDateInputValue(value: Date): string {
   const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000)
-  return local.toISOString().slice(0, 16)
+  return local.toISOString().slice(0, 10)
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+function toLocalTimeParts(value: Date): { hour: string; minute: string } {
+  return { hour: pad2(value.getHours()), minute: pad2(value.getMinutes()) }
+}
+
+function clampTwoDigit(value: string, min: number, max: number): string {
+  const onlyDigits = value.replace(/\D/g, '')
+  if (!onlyDigits) return pad2(min)
+  const parsed = Number.parseInt(onlyDigits, 10)
+  if (Number.isNaN(parsed)) return pad2(min)
+  return pad2(Math.min(max, Math.max(min, parsed)))
 }
 
 export function ManagerClassesScreen() {
@@ -97,6 +113,8 @@ export function ManagerClassesScreen() {
   const [activeClassForDropdown, setActiveClassForDropdown] = useState<string | null>(null)
   const [scheduleClassId, setScheduleClassId] = useState<string | null>(null)
   const [scheduleDate, setScheduleDate] = useState('')
+  const [scheduleHour, setScheduleHour] = useState('08')
+  const [scheduleMinute, setScheduleMinute] = useState('00')
   const [teacherQuery, setTeacherQuery] = useState('')
   const [selectedTeacher, setSelectedTeacher] = useState<{ userId: string; name: string; email: string } | null>(null)
 
@@ -578,7 +596,19 @@ export function ManagerClassesScreen() {
                     className="h-auto rounded-lg border-primary/25 bg-primary/5 py-2.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground"
                     onClick={() => {
                       setScheduleClassId(row.id)
-                      setScheduleDate(row.examDate ? new Date(row.examDate).toISOString().slice(0, 16) : '')
+                      if (row.examDate) {
+                        const d = new Date(row.examDate)
+                        const t = toLocalTimeParts(d)
+                        setScheduleDate(toLocalDateInputValue(d))
+                        setScheduleHour(t.hour)
+                        setScheduleMinute(t.minute)
+                      } else {
+                        const now = new Date()
+                        const t = toLocalTimeParts(now)
+                        setScheduleDate(toLocalDateInputValue(now))
+                        setScheduleHour(t.hour)
+                        setScheduleMinute(t.minute)
+                      }
                       setSelectedTeacher(row.teacher ?? null)
                       setTeacherQuery('')
                     }}
@@ -629,14 +659,36 @@ export function ManagerClassesScreen() {
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-xs font-semibold text-muted-foreground">Thời gian thi</label>
-                <input
-                  type="datetime-local"
-                  lang="vi-VN"
-                  value={scheduleDate}
-                  onChange={(e) => setScheduleDate(e.target.value)}
-                  min={toLocalDatetimeInputValue(new Date())}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
+                <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <input
+                      type="date"
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                      min={toLocalDateInputValue(new Date())}
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        inputMode="numeric"
+                        value={scheduleHour}
+                        onChange={(e) => setScheduleHour(clampTwoDigit(e.target.value, 0, 23))}
+                        onBlur={(e) => setScheduleHour(clampTwoDigit(e.target.value, 0, 23))}
+                        className="h-[38px] w-[64px] rounded-lg border border-border bg-background px-2 text-center text-sm font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        aria-label="Giờ thi (00-23)"
+                      />
+                      <span className="text-sm font-bold text-muted-foreground">:</span>
+                      <input
+                        inputMode="numeric"
+                        value={scheduleMinute}
+                        onChange={(e) => setScheduleMinute(clampTwoDigit(e.target.value, 0, 59))}
+                        onBlur={(e) => setScheduleMinute(clampTwoDigit(e.target.value, 0, 59))}
+                        className="h-[38px] w-[64px] rounded-lg border border-border bg-background px-2 text-center text-sm font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        aria-label="Phút thi (00-59)"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="relative">
                 <label className="mb-1 block text-xs font-semibold text-muted-foreground">Người chấm thi</label>
@@ -705,6 +757,15 @@ export function ManagerClassesScreen() {
                     toast.error('Vui lòng chọn thời gian thi')
                     return
                   }
+                  const scheduleAt = new Date(`${scheduleDate}T${scheduleHour}:${scheduleMinute}:00`)
+                  if (Number.isNaN(scheduleAt.getTime())) {
+                    toast.error('Thời gian thi không hợp lệ')
+                    return
+                  }
+                  if (scheduleAt.getTime() < Date.now()) {
+                    toast.error('Chỉ được chọn thời điểm hiện tại hoặc tương lai')
+                    return
+                  }
                   if (!selectedTeacher) {
                     toast.error(
                       isTapSuToBietViecSchedule
@@ -717,7 +778,7 @@ export function ManagerClassesScreen() {
                     {
                       classId: scheduleClassId,
                       input: {
-                        examDate: new Date(scheduleDate).toISOString(),
+                        examDate: scheduleAt.toISOString(),
                         teacherUserId: selectedTeacher.userId,
                         status: 'open',
                       },

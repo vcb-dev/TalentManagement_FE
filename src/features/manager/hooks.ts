@@ -180,3 +180,47 @@ export function useRemoveClassMember() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   })
 }
+
+export function useManagerRoadmapItems(params?: { levelLabel?: string; topic?: string; q?: string }) {
+  return useQuery({
+    queryKey: managerKeys.roadmapItems(params),
+    queryFn: () => managerApi.roadmapItems(params),
+  })
+}
+
+export function useCreateManagerRoadmapItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: managerApi.createRoadmapItem,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'roadmap-items'] })
+      toast.success('Đã thêm mục lộ trình')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
+export function useUpdateManagerRoadmapItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Parameters<typeof managerApi.updateRoadmapItem>[1] }) =>
+      managerApi.updateRoadmapItem(id, input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'roadmap-items'] })
+      toast.success('Đã cập nhật mục lộ trình')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
+export function useDeleteManagerRoadmapItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => managerApi.deleteRoadmapItem(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'roadmap-items'] })
+      toast.success('Đã xóa mục lộ trình')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}

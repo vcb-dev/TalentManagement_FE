@@ -43,6 +43,10 @@ function formatViTime(iso: string): string {
   return format(new Date(iso), 'HH:mm', { locale: vi })
 }
 
+function cleanExamTitle(title: string): string {
+  return title.replace(/\s*\((?:[a-z_]+\s*->\s*[a-z_]+)\)\s*$/i, '').trim()
+}
+
 const STATUS_LABEL: Record<ExamRow['status'], string> = {
   UPCOMING: 'Sắp diễn ra',
   IN_PROGRESS: 'Đang mở',
@@ -164,7 +168,7 @@ export function ExamResultsSchedule({
                 <div className="mb-6">
                   <Icon className="mb-4 block h-9 w-9 text-primary" strokeWidth={2} aria-hidden />
                   <h3 className="mb-2 text-lg font-bold leading-tight text-foreground">
-                    {exam.title}
+                    {cleanExamTitle(exam.title)}
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     {STATUS_LABEL[exam.status]} · {formatViWeekdayDate(exam.scheduledAt)}
@@ -326,7 +330,7 @@ export function ExamResultsSchedule({
                             <Link2 className="h-5 w-5" aria-hidden />
                           </div>
                           <div className="min-w-0">
-                            <p className="font-semibold text-foreground">{exam.title}</p>
+                            <p className="font-semibold text-foreground">{cleanExamTitle(exam.title)}</p>
                             <p className="text-xs text-muted-foreground">Kỳ thi nội bộ</p>
                           </div>
                         </div>

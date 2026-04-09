@@ -13,6 +13,8 @@ import {
   managerClassApiSchema,
   managerClassCreateResponseSchema,
   managerMemberOptionApiSchema,
+  managerRoadmapItemApiSchema,
+  managerRoadmapItemCreateResponseSchema,
   teamMemberProgressApiSchema,
   teamProgressPageApiSchema,
   teamProgressSummaryApiSchema,
@@ -171,5 +173,44 @@ export const managerApi = {
   removeClassMember: async (classId: string, userId: string) => {
     const res = await apiClient.delete<unknown>(`/manager/classes/${classId}/members/${userId}`)
     return safeParse(managerClassActionResponseSchema, res.data, 'DELETE /manager/classes/:id/members/:userId')
+  },
+
+  roadmapItems: async (params?: { levelLabel?: string; topic?: string; q?: string }) => {
+    const res = await apiClient.get<unknown>('/manager/roadmap-items', { params })
+    return safeParse(z.array(managerRoadmapItemApiSchema), res.data, 'GET /manager/roadmap-items')
+  },
+
+  createRoadmapItem: async (input: {
+    levelLabel: string
+    topic: string
+    objective: string
+    materialRef?: string | null
+    trainer?: string | null
+    assessment?: string | null
+    rowOrder?: number | null
+  }) => {
+    const res = await apiClient.post<unknown>('/manager/roadmap-items', input)
+    return safeParse(managerRoadmapItemCreateResponseSchema, res.data, 'POST /manager/roadmap-items')
+  },
+
+  updateRoadmapItem: async (
+    id: string,
+    input: {
+      levelLabel?: string
+      topic?: string
+      objective?: string
+      materialRef?: string | null
+      trainer?: string | null
+      assessment?: string | null
+      rowOrder?: number | null
+    }
+  ) => {
+    const res = await apiClient.patch<unknown>(`/manager/roadmap-items/${id}`, input)
+    return safeParse(managerClassActionResponseSchema, res.data, 'PATCH /manager/roadmap-items/:id')
+  },
+
+  deleteRoadmapItem: async (id: string) => {
+    const res = await apiClient.delete<unknown>(`/manager/roadmap-items/${id}`)
+    return safeParse(managerClassActionResponseSchema, res.data, 'DELETE /manager/roadmap-items/:id')
   },
 }

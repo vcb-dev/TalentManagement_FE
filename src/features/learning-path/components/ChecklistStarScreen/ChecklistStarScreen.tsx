@@ -617,7 +617,7 @@ function ChecklistTaskCard({
                     {obj.trainer || '-'}
                   </p>
                   <p className="leading-relaxed">
-                    <span className="font-semibold text-gray-500">Đánh giá:</span>{' '}
+                    <span className="font-semibold text-gray-500">Phương thức đánh giá:</span>{' '}
                     {obj.assessment || '-'}
                   </p>
                 </div>
