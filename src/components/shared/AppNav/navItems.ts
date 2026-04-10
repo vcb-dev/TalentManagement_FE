@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   LineChart,
   ListOrdered,
+  Network,
   School,
   ShieldCheck,
   Target,
@@ -89,6 +90,13 @@ const HR_ITEMS: AppNavItem[] = [
     match: 'prefix',
     search: { page: 1 },
     permissionIdsAny: ['hr.employees.view', 'manager.team.view', 'kpi.team_view', 'kpi.team_edit'],
+  },
+  {
+    to: '/hr-admin/org',
+    label: 'Phòng ban & Team',
+    icon: Network,
+    match: 'prefix',
+    permissionId: 'hr.org.manage',
   },
 ]
 

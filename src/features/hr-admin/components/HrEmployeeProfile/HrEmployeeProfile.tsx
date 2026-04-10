@@ -23,11 +23,8 @@ import {
 } from '@/components/icons'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { useDeactivateEmployee, useUpdateEmployee } from '@/features/hr-admin/hooks'
-import {
-  DEFAULT_TEAM_ID,
-  HR_DEPARTMENT_OPTIONS,
-  HR_TEAM_OPTIONS,
-} from '@/features/hr-admin/hrOrgOptions'
+import { DEFAULT_TEAM_ID } from '@/features/hr-admin/hrOrgOptions'
+import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 import {
   levelMeta,
   levelPillText,
@@ -1001,36 +998,38 @@ function EditTab({
   onDeactivate: () => void
   onReactivate: () => void
 }) {
+  const orgSel = useHrOrgSelectOptions()
   const orgDisabled = !canEdit || isSaving
   const inactive = employee.status === 'INACTIVE'
 
   const departmentOptions = useMemo(() => {
-    const base = [...HR_DEPARTMENT_OPTIONS]
-    if (!base.some((o) => o.value === editDepartmentId)) {
+    const base = [...orgSel.departments]
+    if (editDepartmentId && !base.some((o) => o.value === editDepartmentId)) {
       return [
         { value: editDepartmentId, label: `Phòng ban (${shortId(editDepartmentId)})` },
         ...base,
       ]
     }
     return base
-  }, [editDepartmentId])
+  }, [orgSel.departments, editDepartmentId])
 
   const teamOptions = useMemo(() => {
-    const base = [...HR_TEAM_OPTIONS]
-    if (!base.some((o) => o.value === editTeamId)) {
+    const fromDept = orgSel.teamsByDept.get(editDepartmentId) ?? []
+    const base = [...fromDept]
+    if (editTeamId && !base.some((o) => o.value === editTeamId)) {
       return [{ value: editTeamId, label: `Nhóm (${shortId(editTeamId)})` }, ...base]
     }
     return base
-  }, [editTeamId])
+  }, [orgSel.teamsByDept, editDepartmentId, editTeamId])
 
   const secondaryTeamOptions = useMemo(() => {
-    const base = [...HR_TEAM_OPTIONS]
+    const base = [...orgSel.allTeams]
     const v = editSecondaryTeamId.trim()
     if (v && !base.some((o) => o.value === v)) {
       return [{ value: v, label: `Nhóm phụ (${shortId(v)})` }, ...base]
     }
     return base
-  }, [editSecondaryTeamId])
+  }, [orgSel.allTeams, editSecondaryTeamId])
 
   const roleSelectOptions = useMemo((): Role[] => {
     if (editRole === 'TEACHER') {

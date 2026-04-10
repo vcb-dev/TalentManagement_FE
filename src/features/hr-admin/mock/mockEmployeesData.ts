@@ -67,6 +67,18 @@ let rows: EmployeeEntity[] = [
   ),
   emp(
     {
+      id: '10000000-0000-4000-8000-000000000007',
+      name: 'Hoàng Kiệt',
+      email: 'h.kiet@vcb.com',
+      role: 'LEADER',
+      status: 'ACTIVE',
+      currentLevel: 'duoc_viec',
+      currentStar: 4,
+    },
+    [MOCK_TEAM_NS01]
+  ),
+  emp(
+    {
       id: '10000000-0000-4000-8000-000000000004',
       name: 'Phạm Hùng',
       email: 'p.hung@vcb.com',

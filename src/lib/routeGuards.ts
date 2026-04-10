@@ -57,7 +57,7 @@ export function requireMemberKpiOkrRoute() {
   if (!user?.role) throw redirect({ to: '/login' })
   if (user.role === 'MEMBER') return
   const eff = resolveEffectivePermissionSet(user)
-  if (eff.has('kpi.edit_own')) return
+  if (eff.has('kpi.view') || eff.has('kpi.edit_own')) return
   throw redirect({ to: defaultEntryPathFromSession(user) })
 }
 

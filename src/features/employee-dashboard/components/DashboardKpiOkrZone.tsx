@@ -391,8 +391,8 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
                 {
                   title: isLeader
                     ? 'Có chỉ tiêu OKR mới cần phân bổ cho thành viên'
-                    : 'OKR mới đã được Trưởng nhóm duyệt',
-                  meta: '2 ngày trước · Trưởng nhóm KPI',
+                    : 'OKR mới đã được Leader duyệt',
+                  meta: '2 ngày trước · Leader',
                   dot: 'bg-muted-foreground/40',
                 },
               ].map((row) => (

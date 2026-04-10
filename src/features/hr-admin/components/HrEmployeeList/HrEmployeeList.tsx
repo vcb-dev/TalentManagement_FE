@@ -28,7 +28,7 @@ const PAGE_SIZE_OPTIONS = [12, 24, 48, 100] as const
 const FILTERS: { key: 'all' | Role | 'reserved'; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
   { key: 'MEMBER', label: 'Nhân viên' },
-  { key: 'LEADER', label: 'Trưởng nhóm KPI' },
+  { key: 'LEADER', label: 'Leader' },
   { key: 'MANAGER', label: 'Quản lý' },
   { key: 'TEACHER', label: 'Người chấm' },
   { key: 'HR', label: 'HR' },

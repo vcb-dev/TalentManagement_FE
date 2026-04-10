@@ -12,7 +12,7 @@ export function requireHrAdmin() {
 const DIRECTORY_ROLES: Role[] = ['HR', 'BOD', 'MANAGER', 'LEADER']
 
 /**
- * Danh sách + chi tiết nhân sự dùng chung (`/hr-admin`) — HR / BOD / Quản lý / Trưởng nhóm theo role
+ * Danh sách + chi tiết nhân sự dùng chung (`/hr-admin`) — HR / BOD / Quản lý / Leader (LEADER) theo role
  * hoặc quyền xem danh bạ (`hr.employees.view`, `manager.team.view`, nhóm KPI team).
  */
 export function requireEmployeeDirectoryAccess() {

@@ -126,7 +126,7 @@ export function roleShortLabel(role: Role): string {
     case 'MEMBER':
       return 'NV'
     case 'LEADER':
-      return 'TN KPI'
+      return 'Leader'
     case 'MANAGER':
       return 'QL'
     case 'HR':

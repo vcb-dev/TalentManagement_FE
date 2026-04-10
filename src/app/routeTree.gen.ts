@@ -31,6 +31,7 @@ import { Route as ProtectedManagerExamScheduleRouteImport } from './routes/_prot
 import { Route as ProtectedManagerClassesRouteImport } from './routes/_protected/manager/classes'
 import { Route as ProtectedManagerApprovalsRouteImport } from './routes/_protected/manager/approvals'
 import { Route as ProtectedLeaderKpiOkrRouteImport } from './routes/_protected/leader/kpi-okr'
+import { Route as ProtectedHrAdminOrgRouteImport } from './routes/_protected/hr-admin/org'
 import { Route as ProtectedHrAdminNewRouteImport } from './routes/_protected/hr-admin/new'
 import { Route as ProtectedHrAdminEmployeeIdRouteImport } from './routes/_protected/hr-admin/$employeeId'
 import { Route as ProtectedExamGraderRouteImport } from './routes/_protected/exam/grader'
@@ -165,6 +166,11 @@ const ProtectedLeaderKpiOkrRoute = ProtectedLeaderKpiOkrRouteImport.update({
   path: '/leader/kpi-okr',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProtectedHrAdminOrgRoute = ProtectedHrAdminOrgRouteImport.update({
+  id: '/hr-admin/org',
+  path: '/hr-admin/org',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 const ProtectedHrAdminNewRoute = ProtectedHrAdminNewRouteImport.update({
   id: '/hr-admin/new',
   path: '/hr-admin/new',
@@ -268,6 +274,7 @@ export interface FileRoutesByFullPath {
   '/exam/grader': typeof ProtectedExamGraderRoute
   '/hr-admin/$employeeId': typeof ProtectedHrAdminEmployeeIdRoute
   '/hr-admin/new': typeof ProtectedHrAdminNewRoute
+  '/hr-admin/org': typeof ProtectedHrAdminOrgRoute
   '/leader/kpi-okr': typeof ProtectedLeaderKpiOkrRoute
   '/manager/approvals': typeof ProtectedManagerApprovalsRoute
   '/manager/classes': typeof ProtectedManagerClassesRoute
@@ -305,6 +312,7 @@ export interface FileRoutesByTo {
   '/exam/grader': typeof ProtectedExamGraderRoute
   '/hr-admin/$employeeId': typeof ProtectedHrAdminEmployeeIdRoute
   '/hr-admin/new': typeof ProtectedHrAdminNewRoute
+  '/hr-admin/org': typeof ProtectedHrAdminOrgRoute
   '/leader/kpi-okr': typeof ProtectedLeaderKpiOkrRoute
   '/manager/approvals': typeof ProtectedManagerApprovalsRoute
   '/manager/classes': typeof ProtectedManagerClassesRoute
@@ -345,6 +353,7 @@ export interface FileRoutesById {
   '/_protected/exam/grader': typeof ProtectedExamGraderRoute
   '/_protected/hr-admin/$employeeId': typeof ProtectedHrAdminEmployeeIdRoute
   '/_protected/hr-admin/new': typeof ProtectedHrAdminNewRoute
+  '/_protected/hr-admin/org': typeof ProtectedHrAdminOrgRoute
   '/_protected/leader/kpi-okr': typeof ProtectedLeaderKpiOkrRoute
   '/_protected/manager/approvals': typeof ProtectedManagerApprovalsRoute
   '/_protected/manager/classes': typeof ProtectedManagerClassesRoute
@@ -384,6 +393,7 @@ export interface FileRouteTypes {
     | '/exam/grader'
     | '/hr-admin/$employeeId'
     | '/hr-admin/new'
+    | '/hr-admin/org'
     | '/leader/kpi-okr'
     | '/manager/approvals'
     | '/manager/classes'
@@ -421,6 +431,7 @@ export interface FileRouteTypes {
     | '/exam/grader'
     | '/hr-admin/$employeeId'
     | '/hr-admin/new'
+    | '/hr-admin/org'
     | '/leader/kpi-okr'
     | '/manager/approvals'
     | '/manager/classes'
@@ -460,6 +471,7 @@ export interface FileRouteTypes {
     | '/_protected/exam/grader'
     | '/_protected/hr-admin/$employeeId'
     | '/_protected/hr-admin/new'
+    | '/_protected/hr-admin/org'
     | '/_protected/leader/kpi-okr'
     | '/_protected/manager/approvals'
     | '/_protected/manager/classes'
@@ -645,6 +657,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedLeaderKpiOkrRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/hr-admin/org': {
+      id: '/_protected/hr-admin/org'
+      path: '/hr-admin/org'
+      fullPath: '/hr-admin/org'
+      preLoaderRoute: typeof ProtectedHrAdminOrgRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/hr-admin/new': {
       id: '/_protected/hr-admin/new'
       path: '/hr-admin/new'
@@ -778,6 +797,7 @@ interface ProtectedRouteRouteChildren {
   ProtectedExamGraderRoute: typeof ProtectedExamGraderRoute
   ProtectedHrAdminEmployeeIdRoute: typeof ProtectedHrAdminEmployeeIdRoute
   ProtectedHrAdminNewRoute: typeof ProtectedHrAdminNewRoute
+  ProtectedHrAdminOrgRoute: typeof ProtectedHrAdminOrgRoute
   ProtectedLeaderKpiOkrRoute: typeof ProtectedLeaderKpiOkrRoute
   ProtectedManagerApprovalsRoute: typeof ProtectedManagerApprovalsRoute
   ProtectedManagerClassesRoute: typeof ProtectedManagerClassesRoute
@@ -814,6 +834,7 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedExamGraderRoute: ProtectedExamGraderRoute,
   ProtectedHrAdminEmployeeIdRoute: ProtectedHrAdminEmployeeIdRoute,
   ProtectedHrAdminNewRoute: ProtectedHrAdminNewRoute,
+  ProtectedHrAdminOrgRoute: ProtectedHrAdminOrgRoute,
   ProtectedLeaderKpiOkrRoute: ProtectedLeaderKpiOkrRoute,
   ProtectedManagerApprovalsRoute: ProtectedManagerApprovalsRoute,
   ProtectedManagerClassesRoute: ProtectedManagerClassesRoute,

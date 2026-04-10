@@ -40,7 +40,7 @@ function sidebarSectionsFromPermissions(canId: (id: string) => boolean): Sidebar
   pushSection('BOD', BOD_ITEMS)
   pushSection('Quản lý', MANAGER_OPS_ITEMS)
   pushSection('HR', HR_ITEMS)
-  pushSection('Trưởng nhóm KPI', LEADER_KPI_ITEMS)
+  pushSection('Leader', LEADER_KPI_ITEMS)
   pushSection('Của tôi', MEMBER_SELF_ITEMS)
   return out
 }

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { ArrowLeft, Bell, Network, User } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Controller, FormProvider, type UseFormReturn } from 'react-hook-form'
+import { Controller, FormProvider, useWatch, type UseFormReturn } from 'react-hook-form'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -12,11 +12,11 @@ import {
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import type { CreateEmployeeForm } from '@/features/hr-admin/schemas'
-import { HR_DEPARTMENT_OPTIONS, HR_TEAM_OPTIONS } from '@/features/hr-admin/hrOrgOptions'
+import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 
 const ROLE_OPTIONS: { value: CreateEmployeeForm['role']; label: string }[] = [
   { value: 'MEMBER', label: 'Nhân viên' },
-  { value: 'LEADER', label: 'Trưởng nhóm KPI' },
+  { value: 'LEADER', label: 'Leader' },
   { value: 'MANAGER', label: 'Quản lý' },
   { value: 'HR', label: 'HR' },
   { value: 'BOD', label: 'BOD' },
@@ -41,6 +41,12 @@ export interface EmployeeFormProps {
 export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps) {
   const navigate = useNavigate()
   const { register, handleSubmit, control, formState } = form
+  const { departments, teamsByDept, allTeams } = useHrOrgSelectOptions()
+  const departmentId = useWatch({ control, name: 'departmentId' })
+  const teamOptions =
+    (departmentId && teamsByDept.get(departmentId)?.length
+      ? teamsByDept.get(departmentId)
+      : allTeams) ?? allTeams
 
   return (
     <FormProvider {...form}>
@@ -125,7 +131,7 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       control={control}
                       render={({ field }) => (
                         <select {...field} className={cn(inputClass, 'cursor-pointer')}>
-                          {HR_DEPARTMENT_OPTIONS.map((o) => (
+                          {departments.map((o) => (
                             <option key={o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -143,7 +149,7 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       control={control}
                       render={({ field }) => (
                         <select {...field} className={cn(inputClass, 'cursor-pointer')}>
-                          {HR_TEAM_OPTIONS.map((o) => (
+                          {teamOptions.map((o) => (
                             <option key={o.value} value={o.value}>
                               {o.label}
                             </option>
@@ -162,7 +168,7 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       render={({ field }) => (
                         <select {...field} className={cn(inputClass, 'cursor-pointer')}>
                           <option value="">-- Không gán --</option>
-                          {HR_TEAM_OPTIONS.map((o) => (
+                          {allTeams.map((o) => (
                             <option key={o.value} value={o.value}>
                               {o.label}
                             </option>
