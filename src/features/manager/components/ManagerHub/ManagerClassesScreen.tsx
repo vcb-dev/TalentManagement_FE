@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   Calendar,
   Loader2,
+  Pencil,
   PlusCircle,
   Search,
   Trash2,
@@ -69,8 +70,7 @@ const NEXT_LEVEL_BY_FROM: Record<CreateLevel, CreateLevel> = {
   tuong: 'tuong',
 }
 
-const DOT_PATTERN =
-  'radial-gradient(circle at 2px 2px, rgb(255 255 255 / 0.35) 1px, transparent 0)'
+const DOT_PATTERN = 'radial-gradient(circle at 2px 2px, rgb(255 255 255 / 0.35) 1px, transparent 0)'
 
 function toViDate(iso: string | null): string {
   if (!iso) return '—'
@@ -79,44 +79,31 @@ function toViDate(iso: string | null): string {
   return d.toLocaleDateString('vi-VN')
 }
 
-function toLocalDateInputValue(value: Date): string {
-  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000)
-  return local.toISOString().slice(0, 10)
-}
-
-function pad2(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-function toLocalTimeParts(value: Date): { hour: string; minute: string } {
-  return { hour: pad2(value.getHours()), minute: pad2(value.getMinutes()) }
-}
-
-function clampTwoDigit(value: string, min: number, max: number): string {
-  const onlyDigits = value.replace(/\D/g, '')
-  if (!onlyDigits) return pad2(min)
-  const parsed = Number.parseInt(onlyDigits, 10)
-  if (Number.isNaN(parsed)) return pad2(min)
-  return pad2(Math.min(max, Math.max(min, parsed)))
-}
-
 export function ManagerClassesScreen() {
   const [search, setSearch] = useState('')
   const [name, setName] = useState('')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createLevelFrom, setCreateLevelFrom] = useState<CreateLevel>('tap_su')
   const [createMemberQuery, setCreateMemberQuery] = useState('')
-  const [selectedCreateMembers, setSelectedCreateMembers] = useState<Array<{ userId: string; name: string; email: string }>>([])
+  const [selectedCreateMembers, setSelectedCreateMembers] = useState<
+    Array<{ userId: string; name: string; email: string }>
+  >([])
   const [createTeacherQuery, setCreateTeacherQuery] = useState('')
-  const [selectedCreateTeacher, setSelectedCreateTeacher] = useState<{ userId: string; name: string; email: string } | null>(null)
+  const [selectedCreateTeacher, setSelectedCreateTeacher] = useState<{
+    userId: string
+    name: string
+    email: string
+  } | null>(null)
   const [memberQueries, setMemberQueries] = useState<Record<string, string>>({})
   const [activeClassForDropdown, setActiveClassForDropdown] = useState<string | null>(null)
-  const [scheduleClassId, setScheduleClassId] = useState<string | null>(null)
-  const [scheduleDate, setScheduleDate] = useState('')
-  const [scheduleHour, setScheduleHour] = useState('08')
-  const [scheduleMinute, setScheduleMinute] = useState('00')
-  const [teacherQuery, setTeacherQuery] = useState('')
-  const [selectedTeacher, setSelectedTeacher] = useState<{ userId: string; name: string; email: string } | null>(null)
+  const [editClassId, setEditClassId] = useState<string | null>(null)
+  const [editClassName, setEditClassName] = useState('')
+  const [editModalTeacherQuery, setEditModalTeacherQuery] = useState('')
+  const [selectedTeacher, setSelectedTeacher] = useState<{
+    userId: string
+    name: string
+    email: string
+  } | null>(null)
 
   const { data: rows = [], isLoading } = useManagerClasses({ search })
   const createClass = useCreateManagerClass()
@@ -126,13 +113,23 @@ export function ManagerClassesScreen() {
   const updateClass = useUpdateManagerClass()
 
   const activeQuery = activeClassForDropdown ? (memberQueries[activeClassForDropdown] ?? '') : ''
-  const { data: memberOptions = [], isFetching: fetchingMemberOptions } = useClassMemberOptions(activeQuery)
-  const { data: createMemberOptions = [], isFetching: fetchingCreateOptions } = useClassMemberOptions(
-    createMemberQuery,
-    createLevelFrom
+  const memberOptionsExcludeTeacherId = useMemo(() => {
+    if (!activeClassForDropdown) return undefined
+    const cls = rows.find((r) => r.id === activeClassForDropdown)
+    return cls?.teacher?.userId
+  }, [activeClassForDropdown, rows])
+
+  const { data: memberOptions = [], isFetching: fetchingMemberOptions } = useClassMemberOptions(
+    activeQuery,
+    undefined,
+    memberOptionsExcludeTeacherId
   )
-  const { data: createTeacherOptions = [], isFetching: fetchingCreateTeacherOptions } = useTeacherOptions(createTeacherQuery)
-  const { data: teacherOptions = [], isFetching: fetchingTeacherOptions } = useTeacherOptions(teacherQuery)
+  const { data: createMemberOptions = [], isFetching: fetchingCreateOptions } =
+    useClassMemberOptions(createMemberQuery, createLevelFrom, selectedCreateTeacher?.userId)
+  const { data: createTeacherOptions = [], isFetching: fetchingCreateTeacherOptions } =
+    useTeacherOptions(createTeacherQuery)
+  const { data: editModalTeacherOptions = [], isFetching: fetchingEditModalTeacherOptions } =
+    useTeacherOptions(editModalTeacherQuery)
 
   const totalMembers = rows.reduce((a, r) => a + r.memberCount, 0)
   const openCount = rows.filter((r) => r.status === 'open').length
@@ -173,11 +170,39 @@ export function ManagerClassesScreen() {
     if (!activeClassForDropdown) return []
     const cls = rows.find((r) => r.id === activeClassForDropdown)
     const joined = new Set((cls?.members ?? []).map((m) => m.userId))
-    return memberOptions.filter((o) => !joined.has(o.userId))
+    const teacherId = cls?.teacher?.userId
+    return memberOptions.filter((o) => !joined.has(o.userId) && o.userId !== teacherId)
   }, [activeClassForDropdown, rows, memberOptions])
-  const scheduleClass = useMemo(() => rows.find((r) => r.id === scheduleClassId) ?? null, [rows, scheduleClassId])
-  const isTapSuToBietViecSchedule =
-    scheduleClass?.levelFrom === 'tap_su' && scheduleClass?.levelTo === 'biet_viec'
+  const closeEditClassModal = () => {
+    setEditClassId(null)
+    setEditClassName('')
+    setEditModalTeacherQuery('')
+    setSelectedTeacher(null)
+  }
+
+  const openEditClassModal = (row: (typeof rows)[number]) => {
+    setEditClassId(row.id)
+    setEditClassName(row.name)
+    setSelectedTeacher(row.teacher ?? null)
+    setEditModalTeacherQuery('')
+  }
+
+  const saveEditClass = () => {
+    if (!editClassId) return
+    const n = editClassName.trim()
+    if (n.length < 3) {
+      toast.error('Tên lớp ít nhất 3 ký tự')
+      return
+    }
+    updateClass.mutate(
+      { classId: editClassId, input: { name: n, teacherUserId: selectedTeacher?.userId ?? null } },
+      {
+        onSuccess: () => {
+          closeEditClassModal()
+        },
+      }
+    )
+  }
 
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
@@ -198,54 +223,54 @@ export function ManagerClassesScreen() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div
-          className={cn(
-            'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
-            CARD_ENTRANCE_HOVER
-          )}
-        >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary">
-            <Users className="h-6 w-6" strokeWidth={2} />
-          </div>
-          <div>
-            <div className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
-              Lớp đang mở
+          <div
+            className={cn(
+              'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
+              CARD_ENTRANCE_HOVER
+            )}
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary">
+              <Users className="h-6 w-6" strokeWidth={2} />
             </div>
-            <div className="text-2xl font-bold text-foreground">{openCount}</div>
-          </div>
-        </div>
-        <div
-          className={cn(
-            'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
-            CARD_ENTRANCE_HOVER
-          )}
-        >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-            <UserPlus2 className="h-6 w-6" strokeWidth={2} />
-          </div>
-          <div>
-            <div className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
-              Tổng học viên
+            <div>
+              <div className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+                Lớp đang mở
+              </div>
+              <div className="text-2xl font-bold text-foreground">{openCount}</div>
             </div>
-            <div className="text-2xl font-bold text-foreground">{totalMembers}</div>
           </div>
-        </div>
-        <div
-          className={cn(
-            'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
-            CARD_ENTRANCE_HOVER
-          )}
-        >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-            <Calendar className="h-6 w-6" strokeWidth={2} />
-          </div>
-          <div>
-            <div className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
-              Lớp trong kỳ
+          <div
+            className={cn(
+              'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
+              CARD_ENTRANCE_HOVER
+            )}
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+              <UserPlus2 className="h-6 w-6" strokeWidth={2} />
             </div>
-            <div className="text-2xl font-bold text-foreground">{rows.length}</div>
+            <div>
+              <div className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+                Tổng học viên
+              </div>
+              <div className="text-2xl font-bold text-foreground">{totalMembers}</div>
+            </div>
           </div>
-        </div>
+          <div
+            className={cn(
+              'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
+              CARD_ENTRANCE_HOVER
+            )}
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+              <Calendar className="h-6 w-6" strokeWidth={2} />
+            </div>
+            <div>
+              <div className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+                Lớp trong kỳ
+              </div>
+              <div className="text-2xl font-bold text-foreground">{rows.length}</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -298,7 +323,10 @@ export function ManagerClassesScreen() {
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
-                <label htmlFor="new-class-name" className="mb-1 block text-xs font-semibold text-muted-foreground">
+                <label
+                  htmlFor="new-class-name"
+                  className="mb-1 block text-xs font-semibold text-muted-foreground"
+                >
                   Tên lớp
                 </label>
                 <input
@@ -311,7 +339,9 @@ export function ManagerClassesScreen() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Cấp lớp</label>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                  Cấp lớp
+                </label>
                 <select
                   value={createLevelFrom}
                   onChange={(e) => setCreateLevelFrom(e.target.value as typeof createLevelFrom)}
@@ -326,14 +356,19 @@ export function ManagerClassesScreen() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Lộ trình</label>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                  Lộ trình
+                </label>
                 <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm font-medium text-foreground">
-                  {LEVEL_LABELS[createLevelFrom]} → {LEVEL_LABELS[NEXT_LEVEL_BY_FROM[createLevelFrom]]}
+                  {LEVEL_LABELS[createLevelFrom]} →{' '}
+                  {LEVEL_LABELS[NEXT_LEVEL_BY_FROM[createLevelFrom]]}
                 </div>
               </div>
 
               <div className="relative md:col-span-2">
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Giáo viên phụ trách lớp</label>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                  Giáo viên phụ trách lớp
+                </label>
                 <input
                   value={createTeacherQuery}
                   onChange={(e) => setCreateTeacherQuery(e.target.value)}
@@ -348,7 +383,9 @@ export function ManagerClassesScreen() {
                         Đang tìm...
                       </div>
                     ) : createTeacherOptions.length === 0 ? (
-                      <div className="px-2 py-2 text-xs text-muted-foreground">Không có kết quả phù hợp</div>
+                      <div className="px-2 py-2 text-xs text-muted-foreground">
+                        Không có kết quả phù hợp
+                      </div>
                     ) : (
                       createTeacherOptions.map((opt) => (
                         <button
@@ -358,6 +395,9 @@ export function ManagerClassesScreen() {
                           onClick={() => {
                             setSelectedCreateTeacher(opt)
                             setCreateTeacherQuery('')
+                            setSelectedCreateMembers((prev) =>
+                              prev.filter((m) => m.userId !== opt.userId)
+                            )
                           }}
                         >
                           <p className="font-semibold text-foreground">{opt.name}</p>
@@ -368,7 +408,10 @@ export function ManagerClassesScreen() {
                   </div>
                 ) : null}
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Đã chọn giáo viên: <span className="font-semibold text-foreground">{selectedCreateTeacher?.name || 'Chưa chọn'}</span>
+                  Đã chọn giáo viên:{' '}
+                  <span className="font-semibold text-foreground">
+                    {selectedCreateTeacher?.name || 'Chưa chọn'}
+                  </span>
                 </p>
               </div>
 
@@ -389,12 +432,21 @@ export function ManagerClassesScreen() {
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         Đang tìm...
                       </div>
-                    ) : createMemberOptions.filter((opt) => !selectedCreateMembers.some((m) => m.userId === opt.userId))
-                        .length === 0 ? (
-                      <div className="px-2 py-2 text-xs text-muted-foreground">Không có kết quả phù hợp</div>
+                    ) : createMemberOptions.filter(
+                        (opt) =>
+                          !selectedCreateMembers.some((m) => m.userId === opt.userId) &&
+                          opt.userId !== selectedCreateTeacher?.userId
+                      ).length === 0 ? (
+                      <div className="px-2 py-2 text-xs text-muted-foreground">
+                        Không có kết quả phù hợp
+                      </div>
                     ) : (
                       createMemberOptions
-                        .filter((opt) => !selectedCreateMembers.some((m) => m.userId === opt.userId))
+                        .filter(
+                          (opt) =>
+                            !selectedCreateMembers.some((m) => m.userId === opt.userId) &&
+                            opt.userId !== selectedCreateTeacher?.userId
+                        )
                         .map((opt) => (
                           <button
                             key={opt.userId}
@@ -421,13 +473,18 @@ export function ManagerClassesScreen() {
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {selectedCreateMembers.map((m) => (
-                      <span key={m.userId} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs">
+                      <span
+                        key={m.userId}
+                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs"
+                      >
                         {m.name}
                         <button
                           type="button"
                           className="rounded p-0.5 hover:bg-primary/20"
                           onClick={() =>
-                            setSelectedCreateMembers((prev) => prev.filter((x) => x.userId !== m.userId))
+                            setSelectedCreateMembers((prev) =>
+                              prev.filter((x) => x.userId !== m.userId)
+                            )
                           }
                         >
                           <X className="h-3 w-3" />
@@ -455,7 +512,12 @@ export function ManagerClassesScreen() {
               >
                 Hủy
               </Button>
-              <Button type="button" className="gap-2 font-bold" onClick={onCreate} disabled={createClass.isPending}>
+              <Button
+                type="button"
+                className="gap-2 font-bold"
+                onClick={onCreate}
+                disabled={createClass.isPending}
+              >
                 <PlusCircle className="h-4 w-4" />
                 {createClass.isPending ? 'Đang tạo…' : 'Tạo lớp'}
               </Button>
@@ -478,12 +540,7 @@ export function ManagerClassesScreen() {
                 CARD_ENTRANCE_HOVER
               )}
             >
-              <div
-                className={cn(
-                  'relative h-24 overflow-hidden bg-gradient-to-r p-6',
-                  header
-                )}
-              >
+              <div className={cn('relative h-24 overflow-hidden bg-gradient-to-r p-6', header)}>
                 <div
                   className="pointer-events-none absolute inset-0 opacity-[0.12]"
                   style={{
@@ -499,11 +556,15 @@ export function ManagerClassesScreen() {
                 >
                   {st.label}
                 </span>
-                <h3 className="relative z-10 text-lg font-bold leading-tight text-white">{row.name}</h3>
+                <h3 className="relative z-10 text-lg font-bold leading-tight text-white">
+                  {row.name}
+                </h3>
               </div>
               <div className="p-6">
                 <div className="mb-6 flex items-center gap-4">
-                  <span className="text-xs font-medium text-muted-foreground">{row.memberCount} thành viên</span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {row.memberCount} thành viên
+                  </span>
                 </div>
 
                 <div className="mb-4 rounded-lg border border-border/70 bg-muted/30 p-3">
@@ -514,13 +575,19 @@ export function ManagerClassesScreen() {
                     Kỳ thi dự kiến: {toViDate(row.examDate)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Giáo viên: <span className="font-semibold text-foreground">{row.teacher?.name || 'Chưa gán'}</span>
+                    Giáo viên:{' '}
+                    <span className="font-semibold text-foreground">
+                      {row.teacher?.name || 'Chưa gán'}
+                    </span>
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   {(row.members ?? []).slice(0, 6).map((m) => (
-                    <div key={m.userId} className="flex items-center justify-between rounded-md border bg-white px-2 py-1.5 text-xs">
+                    <div
+                      key={m.userId}
+                      className="flex items-center justify-between rounded-md border bg-white px-2 py-1.5 text-xs"
+                    >
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-foreground">{m.name}</p>
                         <p className="truncate text-muted-foreground">{m.email}</p>
@@ -556,7 +623,9 @@ export function ManagerClassesScreen() {
                           Đang tìm...
                         </div>
                       ) : optionsByClass.length === 0 ? (
-                        <div className="px-2 py-2 text-xs text-muted-foreground">Không có kết quả phù hợp</div>
+                        <div className="px-2 py-2 text-xs text-muted-foreground">
+                          Không có kết quả phù hợp
+                        </div>
                       ) : (
                         optionsByClass.map((opt) => (
                           <button
@@ -594,29 +663,15 @@ export function ManagerClassesScreen() {
                     variant="outline"
                     size="sm"
                     className="h-auto rounded-lg border-primary/25 bg-primary/5 py-2.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground"
-                    onClick={() => {
-                      setScheduleClassId(row.id)
-                      if (row.examDate) {
-                        const d = new Date(row.examDate)
-                        const t = toLocalTimeParts(d)
-                        setScheduleDate(toLocalDateInputValue(d))
-                        setScheduleHour(t.hour)
-                        setScheduleMinute(t.minute)
-                      } else {
-                        const now = new Date()
-                        const t = toLocalTimeParts(now)
-                        setScheduleDate(toLocalDateInputValue(now))
-                        setScheduleHour(t.hour)
-                        setScheduleMinute(t.minute)
-                      }
-                      setSelectedTeacher(row.teacher ?? null)
-                      setTeacherQuery('')
-                    }}
+                    onClick={() => openEditClassModal(row)}
                   >
-                    Tạo lịch thi
+                    <Pencil className="mr-1 h-3.5 w-3.5" strokeWidth={2} />
+                    Chỉnh sửa
                   </Button>
                 </div>
-                <p className="mt-3 text-xs text-muted-foreground">Cập nhật {toViDate(row.updatedAt)}</p>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Cập nhật {toViDate(row.updatedAt)}
+                </p>
               </div>
             </div>
           )
@@ -626,7 +681,9 @@ export function ManagerClassesScreen() {
       {isLoading ? (
         <p className="mt-6 text-center text-sm text-muted-foreground">Đang tải danh sách lớp...</p>
       ) : rows.length === 0 ? (
-        <p className="mt-6 text-center text-sm text-muted-foreground">Không có lớp khớp tìm kiếm.</p>
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Không có lớp khớp tìm kiếm.
+        </p>
       ) : null}
 
       <div className="mt-10 flex justify-center">
@@ -639,162 +696,88 @@ export function ManagerClassesScreen() {
         </button>
       </div>
 
-      {scheduleClassId ? (
+      {editClassId ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
           <div className="w-full max-w-xl rounded-2xl border bg-card p-5 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-foreground">Tạo lịch thi cho lớp</h3>
+              <h3 className="text-lg font-bold text-foreground">Chỉnh sửa lớp</h3>
               <button
                 type="button"
                 className="rounded p-1 text-muted-foreground hover:bg-muted"
-                onClick={() => {
-                  setScheduleClassId(null)
-                  setTeacherQuery('')
-                  setSelectedTeacher(null)
-                }}
+                onClick={closeEditClassModal}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Thời gian thi</label>
-                <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
-                  <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <input
-                      type="date"
-                      value={scheduleDate}
-                      onChange={(e) => setScheduleDate(e.target.value)}
-                      min={toLocalDateInputValue(new Date())}
-                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    />
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        inputMode="numeric"
-                        value={scheduleHour}
-                        onChange={(e) => setScheduleHour(clampTwoDigit(e.target.value, 0, 23))}
-                        onBlur={(e) => setScheduleHour(clampTwoDigit(e.target.value, 0, 23))}
-                        className="h-[38px] w-[64px] rounded-lg border border-border bg-background px-2 text-center text-sm font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        aria-label="Giờ thi (00-23)"
-                      />
-                      <span className="text-sm font-bold text-muted-foreground">:</span>
-                      <input
-                        inputMode="numeric"
-                        value={scheduleMinute}
-                        onChange={(e) => setScheduleMinute(clampTwoDigit(e.target.value, 0, 59))}
-                        onBlur={(e) => setScheduleMinute(clampTwoDigit(e.target.value, 0, 59))}
-                        className="h-[38px] w-[64px] rounded-lg border border-border bg-background px-2 text-center text-sm font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        aria-label="Phút thi (00-59)"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                  Tên lớp
+                </label>
+                <input
+                  value={editClassName}
+                  onChange={(e) => setEditClassName(e.target.value)}
+                  placeholder="Ví dụ: Tập sự – Đợt Q2/2026"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
               </div>
               <div className="relative">
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Người chấm thi</label>
-                {isTapSuToBietViecSchedule ? (
-                  <input
-                    value={selectedTeacher?.name || 'Chưa gán giáo viên phụ trách lớp'}
-                    disabled
-                    className="w-full rounded-xl border border-border bg-muted px-3 py-2.5 text-sm text-muted-foreground outline-none"
-                  />
-                ) : (
-                  <>
-                    <input
-                      value={teacherQuery}
-                      onChange={(e) => setTeacherQuery(e.target.value)}
-                      placeholder="Gõ tên/email teacher..."
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    />
-                    {teacherQuery.trim().length > 0 ? (
-                      <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
-                        {fetchingTeacherOptions ? (
-                          <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            Đang tìm...
-                          </div>
-                        ) : teacherOptions.length === 0 ? (
-                          <div className="px-2 py-2 text-xs text-muted-foreground">Không có kết quả phù hợp</div>
-                        ) : (
-                          teacherOptions.map((opt) => (
-                            <button
-                              key={opt.userId}
-                              type="button"
-                              className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-primary/10"
-                              onClick={() => {
-                                setSelectedTeacher(opt)
-                                setTeacherQuery('')
-                              }}
-                            >
-                              <p className="font-semibold text-foreground">{opt.name}</p>
-                              <p className="text-muted-foreground">{opt.email}</p>
-                            </button>
-                          ))
-                        )}
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                  Giáo viên phụ trách lớp
+                </label>
+                <input
+                  value={editModalTeacherQuery}
+                  onChange={(e) => setEditModalTeacherQuery(e.target.value)}
+                  placeholder="Gõ tên/email giáo viên..."
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+                {editModalTeacherQuery.trim().length > 0 ? (
+                  <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                    {fetchingEditModalTeacherOptions ? (
+                      <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Đang tìm...
                       </div>
-                    ) : null}
-                  </>
-                )}
+                    ) : editModalTeacherOptions.length === 0 ? (
+                      <div className="px-2 py-2 text-xs text-muted-foreground">
+                        Không có kết quả phù hợp
+                      </div>
+                    ) : (
+                      editModalTeacherOptions.map((opt) => (
+                        <button
+                          key={opt.userId}
+                          type="button"
+                          className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-primary/10"
+                          onClick={() => {
+                            setSelectedTeacher(opt)
+                            setEditModalTeacherQuery('')
+                          }}
+                        >
+                          <p className="font-semibold text-foreground">{opt.name}</p>
+                          <p className="text-muted-foreground">{opt.email}</p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                ) : null}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Đã chọn:{' '}
+                  <span className="font-semibold text-foreground">
+                    {selectedTeacher?.name || 'Chưa chọn'}
+                  </span>
+                  {' — '}
+                  <span className="text-muted-foreground">
+                    Lịch thi kỳ &amp; người chấm đặt tại mục Lịch thi &amp; chỉ định người chấm.
+                  </span>
+                </p>
               </div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setScheduleClassId(null)
-                  setTeacherQuery('')
-                  setSelectedTeacher(null)
-                }}
-              >
+              <Button type="button" variant="outline" onClick={closeEditClassModal}>
                 Hủy
               </Button>
-              <Button
-                type="button"
-                onClick={() => {
-                  if (!scheduleClassId) return
-                  if (!scheduleDate) {
-                    toast.error('Vui lòng chọn thời gian thi')
-                    return
-                  }
-                  const scheduleAt = new Date(`${scheduleDate}T${scheduleHour}:${scheduleMinute}:00`)
-                  if (Number.isNaN(scheduleAt.getTime())) {
-                    toast.error('Thời gian thi không hợp lệ')
-                    return
-                  }
-                  if (scheduleAt.getTime() < Date.now()) {
-                    toast.error('Chỉ được chọn thời điểm hiện tại hoặc tương lai')
-                    return
-                  }
-                  if (!selectedTeacher) {
-                    toast.error(
-                      isTapSuToBietViecSchedule
-                        ? 'Lớp này chưa có giáo viên phụ trách để tự động gán người chấm'
-                        : 'Vui lòng chọn người chấm thi'
-                    )
-                    return
-                  }
-                  updateClass.mutate(
-                    {
-                      classId: scheduleClassId,
-                      input: {
-                        examDate: scheduleAt.toISOString(),
-                        teacherUserId: selectedTeacher.userId,
-                        status: 'open',
-                      },
-                    },
-                    {
-                      onSuccess: () => {
-                        setScheduleClassId(null)
-                        setTeacherQuery('')
-                        setSelectedTeacher(null)
-                      },
-                    }
-                  )
-                }}
-                disabled={updateClass.isPending}
-              >
-                {updateClass.isPending ? 'Đang lưu...' : 'Lưu lịch thi'}
+              <Button type="button" onClick={saveEditClass} disabled={updateClass.isPending}>
+                {updateClass.isPending ? 'Đang lưu...' : 'Lưu'}
               </Button>
             </div>
           </div>

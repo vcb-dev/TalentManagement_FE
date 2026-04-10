@@ -49,7 +49,7 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
   },
   {
     to: '/learning-classes',
-    label: 'Lớp học',
+    label: 'Lịch học',
     icon: GraduationCap,
     match: 'prefix',
     permissionId: 'learning.view',
@@ -179,7 +179,7 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
 const TEACHER_CLASS_ITEMS: AppNavItem[] = [
   {
     to: '/teacher/classes',
-    label: 'Lớp & thành viên',
+    label: 'Lớp phụ trách',
     icon: School,
     match: 'prefix',
     permissionId: 'teacher.classes.view',

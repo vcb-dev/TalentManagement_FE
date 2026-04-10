@@ -36,3 +36,15 @@ export const teacherClassDetailApiSchema = z.object({
 export const teacherGradeResponseSchema = z.object({
   id: z.string().uuid(),
 })
+
+export const teacherClassScheduleApiSchema = z.object({
+  id: z.string().uuid(),
+  classId: z.string().uuid(),
+  dateIso: z.string(),
+  startTime: z.string(),
+  endTime: z.string(),
+  topic: z.string(),
+  location: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+})

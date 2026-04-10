@@ -16,7 +16,7 @@ import { MemberLeaderHeaderNav } from '@/components/shared/AppNav/MemberLeaderHe
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Sidebar } from '@/components/shared/Sidebar'
 import { defaultEntryPathFromSession } from '@/lib/routeGuards'
-import { ROLE_LABEL_VI } from '@/lib/roleLabels'
+import { formatRoleLabelsVi } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { cn } from '@/lib/utils'
 
@@ -30,7 +30,7 @@ export function AppShell({ children, title }: AppShellProps) {
   const navigate = useNavigate()
   const { mutate: logout, isPending: logoutPending } = useLogout()
   const displayName = user?.name ?? 'Người dùng'
-  const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
+  const roleLabel = user ? formatRoleLabelsVi(user) : '—'
   const brandHomeTo = user ? defaultEntryPathFromSession(user) : '/dashboard'
   const brandHomeSearch = brandHomeTo === '/hr-admin' ? { page: 1 } : undefined
   /** Không dùng sidebar — điều hướng bằng header ngang. */
@@ -41,7 +41,7 @@ export function AppShell({ children, title }: AppShellProps) {
     user?.role === 'TEACHER'
 
   const toolbar = (
-    <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1.5 sm:gap-3">
+    <div className="flex shrink-0 items-center gap-2 sm:gap-3">
       <Button
         type="button"
         variant="ghost"
@@ -59,7 +59,7 @@ export function AppShell({ children, title }: AppShellProps) {
             type="button"
             title="Nhấn để mở hồ sơ cá nhân"
             className={cn(
-              'group ml-0.5 flex max-w-[min(100vw-8rem,300px)] items-center gap-2 rounded-full border border-primary-600/15 bg-primary-50 py-1 pl-1 pr-2 text-left shadow-sm outline-none transition-[box-shadow,background-color] hover:bg-primary-100/80 focus-visible:ring-2 focus-visible:ring-primary-600/30 sm:pr-2.5 md:pr-3'
+              'group ml-0.5 flex shrink-0 items-center gap-2 rounded-full border border-primary-600/15 bg-primary-50 py-1 pl-1 pr-2 text-left shadow-sm outline-none transition-[box-shadow,background-color] hover:bg-primary-100/80 focus-visible:ring-2 focus-visible:ring-primary-600/30 sm:pr-2.5 lg:pr-3'
             )}
             aria-label="Mở menu hồ sơ cá nhân"
             aria-haspopup="menu"
@@ -69,7 +69,7 @@ export function AppShell({ children, title }: AppShellProps) {
               showOnlineDot
               className="h-9 w-9 border-2 border-white bg-gradient-to-br from-primary-600 to-primary-500 text-[12px] font-bold text-white sm:h-10 sm:w-10"
             />
-            <span className="hidden min-w-0 flex-1 truncate text-sm font-semibold text-gray-900 sm:inline md:max-w-[180px]">
+            <span className="hidden max-w-[11rem] truncate text-sm font-semibold text-gray-900 xl:inline">
               {displayName}
             </span>
             <ChevronDown
@@ -126,41 +126,36 @@ export function AppShell({ children, title }: AppShellProps) {
       {!compactNavNoSidebar ? <Sidebar /> : null}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <header className="sticky top-0 z-30 shrink-0 border-b border-gray-200 bg-white/95 shadow-[var(--shadow-card)] backdrop-blur-sm">
-          <div
-            className={cn(
-              'mx-auto flex w-full max-w-[1400px] min-h-14 flex-wrap items-center px-5 py-2 md:px-6',
-              compactNavNoSidebar ? 'justify-between gap-x-3 gap-y-2' : 'gap-2 sm:gap-3'
-            )}
-          >
-            {compactNavNoSidebar && user ? (
-              <>
-                <div className="flex min-h-10 min-w-0 flex-1 items-center gap-6 sm:gap-8">
-                  <Link
-                    to={brandHomeTo}
-                    search={brandHomeSearch}
-                    className="flex h-10 shrink-0 items-center text-lg font-bold leading-none tracking-tight text-primary-600 sm:text-[18px]"
-                  >
-                    VCB HRM
-                  </Link>
-                  <div className="min-w-0 flex-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <MemberLeaderHeaderNav />
-                  </div>
+          {compactNavNoSidebar && user ? (
+            <div className="grid w-full min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:gap-4 lg:px-8">
+              <Link
+                to={brandHomeTo}
+                search={brandHomeSearch}
+                className="flex h-10 shrink-0 items-center text-lg font-bold leading-none tracking-tight text-primary-600 sm:text-[18px]"
+              >
+                VCB HRM
+              </Link>
+              <div className="relative min-h-10 min-w-0 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="inline-block min-w-max">
+                  <MemberLeaderHeaderNav />
                 </div>
+              </div>
+              <div className="flex shrink-0 items-center justify-self-end border-l border-gray-200/90 pl-2 sm:pl-3 md:pl-4">
                 {toolbar}
-              </>
-            ) : (
-              <>
-                {title ? (
-                  <span className="min-w-0 flex-1 truncate text-lg font-bold tracking-tight text-primary-600 sm:text-[18px]">
-                    {title}
-                  </span>
-                ) : (
-                  <span className="min-w-0 flex-1" aria-hidden />
-                )}
-                {toolbar}
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          ) : (
+            <div className="mx-auto flex w-full max-w-[1400px] min-h-14 flex-wrap items-center gap-2 px-5 py-2 sm:gap-3 md:px-6">
+              {title ? (
+                <span className="min-w-0 flex-1 truncate text-lg font-bold tracking-tight text-primary-600 sm:text-[18px]">
+                  {title}
+                </span>
+              ) : (
+                <span className="min-w-0 flex-1" aria-hidden />
+              )}
+              {toolbar}
+            </div>
+          )}
         </header>
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-5 md:p-6">
           <div className="mx-auto w-full max-w-[1400px]">{children}</div>

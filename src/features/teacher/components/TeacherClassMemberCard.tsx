@@ -9,7 +9,6 @@ export interface TeacherClassMemberCardProps {
   selected: boolean
   onSelect: () => void
   cardIndex?: number
-  onViewDetail: () => void
 }
 
 export function TeacherClassMemberCard({
@@ -17,7 +16,6 @@ export function TeacherClassMemberCard({
   selected,
   onSelect,
   cardIndex,
-  onViewDetail,
 }: TeacherClassMemberCardProps) {
   const hasResult = member.examResult != null && member.examResult.length > 0
 
@@ -41,7 +39,10 @@ export function TeacherClassMemberCard({
     >
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="relative shrink-0">
-          <EmployeeAvatar name={member.name} className="h-[4.5rem] w-[4.5rem] text-base font-bold sm:h-[5rem] sm:w-[5rem]" />
+          <EmployeeAvatar
+            name={member.name}
+            className="h-[4.5rem] w-[4.5rem] text-base font-bold sm:h-[5rem] sm:w-[5rem]"
+          />
           <span
             className={cn(
               'absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-[3px] border-card shadow-sm',
@@ -69,24 +70,6 @@ export function TeacherClassMemberCard({
           <Mail className="size-3.5 shrink-0 opacity-70" strokeWidth={2} aria-hidden />
           <span className="truncate">{member.email}</span>
         </p>
-      </div>
-
-      <div className="mt-auto flex gap-2">
-        <button
-          type="button"
-          className={cn(
-            'flex min-h-9 flex-1 items-center justify-center rounded-lg py-2 text-xs font-bold transition-colors',
-            selected
-              ? 'bg-primary/15 text-primary hover:bg-primary/20'
-              : 'bg-muted/80 text-foreground hover:bg-muted'
-          )}
-          onClick={(e) => {
-            e.stopPropagation()
-            onViewDetail()
-          }}
-        >
-          Xem lịch sử thi
-        </button>
       </div>
     </div>
   )

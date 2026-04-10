@@ -9,7 +9,6 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
-import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { useTeacherClasses } from '@/features/teacher/hooks'
 import { TeacherClassCard } from './TeacherClassCard'
@@ -20,8 +19,6 @@ const FILTERS: { key: 'all' | TeacherClassTrack; label: string }[] = [
   { key: 'tap_su', label: 'Tập sự' },
   { key: 'biet_viec', label: 'Biết việc' },
 ]
-
-const REPUTATION_SCORE = '4.8/5'
 
 export function TeacherClassesScreen() {
   const [filterKey, setFilterKey] = useState<(typeof FILTERS)[number]['key']>('all')
@@ -37,7 +34,9 @@ export function TeacherClassesScreen() {
         .map((r) => ({
           id: r.id,
           title: r.name,
-          periodBadge: r.examDate ? `Thi: ${new Date(r.examDate).toLocaleDateString('vi-VN')}` : 'Chưa có lịch thi',
+          periodBadge: r.examDate
+            ? `Thi: ${new Date(r.examDate).toLocaleDateString('vi-VN')}`
+            : 'Chưa có lịch thi',
           examLine: `${r.levelFrom === 'tap_su' ? 'Tập sự' : 'Biết việc'} -> ${r.levelTo}`,
           memberCount: r.memberCount,
           metaIcon: r.levelFrom === 'tap_su' ? 'trending' : 'school',
@@ -60,15 +59,13 @@ export function TeacherClassesScreen() {
     })
   }, [rows, filterKey, searchDraft])
 
-  const totalMembers = rows.reduce((a, c) => a + c.memberCount, 0)
-  const classCount = rows.length
-  const avgPerClass =
-    classCount > 0 ? Math.round((totalMembers / classCount) * 10) / 10 : 0
   const totalPages = 1
   const page = 1
 
   const scrollToFilters = () => {
-    document.getElementById('teacher-class-filters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    document
+      .getElementById('teacher-class-filters')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const activeFilter = filterKey
@@ -77,15 +74,19 @@ export function TeacherClassesScreen() {
     <div className="-m-5 flex min-h-[calc(100vh-3.5rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="page-shell">
-          <div className="mb-8 flex flex-col gap-8">
+          <div className="mb-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
                 <h1 className={PAGE_HEADER_TITLE}>
                   <span className={PAGE_HEADER_GRADIENT}>Lớp được phân công</span>
                 </h1>
                 <p className={PAGE_HEADER_DESCRIPTION}>
-                  Danh sách lớp do quản lý đào tạo xếp — cùng giao diện danh mục như HR, tối ưu cho giảng
-                  viên theo dõi và mở chi tiết (dữ liệu minh họa).
+                  Lớp do quản lý gán cho bạn. Vào chi tiết để xem thành viên, chấm điểm và{' '}
+                  <strong className="font-semibold text-foreground">xếp lịch học buổi</strong> (API{' '}
+                  <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+                    /teacher/classes/:id/schedules
+                  </code>
+                  ).
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
@@ -117,85 +118,6 @@ export function TeacherClassesScreen() {
                   Xuất dữ liệu
                 </button>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {(
-                [
-                  {
-                    key: 'total',
-                    className:
-                      'rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.09] via-card to-teal-500/[0.06] p-5 shadow-[var(--shadow-card)] ring-1 ring-primary/10',
-                    body: (
-                      <>
-                        <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                          Tổng học viên
-                        </span>
-                        <div className="flex flex-wrap items-baseline gap-2">
-                          <span className="bg-gradient-to-r from-primary to-teal-600 bg-clip-text text-2xl font-bold leading-none text-transparent">
-                            {totalMembers}
-                          </span>
-                          <span className="text-[10px] font-bold text-primary">toàn bộ lớp</span>
-                        </div>
-                      </>
-                    ),
-                  },
-                  {
-                    key: 'classes',
-                    className:
-                      'rounded-xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/95 via-card to-teal-50/80 p-5 shadow-[var(--shadow-card)] ring-1 ring-emerald-500/15',
-                    body: (
-                      <>
-                        <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                          Lớp phụ trách
-                        </span>
-                        <div className="flex flex-wrap items-baseline gap-2">
-                          <span className="text-2xl font-bold leading-none text-emerald-700">{classCount}</span>
-                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-800">
-                            đang mở
-                          </span>
-                        </div>
-                      </>
-                    ),
-                  },
-                  {
-                    key: 'avg',
-                    className:
-                      'rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-card to-violet-50/50 p-5 shadow-[var(--shadow-card)] ring-1 ring-amber-400/20',
-                    body: (
-                      <>
-                        <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                          TB học viên / lớp
-                        </span>
-                        <div className="flex flex-wrap items-baseline gap-2">
-                          <span className="text-2xl font-bold leading-none text-amber-800">{avgPerClass}</span>
-                          <span className="text-[10px] font-medium text-muted-foreground">ước lượng</span>
-                        </div>
-                      </>
-                    ),
-                  },
-                  {
-                    key: 'feedback',
-                    className:
-                      'rounded-xl border border-violet-200/70 bg-gradient-to-br from-violet-50/90 via-card to-fuchsia-50/40 p-5 shadow-[var(--shadow-card)] ring-1 ring-violet-400/15',
-                    body: (
-                      <>
-                        <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                          Phản hồi (minh họa)
-                        </span>
-                        <div className="flex flex-wrap items-baseline gap-2">
-                          <span className="text-2xl font-bold leading-none text-violet-800">{REPUTATION_SCORE}</span>
-                          <span className="text-[10px] font-medium text-muted-foreground">điểm uy tín</span>
-                        </div>
-                      </>
-                    ),
-                  },
-                ] as const
-              ).map((s, i) => (
-                <div key={s.key} className={cn(s.className, CARD_ENTRANCE_HOVER)} style={staggerStyle(i)}>
-                  {s.body}
-                </div>
-              ))}
             </div>
           </div>
 
@@ -259,7 +181,10 @@ export function TeacherClassesScreen() {
                   </thead>
                   <tbody>
                     {filtered.map((c) => (
-                      <tr key={c.id} className="border-t border-border/80 bg-card transition-colors hover:bg-muted/30">
+                      <tr
+                        key={c.id}
+                        className="border-t border-border/80 bg-card transition-colors hover:bg-muted/30"
+                      >
                         <td className="px-4 py-3 font-semibold text-foreground">{c.title}</td>
                         <td className="px-4 py-3">
                           <span
@@ -273,14 +198,21 @@ export function TeacherClassesScreen() {
                             {c.periodBadge}
                           </span>
                         </td>
-                        <td className="max-w-[280px] px-4 py-3 text-muted-foreground">{c.examLine}</td>
+                        <td className="max-w-[280px] px-4 py-3 text-muted-foreground">
+                          {c.examLine}
+                        </td>
                         <td className="px-4 py-3 text-right tabular-nums font-semibold text-foreground">
                           {c.memberCount}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Button variant="outline" size="sm" className="font-semibold" asChild>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="min-w-[7.5rem] font-semibold"
+                            asChild
+                          >
                             <Link to="/teacher/classes/$classId" params={{ classId: c.id }}>
-                              Chi tiết
+                              Xem chi tiết
                             </Link>
                           </Button>
                         </td>
@@ -324,7 +256,9 @@ export function TeacherClassesScreen() {
                 ))}
               </div>
               {filtered.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">Không có lớp phù hợp.</p>
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Không có lớp phù hợp.
+                </p>
               ) : null}
             </>
           )}

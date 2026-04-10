@@ -146,3 +146,15 @@ export const managerRoadmapItemApiSchema = z.object({
 export const managerRoadmapItemCreateResponseSchema = z.object({
   id: z.string().uuid(),
 })
+
+export const managerClassScheduleApiSchema = z.object({
+  id: z.string().uuid(),
+  classId: z.string().uuid(),
+  dateIso: z.string(),
+  startTime: z.string(),
+  endTime: z.string(),
+  topic: z.string(),
+  location: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+})

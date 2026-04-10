@@ -1,9 +1,7 @@
-import { Link } from '@tanstack/react-router'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import {
   ArrowRight,
-  Award,
   Building2,
   Calendar,
   ChevronLeft,
@@ -15,7 +13,6 @@ import {
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { ProgressStar } from '@/components/shared/ProgressStar/ProgressStar'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatViDate } from '@/lib/date'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
@@ -33,6 +30,13 @@ export interface ExamResultsScheduleProps {
   isLoading: boolean
   onPageChange: (page: number) => void
   onOpenExam: (id: string) => void
+  membersInClass?: Array<{
+    userId: string
+    name: string
+    email: string
+    latestResult?: { outcome: string } | null
+  }>
+  membersTitle?: string
 }
 
 function formatViWeekdayDate(iso: string): string {
@@ -61,6 +65,8 @@ export function ExamResultsSchedule({
   isLoading,
   onPageChange,
   onOpenExam,
+  membersInClass,
+  membersTitle,
 }: ExamResultsScheduleProps) {
   const [yearFilter, setYearFilter] = useState<string>('all')
 
@@ -141,7 +147,7 @@ export function ExamResultsSchedule({
           </a>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {upcomingShow.map((exam, idx) => {
             const Icon = idx % 2 === 0 ? Building2 : Shield
             const isOptional = idx % 2 === 1
@@ -212,74 +218,36 @@ export function ExamResultsSchedule({
             )
           })}
 
-          {upcomingShow.length < 2 &&
-            Array.from({ length: 2 - upcomingShow.length }, (_, i) => (
-              <div
-                key={`placeholder-${i}`}
-                className="flex min-h-[200px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center text-muted-foreground"
-              >
-                <Calendar className="mb-2 h-10 w-10 opacity-50" aria-hidden />
-                <p className="text-sm font-medium">Chưa có thêm lịch thi sắp tới trên trang này.</p>
-              </div>
-            ))}
-
-          {/* Gamification */}
-          <div
-            className={cn(
-              'relative flex flex-col justify-between overflow-hidden rounded-xl border border-primary/20 bg-primary p-6 text-primary-foreground shadow-lg',
-              CARD_ENTRANCE_HOVER
-            )}
-          >
-            <div className="pointer-events-none absolute -bottom-4 -right-4 opacity-[0.12]">
-              <Award className="h-[120px] w-[120px]" aria-hidden />
-            </div>
-            <div>
-              <span className="mb-4 block text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-primary-foreground/90">
-                Gamification
-              </span>
-              <h3 className="mb-2 text-2xl font-bold">Thử thách Ngôi sao</h3>
-              <p className="text-sm leading-relaxed text-primary-foreground/90">
-                Hoàn thành các mốc trong lộ trình học để nhận điểm thưởng và huy hiệu trên VCB HRM.
-              </p>
-            </div>
-            <div className="mt-8">
-              <Button
-                asChild
-                variant="secondary"
-                size="sm"
-                className="rounded-lg bg-white font-bold text-primary hover:bg-white/95"
-              >
-                <Link to="/learning-path" search={{ levelId: 'biet_viec', starId: 1 }}>
-                  Khám phá ngay
-                </Link>
-              </Button>
-            </div>
-          </div>
+          {null}
         </div>
       </section>
 
-      {/* Kết quả thi đã đạt */}
+      {/* Kết quả / Thành viên */}
       <section id="ket-qua-thi-da-dat" className="scroll-mt-4">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="h-6 w-1.5 shrink-0 rounded-full bg-brand-tertiary" aria-hidden />
-            <h2 className="text-xl font-bold tracking-tight text-foreground">Kết quả thi đã đạt</h2>
+            <h2 className="text-xl font-bold tracking-tight text-foreground">
+              {membersInClass ? membersTitle || 'Thành viên trong lớp' : 'Kết quả thi đã đạt'}
+            </h2>
           </div>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="sr-only">Lọc theo năm</span>
-            <select
-              value={yearFilter}
-              onChange={(e) => setYearFilter(e.target.value)}
-              className="rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="all">Tất cả kỳ thi</option>
-              {yearOptions.map((y) => (
-                <option key={y} value={String(y)}>
-                  Năm {y}
-                </option>
-              ))}
-            </select>
-          </label>
+          {membersInClass ? null : (
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="sr-only">Lọc theo năm</span>
+              <select
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value)}
+                className="rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="all">Tất cả kỳ thi</option>
+                {yearOptions.map((y) => (
+                  <option key={y} value={String(y)}>
+                    Năm {y}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
 
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -287,28 +255,62 @@ export function ExamResultsSchedule({
             <table className="w-full min-w-[720px] border-collapse text-left">
               <thead>
                 <tr className="bg-muted/60 text-muted-foreground">
-                  <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
-                    Tên kỳ thi
-                  </th>
-                  <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
-                    Ngày hoàn thành
-                  </th>
-                  <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
-                    Điểm số
-                  </th>
-                  <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
-                    Xếp hạng (6 Sao)
-                  </th>
-                  <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
-                    Trạng thái
-                  </th>
-                  <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
-                    Thao tác
-                  </th>
+                  {membersInClass ? (
+                    <>
+                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                        Họ tên
+                      </th>
+                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                        Kết quả gần nhất
+                      </th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                        Tên kỳ thi
+                      </th>
+                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                        Ngày hoàn thành
+                      </th>
+                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                        Điểm số
+                      </th>
+                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                        Xếp hạng (6 Sao)
+                      </th>
+                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                        Trạng thái
+                      </th>
+                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                        Thao tác
+                      </th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredCompleted.length === 0 ? (
+                {membersInClass ? (
+                  membersInClass.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-6 py-10 text-center text-muted-foreground">
+                        Chưa có thành viên trong lớp.
+                      </td>
+                    </tr>
+                  ) : (
+                    membersInClass.map((m) => (
+                      <tr key={m.userId} className="transition-colors hover:bg-muted/40">
+                        <td className="px-6 py-5 font-semibold text-foreground">{m.name}</td>
+                        <td className="px-6 py-5 text-sm text-muted-foreground">{m.email}</td>
+                        <td className="px-6 py-5 text-sm text-muted-foreground">
+                          {m.latestResult?.outcome || '—'}
+                        </td>
+                      </tr>
+                    ))
+                  )
+                ) : filteredCompleted.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
                       Không có kỳ thi đã hoàn thành trong mục lọc này.
@@ -330,7 +332,9 @@ export function ExamResultsSchedule({
                             <Link2 className="h-5 w-5" aria-hidden />
                           </div>
                           <div className="min-w-0">
-                            <p className="font-semibold text-foreground">{cleanExamTitle(exam.title)}</p>
+                            <p className="font-semibold text-foreground">
+                              {cleanExamTitle(exam.title)}
+                            </p>
                             <p className="text-xs text-muted-foreground">Kỳ thi nội bộ</p>
                           </div>
                         </div>
@@ -402,30 +406,6 @@ export function ExamResultsSchedule({
             </button>
           </div>
         </div>
-      </section>
-
-      {/* Thống kê nhanh — bố cục như mock; một số chỉ số chờ API chi tiết */}
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-4">
-        {[
-          { label: 'Tổng khóa học', value: String(total) },
-          { label: 'Tỷ lệ Đạt', value: '—' },
-          { label: 'Điểm trung bình', value: '—' },
-          { label: 'Chứng chỉ mới', value: '—' },
-        ].map((tile) => (
-          <div
-            key={tile.label}
-            className={cn(
-              'rounded-xl border border-border/80 bg-card p-6 shadow-[var(--shadow-card)] ring-1 ring-border/40',
-              '[background:radial-gradient(circle_at_center,rgb(99_102_241/0.06)_0%,transparent_70%)]',
-              CARD_ENTRANCE_HOVER
-            )}
-          >
-            <p className="mb-2 text-[0.6875rem] font-bold uppercase tracking-wide text-muted-foreground">
-              {tile.label}
-            </p>
-            <p className="text-3xl font-extrabold text-primary">{tile.value}</p>
-          </div>
-        ))}
       </section>
     </div>
   )

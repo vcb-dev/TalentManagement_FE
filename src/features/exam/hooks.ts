@@ -4,10 +4,11 @@ import { examApi } from './api'
 import { examKeys } from './queryKeys'
 import type { ClassifyExamInput, ExamFilters, GradeExamInput } from './types'
 
-export function useExams(filters: ExamFilters) {
+export function useExams(filters: ExamFilters, enabled = true) {
   return useQuery({
     queryKey: examKeys.list(filters),
     queryFn: () => examApi.list(filters),
+    enabled,
   })
 }
 

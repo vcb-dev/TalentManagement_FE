@@ -6,7 +6,7 @@ export function MemberLearningClassesScreen() {
     <>
       <PageHeader
         title="Lớp học của tôi"
-        description="Trong mỗi kỳ, mỗi nhân sự chỉ được xếp một lớp. Bảng bên dưới hiển thị lớp của kỳ hiện tại (dữ liệu minh họa — sẽ nối API)."
+        description="Trong mỗi kỳ, mỗi nhân sự chỉ được xếp một lớp. Bảng bên dưới hiển thị lớp hiện tại của bạn và lịch học buổi do giáo viên cập nhật."
       />
       <div className="pb-6">
         <MemberClassesPanel />

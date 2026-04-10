@@ -55,7 +55,11 @@ export function ManagerExercisesScreen() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
 
-  const { data: items = [], isLoading } = useManagerRoadmapItems({ q, levelLabel, topic: topicFilter })
+  const { data: items = [], isLoading } = useManagerRoadmapItems({
+    q,
+    levelLabel,
+    topic: topicFilter,
+  })
   const createItem = useCreateManagerRoadmapItem()
   const updateItem = useUpdateManagerRoadmapItem()
   const deleteItem = useDeleteManagerRoadmapItem()
@@ -99,7 +103,11 @@ export function ManagerExercisesScreen() {
       levelLabel: form.levelLabel.trim(),
       topic: form.topic.trim(),
       objective: form.objective.trim(),
-      materialRef: safeMaterialRefs.map((x) => x.trim()).filter(Boolean).join('\n') || null,
+      materialRef:
+        safeMaterialRefs
+          .map((x) => x.trim())
+          .filter(Boolean)
+          .join('\n') || null,
       trainer: form.trainer.trim() || null,
       assessment: form.assessment.trim() || null,
       rowOrder: form.rowOrder.trim() ? Number.parseInt(form.rowOrder, 10) : null,
@@ -132,10 +140,12 @@ export function ManagerExercisesScreen() {
           <h1 className={PAGE_HEADER_TITLE}>
             <span className={PAGE_HEADER_GRADIENT}>Quản lý lộ trình học</span>
           </h1>
-          <p className={PAGE_HEADER_DESCRIPTION}>CRUD trực tiếp các objective trong bảng roadmap từ database.</p>
+          <p className={PAGE_HEADER_DESCRIPTION}>
+            CRUD trực tiếp các objective trong bảng roadmap từ database.
+          </p>
         </div>
 
-        <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border-2 border-border bg-card p-4 shadow-sm">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <input
               value={q}
@@ -170,19 +180,23 @@ export function ManagerExercisesScreen() {
 
         <div className="space-y-4">
           {isLoading ? <p className="text-sm text-muted-foreground">Đang tải...</p> : null}
-          {!isLoading && grouped.length === 0 ? <p className="text-sm text-muted-foreground">Không có dữ liệu phù hợp.</p> : null}
+          {!isLoading && grouped.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Không có dữ liệu phù hợp.</p>
+          ) : null}
           {grouped.map(([key, rows]) => {
             const [lvl, topic] = key.split('|||')
             return (
-              <div key={key} className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+              <div key={key} className="rounded-2xl border-2 border-border bg-card p-4 shadow-sm">
                 <p className="text-xs font-semibold text-primary">{lvl}</p>
                 <h3 className="text-base font-bold text-foreground">{topic}</h3>
                 <div className="mt-3 space-y-2">
                   {rows.map((row) => (
-                    <div key={row.id} className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                    <div
+                      key={row.id}
+                      className="rounded-lg border-2 border-border/80 bg-muted/20 p-3"
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground">Thứ tự: {row.rowOrder}</p>
                           <p className="text-sm font-medium text-foreground">{row.objective}</p>
                           {row.materialRef ? (
                             <div className="mt-1 text-xs text-muted-foreground">
@@ -194,16 +208,31 @@ export function ManagerExercisesScreen() {
                               </ul>
                             </div>
                           ) : null}
-                          {row.trainer ? <p className="text-xs text-muted-foreground">Trainer: {row.trainer}</p> : null}
+                          {row.trainer ? (
+                            <p className="text-xs text-muted-foreground">Trainer: {row.trainer}</p>
+                          ) : null}
                           {row.assessment ? (
-                            <p className="text-xs text-muted-foreground">Phương thức đánh giá: {row.assessment}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Phương thức đánh giá: {row.assessment}
+                            </p>
                           ) : null}
                         </div>
                         <div className="flex gap-1">
-                          <Button type="button" size="icon" variant="ghost" onClick={() => startEdit(row.id)}>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => startEdit(row.id)}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button type="button" size="icon" variant="ghost" className="text-destructive" onClick={() => deleteItem.mutate(row.id)}>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="text-destructive"
+                            onClick={() => deleteItem.mutate(row.id)}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -220,7 +249,9 @@ export function ManagerExercisesScreen() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
           <div className="w-full max-w-3xl rounded-2xl border border-primary/20 bg-card p-4 shadow-2xl">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-foreground">{editingId ? 'Chỉnh sửa bài tập' : 'Thêm bài tập'}</h2>
+              <h2 className="text-sm font-bold text-foreground">
+                {editingId ? 'Chỉnh sửa bài tập' : 'Thêm bài tập'}
+              </h2>
               <button
                 type="button"
                 className="rounded p-1 text-muted-foreground hover:bg-muted"
@@ -267,7 +298,9 @@ export function ManagerExercisesScreen() {
                       onChange={(e) =>
                         setForm((s) => ({
                           ...s,
-                          materialRefs: s.materialRefs.map((x, i) => (i === idx ? e.target.value : x)),
+                          materialRefs: s.materialRefs.map((x, i) =>
+                            i === idx ? e.target.value : x
+                          ),
                         }))
                       }
                       placeholder={`Link tài liệu ${idx + 1}`}
@@ -282,7 +315,9 @@ export function ManagerExercisesScreen() {
                         setForm((s) => ({
                           ...s,
                           materialRefs:
-                            s.materialRefs.length <= 1 ? [''] : s.materialRefs.filter((_, i) => i !== idx),
+                            s.materialRefs.length <= 1
+                              ? ['']
+                              : s.materialRefs.filter((_, i) => i !== idx),
                         }))
                       }
                       aria-label={`Xóa link ${idx + 1}`}
@@ -332,7 +367,12 @@ export function ManagerExercisesScreen() {
               >
                 Hủy
               </Button>
-              <Button type="button" className="gap-2" onClick={onSubmit} disabled={createItem.isPending || updateItem.isPending}>
+              <Button
+                type="button"
+                className="gap-2"
+                onClick={onSubmit}
+                disabled={createItem.isPending || updateItem.isPending}
+              >
                 <Plus className="h-4 w-4" />
                 {editingId ? 'Lưu chỉnh sửa' : 'Thêm bài tập'}
               </Button>
