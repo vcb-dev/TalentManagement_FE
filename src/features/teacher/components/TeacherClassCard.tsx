@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowRight, Award, Presentation, School, TrendingUp, Users } from 'lucide-react'
+import { Award, Presentation, School, TrendingUp, Users } from 'lucide-react'
 import { CARD_ENTRANCE, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import type { TeacherClassRow } from './teacherClassTypes'
@@ -11,7 +11,12 @@ export interface TeacherClassCardProps {
   cardIndex?: number
 }
 
-export function TeacherClassCard({ classRow: c, selected, onSelect, cardIndex }: TeacherClassCardProps) {
+export function TeacherClassCard({
+  classRow: c,
+  selected,
+  onSelect,
+  cardIndex,
+}: TeacherClassCardProps) {
   const IconMain = c.accent === 'primary' ? Presentation : Award
   const MetaIcon = c.metaIcon === 'trending' ? TrendingUp : School
   const iconWrap =
@@ -19,9 +24,7 @@ export function TeacherClassCard({ classRow: c, selected, onSelect, cardIndex }:
       ? 'bg-primary/15 text-primary ring-primary/20'
       : 'bg-amber-100 text-amber-800 ring-amber-200/80'
   const badgeWrap =
-    c.accent === 'primary'
-      ? 'bg-primary/10 text-primary'
-      : 'bg-amber-100 text-amber-900'
+    c.accent === 'primary' ? 'bg-primary/10 text-primary' : 'bg-amber-100 text-amber-900'
   const progressPct = Math.min(100, Math.round((c.memberCount / 24) * 100))
 
   return (
@@ -97,23 +100,18 @@ export function TeacherClassCard({ classRow: c, selected, onSelect, cardIndex }:
         </span>
       </div>
 
-      <div className="mt-auto flex gap-2">
-        <Link
-          to="/teacher/classes/$classId"
-          params={{ classId: c.id }}
-          className={cn(
-            'flex min-h-9 flex-1 items-center justify-center gap-1 rounded-lg py-2 text-xs font-bold transition-colors',
-            selected
-              ? 'bg-primary/15 text-primary hover:bg-primary/20'
-              : 'bg-muted/80 text-foreground hover:bg-muted'
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          Xem chi tiết
-          <ArrowRight className="size-3.5 shrink-0 opacity-80" strokeWidth={2} aria-hidden />
-        </Link>
-        <span className="sr-only">Lớp: {c.title}</span>
-      </div>
+      <Link
+        to="/teacher/classes/$classId"
+        params={{ classId: c.id }}
+        aria-label={`Xem chi tiết lớp ${c.title}`}
+        className={cn(
+          'mt-auto flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-colors hover:opacity-90',
+          selected && 'ring-2 ring-primary/30 ring-offset-2 ring-offset-card'
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        Xem chi tiết
+      </Link>
     </div>
   )
 }

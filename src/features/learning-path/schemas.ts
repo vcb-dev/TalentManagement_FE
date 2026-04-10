@@ -31,13 +31,43 @@ export const evidenceSubmitResponseSchema = z.object({
   status: z.enum(['PENDING', 'ACCEPTED', 'REJECTED']),
 })
 
-const levelCodeSchema = z.enum([
-  'tap_su',
-  'biet_viec',
-  'duoc_viec',
-  'dong_gop_ket_qua',
-  'tuong',
-])
+const levelCodeSchema = z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong'])
+
+const scheduleSlotSchema = z.object({
+  id: z.string().uuid(),
+  dateIso: z.string(),
+  startTime: z.string(),
+  endTime: z.string(),
+  topic: z.string(),
+  location: z.string().nullable(),
+})
+
+const enrolledMemberSchema = z.object({
+  userId: z.string().uuid(),
+  name: z.string(),
+  email: z.string(),
+  jobTitle: z.string().nullable(),
+})
+
+const enrolledClassSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  levelFrom: z.string(),
+  levelTo: z.string(),
+  status: z.enum(['open', 'full', 'closed']),
+  examDate: z.string().datetime().nullable(),
+  teacherName: z.string(),
+  schedules: z.array(scheduleSlotSchema),
+  members: z.array(enrolledMemberSchema),
+})
+
+/** GET /me/learning-class */
+export const meEnrolledClassResponseSchema = z.object({
+  enrolledClass: enrolledClassSchema.nullable(),
+})
+
+export type MeEnrolledClass = z.infer<typeof enrolledClassSchema>
+export type MeEnrolledClassSchedule = z.infer<typeof scheduleSlotSchema>
 
 export const meLearningPathSchema = z.object({
   careerLevel: levelCodeSchema,

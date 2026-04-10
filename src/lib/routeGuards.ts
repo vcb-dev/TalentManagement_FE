@@ -36,9 +36,10 @@ export function defaultEntryPathFromSession(user: UserSession | null | undefined
   if (eff.has('hr.employees.view') || eff.has('manager.team.view') || hasPrefix('hr.')) {
     return '/hr-admin'
   }
-  if (eff.has('teacher.classes.view') || eff.has('teacher.grade')) return '/teacher/classes'
   if (hasPrefix('kpi.team_')) return '/leader/kpi-okr'
   if (hasPrefix('manager.')) return '/manager/classes'
+  // Chỉ vào portal giảng viên khi role chính là TEACHER (không ép MEMBER/LEADER đang thêm quyền lớp dạy)
+  if (user.role === 'TEACHER') return '/teacher/classes'
   return defaultPathForRole(user.role)
 }
 

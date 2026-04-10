@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) {
   const Icon = item.icon
   const className = cn(
-    'flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-none border-b-2 border-transparent px-2 text-sm font-medium tracking-tight sm:gap-2.5 sm:px-3 sm:text-[0.9375rem]',
+    'inline-flex h-10 flex-none shrink-0 items-center gap-2 whitespace-nowrap rounded-none border-b-2 border-transparent px-2 text-sm font-medium tracking-tight sm:gap-2.5 sm:px-3 sm:text-[0.9375rem]',
     active
       ? 'border-primary-600 font-semibold text-primary-600'
       : 'text-gray-700 hover:text-primary-600'
@@ -25,7 +25,7 @@ function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) 
         )}
         strokeWidth={2.25}
       />
-      <span>{item.label}</span>
+      <span className="whitespace-nowrap">{item.label}</span>
     </>
   )
 
@@ -52,7 +52,7 @@ export function MemberLeaderHeaderNav() {
 
   return (
     <nav
-      className="flex w-full min-w-0 items-center gap-0 overflow-x-auto overflow-y-visible [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden"
+      className="inline-flex w-max shrink-0 flex-nowrap items-center gap-0 sm:gap-1"
       aria-label="Điều hướng chính"
     >
       {items.map((item) => (

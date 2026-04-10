@@ -9,3 +9,10 @@ export const ROLE_LABEL_VI: Record<Role, string> = {
   TEACHER: 'Người chấm thi',
   BOD: 'BOD',
 }
+
+/** Chuỗi vai trò khi có thêm quyền giảng viên (MEMBER + TEACHER, …). */
+export function formatRoleLabelsVi(user: { role: Role; roles?: Role[] }): string {
+  const list = user.roles?.length ? user.roles : [user.role]
+  const unique = [...new Set(list)]
+  return unique.map((r) => ROLE_LABEL_VI[r]).join(' · ')
+}

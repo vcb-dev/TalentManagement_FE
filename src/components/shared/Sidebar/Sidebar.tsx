@@ -7,13 +7,14 @@ import {
   LEADER_KPI_ITEMS,
   MANAGER_OPS_ITEMS,
   MEMBER_SELF_ITEMS,
+  TEACHER_HEADER_ITEMS,
   type AppNavItem,
   filterNavByPermissions,
   isNavItemActive,
 } from '@/components/shared/AppNav/navItems'
 import { cn } from '@/lib/utils'
 import { usePermission } from '@/hooks/usePermission'
-import { ROLE_LABEL_VI } from '@/lib/roleLabels'
+import { formatRoleLabelsVi } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
 type NavItem = AppNavItem
@@ -42,6 +43,7 @@ function sidebarSectionsFromPermissions(canId: (id: string) => boolean): Sidebar
   pushSection('HR', HR_ITEMS)
   pushSection('Trưởng nhóm KPI', LEADER_KPI_ITEMS)
   pushSection('Của tôi', MEMBER_SELF_ITEMS)
+  pushSection('Giảng viên / chấm thi', TEACHER_HEADER_ITEMS)
   return out
 }
 
@@ -210,7 +212,7 @@ function SidebarInner() {
   }, [pathname, sections])
 
   const displayName = user?.name ?? 'Người dùng'
-  const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
+  const roleLabel = user ? formatRoleLabelsVi(user) : '—'
   const subtitle = `${displayName} · ${roleLabel}`
 
   /** Mặc định đóng để menu không kéo dài tràn màn hình; section chứa route hiện tại được mở trong effect theo pathname. */

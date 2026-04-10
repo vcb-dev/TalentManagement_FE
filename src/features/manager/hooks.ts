@@ -85,7 +85,11 @@ export function useRejectRequest() {
   })
 }
 
-export function useManagerClasses(params?: { search?: string; levelFrom?: string; status?: string }) {
+export function useManagerClasses(params?: {
+  search?: string
+  levelFrom?: string
+  status?: string
+}) {
   return useQuery({
     queryKey: managerKeys.classes(params),
     queryFn: () => managerApi.classes(params),
@@ -119,8 +123,7 @@ export function useUpdateManagerClass() {
         examDate?: string | null
         teacherUserId?: string | null
       }
-    }) =>
-      managerApi.updateClass(classId, input),
+    }) => managerApi.updateClass(classId, input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
       toast.success('Đã cập nhật lớp')
@@ -141,10 +144,10 @@ export function useDeleteManagerClass() {
   })
 }
 
-export function useClassMemberOptions(query: string, levelFrom?: string) {
+export function useClassMemberOptions(query: string, levelFrom?: string, excludeUserId?: string) {
   return useQuery({
-    queryKey: managerKeys.classMemberOptions(query, levelFrom),
-    queryFn: () => managerApi.memberOptions(query, levelFrom),
+    queryKey: managerKeys.classMemberOptions(query, levelFrom, excludeUserId),
+    queryFn: () => managerApi.memberOptions(query, levelFrom, excludeUserId),
     enabled: query.trim().length >= 1,
   })
 }
@@ -160,7 +163,8 @@ export function useTeacherOptions(query: string) {
 export function useAddClassMember() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ classId, userId }: { classId: string; userId: string }) => managerApi.addClassMember(classId, userId),
+    mutationFn: ({ classId, userId }: { classId: string; userId: string }) =>
+      managerApi.addClassMember(classId, userId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
       toast.success('Đã thêm nhân sự vào lớp')
@@ -172,7 +176,8 @@ export function useAddClassMember() {
 export function useRemoveClassMember() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ classId, userId }: { classId: string; userId: string }) => managerApi.removeClassMember(classId, userId),
+    mutationFn: ({ classId, userId }: { classId: string; userId: string }) =>
+      managerApi.removeClassMember(classId, userId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
       toast.success('Đã xóa nhân sự khỏi lớp')
@@ -181,7 +186,11 @@ export function useRemoveClassMember() {
   })
 }
 
-export function useManagerRoadmapItems(params?: { levelLabel?: string; topic?: string; q?: string }) {
+export function useManagerRoadmapItems(params?: {
+  levelLabel?: string
+  topic?: string
+  q?: string
+}) {
   return useQuery({
     queryKey: managerKeys.roadmapItems(params),
     queryFn: () => managerApi.roadmapItems(params),
@@ -203,8 +212,13 @@ export function useCreateManagerRoadmapItem() {
 export function useUpdateManagerRoadmapItem() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: Parameters<typeof managerApi.updateRoadmapItem>[1] }) =>
-      managerApi.updateRoadmapItem(id, input),
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string
+      input: Parameters<typeof managerApi.updateRoadmapItem>[1]
+    }) => managerApi.updateRoadmapItem(id, input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'roadmap-items'] })
       toast.success('Đã cập nhật mục lộ trình')
@@ -220,6 +234,77 @@ export function useDeleteManagerRoadmapItem() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'roadmap-items'] })
       toast.success('Đã xóa mục lộ trình')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
+export function useClassSchedules(classId: string) {
+  return useQuery({
+    queryKey: managerKeys.classSchedules(classId),
+    queryFn: () => managerApi.classSchedules(classId),
+    enabled: classId.length > 0,
+  })
+}
+
+export function useCreateClassSchedule() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      classId,
+      input,
+    }: {
+      classId: string
+      input: {
+        dateIso: string
+        startTime: string
+        endTime: string
+        topic: string
+        location?: string | null
+      }
+    }) => managerApi.createClassSchedule(classId, input),
+    onSuccess: (_d, vars) => {
+      void qc.invalidateQueries({ queryKey: managerKeys.classSchedules(vars.classId) })
+      toast.success('Đã thêm lịch học')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
+export function useUpdateClassSchedule() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      classId,
+      scheduleId,
+      input,
+    }: {
+      classId: string
+      scheduleId: string
+      input: {
+        dateIso?: string
+        startTime?: string
+        endTime?: string
+        topic?: string
+        location?: string | null
+      }
+    }) => managerApi.updateClassSchedule(classId, scheduleId, input),
+    onSuccess: (_d, vars) => {
+      void qc.invalidateQueries({ queryKey: managerKeys.classSchedules(vars.classId) })
+      toast.success('Đã cập nhật lịch học')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
+export function useDeleteClassSchedule() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ classId, scheduleId }: { classId: string; scheduleId: string }) =>
+      managerApi.deleteClassSchedule(classId, scheduleId),
+    onSuccess: (_d, vars) => {
+      void qc.invalidateQueries({ queryKey: managerKeys.classSchedules(vars.classId) })
+      toast.success('Đã xóa lịch học')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   })

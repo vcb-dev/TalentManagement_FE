@@ -2,10 +2,14 @@ import { z } from 'zod'
 import { apiClient } from '@/lib/axios'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { safeParse } from '@/lib/utils'
-import { getMockChecklist, getMockSubmissions } from '@/features/learning-path/mock/mockChecklistData'
+import {
+  getMockChecklist,
+  getMockSubmissions,
+} from '@/features/learning-path/mock/mockChecklistData'
 import {
   checklistResponseSchema,
   levelSummaryApiSchema,
+  meEnrolledClassResponseSchema,
   meLearningPathSchema,
   submissionApiSchema,
 } from './schemas'
@@ -18,15 +22,25 @@ export const learningApi = {
 
   checklist: async (levelId: string, starId: string) => {
     if (isMockApiEnabled()) {
-      return safeParse(checklistResponseSchema, getMockChecklist(levelId, starId), 'GET checklist (mock)')
+      return safeParse(
+        checklistResponseSchema,
+        getMockChecklist(levelId, starId),
+        'GET checklist (mock)'
+      )
     }
-    const res = await apiClient.get<unknown>(`/learning/levels/${levelId}/stars/${starId}/checklist`)
+    const res = await apiClient.get<unknown>(
+      `/learning/levels/${levelId}/stars/${starId}/checklist`
+    )
     return safeParse(checklistResponseSchema, res.data, 'GET checklist')
   },
 
   submissions: async (starId: string) => {
     if (isMockApiEnabled()) {
-      return safeParse(z.array(submissionApiSchema), getMockSubmissions(starId), 'GET /learning/submissions (mock)')
+      return safeParse(
+        z.array(submissionApiSchema),
+        getMockSubmissions(starId),
+        'GET /learning/submissions (mock)'
+      )
     }
     const res = await apiClient.get<unknown>(`/learning/submissions`, { params: { starId } })
     return safeParse(z.array(submissionApiSchema), res.data, 'GET /learning/submissions')
@@ -35,5 +49,15 @@ export const learningApi = {
   myLearningPath: async () => {
     const res = await apiClient.get<unknown>('/me/learning-path')
     return safeParse(meLearningPathSchema, res.data, 'GET /me/learning-path')
+  },
+
+  myEnrolledClass: async (range?: { startDate?: string; endDate?: string }) => {
+    const params: Record<string, string> = {}
+    if (range?.startDate) params.startDate = range.startDate
+    if (range?.endDate) params.endDate = range.endDate
+    const res = await apiClient.get<unknown>('/me/learning-class', {
+      params: Object.keys(params).length ? params : undefined,
+    })
+    return safeParse(meEnrolledClassResponseSchema, res.data, 'GET /me/learning-class')
   },
 }

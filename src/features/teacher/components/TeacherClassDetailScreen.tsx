@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
-import { Link } from '@tanstack/react-router'
-import { ArrowLeft, Filter, Search } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useRouterState } from '@tanstack/react-router'
+import { ArrowLeft, CalendarDays, Filter, Pencil, Search, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Button } from '@/components/ui/button'
@@ -10,9 +10,22 @@ import {
   PAGE_HEADER_SURFACE,
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
-import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
+import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
+import {
+  clampHourPart,
+  clampMinutePart,
+  digitsOnlyMax2,
+  joinTimeHm,
+  splitTimeToParts,
+} from '@/lib/time24h'
 import { cn } from '@/lib/utils'
-import { useTeacherClassDetail, useTeacherGrade } from '@/features/teacher/hooks'
+import {
+  useTeacherClassDetail,
+  useTeacherCreateSchedule,
+  useTeacherDeleteSchedule,
+  useTeacherSchedules,
+  useTeacherUpdateSchedule,
+} from '@/features/teacher/hooks'
 import { TeacherClassMemberCard } from './TeacherClassMemberCard'
 import type { ClassMemberRow } from './teacherClassMemberTypes'
 
@@ -22,9 +35,81 @@ const FILTERS: { key: 'all' | 'has' | 'none'; label: string }[] = [
   { key: 'none', label: 'Chưa có KQ' },
 ]
 
+/** YYYY-MM-DD — ngày hôm nay (local), dùng cho min của input date. */
+function getTodayIsoLocal(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function TimeHmField({
+  label,
+  hour,
+  minute,
+  onHourChange,
+  onMinuteChange,
+  onHourBlur,
+  onMinuteBlur,
+  idPrefix,
+}: {
+  label: string
+  hour: string
+  minute: string
+  onHourChange: (v: string) => void
+  onMinuteChange: (v: string) => void
+  onHourBlur: () => void
+  onMinuteBlur: () => void
+  idPrefix: string
+}) {
+  return (
+    <div className="block text-xs font-semibold text-muted-foreground">
+      <span className="mb-0 block">{label}</span>
+      <div className="mt-1 flex items-center gap-1.5">
+        <input
+          id={`${idPrefix}-h`}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="00"
+          maxLength={2}
+          value={hour}
+          onChange={(e) => onHourChange(digitsOnlyMax2(e.target.value))}
+          onBlur={onHourBlur}
+          className="w-[3.25rem] rounded-xl border border-border bg-background py-2.5 text-center font-mono text-sm tabular-nums outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+          aria-label={`${label} — giờ`}
+        />
+        <span
+          className="select-none pb-0.5 text-lg font-semibold leading-none text-muted-foreground"
+          aria-hidden
+        >
+          :
+        </span>
+        <input
+          id={`${idPrefix}-m`}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="00"
+          maxLength={2}
+          value={minute}
+          onChange={(e) => onMinuteChange(digitsOnlyMax2(e.target.value))}
+          onBlur={onMinuteBlur}
+          className="w-[3.25rem] rounded-xl border border-border bg-background py-2.5 text-center font-mono text-sm tabular-nums outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+          aria-label={`${label} — phút`}
+        />
+      </div>
+    </div>
+  )
+}
+
 export function TeacherClassDetailScreen({ classId }: { classId: string }) {
+  const routeHash = useRouterState({ select: (s) => s.location.hash })
   const { data } = useTeacherClassDetail(classId)
-  const grade = useTeacherGrade(classId)
+  const { data: schedules = [] } = useTeacherSchedules(classId)
+  const createSchedule = useTeacherCreateSchedule(classId)
+  const updateSchedule = useTeacherUpdateSchedule(classId)
+  const deleteSchedule = useTeacherDeleteSchedule(classId)
   const title = data?.name || `Lớp ${classId}`
   const members: ClassMemberRow[] = useMemo(
     () =>
@@ -50,6 +135,86 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const [searchDraft, setSearchDraft] = useState('')
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+  const [scheduleForm, setScheduleForm] = useState({
+    dateIso: '',
+    startHour: '08',
+    startMinute: '00',
+    endHour: '10',
+    endMinute: '00',
+    topic: '',
+    location: '',
+  })
+
+  const onEditSchedule = (scheduleId: string) => {
+    const s = schedules.find((x) => x.id === scheduleId)
+    if (!s) return
+    setScheduleModalOpen(true)
+    setEditingScheduleId(scheduleId)
+    const [sh, sm] = splitTimeToParts(s.startTime)
+    const [eh, em] = splitTimeToParts(s.endTime)
+    const todayMin = getTodayIsoLocal()
+    const dateIso = s.dateIso >= todayMin ? s.dateIso : todayMin
+    setScheduleForm({
+      dateIso,
+      startHour: sh,
+      startMinute: sm,
+      endHour: eh,
+      endMinute: em,
+      topic: s.topic,
+      location: s.location ?? '',
+    })
+  }
+
+  const closeScheduleModal = () => {
+    setScheduleModalOpen(false)
+    resetScheduleForm()
+  }
+
+  const resetScheduleForm = () => {
+    setEditingScheduleId(null)
+    setScheduleForm({
+      dateIso: '',
+      startHour: '08',
+      startMinute: '00',
+      endHour: '10',
+      endMinute: '00',
+      topic: '',
+      location: '',
+    })
+  }
+
+  const onSubmitSchedule = () => {
+    const todayMin = getTodayIsoLocal()
+    if (!scheduleForm.dateIso) {
+      toast.error('Chọn ngày học.')
+      return
+    }
+    if (scheduleForm.dateIso < todayMin) {
+      toast.error('Chỉ được chọn ngày từ hôm nay trở đi.')
+      return
+    }
+    const startTime = joinTimeHm(scheduleForm.startHour, scheduleForm.startMinute)
+    const endTime = joinTimeHm(scheduleForm.endHour, scheduleForm.endMinute)
+    const input = {
+      dateIso: scheduleForm.dateIso,
+      startTime,
+      endTime,
+      topic: scheduleForm.topic.trim(),
+      location: scheduleForm.location.trim() || null,
+    }
+    if (editingScheduleId) {
+      updateSchedule.mutate(
+        { scheduleId: editingScheduleId, input },
+        {
+          onSuccess: () => resetScheduleForm(),
+        }
+      )
+      return
+    }
+    createSchedule.mutate(input, { onSuccess: () => resetScheduleForm() })
+  }
 
   const filtered = useMemo(() => {
     const q = searchDraft.trim().toLowerCase()
@@ -67,20 +232,61 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   }, [members, filterKey, searchDraft])
 
   const total = members.length
-  const withResult = members.filter((m) => m.examResult != null && m.examResult.length > 0).length
-  const withoutResult = total - withResult
   const page = 1
   const totalPages = 1
 
   const scrollToFilters = () => {
-    document.getElementById('teacher-class-detail-filters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    document
+      .getElementById('teacher-class-detail-filters')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  useEffect(() => {
+    const h = routeHash?.replace(/^#/, '') ?? ''
+    if (h !== 'lich-hoc') return
+    const t = window.setTimeout(() => {
+      document.getElementById('lich-hoc')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setEditingScheduleId(null)
+      setScheduleForm({
+        dateIso: '',
+        startHour: '08',
+        startMinute: '00',
+        endHour: '10',
+        endMinute: '00',
+        topic: '',
+        location: '',
+      })
+      setScheduleModalOpen(true)
+    }, 100)
+    return () => window.clearTimeout(t)
+  }, [routeHash, classId, schedules.length])
+
+  useEffect(() => {
+    if (!scheduleModalOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setScheduleModalOpen(false)
+        setEditingScheduleId(null)
+        setScheduleForm({
+          dateIso: '',
+          startHour: '08',
+          startMinute: '00',
+          endHour: '10',
+          endMinute: '00',
+          topic: '',
+          location: '',
+        })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [scheduleModalOpen])
 
   return (
     <div className="-m-5 flex min-h-[calc(100vh-3.5rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="page-shell">
-          <div className="mb-8 flex flex-col gap-8">
+          <div className="mb-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div className={cn('min-w-0 flex-1 space-y-3', PAGE_HEADER_SURFACE)}>
                 <Link
@@ -94,7 +300,13 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                   <span className={PAGE_HEADER_GRADIENT}>{title}</span>
                 </h1>
                 <p className={PAGE_HEADER_DESCRIPTION}>
-                  Thông tin đầy đủ thành viên trong lớp — lịch sử thi từng người sẽ mở từ đây (nối API).
+                  Thành viên, chấm điểm và{' '}
+                  <strong className="font-semibold text-foreground">lịch học buổi</strong>{' '}
+                  (GET/POST/PATCH/DELETE{' '}
+                  <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+                    /teacher/classes/:id/schedules
+                  </code>
+                  ).
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
@@ -126,85 +338,6 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                   Xuất dữ liệu
                 </button>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {(
-                [
-                  {
-                    key: 'total',
-                    className:
-                      'rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.09] via-card to-teal-500/[0.06] p-5 shadow-[var(--shadow-card)] ring-1 ring-primary/10',
-                    body: (
-                      <>
-                        <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                          Tổng thành viên
-                        </span>
-                        <div className="flex flex-wrap items-baseline gap-2">
-                          <span className="bg-gradient-to-r from-primary to-teal-600 bg-clip-text text-2xl font-bold leading-none text-transparent">
-                            {total}
-                          </span>
-                          <span className="text-[10px] font-bold text-primary">trong lớp</span>
-                        </div>
-                      </>
-                    ),
-                  },
-                  {
-                    key: 'done',
-                    className:
-                      'rounded-xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/95 via-card to-teal-50/80 p-5 shadow-[var(--shadow-card)] ring-1 ring-emerald-500/15',
-                    body: (
-                      <>
-                        <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                          Đã có KQ thi (lớp)
-                        </span>
-                        <div className="flex flex-wrap items-baseline gap-2">
-                          <span className="text-2xl font-bold leading-none text-emerald-700">{withResult}</span>
-                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-800">
-                            đã cập nhật
-                          </span>
-                        </div>
-                      </>
-                    ),
-                  },
-                  {
-                    key: 'pending',
-                    className:
-                      'rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-card to-violet-50/50 p-5 shadow-[var(--shadow-card)] ring-1 ring-amber-400/20',
-                    body: (
-                      <>
-                        <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                          Chưa có KQ
-                        </span>
-                        <div className="flex flex-wrap items-baseline gap-2">
-                          <span className="text-2xl font-bold leading-none text-amber-800">{withoutResult}</span>
-                          <span className="text-[10px] font-medium text-muted-foreground">chờ nối API</span>
-                        </div>
-                      </>
-                    ),
-                  },
-                  {
-                    key: 'page',
-                    className:
-                      'rounded-xl border border-violet-200/70 bg-gradient-to-br from-violet-50/90 via-card to-fuchsia-50/40 p-5 shadow-[var(--shadow-card)] ring-1 ring-violet-400/15',
-                    body: (
-                      <>
-                        <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                          Trang
-                        </span>
-                        <div className="flex flex-wrap items-baseline gap-2">
-                          <span className="text-2xl font-bold leading-none text-violet-800">{page}</span>
-                          <span className="text-[10px] font-medium text-muted-foreground">trên {totalPages} trang</span>
-                        </div>
-                      </>
-                    ),
-                  },
-                ] as const
-              ).map((s, i) => (
-                <div key={s.key} className={cn(s.className, CARD_ENTRANCE_HOVER)} style={staggerStyle(i)}>
-                  {s.body}
-                </div>
-              ))}
             </div>
           </div>
 
@@ -252,16 +385,237 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
             </label>
           </div>
 
+          <div
+            id="lich-hoc"
+            className={cn(
+              'mb-6 flex scroll-mt-24 flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.06] via-card to-teal-500/[0.05] px-4 py-3 shadow-[var(--shadow-card)] ring-1 ring-primary/10 sm:px-5',
+              CARD_ENTRANCE_HOVER
+            )}
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20">
+                <CalendarDays className="h-5 w-5" strokeWidth={2} aria-hidden />
+              </div>
+              <p className="min-w-0 text-sm font-semibold text-foreground">Lịch học buổi</p>
+            </div>
+            <Button
+              type="button"
+              className="shrink-0 gap-2 font-bold shadow-sm"
+              onClick={() => {
+                resetScheduleForm()
+                setScheduleModalOpen(true)
+              }}
+            >
+              <CalendarDays className="h-4 w-4" strokeWidth={2} aria-hidden />
+              Thêm buổi học
+            </Button>
+          </div>
+
+          {scheduleModalOpen ? (
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+              role="presentation"
+            >
+              <button
+                type="button"
+                className="absolute inset-0 bg-black/50"
+                aria-label="Đóng"
+                onClick={closeScheduleModal}
+              />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="schedule-dialog-title"
+                className="relative z-10 flex max-h-[min(90vh,880px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+                  <div className="min-w-0">
+                    <h2
+                      id="schedule-dialog-title"
+                      className="text-base font-bold tracking-tight text-foreground"
+                    >
+                      Lịch học buổi
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Xếp lịch cho lớp — đồng bộ qua API giáo viên.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={closeScheduleModal}
+                    aria-label="Đóng"
+                  >
+                    <X className="h-5 w-5" strokeWidth={2} />
+                  </Button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <label className="block text-xs font-semibold text-muted-foreground">
+                      Ngày
+                      <input
+                        type="date"
+                        min={getTodayIsoLocal()}
+                        value={scheduleForm.dateIso}
+                        onChange={(e) =>
+                          setScheduleForm((s) => ({ ...s, dateIso: e.target.value }))
+                        }
+                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      />
+                    </label>
+                    <label className="block text-xs font-semibold text-muted-foreground">
+                      Nội dung buổi
+                      <input
+                        value={scheduleForm.topic}
+                        onChange={(e) => setScheduleForm((s) => ({ ...s, topic: e.target.value }))}
+                        placeholder="Ví dụ: Ôn tập Spring Boot — Buổi 3"
+                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      />
+                    </label>
+                    <TimeHmField
+                      label="Giờ bắt đầu"
+                      idPrefix="schedule-start"
+                      hour={scheduleForm.startHour}
+                      minute={scheduleForm.startMinute}
+                      onHourChange={(v) => setScheduleForm((s) => ({ ...s, startHour: v }))}
+                      onMinuteChange={(v) => setScheduleForm((s) => ({ ...s, startMinute: v }))}
+                      onHourBlur={() =>
+                        setScheduleForm((s) => ({ ...s, startHour: clampHourPart(s.startHour) }))
+                      }
+                      onMinuteBlur={() =>
+                        setScheduleForm((s) => ({
+                          ...s,
+                          startMinute: clampMinutePart(s.startMinute),
+                        }))
+                      }
+                    />
+                    <TimeHmField
+                      label="Giờ kết thúc"
+                      idPrefix="schedule-end"
+                      hour={scheduleForm.endHour}
+                      minute={scheduleForm.endMinute}
+                      onHourChange={(v) => setScheduleForm((s) => ({ ...s, endHour: v }))}
+                      onMinuteChange={(v) => setScheduleForm((s) => ({ ...s, endMinute: v }))}
+                      onHourBlur={() =>
+                        setScheduleForm((s) => ({ ...s, endHour: clampHourPart(s.endHour) }))
+                      }
+                      onMinuteBlur={() =>
+                        setScheduleForm((s) => ({ ...s, endMinute: clampMinutePart(s.endMinute) }))
+                      }
+                    />
+                    <p
+                      id="schedule-time-hint"
+                      className="md:col-span-2 text-[11px] text-muted-foreground"
+                    >
+                      Giờ theo định dạng 24h — nhập riêng giờ và phút; dấu{' '}
+                      <span className="font-mono">:</span> hiển thị sẵn, không cần gõ.
+                    </p>
+                    <label className="md:col-span-2 block text-xs font-semibold text-muted-foreground">
+                      Địa điểm{' '}
+                      <span className="font-normal text-muted-foreground/80">(tuỳ chọn)</span>
+                      <input
+                        value={scheduleForm.location}
+                        onChange={(e) =>
+                          setScheduleForm((s) => ({ ...s, location: e.target.value }))
+                        }
+                        placeholder="Phòng họp A / MS Teams…"
+                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-4 flex flex-wrap justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={resetScheduleForm}>
+                      Làm mới
+                    </Button>
+                    <Button
+                      type="button"
+                      className="font-bold shadow-sm"
+                      onClick={onSubmitSchedule}
+                      disabled={createSchedule.isPending || updateSchedule.isPending}
+                    >
+                      {editingScheduleId ? 'Lưu chỉnh sửa' : 'Thêm buổi học'}
+                    </Button>
+                  </div>
+                  <div className="mt-5 overflow-x-auto rounded-xl border border-border/80 bg-card/80 shadow-inner">
+                    <table className="w-full min-w-[620px] border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-primary/10 via-teal-500/8 to-transparent">
+                          <th className="px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                            Ngày
+                          </th>
+                          <th className="px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                            Giờ
+                          </th>
+                          <th className="px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                            Nội dung
+                          </th>
+                          <th className="px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                            Địa điểm
+                          </th>
+                          <th className="px-3 py-2.5 text-right text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                            Thao tác
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {schedules.map((s) => (
+                          <tr key={s.id} className="border-t border-border/70">
+                            <td className="px-3 py-2">{s.dateIso}</td>
+                            <td className="px-3 py-2">
+                              {s.startTime} - {s.endTime}
+                            </td>
+                            <td className="px-3 py-2">{s.topic}</td>
+                            <td className="px-3 py-2">{s.location || '—'}</td>
+                            <td className="px-3 py-2 text-right">
+                              <div className="inline-flex gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => onEditSchedule(s.id)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive"
+                                  onClick={() => deleteSchedule.mutate(s.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {schedules.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-3 py-4 text-center text-muted-foreground">
+                              Chưa có buổi học nào.
+                            </td>
+                          </tr>
+                        ) : null}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {viewMode === 'table' ? (
             <div className="overflow-hidden rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+                <table className="w-full min-w-[520px] border-collapse text-left text-sm">
                   <thead>
                     <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">
                       <th className="px-4 py-3 font-semibold">Nhân viên</th>
                       <th className="px-4 py-3 font-semibold">Email</th>
                       <th className="px-4 py-3 font-semibold">Kết quả thi (lớp)</th>
-                      <th className="px-4 py-3 text-right font-semibold">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -285,19 +639,6 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="font-semibold"
-                            onClick={() =>
-                              grade.mutate({ userId: m.id, outcome: 'DAT', score: 10, note: 'Đạt' })
-                            }
-                          >
-                            Chấm đạt
-                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -335,12 +676,13 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     cardIndex={idx}
                     selected={selectedId === m.id}
                     onSelect={() => setSelectedId((id) => (id === m.id ? null : m.id))}
-                    onViewDetail={() => grade.mutate({ userId: m.id, outcome: 'DAT', score: 10, note: 'Đạt' })}
                   />
                 ))}
               </div>
               {filtered.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">Không có thành viên phù hợp.</p>
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Không có thành viên phù hợp.
+                </p>
               ) : null}
             </>
           )}

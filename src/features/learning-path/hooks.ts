@@ -20,6 +20,14 @@ export function useMyLearningPath() {
   })
 }
 
+export function useMyEnrolledClass(range?: { startDate?: string; endDate?: string }) {
+  return useQuery({
+    queryKey: learningKeys.myEnrolledClass(range),
+    queryFn: () => learningApi.myEnrolledClass(range),
+    placeholderData: (previousData) => previousData,
+  })
+}
+
 export function useLearningChecklist(levelId: string, starId: string, enabled = true) {
   return useQuery({
     queryKey: learningKeys.checklist(levelId, starId),

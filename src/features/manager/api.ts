@@ -15,6 +15,7 @@ import {
   managerMemberOptionApiSchema,
   managerRoadmapItemApiSchema,
   managerRoadmapItemCreateResponseSchema,
+  managerClassScheduleApiSchema,
   teamMemberProgressApiSchema,
   teamProgressPageApiSchema,
   teamProgressSummaryApiSchema,
@@ -64,11 +65,7 @@ function legacyApprovalsToPage(
       badges: [
         {
           label:
-            r.status === 'PENDING'
-              ? 'Chờ duyệt'
-              : r.status === 'APPROVED'
-                ? 'Đã duyệt'
-                : 'Từ chối',
+            r.status === 'PENDING' ? 'Chờ duyệt' : r.status === 'APPROVED' ? 'Đã duyệt' : 'Từ chối',
           tone: r.status === 'PENDING' ? ('warning' as const) : ('neutral' as const),
         },
       ],
@@ -83,12 +80,20 @@ export const managerApi = {
   teamProgress: async (teamId?: string) => {
     if (isMockApiEnabled()) {
       void teamId
-      return safeParse(teamProgressPageApiSchema, MOCK_TEAM_PROGRESS_PAGE, 'GET team-progress (mock)')
+      return safeParse(
+        teamProgressPageApiSchema,
+        MOCK_TEAM_PROGRESS_PAGE,
+        'GET team-progress (mock)'
+      )
     }
     const res = await apiClient.get<unknown>('/manager/team-progress', { params: { teamId } })
     const raw = res.data
     if (Array.isArray(raw)) {
-      const members = safeParse(z.array(teamMemberProgressApiSchema), raw, 'GET team-progress members')
+      const members = safeParse(
+        z.array(teamMemberProgressApiSchema),
+        raw,
+        'GET team-progress members'
+      )
       return safeParse(
         teamProgressPageApiSchema,
         { summary: computeSummaryFromMembers(members), members },
@@ -153,26 +158,44 @@ export const managerApi = {
     return safeParse(managerClassActionResponseSchema, res.data, 'DELETE /manager/classes/:id')
   },
 
-  memberOptions: async (query: string, levelFrom?: string) => {
+  memberOptions: async (query: string, levelFrom?: string, excludeUserId?: string) => {
     const res = await apiClient.get<unknown>('/manager/classes/member-options', {
-      params: { query, levelFrom },
+      params: { query, levelFrom, excludeUserId: excludeUserId || undefined },
     })
-    return safeParse(z.array(managerMemberOptionApiSchema), res.data, 'GET /manager/classes/member-options')
+    return safeParse(
+      z.array(managerMemberOptionApiSchema),
+      res.data,
+      'GET /manager/classes/member-options'
+    )
   },
 
   teacherOptions: async (query: string) => {
-    const res = await apiClient.get<unknown>('/manager/classes/teacher-options', { params: { query } })
-    return safeParse(z.array(managerMemberOptionApiSchema), res.data, 'GET /manager/classes/teacher-options')
+    const res = await apiClient.get<unknown>('/manager/classes/teacher-options', {
+      params: { query },
+    })
+    return safeParse(
+      z.array(managerMemberOptionApiSchema),
+      res.data,
+      'GET /manager/classes/teacher-options'
+    )
   },
 
   addClassMember: async (classId: string, userId: string) => {
     const res = await apiClient.post<unknown>(`/manager/classes/${classId}/members`, { userId })
-    return safeParse(managerClassActionResponseSchema, res.data, 'POST /manager/classes/:id/members')
+    return safeParse(
+      managerClassActionResponseSchema,
+      res.data,
+      'POST /manager/classes/:id/members'
+    )
   },
 
   removeClassMember: async (classId: string, userId: string) => {
     const res = await apiClient.delete<unknown>(`/manager/classes/${classId}/members/${userId}`)
-    return safeParse(managerClassActionResponseSchema, res.data, 'DELETE /manager/classes/:id/members/:userId')
+    return safeParse(
+      managerClassActionResponseSchema,
+      res.data,
+      'DELETE /manager/classes/:id/members/:userId'
+    )
   },
 
   roadmapItems: async (params?: { levelLabel?: string; topic?: string; q?: string }) => {
@@ -190,7 +213,11 @@ export const managerApi = {
     rowOrder?: number | null
   }) => {
     const res = await apiClient.post<unknown>('/manager/roadmap-items', input)
-    return safeParse(managerRoadmapItemCreateResponseSchema, res.data, 'POST /manager/roadmap-items')
+    return safeParse(
+      managerRoadmapItemCreateResponseSchema,
+      res.data,
+      'POST /manager/roadmap-items'
+    )
   },
 
   updateRoadmapItem: async (
@@ -211,6 +238,70 @@ export const managerApi = {
 
   deleteRoadmapItem: async (id: string) => {
     const res = await apiClient.delete<unknown>(`/manager/roadmap-items/${id}`)
-    return safeParse(managerClassActionResponseSchema, res.data, 'DELETE /manager/roadmap-items/:id')
+    return safeParse(
+      managerClassActionResponseSchema,
+      res.data,
+      'DELETE /manager/roadmap-items/:id'
+    )
+  },
+
+  classSchedules: async (classId: string) => {
+    const res = await apiClient.get<unknown>(`/manager/classes/${classId}/schedules`)
+    return safeParse(
+      z.array(managerClassScheduleApiSchema),
+      res.data,
+      'GET /manager/classes/:id/schedules'
+    )
+  },
+
+  createClassSchedule: async (
+    classId: string,
+    input: {
+      dateIso: string
+      startTime: string
+      endTime: string
+      topic: string
+      location?: string | null
+    }
+  ) => {
+    const res = await apiClient.post<unknown>(`/manager/classes/${classId}/schedules`, input)
+    return safeParse(
+      managerClassCreateResponseSchema,
+      res.data,
+      'POST /manager/classes/:id/schedules'
+    )
+  },
+
+  updateClassSchedule: async (
+    classId: string,
+    scheduleId: string,
+    input: {
+      dateIso?: string
+      startTime?: string
+      endTime?: string
+      topic?: string
+      location?: string | null
+    }
+  ) => {
+    const res = await apiClient.patch<unknown>(
+      `/manager/classes/${classId}/schedules/${scheduleId}`,
+      input
+    )
+    return safeParse(
+      managerClassActionResponseSchema,
+      res.data,
+      'PATCH /manager/classes/:id/schedules/:scheduleId'
+    )
+  },
+
+  deleteClassSchedule: async (classId: string, scheduleId: string) => {
+    const res = await apiClient.delete<unknown>(
+      `/manager/classes/${classId}/schedules/${scheduleId}`
+    )
+    return safeParse(
+      managerClassActionResponseSchema,
+      res.data,
+      'DELETE /manager/classes/:id/schedules/:scheduleId'
+    )
   },
 }
