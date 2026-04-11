@@ -9,6 +9,7 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
 import { cn } from '@/lib/utils'
 import { useTeacherClasses } from '@/features/teacher/hooks'
 import { TeacherClassCard } from './TeacherClassCard'
@@ -225,14 +226,7 @@ export function TeacherClassesScreen() {
                 <span>
                   Trang {page} — {filtered.length} lớp hiển thị
                 </span>
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" size="sm" disabled>
-                    Trước
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" disabled>
-                    Tiếp
-                  </Button>
-                </div>
+                <PaginationPrevNext page={page} totalPages={totalPages} onPageChange={() => {}} />
               </div>
             </div>
           ) : (
@@ -268,28 +262,7 @@ export function TeacherClassesScreen() {
               <span className="text-xs font-medium text-muted-foreground">
                 Hiển thị {filtered.length} / {rows.length} lớp
               </span>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
-                  disabled={page <= 1}
-                >
-                  ← Trước
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-button bg-button px-3 py-1.5 text-xs font-medium text-button-foreground"
-                >
-                  {page}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
-                  disabled={page >= totalPages}
-                >
-                  Tiếp →
-                </button>
-              </div>
+              <PaginationCardStepper page={page} totalPages={totalPages} onPageChange={() => {}} />
             </div>
           ) : null}
         </div>

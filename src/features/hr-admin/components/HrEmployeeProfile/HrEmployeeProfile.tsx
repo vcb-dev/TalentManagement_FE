@@ -28,6 +28,8 @@ import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 import {
   levelMeta,
   levelPillText,
+  employeeDeptDisplay,
+  employeeTeamsDisplay,
   shortId,
   statusLabelVi,
 } from '@/features/hr-admin/components/HrEmployeeList/employeeListUtils'
@@ -211,8 +213,8 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
   const rankStarsFive = (xpPct / 100) * 5
   const levelStarVariants = starVariants(employee.currentStar, maxStars)
   const RoleBadgeIcon = ROLE_BADGE_ICONS[employee.role]
-  const deptName = `PB ${shortId(employee.departmentId)}`
-  const teamName = `Team ${shortId(employee.teamIds[0] ?? employee.departmentId)}`
+  const deptName = employeeDeptDisplay(employee)
+  const teamName = employeeTeamsDisplay(employee)
 
   return (
     <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-slate-50/80 via-app-canvas to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
@@ -222,7 +224,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               <Link
                 to="/hr-admin"
-                search={{ page: 1, pageSize: 48 }}
+                search={{ page: 1, pageSize: 15 }}
                 className="font-semibold text-primary hover:underline"
               >
                 ← Danh sách nhân sự

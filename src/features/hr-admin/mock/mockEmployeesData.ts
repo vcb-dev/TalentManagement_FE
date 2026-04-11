@@ -8,20 +8,32 @@ export type CreateEmployeeMeta = {
 }
 
 const DEPT = '11111111-1111-4111-8111-111111111111'
+const DEPT_NAME = 'Phòng ban (mock)'
 /** Team NS-01 — đồng bộ lựa chọn team Quản lý */
 export const MOCK_TEAM_NS01 = '22222222-2222-4222-8222-222222222222'
 /** Team NS-02 */
 export const MOCK_TEAM_NS02 = '33333333-3333-4333-8333-333333333333'
 
+function teamLabelForMock(teamId: string): string {
+  if (teamId === MOCK_TEAM_NS01) return 'Nhóm NS-01'
+  if (teamId === MOCK_TEAM_NS02) return 'Nhóm NS-02'
+  return 'Nhóm (mock)'
+}
+
 function emp(
-  p: Omit<EmployeeEntity, 'departmentId' | 'teamIds' | 'createdAt' | 'updatedAt'>,
+  p: Omit<
+    EmployeeEntity,
+    'departmentId' | 'departmentName' | 'teamIds' | 'teamNames' | 'createdAt' | 'updatedAt'
+  >,
   teamIds: string[] = [MOCK_TEAM_NS01]
 ): EmployeeEntity {
   const now = new Date().toISOString()
   return {
     ...p,
     departmentId: DEPT,
+    departmentName: DEPT_NAME,
     teamIds,
+    teamNames: teamIds.map(teamLabelForMock),
     createdAt: now,
     updatedAt: now,
   }
@@ -177,14 +189,19 @@ export function mockPatchEmployee(
   if (patch.name !== undefined) next.name = patch.name.trim()
   if (patch.email !== undefined) next.email = patch.email.trim()
   if (patch.role !== undefined) next.role = patch.role
-  if (patch.departmentId !== undefined) next.departmentId = patch.departmentId
+  if (patch.departmentId !== undefined) {
+    next.departmentId = patch.departmentId
+    next.departmentName = DEPT_NAME
+  }
   if (patch.teamId !== undefined) {
     next.teamIds = [patch.teamId, ...cur.teamIds.slice(1)]
+    next.teamNames = next.teamIds.map(teamLabelForMock)
   }
   if (patch.secondaryTeamId !== undefined) {
     const primary = next.teamIds[0] ?? MOCK_TEAM_NS01
     const s = patch.secondaryTeamId.trim()
     next.teamIds = s ? [primary, s] : [primary]
+    next.teamNames = next.teamIds.map(teamLabelForMock)
   }
   if (patch.status !== undefined) next.status = patch.status
   if (patch.phone !== undefined) next.phone = patch.phone.trim() || null
@@ -211,7 +228,9 @@ export function mockCreateEmployee(
     role: input.role,
     status: 'ACTIVE',
     departmentId: input.departmentId,
+    departmentName: 'Phòng ban (mock)',
     teamIds,
+    teamNames: teamIds.map(teamLabelForMock),
     currentLevel: meta?.initialLevel ?? 'tap_su',
     currentStar: 0,
     phone: input.phone?.trim() || null,

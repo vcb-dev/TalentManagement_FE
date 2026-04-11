@@ -6,11 +6,11 @@ import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
   avatarClassForRole,
+  employeeDeptDisplay,
   initialsFromName,
   levelPillText,
   roleBadgeClass,
   roleShortLabel,
-  shortId,
   statusDotClass,
   statusLabelVi,
 } from './employeeListUtils'
@@ -71,7 +71,7 @@ export function EmployeeCard({
   const tierLine = levelPillText(employee.currentLevel)
   const inactive = employee.status === 'INACTIVE'
   const meta = initialsFromName(employee.name)
-  const deptLine = `PB · ${shortId(employee.departmentId)}`
+  const deptLine = employeeDeptDisplay(employee)
   const positionLabel = ROLE_LABEL_VI[employee.role]
   const starProgressPct = Math.min(100, Math.round((employee.currentStar / 6) * 100))
 

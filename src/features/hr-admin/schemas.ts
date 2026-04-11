@@ -84,14 +84,19 @@ export const createEmployeeFormSchema = createEmployeeSchema
 
 export type CreateEmployeeForm = z.infer<typeof createEmployeeFormSchema>
 
+/** Response GET/PATCH employees: synced email may be non-RFC; create form still uses strict email. */
+const employeeDirectoryEmailSchema = z.string().min(1).max(320)
+
 export const employeeApiSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  email: z.string().email(),
+  email: employeeDirectoryEmailSchema,
   role: apiRoleSchema,
   status: z.enum(['ACTIVE', 'INACTIVE', 'PROBATION', 'RESERVED']),
   departmentId: z.string().uuid(),
+  departmentName: z.string().nullable().optional(),
   teamIds: z.array(z.string().uuid()),
+  teamNames: z.array(z.string()).optional().default([]),
   currentLevel: z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong']),
   currentStar: z.number().int().min(0).max(6),
   createdAt: z.string().datetime(),

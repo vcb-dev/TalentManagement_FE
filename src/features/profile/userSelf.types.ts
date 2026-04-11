@@ -57,8 +57,6 @@ export const ME_USER_PATCH_KEYS = [
   'displayName',
   'contractType',
   'jobTitle',
-  'teamGroup',
-  'departmentName',
   'directManager',
   'portraitRef',
   'gender',

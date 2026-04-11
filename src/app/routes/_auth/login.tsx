@@ -19,6 +19,8 @@ import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 const loginSearchSchema = z.object({
   redirect: z.string().optional(),
   oauth: z.enum(['success', 'error']).optional(),
+  /** BE redirect kèm lý do (OAuth / JWT / cookie). */
+  msg: z.string().optional(),
 })
 
 export const Route = createFileRoute('/_auth/login')({
@@ -73,7 +75,12 @@ function LoginPage() {
 
   useEffect(() => {
     if (search.oauth === 'error') {
-      toast.error('Đăng nhập Google thất bại hoặc email chưa có trong hệ thống.')
+      const detail = search.msg?.trim()
+      toast.error(
+        detail
+          ? `Đăng nhập thất bại: ${detail}`
+          : 'Đăng nhập Google thất bại hoặc email chưa có trong hệ thống.'
+      )
       void navigate({ to: '/login', search: { redirect: search.redirect }, replace: true })
       return
     }
@@ -83,12 +90,15 @@ function LoginPage() {
         const d = await authApi.me()
         setSession(d.user, d.accessToken ?? null)
         onAuthSuccess()
-      } catch {
-        toast.error('Không lấy được phiên đăng nhập.')
+      } catch (err) {
+        toast.error(
+          'Không lấy được phiên đăng nhập. Kiểm tra cookie tm_session, VITE_API_URL và cấu hình OAuth.'
+        )
+        console.warn('[login oauth=success] GET /auth/me failed', err)
         void navigate({ to: '/login', search: { redirect: search.redirect }, replace: true })
       }
     })()
-  }, [search.oauth, search.redirect, navigate, setSession, onAuthSuccess])
+  }, [search.oauth, search.msg, search.redirect, navigate, setSession, onAuthSuccess])
 
   return (
     <div className="login-page-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-10 text-sm leading-relaxed text-gray-900">

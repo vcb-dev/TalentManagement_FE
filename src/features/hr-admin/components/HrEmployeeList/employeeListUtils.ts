@@ -17,6 +17,18 @@ export function shortId(id: string): string {
   return id.replace(/-/g, '').slice(0, 6)
 }
 
+/** Hien thi ten phong ban (API departmentName). */
+export function employeeDeptDisplay(employee: EmployeeEntity): string {
+  const n = employee.departmentName?.trim()
+  return n && n.length > 0 ? n : 'Không có'
+}
+
+/** Hien thi ten nhom (teamNames, cach nhau boi dau phay). */
+export function employeeTeamsDisplay(employee: EmployeeEntity): string {
+  const parts = (employee.teamNames ?? []).map((t) => t.trim()).filter(Boolean)
+  return parts.length > 0 ? parts.join(', ') : 'Không có'
+}
+
 const LEVEL_META: Record<EmployeeLevel, { tierClass: string; label: string }> = {
   tap_su: {
     tierClass:

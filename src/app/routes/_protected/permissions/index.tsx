@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { KeyRound } from 'lucide-react'
+import { KeyRound, Search } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -7,6 +8,7 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import { PaginationPrevNext } from '@/components/ui/pagination'
 import { Card } from '@/components/ui/card'
 import {
   Table,
@@ -18,8 +20,9 @@ import {
 } from '@/components/ui/table'
 import {
   avatarClassForRole,
+  employeeDeptDisplay,
+  employeeTeamsDisplay,
   initialsFromName,
-  shortId,
   statusDotClass,
   statusLabelVi,
 } from '@/features/hr-admin/components/HrEmployeeList/employeeListUtils'
@@ -33,6 +36,18 @@ import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/auth'
 import { Skeleton } from '@/components/ui/skeleton'
+
+/** Màn phân quyền: cố định 10 nhân viên mỗi trang. */
+const PERMISSIONS_PAGE_SIZE = 10
+
+const PERMISSIONS_ROLE_FILTER_OPTIONS: Role[] = [
+  'MEMBER',
+  'LEADER',
+  'MANAGER',
+  'HR',
+  'TEACHER',
+  'BOD',
+]
 
 export const Route = createFileRoute('/_protected/permissions/')({
   beforeLoad: () => {
@@ -48,6 +63,7 @@ function PermissionsTableSkeleton() {
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
+            <TableHead className="w-12 pl-4 text-center">STT</TableHead>
             <TableHead className="w-[72px]">Ảnh</TableHead>
             <TableHead>Họ tên</TableHead>
             <TableHead className="hidden md:table-cell">Email</TableHead>
@@ -59,8 +75,11 @@ function PermissionsTableSkeleton() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: PERMISSIONS_PAGE_SIZE }).map((_, i) => (
             <TableRow key={i} className="hover:bg-transparent">
+              <TableCell className="pl-4 text-center">
+                <Skeleton className="mx-auto h-4 w-6" />
+              </TableCell>
               <TableCell>
                 <Skeleton className="h-11 w-11 rounded-xl" />
               </TableCell>
@@ -93,14 +112,16 @@ function PermissionsTableSkeleton() {
   )
 }
 
-function EmployeeTableRow({ row }: { row: EmployeeEntity }) {
-  const teamId = row.teamIds[0] ?? row.departmentId
-  const deptLabel = `PB · ${shortId(row.departmentId)}`
-  const teamLabel = `Team · ${shortId(teamId)}`
+function EmployeeTableRow({ row, stt }: { row: EmployeeEntity; stt: number }) {
+  const deptLabel = employeeDeptDisplay(row)
+  const teamLabel = employeeTeamsDisplay(row)
   const initials = initialsFromName(row.name)
 
   return (
     <TableRow>
+      <TableCell className="w-12 pl-4 text-center tabular-nums text-muted-foreground">
+        {stt}
+      </TableCell>
       <TableCell className="w-[72px]">
         <div className="relative inline-flex shrink-0">
           <div
@@ -135,11 +156,15 @@ function EmployeeTableRow({ row }: { row: EmployeeEntity }) {
         {row.email}
       </TableCell>
       <TableCell className="text-muted-foreground">{ROLE_LABEL_VI[row.role as Role]}</TableCell>
-      <TableCell className="hidden font-mono text-sm tabular-nums text-foreground/90 lg:table-cell">
-        {deptLabel}
+      <TableCell className="hidden max-w-[200px] text-sm text-foreground/90 lg:table-cell">
+        <span className="line-clamp-2" title={deptLabel}>
+          {deptLabel}
+        </span>
       </TableCell>
-      <TableCell className="hidden font-mono text-sm tabular-nums text-foreground/90 xl:table-cell">
-        {teamLabel}
+      <TableCell className="hidden max-w-[220px] text-sm text-foreground/90 xl:table-cell">
+        <span className="line-clamp-2" title={teamLabel}>
+          {teamLabel}
+        </span>
       </TableCell>
       <TableCell>
         <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -162,11 +187,43 @@ function EmployeeTableRow({ row }: { row: EmployeeEntity }) {
 }
 
 function PermissionsIndexPage() {
+  const [page, setPage] = useState(1)
+  const pageSize = PERMISSIONS_PAGE_SIZE
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState<string | undefined>(undefined)
+  const [roleFilter, setRoleFilter] = useState<Role | undefined>(undefined)
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      const next = searchInput.trim() || undefined
+      setSearch((prev) => (prev === next ? prev : next))
+    }, 400)
+    return () => window.clearTimeout(t)
+  }, [searchInput])
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, roleFilter])
+
   const { data, isLoading, isError, error, refetch, isFetching } = usePermissionsEmployeeList({
-    page: 1,
-    pageSize: 100,
+    page,
+    pageSize,
+    search,
+    role: roleFilter,
   })
   const rows = data?.data ?? []
+  const total = data?.total ?? 0
+  const totalPages = Math.max(1, data?.totalPages ?? 1)
+  const pageSizeEff = Math.max(1, data?.pageSize ?? pageSize)
+  const pageEff = data?.page ?? page
+  const rangeFrom = total === 0 ? 0 : (pageEff - 1) * pageSizeEff + 1
+  const rangeTo = Math.min(pageEff * pageSizeEff, total)
+
+  useEffect(() => {
+    if (!data) return
+    const tp = Math.max(1, data.totalPages)
+    if (page > tp) setPage(tp)
+  }, [data, page])
 
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
@@ -183,6 +240,45 @@ function PermissionsIndexPage() {
             Chọn nhân viên để gán vai trò mẫu và quyền chi tiết. Chỉ BOD và Quản lý có quyền truy
             cập màn hình này.
           </p>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between">
+          <label className="relative flex min-h-[42px] min-w-0 flex-1 rounded-xl border border-border bg-card shadow-sm ring-1 ring-border/60">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <input
+              type="search"
+              className="min-h-[42px] w-full rounded-xl border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
+              placeholder="Tìm theo tên hoặc email…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              aria-label="Tìm nhân viên phân quyền"
+            />
+          </label>
+          <div className="flex min-h-[42px] shrink-0 items-center">
+            <label htmlFor="permissions-role-filter" className="sr-only">
+              Lọc theo vai trò
+            </label>
+            <select
+              id="permissions-role-filter"
+              className="h-full min-h-[42px] w-full min-w-[11rem] rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm ring-1 ring-border/60 sm:w-auto"
+              value={roleFilter ?? ''}
+              onChange={(e) => {
+                const v = e.target.value
+                setRoleFilter(v ? (v as Role) : undefined)
+              }}
+              aria-label="Lọc theo vai trò"
+            >
+              <option value="">Tất cả vai trò</option>
+              {PERMISSIONS_ROLE_FILTER_OPTIONS.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABEL_VI[r]}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {isError ? (
@@ -205,33 +301,67 @@ function PermissionsIndexPage() {
         ) : isLoading ? (
           <PermissionsTableSkeleton />
         ) : (
-          <Card className="overflow-hidden p-0 shadow-[var(--shadow-card)]">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-b border-border bg-muted/40 hover:bg-muted/40">
-                  <TableHead className="w-[72px] pl-4">Ảnh</TableHead>
-                  <TableHead>Họ tên</TableHead>
-                  <TableHead className="hidden md:table-cell">Email</TableHead>
-                  <TableHead>Vai trò</TableHead>
-                  <TableHead className="hidden lg:table-cell">Phòng ban</TableHead>
-                  <TableHead className="hidden xl:table-cell">Nhóm</TableHead>
-                  <TableHead className="w-[130px]">Trạng thái</TableHead>
-                  <TableHead className="w-[130px] pr-4 text-right">Thao tác</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                      Không có nhân viên.
-                    </TableCell>
+          <div className={cn('space-y-4', isFetching && 'opacity-80 transition-opacity')}>
+            <Card className="overflow-hidden p-0 shadow-[var(--shadow-card)]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-border bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="w-12 pl-4 text-center">STT</TableHead>
+                    <TableHead className="w-[72px]">Ảnh</TableHead>
+                    <TableHead>Họ tên</TableHead>
+                    <TableHead className="hidden md:table-cell">Email</TableHead>
+                    <TableHead>Vai trò</TableHead>
+                    <TableHead className="hidden lg:table-cell">Phòng ban</TableHead>
+                    <TableHead className="hidden xl:table-cell">Nhóm</TableHead>
+                    <TableHead className="w-[130px]">Trạng thái</TableHead>
+                    <TableHead className="w-[130px] pr-4 text-right">Thao tác</TableHead>
                   </TableRow>
-                ) : (
-                  rows.map((row) => <EmployeeTableRow key={row.id} row={row} />)
-                )}
-              </TableBody>
-            </Table>
-          </Card>
+                </TableHeader>
+                <TableBody>
+                  {rows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                        {search || roleFilter
+                          ? 'Không có nhân viên khớp tìm kiếm hoặc bộ lọc vai trò.'
+                          : 'Không có nhân viên.'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    rows.map((row, index) => (
+                      <EmployeeTableRow key={row.id} row={row} stt={rangeFrom + index} />
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+
+            {total > 0 ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-xs text-muted-foreground">
+                <span>
+                  Hiển thị{' '}
+                  <span className="font-medium text-foreground">
+                    {rangeFrom}–{rangeTo}
+                  </span>{' '}
+                  trong <span className="font-medium text-foreground">{total}</span> nhân viên ·
+                  Trang{' '}
+                  <span className="font-medium text-foreground">
+                    {pageEff}/{totalPages}
+                  </span>
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">
+                    {PERMISSIONS_PAGE_SIZE} / trang
+                  </span>
+                  <PaginationPrevNext
+                    page={pageEff}
+                    totalPages={totalPages}
+                    busy={isFetching}
+                    onPageChange={(next) => setPage(next)}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
         )}
       </div>
     </ManagerScreenLayout>
