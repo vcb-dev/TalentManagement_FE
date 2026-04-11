@@ -29,7 +29,7 @@ export interface ExamResultsScheduleProps {
   page: number
   isLoading: boolean
   onPageChange: (page: number) => void
-  onOpenExam: (id: string) => void
+  onOpenExam: (id: string, isSubmission?: boolean) => void
   myEnrolledClassId?: string
   membersInClass?: Array<{
     userId: string
@@ -38,6 +38,14 @@ export interface ExamResultsScheduleProps {
     latestResult?: { outcome: string } | null
   }>
   membersTitle?: string
+  mySubmissions?: Array<{
+    id: string
+    examId?: string
+    title?: string
+    status: string
+    totalScore?: number | null
+    createdAt: string
+  }>
 }
 
 function formatViWeekdayDate(iso: string): string {
@@ -69,16 +77,28 @@ export function ExamResultsSchedule({
   myEnrolledClassId,
   membersInClass,
   membersTitle,
+  mySubmissions,
 }: ExamResultsScheduleProps) {
   const [yearFilter, setYearFilter] = useState<string>('all')
   const [questionBankClassIds, setQuestionBankClassIds] = useState<Set<string>>(new Set())
+  const [submittedExamIds, setSubmittedExamIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem('manager_exam_question_bank_v1')
-      if (!raw) return
-      const parsed = JSON.parse(raw) as Record<string, unknown>
-      setQuestionBankClassIds(new Set(Object.keys(parsed)))
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, unknown>
+        setQuestionBankClassIds(new Set(Object.keys(parsed)))
+      }
+
+      const submitted = new Set<string>()
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith('member_exam_submission_v1:')) {
+          submitted.add(key.replace('member_exam_submission_v1:', ''))
+        }
+      }
+      setSubmittedExamIds(submitted)
     } catch {
       setQuestionBankClassIds(new Set())
     }
@@ -168,10 +188,11 @@ export function ExamResultsSchedule({
             const hasQuestionBank =
               questionBankClassIds.has(exam.id) ||
               (myEnrolledClassId ? questionBankClassIds.has(myEnrolledClassId) : false)
-            const canOpenExam = exam.status === 'COMPLETED' || hasQuestionBank
+            const isSubmitted = submittedExamIds.has(exam.id)
+            const canOpenExam = exam.status === 'COMPLETED' || hasQuestionBank || isSubmitted
             const actionLabel =
-              exam.status === 'COMPLETED'
-                ? 'Xem chi tiết'
+              exam.status === 'COMPLETED' || isSubmitted
+                ? 'Xem bài làm'
                 : !hasQuestionBank
                   ? 'Chưa có bài thi'
                   : 'Vào làm bài'
@@ -248,7 +269,7 @@ export function ExamResultsSchedule({
           <div className="flex items-center gap-2">
             <span className="h-6 w-1.5 shrink-0 rounded-full bg-brand-tertiary" aria-hidden />
             <h2 className="text-xl font-bold tracking-tight text-foreground">
-              {membersInClass ? membersTitle || 'Thành viên trong lớp' : 'Kết quả thi đã đạt'}
+              {membersInClass ? membersTitle || 'Thành viên trong lớp' : 'Kết quả thi'}
             </h2>
           </div>
           {membersInClass ? null : (
@@ -259,7 +280,7 @@ export function ExamResultsSchedule({
                 onChange={(e) => setYearFilter(e.target.value)}
                 className="rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="all">Tất cả kỳ thi</option>
+                <option value="all">Tất cả</option>
                 {yearOptions.map((y) => (
                   <option key={y} value={String(y)}>
                     Năm {y}
@@ -330,6 +351,79 @@ export function ExamResultsSchedule({
                       </tr>
                     ))
                   )
+                ) : mySubmissions ? (
+                  mySubmissions.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
+                        Không có kết quả thi nào.
+                      </td>
+                    </tr>
+                  ) : (
+                    mySubmissions.map((sub, rowIdx) => (
+                      <tr key={sub.id} className="transition-colors hover:bg-muted/40">
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={cn(
+                                'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+                                rowIdx % 3 === 0 && 'bg-warning-muted text-warning',
+                                rowIdx % 3 === 1 && 'bg-primary-100 text-primary-700',
+                                rowIdx % 3 === 2 && 'bg-danger-muted text-danger'
+                              )}
+                            >
+                              <Link2 className="h-5 w-5" aria-hidden />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-foreground">
+                                {sub.title || 'Kỳ thi nội bộ'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Kỳ thi nội bộ</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 text-sm text-muted-foreground">
+                          {formatViDate(sub.createdAt)}
+                        </td>
+                        <td className="px-6 py-5 font-bold text-foreground">
+                          {sub.totalScore != null ? `${sub.totalScore}%` : '—'}
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex gap-1" aria-hidden>
+                            {Array.from({ length: 6 }, (_, s) => (
+                              <ProgressStar
+                                key={s}
+                                filled={s < Math.round(((sub.totalScore || 0) / 100) * 6)}
+                                variant="primary"
+                                className="h-5 w-5"
+                              />
+                            ))}
+                          </div>
+                          <span className="sr-only">Xếp hạng sao</span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span
+                            className={cn(
+                              'rounded-full px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-wider',
+                              sub.status === 'done'
+                                ? 'bg-success-muted text-success'
+                                : 'bg-warning-muted text-warning'
+                            )}
+                          >
+                            {sub.status === 'done' ? 'Đã chấm' : 'Chờ chấm'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <button
+                            type="button"
+                            onClick={() => onOpenExam(sub.id, true)}
+                            className="text-xs font-bold text-primary underline-offset-4 hover:underline"
+                          >
+                            Xem kết quả
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )
                 ) : filteredCompleted.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
@@ -384,7 +478,7 @@ export function ExamResultsSchedule({
                       <td className="px-6 py-5">
                         <button
                           type="button"
-                          onClick={() => onOpenExam(exam.id)}
+                          onClick={() => onOpenExam(exam.id, false)}
                           className="text-xs font-bold text-primary underline-offset-4 hover:underline"
                         >
                           Xem kết quả

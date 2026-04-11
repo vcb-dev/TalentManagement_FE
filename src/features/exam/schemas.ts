@@ -27,3 +27,25 @@ export const gradeFormSchema = z.object({
   score: z.number().min(0).max(100),
   note: z.string().optional(),
 })
+
+export const examSubmissionApiSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  fullName: z.string(),
+  teamGroup: z.string().nullable().optional(),
+  classId: z.string().nullable().optional(),
+  answers: z.any().optional(),
+  grades: z.any().optional(),
+  totalScore: z.number().nullable().optional(),
+  status: z.enum(['pending', 'grading', 'done']),
+  graderNote: z.string().nullable().optional(),
+  gradedAt: z.string().nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  learningClass: z
+    .object({
+      name: z.string(),
+    })
+    .nullable()
+    .optional(),
+})

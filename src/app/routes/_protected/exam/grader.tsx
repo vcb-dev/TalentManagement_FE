@@ -5,8 +5,7 @@ import { GraderExamListScreen } from '@/features/exam/components/GraderExamListS
 
 export const Route = createFileRoute('/_protected/exam/grader')({
   beforeLoad: () => {
-    requireRoleOrPermissionPrefixes(['TEACHER'], ['teacher.'])
-    requirePermissionPrefix('teacher.')
+    requireRoleOrPermissionPrefixes(['TEACHER', 'MANAGER'], ['teacher.', 'manager.'])
   },
   component: GraderExamListPage,
 })
