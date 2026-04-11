@@ -1,5 +1,5 @@
 import { useQueries } from '@tanstack/react-query'
-import { Calendar, Loader2, X } from 'lucide-react'
+import { Calendar, CheckSquare, Circle, FileUp, ListPlus, Loader2, Trash2, X } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -23,6 +23,20 @@ import { ManagerScreenLayout } from './ManagerScreenLayout'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
 type ScheduleRow = z.infer<typeof managerClassScheduleApiSchema>
+type QuestionItem = { id: string; stem: string; options: string[] }
+type ComposeQuestionType = 'single' | 'multiple' | 'text'
+type ComposeQuestion = {
+  id: string
+  title: string
+  type: ComposeQuestionType
+  required: boolean
+  options: string[]
+}
+type QuestionBankPayload = {
+  title: string
+  questions: QuestionItem[]
+  updatedAt: string
+}
 
 const PAGE_SUBTITLE =
   'Lịch học buổi do giáo viên xếp — lọc theo ngày, xem nội dung từng buổi; cột Lịch thi hiển thị kỳ thi đã đặt. Bấm Tạo lịch thi để đặt/sửa kỳ thi và người chấm.'
@@ -90,6 +104,69 @@ function filterSchedulesByRange(
   })
 }
 
+function parseQuestionsFromText(raw: string): QuestionItem[] {
+  const lines = raw
+    .split(/\r?\n/)
+    .map((x) => x.trim())
+    .filter((x) => x.length > 0)
+  if (lines.length === 0) return []
+
+  const qStart = /^(\d+[\).\:-]\s+|Câu\s*\d+[:.)-]?\s*)/i
+  const optionLine = /^([A-H][\).\:-]\s+|[-*]\s+)/i
+
+  const chunks: string[][] = []
+  for (const line of lines) {
+    if (qStart.test(line) || chunks.length === 0) chunks.push([line])
+    else chunks[chunks.length - 1]!.push(line)
+  }
+
+  return chunks.map((chunk, idx) => {
+    let stem = chunk[0]!.replace(qStart, '').trim()
+    const options: string[] = []
+    for (const line of chunk.slice(1)) {
+      if (optionLine.test(line)) options.push(line.replace(optionLine, '').trim())
+      else stem += ` ${line}`
+    }
+    return {
+      id: `q-${idx + 1}`,
+      stem,
+      options,
+    }
+  })
+}
+
+function newComposeQuestion(seed?: number): ComposeQuestion {
+  const fallback = Date.now()
+  return {
+    id: `cq-${seed ?? fallback}`,
+    title: '',
+    type: 'single',
+    required: true,
+    options: ['Lựa chọn 1', 'Lựa chọn 2'],
+  }
+}
+
+function questionItemsToCompose(items: QuestionItem[]): ComposeQuestion[] {
+  if (items.length === 0) return [newComposeQuestion()]
+  return items.map((item, idx) => ({
+    id: `cq-${idx + 1}`,
+    title: item.stem,
+    type: item.options.length > 0 ? 'single' : 'text',
+    required: true,
+    options: item.options.length > 0 ? item.options : [],
+  }))
+}
+
+function composeToQuestionItems(compose: ComposeQuestion[]): QuestionItem[] {
+  return compose
+    .map((q, idx) => ({
+      id: `q-${idx + 1}`,
+      stem: q.title.trim(),
+      options: q.type === 'text' ? [] : q.options.map((x) => x.trim()).filter((x) => x.length > 0),
+    }))
+    .filter((q) => q.stem.length > 0)
+}
+
 export function ManagerExamScheduleScreen() {
   const { data: classes = [] } = useManagerClasses()
   const [startDate, setStartDate] = useState('')
@@ -119,12 +196,35 @@ export function ManagerExamScheduleScreen() {
     name: string
     email: string
   } | null>(null)
+  const [questionBankByClass, setQuestionBankByClass] = useState<
+    Record<string, QuestionBankPayload>
+  >({})
+  const [assignmentModalClassId, setAssignmentModalClassId] = useState<string | null>(null)
+  const [assignmentTitle, setAssignmentTitle] = useState('')
+  const [assignmentMode, setAssignmentMode] = useState<'upload' | 'compose'>('upload')
+  const [questionRawInput, setQuestionRawInput] = useState('')
+  const [questionDraft, setQuestionDraft] = useState<QuestionItem[]>([])
+  const [composeQuestions, setComposeQuestions] = useState<ComposeQuestion[]>([
+    newComposeQuestion(),
+  ])
 
   const modalClass = classes.find((c) => c.id === examModalClassId) ?? null
+  const assignmentClass = classes.find((c) => c.id === assignmentModalClassId) ?? null
   const isTapSuClass = modalClass?.levelFrom === 'tap_su' && modalClass?.levelTo === 'biet_viec'
   const { data: examTeacherOptions = [], isFetching: fetchingExamTeachers } =
     useTeacherOptions(examTeacherQuery)
   const updateClass = useUpdateManagerClass()
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('manager_exam_question_bank_v1')
+      if (!raw) return
+      const parsed = JSON.parse(raw) as Record<string, QuestionBankPayload>
+      setQuestionBankByClass(parsed)
+    } catch {
+      // ignore invalid local cache
+    }
+  }, [])
 
   useEffect(() => {
     if (!examModalClassId) {
@@ -156,6 +256,88 @@ export function ManagerExamScheduleScreen() {
   const closeExamModal = () => {
     setExamModalClassId(null)
     setExamTeacherQuery('')
+  }
+
+  const openAssignmentModal = (classId: string) => {
+    setAssignmentModalClassId(classId)
+    const current = questionBankByClass[classId]
+    setAssignmentTitle(
+      current?.title || `Đề thi lớp ${classes.find((c) => c.id === classId)?.name || ''}`.trim()
+    )
+    setQuestionDraft(current?.questions ?? [])
+    setComposeQuestions(questionItemsToCompose(current?.questions ?? []))
+    setAssignmentMode('upload')
+    setQuestionRawInput('')
+  }
+
+  const closeAssignmentModal = () => {
+    setAssignmentModalClassId(null)
+    setQuestionRawInput('')
+  }
+
+  const onUploadQuestionFile = async (file: File) => {
+    const text = await file.text()
+    setQuestionRawInput(text)
+    const parsed = parseQuestionsFromText(text)
+    setQuestionDraft(parsed)
+    toast.success(`Đã đọc ${parsed.length} câu hỏi từ file`)
+  }
+
+  const parseRawQuestions = () => {
+    const parsed = parseQuestionsFromText(questionRawInput)
+    setQuestionDraft(parsed)
+    toast.success(`Đã format ${parsed.length} câu hỏi`)
+  }
+
+  const addComposeQuestion = () => {
+    setComposeQuestions((prev) => [...prev, newComposeQuestion(prev.length + 1)])
+  }
+
+  const removeComposeQuestion = (id: string) => {
+    setComposeQuestions((prev) => {
+      const next = prev.filter((q) => q.id !== id)
+      return next.length > 0 ? next : [newComposeQuestion()]
+    })
+  }
+
+  const updateComposeQuestion = (id: string, updater: (q: ComposeQuestion) => ComposeQuestion) => {
+    setComposeQuestions((prev) => prev.map((q) => (q.id === id ? updater(q) : q)))
+  }
+
+  const addOption = (questionId: string) => {
+    updateComposeQuestion(questionId, (q) => ({
+      ...q,
+      options: [...q.options, `Lựa chọn ${q.options.length + 1}`],
+    }))
+  }
+
+  const removeOption = (questionId: string, idx: number) => {
+    updateComposeQuestion(questionId, (q) => ({
+      ...q,
+      options: q.options.filter((_, i) => i !== idx),
+    }))
+  }
+
+  const saveQuestionBank = () => {
+    if (!assignmentModalClassId) return
+    const finalQuestions =
+      assignmentMode === 'compose' ? composeToQuestionItems(composeQuestions) : questionDraft
+    if (finalQuestions.length === 0) {
+      toast.error('Chưa có câu hỏi để lưu')
+      return
+    }
+    const next: Record<string, QuestionBankPayload> = {
+      ...questionBankByClass,
+      [assignmentModalClassId]: {
+        title: assignmentTitle.trim() || 'Bộ câu hỏi',
+        questions: finalQuestions,
+        updatedAt: new Date().toISOString(),
+      },
+    }
+    setQuestionBankByClass(next)
+    localStorage.setItem('manager_exam_question_bank_v1', JSON.stringify(next))
+    toast.success('Đã lưu bộ câu hỏi cho lớp')
+    closeAssignmentModal()
   }
 
   const saveExamSchedule = () => {
@@ -311,8 +493,18 @@ export function ManagerExamScheduleScreen() {
                   )
 
                   const hasExamSchedule = Boolean(c.examDate)
+                  const hasQuestionBank = Boolean(questionBankByClass[c.id])
                   const actionCell = (
-                    <div className="flex justify-end">
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="font-bold"
+                        onClick={() => openAssignmentModal(c.id)}
+                      >
+                        {hasQuestionBank ? 'Sửa bài thi' : 'Tạo bài thi'}
+                      </Button>
                       <Button
                         type="button"
                         size="sm"
@@ -569,6 +761,280 @@ export function ManagerExamScheduleScreen() {
                   : modalClass.examDate
                     ? 'Lưu chỉnh sửa'
                     : 'Lưu lịch thi'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {assignmentModalClassId && assignmentClass ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-3xl rounded-2xl border bg-card p-5 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-bold text-foreground">
+                  <FileUp className="h-5 w-5 text-primary" strokeWidth={2} />
+                  {questionBankByClass[assignmentClass.id] ? 'Sửa bộ bài thi' : 'Tạo bộ bài thi'}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">Lớp: {assignmentClass.name}</p>
+              </div>
+              <button
+                type="button"
+                className="rounded p-1 text-muted-foreground hover:bg-muted"
+                onClick={closeAssignmentModal}
+                aria-label="Đóng"
+              >
+                <X className="h-5 w-5" strokeWidth={2} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                  Tên bộ đề
+                </label>
+                <input
+                  value={assignmentTitle}
+                  onChange={(e) => setAssignmentTitle(e.target.value)}
+                  placeholder="Ví dụ: Bộ đề tập sự tháng 04/2026"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAssignmentMode('upload')}
+                  className={cn(
+                    'rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors',
+                    assignmentMode === 'upload'
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-card text-foreground hover:bg-muted'
+                  )}
+                >
+                  Upload file
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssignmentMode('compose')}
+                  className={cn(
+                    'rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors',
+                    assignmentMode === 'compose'
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-card text-foreground hover:bg-muted'
+                  )}
+                >
+                  Tự soạn câu hỏi
+                </button>
+              </div>
+
+              {assignmentMode === 'upload' ? (
+                <>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                      Upload file câu hỏi
+                    </label>
+                    <input
+                      type="file"
+                      accept=".txt,.md,.csv,text/plain,text/markdown"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) void onUploadQuestionFile(file)
+                      }}
+                      className="block w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-primary hover:file:bg-primary/20"
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Hỗ trợ txt/md/csv. Mỗi câu nên bắt đầu bằng số thứ tự (vd: 1. / Câu 1:) để
+                      parse chuẩn hơn.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                      Nhập/chỉnh nội dung câu hỏi thô
+                    </label>
+                    <textarea
+                      value={questionRawInput}
+                      onChange={(e) => setQuestionRawInput(e.target.value)}
+                      placeholder={
+                        '1. Câu hỏi số 1\nA. Đáp án A\nB. Đáp án B\n\n2. Câu hỏi số 2\nA. ...'
+                      }
+                      className="min-h-[170px] w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                    <div className="mt-2 flex justify-end">
+                      <Button type="button" variant="outline" size="sm" onClick={parseRawQuestions}>
+                        Format bộ câu hỏi
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3 rounded-xl border border-border/70 bg-muted/10 p-3">
+                  {composeQuestions.map((q, qIdx) => (
+                    <div key={q.id} className="rounded-xl border border-border bg-background p-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <p className="text-sm font-bold text-foreground">Câu hỏi {qIdx + 1}</p>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                          onClick={() => removeComposeQuestion(q.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Xóa
+                        </button>
+                      </div>
+                      <input
+                        value={q.title}
+                        onChange={(e) =>
+                          updateComposeQuestion(q.id, (x) => ({ ...x, title: e.target.value }))
+                        }
+                        placeholder="Câu hỏi chưa có tiêu đề"
+                        className="mb-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto] md:items-center">
+                        <select
+                          value={q.type}
+                          onChange={(e) =>
+                            updateComposeQuestion(q.id, (x) => ({
+                              ...x,
+                              type: e.target.value as ComposeQuestionType,
+                              options:
+                                e.target.value === 'text'
+                                  ? []
+                                  : x.options.length > 0
+                                    ? x.options
+                                    : ['Lựa chọn 1', 'Lựa chọn 2'],
+                            }))
+                          }
+                          className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        >
+                          <option value="single">Trắc nghiệm (1 đáp án)</option>
+                          <option value="multiple">Trắc nghiệm (nhiều đáp án)</option>
+                          <option value="text">Tự luận ngắn</option>
+                        </select>
+                        <label className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={q.required}
+                            onChange={(e) =>
+                              updateComposeQuestion(q.id, (x) => ({
+                                ...x,
+                                required: e.target.checked,
+                              }))
+                            }
+                          />
+                          Bắt buộc
+                        </label>
+                        <div className="text-xs text-muted-foreground">
+                          {q.type === 'text' ? 'Trả lời văn bản' : 'Dạng lựa chọn'}
+                        </div>
+                      </div>
+
+                      {q.type !== 'text' ? (
+                        <div className="mt-3 space-y-2">
+                          {q.options.map((opt, oi) => (
+                            <div key={`${q.id}-${oi}`} className="flex items-center gap-2">
+                              <span className="text-muted-foreground">
+                                {q.type === 'single' ? (
+                                  <Circle className="h-4 w-4" />
+                                ) : (
+                                  <CheckSquare className="h-4 w-4" />
+                                )}
+                              </span>
+                              <input
+                                value={opt}
+                                onChange={(e) =>
+                                  updateComposeQuestion(q.id, (x) => ({
+                                    ...x,
+                                    options: x.options.map((v, i) =>
+                                      i === oi ? e.target.value : v
+                                    ),
+                                  }))
+                                }
+                                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                placeholder={`Lựa chọn ${oi + 1}`}
+                              />
+                              <button
+                                type="button"
+                                className="rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                                onClick={() => removeOption(q.id, oi)}
+                              >
+                                Xóa
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10"
+                            onClick={() => addOption(q.id)}
+                          >
+                            <ListPlus className="h-3.5 w-3.5" />
+                            Thêm lựa chọn
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                  <div className="flex justify-end">
+                    <Button type="button" variant="outline" onClick={addComposeQuestion}>
+                      Thêm câu hỏi
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+                <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                  Xem trước (
+                  {assignmentMode === 'compose'
+                    ? composeToQuestionItems(composeQuestions).length
+                    : questionDraft.length}{' '}
+                  câu)
+                </p>
+                <div className="max-h-56 space-y-2 overflow-auto pr-1">
+                  {(assignmentMode === 'compose'
+                    ? composeToQuestionItems(composeQuestions)
+                    : questionDraft
+                  ).length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {assignmentMode === 'compose'
+                        ? 'Chưa có câu hỏi hợp lệ. Vui lòng nhập tiêu đề cho từng câu.'
+                        : 'Chưa có câu hỏi. Upload file hoặc nhập nội dung rồi bấm "Format bộ câu hỏi".'}
+                    </p>
+                  ) : (
+                    (assignmentMode === 'compose'
+                      ? composeToQuestionItems(composeQuestions)
+                      : questionDraft
+                    ).map((q, idx) => (
+                      <div
+                        key={q.id}
+                        className="rounded-lg border border-border bg-background px-3 py-2"
+                      >
+                        <p className="text-sm font-semibold text-foreground">
+                          Câu {idx + 1}: {q.stem}
+                        </p>
+                        {q.options.length > 0 ? (
+                          <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                            {q.options.map((opt, oi) => (
+                              <p key={`${q.id}-${oi}`}>
+                                {String.fromCharCode(65 + oi)}. {opt}
+                              </p>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={closeAssignmentModal}>
+                Hủy
+              </Button>
+              <Button type="button" className="font-bold" onClick={saveQuestionBank}>
+                Lưu bộ bài thi
               </Button>
             </div>
           </div>

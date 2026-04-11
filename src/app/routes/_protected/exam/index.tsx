@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { ExamResultsSchedule } from '@/features/exam/components/ExamResultsSchedule'
 import { useExams } from '@/features/exam/hooks'
+import { useMyEnrolledClass } from '@/features/learning-path/hooks'
 import { useTeacherClassDetail, useTeacherClasses } from '@/features/teacher/hooks'
 import type { z } from 'zod'
 import { examSummaryApiSchema } from '@/features/exam/schemas'
@@ -21,6 +22,7 @@ function ExamIndexPage() {
   const [managedClassId, setManagedClassId] = useState('')
   const pageSize = 20
   const { data, isLoading } = useExams({ page, pageSize }, viewMode === 'mine')
+  const { data: myClassData } = useMyEnrolledClass()
   const {
     data: managedClasses = [],
     isLoading: isManagedLoading,
@@ -121,6 +123,9 @@ function ExamIndexPage() {
         isLoading={viewMode === 'mine' ? isLoading : isManagedLoading}
         onPageChange={setPage}
         onOpenExam={(id) => void navigate({ to: '/exam/$examId/result', params: { examId: id } })}
+        myEnrolledClassId={
+          viewMode === 'mine' ? (myClassData?.enrolledClass?.id ?? undefined) : undefined
+        }
         membersInClass={viewMode === 'managed' ? (managedDetail?.members ?? []) : undefined}
         membersTitle={viewMode === 'managed' ? 'Thành viên trong lớp' : undefined}
       />

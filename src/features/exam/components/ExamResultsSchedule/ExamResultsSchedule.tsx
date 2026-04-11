@@ -21,6 +21,7 @@ export interface ExamResultsScheduleProps {
   isLoading: boolean
   onPageChange: (page: number) => void
   onOpenExam: (id: string) => void
+  myEnrolledClassId?: string
   membersInClass?: Array<{
     userId: string
     name: string
@@ -56,10 +57,23 @@ export function ExamResultsSchedule({
   isLoading,
   onPageChange,
   onOpenExam,
+  myEnrolledClassId,
   membersInClass,
   membersTitle,
 }: ExamResultsScheduleProps) {
   const [yearFilter, setYearFilter] = useState<string>('all')
+  const [questionBankClassIds, setQuestionBankClassIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('manager_exam_question_bank_v1')
+      if (!raw) return
+      const parsed = JSON.parse(raw) as Record<string, unknown>
+      setQuestionBankClassIds(new Set(Object.keys(parsed)))
+    } catch {
+      setQuestionBankClassIds(new Set())
+    }
+  }, [])
 
   const { upcoming, completed } = useMemo(() => {
     const u: ExamRow[] = []
@@ -142,6 +156,16 @@ export function ExamResultsSchedule({
           {upcomingShow.map((exam, idx) => {
             const Icon = idx % 2 === 0 ? Building2 : Shield
             const isOptional = idx % 2 === 1
+            const hasQuestionBank =
+              questionBankClassIds.has(exam.id) ||
+              (myEnrolledClassId ? questionBankClassIds.has(myEnrolledClassId) : false)
+            const canOpenExam = exam.status === 'COMPLETED' || hasQuestionBank
+            const actionLabel =
+              exam.status === 'COMPLETED'
+                ? 'Xem chi tiết'
+                : !hasQuestionBank
+                  ? 'Chưa có bài thi'
+                  : 'Vào làm bài'
             return (
               <div
                 key={exam.id}
@@ -188,21 +212,17 @@ export function ExamResultsSchedule({
                 <button
                   type="button"
                   onClick={() => {
-                    if (exam.status === 'COMPLETED' || exam.status === 'IN_PROGRESS') {
+                    if (canOpenExam) {
                       onOpenExam(exam.id)
                     }
                   }}
-                  disabled={exam.status === 'UPCOMING'}
+                  disabled={!canOpenExam}
                   className={cn(
                     'flex w-full items-center justify-center gap-2 rounded-lg py-3 text-base font-bold text-white shadow-sm transition-all',
                     'vcb-cta-exam-gradient hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70'
                   )}
                 >
-                  {exam.status === 'IN_PROGRESS'
-                    ? 'Vào thi'
-                    : exam.status === 'COMPLETED'
-                      ? 'Xem chi tiết'
-                      : 'Đã lên lịch'}
+                  {actionLabel}
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </button>
               </div>
