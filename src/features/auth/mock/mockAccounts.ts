@@ -2,10 +2,11 @@ import type { Role, StaffLevel, UserSession } from '@/types/auth'
 import { applyMandatoryViewRules } from '@/features/permissions/effectivePermissions'
 import { getDefaultPermissionIdsForRole } from '@/features/permissions/defaultPermissionIds'
 import { mergeStoredAssignmentsForUser } from '@/features/permissions/assignmentStore'
+import { HR_DEPARTMENT_IDS } from '@/features/hr-admin/hrOrgOptions'
 
 /** UUID cố định cho mock */
-const DEPT = '11111111-1111-4111-8111-111111111111'
-const TEAM = '22222222-2222-4222-8222-222222222222'
+const DEPT = HR_DEPARTMENT_IDS.khoiKinhDoanh
+const TEAM = '02d0d0d0-0001-4001-8001-000000000301'
 
 function session(
   id: string,

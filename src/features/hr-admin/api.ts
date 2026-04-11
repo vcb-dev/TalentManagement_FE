@@ -31,7 +31,11 @@ export const employeeApi = {
       params: {
         page: filters.page,
         pageSize: filters.pageSize,
-        role: filters.role,
+        ...(filters.roles?.trim()
+          ? { roles: filters.roles.trim() }
+          : filters.role
+            ? { role: filters.role }
+            : {}),
         status: statusToApi(filters.status),
         search: filters.search,
         teamId: filters.teamId,

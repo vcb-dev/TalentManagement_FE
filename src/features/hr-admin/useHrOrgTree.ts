@@ -37,17 +37,10 @@ export function useHrOrgSelectOptions() {
         )
       }
     } else {
-      const teamDeptMap: Record<string, string> = {
-        '22222222-2222-4222-8222-222222222222': '11111111-1111-4111-8111-111111111111',
-        '66666666-6666-4666-8666-666666666666': '11111111-1111-4111-8111-111111111111',
-        '77777777-7777-4777-8777-777777777777': '22222222-2222-4222-8222-222222222221',
-      }
       for (const t of HR_TEAM_OPTIONS) {
-        const did = teamDeptMap[t.value]
-        if (!did) continue
-        const arr = teamsByDept.get(did) ?? []
+        const arr = teamsByDept.get(t.departmentId) ?? []
         arr.push({ value: t.value, label: t.label })
-        teamsByDept.set(did, arr)
+        teamsByDept.set(t.departmentId, arr)
       }
     }
 

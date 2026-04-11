@@ -1,23 +1,22 @@
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import type { EmployeeFilters } from '@/features/hr-admin/types'
 import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
+import { HR_DEPARTMENT_IDS, HR_TEAM_OPTIONS } from '@/features/hr-admin/hrOrgOptions'
 
 export type CreateEmployeeMeta = {
   initialLevel?: 'tap_su' | 'biet_viec'
   secondaryTeamId?: string
 }
 
-const DEPT = '11111111-1111-4111-8111-111111111111'
-const DEPT_NAME = 'Phòng ban (mock)'
-/** Team NS-01 — đồng bộ lựa chọn team Quản lý */
-export const MOCK_TEAM_NS01 = '22222222-2222-4222-8222-222222222222'
-/** Team NS-02 */
-export const MOCK_TEAM_NS02 = '33333333-3333-4333-8333-333333333333'
+const DEPT = HR_DEPARTMENT_IDS.khoiKinhDoanh
+const DEPT_NAME = 'KH\u1ED0I KINH DOANH'
+/** Team demo — LIVESTREAM 1 */
+export const MOCK_TEAM_NS01 = '02d0d0d0-0001-4001-8001-000000000301'
+/** Team demo — LIVESTREAM 2 */
+export const MOCK_TEAM_NS02 = '02d0d0d0-0001-4001-8001-000000000302'
 
 function teamLabelForMock(teamId: string): string {
-  if (teamId === MOCK_TEAM_NS01) return 'Nhóm NS-01'
-  if (teamId === MOCK_TEAM_NS02) return 'Nhóm NS-02'
-  return 'Nhóm (mock)'
+  return HR_TEAM_OPTIONS.find((t) => t.value === teamId)?.label ?? 'Nh\u00F3m (mock)'
 }
 
 function emp(
@@ -149,7 +148,17 @@ export function getMockEmployees(filters: EmployeeFilters): {
   if (filters.teamId) {
     list = list.filter((e) => e.teamIds.includes(filters.teamId!))
   }
-  if (filters.role) list = list.filter((e) => e.role === filters.role)
+  if (filters.roles?.trim()) {
+    const rs = new Set(
+      filters.roles
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean)
+    )
+    list = list.filter((e) => rs.has(e.role))
+  } else if (filters.role) {
+    list = list.filter((e) => e.role === filters.role)
+  }
   const st = statusFilter(filters.status)
   if (st) list = list.filter((e) => e.status === st)
   if (filters.search?.trim()) {
