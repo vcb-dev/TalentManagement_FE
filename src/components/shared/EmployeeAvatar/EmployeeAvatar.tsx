@@ -36,7 +36,7 @@ export function EmployeeAvatar({ name, className, photoUrl, showOnlineDot }: Emp
             referrerPolicy="no-referrer"
           />
         ) : (
-          (initials || '?')
+          initials || '?'
         )}
       </div>
       {showOnlineDot ? (

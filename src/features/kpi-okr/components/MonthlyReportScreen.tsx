@@ -50,7 +50,8 @@ export function MonthlyReportScreen() {
             {isLeader ? (
               <>
                 {' '}
-                · Leader thêm <span className="font-semibold">create / edit</span> khi gửi/tổng hợp báo cáo team.
+                · Leader thêm <span className="font-semibold">create / edit</span> khi gửi/tổng hợp
+                báo cáo team.
               </>
             ) : null}
           </span>

@@ -156,7 +156,9 @@ function ProfileEditableTextarea({
   onChange: (v: string) => void
 }) {
   return (
-    <label className={cn('flex flex-col sm:col-span-2 lg:col-span-2', fieldStackGap, fieldBoxClass)}>
+    <label
+      className={cn('flex flex-col sm:col-span-2 lg:col-span-2', fieldStackGap, fieldBoxClass)}
+    >
       <FieldLabel>{label}</FieldLabel>
       <textarea
         className={cn(
@@ -206,7 +208,13 @@ function PortraitUploadBlock({
   const titleId = `${uploadInputId}-title`
 
   return (
-    <div className={cn('flex min-w-0 flex-col sm:col-span-2 lg:col-span-2', fieldStackGap, fieldBoxClass)}>
+    <div
+      className={cn(
+        'flex min-w-0 flex-col sm:col-span-2 lg:col-span-2',
+        fieldStackGap,
+        fieldBoxClass
+      )}
+    >
       <span id={titleId} className="block">
         <FieldLabel>{label}</FieldLabel>
       </span>
@@ -408,7 +416,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                   <span className="flex items-center gap-1 text-muted-foreground">
                     <Building2 className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
                     <span>
-                      {edit.departmentName.trim() || '—'} · {edit.teamGroup.trim() || '—'}
+                      {u.departmentName?.trim() || '—'} · {u.teamGroup?.trim() || '—'}
                     </span>
                   </span>
                 </div>

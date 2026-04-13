@@ -32,13 +32,16 @@ function NavLink({
     collapsed ? 'justify-center px-0' : 'px-3',
     active
       ? 'border-l-[3px] border-primary-600 bg-primary-50 font-semibold text-primary-600'
-      : 'border-l-[3px] border-transparent text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+      : 'border-l-[3px] border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
   )
 
   const inner = (
     <>
       <Icon
-        className={cn('h-[18px] w-[18px] shrink-0', active ? 'text-primary-600' : 'text-gray-500')}
+        className={cn(
+          'h-[18px] w-[18px] shrink-0',
+          active ? 'text-primary-600' : 'text-muted-foreground'
+        )}
         strokeWidth={2}
       />
       {!collapsed ? <span>{item.label}</span> : null}
@@ -83,12 +86,12 @@ function SidebarInner() {
   return (
     <aside
       className={cn(
-        'relative flex h-full min-h-0 shrink-0 flex-col border-r border-gray-200 bg-white font-sans transition-[width] duration-200',
+        'relative flex h-full min-h-0 shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200',
         collapsed ? 'w-[4.25rem]' : 'w-64 min-w-[256px]'
       )}
     >
       <div
-        className={cn('border-b border-gray-200', collapsed ? 'px-2 pb-3 pt-4' : 'px-3 pb-3 pt-4')}
+        className={cn('border-b border-border', collapsed ? 'px-2 pb-3 pt-4' : 'px-3 pb-3 pt-4')}
       >
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
@@ -100,7 +103,7 @@ function SidebarInner() {
               onClick={toggleSidebar}
               aria-label={'M\u1edf r\u1ed9ng menu'}
               title={'M\u1edf r\u1ed9ng menu'}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <ChevronRight className="h-5 w-5" strokeWidth={2} />
             </button>
@@ -109,14 +112,14 @@ function SidebarInner() {
           <div className="flex items-start gap-1">
             <div className="min-w-0 flex-1 pl-1">
               <div className="text-lg font-extrabold tracking-tight text-primary-600">VCB HRM</div>
-              <div className="mt-1 text-sm leading-snug text-gray-500">{displayName}</div>
+              <div className="mt-1 text-sm leading-snug text-muted-foreground">{displayName}</div>
             </div>
             <button
               type="button"
               onClick={toggleSidebar}
               aria-label="Thu gọn menu"
               title="Thu gọn menu"
-              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <ChevronLeft className="h-5 w-5" strokeWidth={2} />
             </button>

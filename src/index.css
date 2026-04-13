@@ -1,5 +1,12 @@
 @import 'tailwindcss';
 
+/*
+ * HRM Lumina — Employee & Growth
+ * Canonical UI for employee-facing flows: learning, profile, gamification (levels / stars / tiers).
+ * Foundation: violet primary + teal accent; tokens in :root and @theme below; use components/ui.
+ * Reporting, BOD, and spreadsheet-style tools may stay flatter but should reuse this palette; avoid ad-hoc hex.
+ */
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -468,7 +475,7 @@ html {
     position: relative;
     isolation: isolate;
     min-height: 100vh;
-    background: #64748b;
+    background: var(--login-bg);
   }
   .login-page-bg::before {
     content: '';

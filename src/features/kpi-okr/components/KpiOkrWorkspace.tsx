@@ -19,6 +19,7 @@ import {
 } from '@/features/kpi-okr/api'
 import { organizationApi, type TeamMemberRow } from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
+import { Button } from '@/components/ui/button'
 
 type TabKey = 'work' | 'summary' | 'form'
 
@@ -231,7 +232,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
 
       <div className="mb-4 flex flex-wrap gap-2 border-b border-border pb-2">
         {tabs.map((t) => (
-          <button
+          <Button
             key={t.id}
             type="button"
             className={cn(
@@ -243,9 +244,9 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
             onClick={() => setTab(t.id)}
           >
             {t.label}
-          </button>
+          </Button>
         ))}
-        <button
+        <Button
           type="button"
           className="ml-auto inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/50"
           onClick={() => {
@@ -256,7 +257,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Làm mới dữ liệu
-        </button>
+        </Button>
       </div>
 
       {mockHint && (
@@ -314,14 +315,15 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
               <ul className="ml-3 mt-1 space-y-0.5">
                 {d.teams.map((t) => (
                   <li key={t.id}>
-                    <button
+                    <Button
                       type="button"
-                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                      variant="link"
+                      className="inline-flex h-auto items-center gap-1 p-0 text-primary"
                       onClick={() => setSelectedTeamId(t.id)}
                     >
                       <ChevronRight className="h-3 w-3" />
                       {t.name}
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -359,26 +361,29 @@ function nameForMember(members: TeamMemberRow[], userId: string): string {
   return n || userId.slice(0, 8) + '…'
 }
 
-/** Lưới giống Excel: viền ô, header xám, hàng xen kẽ */
-const XL_BORDER = 'border border-zinc-400 dark:border-zinc-600'
+/** Bảng KPI/OKR — viền & nền theo token Lumina (giữ layout ô bảng). */
+const XL_BORDER = 'border border-border'
 const XL_TH = cn(
   XL_BORDER,
-  'sticky top-0 z-10 bg-[#e7e6e6] px-2 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100'
+  'sticky top-0 z-10 bg-muted/85 px-2 py-2 text-left text-xs font-bold uppercase tracking-wide text-foreground backdrop-blur-sm'
 )
 const xlTd = (stripe: boolean) =>
   cn(
     XL_BORDER,
-    'px-1.5 py-1 align-top text-[12px] leading-snug text-zinc-900 dark:text-zinc-100',
-    stripe ? 'bg-[#f2f2f2]/90 dark:bg-zinc-800/50' : 'bg-white dark:bg-zinc-950'
+    'px-1.5 py-1 align-top text-xs leading-snug text-foreground',
+    stripe ? 'bg-muted/50' : 'bg-card'
   )
 const XL_INPUT = cn(
-  'box-border h-7 w-full min-w-0 rounded-none border border-zinc-400 bg-white px-1 text-[12px] outline-none',
-  'focus:z-[1] focus:border-blue-600 focus:ring-1 focus:ring-blue-500 dark:border-zinc-500 dark:bg-zinc-900'
+  'box-border h-7 w-full min-w-0 rounded-none border border-border bg-background px-1 text-xs outline-none',
+  'focus:z-[1] focus:border-primary focus:ring-1 focus:ring-primary/30'
 )
 const XL_TEXTAREA = cn(
-  'box-border min-h-[52px] w-full min-w-[200px] max-w-[420px] resize-y rounded-none border border-zinc-400 bg-white p-1 text-[12px] outline-none',
-  'focus:z-[1] focus:border-blue-600 focus:ring-1 focus:ring-blue-500 dark:border-zinc-500 dark:bg-zinc-900'
+  'box-border min-h-[52px] w-full min-w-[200px] max-w-[420px] resize-y rounded-none border border-border bg-background p-1 text-xs outline-none',
+  'focus:z-[1] focus:border-primary focus:ring-1 focus:ring-primary/30'
 )
+
+const XL_SAVE_BTN =
+  'rounded-sm border border-primary/35 bg-primary font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50'
 
 const ASSIGN_TABLE_HEAD = [
   'Kỳ',
@@ -433,7 +438,7 @@ function AssignmentProgressCell({
   if (!editable) {
     return (
       <div className={cn('space-y-1', excel && 'min-w-[88px]')}>
-        <span className="tabular-nums text-zinc-800 dark:text-zinc-200">{row.progressPercent}</span>
+        <span className="tabular-nums text-foreground">{row.progressPercent}</span>
         {!excel && row.actualResult ? (
           <p className="text-[10px] text-muted-foreground">Số KQ: {row.actualResult}</p>
         ) : null}
@@ -503,14 +508,12 @@ function AssignmentProgressCell({
           placeholder="Số KQ"
         />
       )}
-      <button
+      <Button
         type="button"
         disabled={saving}
         className={cn(
-          'rounded-sm border border-zinc-500 bg-[#217346] font-semibold text-white hover:bg-[#1e6540] disabled:opacity-50',
-          excel
-            ? 'px-1.5 py-0.5 text-[10px]'
-            : 'w-fit rounded bg-primary px-2 py-1 text-xs text-primary-foreground'
+          XL_SAVE_BTN,
+          excel ? 'px-1.5 py-0.5 text-[10px]' : 'w-fit rounded-md px-2 py-1 text-xs'
         )}
         onClick={() => {
           setSaving(true)
@@ -525,7 +528,7 @@ function AssignmentProgressCell({
         }}
       >
         Lưu
-      </button>
+      </Button>
     </div>
   )
 }
@@ -536,8 +539,8 @@ function KindBadge({ kind }: { kind: PerformanceAssignment['kind'] }) {
       className={cn(
         'inline-block rounded-sm px-1.5 py-0.5 text-[11px] font-semibold',
         kind === 'KPI'
-          ? 'bg-sky-200 text-sky-900 dark:bg-sky-900/40 dark:text-sky-100'
-          : 'bg-pink-200 text-pink-900 dark:bg-pink-900/40 dark:text-pink-100'
+          ? 'bg-primary/15 text-primary ring-1 ring-primary/20'
+          : 'bg-accent/12 text-accent ring-1 ring-accent/25'
       )}
     >
       {kind}
@@ -564,8 +567,10 @@ function ReadOnlyAssignmentRow({
 }) {
   const td = xlTd(rowStripe)
   return (
-    <tr className="hover:bg-green-100/40 dark:hover:bg-green-900/20">
-      <td className={cn(td, 'whitespace-nowrap tabular-nums text-zinc-600')}>{periodLabel(row)}</td>
+    <tr className="hover:bg-muted/70">
+      <td className={cn(td, 'whitespace-nowrap tabular-nums text-muted-foreground')}>
+        {periodLabel(row)}
+      </td>
       <td className={cn(td, 'whitespace-nowrap tabular-nums')}>{formatKpiSetAt(row.kpiSetAt)}</td>
       <td className={cn(td, 'max-w-[140px] font-medium')}>
         {nameForMember(members, assigneeUserId)}
@@ -588,7 +593,9 @@ function ReadOnlyAssignmentRow({
       <td className={cn(td, 'whitespace-nowrap')}>{STATUS_LABEL_VI[row.status]}</td>
       <td className={td}>{row.reviewerName ?? ''}</td>
       <td className={cn(td, 'font-medium tabular-nums')}>{row.managerEvalStatus ?? ''}</td>
-      <td className={cn(td, 'min-w-[140px] max-w-[200px] whitespace-pre-wrap text-zinc-700')}>
+      <td
+        className={cn(td, 'min-w-[140px] max-w-[200px] whitespace-pre-wrap text-muted-foreground')}
+      >
         {row.managerReviewNote ?? ''}
       </td>
       <td className={td} />
@@ -692,12 +699,14 @@ function LeaderAssignmentRow({
   return (
     <tr
       className={cn(
-        'hover:bg-[#e8f4e8] dark:hover:bg-green-950/30',
+        'hover:bg-success-muted/35',
         mode === 'results' &&
-          'outline outline-1 outline-amber-300/60 -outline-offset-1 dark:outline-amber-700/50'
+          'outline outline-1 outline-amber-400/45 -outline-offset-1 dark:outline-amber-600/40'
       )}
     >
-      <td className={cn(td, 'whitespace-nowrap tabular-nums text-zinc-600')}>{periodLabel(row)}</td>
+      <td className={cn(td, 'whitespace-nowrap tabular-nums text-muted-foreground')}>
+        {periodLabel(row)}
+      </td>
       <td className={td}>
         <input
           type="date"
@@ -811,14 +820,14 @@ function LeaderAssignmentRow({
         />
       </td>
       <td className={cn(td, 'whitespace-nowrap')}>
-        <button
+        <Button
           type="button"
           disabled={saving}
-          className="rounded-sm border border-zinc-500 bg-[#217346] px-2 py-1 text-[11px] font-semibold text-white hover:bg-[#1e6540] disabled:opacity-50 dark:border-zinc-400"
+          className={cn(XL_SAVE_BTN, 'px-2 py-1 text-[11px]')}
           onClick={save}
         >
           Lưu
-        </button>
+        </Button>
       </td>
     </tr>
   )
@@ -861,10 +870,10 @@ function AssignmentTablesForUsers({
           key={uid}
           className={cn(
             XL_BORDER,
-            'overflow-hidden rounded-sm bg-white shadow-sm dark:bg-zinc-950'
+            'overflow-hidden rounded-lg bg-card shadow-[var(--shadow-card)]'
           )}
         >
-          <div className="border-b border-zinc-400 bg-[#d9d9d9] px-3 py-2 text-sm font-bold text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100">
+          <div className="border-b border-border bg-muted/70 px-3 py-2 text-sm font-bold text-foreground">
             Nhân sự: <span className="font-semibold">{nameForMember(members, uid)}</span>
             <span className="ml-2 font-mono text-xs font-normal opacity-80">
               · {uid.slice(0, 8)}…
@@ -1066,7 +1075,7 @@ function MiniCreateForm({
     <form
       className={cn(
         XL_BORDER,
-        'grid gap-3 rounded-sm bg-[#f9f9f9] p-3 md:grid-cols-2 lg:grid-cols-3 dark:bg-zinc-900'
+        'grid gap-3 rounded-lg bg-muted/25 p-3 md:grid-cols-2 lg:grid-cols-3'
       )}
       onSubmit={(e) => {
         e.preventDefault()
@@ -1097,7 +1106,7 @@ function MiniCreateForm({
           .finally(() => setBusy(false))
       }}
     >
-      <p className="md:col-span-2 lg:col-span-3 -mb-1 border-b border-zinc-300 pb-2 text-xs font-bold uppercase tracking-wide text-zinc-700 dark:border-zinc-600 dark:text-zinc-300">
+      <p className="md:col-span-2 lg:col-span-3 -mb-1 border-b border-border pb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
         Thêm dòng mới (nhập nhanh như trên sheet)
       </p>
       <label className="flex flex-col gap-1 text-xs font-medium">
@@ -1178,13 +1187,13 @@ function MiniCreateForm({
         />
       </label>
       <div className="flex items-end md:col-span-2 lg:col-span-3">
-        <button
+        <Button
           type="submit"
           disabled={busy || !members.length}
-          className="rounded-sm border border-zinc-600 bg-[#217346] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1e6540] disabled:opacity-50"
+          className={cn(XL_SAVE_BTN, 'px-4 py-2 text-sm')}
         >
           Thêm dòng
-        </button>
+        </Button>
       </div>
     </form>
   )
@@ -1215,7 +1224,7 @@ function SummaryPanel({
       <div className="space-y-3">
         {canRecalculate && teamId && !isMockApiEnabled() && (
           <div className="flex justify-end">
-            <button
+            <Button
               type="button"
               disabled={recalcBusy}
               className="rounded-lg border border-primary px-3 py-1.5 text-sm font-semibold text-primary disabled:opacity-50"
@@ -1228,7 +1237,7 @@ function SummaryPanel({
               }}
             >
               Tính lại tổng hợp
-            </button>
+            </Button>
           </div>
         )}
         <p className="text-sm text-muted-foreground">
@@ -1241,7 +1250,7 @@ function SummaryPanel({
     <div className="space-y-3">
       {canRecalculate && teamId && !isMockApiEnabled() && (
         <div className="flex justify-end">
-          <button
+          <Button
             type="button"
             disabled={recalcBusy}
             className="rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
@@ -1254,7 +1263,7 @@ function SummaryPanel({
             }}
           >
             Tính lại tổng hợp (A–D)
-          </button>
+          </Button>
         </div>
       )}
       <div className="overflow-x-auto rounded-xl border border-border/70">
@@ -1355,7 +1364,7 @@ function FormPanel({
             value={prompts}
             onChange={(e) => setPrompts(e.target.value)}
           />
-          <button
+          <Button
             type="button"
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
             onClick={() => {
@@ -1370,7 +1379,7 @@ function FormPanel({
             }}
           >
             Lưu câu hỏi
-          </button>
+          </Button>
         </div>
       )}
 
@@ -1394,7 +1403,7 @@ function FormPanel({
             </label>
           ))}
           {!isMockApiEnabled() && currentUserId && (
-            <button
+            <Button
               type="button"
               className="rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary"
               onClick={() => {
@@ -1409,7 +1418,7 @@ function FormPanel({
               }}
             >
               Gửi câu trả lời
-            </button>
+            </Button>
           )}
         </div>
       ) : null}

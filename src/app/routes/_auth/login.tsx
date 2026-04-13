@@ -31,7 +31,8 @@ export const Route = createFileRoute('/_auth/login')({
     const { accessToken, user } = useAuthStore.getState()
     if (user || accessToken) {
       const target = defaultEntryPathFromSession(user ?? undefined)
-      if (target === '/hr-admin') throw redirect({ to: '/hr-admin', search: { page: 1 } })
+      if (target === '/hr-admin')
+        throw redirect({ to: '/hr-admin', search: { page: 1, pageSize: 15 } })
       throw redirect({ to: target })
     }
   },
@@ -69,7 +70,8 @@ function LoginPage() {
     }
     const u = useAuthStore.getState().user
     const target = defaultEntryPathFromSession(u ?? undefined)
-    if (target === '/hr-admin') void navigate({ to: '/hr-admin', search: { page: 1 } })
+    if (target === '/hr-admin')
+      void navigate({ to: '/hr-admin', search: { page: 1, pageSize: 15 } })
     else void navigate({ to: target })
   }, [navigate, search.redirect])
 
@@ -101,22 +103,22 @@ function LoginPage() {
   }, [search.oauth, search.msg, search.redirect, navigate, setSession, onAuthSuccess])
 
   return (
-    <div className="login-page-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-10 text-sm leading-relaxed text-gray-900">
+    <div className="login-page-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-10 text-sm leading-relaxed text-foreground">
       <div className="relative z-0 flex w-full max-w-[420px] flex-col items-stretch">
         <div
           className={cn(
-            'rounded-[12px] bg-white p-10 shadow-[0_4px_20px_rgba(0,0,0,0.1)]',
-            'border border-black/[0.04]'
+            'rounded-xl bg-card p-10 shadow-[var(--shadow-card)]',
+            'border border-border'
           )}
         >
           <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-[10px] bg-primary text-primary-foreground shadow-sm">
               <Award className="h-6 w-6" strokeWidth={1.75} aria-hidden />
             </div>
-            <div className="text-[26px] font-bold leading-tight tracking-tight text-gray-900">
+            <div className="text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-[26px]">
               {appName}
             </div>
-            <div className="mt-1.5 text-[13px] font-normal text-gray-600">
+            <div className="mt-1.5 text-sm font-normal text-muted-foreground">
               Quản trị Hiệu suất Ưu tú
             </div>
           </div>
@@ -127,11 +129,11 @@ function LoginPage() {
                 href={googleOAuthHref}
                 className={cn(
                   'group relative flex h-[52px] w-full items-center justify-center gap-3 overflow-hidden rounded-xl',
-                  'border-2 border-gray-200/90 bg-white px-4 text-[15px] font-semibold tracking-tight text-gray-800',
-                  'shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all duration-200',
-                  'hover:-translate-y-0.5 hover:border-[#4285F4]/45 hover:shadow-[0_10px_28px_-6px_rgba(66,133,244,0.45)]',
-                  'active:translate-y-0 active:shadow-[0_4px_14px_rgba(0,0,0,0.1)]',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4285F4]/50 focus-visible:ring-offset-2'
+                  'border-2 border-border bg-card px-4 text-[15px] font-semibold tracking-tight text-foreground',
+                  'shadow-[var(--shadow-card)] transition-all duration-200',
+                  'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--shadow-card-hover)]',
+                  'active:translate-y-0 active:shadow-[var(--shadow-card)]',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-card'
                 )}
               >
                 <span
@@ -167,11 +169,11 @@ function LoginPage() {
             </div>
           ) : !mockApi && !googleOAuthHref ? (
             <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
-              Cấu hình <code className="font-mono text-[11px]">VITE_API_URL</code> trỏ tới BE và
-              trên BE bật <code className="font-mono text-[11px]">GOOGLE_CLIENT_ID</code>,{' '}
-              <code className="font-mono text-[11px]">GOOGLE_CLIENT_SECRET</code>,{' '}
-              <code className="font-mono text-[11px]">FRONTEND_URL</code>. Hoặc bật{' '}
-              <code className="font-mono text-[11px]">VITE_USE_MOCK_API</code> để demo.
+              Cấu hình <code className="font-mono text-xs">VITE_API_URL</code> trỏ tới BE và trên BE
+              bật <code className="font-mono text-xs">GOOGLE_CLIENT_ID</code>,{' '}
+              <code className="font-mono text-xs">GOOGLE_CLIENT_SECRET</code>,{' '}
+              <code className="font-mono text-xs">FRONTEND_URL</code>. Hoặc bật{' '}
+              <code className="font-mono text-xs">VITE_USE_MOCK_API</code> để demo.
             </p>
           ) : null}
 
@@ -187,13 +189,13 @@ function LoginPage() {
               <div className="mb-4">
                 <label
                   htmlFor="email"
-                  className="mb-2 block text-[11px] font-semibold tracking-wide text-gray-500"
+                  className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                 >
                   ĐỊA CHỈ EMAIL
                 </label>
                 <div className="relative">
                   <Mail
-                    className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-400"
+                    className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground"
                     strokeWidth={2}
                     aria-hidden
                   />
@@ -203,8 +205,8 @@ function LoginPage() {
                     autoComplete="username"
                     placeholder="name@vcb.com.vn"
                     className={cn(
-                      'h-12 w-full rounded-lg border border-[#e0e0e0] bg-white py-3 pl-11 pr-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 placeholder:text-[13px]',
-                      'focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25',
+                      'h-12 w-full rounded-lg border border-border bg-background py-3 pl-11 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground',
+                      'focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/25',
                       form.formState.errors.email && 'border-red-400'
                     )}
                     {...form.register('email')}
@@ -219,7 +221,7 @@ function LoginPage() {
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <label
                     htmlFor="password"
-                    className="text-[11px] font-semibold tracking-wide text-gray-500"
+                    className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                   >
                     MẬT KHẨU
                   </label>
@@ -233,7 +235,7 @@ function LoginPage() {
                 </div>
                 <div className="relative">
                   <Lock
-                    className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-400"
+                    className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground"
                     strokeWidth={2}
                     aria-hidden
                   />
@@ -243,15 +245,15 @@ function LoginPage() {
                     autoComplete="current-password"
                     placeholder="••••••••"
                     className={cn(
-                      'h-12 w-full rounded-lg border border-[#e0e0e0] bg-white py-3 pl-11 pr-11 text-sm text-gray-900 outline-none placeholder:text-gray-400',
-                      'focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25',
+                      'h-12 w-full rounded-lg border border-border bg-background py-3 pl-11 pr-11 text-sm text-foreground outline-none placeholder:text-muted-foreground',
+                      'focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/25',
                       form.formState.errors.password && 'border-red-400'
                     )}
                     {...form.register('password')}
                   />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600"
+                    className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                     onClick={() => setShowPassword((s) => !s)}
                   >
@@ -280,14 +282,14 @@ function LoginPage() {
           ) : null}
 
           {mockApi ? (
-            <div className="mt-6 border-t border-gray-100 pt-5">
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+            <div className="mt-6 border-t border-border pt-5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <KeyRound className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
                 Tài khoản demo (mock)
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-gray-600">
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 Mật khẩu chung:{' '}
-                <code className="rounded-md bg-primary/5 px-1.5 py-0.5 font-mono text-[11px] text-primary ring-1 ring-primary/15">
+                <code className="rounded-md bg-primary/5 px-1.5 py-0.5 font-mono text-xs text-primary ring-1 ring-primary/15">
                   {MOCK_PASSWORD}
                 </code>
                 . Chọn một dòng để điền email và mật khẩu.
@@ -301,18 +303,18 @@ function LoginPage() {
                     <button
                       type="button"
                       className={cn(
-                        'w-full rounded-lg border border-gray-100 bg-gray-50/90 px-3 py-2.5 text-left text-xs transition-colors',
-                        'hover:border-primary/35 hover:bg-primary/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25'
+                        'w-full rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-left text-xs transition-colors',
+                        'hover:border-primary/35 hover:bg-primary/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25'
                       )}
                       onClick={() => {
                         form.setValue('email', acc.email, { shouldValidate: true })
                         form.setValue('password', MOCK_PASSWORD, { shouldValidate: true })
                       }}
                     >
-                      <span className="font-mono text-[11px] font-semibold text-gray-900 sm:text-xs">
+                      <span className="font-mono text-xs font-semibold text-foreground sm:text-xs">
                         {acc.email}
                       </span>
-                      <span className="mt-0.5 block text-[10px] text-gray-500 sm:text-[11px]">
+                      <span className="mt-0.5 block text-[10px] text-muted-foreground sm:text-xs">
                         <span className="font-medium text-primary/90">
                           {ROLE_LABEL_VI[acc.role]}
                         </span>
@@ -329,7 +331,7 @@ function LoginPage() {
       </div>
 
       <div
-        className="pointer-events-none fixed bottom-4 right-4 z-10 max-w-[min(calc(100vw-2rem),260px)] rounded-xl border border-black/[0.06] bg-white px-3 py-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.1)] sm:bottom-6 sm:right-6 sm:px-4 sm:py-3"
+        className="pointer-events-none fixed bottom-4 right-4 z-10 max-w-[min(calc(100vw-2rem),260px)] rounded-xl border border-border bg-card px-3 py-2.5 shadow-[var(--shadow-card)] sm:bottom-6 sm:right-6 sm:px-4 sm:py-3"
         style={{ borderRadius: 12 }}
       >
         <div className="flex items-start gap-3">
@@ -337,10 +339,10 @@ function LoginPage() {
             <Trophy className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
           </div>
           <div className="min-w-0 text-left">
-            <p className="text-[9px] font-semibold tracking-wide text-gray-500">
+            <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
               THÀNH TÍCH GẦN ĐÂY
             </p>
-            <p className="mt-0.5 text-sm font-bold leading-snug text-gray-900">
+            <p className="mt-0.5 text-sm font-bold leading-snug text-foreground">
               Top 5 Cụm Hiệu suất
             </p>
           </div>

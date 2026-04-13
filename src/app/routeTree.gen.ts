@@ -44,6 +44,7 @@ import { Route as ProtectedTeacherClassesClassIdRouteImport } from './routes/_pr
 import { Route as ProtectedManagerTeamEmployeeIdRouteImport } from './routes/_protected/manager/team/$employeeId'
 import { Route as ProtectedLearningPathLevelIdStarIdRouteImport } from './routes/_protected/learning-path/$levelId/$starId'
 import { Route as ProtectedLeaderTeamEmployeeIdRouteImport } from './routes/_protected/leader/team/$employeeId'
+import { Route as ProtectedHrAdminOrgTeamIdRouteImport } from './routes/_protected/hr-admin/org/$teamId'
 import { Route as ProtectedExamExamIdResultRouteImport } from './routes/_protected/exam/$examId/result'
 import { Route as ProtectedExamExamIdGradeRouteImport } from './routes/_protected/exam/$examId/grade'
 import { Route as ProtectedExamExamIdClassifyRouteImport } from './routes/_protected/exam/$examId/classify'
@@ -240,6 +241,12 @@ const ProtectedLeaderTeamEmployeeIdRoute =
     path: '/leader/team/$employeeId',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
+const ProtectedHrAdminOrgTeamIdRoute =
+  ProtectedHrAdminOrgTeamIdRouteImport.update({
+    id: '/$teamId',
+    path: '/$teamId',
+    getParentRoute: () => ProtectedHrAdminOrgRoute,
+  } as any)
 const ProtectedExamExamIdResultRoute =
   ProtectedExamExamIdResultRouteImport.update({
     id: '/exam/$examId/result',
@@ -274,7 +281,7 @@ export interface FileRoutesByFullPath {
   '/exam/grader': typeof ProtectedExamGraderRoute
   '/hr-admin/$employeeId': typeof ProtectedHrAdminEmployeeIdRoute
   '/hr-admin/new': typeof ProtectedHrAdminNewRoute
-  '/hr-admin/org': typeof ProtectedHrAdminOrgRoute
+  '/hr-admin/org': typeof ProtectedHrAdminOrgRouteWithChildren
   '/leader/kpi-okr': typeof ProtectedLeaderKpiOkrRoute
   '/manager/approvals': typeof ProtectedManagerApprovalsRoute
   '/manager/classes': typeof ProtectedManagerClassesRoute
@@ -290,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/exam/$examId/classify': typeof ProtectedExamExamIdClassifyRoute
   '/exam/$examId/grade': typeof ProtectedExamExamIdGradeRoute
   '/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
+  '/hr-admin/org/$teamId': typeof ProtectedHrAdminOrgTeamIdRoute
   '/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
   '/manager/team/$employeeId': typeof ProtectedManagerTeamEmployeeIdRoute
@@ -312,7 +320,7 @@ export interface FileRoutesByTo {
   '/exam/grader': typeof ProtectedExamGraderRoute
   '/hr-admin/$employeeId': typeof ProtectedHrAdminEmployeeIdRoute
   '/hr-admin/new': typeof ProtectedHrAdminNewRoute
-  '/hr-admin/org': typeof ProtectedHrAdminOrgRoute
+  '/hr-admin/org': typeof ProtectedHrAdminOrgRouteWithChildren
   '/leader/kpi-okr': typeof ProtectedLeaderKpiOkrRoute
   '/manager/approvals': typeof ProtectedManagerApprovalsRoute
   '/manager/classes': typeof ProtectedManagerClassesRoute
@@ -328,6 +336,7 @@ export interface FileRoutesByTo {
   '/exam/$examId/classify': typeof ProtectedExamExamIdClassifyRoute
   '/exam/$examId/grade': typeof ProtectedExamExamIdGradeRoute
   '/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
+  '/hr-admin/org/$teamId': typeof ProtectedHrAdminOrgTeamIdRoute
   '/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
   '/manager/team/$employeeId': typeof ProtectedManagerTeamEmployeeIdRoute
@@ -353,7 +362,7 @@ export interface FileRoutesById {
   '/_protected/exam/grader': typeof ProtectedExamGraderRoute
   '/_protected/hr-admin/$employeeId': typeof ProtectedHrAdminEmployeeIdRoute
   '/_protected/hr-admin/new': typeof ProtectedHrAdminNewRoute
-  '/_protected/hr-admin/org': typeof ProtectedHrAdminOrgRoute
+  '/_protected/hr-admin/org': typeof ProtectedHrAdminOrgRouteWithChildren
   '/_protected/leader/kpi-okr': typeof ProtectedLeaderKpiOkrRoute
   '/_protected/manager/approvals': typeof ProtectedManagerApprovalsRoute
   '/_protected/manager/classes': typeof ProtectedManagerClassesRoute
@@ -369,6 +378,7 @@ export interface FileRoutesById {
   '/_protected/exam/$examId/classify': typeof ProtectedExamExamIdClassifyRoute
   '/_protected/exam/$examId/grade': typeof ProtectedExamExamIdGradeRoute
   '/_protected/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
+  '/_protected/hr-admin/org/$teamId': typeof ProtectedHrAdminOrgTeamIdRoute
   '/_protected/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/_protected/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
   '/_protected/manager/team/$employeeId': typeof ProtectedManagerTeamEmployeeIdRoute
@@ -409,6 +419,7 @@ export interface FileRouteTypes {
     | '/exam/$examId/classify'
     | '/exam/$examId/grade'
     | '/exam/$examId/result'
+    | '/hr-admin/org/$teamId'
     | '/leader/team/$employeeId'
     | '/learning-path/$levelId/$starId'
     | '/manager/team/$employeeId'
@@ -447,6 +458,7 @@ export interface FileRouteTypes {
     | '/exam/$examId/classify'
     | '/exam/$examId/grade'
     | '/exam/$examId/result'
+    | '/hr-admin/org/$teamId'
     | '/leader/team/$employeeId'
     | '/learning-path/$levelId/$starId'
     | '/manager/team/$employeeId'
@@ -487,6 +499,7 @@ export interface FileRouteTypes {
     | '/_protected/exam/$examId/classify'
     | '/_protected/exam/$examId/grade'
     | '/_protected/exam/$examId/result'
+    | '/_protected/hr-admin/org/$teamId'
     | '/_protected/leader/team/$employeeId'
     | '/_protected/learning-path/$levelId/$starId'
     | '/_protected/manager/team/$employeeId'
@@ -748,6 +761,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedLeaderTeamEmployeeIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/hr-admin/org/$teamId': {
+      id: '/_protected/hr-admin/org/$teamId'
+      path: '/$teamId'
+      fullPath: '/hr-admin/org/$teamId'
+      preLoaderRoute: typeof ProtectedHrAdminOrgTeamIdRouteImport
+      parentRoute: typeof ProtectedHrAdminOrgRoute
+    }
     '/_protected/exam/$examId/result': {
       id: '/_protected/exam/$examId/result'
       path: '/exam/$examId/result'
@@ -784,6 +804,17 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
   AuthRouteRouteChildren,
 )
 
+interface ProtectedHrAdminOrgRouteChildren {
+  ProtectedHrAdminOrgTeamIdRoute: typeof ProtectedHrAdminOrgTeamIdRoute
+}
+
+const ProtectedHrAdminOrgRouteChildren: ProtectedHrAdminOrgRouteChildren = {
+  ProtectedHrAdminOrgTeamIdRoute: ProtectedHrAdminOrgTeamIdRoute,
+}
+
+const ProtectedHrAdminOrgRouteWithChildren =
+  ProtectedHrAdminOrgRoute._addFileChildren(ProtectedHrAdminOrgRouteChildren)
+
 interface ProtectedRouteRouteChildren {
   ProtectedDashboardRoute: typeof ProtectedDashboardRoute
   ProtectedKpiOkrRoute: typeof ProtectedKpiOkrRoute
@@ -797,7 +828,7 @@ interface ProtectedRouteRouteChildren {
   ProtectedExamGraderRoute: typeof ProtectedExamGraderRoute
   ProtectedHrAdminEmployeeIdRoute: typeof ProtectedHrAdminEmployeeIdRoute
   ProtectedHrAdminNewRoute: typeof ProtectedHrAdminNewRoute
-  ProtectedHrAdminOrgRoute: typeof ProtectedHrAdminOrgRoute
+  ProtectedHrAdminOrgRoute: typeof ProtectedHrAdminOrgRouteWithChildren
   ProtectedLeaderKpiOkrRoute: typeof ProtectedLeaderKpiOkrRoute
   ProtectedManagerApprovalsRoute: typeof ProtectedManagerApprovalsRoute
   ProtectedManagerClassesRoute: typeof ProtectedManagerClassesRoute
@@ -834,7 +865,7 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedExamGraderRoute: ProtectedExamGraderRoute,
   ProtectedHrAdminEmployeeIdRoute: ProtectedHrAdminEmployeeIdRoute,
   ProtectedHrAdminNewRoute: ProtectedHrAdminNewRoute,
-  ProtectedHrAdminOrgRoute: ProtectedHrAdminOrgRoute,
+  ProtectedHrAdminOrgRoute: ProtectedHrAdminOrgRouteWithChildren,
   ProtectedLeaderKpiOkrRoute: ProtectedLeaderKpiOkrRoute,
   ProtectedManagerApprovalsRoute: ProtectedManagerApprovalsRoute,
   ProtectedManagerClassesRoute: ProtectedManagerClassesRoute,

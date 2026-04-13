@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { Building2, ChevronDown, FolderOpen, Hash, Search, Users } from 'lucide-react'
 import {
   PAGE_HEADER_DESCRIPTION,
@@ -83,6 +84,8 @@ function OrgStructureLoading() {
 export function HrOrgStructure() {
   const [expandedDeptIds, setExpandedDeptIds] = useState<Set<string>>(new Set())
   const [membersTeamId, setMembersTeamId] = useState<string | null>(null)
+  const [orgSearch, setOrgSearch] = useState('')
+  const [expandedAllTeamsByDept, setExpandedAllTeamsByDept] = useState<Record<string, boolean>>({})
 
   const structureQ = useQuery({
     queryKey: DEPTS_WITH_TEAMS_QUERY_KEY,
@@ -96,7 +99,7 @@ export function HrOrgStructure() {
     const id = window.setTimeout(() => {
       setExpandedDeptIds((prev) => {
         if (prev.size > 0) return prev
-        return new Set(list.map((d) => d.id))
+        return new Set([list[0]!.id])
       })
     }, 0)
     return () => window.clearTimeout(id)
@@ -116,6 +119,38 @@ export function HrOrgStructure() {
   })
 
   const departments = useMemo(() => structureQ.data ?? [], [structureQ.data])
+  const summary = useMemo(() => {
+    const deptCount = departments.length
+    const teamCount = departments.reduce((acc, d) => acc + d.teams.length, 0)
+    const memberCount = departments.reduce(
+      (acc, d) => acc + d.teams.reduce((sum, t) => sum + t._count.memberships, 0),
+      0
+    )
+    return { deptCount, teamCount, memberCount }
+  }, [departments])
+  const filteredDepartments = useMemo(() => {
+    const q = orgSearch.trim().toLowerCase()
+    if (!q) return departments
+    return departments
+      .map((dept) => {
+        const deptMatched = dept.name.toLowerCase().includes(q) || dept.id.toLowerCase().includes(q)
+        if (deptMatched) return dept
+        const teams = dept.teams.filter((team) => {
+          const leaderText = team.leader
+            ? [team.leader.displayName, team.leader.email, team.leader.employeeCodePrimary]
+                .filter(Boolean)
+                .join(' ')
+            : (team.leaderUserId ?? '')
+          return (
+            team.name.toLowerCase().includes(q) ||
+            team.id.toLowerCase().includes(q) ||
+            leaderText.toLowerCase().includes(q)
+          )
+        })
+        return { ...dept, teams }
+      })
+      .filter((dept) => dept.teams.length > 0)
+  }, [departments, orgSearch])
 
   let activeMemberContext: { team: OrgAdminTeamRow; deptName: string } | null = null
   if (membersTeamId) {
@@ -152,7 +187,12 @@ export function HrOrgStructure() {
   return (
     <TooltipProvider delayDuration={280}>
       <div className="mx-auto max-w-6xl px-3 py-8 md:px-4">
-        <div className={cn('mb-8', PAGE_HEADER_SURFACE)}>
+        <div
+          className={cn(
+            'mb-8 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-accent/10 to-transparent p-4 md:p-6',
+            PAGE_HEADER_SURFACE
+          )}
+        >
           <h1 className={PAGE_HEADER_TITLE}>
             <span className={PAGE_HEADER_GRADIENT}>Phòng ban & Team</span>
           </h1>
@@ -171,6 +211,67 @@ export function HrOrgStructure() {
         )}
 
         <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Card className="border-primary/30 bg-gradient-to-br from-primary/15 via-card to-card shadow-sm">
+              <CardContent className="py-3">
+                <p className="text-xs font-medium text-primary">Phòng ban</p>
+                <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
+                  {summary.deptCount}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-accent/40 bg-gradient-to-br from-accent/15 via-card to-card shadow-sm">
+              <CardContent className="py-3">
+                <p className="text-xs font-medium text-accent">Team</p>
+                <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
+                  {summary.teamCount}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-blue-500/35 bg-gradient-to-br from-blue-500/15 via-card to-card shadow-sm">
+              <CardContent className="py-3">
+                <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                  Thành viên (gộp team)
+                </p>
+                <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
+                  {summary.memberCount}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-xl border border-accent/25 bg-gradient-to-r from-card via-muted/25 to-accent/10 p-3 sm:flex-row sm:items-center">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={orgSearch}
+                onChange={(e) => setOrgSearch(e.target.value)}
+                className="pl-9"
+                placeholder="Tìm phòng ban, team, leader, mã ID..."
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="border-primary/35 text-primary hover:bg-primary/10"
+                onClick={() => setExpandedDeptIds(new Set(filteredDepartments.map((d) => d.id)))}
+              >
+                Mở tất cả
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-accent hover:bg-accent/15 hover:text-accent"
+                onClick={() => setExpandedDeptIds(new Set())}
+              >
+                Thu gọn
+              </Button>
+            </div>
+          </div>
+
           {departments.length === 0 && !structureQ.isLoading && (
             <Card className="border-dashed border-2 border-border/80 bg-muted/15 shadow-none">
               <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
@@ -192,13 +293,13 @@ export function HrOrgStructure() {
             value={Array.from(expandedDeptIds)}
             onValueChange={(vals) => setExpandedDeptIds(new Set(vals))}
           >
-            {departments.map((dept) => (
+            {filteredDepartments.map((dept) => (
               <AccordionItem
                 key={dept.id}
                 value={dept.id}
-                className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-[box-shadow,ring] data-[state=open]:shadow-[0_10px_40px_rgb(106_90_224/0.12)] data-[state=open]:ring-1 data-[state=open]:ring-primary/20"
+                className="overflow-hidden rounded-2xl border border-primary/15 bg-card shadow-sm transition-[box-shadow,ring,border-color] data-[state=open]:border-primary/35 data-[state=open]:shadow-[0_10px_40px_rgb(106_90_224/0.16)] data-[state=open]:ring-1 data-[state=open]:ring-primary/20"
               >
-                <div className="border-b border-border/60 bg-gradient-to-r from-muted/35 via-card to-card px-4 py-3 sm:py-4">
+                <div className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-accent/10 px-4 py-3 sm:py-4">
                   <AccordionTrigger className="-mx-1 flex w-full justify-start gap-0 py-1 sm:-mx-0">
                     <ChevronDown className="chevron-accordion mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
                     <Building2 className="mx-2 mt-0.5 h-5 w-5 shrink-0 text-primary" />
@@ -215,7 +316,10 @@ export function HrOrgStructure() {
                         )}
                       </span>
                       <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">
-                        <Badge variant="muted" className="font-normal tabular-nums">
+                        <Badge
+                          variant="outline"
+                          className="border-primary/30 bg-primary/10 font-normal tabular-nums text-primary"
+                        >
                           {dept.teams.length} team
                         </Badge>
                         <Tooltip>
@@ -240,7 +344,7 @@ export function HrOrgStructure() {
                   <div className="overflow-x-auto">
                     <Table className="min-w-[640px]">
                       <TableHeader>
-                        <TableRow className="border-b border-border/80 bg-muted/25 hover:bg-muted/25">
+                        <TableRow className="border-b border-border/80 bg-gradient-to-r from-primary/10 via-muted/20 to-accent/10 hover:bg-muted/25">
                           <TableHead className="w-[28%] pl-6">Team</TableHead>
                           <TableHead className="max-w-[260px]">Leader</TableHead>
                           <TableHead className="w-[108px]">Thành viên</TableHead>
@@ -257,7 +361,10 @@ export function HrOrgStructure() {
                             </TableCell>
                           </TableRow>
                         ) : (
-                          dept.teams.map((team) => (
+                          (expandedAllTeamsByDept[dept.id]
+                            ? dept.teams
+                            : dept.teams.slice(0, 6)
+                          ).map((team) => (
                             <FragmentTeamRow
                               key={team.id}
                               team={team}
@@ -268,11 +375,37 @@ export function HrOrgStructure() {
                         )}
                       </TableBody>
                     </Table>
+                    {dept.teams.length > 6 ? (
+                      <div className="flex justify-center border-t border-border/60 bg-gradient-to-r from-primary/5 to-accent/5 px-4 py-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setExpandedAllTeamsByDept((prev) => ({
+                              ...prev,
+                              [dept.id]: !prev[dept.id],
+                            }))
+                          }
+                        >
+                          {expandedAllTeamsByDept[dept.id]
+                            ? 'Thu gọn team'
+                            : `Xem thêm ${dept.teams.length - 6} team`}
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 </AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
+          {orgSearch.trim() && filteredDepartments.length === 0 ? (
+            <Card className="border-dashed border-border/80 bg-muted/15 shadow-none">
+              <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                Không có phòng ban hoặc team nào khớp từ khóa tìm kiếm.
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
 
         {activeMemberContext && membersTeamId && (
@@ -317,7 +450,12 @@ function FragmentTeamRow({
       : null
 
   return (
-    <TableRow className={cn('group transition-colors', membersOpen && 'bg-primary/[0.04]')}>
+    <TableRow
+      className={cn(
+        'group transition-colors odd:bg-muted/[0.16] even:bg-card hover:bg-primary/[0.06]',
+        membersOpen && 'bg-primary/[0.10]'
+      )}
+    >
       <TableCell className="pl-6 align-top">
         <div className="font-semibold text-foreground">{team.name}</div>
         <Tooltip>
@@ -343,21 +481,28 @@ function FragmentTeamRow({
         )}
       </TableCell>
       <TableCell className="align-top">
-        <Badge variant="muted" className="tabular-nums">
+        <Badge variant="outline" className="border-accent/35 bg-accent/10 tabular-nums text-accent">
           {team._count.memberships}
         </Badge>
       </TableCell>
       <TableCell className="pr-6 text-right align-top">
-        <Button
-          type="button"
-          variant={membersOpen ? 'secondary' : 'outline'}
-          size="sm"
-          className="rounded-full"
-          onClick={onOpenMembers}
-        >
-          <Users className="h-3.5 w-3.5" />
-          {membersOpen ? 'Đóng' : 'Thành viên'}
-        </Button>
+        <div className="flex items-center justify-end gap-2">
+          <Button type="button" size="sm" variant="outline" className="rounded-full" asChild>
+            <Link to="/hr-admin/org/$teamId" params={{ teamId: team.id }}>
+              Quản lý
+            </Link>
+          </Button>
+          <Button
+            type="button"
+            variant={membersOpen ? 'secondary' : 'outline'}
+            size="sm"
+            className="rounded-full"
+            onClick={onOpenMembers}
+          >
+            <Users className="h-3.5 w-3.5" />
+            {membersOpen ? 'Đóng' : 'Thành viên'}
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   )

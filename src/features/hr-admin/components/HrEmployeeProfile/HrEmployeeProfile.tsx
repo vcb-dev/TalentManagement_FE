@@ -42,7 +42,15 @@ import type { EmployeeLevel } from '@/types/employee'
 import type { Role } from '@/types/auth'
 import type { PatchEmployeeInput } from '@/types/api'
 import { usePermission } from '@/hooks/usePermission'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+
+const PROFILE_EDIT_FIELD =
+  'h-11 rounded-lg border-0 bg-muted/40 px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 disabled:opacity-60'
+
+const PROFILE_EDIT_SELECT =
+  'flex h-11 w-full cursor-pointer rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:ring-2 focus:ring-primary/20 disabled:opacity-60'
 
 const LEVEL_ORDER: EmployeeLevel[] = [
   'tap_su',
@@ -233,20 +241,24 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
               <span className="font-semibold text-foreground">{employee.name}</span>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 lg:hidden">
-              <button
+              <Button
                 type="button"
-                className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold shadow-sm hover:bg-muted"
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 text-[11px]"
                 onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
               >
                 Đổi PB
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold shadow-sm hover:bg-muted"
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 text-[11px]"
                 onClick={onDemoAction('Đổi role: kết nối API sau.')}
               >
                 Role
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -331,34 +343,37 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
 
         <main className="min-w-0 flex-1">
           <div className="mb-4 hidden flex-wrap items-center justify-end gap-2 lg:flex">
-            <button
+            <Button
               type="button"
-              className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+              variant="outline"
+              size="sm"
               onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
             >
               Đổi phòng ban
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+              variant="outline"
+              size="sm"
               onClick={onDemoAction('Đổi role: kết nối API sau.')}
             >
               Đổi role
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="rounded-lg border border-red-300/80 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-800 transition-colors hover:bg-red-100"
+              variant="destructive"
+              size="sm"
               onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
             >
               Hủy hoạt động
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+              size="sm"
               onClick={onDemoAction('Lưu thay đổi: kết nối API sau.')}
             >
               Lưu thay đổi
-            </button>
+            </Button>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-primary/10 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/5">
@@ -425,21 +440,19 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
               </div>
 
               <div className="mt-5 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setTab(4)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-                >
+                <Button type="button" className="gap-2" onClick={() => setTab(4)}>
                   Chỉnh sửa hồ sơ
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
                   onClick={() => toast.info('Cài đặt nhân viên (demo)')}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-muted"
                   aria-label="Cài đặt"
                 >
                   <Settings className="h-5 w-5" strokeWidth={2} />
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -1045,16 +1058,13 @@ function EditTab({
     []
   )
 
-  const inputCls =
-    'w-full rounded-[9px] border border-border bg-white px-3 py-2 text-sm disabled:opacity-60'
-
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
       <div>
         <PfCard title="Phân công tổ chức" entranceIndex={0}>
           <label className="mb-2 block text-xs font-semibold text-muted-foreground">Role</label>
           <select
-            className={cn(inputCls, 'mb-3')}
+            className={cn(PROFILE_EDIT_SELECT, 'mb-3')}
             value={editRole}
             disabled={orgDisabled}
             onChange={(e) => onRole(e.target.value as Role)}
@@ -1069,7 +1079,7 @@ function EditTab({
             Phòng ban
           </label>
           <select
-            className={cn(inputCls, 'mb-3')}
+            className={cn(PROFILE_EDIT_SELECT, 'mb-3')}
             value={editDepartmentId}
             disabled={orgDisabled}
             onChange={(e) => onDepartmentId(e.target.value)}
@@ -1084,7 +1094,7 @@ function EditTab({
             Team chính
           </label>
           <select
-            className={cn(inputCls, 'mb-3')}
+            className={cn(PROFILE_EDIT_SELECT, 'mb-3')}
             value={editTeamId}
             disabled={orgDisabled}
             onChange={(e) => onTeamId(e.target.value)}
@@ -1099,7 +1109,7 @@ function EditTab({
             Team phụ (tùy chọn)
           </label>
           <select
-            className={cn(inputCls, 'mb-3')}
+            className={cn(PROFILE_EDIT_SELECT, 'mb-3')}
             value={editSecondaryTeamId}
             disabled={orgDisabled}
             onChange={(e) => onSecondaryTeamId(e.target.value)}
@@ -1114,9 +1124,9 @@ function EditTab({
           <label className="mb-2 block text-xs font-semibold text-muted-foreground">
             Ngày bắt đầu
           </label>
-          <input
+          <Input
             type="date"
-            className={cn(inputCls, 'mb-3')}
+            className={cn(PROFILE_EDIT_FIELD, 'mb-3')}
             value={editStartDate}
             disabled={orgDisabled}
             onChange={(e) => onStartDate(e.target.value)}
@@ -1125,7 +1135,7 @@ function EditTab({
             Cấp năng lực (career)
           </label>
           <select
-            className={inputCls}
+            className={PROFILE_EDIT_SELECT}
             value={editCurrentLevel}
             disabled={orgDisabled}
             onChange={(e) => onCurrentLevel(e.target.value as EmployeeEntity['currentLevel'])}
@@ -1139,32 +1149,34 @@ function EditTab({
         </PfCard>
         <div className="mt-2 flex flex-col gap-2 sm:flex-row">
           {inactive ? (
-            <button
+            <Button
               type="button"
-              className="flex-1 rounded-[9px] border border-primary/35 bg-primary/10 py-2.5 text-sm font-bold text-primary hover:bg-primary/15 disabled:opacity-50"
+              variant="outline"
+              className="flex-1 border-primary/35 bg-primary/10 py-2.5 text-sm font-bold text-primary hover:bg-primary/15"
               disabled={!canEdit || isSaving}
               onClick={onReactivate}
             >
               Kích hoạt lại
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               type="button"
-              className="flex-1 rounded-[9px] border border-[#FCA5A5] bg-[#FEE2E2] py-2.5 text-sm font-bold text-[#991B1B] hover:bg-[#FECACA] disabled:opacity-50"
+              variant="destructive"
+              className="flex-1 py-2.5 text-sm font-bold"
               disabled={!canDeactivate || isSaving}
               onClick={onDeactivate}
             >
               Hủy hoạt động
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             type="button"
-            className="flex-[2] rounded-lg border border-button bg-button py-2.5 text-sm font-bold text-button-foreground hover:opacity-90 disabled:opacity-50"
+            className="flex-[2] py-2.5 text-sm font-bold"
             disabled={!canEdit || isSaving}
             onClick={onSave}
           >
             {isSaving ? 'Đang lưu…' : 'Lưu thay đổi'}
-          </button>
+          </Button>
         </div>
       </div>
       <PfCard title="Thông tin cá nhân" entranceIndex={1}>
@@ -1173,8 +1185,8 @@ function EditTab({
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">
               Họ và tên
             </label>
-            <input
-              className={inputCls}
+            <Input
+              className={PROFILE_EDIT_FIELD}
               value={editName}
               disabled={orgDisabled}
               onChange={(e) => onName(e.target.value)}
@@ -1182,9 +1194,9 @@ function EditTab({
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">Email</label>
-            <input
+            <Input
               type="email"
-              className={inputCls}
+              className={PROFILE_EDIT_FIELD}
               value={editEmail}
               disabled={orgDisabled}
               onChange={(e) => onEmail(e.target.value)}
@@ -1194,8 +1206,8 @@ function EditTab({
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">
               Số điện thoại
             </label>
-            <input
-              className={inputCls}
+            <Input
+              className={PROFILE_EDIT_FIELD}
               value={editPhone}
               disabled={orgDisabled}
               placeholder="09xx xxx xxx"
@@ -1206,9 +1218,9 @@ function EditTab({
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">
               Ngày sinh
             </label>
-            <input
+            <Input
               type="date"
-              className={inputCls}
+              className={PROFILE_EDIT_FIELD}
               value={editBirthDate}
               disabled={orgDisabled}
               onChange={(e) => onBirthDate(e.target.value)}
@@ -1218,8 +1230,8 @@ function EditTab({
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">
               Mã nhân viên (hệ thống)
             </label>
-            <input
-              className={cn(inputCls, 'bg-muted/50 text-muted-foreground')}
+            <Input
+              className={cn(PROFILE_EDIT_FIELD, 'bg-muted/50 text-muted-foreground')}
               readOnly
               value={empCode}
             />

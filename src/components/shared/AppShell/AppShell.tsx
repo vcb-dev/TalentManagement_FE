@@ -32,7 +32,7 @@ export function AppShell({ children, title }: AppShellProps) {
   const displayName = user?.name ?? 'Người dùng'
   const roleLabel = user ? formatRoleLabelsVi(user) : '—'
   const brandHomeTo = user ? defaultEntryPathFromSession(user) : '/dashboard'
-  const brandHomeSearch = brandHomeTo === '/hr-admin' ? { page: 1 } : undefined
+  const brandHomeSearch = brandHomeTo === '/hr-admin' ? { page: 1, pageSize: 15 } : undefined
   /** Không dùng sidebar — điều hướng bằng header ngang. */
   const compactNavNoSidebar =
     user?.role === 'MEMBER' ||
@@ -69,11 +69,11 @@ export function AppShell({ children, title }: AppShellProps) {
               showOnlineDot
               className="h-9 w-9 border-2 border-white bg-gradient-to-br from-primary-600 to-primary-500 text-[12px] font-bold text-white sm:h-10 sm:w-10"
             />
-            <span className="hidden max-w-[11rem] truncate text-sm font-semibold text-gray-900 xl:inline">
+            <span className="hidden max-w-[11rem] truncate text-sm font-semibold text-foreground xl:inline">
               {displayName}
             </span>
             <ChevronDown
-              className="h-4 w-4 shrink-0 text-gray-500 transition-transform duration-200 group-data-[state=open]:rotate-180"
+              className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
               strokeWidth={2}
               aria-hidden
             />
@@ -125,7 +125,7 @@ export function AppShell({ children, title }: AppShellProps) {
     <div className="flex h-screen min-h-0 overflow-hidden bg-app-canvas">
       {!compactNavNoSidebar ? <Sidebar /> : null}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 shrink-0 border-b border-gray-200 bg-white/95 shadow-[var(--shadow-card)] backdrop-blur-sm">
+        <header className="sticky top-0 z-30 shrink-0 border-b border-border bg-card/95 shadow-[var(--shadow-card)] backdrop-blur-sm">
           {compactNavNoSidebar && user ? (
             <div className="grid w-full min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:gap-4 lg:px-8">
               <Link
@@ -140,7 +140,7 @@ export function AppShell({ children, title }: AppShellProps) {
                   <MemberLeaderHeaderNav />
                 </div>
               </div>
-              <div className="flex shrink-0 items-center justify-self-end border-l border-gray-200/90 pl-2 sm:pl-3 md:pl-4">
+              <div className="flex shrink-0 items-center justify-self-end border-l border-border/90 pl-2 sm:pl-3 md:pl-4">
                 {toolbar}
               </div>
             </div>

@@ -77,7 +77,12 @@ export interface GraderPhanLopScreenProps {
   totalCount?: number
 }
 
-export function GraderPhanLopScreen({ examId, employeeId, passCount, totalCount }: GraderPhanLopScreenProps) {
+export function GraderPhanLopScreen({
+  examId,
+  employeeId,
+  passCount,
+  totalCount,
+}: GraderPhanLopScreenProps) {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const classify = useClassifyExam()
@@ -120,9 +125,7 @@ export function GraderPhanLopScreen({ examId, employeeId, passCount, totalCount 
   }
 
   return (
-    <div
-      className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8"
-    >
+    <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
       <div className="page-toolbar-flat flex-col items-stretch gap-0 border-b-0 py-0 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-3 border-b border-border px-6 py-3.5">
           <nav className="flex flex-wrap items-center gap-1.5 text-xs font-medium uppercase tracking-widest text-muted-foreground">
@@ -204,7 +207,9 @@ export function GraderPhanLopScreen({ examId, employeeId, passCount, totalCount 
                           onChange={() => setSelected(opt.result)}
                         />
                         <div className="min-w-0 flex-1">
-                          <span className={cn('block text-sm font-bold', opt.titleClass)}>{opt.title}</span>
+                          <span className={cn('block text-sm font-bold', opt.titleClass)}>
+                            {opt.title}
+                          </span>
                           <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
                             {opt.description}
                           </span>
@@ -262,7 +267,10 @@ export function GraderPhanLopScreen({ examId, employeeId, passCount, totalCount 
                 )}
                 style={staggerStyle(0)}
               >
-                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/[0.06]" aria-hidden />
+                <div
+                  className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/[0.06]"
+                  aria-hidden
+                />
                 <p className="mb-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   Thông tin thí sinh
                 </p>
@@ -292,11 +300,15 @@ export function GraderPhanLopScreen({ examId, employeeId, passCount, totalCount 
                 </div>
                 <div className="mt-6 flex justify-between gap-4 border-t border-border pt-6">
                   <div>
-                    <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Cấp / sao (mục tiêu)</p>
+                    <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">
+                      Cấp / sao (mục tiêu)
+                    </p>
                     <p className="text-sm font-bold text-foreground">{levelBadge}</p>
                   </div>
                   <div className="text-right">
-                    <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Lớp thi</p>
+                    <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">
+                      Lớp thi
+                    </p>
                     <p className="text-sm font-bold text-primary">{className}</p>
                   </div>
                 </div>
@@ -304,12 +316,15 @@ export function GraderPhanLopScreen({ examId, employeeId, passCount, totalCount 
 
               <div
                 className={cn(
-                  'relative overflow-hidden rounded-2xl bg-primary-700 p-6 text-primary-foreground shadow-[var(--shadow-game-float)]',
+                  'relative overflow-hidden rounded-2xl bg-primary-700 p-6 text-primary-foreground shadow-[var(--shadow-ui-float)]',
                   CARD_ENTRANCE_HOVER
                 )}
                 style={staggerStyle(1)}
               >
-                <div className="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-white/5" aria-hidden />
+                <div
+                  className="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-white/5"
+                  aria-hidden
+                />
                 <div className="relative mb-6 flex items-start justify-between gap-3">
                   <div>
                     <h4 className="mb-1 text-[10px] font-bold uppercase tracking-widest text-primary-100/90">
@@ -337,13 +352,17 @@ export function GraderPhanLopScreen({ examId, employeeId, passCount, totalCount 
                   </div>
                   <div className="mt-6 grid grid-cols-2 gap-4">
                     <div className="rounded-xl bg-white/5 p-3">
-                      <p className="text-[10px] font-bold uppercase text-primary-100/80">Mục tiêu đạt</p>
+                      <p className="text-[10px] font-bold uppercase text-primary-100/80">
+                        Mục tiêu đạt
+                      </p>
                       <p className="text-xl font-bold">
                         {pass}/{total}
                       </p>
                     </div>
                     <div className="rounded-xl bg-white/5 p-3">
-                      <p className="text-[10px] font-bold uppercase text-primary-100/80">Điểm thưởng</p>
+                      <p className="text-[10px] font-bold uppercase text-primary-100/80">
+                        Điểm thưởng
+                      </p>
                       <p className="text-xl font-bold">+{bonusPts}</p>
                     </div>
                   </div>
@@ -356,9 +375,9 @@ export function GraderPhanLopScreen({ examId, employeeId, passCount, totalCount 
               >
                 <Info className="h-5 w-5 shrink-0 text-warning" aria-hidden />
                 <p className="text-xs leading-relaxed text-foreground">
-                  <span className="font-bold">Lưu ý cho Quản lý:</span> Việc phê duyệt kết quả này sẽ ảnh hưởng trực
-                  tiếp đến lộ trình thăng tiến và lương thưởng của nhân sự. Vui lòng kiểm tra kỹ nhận xét trước khi
-                  xác nhận.
+                  <span className="font-bold">Lưu ý cho Quản lý:</span> Việc phê duyệt kết quả này
+                  sẽ ảnh hưởng trực tiếp đến lộ trình thăng tiến và lương thưởng của nhân sự. Vui
+                  lòng kiểm tra kỹ nhận xét trước khi xác nhận.
                 </p>
               </div>
             </div>
