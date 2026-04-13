@@ -12,7 +12,9 @@ import {
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import type { CreateEmployeeForm } from '@/features/hr-admin/schemas'
-import { HR_DEPARTMENT_OPTIONS, HR_TEAM_OPTIONS } from '@/features/hr-admin/hrOrgOptions'
+import { useQuery } from '@tanstack/react-query'
+import { managerApi } from '@/features/manager/api'
+import { managerKeys } from '@/features/manager/queryKeys'
 
 const ROLE_OPTIONS: { value: CreateEmployeeForm['role']; label: string }[] = [
   { value: 'MEMBER', label: 'Nhân viên' },
@@ -40,6 +42,14 @@ export interface EmployeeFormProps {
 
 export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps) {
   const navigate = useNavigate()
+  const { data: depts = [] } = useQuery({
+    queryKey: managerKeys.departments(),
+    queryFn: managerApi.getDepartments,
+  })
+  const { data: teams = [] } = useQuery({
+    queryKey: managerKeys.teams(),
+    queryFn: managerApi.getTeams,
+  })
   const { register, handleSubmit, control, formState } = form
 
   return (
@@ -125,9 +135,10 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       control={control}
                       render={({ field }) => (
                         <select {...field} className={cn(inputClass, 'cursor-pointer')}>
-                          {HR_DEPARTMENT_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
+                          <option value="">-- Chọn chi nhánh / phòng ban --</option>
+                          {depts.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.name}
                             </option>
                           ))}
                         </select>
@@ -143,9 +154,10 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       control={control}
                       render={({ field }) => (
                         <select {...field} className={cn(inputClass, 'cursor-pointer')}>
-                          {HR_TEAM_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
+                          <option value="">-- Chọn nhóm/bộ phận --</option>
+                          {teams.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.name}
                             </option>
                           ))}
                         </select>
@@ -161,10 +173,10 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       control={control}
                       render={({ field }) => (
                         <select {...field} className={cn(inputClass, 'cursor-pointer')}>
-                          <option value="">-- Không gán --</option>
-                          {HR_TEAM_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
+                          <option value="">-- Chọn nhóm/bộ phận phụ --</option>
+                          {teams.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.name}
                             </option>
                           ))}
                         </select>

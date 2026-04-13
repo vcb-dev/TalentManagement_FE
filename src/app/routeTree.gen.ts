@@ -26,6 +26,7 @@ import { Route as ProtectedExamIndexRouteImport } from './routes/_protected/exam
 import { Route as ProtectedPermissionsEmployeeIdRouteImport } from './routes/_protected/permissions/$employeeId'
 import { Route as ProtectedManagerTeamProgressRouteImport } from './routes/_protected/manager/team-progress'
 import { Route as ProtectedManagerReviewSubmissionsRouteImport } from './routes/_protected/manager/review-submissions'
+import { Route as ProtectedManagerOrgRouteImport } from './routes/_protected/manager/org'
 import { Route as ProtectedManagerGradingRouteImport } from './routes/_protected/manager/grading'
 import { Route as ProtectedManagerExercisesRouteImport } from './routes/_protected/manager/exercises'
 import { Route as ProtectedManagerExamScheduleRouteImport } from './routes/_protected/manager/exam-schedule'
@@ -140,6 +141,11 @@ const ProtectedManagerReviewSubmissionsRoute =
     path: '/manager/review-submissions',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
+const ProtectedManagerOrgRoute = ProtectedManagerOrgRouteImport.update({
+  id: '/manager/org',
+  path: '/manager/org',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 const ProtectedManagerGradingRoute = ProtectedManagerGradingRouteImport.update({
   id: '/manager/grading',
   path: '/manager/grading',
@@ -295,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/manager/exam-schedule': typeof ProtectedManagerExamScheduleRoute
   '/manager/exercises': typeof ProtectedManagerExercisesRoute
   '/manager/grading': typeof ProtectedManagerGradingRoute
+  '/manager/org': typeof ProtectedManagerOrgRoute
   '/manager/review-submissions': typeof ProtectedManagerReviewSubmissionsRoute
   '/manager/team-progress': typeof ProtectedManagerTeamProgressRoute
   '/permissions/$employeeId': typeof ProtectedPermissionsEmployeeIdRoute
@@ -335,6 +342,7 @@ export interface FileRoutesByTo {
   '/manager/exam-schedule': typeof ProtectedManagerExamScheduleRoute
   '/manager/exercises': typeof ProtectedManagerExercisesRoute
   '/manager/grading': typeof ProtectedManagerGradingRoute
+  '/manager/org': typeof ProtectedManagerOrgRoute
   '/manager/review-submissions': typeof ProtectedManagerReviewSubmissionsRoute
   '/manager/team-progress': typeof ProtectedManagerTeamProgressRoute
   '/permissions/$employeeId': typeof ProtectedPermissionsEmployeeIdRoute
@@ -378,6 +386,7 @@ export interface FileRoutesById {
   '/_protected/manager/exam-schedule': typeof ProtectedManagerExamScheduleRoute
   '/_protected/manager/exercises': typeof ProtectedManagerExercisesRoute
   '/_protected/manager/grading': typeof ProtectedManagerGradingRoute
+  '/_protected/manager/org': typeof ProtectedManagerOrgRoute
   '/_protected/manager/review-submissions': typeof ProtectedManagerReviewSubmissionsRoute
   '/_protected/manager/team-progress': typeof ProtectedManagerTeamProgressRoute
   '/_protected/permissions/$employeeId': typeof ProtectedPermissionsEmployeeIdRoute
@@ -420,6 +429,7 @@ export interface FileRouteTypes {
     | '/manager/exam-schedule'
     | '/manager/exercises'
     | '/manager/grading'
+    | '/manager/org'
     | '/manager/review-submissions'
     | '/manager/team-progress'
     | '/permissions/$employeeId'
@@ -460,6 +470,7 @@ export interface FileRouteTypes {
     | '/manager/exam-schedule'
     | '/manager/exercises'
     | '/manager/grading'
+    | '/manager/org'
     | '/manager/review-submissions'
     | '/manager/team-progress'
     | '/permissions/$employeeId'
@@ -502,6 +513,7 @@ export interface FileRouteTypes {
     | '/_protected/manager/exam-schedule'
     | '/_protected/manager/exercises'
     | '/_protected/manager/grading'
+    | '/_protected/manager/org'
     | '/_protected/manager/review-submissions'
     | '/_protected/manager/team-progress'
     | '/_protected/permissions/$employeeId'
@@ -646,6 +658,13 @@ declare module '@tanstack/react-router' {
       path: '/manager/review-submissions'
       fullPath: '/manager/review-submissions'
       preLoaderRoute: typeof ProtectedManagerReviewSubmissionsRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/manager/org': {
+      id: '/_protected/manager/org'
+      path: '/manager/org'
+      fullPath: '/manager/org'
+      preLoaderRoute: typeof ProtectedManagerOrgRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/manager/grading': {
@@ -844,6 +863,7 @@ interface ProtectedRouteRouteChildren {
   ProtectedManagerExamScheduleRoute: typeof ProtectedManagerExamScheduleRoute
   ProtectedManagerExercisesRoute: typeof ProtectedManagerExercisesRoute
   ProtectedManagerGradingRoute: typeof ProtectedManagerGradingRoute
+  ProtectedManagerOrgRoute: typeof ProtectedManagerOrgRoute
   ProtectedManagerReviewSubmissionsRoute: typeof ProtectedManagerReviewSubmissionsRoute
   ProtectedManagerTeamProgressRoute: typeof ProtectedManagerTeamProgressRoute
   ProtectedPermissionsEmployeeIdRoute: typeof ProtectedPermissionsEmployeeIdRoute
@@ -883,6 +903,7 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedManagerExamScheduleRoute: ProtectedManagerExamScheduleRoute,
   ProtectedManagerExercisesRoute: ProtectedManagerExercisesRoute,
   ProtectedManagerGradingRoute: ProtectedManagerGradingRoute,
+  ProtectedManagerOrgRoute: ProtectedManagerOrgRoute,
   ProtectedManagerReviewSubmissionsRoute:
     ProtectedManagerReviewSubmissionsRoute,
   ProtectedManagerTeamProgressRoute: ProtectedManagerTeamProgressRoute,

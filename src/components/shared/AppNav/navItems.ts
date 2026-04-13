@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Target,
   Users,
+  Building2,
 } from 'lucide-react'
 
 export type NavMatchMode = 'exact' | 'prefix' | 'custom'
@@ -178,6 +179,13 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
     to: '/permissions',
     label: 'Phân quyền nhân viên',
     icon: KeyRound,
+    match: 'prefix',
+    permissionId: 'admin.permissions.assign',
+  },
+  {
+    to: '/manager/org',
+    label: 'Đơn vị & Nhóm',
+    icon: Building2,
     match: 'prefix',
     permissionId: 'admin.permissions.assign',
   },

@@ -19,6 +19,8 @@ import {
   teamMemberProgressApiSchema,
   teamProgressPageApiSchema,
   teamProgressSummaryApiSchema,
+  orgItemApiSchema,
+  orgCreateResponseApiSchema,
 } from './schemas'
 
 function computeSummaryFromMembers(
@@ -303,5 +305,39 @@ export const managerApi = {
       res.data,
       'DELETE /manager/classes/:id/schedules/:scheduleId'
     )
+  },
+
+  getDepartments: async () => {
+    const res = await apiClient.get<unknown>('/org/departments')
+    return safeParse(z.array(orgItemApiSchema), res.data, 'GET /org/departments')
+  },
+  createDepartment: async (name: string) => {
+    const res = await apiClient.post<unknown>('/org/departments', { name })
+    return safeParse(orgCreateResponseApiSchema, res.data, 'POST /org/departments')
+  },
+  updateDepartment: async (id: string, name: string) => {
+    const res = await apiClient.patch<unknown>(`/org/departments/${id}`, { name })
+    return safeParse(orgItemApiSchema, res.data, 'PATCH /org/departments/:id')
+  },
+  deleteDepartment: async (id: string) => {
+    const res = await apiClient.delete<unknown>(`/org/departments/${id}`)
+    return safeParse(orgItemApiSchema, res.data, 'DELETE /org/departments/:id')
+  },
+
+  getTeams: async () => {
+    const res = await apiClient.get<unknown>('/org/teams')
+    return safeParse(z.array(orgItemApiSchema), res.data, 'GET /org/teams')
+  },
+  createTeam: async (name: string) => {
+    const res = await apiClient.post<unknown>('/org/teams', { name })
+    return safeParse(orgCreateResponseApiSchema, res.data, 'POST /org/teams')
+  },
+  updateTeam: async (id: string, name: string) => {
+    const res = await apiClient.patch<unknown>(`/org/teams/${id}`, { name })
+    return safeParse(orgItemApiSchema, res.data, 'PATCH /org/teams/:id')
+  },
+  deleteTeam: async (id: string) => {
+    const res = await apiClient.delete<unknown>(`/org/teams/${id}`)
+    return safeParse(orgItemApiSchema, res.data, 'DELETE /org/teams/:id')
   },
 }

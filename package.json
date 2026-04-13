@@ -15,6 +15,7 @@
     "codegen": "openapi-typescript \"$VITE_API_URL/openapi.json\" -o src/types/api.generated.ts",
     "codegen:local": "openapi-typescript ./openapi.json -o src/types/api.generated.ts",
     "prepare": "husky",
+    "lint-staged": "lint-staged",
     "postinstall": "openapi-typescript ./openapi.json -o src/types/api.generated.ts"
   },
   "lint-staged": {
