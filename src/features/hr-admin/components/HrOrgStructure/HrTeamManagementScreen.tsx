@@ -113,8 +113,7 @@ export function HrTeamManagementScreen({ teamId }: { teamId: string }) {
   }
 
   const memberCount = membersQ.data?.members.length ?? 0
-  const leaderLabel =
-    context.team.leader?.displayName || context.team.leader?.email || 'Chưa gán trưởng nhóm'
+  const leaderLabel = 'Không còn trường leader trong API'
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 px-3 py-8 md:px-4">

@@ -2,7 +2,7 @@ import { apiClient } from '@/lib/axios'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 
 export type PerformanceKind = 'KPI' | 'OKR'
-export type PerformanceStatus = 'not_started' | 'on_track' | 'done' | 'not_met'
+export type PerformanceStatus = 'not_started' | 'in_progress' | 'done' | 'blocked'
 export type PerformanceGradeLetter = 'A' | 'B' | 'C' | 'D'
 
 export type PerformanceAssignment = {

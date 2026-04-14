@@ -370,12 +370,15 @@ export function ManagerClassesScreen() {
                   Giáo viên phụ trách lớp
                 </label>
                 <input
-                  value={createTeacherQuery}
-                  onChange={(e) => setCreateTeacherQuery(e.target.value)}
+                  value={selectedCreateTeacher ? selectedCreateTeacher.name : createTeacherQuery}
+                  onChange={(e) => {
+                    setCreateTeacherQuery(e.target.value)
+                    if (selectedCreateTeacher) setSelectedCreateTeacher(null)
+                  }}
                   placeholder="Gõ tên/email giáo viên..."
                   className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
-                {createTeacherQuery.trim().length > 0 ? (
+                {!selectedCreateTeacher && createTeacherQuery.trim().length > 0 ? (
                   <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
                     {fetchingCreateTeacherOptions ? (
                       <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
@@ -407,12 +410,6 @@ export function ManagerClassesScreen() {
                     )}
                   </div>
                 ) : null}
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Đã chọn giáo viên:{' '}
-                  <span className="font-semibold text-foreground">
-                    {selectedCreateTeacher?.name || 'Chưa chọn'}
-                  </span>
-                </p>
               </div>
 
               <div className="relative md:col-span-2">
@@ -726,12 +723,15 @@ export function ManagerClassesScreen() {
                   Giáo viên phụ trách lớp
                 </label>
                 <input
-                  value={editModalTeacherQuery}
-                  onChange={(e) => setEditModalTeacherQuery(e.target.value)}
+                  value={selectedTeacher ? selectedTeacher.name : editModalTeacherQuery}
+                  onChange={(e) => {
+                    setEditModalTeacherQuery(e.target.value)
+                    if (selectedTeacher) setSelectedTeacher(null)
+                  }}
                   placeholder="Gõ tên/email giáo viên..."
                   className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
-                {editModalTeacherQuery.trim().length > 0 ? (
+                {!selectedTeacher && editModalTeacherQuery.trim().length > 0 ? (
                   <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
                     {fetchingEditModalTeacherOptions ? (
                       <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
@@ -761,14 +761,7 @@ export function ManagerClassesScreen() {
                   </div>
                 ) : null}
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Đã chọn:{' '}
-                  <span className="font-semibold text-foreground">
-                    {selectedTeacher?.name || 'Chưa chọn'}
-                  </span>
-                  {' — '}
-                  <span className="text-muted-foreground">
-                    Lịch thi kỳ &amp; người chấm đặt tại mục Lịch thi &amp; chỉ định người chấm.
-                  </span>
+                  Lịch thi kỳ &amp; người chấm đặt tại mục Lịch thi &amp; chỉ định người chấm.
                 </p>
               </div>
             </div>

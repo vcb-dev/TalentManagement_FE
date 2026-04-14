@@ -4,6 +4,7 @@ import {
   BookOpen,
   Calendar,
   ClipboardList,
+  FileUp,
   GraduationCap,
   KeyRound,
   LayoutGrid,
@@ -14,6 +15,7 @@ import {
   ShieldCheck,
   Target,
   Users,
+  Building2,
 } from 'lucide-react'
 
 export type NavMatchMode = 'exact' | 'prefix' | 'custom'
@@ -152,8 +154,22 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
   },
   {
     to: '/manager/exam-schedule',
-    label: 'Lịch thi & chỉ định chấm',
+    label: 'Lịch thi',
     icon: Calendar,
+    match: 'prefix',
+    permissionId: 'manager.exam_schedule',
+  },
+  {
+    to: '/manager/class-exams',
+    label: 'Bài thi của lớp',
+    icon: FileUp,
+    match: 'prefix',
+    permissionId: 'manager.exam_schedule',
+  },
+  {
+    to: '/manager/grading',
+    label: 'Chấm bài thi',
+    icon: ClipboardList,
     match: 'prefix',
     permissionId: 'manager.exam_schedule',
   },
@@ -175,6 +191,13 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
     to: '/permissions',
     label: 'Phân quyền nhân viên',
     icon: KeyRound,
+    match: 'prefix',
+    permissionId: 'admin.permissions.assign',
+  },
+  {
+    to: '/manager/org',
+    label: 'Đơn vị & Nhóm',
+    icon: Building2,
     match: 'prefix',
     permissionId: 'admin.permissions.assign',
   },

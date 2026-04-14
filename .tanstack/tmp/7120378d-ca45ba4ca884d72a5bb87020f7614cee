@@ -26,12 +26,9 @@ import { Route as ProtectedExamIndexRouteImport } from './routes/_protected/exam
 import { Route as ProtectedPermissionsEmployeeIdRouteImport } from './routes/_protected/permissions/$employeeId'
 import { Route as ProtectedManagerTeamProgressRouteImport } from './routes/_protected/manager/team-progress'
 import { Route as ProtectedManagerReviewSubmissionsRouteImport } from './routes/_protected/manager/review-submissions'
-import { Route as ProtectedManagerOrgRouteImport } from './routes/_protected/manager/org'
-import { Route as ProtectedManagerGradingRouteImport } from './routes/_protected/manager/grading'
 import { Route as ProtectedManagerExercisesRouteImport } from './routes/_protected/manager/exercises'
 import { Route as ProtectedManagerExamScheduleRouteImport } from './routes/_protected/manager/exam-schedule'
 import { Route as ProtectedManagerClassesRouteImport } from './routes/_protected/manager/classes'
-import { Route as ProtectedManagerClassExamsRouteImport } from './routes/_protected/manager/class-exams'
 import { Route as ProtectedManagerApprovalsRouteImport } from './routes/_protected/manager/approvals'
 import { Route as ProtectedLeaderKpiOkrRouteImport } from './routes/_protected/leader/kpi-okr'
 import { Route as ProtectedHrAdminOrgRouteImport } from './routes/_protected/hr-admin/org'
@@ -48,7 +45,6 @@ import { Route as ProtectedManagerTeamEmployeeIdRouteImport } from './routes/_pr
 import { Route as ProtectedLearningPathLevelIdStarIdRouteImport } from './routes/_protected/learning-path/$levelId/$starId'
 import { Route as ProtectedLeaderTeamEmployeeIdRouteImport } from './routes/_protected/leader/team/$employeeId'
 import { Route as ProtectedHrAdminOrgTeamIdRouteImport } from './routes/_protected/hr-admin/org/$teamId'
-import { Route as ProtectedExamSubmissionSubmissionIdRouteImport } from './routes/_protected/exam/submission/$submissionId'
 import { Route as ProtectedExamExamIdResultRouteImport } from './routes/_protected/exam/$examId/result'
 import { Route as ProtectedExamExamIdGradeRouteImport } from './routes/_protected/exam/$examId/grade'
 import { Route as ProtectedExamExamIdClassifyRouteImport } from './routes/_protected/exam/$examId/classify'
@@ -143,16 +139,6 @@ const ProtectedManagerReviewSubmissionsRoute =
     path: '/manager/review-submissions',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
-const ProtectedManagerOrgRoute = ProtectedManagerOrgRouteImport.update({
-  id: '/manager/org',
-  path: '/manager/org',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedManagerGradingRoute = ProtectedManagerGradingRouteImport.update({
-  id: '/manager/grading',
-  path: '/manager/grading',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
 const ProtectedManagerExercisesRoute =
   ProtectedManagerExercisesRouteImport.update({
     id: '/manager/exercises',
@@ -170,12 +156,6 @@ const ProtectedManagerClassesRoute = ProtectedManagerClassesRouteImport.update({
   path: '/manager/classes',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedManagerClassExamsRoute =
-  ProtectedManagerClassExamsRouteImport.update({
-    id: '/manager/class-exams',
-    path: '/manager/class-exams',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
 const ProtectedManagerApprovalsRoute =
   ProtectedManagerApprovalsRouteImport.update({
     id: '/manager/approvals',
@@ -267,12 +247,6 @@ const ProtectedHrAdminOrgTeamIdRoute =
     path: '/$teamId',
     getParentRoute: () => ProtectedHrAdminOrgRoute,
   } as any)
-const ProtectedExamSubmissionSubmissionIdRoute =
-  ProtectedExamSubmissionSubmissionIdRouteImport.update({
-    id: '/exam/submission/$submissionId',
-    path: '/exam/submission/$submissionId',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
 const ProtectedExamExamIdResultRoute =
   ProtectedExamExamIdResultRouteImport.update({
     id: '/exam/$examId/result',
@@ -310,12 +284,9 @@ export interface FileRoutesByFullPath {
   '/hr-admin/org': typeof ProtectedHrAdminOrgRouteWithChildren
   '/leader/kpi-okr': typeof ProtectedLeaderKpiOkrRoute
   '/manager/approvals': typeof ProtectedManagerApprovalsRoute
-  '/manager/class-exams': typeof ProtectedManagerClassExamsRoute
   '/manager/classes': typeof ProtectedManagerClassesRoute
   '/manager/exam-schedule': typeof ProtectedManagerExamScheduleRoute
   '/manager/exercises': typeof ProtectedManagerExercisesRoute
-  '/manager/grading': typeof ProtectedManagerGradingRoute
-  '/manager/org': typeof ProtectedManagerOrgRoute
   '/manager/review-submissions': typeof ProtectedManagerReviewSubmissionsRoute
   '/manager/team-progress': typeof ProtectedManagerTeamProgressRoute
   '/permissions/$employeeId': typeof ProtectedPermissionsEmployeeIdRoute
@@ -326,7 +297,6 @@ export interface FileRoutesByFullPath {
   '/exam/$examId/classify': typeof ProtectedExamExamIdClassifyRoute
   '/exam/$examId/grade': typeof ProtectedExamExamIdGradeRoute
   '/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
-  '/exam/submission/$submissionId': typeof ProtectedExamSubmissionSubmissionIdRoute
   '/hr-admin/org/$teamId': typeof ProtectedHrAdminOrgTeamIdRoute
   '/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
@@ -353,12 +323,9 @@ export interface FileRoutesByTo {
   '/hr-admin/org': typeof ProtectedHrAdminOrgRouteWithChildren
   '/leader/kpi-okr': typeof ProtectedLeaderKpiOkrRoute
   '/manager/approvals': typeof ProtectedManagerApprovalsRoute
-  '/manager/class-exams': typeof ProtectedManagerClassExamsRoute
   '/manager/classes': typeof ProtectedManagerClassesRoute
   '/manager/exam-schedule': typeof ProtectedManagerExamScheduleRoute
   '/manager/exercises': typeof ProtectedManagerExercisesRoute
-  '/manager/grading': typeof ProtectedManagerGradingRoute
-  '/manager/org': typeof ProtectedManagerOrgRoute
   '/manager/review-submissions': typeof ProtectedManagerReviewSubmissionsRoute
   '/manager/team-progress': typeof ProtectedManagerTeamProgressRoute
   '/permissions/$employeeId': typeof ProtectedPermissionsEmployeeIdRoute
@@ -369,7 +336,6 @@ export interface FileRoutesByTo {
   '/exam/$examId/classify': typeof ProtectedExamExamIdClassifyRoute
   '/exam/$examId/grade': typeof ProtectedExamExamIdGradeRoute
   '/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
-  '/exam/submission/$submissionId': typeof ProtectedExamSubmissionSubmissionIdRoute
   '/hr-admin/org/$teamId': typeof ProtectedHrAdminOrgTeamIdRoute
   '/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
@@ -399,12 +365,9 @@ export interface FileRoutesById {
   '/_protected/hr-admin/org': typeof ProtectedHrAdminOrgRouteWithChildren
   '/_protected/leader/kpi-okr': typeof ProtectedLeaderKpiOkrRoute
   '/_protected/manager/approvals': typeof ProtectedManagerApprovalsRoute
-  '/_protected/manager/class-exams': typeof ProtectedManagerClassExamsRoute
   '/_protected/manager/classes': typeof ProtectedManagerClassesRoute
   '/_protected/manager/exam-schedule': typeof ProtectedManagerExamScheduleRoute
   '/_protected/manager/exercises': typeof ProtectedManagerExercisesRoute
-  '/_protected/manager/grading': typeof ProtectedManagerGradingRoute
-  '/_protected/manager/org': typeof ProtectedManagerOrgRoute
   '/_protected/manager/review-submissions': typeof ProtectedManagerReviewSubmissionsRoute
   '/_protected/manager/team-progress': typeof ProtectedManagerTeamProgressRoute
   '/_protected/permissions/$employeeId': typeof ProtectedPermissionsEmployeeIdRoute
@@ -415,7 +378,6 @@ export interface FileRoutesById {
   '/_protected/exam/$examId/classify': typeof ProtectedExamExamIdClassifyRoute
   '/_protected/exam/$examId/grade': typeof ProtectedExamExamIdGradeRoute
   '/_protected/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
-  '/_protected/exam/submission/$submissionId': typeof ProtectedExamSubmissionSubmissionIdRoute
   '/_protected/hr-admin/org/$teamId': typeof ProtectedHrAdminOrgTeamIdRoute
   '/_protected/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/_protected/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
@@ -444,12 +406,9 @@ export interface FileRouteTypes {
     | '/hr-admin/org'
     | '/leader/kpi-okr'
     | '/manager/approvals'
-    | '/manager/class-exams'
     | '/manager/classes'
     | '/manager/exam-schedule'
     | '/manager/exercises'
-    | '/manager/grading'
-    | '/manager/org'
     | '/manager/review-submissions'
     | '/manager/team-progress'
     | '/permissions/$employeeId'
@@ -460,7 +419,6 @@ export interface FileRouteTypes {
     | '/exam/$examId/classify'
     | '/exam/$examId/grade'
     | '/exam/$examId/result'
-    | '/exam/submission/$submissionId'
     | '/hr-admin/org/$teamId'
     | '/leader/team/$employeeId'
     | '/learning-path/$levelId/$starId'
@@ -487,12 +445,9 @@ export interface FileRouteTypes {
     | '/hr-admin/org'
     | '/leader/kpi-okr'
     | '/manager/approvals'
-    | '/manager/class-exams'
     | '/manager/classes'
     | '/manager/exam-schedule'
     | '/manager/exercises'
-    | '/manager/grading'
-    | '/manager/org'
     | '/manager/review-submissions'
     | '/manager/team-progress'
     | '/permissions/$employeeId'
@@ -503,7 +458,6 @@ export interface FileRouteTypes {
     | '/exam/$examId/classify'
     | '/exam/$examId/grade'
     | '/exam/$examId/result'
-    | '/exam/submission/$submissionId'
     | '/hr-admin/org/$teamId'
     | '/leader/team/$employeeId'
     | '/learning-path/$levelId/$starId'
@@ -532,12 +486,9 @@ export interface FileRouteTypes {
     | '/_protected/hr-admin/org'
     | '/_protected/leader/kpi-okr'
     | '/_protected/manager/approvals'
-    | '/_protected/manager/class-exams'
     | '/_protected/manager/classes'
     | '/_protected/manager/exam-schedule'
     | '/_protected/manager/exercises'
-    | '/_protected/manager/grading'
-    | '/_protected/manager/org'
     | '/_protected/manager/review-submissions'
     | '/_protected/manager/team-progress'
     | '/_protected/permissions/$employeeId'
@@ -548,7 +499,6 @@ export interface FileRouteTypes {
     | '/_protected/exam/$examId/classify'
     | '/_protected/exam/$examId/grade'
     | '/_protected/exam/$examId/result'
-    | '/_protected/exam/submission/$submissionId'
     | '/_protected/hr-admin/org/$teamId'
     | '/_protected/leader/team/$employeeId'
     | '/_protected/learning-path/$levelId/$starId'
@@ -685,20 +635,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedManagerReviewSubmissionsRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/manager/org': {
-      id: '/_protected/manager/org'
-      path: '/manager/org'
-      fullPath: '/manager/org'
-      preLoaderRoute: typeof ProtectedManagerOrgRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/manager/grading': {
-      id: '/_protected/manager/grading'
-      path: '/manager/grading'
-      fullPath: '/manager/grading'
-      preLoaderRoute: typeof ProtectedManagerGradingRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
     '/_protected/manager/exercises': {
       id: '/_protected/manager/exercises'
       path: '/manager/exercises'
@@ -718,13 +654,6 @@ declare module '@tanstack/react-router' {
       path: '/manager/classes'
       fullPath: '/manager/classes'
       preLoaderRoute: typeof ProtectedManagerClassesRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/manager/class-exams': {
-      id: '/_protected/manager/class-exams'
-      path: '/manager/class-exams'
-      fullPath: '/manager/class-exams'
-      preLoaderRoute: typeof ProtectedManagerClassExamsRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/manager/approvals': {
@@ -839,13 +768,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedHrAdminOrgTeamIdRouteImport
       parentRoute: typeof ProtectedHrAdminOrgRoute
     }
-    '/_protected/exam/submission/$submissionId': {
-      id: '/_protected/exam/submission/$submissionId'
-      path: '/exam/submission/$submissionId'
-      fullPath: '/exam/submission/$submissionId'
-      preLoaderRoute: typeof ProtectedExamSubmissionSubmissionIdRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
     '/_protected/exam/$examId/result': {
       id: '/_protected/exam/$examId/result'
       path: '/exam/$examId/result'
@@ -909,12 +831,9 @@ interface ProtectedRouteRouteChildren {
   ProtectedHrAdminOrgRoute: typeof ProtectedHrAdminOrgRouteWithChildren
   ProtectedLeaderKpiOkrRoute: typeof ProtectedLeaderKpiOkrRoute
   ProtectedManagerApprovalsRoute: typeof ProtectedManagerApprovalsRoute
-  ProtectedManagerClassExamsRoute: typeof ProtectedManagerClassExamsRoute
   ProtectedManagerClassesRoute: typeof ProtectedManagerClassesRoute
   ProtectedManagerExamScheduleRoute: typeof ProtectedManagerExamScheduleRoute
   ProtectedManagerExercisesRoute: typeof ProtectedManagerExercisesRoute
-  ProtectedManagerGradingRoute: typeof ProtectedManagerGradingRoute
-  ProtectedManagerOrgRoute: typeof ProtectedManagerOrgRoute
   ProtectedManagerReviewSubmissionsRoute: typeof ProtectedManagerReviewSubmissionsRoute
   ProtectedManagerTeamProgressRoute: typeof ProtectedManagerTeamProgressRoute
   ProtectedPermissionsEmployeeIdRoute: typeof ProtectedPermissionsEmployeeIdRoute
@@ -925,7 +844,6 @@ interface ProtectedRouteRouteChildren {
   ProtectedExamExamIdClassifyRoute: typeof ProtectedExamExamIdClassifyRoute
   ProtectedExamExamIdGradeRoute: typeof ProtectedExamExamIdGradeRoute
   ProtectedExamExamIdResultRoute: typeof ProtectedExamExamIdResultRoute
-  ProtectedExamSubmissionSubmissionIdRoute: typeof ProtectedExamSubmissionSubmissionIdRoute
   ProtectedLeaderTeamEmployeeIdRoute: typeof ProtectedLeaderTeamEmployeeIdRoute
   ProtectedLearningPathLevelIdStarIdRoute: typeof ProtectedLearningPathLevelIdStarIdRoute
   ProtectedManagerTeamEmployeeIdRoute: typeof ProtectedManagerTeamEmployeeIdRoute
@@ -950,12 +868,9 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedHrAdminOrgRoute: ProtectedHrAdminOrgRouteWithChildren,
   ProtectedLeaderKpiOkrRoute: ProtectedLeaderKpiOkrRoute,
   ProtectedManagerApprovalsRoute: ProtectedManagerApprovalsRoute,
-  ProtectedManagerClassExamsRoute: ProtectedManagerClassExamsRoute,
   ProtectedManagerClassesRoute: ProtectedManagerClassesRoute,
   ProtectedManagerExamScheduleRoute: ProtectedManagerExamScheduleRoute,
   ProtectedManagerExercisesRoute: ProtectedManagerExercisesRoute,
-  ProtectedManagerGradingRoute: ProtectedManagerGradingRoute,
-  ProtectedManagerOrgRoute: ProtectedManagerOrgRoute,
   ProtectedManagerReviewSubmissionsRoute:
     ProtectedManagerReviewSubmissionsRoute,
   ProtectedManagerTeamProgressRoute: ProtectedManagerTeamProgressRoute,
@@ -967,8 +882,6 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedExamExamIdClassifyRoute: ProtectedExamExamIdClassifyRoute,
   ProtectedExamExamIdGradeRoute: ProtectedExamExamIdGradeRoute,
   ProtectedExamExamIdResultRoute: ProtectedExamExamIdResultRoute,
-  ProtectedExamSubmissionSubmissionIdRoute:
-    ProtectedExamSubmissionSubmissionIdRoute,
   ProtectedLeaderTeamEmployeeIdRoute: ProtectedLeaderTeamEmployeeIdRoute,
   ProtectedLearningPathLevelIdStarIdRoute:
     ProtectedLearningPathLevelIdStarIdRoute,

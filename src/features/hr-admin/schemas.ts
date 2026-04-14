@@ -93,7 +93,12 @@ export const employeeApiSchema = z.object({
   email: employeeDirectoryEmailSchema,
   role: apiRoleSchema,
   status: z.enum(['ACTIVE', 'INACTIVE', 'PROBATION', 'RESERVED']),
-  departmentId: z.string().uuid(),
+  departmentId: z
+    .string()
+    .transform((s) => s.trim())
+    .refine((s) => s.length === 0 || z.string().uuid().safeParse(s).success, {
+      message: 'departmentId không hợp lệ',
+    }),
   departmentName: z.string().nullable().optional(),
   teamIds: z.array(z.string().uuid()),
   teamNames: z.array(z.string()).optional().default([]),

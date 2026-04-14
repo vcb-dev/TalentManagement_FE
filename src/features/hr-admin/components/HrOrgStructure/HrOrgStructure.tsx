@@ -123,7 +123,7 @@ export function HrOrgStructure() {
     const deptCount = departments.length
     const teamCount = departments.reduce((acc, d) => acc + d.teams.length, 0)
     const memberCount = departments.reduce(
-      (acc, d) => acc + d.teams.reduce((sum, t) => sum + t._count.memberships, 0),
+      (acc, d) => acc + d.teams.reduce((sum, t) => sum + t._count.users, 0),
       0
     )
     return { deptCount, teamCount, memberCount }
@@ -135,18 +135,9 @@ export function HrOrgStructure() {
       .map((dept) => {
         const deptMatched = dept.name.toLowerCase().includes(q) || dept.id.toLowerCase().includes(q)
         if (deptMatched) return dept
-        const teams = dept.teams.filter((team) => {
-          const leaderText = team.leader
-            ? [team.leader.displayName, team.leader.email, team.leader.employeeCodePrimary]
-                .filter(Boolean)
-                .join(' ')
-            : (team.leaderUserId ?? '')
-          return (
-            team.name.toLowerCase().includes(q) ||
-            team.id.toLowerCase().includes(q) ||
-            leaderText.toLowerCase().includes(q)
-          )
-        })
+        const teams = dept.teams.filter(
+          (team) => team.name.toLowerCase().includes(q) || team.id.toLowerCase().includes(q)
+        )
         return { ...dept, teams }
       })
       .filter((dept) => dept.teams.length > 0)
@@ -346,7 +337,7 @@ export function HrOrgStructure() {
                       <TableHeader>
                         <TableRow className="border-b border-border/80 bg-gradient-to-r from-primary/10 via-muted/20 to-accent/10 hover:bg-muted/25">
                           <TableHead className="w-[28%] pl-6">Team</TableHead>
-                          <TableHead className="max-w-[260px]">Leader</TableHead>
+                          <TableHead className="max-w-[260px]">Ghi chú</TableHead>
                           <TableHead className="w-[108px]">Thành viên</TableHead>
                           <TableHead className="pr-6 text-right">Thao tác</TableHead>
                         </TableRow>
@@ -419,7 +410,6 @@ export function HrOrgStructure() {
               <TeamMembersPanel
                 teamName={activeMemberContext.team.name}
                 deptLabel={activeMemberContext.deptName}
-                teamLeaderUserId={activeMemberContext.team.leaderUserId}
                 members={membersQ.data?.members ?? []}
                 loading={membersQ.isLoading}
               />
@@ -440,15 +430,6 @@ function FragmentTeamRow({
   membersOpen: boolean
   onOpenMembers: () => void
 }) {
-  const hasLeader = Boolean(team.leader || team.leaderUserId)
-  const leaderLabel = team.leader
-    ? [team.leader.displayName, team.leader.email, team.leader.employeeCodePrimary]
-        .filter(Boolean)
-        .join(' · ') || team.leaderUserId?.slice(0, 8)
-    : team.leaderUserId
-      ? `UUID: ${team.leaderUserId.slice(0, 8)}…`
-      : null
-
   return (
     <TableRow
       className={cn(
@@ -474,15 +455,11 @@ function FragmentTeamRow({
         </Tooltip>
       </TableCell>
       <TableCell className="max-w-[260px] align-top text-sm">
-        {hasLeader && leaderLabel ? (
-          <span className="line-clamp-2 text-muted-foreground">{leaderLabel}</span>
-        ) : (
-          <span className="text-muted-foreground/90 italic">Chưa gán trưởng nhóm</span>
-        )}
+        <span className="text-muted-foreground/90 italic">Không còn trường leader trong API</span>
       </TableCell>
       <TableCell className="align-top">
         <Badge variant="outline" className="border-accent/35 bg-accent/10 tabular-nums text-accent">
-          {team._count.memberships}
+          {team._count.users}
         </Badge>
       </TableCell>
       <TableCell className="pr-6 text-right align-top">
@@ -588,13 +565,11 @@ function memberRowStatus(m: TeamMemberRow): TeamMemberRow['status'] {
 function TeamMembersPanel({
   teamName,
   deptLabel,
-  teamLeaderUserId,
   members,
   loading,
 }: {
   teamName: string
   deptLabel: string
-  teamLeaderUserId: string | null
   members: TeamMemberRow[]
   loading: boolean
 }) {
@@ -692,7 +667,6 @@ function TeamMembersPanel({
                   filteredMembers.map((m) => {
                     const role = memberRowRole(m)
                     const status = memberRowStatus(m)
-                    const isTeamLeader = teamLeaderUserId != null && m.userId === teamLeaderUserId
                     return (
                       <TableRow key={m.userId} className="group">
                         <TableCell className="pl-3 align-middle">
@@ -712,14 +686,6 @@ function TeamMembersPanel({
                         <TableCell className="align-middle">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="text-sm">{ROLE_LABEL_VI[role]}</span>
-                            {isTeamLeader ? (
-                              <Badge
-                                variant="outline"
-                                className="border-primary/40 text-xs font-normal text-primary"
-                              >
-                                Trưởng team
-                              </Badge>
-                            ) : null}
                           </div>
                         </TableCell>
                         <TableCell className="align-middle">

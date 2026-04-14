@@ -7,7 +7,6 @@ export type OrgTreeTeam = {
   id: string
   name: string
   departmentId: string
-  leaderUserId: string | null
 }
 
 export type OrgTreeDepartment = {
@@ -26,14 +25,7 @@ export type OrgAdminTeamRow = {
   id: string
   name: string
   departmentId: string
-  leaderUserId: string | null
-  leader: {
-    id: string
-    displayName: string | null
-    email: string | null
-    employeeCodePrimary: string | null
-  } | null
-  _count: { memberships: number }
+  _count: { users: number }
 }
 
 export type OrgAdminDepartmentRow = {
@@ -71,7 +63,6 @@ function mockOrgTree(): OrgTreeResponse {
         id: t.value,
         name: t.label,
         departmentId: t.departmentId,
-        leaderUserId: null,
       })),
     })),
   }
@@ -117,9 +108,7 @@ export const organizationApi = {
           id: t.id,
           name: t.name,
           departmentId: t.departmentId,
-          leaderUserId: t.leaderUserId,
-          leader: null,
-          _count: { memberships: 0 },
+          _count: { users: 0 },
         })),
       }))
     }

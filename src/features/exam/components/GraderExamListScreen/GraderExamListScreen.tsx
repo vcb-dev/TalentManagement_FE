@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Filter } from 'lucide-react'
-import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -9,91 +8,69 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { CARD_ENTRANCE_HOVER, SECTION_FADE_UP, staggerStyle } from '@/lib/cardMotion'
-import { cn } from '@/lib/utils'
-import { ROLE_LABEL_VI } from '@/lib/roleLabels'
-import { useAuthStore } from '@/stores/auth.store'
-import {
-  MOCK_GRADER_EXAM_ROWS,
-  countPendingGrader,
-  type GraderExamRow,
-} from '@/features/exam/mock/mockGraderExamRows'
+import { useManagerSubmissions } from '@/features/exam/hooks'
+import { examSubmissionApiSchema } from '@/features/exam/schemas'
+import { z } from 'zod'
 
-const FILTERS: { key: GraderExamRow['levelKey'] | 'all'; label: string }[] = [
-  { key: 'all', label: 'Tất cả lớp' },
-  { key: 'tap_su', label: 'Tập sự' },
-  { key: 'biet_viec', label: 'Biết việc' },
-  { key: 'duoc_viec', label: 'Được việc' },
-  { key: 'dong_gop', label: 'Đóng góp KQ' },
-]
+type SubmissionRow = z.infer<typeof examSubmissionApiSchema>
 
-function statusBadge(row: GraderExamRow) {
-  if (row.status === 'pending') {
+function statusBadge(status: SubmissionRow['status']) {
+  if (status === 'pending') {
     return (
-      <span className="inline-flex rounded-full border border-rose-200/80 bg-rose-50 px-3 py-1 text-sm font-bold text-rose-700">
+      <span className="inline-flex rounded-full border border-rose-200/80 bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700">
         Chờ chấm
       </span>
     )
   }
-  if (row.status === 'grading') {
+  if (status === 'grading') {
     return (
-      <span className="inline-flex rounded-full border border-amber-200/80 bg-amber-50 px-3 py-1 text-sm font-bold text-amber-800">
+      <span className="inline-flex rounded-full border border-amber-200/80 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
         Đang chấm
       </span>
     )
   }
   return (
-    <span className="inline-flex rounded-full border border-emerald-200/80 bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-800">
+    <span className="inline-flex rounded-full border border-emerald-200/80 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
       Đã chấm
     </span>
   )
 }
 
-function levelPillClass(row: GraderExamRow): string {
-  if (row.levelBadge.includes('Tập sự'))
-    return 'border border-border bg-secondary/80 text-muted-foreground'
-  if (row.levelBadge.includes('Biết việc'))
-    return 'border border-primary/25 bg-primary/12 text-primary'
-  if (row.levelBadge.includes('Được việc'))
-    return 'border border-violet-300/50 bg-violet-500/10 text-violet-900 ring-1 ring-violet-500/10'
-  return 'border border-border bg-secondary/80 text-muted-foreground'
+function getInitials(name: string) {
+  const parts = name.trim().split(' ')
+  if (parts.length >= 2)
+    return (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase()
+  return name.substring(0, 2).toUpperCase()
 }
 
 export function GraderExamListScreen() {
   const navigate = useNavigate()
-  const user = useAuthStore((s) => s.user)
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('all')
   const [onlyPending, setOnlyPending] = useState(false)
 
-  const rows = useMemo(() => {
-    let list =
-      filter === 'all' ? MOCK_GRADER_EXAM_ROWS : MOCK_GRADER_EXAM_ROWS.filter((r) => r.levelKey === filter)
-    if (onlyPending) list = list.filter((r) => r.status === 'pending')
-    return list
-  }, [filter, onlyPending])
+  const { data: submissions = [], isLoading } = useManagerSubmissions()
 
-  const pendingTotal = countPendingGrader(MOCK_GRADER_EXAM_ROWS)
-  const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
-  const displayName = user?.name ?? 'Người chấm'
+  const rows = useMemo<SubmissionRow[]>(() => {
+    if (onlyPending) return submissions.filter((r) => r.status === 'pending')
+    return submissions
+  }, [submissions, onlyPending])
 
-  const goGrade = (row: GraderExamRow) => {
+  const pendingTotal = submissions.filter((r) => r.status === 'pending').length
+
+  const goGrade = (row: SubmissionRow) => {
+    // Navigate to grader detail. examId here = submission id
     void navigate({
       to: '/exam/$examId/grade',
-      params: { examId: row.examId },
-      search: { employeeId: row.employeeId },
+      params: { examId: row.id },
+      search: { employeeId: row.userId },
     })
   }
-
-  const scrollToFilters = () => {
-    document.getElementById('grader-exam-filters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  const rowStaggerBase = FILTERS.length + 2
 
   return (
     <div className="-m-5 flex min-h-[calc(100vh-3.5rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="page-shell">
           <div className="mb-8 flex flex-col gap-8">
+            {/* Header */}
             <div
               className={cn(
                 'flex flex-col gap-4 md:flex-row md:items-end md:justify-between',
@@ -102,24 +79,16 @@ export function GraderExamListScreen() {
             >
               <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
                 <h1 className={PAGE_HEADER_TITLE}>
-                  <span className={PAGE_HEADER_GRADIENT}>Danh sách kỳ thi cần chấm</span>
+                  <span className={PAGE_HEADER_GRADIENT}>Danh sách bài thi đã nộp</span>
                 </h1>
                 <p className={PAGE_HEADER_DESCRIPTION}>
                   <span className="font-semibold text-foreground">{pendingTotal} bài chờ chấm</span>
                   {' · '}
-                  {displayName} ({roleLabel}) — được chỉ định chấm. Danh sách bài nộp theo lớp; mở chi tiết để
-                  chấm hoặc xem lại (dữ liệu minh họa).
+                  Tổng cộng {submissions.length} bài đã nộp. Bấm "Chấm thi" để xem chi tiết và nhập
+                  nhận xét.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
-                  onClick={scrollToFilters}
-                >
-                  <Filter className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                  Bộ lọc
-                </button>
                 <button
                   type="button"
                   className={cn(
@@ -134,53 +103,26 @@ export function GraderExamListScreen() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90"
-                  onClick={() => toast.info('Xuất danh sách chấm thi sẽ nối API sau.')}
+                  className="rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground hover:bg-muted"
+                  onClick={() => void navigate({ to: '/manager/grading' as any })}
                 >
-                  Xuất dữ liệu
+                  ← Quay lại
                 </button>
               </div>
             </div>
 
-            <div id="grader-exam-filters" className="flex flex-wrap gap-2">
-              {FILTERS.map((f, i) => (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => setFilter(f.key)}
-                  className={cn(
-                    'rounded-full border px-4 py-1.5 text-xs transition-colors',
-                    CARD_ENTRANCE_HOVER,
-                    filter === f.key
-                      ? 'border-primary/35 bg-card font-bold text-primary shadow-sm'
-                      : 'border-border bg-card font-medium text-muted-foreground hover:bg-muted/50'
-                  )}
-                  style={staggerStyle(i, 45)}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-
+            {/* Table */}
             <div
               className={cn(
                 'overflow-hidden rounded-xl border border-primary/15 bg-card shadow-sm',
                 SECTION_FADE_UP
               )}
-              style={staggerStyle(FILTERS.length, 55)}
             >
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                <table className="w-full min-w-[700px] border-collapse text-left text-sm">
                   <thead className="bg-primary/[0.06] text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     <tr>
-                      {[
-                        'Thí sinh',
-                        'Cấp độ / Sao',
-                        'Lớp thi',
-                        'Ngày nộp',
-                        'Trạng thái',
-                        'Thao tác',
-                      ].map((h) => (
+                      {['Thí sinh', 'Lớp / Team', 'Ngày nộp', 'Trạng thái', 'Thao tác'].map((h) => (
                         <th
                           key={h}
                           className={cn(
@@ -196,79 +138,100 @@ export function GraderExamListScreen() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {rows.map((row, rowIdx) => (
-                  <tr
-                    key={row.examId}
-                    className={cn(
-                      'transition-colors hover:bg-primary/[0.05]',
-                      CARD_ENTRANCE_HOVER
+                    {isLoading ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-6 py-10 text-center text-sm text-muted-foreground font-bold"
+                        >
+                          Đang tải danh sách bài thi...
+                        </td>
+                      </tr>
+                    ) : rows.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-6 py-12 text-center text-sm text-muted-foreground"
+                        >
+                          {onlyPending
+                            ? 'Không có bài nào đang chờ chấm 🎉'
+                            : 'Chưa có bài thi nào được nộp.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      rows.map((row, rowIdx) => {
+                        const dateObj = new Date(row.createdAt)
+                        const formattedDate = dateObj.toLocaleDateString('vi-VN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                        })
+                        const initials = getInitials(row.fullName)
+                        return (
+                          <tr
+                            key={row.id}
+                            className={cn(
+                              'cursor-pointer transition-colors hover:bg-primary/[0.05]',
+                              CARD_ENTRANCE_HOVER
+                            )}
+                            style={staggerStyle(rowIdx, 42)}
+                            onClick={() => goGrade(row)}
+                          >
+                            <td className="px-6 py-4 align-middle">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
+                                  {initials}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-sm font-bold text-foreground">
+                                    {row.fullName}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {row.teamGroup || '—'}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm text-foreground font-medium">
+                                {row.learningClass?.name || (
+                                  <span className="italic text-muted-foreground">Chưa gắn lớp</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 align-middle text-center text-muted-foreground">
+                              {formattedDate}
+                            </td>
+                            <td className="px-6 py-4 align-middle text-center">
+                              {statusBadge(row.status)}
+                            </td>
+                            <td className="px-6 py-4 align-middle text-center">
+                              <button
+                                type="button"
+                                className={cn(
+                                  'whitespace-nowrap rounded-lg border px-4 py-1.5 text-xs font-bold shadow-sm transition-transform active:scale-95 hover:opacity-90',
+                                  row.status === 'done'
+                                    ? 'border-border bg-card text-muted-foreground hover:bg-muted/40'
+                                    : 'border-button bg-button text-button-foreground'
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  goGrade(row)
+                                }}
+                              >
+                                {row.status === 'done'
+                                  ? 'Xem lại'
+                                  : row.status === 'grading'
+                                    ? 'Tiếp tục'
+                                    : 'Chấm thi'}
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })
                     )}
-                    style={staggerStyle(rowStaggerBase + rowIdx, 42)}
-                  >
-                    <td className="px-6 py-4 align-middle">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-                            row.avatarClass
-                          )}
-                        >
-                          {row.initials}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-sm font-bold text-foreground">
-                            {row.examineeName}
-                          </div>
-                          <div className="text-xs text-muted-foreground">{row.examineeMeta}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 align-middle">
-                      <span
-                        className={cn(
-                          'inline-flex rounded-full px-3 py-1 text-sm font-bold',
-                          levelPillClass(row)
-                        )}
-                      >
-                        {row.levelBadge}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 align-middle text-foreground">{row.className}</td>
-                    <td className="px-6 py-4 align-middle text-center text-muted-foreground">
-                      {row.submittedAt}
-                    </td>
-                    <td className="px-6 py-4 align-middle text-center">{statusBadge(row)}</td>
-                    <td className="px-6 py-4 align-middle text-center">
-                      {row.status === 'pending' && (
-                        <button
-                          type="button"
-                          className="whitespace-nowrap rounded-lg border border-button bg-button px-4 py-1.5 text-xs font-bold text-button-foreground shadow-sm transition-transform hover:opacity-90 active:scale-95 motion-safe:hover:scale-[1.02]"
-                          onClick={() => goGrade(row)}
-                        >
-                          Chấm thi
-                        </button>
-                      )}
-                      {row.status === 'grading' && (
-                        <button
-                          type="button"
-                          className="whitespace-nowrap rounded-lg border border-border bg-card px-4 py-1.5 text-xs font-bold text-foreground transition-colors hover:bg-muted/60"
-                          onClick={() => goGrade(row)}
-                        >
-                          Tiếp tục
-                        </button>
-                      )}
-                      {row.status === 'done' && (
-                        <button
-                          type="button"
-                          className="whitespace-nowrap rounded-lg border border-border bg-card px-4 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted/40"
-                          onClick={() => goGrade(row)}
-                        >
-                          Xem lại
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                    ))}
                   </tbody>
                 </table>
               </div>

@@ -9,7 +9,8 @@ const gradeSearchSchema = z.object({
 
 export const Route = createFileRoute('/_protected/exam/$examId/grade')({
   validateSearch: (raw) => gradeSearchSchema.parse(raw),
-  beforeLoad: () => requireRoleOrPermissionPrefixes(['TEACHER'], ['teacher.']),
+  beforeLoad: () =>
+    requireRoleOrPermissionPrefixes(['TEACHER', 'MANAGER'], ['teacher.', 'manager.']),
   component: ExamGradePage,
 })
 

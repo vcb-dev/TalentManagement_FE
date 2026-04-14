@@ -28,8 +28,6 @@ import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 import {
   levelMeta,
   levelPillText,
-  employeeDeptDisplay,
-  employeeTeamsDisplay,
   shortId,
   statusLabelVi,
 } from '@/features/hr-admin/components/HrEmployeeList/employeeListUtils'
@@ -214,6 +212,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
   )
 
   const onDemoAction = (msg: string) => () => toast.info(msg)
+  const orgSel = useHrOrgSelectOptions()
 
   const tabLabels = TABS
   const tabIcons = TAB_ICONS_HR
@@ -221,8 +220,25 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
   const rankStarsFive = (xpPct / 100) * 5
   const levelStarVariants = starVariants(employee.currentStar, maxStars)
   const RoleBadgeIcon = ROLE_BADGE_ICONS[employee.role]
-  const deptName = employeeDeptDisplay(employee)
-  const teamName = employeeTeamsDisplay(employee)
+  const deptName = useMemo(() => {
+    const fromApi = employee.departmentName?.trim()
+    if (fromApi) return fromApi
+    const byId = orgSel.departments.find((d) => d.value === employee.departmentId)?.label
+    return byId ?? `Phòng ban (${shortId(employee.departmentId)})`
+  }, [employee.departmentName, employee.departmentId, orgSel.departments])
+
+  const teamName = useMemo(() => {
+    const byApiNames = (employee.teamNames ?? []).map((t) => t.trim()).filter(Boolean)
+    if (byApiNames.length > 0) return byApiNames.join(', ')
+    if (!employee.teamIds?.length) return ''
+    const teamNameById = new Map(orgSel.allTeams.map((t) => [t.value, t.label]))
+    const mapped = employee.teamIds
+      .map((id) => teamNameById.get(id) ?? `Nhóm (${shortId(id)})`)
+      .filter(Boolean)
+    return mapped.join(', ')
+  }, [employee.teamNames, employee.teamIds, orgSel.allTeams])
+
+  const hasAnyTeam = Boolean(teamName.trim())
 
   return (
     <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-slate-50/80 via-app-canvas to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
@@ -289,19 +305,21 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                     VP · Ngân hàng TMCP Ngoại thương VCB
                   </p>
                 </div>
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold leading-snug text-foreground">
-                      {teamName}
-                    </span>
-                    <span className="shrink-0 rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
-                      Phụ
-                    </span>
+                {hasAnyTeam ? (
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-semibold leading-snug text-foreground">
+                        {teamName}
+                      </span>
+                      <span className="shrink-0 rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
+                        Team
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Mã {empCode} · Vào {new Date(employee.createdAt).toLocaleDateString('vi-VN')}
+                    </p>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Mã {empCode} · Vào {new Date(employee.createdAt).toLocaleDateString('vi-VN')}
-                  </p>
-                </div>
+                ) : null}
               </div>
             </div>
 
@@ -387,9 +405,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                   strokeWidth={2}
                   aria-hidden
                 />
-                <span>
-                  {deptName} · {teamName}
-                </span>
+                <span>{hasAnyTeam ? `${deptName} · ${teamName}` : deptName}</span>
               </div>
               <p className="mt-2 text-lg font-semibold text-primary md:text-xl">
                 {ROLE_LABEL_VI[employee.role]} · {LEVEL_LABELS[employee.currentLevel as LevelCode]}

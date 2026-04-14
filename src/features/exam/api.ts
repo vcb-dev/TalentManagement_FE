@@ -2,8 +2,19 @@ import { z } from 'zod'
 import { apiClient } from '@/lib/axios'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { safeParse } from '@/lib/utils'
-import { examListApiSchema, examResultApiSchema, examSummaryApiSchema } from './schemas'
-import type { ClassifyExamInput, ExamFilters, GradeExamInput } from './types'
+import {
+  examListApiSchema,
+  examResultApiSchema,
+  examSummaryApiSchema,
+  examSubmissionApiSchema,
+} from './schemas'
+import type {
+  ClassifyExamInput,
+  ExamFilters,
+  GradeExamInput,
+  SubmitExamInput,
+  GradeSubmissionInput,
+} from './types'
 
 export const examApi = {
   list: async (filters: ExamFilters) => {
@@ -62,5 +73,38 @@ export const examApi = {
       result: body.result,
     })
     return safeParse(examResultApiSchema, res.data, 'POST classify')
+  },
+
+  submit: async (body: SubmitExamInput) => {
+    if (isMockApiEnabled()) {
+      return { id: 'mock-submission', status: 'pending' } as any
+    }
+    const res = await apiClient.post<unknown>('/exams/submit', body)
+    return safeParse(examSubmissionApiSchema, res.data, 'POST /exams/submit')
+  },
+
+  getSubmissions: async () => {
+    if (isMockApiEnabled()) {
+      return []
+    }
+    const res = await apiClient.get<unknown>('/exams/submissions')
+    return safeParse(z.array(examSubmissionApiSchema), res.data, 'GET /exams/submissions')
+  },
+
+  getMySubmissions: async () => {
+    if (isMockApiEnabled()) {
+      return []
+    }
+    const res = await apiClient.get<unknown>('/exams/my-submissions')
+    return safeParse(z.array(examSubmissionApiSchema), res.data, 'GET /exams/my-submissions')
+  },
+
+  gradeSubmission: async (body: GradeSubmissionInput) => {
+    if (isMockApiEnabled()) {
+      return { id: body.submissionId, status: body.status || 'done' } as any
+    }
+    const { submissionId, ...payload } = body
+    const res = await apiClient.patch<unknown>(`/exams/submissions/${submissionId}/grade`, payload)
+    return safeParse(examSubmissionApiSchema, res.data, 'PATCH /exams/submissions/:id/grade')
   },
 }

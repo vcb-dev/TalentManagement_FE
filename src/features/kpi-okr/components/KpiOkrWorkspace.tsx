@@ -335,13 +335,13 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   )
 }
 
-const STATUS_OPTS: PerformanceStatus[] = ['not_started', 'on_track', 'done', 'not_met']
+const STATUS_OPTS: PerformanceStatus[] = ['not_started', 'in_progress', 'done', 'blocked']
 
 const STATUS_LABEL_VI: Record<PerformanceStatus, string> = {
   not_started: 'Chưa bắt đầu',
-  on_track: 'Đúng tiến độ',
+  in_progress: 'Đang thực hiện',
   done: 'Hoàn thành',
-  not_met: 'Chưa đạt',
+  blocked: 'Bị chặn',
 }
 
 function formatKpiSetAt(iso: string | null | undefined): string {

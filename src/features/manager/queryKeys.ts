@@ -29,4 +29,6 @@ export const managerKeys = {
       params?.q ?? '',
     ] as const,
   classSchedules: (classId: string) => [...managerKeys.all, 'class-schedules', classId] as const,
+  departments: () => [...managerKeys.all, 'departments'] as const,
+  teams: () => [...managerKeys.all, 'teams'] as const,
 }

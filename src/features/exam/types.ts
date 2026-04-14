@@ -18,3 +18,16 @@ export interface ClassifyExamInput {
   employeeId: string
   result: ExamResultCode
 }
+
+export interface SubmitExamInput {
+  classId?: string
+  answers: any
+}
+
+export interface GradeSubmissionInput {
+  submissionId: string
+  graderNote: string
+  status?: 'grading' | 'done'
+  grades?: Record<string, { criteria: string[]; score: number }>
+  totalScore?: number
+}
