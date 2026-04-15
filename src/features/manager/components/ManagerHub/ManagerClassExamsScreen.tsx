@@ -1,6 +1,6 @@
-import { useQueries } from '@tanstack/react-query'
-import { Calendar, CheckSquare, Circle, FileUp, ListPlus, Loader2, Trash2, X } from 'lucide-react'
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { CheckSquare, Circle, FileUp, ListPlus, Trash2, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import {
@@ -10,19 +10,13 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import { InputController, TextareaController } from '@/components/ui/form-controllers'
 import { cn } from '@/lib/utils'
-import { managerApi } from '@/features/manager/api'
-import { managerKeys } from '@/features/manager/queryKeys'
-import { managerClassApiSchema, managerClassScheduleApiSchema } from '@/features/manager/schemas'
-import {
-  useManagerClasses,
-  useTeacherOptions,
-  useUpdateManagerClass,
-} from '@/features/manager/hooks'
+import { managerClassApiSchema } from '@/features/manager/schemas'
+import { useManagerClasses } from '@/features/manager/hooks'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
-type ScheduleRow = z.infer<typeof managerClassScheduleApiSchema>
 type QuestionItem = { id: string; stem: string; options: string[] }
 type ComposeQuestionType = 'single' | 'multiple' | 'text'
 type ComposeQuestion = {
@@ -38,47 +32,6 @@ type QuestionBankPayload = {
   updatedAt: string
 }
 
-const PAGE_SUBTITLE =
-  'Lịch học buổi do giáo viên xếp — lọc theo ngày, xem nội dung từng buổi; cột Lịch thi hiển thị kỳ thi đã đặt. Bấm Tạo lịch thi để đặt/sửa kỳ thi và người chấm.'
-
-function toLocalDateInputValue(value: Date): string {
-  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000)
-  return local.toISOString().slice(0, 10)
-}
-
-function pad2(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-function toLocalTimeParts(value: Date): { hour: string; minute: string } {
-  return { hour: pad2(value.getHours()), minute: pad2(value.getMinutes()) }
-}
-
-function clampTwoDigit(value: string, min: number, max: number): string {
-  const onlyDigits = value.replace(/\D/g, '')
-  if (!onlyDigits) return pad2(min)
-  const parsed = Number.parseInt(onlyDigits, 10)
-  if (Number.isNaN(parsed)) return pad2(min)
-  return pad2(Math.min(max, Math.max(min, parsed)))
-}
-
-function formatExamViShort(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
-}
-
-function formatDateIsoVi(dateIso: string): string {
-  const parts = dateIso.split('-').map((x) => Number.parseInt(x, 10))
-  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return dateIso
-  const y = parts[0]!
-  const mo = parts[1]!
-  const d = parts[2]!
-  const dt = new Date(y, mo - 1, d)
-  return dt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
 function managerClassStatusUi(status: ManagerClassRow['status']): {
   label: string
   badgeClass: string
@@ -87,21 +40,6 @@ function managerClassStatusUi(status: ManagerClassRow['status']): {
     return { label: 'Đã ngừng', badgeClass: 'bg-muted text-muted-foreground' }
   if (status === 'full') return { label: 'Đủ chỗ', badgeClass: 'bg-amber-100 text-amber-900' }
   return { label: 'Đang hoạt động', badgeClass: 'bg-emerald-100 text-emerald-900' }
-}
-
-function filterSchedulesByRange(
-  schedules: ScheduleRow[],
-  start?: string,
-  end?: string
-): ScheduleRow[] {
-  const s = start?.trim()
-  const e = end?.trim()
-  if (!s && !e) return schedules
-  return schedules.filter((row) => {
-    if (s && row.dateIso < s) return false
-    if (e && row.dateIso > e) return false
-    return true
-  })
 }
 
 function parseQuestionsFromText(raw: string): QuestionItem[] {
@@ -174,13 +112,25 @@ export function ManagerClassExamsScreen() {
     Record<string, QuestionBankPayload>
   >({})
   const [assignmentModalClassId, setAssignmentModalClassId] = useState<string | null>(null)
-  const [assignmentTitle, setAssignmentTitle] = useState('')
-  const [assignmentMode, setAssignmentMode] = useState<'upload' | 'compose'>('upload')
-  const [questionRawInput, setQuestionRawInput] = useState('')
   const [questionDraft, setQuestionDraft] = useState<QuestionItem[]>([])
   const [composeQuestions, setComposeQuestions] = useState<ComposeQuestion[]>([
     newComposeQuestion(),
   ])
+  const assignmentForm = useForm<{
+    title: string
+    mode: 'upload' | 'compose'
+    rawInput: string
+  }>({
+    defaultValues: { title: '', mode: 'upload', rawInput: '' },
+  })
+  const {
+    control: assignmentControl,
+    watch: watchAssignment,
+    setValue: setAssignmentValue,
+    getValues: getAssignmentValues,
+    reset: resetAssignmentForm,
+  } = assignmentForm
+  const assignmentMode = watchAssignment('mode')
 
   const assignmentClass = classes.find((c) => c.id === assignmentModalClassId) ?? null
 
@@ -198,30 +148,31 @@ export function ManagerClassExamsScreen() {
   const openAssignmentModal = (classId: string) => {
     setAssignmentModalClassId(classId)
     const current = questionBankByClass[classId]
-    setAssignmentTitle(
-      current?.title || `Đề thi lớp ${classes.find((c) => c.id === classId)?.name || ''}`.trim()
-    )
+    resetAssignmentForm({
+      title:
+        current?.title || `Đề thi lớp ${classes.find((c) => c.id === classId)?.name || ''}`.trim(),
+      mode: 'upload',
+      rawInput: '',
+    })
     setQuestionDraft(current?.questions ?? [])
     setComposeQuestions(questionItemsToCompose(current?.questions ?? []))
-    setAssignmentMode('upload')
-    setQuestionRawInput('')
   }
 
   const closeAssignmentModal = () => {
     setAssignmentModalClassId(null)
-    setQuestionRawInput('')
+    resetAssignmentForm({ title: '', mode: 'upload', rawInput: '' })
   }
 
   const onUploadQuestionFile = async (file: File) => {
     const text = await file.text()
-    setQuestionRawInput(text)
+    setAssignmentValue('rawInput', text)
     const parsed = parseQuestionsFromText(text)
     setQuestionDraft(parsed)
     toast.success(`Đã đọc ${parsed.length} câu hỏi từ file`)
   }
 
   const parseRawQuestions = () => {
-    const parsed = parseQuestionsFromText(questionRawInput)
+    const parsed = parseQuestionsFromText(getAssignmentValues('rawInput'))
     setQuestionDraft(parsed)
     toast.success(`Đã format ${parsed.length} câu hỏi`)
   }
@@ -266,7 +217,7 @@ export function ManagerClassExamsScreen() {
     const next: Record<string, QuestionBankPayload> = {
       ...questionBankByClass,
       [assignmentModalClassId]: {
-        title: assignmentTitle.trim() || 'Bộ câu hỏi',
+        title: getAssignmentValues('title').trim() || 'Bộ câu hỏi',
         questions: finalQuestions,
         updatedAt: new Date().toISOString(),
       },
@@ -391,22 +342,19 @@ export function ManagerClassExamsScreen() {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                  Tên bộ đề
-                </label>
-                <input
-                  value={assignmentTitle}
-                  onChange={(e) => setAssignmentTitle(e.target.value)}
-                  placeholder="Ví dụ: Bộ đề tập sự tháng 04/2026"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
+              <InputController
+                control={assignmentControl}
+                name="title"
+                label="Tên bộ đề"
+                required
+                rules={{ required: true }}
+                placeholder="Ví dụ: Bộ đề tập sự tháng 04/2026"
+              />
 
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setAssignmentMode('upload')}
+                  onClick={() => setAssignmentValue('mode', 'upload')}
                   className={cn(
                     'rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors',
                     assignmentMode === 'upload'
@@ -418,7 +366,7 @@ export function ManagerClassExamsScreen() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAssignmentMode('compose')}
+                  onClick={() => setAssignmentValue('mode', 'compose')}
                   className={cn(
                     'rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors',
                     assignmentMode === 'compose'
@@ -455,13 +403,15 @@ export function ManagerClassExamsScreen() {
                     <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                       Nhập/chỉnh nội dung câu hỏi thô
                     </label>
-                    <textarea
-                      value={questionRawInput}
-                      onChange={(e) => setQuestionRawInput(e.target.value)}
+                    <TextareaController
+                      control={assignmentControl}
+                      name="rawInput"
+                      label=""
+                      className="space-y-0"
                       placeholder={
                         '1. Câu hỏi số 1\nA. Đáp án A\nB. Đáp án B\n\n2. Câu hỏi số 2\nA. ...'
                       }
-                      className="min-h-[170px] w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      rows={8}
                     />
                     <div className="mt-2 flex justify-end">
                       <Button type="button" variant="outline" size="sm" onClick={parseRawQuestions}>

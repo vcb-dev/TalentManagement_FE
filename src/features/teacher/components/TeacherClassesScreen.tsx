@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Filter, Search } from 'lucide-react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
   PAGE_HEADER_DESCRIPTION,
@@ -22,8 +23,11 @@ const FILTERS: { key: 'all' | TeacherClassTrack; label: string }[] = [
 ]
 
 export function TeacherClassesScreen() {
-  const [filterKey, setFilterKey] = useState<(typeof FILTERS)[number]['key']>('all')
-  const [searchDraft, setSearchDraft] = useState('')
+  const filtersForm = useForm<{ filterKey: (typeof FILTERS)[number]['key']; searchDraft: string }>({
+    defaultValues: { filterKey: 'all', searchDraft: '' },
+  })
+  const filterKey = useWatch({ control: filtersForm.control, name: 'filterKey' }) ?? 'all'
+  const searchDraft = useWatch({ control: filtersForm.control, name: 'searchDraft' }) ?? ''
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -143,7 +147,7 @@ export function TeacherClassesScreen() {
                           ? 'bg-primary text-primary-foreground shadow-sm'
                           : 'text-muted-foreground hover:bg-muted/70 hover:text-primary'
                       )}
-                      onClick={() => setFilterKey(key)}
+                      onClick={() => filtersForm.setValue('filterKey', key)}
                     >
                       {label}
                     </button>
@@ -156,13 +160,18 @@ export function TeacherClassesScreen() {
                 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden
               />
-              <input
-                type="search"
-                placeholder="Tìm theo tên lớp, kỳ thi, lộ trình…"
-                className="min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
-                value={searchDraft}
-                onChange={(e) => setSearchDraft(e.target.value)}
-                aria-label="Tìm lớp"
+              <Controller
+                control={filtersForm.control}
+                name="searchDraft"
+                render={({ field }) => (
+                  <input
+                    type="search"
+                    placeholder="Tìm theo tên lớp, kỳ thi, lộ trình…"
+                    className="min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
+                    aria-label="Tìm lớp"
+                    {...field}
+                  />
+                )}
               />
             </label>
           </div>

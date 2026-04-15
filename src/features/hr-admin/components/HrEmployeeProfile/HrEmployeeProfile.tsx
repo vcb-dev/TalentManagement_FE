@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { type Control, useForm, useWatch } from 'react-hook-form'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
@@ -42,13 +43,11 @@ import type { PatchEmployeeInput } from '@/types/api'
 import { usePermission } from '@/hooks/usePermission'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { InputController, SelectController } from '@/components/ui/form-controllers'
 import { cn } from '@/lib/utils'
 
 const PROFILE_EDIT_FIELD =
   'h-11 rounded-lg border-0 bg-muted/40 px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 disabled:opacity-60'
-
-const PROFILE_EDIT_SELECT =
-  'flex h-11 w-full cursor-pointer rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:ring-2 focus:ring-primary/20 disabled:opacity-60'
 
 const LEVEL_ORDER: EmployeeLevel[] = [
   'tap_su',
@@ -104,6 +103,19 @@ export interface HrEmployeeProfileProps {
   initialTab?: number
 }
 
+type EmployeeEditFormValues = {
+  name: string
+  email: string
+  role: Role
+  departmentId: string
+  teamId: string
+  phone: string
+  birthDate: string
+  startDate: string
+  secondaryTeamId: string
+  currentLevel: EmployeeEntity['currentLevel']
+}
+
 export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfileProps) {
   const { canId } = usePermission()
   const canEdit = canId('hr.employees.edit')
@@ -120,30 +132,36 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
     maxStars > 0 ? Math.min(100, Math.round((employee.currentStar / maxStars) * 100)) : 0
   const levelIdx = LEVEL_ORDER.indexOf(employee.currentLevel)
 
-  const [editName, setEditName] = useState(employee.name)
-  const [editEmail, setEditEmail] = useState(employee.email)
-  const [editRole, setEditRole] = useState<Role>(employee.role)
-  const [editDepartmentId, setEditDepartmentId] = useState(employee.departmentId)
-  const [editTeamId, setEditTeamId] = useState(() => employee.teamIds[0] ?? DEFAULT_TEAM_ID)
-  const [editPhone, setEditPhone] = useState(() => employee.phone?.trim() ?? '')
-  const [editBirthDate, setEditBirthDate] = useState(() => employee.birthDate?.trim() ?? '')
-  const [editStartDate, setEditStartDate] = useState(() => employee.startDate?.trim() ?? '')
-  const [editSecondaryTeamId, setEditSecondaryTeamId] = useState(() => employee.teamIds[1] ?? '')
-  const [editCurrentLevel, setEditCurrentLevel] = useState(employee.currentLevel)
+  const editForm = useForm<EmployeeEditFormValues>({
+    defaultValues: {
+      name: employee.name,
+      email: employee.email,
+      role: employee.role,
+      departmentId: employee.departmentId,
+      teamId: employee.teamIds[0] ?? DEFAULT_TEAM_ID,
+      phone: employee.phone?.trim() ?? '',
+      birthDate: employee.birthDate?.trim() ?? '',
+      startDate: employee.startDate?.trim() ?? '',
+      secondaryTeamId: employee.teamIds[1] ?? '',
+      currentLevel: employee.currentLevel,
+    },
+  })
+  const { control: editControl, getValues: getEditValues, reset: resetEditForm } = editForm
 
   /* Đồng bộ form sửa khi nhân viên được refetch sau lưu / điều hướng. */
-  /* eslint-disable react-hooks/set-state-in-effect -- bản ghi từ server đổi sau PATCH/refetch */
   useEffect(() => {
-    setEditName(employee.name)
-    setEditEmail(employee.email)
-    setEditRole(employee.role)
-    setEditDepartmentId(employee.departmentId)
-    setEditTeamId(employee.teamIds[0] ?? DEFAULT_TEAM_ID)
-    setEditPhone(employee.phone?.trim() ?? '')
-    setEditBirthDate(employee.birthDate?.trim() ?? '')
-    setEditStartDate(employee.startDate?.trim() ?? '')
-    setEditSecondaryTeamId(employee.teamIds[1] ?? '')
-    setEditCurrentLevel(employee.currentLevel)
+    resetEditForm({
+      name: employee.name,
+      email: employee.email,
+      role: employee.role,
+      departmentId: employee.departmentId,
+      teamId: employee.teamIds[0] ?? DEFAULT_TEAM_ID,
+      phone: employee.phone?.trim() ?? '',
+      birthDate: employee.birthDate?.trim() ?? '',
+      startDate: employee.startDate?.trim() ?? '',
+      secondaryTeamId: employee.teamIds[1] ?? '',
+      currentLevel: employee.currentLevel,
+    })
   }, [
     employee.id,
     employee.updatedAt,
@@ -156,36 +174,36 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
     employee.birthDate,
     employee.startDate,
     employee.currentLevel,
+    resetEditForm,
   ])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
-  const buildEditPatch = (): PatchEmployeeInput | null => {
+  const buildEditPatch = (values: EmployeeEditFormValues): PatchEmployeeInput | null => {
     const patch: PatchEmployeeInput = {}
-    if (editName.trim() !== employee.name) patch.name = editName.trim()
-    if (editEmail.trim() !== employee.email) patch.email = editEmail.trim()
-    if (editRole !== employee.role) {
-      patch.role = editRole as NonNullable<PatchEmployeeInput['role']>
+    if (values.name.trim() !== employee.name) patch.name = values.name.trim()
+    if (values.email.trim() !== employee.email) patch.email = values.email.trim()
+    if (values.role !== employee.role) {
+      patch.role = values.role as NonNullable<PatchEmployeeInput['role']>
     }
-    if (editDepartmentId !== employee.departmentId) patch.departmentId = editDepartmentId
+    if (values.departmentId !== employee.departmentId) patch.departmentId = values.departmentId
     const origTeam = employee.teamIds[0] ?? DEFAULT_TEAM_ID
-    if (editTeamId !== origTeam) patch.teamId = editTeamId
+    if (values.teamId !== origTeam) patch.teamId = values.teamId
     const origPhone = employee.phone?.trim() ?? ''
-    if (editPhone.trim() !== origPhone) patch.phone = editPhone.trim()
+    if (values.phone.trim() !== origPhone) patch.phone = values.phone.trim()
     const origBirth = employee.birthDate?.trim() ?? ''
-    if (editBirthDate.trim() !== origBirth) patch.birthDate = editBirthDate.trim()
+    if (values.birthDate.trim() !== origBirth) patch.birthDate = values.birthDate.trim()
     const origStart = employee.startDate?.trim() ?? ''
-    if (editStartDate.trim() !== origStart) patch.startDate = editStartDate.trim()
+    if (values.startDate.trim() !== origStart) patch.startDate = values.startDate.trim()
     const origSec = employee.teamIds[1]?.trim() ?? ''
-    if (editSecondaryTeamId.trim() !== origSec) {
-      patch.secondaryTeamId = editSecondaryTeamId.trim()
+    if (values.secondaryTeamId.trim() !== origSec) {
+      patch.secondaryTeamId = values.secondaryTeamId.trim()
     }
-    if (editCurrentLevel !== employee.currentLevel) patch.currentLevel = editCurrentLevel
+    if (values.currentLevel !== employee.currentLevel) patch.currentLevel = values.currentLevel
     return Object.keys(patch).length > 0 ? patch : null
   }
 
   const handleSaveProfile = () => {
     if (!canEdit) return
-    const patch = buildEditPatch()
+    const patch = buildEditPatch(getEditValues())
     if (!patch) {
       toast.info('Không có thay đổi để lưu.')
       return
@@ -516,27 +534,8 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
               {tab === 4 && (
                 <EditTab
                   employee={employee}
-                  editName={editName}
-                  editEmail={editEmail}
-                  editRole={editRole}
-                  editDepartmentId={editDepartmentId}
-                  editTeamId={editTeamId}
-                  editPhone={editPhone}
-                  editBirthDate={editBirthDate}
-                  editStartDate={editStartDate}
-                  editSecondaryTeamId={editSecondaryTeamId}
-                  editCurrentLevel={editCurrentLevel}
+                  control={editControl}
                   empCode={empCode}
-                  onName={setEditName}
-                  onEmail={setEditEmail}
-                  onRole={setEditRole}
-                  onDepartmentId={setEditDepartmentId}
-                  onTeamId={setEditTeamId}
-                  onPhone={setEditPhone}
-                  onBirthDate={setEditBirthDate}
-                  onStartDate={setEditStartDate}
-                  onSecondaryTeamId={setEditSecondaryTeamId}
-                  onCurrentLevel={setEditCurrentLevel}
                   canEdit={canEdit}
                   canDeactivate={canDeactivate}
                   isSaving={isSaving}
@@ -972,27 +971,8 @@ function WorkHistoryTab() {
 
 function EditTab({
   employee,
-  editName,
-  editEmail,
-  editRole,
-  editDepartmentId,
-  editTeamId,
-  editPhone,
-  editBirthDate,
-  editStartDate,
-  editSecondaryTeamId,
-  editCurrentLevel,
+  control,
   empCode,
-  onName,
-  onEmail,
-  onRole,
-  onDepartmentId,
-  onTeamId,
-  onPhone,
-  onBirthDate,
-  onStartDate,
-  onSecondaryTeamId,
-  onCurrentLevel,
   canEdit,
   canDeactivate,
   isSaving,
@@ -1001,27 +981,8 @@ function EditTab({
   onReactivate,
 }: {
   employee: EmployeeEntity
-  editName: string
-  editEmail: string
-  editRole: Role
-  editDepartmentId: string
-  editTeamId: string
-  editPhone: string
-  editBirthDate: string
-  editStartDate: string
-  editSecondaryTeamId: string
-  editCurrentLevel: EmployeeEntity['currentLevel']
+  control: Control<EmployeeEditFormValues>
   empCode: string
-  onName: (v: string) => void
-  onEmail: (v: string) => void
-  onRole: (v: Role) => void
-  onDepartmentId: (v: string) => void
-  onTeamId: (v: string) => void
-  onPhone: (v: string) => void
-  onBirthDate: (v: string) => void
-  onStartDate: (v: string) => void
-  onSecondaryTeamId: (v: string) => void
-  onCurrentLevel: (v: EmployeeEntity['currentLevel']) => void
   canEdit: boolean
   canDeactivate: boolean
   isSaving: boolean
@@ -1032,6 +993,10 @@ function EditTab({
   const orgSel = useHrOrgSelectOptions()
   const orgDisabled = !canEdit || isSaving
   const inactive = employee.status === 'INACTIVE'
+  const editRole = useWatch({ control, name: 'role' })
+  const editDepartmentId = useWatch({ control, name: 'departmentId' })
+  const editTeamId = useWatch({ control, name: 'teamId' })
+  const editSecondaryTeamId = useWatch({ control, name: 'secondaryTeamId' })
 
   const departmentOptions = useMemo(() => {
     const base = [...orgSel.departments]
@@ -1078,57 +1043,51 @@ function EditTab({
     <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
       <div>
         <PfCard title="Phân công tổ chức" entranceIndex={0}>
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">Role</label>
-          <select
-            className={cn(PROFILE_EDIT_SELECT, 'mb-3')}
-            value={editRole}
+          <SelectController
+            control={control}
+            name="role"
+            label="Role"
+            className="mb-3"
             disabled={orgDisabled}
-            onChange={(e) => onRole(e.target.value as Role)}
           >
             {roleSelectOptions.map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABEL_VI[r]}
               </option>
             ))}
-          </select>
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
-            Phòng ban
-          </label>
-          <select
-            className={cn(PROFILE_EDIT_SELECT, 'mb-3')}
-            value={editDepartmentId}
+          </SelectController>
+          <SelectController
+            control={control}
+            name="departmentId"
+            label="Phòng ban"
+            className="mb-3"
             disabled={orgDisabled}
-            onChange={(e) => onDepartmentId(e.target.value)}
           >
             {departmentOptions.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
-          </select>
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
-            Team chính
-          </label>
-          <select
-            className={cn(PROFILE_EDIT_SELECT, 'mb-3')}
-            value={editTeamId}
+          </SelectController>
+          <SelectController
+            control={control}
+            name="teamId"
+            label="Team chính"
+            className="mb-3"
             disabled={orgDisabled}
-            onChange={(e) => onTeamId(e.target.value)}
           >
             {teamOptions.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
-          </select>
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
-            Team phụ (tùy chọn)
-          </label>
-          <select
-            className={cn(PROFILE_EDIT_SELECT, 'mb-3')}
-            value={editSecondaryTeamId}
+          </SelectController>
+          <SelectController
+            control={control}
+            name="secondaryTeamId"
+            label="Team phụ (tùy chọn)"
+            className="mb-3"
             disabled={orgDisabled}
-            onChange={(e) => onSecondaryTeamId(e.target.value)}
           >
             <option value="">— Không gán —</option>
             {secondaryTeamOptions.map((o) => (
@@ -1136,32 +1095,26 @@ function EditTab({
                 {o.label}
               </option>
             ))}
-          </select>
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
-            Ngày bắt đầu
-          </label>
-          <Input
+          </SelectController>
+          <InputController
+            control={control}
+            name="startDate"
+            label="Ngày bắt đầu"
             type="date"
-            className={cn(PROFILE_EDIT_FIELD, 'mb-3')}
-            value={editStartDate}
             disabled={orgDisabled}
-            onChange={(e) => onStartDate(e.target.value)}
           />
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
-            Cấp năng lực (career)
-          </label>
-          <select
-            className={PROFILE_EDIT_SELECT}
-            value={editCurrentLevel}
+          <SelectController
+            control={control}
+            name="currentLevel"
+            label="Cấp năng lực (career)"
             disabled={orgDisabled}
-            onChange={(e) => onCurrentLevel(e.target.value as EmployeeEntity['currentLevel'])}
           >
             {levelSelectOptions.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
-          </select>
+          </SelectController>
         </PfCard>
         <div className="mt-2 flex flex-col gap-2 sm:flex-row">
           {inactive ? (
@@ -1197,51 +1150,28 @@ function EditTab({
       </div>
       <PfCard title="Thông tin cá nhân" entranceIndex={1}>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-              Họ và tên
-            </label>
-            <Input
-              className={PROFILE_EDIT_FIELD}
-              value={editName}
-              disabled={orgDisabled}
-              onChange={(e) => onName(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Email</label>
-            <Input
-              type="email"
-              className={PROFILE_EDIT_FIELD}
-              value={editEmail}
-              disabled={orgDisabled}
-              onChange={(e) => onEmail(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-              Số điện thoại
-            </label>
-            <Input
-              className={PROFILE_EDIT_FIELD}
-              value={editPhone}
-              disabled={orgDisabled}
-              placeholder="09xx xxx xxx"
-              onChange={(e) => onPhone(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-              Ngày sinh
-            </label>
-            <Input
-              type="date"
-              className={PROFILE_EDIT_FIELD}
-              value={editBirthDate}
-              disabled={orgDisabled}
-              onChange={(e) => onBirthDate(e.target.value)}
-            />
-          </div>
+          <InputController control={control} name="name" label="Họ và tên" disabled={orgDisabled} />
+          <InputController
+            control={control}
+            name="email"
+            label="Email"
+            type="email"
+            disabled={orgDisabled}
+          />
+          <InputController
+            control={control}
+            name="phone"
+            label="Số điện thoại"
+            placeholder="09xx xxx xxx"
+            disabled={orgDisabled}
+          />
+          <InputController
+            control={control}
+            name="birthDate"
+            label="Ngày sinh"
+            type="date"
+            disabled={orgDisabled}
+          />
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">
               Mã nhân viên (hệ thống)

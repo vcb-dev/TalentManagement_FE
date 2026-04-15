@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
   ChevronDown,
@@ -132,7 +133,7 @@ export function ChecklistStarScreen({
   const { data: submissions } = useStarSubmissions(starId)
   const submit = useSubmitEvidence()
   const fileRef = useRef<HTMLInputElement>(null)
-  const [note, setNote] = useState('')
+  const evidenceForm = useForm<{ note: string }>({ defaultValues: { note: '' } })
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
 
   const levelName = LEVEL_VI[levelId] ?? levelId
@@ -216,7 +217,7 @@ export function ChecklistStarScreen({
       { levelId, starId, itemId: currentItem.id, file },
       {
         onSuccess: () => {
-          setNote('')
+          evidenceForm.reset({ note: '' })
           e.target.value = ''
         },
       }
@@ -444,13 +445,18 @@ export function ChecklistStarScreen({
                           >
                             Mô tả
                           </label>
-                          <textarea
-                            id="evidence-note"
-                            className="w-full resize-y rounded-lg border-0 bg-primary-50/40 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600"
-                            placeholder="Mô tả ngắn gọn về tài liệu bạn nộp…"
-                            rows={4}
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
+                          <Controller
+                            control={evidenceForm.control}
+                            name="note"
+                            render={({ field }) => (
+                              <textarea
+                                id="evidence-note"
+                                className="w-full resize-y rounded-lg border-0 bg-primary-50/40 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600"
+                                placeholder="Mô tả ngắn gọn về tài liệu bạn nộp…"
+                                rows={4}
+                                {...field}
+                              />
+                            )}
                           />
                         </div>
                         <button

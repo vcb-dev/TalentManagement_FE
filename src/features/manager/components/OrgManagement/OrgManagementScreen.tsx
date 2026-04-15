@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import {
   Plus,
   Trash2,
@@ -16,6 +17,7 @@ import {
 import { managerApi } from '@/features/manager/api'
 import { managerKeys } from '@/features/manager/queryKeys'
 import { PageHeader } from '@/components/shared/PageHeader/PageHeader'
+import { Input } from '@/components/ui/input'
 
 type OrgItem = { id: string; name: string }
 
@@ -29,29 +31,37 @@ function InlineEditor({
   onSave: (v: string) => void
   onCancel: () => void
 }) {
-  const [val, setVal] = useState(value)
+  const { control, handleSubmit } = useForm<{ value: string }>({ defaultValues: { value } })
   return (
-    <div className="flex items-center gap-1.5">
-      <input
-        autoFocus
-        className="rounded border border-gray-300 bg-white px-2 py-1 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-        value={val}
-        onChange={(e) => setVal(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') onSave(val.trim())
-          if (e.key === 'Escape') onCancel()
-        }}
+    <form
+      className="flex items-center gap-1.5"
+      onSubmit={handleSubmit((v) => onSave(v.value.trim()))}
+    >
+      <Controller
+        control={control}
+        name="value"
+        render={({ field }) => (
+          <Input
+            autoFocus
+            className="h-8 rounded border border-gray-300 bg-white px-2 py-1 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+            {...field}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') onCancel()
+            }}
+          />
+        )}
       />
-      <button
-        onClick={() => onSave(val.trim())}
-        className="rounded p-1 text-green-600 hover:bg-green-50"
-      >
+      <button type="submit" className="rounded p-1 text-green-600 hover:bg-green-50">
         <Check className="h-3.5 w-3.5" />
       </button>
-      <button onClick={onCancel} className="rounded p-1 text-gray-400 hover:bg-gray-100">
+      <button
+        type="button"
+        onClick={onCancel}
+        className="rounded p-1 text-gray-400 hover:bg-gray-100"
+      >
         <X className="h-3.5 w-3.5" />
       </button>
-    </div>
+    </form>
   )
 }
 
@@ -72,7 +82,8 @@ function TeamAccordion({
   onDelete: (id: string) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
-  const [search, setSearch] = useState('')
+  const searchForm = useForm<{ search: string }>({ defaultValues: { search: '' } })
+  const search = useWatch({ control: searchForm.control, name: 'search' }) ?? ''
 
   const { data: empData, isLoading } = useQuery({
     queryKey: ['team-members', team.id],
@@ -156,11 +167,16 @@ function TeamAccordion({
             <div className="border-b border-gray-50 px-5 py-2">
               <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-1.5">
                 <Search className="h-4 w-4 text-gray-400 shrink-0" />
-                <input
-                  placeholder="Tìm thành viên..."
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                <Controller
+                  control={searchForm.control}
+                  name="search"
+                  render={({ field }) => (
+                    <Input
+                      placeholder="Tìm thành viên..."
+                      className="h-auto border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
+                      {...field}
+                    />
+                  )}
                 />
               </div>
             </div>
@@ -226,7 +242,7 @@ export function OrgManagementScreen() {
   const qc = useQueryClient()
   const [openTeams, setOpenTeams] = useState<Set<string>>(new Set())
   const [addingTeam, setAddingTeam] = useState(false)
-  const [teamVal, setTeamVal] = useState('')
+  const addTeamForm = useForm<{ teamVal: string }>({ defaultValues: { teamVal: '' } })
 
   const toggleTeam = (id: string) => {
     setOpenTeams((prev) => {
@@ -253,7 +269,7 @@ export function OrgManagementScreen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: managerKeys.teams() }),
   })
   const updateTeam = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => managerApi.updateTeam(id, name),
+    mutationFn: ({ id, name }: { id: string; name: string }) => managerApi.updateTeam(id, { name }),
     onSuccess: () => qc.invalidateQueries({ queryKey: managerKeys.teams() }),
   })
   const deleteTeam = useMutation({
@@ -285,9 +301,10 @@ export function OrgManagementScreen() {
                 )}
               </div>
               <button
+                type="button"
                 onClick={() => {
                   setAddingTeam(true)
-                  setTeamVal('')
+                  addTeamForm.reset({ teamVal: '' })
                 }}
                 className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700 transition-colors"
               >
@@ -318,40 +335,42 @@ export function OrgManagementScreen() {
                 ))}
 
                 {addingTeam && (
-                  <div className="flex items-center gap-2 rounded-xl border border-primary-300 bg-primary-50 px-5 py-3">
+                  <form
+                    className="flex items-center gap-2 rounded-xl border border-primary-300 bg-primary-50 px-5 py-3"
+                    onSubmit={addTeamForm.handleSubmit(async (values) => {
+                      const trimmed = values.teamVal.trim()
+                      if (!trimmed) return
+                      await createTeam.mutateAsync(trimmed)
+                      setAddingTeam(false)
+                    })}
+                  >
                     <Building2 className="h-5 w-5 text-primary-400 shrink-0" />
-                    <input
-                      autoFocus
-                      placeholder="Tên nhóm mới..."
-                      className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
-                      value={teamVal}
-                      onChange={(e) => setTeamVal(e.target.value)}
-                      onKeyDown={async (e) => {
-                        if (e.key === 'Enter' && teamVal.trim()) {
-                          await createTeam.mutateAsync(teamVal.trim())
-                          setAddingTeam(false)
-                        }
-                        if (e.key === 'Escape') setAddingTeam(false)
-                      }}
+                    <Controller
+                      control={addTeamForm.control}
+                      name="teamVal"
+                      render={({ field }) => (
+                        <Input
+                          autoFocus
+                          placeholder="Tên nhóm mới..."
+                          className="h-auto flex-1 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
+                          {...field}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') setAddingTeam(false)
+                          }}
+                        />
+                      )}
                     />
-                    <button
-                      onClick={async () => {
-                        if (teamVal.trim()) {
-                          await createTeam.mutateAsync(teamVal.trim())
-                          setAddingTeam(false)
-                        }
-                      }}
-                      className="rounded p-1 text-green-600 hover:bg-green-50"
-                    >
+                    <button type="submit" className="rounded p-1 text-green-600 hover:bg-green-50">
                       <Check className="h-4 w-4" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => setAddingTeam(false)}
                       className="rounded p-1 text-gray-400 hover:bg-gray-100"
                     >
                       <X className="h-4 w-4" />
                     </button>
-                  </div>
+                  </form>
                 )}
 
                 {teams.length === 0 && !addingTeam && (

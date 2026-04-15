@@ -32,6 +32,9 @@ export type PerformanceSummaryRow = {
   id: string
   teamId: string
   assigneeUserId: string
+  assigneeDisplayName?: string | null
+  assigneeEmail?: string | null
+  assigneeEmployeeCode?: string | null
   year: number
   month: number
   kpiOkCount: number
@@ -43,6 +46,20 @@ export type PerformanceSummaryRow = {
   kpiGrade: PerformanceGradeLetter | null
   okrGrade: PerformanceGradeLetter | null
   updatedAt: string
+}
+
+export type PerformanceQuestionnaire = {
+  id: string
+  questions: { id: string; prompt: string; sortOrder: number }[]
+  answers: {
+    questionId: string
+    respondentUserId: string
+    answerText: string
+    updatedAt?: string
+    respondentDisplayName?: string | null
+    respondentEmail?: string | null
+    respondentEmployeeCode?: string | null
+  }[]
 }
 
 export const performanceApi = {
@@ -144,9 +161,12 @@ export const performanceApi = {
 
   getQuestionnaire: async (teamId: string, year: number, month: number) => {
     if (isMockApiEnabled()) return null
-    const res = await apiClient.get<unknown>(`/performance/teams/${teamId}/questionnaires`, {
-      params: { year, month },
-    })
+    const res = await apiClient.get<PerformanceQuestionnaire | null>(
+      `/performance/teams/${teamId}/questionnaires`,
+      {
+        params: { year, month },
+      }
+    )
     return res.data
   },
 
@@ -155,7 +175,10 @@ export const performanceApi = {
     body: { year: number; month: number; questions: { prompt: string; sortOrder?: number }[] }
   ) => {
     if (isMockApiEnabled()) throw new Error('Mock')
-    const res = await apiClient.post<unknown>(`/performance/teams/${teamId}/questionnaires`, body)
+    const res = await apiClient.post<PerformanceQuestionnaire>(
+      `/performance/teams/${teamId}/questionnaires`,
+      body
+    )
     return res.data
   },
 
@@ -166,7 +189,7 @@ export const performanceApi = {
     body: { answers: { questionId: string; answerText: string }[] }
   ) => {
     if (isMockApiEnabled()) throw new Error('Mock')
-    const res = await apiClient.post<unknown>(
+    const res = await apiClient.post<PerformanceQuestionnaire>(
       `/performance/teams/${teamId}/questionnaires/answers`,
       body,
       { params: { year, month } }

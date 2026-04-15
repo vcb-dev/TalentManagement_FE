@@ -1,8 +1,7 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm, type Resolver } from 'react-hook-form'
 import { useCreateEmployee } from '@/features/hr-admin/hooks'
 import { DEFAULT_DEPARTMENT_ID, DEFAULT_TEAM_ID } from '@/features/hr-admin/hrOrgOptions'
 import { createEmployeeFormSchema, type CreateEmployeeForm } from '@/features/hr-admin/schemas'
+import { useZodForm } from '@/lib/forms/useZodForm'
 import type { CreateEmployeeInput } from '@/types/api'
 
 function toApiPayload(values: CreateEmployeeForm): CreateEmployeeInput {
@@ -25,8 +24,8 @@ function toApiPayload(values: CreateEmployeeForm): CreateEmployeeInput {
 }
 
 export function useEmployeeForm(onSuccess?: () => void) {
-  const form = useForm<CreateEmployeeForm>({
-    resolver: zodResolver(createEmployeeFormSchema) as Resolver<CreateEmployeeForm>,
+  const form = useZodForm({
+    schema: createEmployeeFormSchema,
     defaultValues: {
       name: '',
       email: '',

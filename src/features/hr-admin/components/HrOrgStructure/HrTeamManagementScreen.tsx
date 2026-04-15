@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { ArrowLeft, ShieldUser, Users } from 'lucide-react'
 import {
   PAGE_HEADER_DESCRIPTION,
@@ -47,7 +47,8 @@ function statusClass(status: TeamMemberRow['status']) {
 }
 
 export function HrTeamManagementScreen({ teamId }: { teamId: string }) {
-  const [search, setSearch] = useState('')
+  const searchForm = useForm<{ search: string }>({ defaultValues: { search: '' } })
+  const search = useWatch({ control: searchForm.control, name: 'search' }) ?? ''
   const deptQ = useQuery({
     queryKey: DEPTS_WITH_TEAMS_QUERY_KEY,
     queryFn: () => organizationApi.listDepartmentsWithTeams(),
@@ -58,16 +59,16 @@ export function HrTeamManagementScreen({ teamId }: { teamId: string }) {
     enabled: Boolean(teamId),
   })
 
-  const context = useMemo(() => {
+  const context = (() => {
     const departments = deptQ.data ?? []
     for (const d of departments) {
       const team = d.teams.find((x) => x.id === teamId)
       if (team) return { dept: d, team }
     }
     return null
-  }, [deptQ.data, teamId])
+  })()
 
-  const filteredMembers = useMemo(() => {
+  const filteredMembers = (() => {
     const q = search.trim().toLowerCase()
     const members = membersQ.data?.members ?? []
     if (!q) return members
@@ -83,7 +84,7 @@ export function HrTeamManagementScreen({ teamId }: { teamId: string }) {
         .toLowerCase()
       return s.includes(q)
     })
-  }, [search, membersQ.data?.members])
+  })()
 
   if (deptQ.isLoading || (membersQ.isLoading && !membersQ.data)) {
     return (
@@ -113,8 +114,6 @@ export function HrTeamManagementScreen({ teamId }: { teamId: string }) {
   }
 
   const memberCount = membersQ.data?.members.length ?? 0
-  const leaderLabel = 'Không còn trường leader trong API'
-
   return (
     <div className="mx-auto max-w-6xl space-y-5 px-3 py-8 md:px-4">
       <div className="flex items-center gap-2">
@@ -149,8 +148,8 @@ export function HrTeamManagementScreen({ teamId }: { teamId: string }) {
         </Card>
         <Card className="border-accent/30 bg-accent/10">
           <CardContent className="py-3">
-            <p className="text-xs text-accent">Trưởng nhóm</p>
-            <p className="line-clamp-1 font-semibold">{leaderLabel}</p>
+            <p className="text-xs text-accent">Mã team</p>
+            <p className="line-clamp-1 font-semibold">{context.team.id}</p>
           </CardContent>
         </Card>
         <Card className="border-blue-500/30 bg-blue-500/10">
@@ -165,11 +164,16 @@ export function HrTeamManagementScreen({ teamId }: { teamId: string }) {
         <CardContent className="space-y-4 py-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-medium">Danh sách thành viên team</p>
-            <Input
-              className="sm:max-w-xs"
-              placeholder="Tìm tên, email, mã NV, vai trò..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+            <Controller
+              control={searchForm.control}
+              name="search"
+              render={({ field }) => (
+                <Input
+                  className="sm:max-w-xs"
+                  placeholder="Tìm tên, email, mã NV, vai trò..."
+                  {...field}
+                />
+              )}
             />
           </div>
 

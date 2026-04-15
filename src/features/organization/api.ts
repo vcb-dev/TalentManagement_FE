@@ -1,7 +1,54 @@
-﻿import { apiClient } from '@/lib/axios'
+import { apiClient } from '@/lib/axios'
 import { HR_DEPARTMENT_OPTIONS, HR_TEAM_OPTIONS } from '@/features/hr-admin/hrOrgOptions'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import type { Role } from '@/types/auth'
+
+export type OrgMasterEntity = {
+  id: string
+  name: string
+  createdAt: string
+  updatedAt: string
+}
+
+function assertOrgCrudNotMock(action: string): void {
+  if (isMockApiEnabled()) {
+    throw new Error(`Đang bật mock API — không thể ${action}.`)
+  }
+}
+
+/** CRUD phòng ban & team (backend `OrgController` → `/org/departments`, `/org/teams`). */
+export const orgCrudApi = {
+  createDepartment: async (name: string): Promise<OrgMasterEntity> => {
+    assertOrgCrudNotMock('tạo phòng ban')
+    const res = await apiClient.post<OrgMasterEntity>('/org/departments', { name })
+    return res.data
+  },
+  updateDepartment: async (id: string, name: string): Promise<OrgMasterEntity> => {
+    assertOrgCrudNotMock('sửa phòng ban')
+    const res = await apiClient.patch<OrgMasterEntity>(`/org/departments/${id}`, { name })
+    return res.data
+  },
+  deleteDepartment: async (id: string): Promise<OrgMasterEntity> => {
+    assertOrgCrudNotMock('xóa phòng ban')
+    const res = await apiClient.delete<OrgMasterEntity>(`/org/departments/${id}`)
+    return res.data
+  },
+  createTeam: async (name: string): Promise<OrgMasterEntity> => {
+    assertOrgCrudNotMock('tạo team')
+    const res = await apiClient.post<OrgMasterEntity>('/org/teams', { name })
+    return res.data
+  },
+  updateTeam: async (id: string, body: { name?: string }): Promise<OrgMasterEntity> => {
+    assertOrgCrudNotMock('sửa team')
+    const res = await apiClient.patch<OrgMasterEntity>(`/org/teams/${id}`, body)
+    return res.data
+  },
+  deleteTeam: async (id: string): Promise<OrgMasterEntity> => {
+    assertOrgCrudNotMock('xóa team')
+    const res = await apiClient.delete<OrgMasterEntity>(`/org/teams/${id}`)
+    return res.data
+  },
+}
 
 export type OrgTreeTeam = {
   id: string

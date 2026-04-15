@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
 import type { Role } from '@/types/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,18 +27,44 @@ export function EmployeeFilters({
   onStatusChange,
   onApply,
 }: EmployeeFiltersProps) {
+  const filtersForm = useForm<{
+    search: string
+    role: Role | ''
+    status: EmployeeListStatus | ''
+  }>({
+    defaultValues: {
+      search,
+      role: role ?? '',
+      status: status ?? '',
+    },
+  })
+
+  useEffect(() => {
+    filtersForm.reset({
+      search,
+      role: role ?? '',
+      status: status ?? '',
+    })
+  }, [search, role, status, filtersForm])
+
+  const applyFilters = filtersForm.handleSubmit((values) => {
+    onSearchChange(values.search)
+    onRoleChange((values.role || undefined) as Role | undefined)
+    onStatusChange((values.status || undefined) as EmployeeListStatus | undefined)
+    onApply()
+  })
+
   return (
-    <div className="flex flex-wrap items-end gap-2">
+    <form className="flex flex-wrap items-end gap-2" onSubmit={applyFilters}>
       <div className="flex flex-col gap-1">
         <span className="text-xs text-muted-foreground">Tìm kiếm</span>
-        <Input value={search} onChange={(e) => onSearchChange(e.target.value)} placeholder="Tên, email…" />
+        <Input {...filtersForm.register('search')} placeholder="Tên, email…" />
       </div>
       <div className="flex flex-col gap-1">
         <span className="text-xs text-muted-foreground">Vai trò</span>
         <select
           className="h-9 rounded-md border border-border bg-background px-2 text-sm"
-          value={role ?? ''}
-          onChange={(e) => onRoleChange((e.target.value || undefined) as Role | undefined)}
+          {...filtersForm.register('role')}
         >
           <option value="">Tất cả</option>
           {roles.map((r) => (
@@ -50,10 +78,7 @@ export function EmployeeFilters({
         <span className="text-xs text-muted-foreground">Trạng thái</span>
         <select
           className="h-9 rounded-md border border-border bg-background px-2 text-sm"
-          value={status ?? ''}
-          onChange={(e) =>
-            onStatusChange((e.target.value || undefined) as EmployeeListStatus | undefined)
-          }
+          {...filtersForm.register('status')}
         >
           <option value="">Tất cả</option>
           {statuses.map((s) => (
@@ -63,9 +88,7 @@ export function EmployeeFilters({
           ))}
         </select>
       </div>
-      <Button type="button" onClick={onApply}>
-        Áp dụng
-      </Button>
-    </div>
+      <Button type="submit">Áp dụng</Button>
+    </form>
   )
 }

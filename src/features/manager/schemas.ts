@@ -162,6 +162,8 @@ export const managerClassScheduleApiSchema = z.object({
 export const orgItemApiSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  createdAt: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional(),
 })
 
 export const orgCreateResponseApiSchema = z.object({

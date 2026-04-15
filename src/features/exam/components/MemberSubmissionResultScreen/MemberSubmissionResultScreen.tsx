@@ -2,8 +2,6 @@ import { useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ROLE_LABEL_VI } from '@/lib/roleLabels'
-import { useAuthStore } from '@/stores/auth.store'
 import { useMySubmissions } from '@/features/exam/hooks'
 
 export interface MemberSubmissionResultScreenProps {
@@ -12,7 +10,6 @@ export interface MemberSubmissionResultScreenProps {
 
 export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionResultScreenProps) {
   const navigate = useNavigate()
-  const user = useAuthStore((s) => s.user)
   const { data: submissions = [], isLoading } = useMySubmissions()
   const submission = useMemo(
     () => submissions.find((s) => s.id === submissionId),
@@ -39,8 +36,6 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
       return {}
     }
   }, [])
-
-  const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
 
   if (isLoading) {
     return (

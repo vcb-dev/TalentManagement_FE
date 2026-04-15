@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
+import { useForm } from 'react-hook-form'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -64,7 +65,10 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
-  const [searchDraft, setSearchDraft] = useState(filters.search ?? '')
+  const searchForm = useForm<{ searchDraft: string }>({
+    defaultValues: { searchDraft: filters.search ?? '' },
+  })
+  const searchDraft = searchForm.watch('searchDraft')
   /** Bo qua lan debounce dau (giu page tu URL khi vao truc tiep ?page=2). */
   const skipInitialSearchDebounce = useRef(true)
 
@@ -75,6 +79,10 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
       search: (s) => ({ ...s, pageSize: HR_EMPLOYEE_PAGE_SIZE, page: 1 }),
     })
   }, [filters.pageSize, navigate])
+
+  useEffect(() => {
+    searchForm.reset({ searchDraft: filters.search ?? '' })
+  }, [filters.search, searchForm])
 
   useEffect(() => {
     if (skipInitialSearchDebounce.current) {
@@ -396,9 +404,8 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
                 type="search"
                 placeholder="Tìm kiếm nhân sự..."
                 className="min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
-                value={searchDraft}
-                onChange={(e) => setSearchDraft(e.target.value)}
                 aria-label="Tìm kiếm nhân sự"
+                {...searchForm.register('searchDraft')}
               />
             </label>
           </div>

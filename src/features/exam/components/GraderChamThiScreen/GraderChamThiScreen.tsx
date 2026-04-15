@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -42,17 +43,22 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
     }
   }, [])
 
-  const [graderNote, setGraderNote] = useState(submission?.graderNote ?? '')
-  const [grades, setGrades] = useState<Record<string, { criteria: string[]; score: number }>>(
-    (submission?.grades as Record<string, { criteria: string[]; score: number }>) || {}
-  )
-  const [noteInitialized, setNoteInitialized] = useState(false)
+  const gradeForm = useForm<{
+    graderNote: string
+    grades: Record<string, { criteria: string[]; score: number }>
+  }>({
+    defaultValues: { graderNote: '', grades: {} },
+  })
+  const graderNote = useWatch({ control: gradeForm.control, name: 'graderNote' }) ?? ''
+  const grades = useWatch({ control: gradeForm.control, name: 'grades' }) ?? {}
 
-  if (submission && !noteInitialized) {
-    setGraderNote(submission.graderNote ?? '')
-    setGrades((submission.grades as Record<string, { criteria: string[]; score: number }>) || {})
-    setNoteInitialized(true)
-  }
+  useEffect(() => {
+    if (!submission) return
+    gradeForm.reset({
+      graderNote: submission.graderNote ?? '',
+      grades: (submission.grades as Record<string, { criteria: string[]; score: number }>) || {},
+    })
+  }, [submission, gradeForm])
 
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
 
@@ -78,7 +84,13 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
       return
     }
     gradeMutation.mutate(
-      { submissionId: examId, graderNote, status, grades, totalScore },
+      {
+        submissionId: examId,
+        graderNote: gradeForm.getValues('graderNote'),
+        status,
+        grades: gradeForm.getValues('grades') ?? {},
+        totalScore,
+      },
       {
         onSuccess: () => {
           toast.success(status === 'done' ? 'Đã hoàn thành chấm bài' : 'Đã lưu nháp')
@@ -214,34 +226,25 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                     const questionText = questionMap[qId] || `Câu hỏi ${idx + 1}`
                     const questionGrade = grades[qId] || { criteria: [], score: 0 }
 
-                    const toggleCriteria = (criteriaId: string, weight: number) => {
-                      setGrades((prev) => {
-                        const prevCriteria = prev[qId]?.criteria || []
-                        const isSelected = prevCriteria.includes(criteriaId)
-
-                        let newCriteria = []
-                        if (isSelected) {
-                          newCriteria = prevCriteria.filter((c) => c !== criteriaId)
-                        } else {
-                          newCriteria = [...prevCriteria, criteriaId]
-                        }
-
-                        // Calculate new score based on active criteria
-                        const CRITERIA_WEIGHTS: Record<string, number> = {
-                          ly_thuyet: 40,
-                          thuc_te: 50,
-                          trinh_bay: 10,
-                        }
-
-                        const newScore = newCriteria.reduce(
-                          (sum, c) => sum + (CRITERIA_WEIGHTS[c] || 0),
-                          0
-                        )
-
-                        return {
-                          ...prev,
-                          [qId]: { criteria: newCriteria, score: newScore },
-                        }
+                    const toggleCriteria = (criteriaId: string) => {
+                      const current = gradeForm.getValues('grades') ?? {}
+                      const prevCriteria = current[qId]?.criteria || []
+                      const isSelected = prevCriteria.includes(criteriaId)
+                      const newCriteria = isSelected
+                        ? prevCriteria.filter((c) => c !== criteriaId)
+                        : [...prevCriteria, criteriaId]
+                      const CRITERIA_WEIGHTS: Record<string, number> = {
+                        ly_thuyet: 40,
+                        thuc_te: 50,
+                        trinh_bay: 10,
+                      }
+                      const newScore = newCriteria.reduce(
+                        (sum, c) => sum + (CRITERIA_WEIGHTS[c] || 0),
+                        0
+                      )
+                      gradeForm.setValue('grades', {
+                        ...current,
+                        [qId]: { criteria: newCriteria, score: newScore },
                       })
                     }
 
@@ -281,7 +284,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                                 className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
                                 checked={questionGrade.criteria.includes('ly_thuyet')}
                                 disabled={submission.status === 'done' && !gradeMutation.isPending}
-                                onChange={() => toggleCriteria('ly_thuyet', 40)}
+                                onChange={() => toggleCriteria('ly_thuyet')}
                               />
                               Đúng lý thuyết (40%)
                             </label>
@@ -291,7 +294,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                                 className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
                                 checked={questionGrade.criteria.includes('thuc_te')}
                                 disabled={submission.status === 'done' && !gradeMutation.isPending}
-                                onChange={() => toggleCriteria('thuc_te', 50)}
+                                onChange={() => toggleCriteria('thuc_te')}
                               />
                               Ví dụ thực tế (50%)
                             </label>
@@ -301,7 +304,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                                 className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
                                 checked={questionGrade.criteria.includes('trinh_bay')}
                                 disabled={submission.status === 'done' && !gradeMutation.isPending}
-                                onChange={() => toggleCriteria('trinh_bay', 10)}
+                                onChange={() => toggleCriteria('trinh_bay')}
                               />
                               Trình bày (10%)
                             </label>
@@ -319,12 +322,17 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
               <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-primary">
                 Nhận xét của người chấm
               </h2>
-              <textarea
-                className="min-h-[140px] w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary/25"
-                placeholder="Nhập nhận xét, đánh giá chung về bài làm của thí sinh... (bắt buộc khi hoàn thành chấm)"
-                value={graderNote}
-                onChange={(e) => setGraderNote(e.target.value)}
-                disabled={submission.status === 'done' && !gradeMutation.isPending}
+              <Controller
+                control={gradeForm.control}
+                name="graderNote"
+                render={({ field }) => (
+                  <textarea
+                    className="min-h-[140px] w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary/25"
+                    placeholder="Nhập nhận xét, đánh giá chung về bài làm của thí sinh... (bắt buộc khi hoàn thành chấm)"
+                    disabled={submission.status === 'done' && !gradeMutation.isPending}
+                    {...field}
+                  />
+                )}
               />
               {submission.gradedAt && (
                 <p className="mt-2 text-xs text-muted-foreground">

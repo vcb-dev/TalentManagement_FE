@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { ArrowLeft, Info } from 'lucide-react'
@@ -52,9 +53,10 @@ export interface EmployeePermissionsScreenProps {
 export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScreenProps) {
   const currentUserId = useAuthStore((s) => s.user?.id)
 
-  const [roleTemplateIds, setRoleTemplateIds] = useState<string[]>(() =>
-    templateIdsForRole(employee.role)
-  )
+  const templateForm = useForm<{ roleTemplateIds: string[] }>({
+    defaultValues: { roleTemplateIds: templateIdsForRole(employee.role) },
+  })
+  const roleTemplateIds = useWatch({ control: templateForm.control, name: 'roleTemplateIds' }) ?? []
   const [selected, setSelected] = useState<Set<string>>(() =>
     applyMandatoryViewRules(unionFromTemplates(templateIdsForRole(employee.role)))
   )
@@ -67,11 +69,11 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
     try {
       const rec = await permissionApi.getAssignment(employee.id, SCOPE)
       if (rec) {
-        setRoleTemplateIds(rec.roleTemplateIds)
+        templateForm.setValue('roleTemplateIds', rec.roleTemplateIds)
         setSelected(applyMandatoryViewRules(new Set(rec.grantedPermissionIds)))
       } else {
         const tpl = templateIdsForRole(employee.role)
-        setRoleTemplateIds(tpl)
+        templateForm.setValue('roleTemplateIds', tpl)
         setSelected(applyMandatoryViewRules(unionFromTemplates(tpl)))
       }
       setDirty(false)
@@ -80,7 +82,7 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
     } finally {
       setLoading(false)
     }
-  }, [employee.id, employee.role])
+  }, [employee.id, employee.role, templateForm])
 
   useEffect(() => {
     void loadFromServer()
@@ -89,21 +91,22 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
   const onToggleTemplate = (tplId: string, checked: boolean) => {
     const tpl = getTemplateById(tplId)
     if (!tpl) return
-    setRoleTemplateIds((prev) => {
-      const nextList = checked ? [...new Set([...prev, tplId])] : prev.filter((x) => x !== tplId)
-      setSelected((old) => {
-        const n = new Set(old)
-        if (checked) {
-          for (const id of tpl.permissionIds) n.add(id)
-        } else {
-          const otherUnion = unionFromTemplates(nextList.filter((x) => x !== tplId))
-          for (const pid of tpl.permissionIds) {
-            if (!otherUnion.has(pid)) n.delete(pid)
-          }
+    const currentList = templateForm.getValues('roleTemplateIds') ?? []
+    const nextList = checked
+      ? [...new Set([...currentList, tplId])]
+      : currentList.filter((x) => x !== tplId)
+    templateForm.setValue('roleTemplateIds', nextList)
+    setSelected((old) => {
+      const n = new Set(old)
+      if (checked) {
+        for (const id of tpl.permissionIds) n.add(id)
+      } else {
+        const otherUnion = unionFromTemplates(nextList.filter((x) => x !== tplId))
+        for (const pid of tpl.permissionIds) {
+          if (!otherUnion.has(pid)) n.delete(pid)
         }
-        return applyMandatoryViewRules(n)
-      })
-      return nextList
+      }
+      return applyMandatoryViewRules(n)
     })
     setDirty(true)
   }
@@ -219,11 +222,17 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
                       : 'border-border bg-muted/30 text-foreground hover:border-primary/25 hover:bg-muted/50'
                   )}
                 >
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary/30"
-                    checked={active}
-                    onChange={(e) => onToggleTemplate(t.id, e.target.checked)}
+                  <Controller
+                    control={templateForm.control}
+                    name="roleTemplateIds"
+                    render={() => (
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary/30"
+                        checked={active}
+                        onChange={(e) => onToggleTemplate(t.id, e.target.checked)}
+                      />
+                    )}
                   />
                   {t.name}
                 </label>

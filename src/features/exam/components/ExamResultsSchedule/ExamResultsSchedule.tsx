@@ -1,7 +1,8 @@
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { ArrowRight, Building2, Calendar, Clock, Link2, MapPin, Shield } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { ProgressStar } from '@/components/shared/ProgressStar/ProgressStar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PaginationCardStepper } from '@/components/ui/pagination'
@@ -70,7 +71,8 @@ export function ExamResultsSchedule({
   membersTitle,
   mySubmissions,
 }: ExamResultsScheduleProps) {
-  const [yearFilter, setYearFilter] = useState<string>('all')
+  const filterForm = useForm<{ yearFilter: string }>({ defaultValues: { yearFilter: 'all' } })
+  const yearFilter = useWatch({ control: filterForm.control, name: 'yearFilter' }) ?? 'all'
   const [questionBankClassIds, setQuestionBankClassIds] = useState<Set<string>>(new Set())
   const [submittedExamIds, setSubmittedExamIds] = useState<Set<string>>(new Set())
 
@@ -266,18 +268,23 @@ export function ExamResultsSchedule({
           {membersInClass ? null : (
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="sr-only">Lọc theo năm</span>
-              <select
-                value={yearFilter}
-                onChange={(e) => setYearFilter(e.target.value)}
-                className="rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="all">Tất cả</option>
-                {yearOptions.map((y) => (
-                  <option key={y} value={String(y)}>
-                    Năm {y}
-                  </option>
-                ))}
-              </select>
+              <Controller
+                control={filterForm.control}
+                name="yearFilter"
+                render={({ field }) => (
+                  <select
+                    {...field}
+                    className="rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="all">Tất cả</option>
+                    {yearOptions.map((y) => (
+                      <option key={y} value={String(y)}>
+                        Năm {y}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              />
             </label>
           )}
         </div>

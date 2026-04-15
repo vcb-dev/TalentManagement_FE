@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
+import { toast } from 'sonner'
 import { Link } from '@tanstack/react-router'
-import { Building2, ChevronDown, FolderOpen, Hash, Search, Users } from 'lucide-react'
+import {
+  Building2,
+  ChevronDown,
+  FolderOpen,
+  Hash,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  Users,
+} from 'lucide-react'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -21,6 +33,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -41,12 +54,126 @@ import { cn } from '@/lib/utils'
 import type { Role } from '@/types/auth'
 import {
   DEPTS_WITH_TEAMS_QUERY_KEY,
+  orgCrudApi,
   organizationApi,
   teamMembersQueryKey,
+  type OrgAdminDepartmentRow,
   type OrgAdminTeamRow,
   type TeamMemberRow,
 } from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
+import { usePermission } from '@/hooks/usePermission'
+import type { ApiError } from '@/types/api'
+
+function readApiErrorMessage(err: unknown): string {
+  if (isAxiosError<ApiError>(err)) {
+    const m = err.response?.data?.message
+    if (typeof m === 'string' && m.trim()) return m
+    if (Array.isArray(m) && m.length) return m.join(', ')
+  }
+  if (err instanceof Error && err.message) return err.message
+  return 'Đã xảy ra lỗi'
+}
+
+function OrgCrudNameDialog({
+  open,
+  title,
+  description,
+  name,
+  onNameChange,
+  pending,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean
+  title: string
+  description?: string
+  name: string
+  onNameChange: (v: string) => void
+  pending: boolean
+  onClose: () => void
+  onSubmit: () => void
+}) {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose()
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {description ? <DialogDescription>{description}</DialogDescription> : null}
+        </DialogHeader>
+        <div className="space-y-2 py-1">
+          <Label htmlFor="org-crud-name">Tên</Label>
+          <Input
+            id="org-crud-name"
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            placeholder="Nhập tên…"
+            disabled={pending}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                onSubmit()
+              }
+            }}
+          />
+        </div>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+            Hủy
+          </Button>
+          <Button type="button" onClick={onSubmit} disabled={pending}>
+            {pending ? 'Đang lưu…' : 'Lưu'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function OrgCrudConfirmDialog({
+  open,
+  title,
+  body,
+  pending,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean
+  title: string
+  body: string
+  pending: boolean
+  onClose: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose()
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{body}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+            Hủy
+          </Button>
+          <Button type="button" variant="destructive" onClick={onConfirm} disabled={pending}>
+            {pending ? 'Đang xóa…' : 'Xóa'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function OrgStructureLoading() {
   return (
@@ -86,6 +213,129 @@ export function HrOrgStructure() {
   const [membersTeamId, setMembersTeamId] = useState<string | null>(null)
   const [orgSearch, setOrgSearch] = useState('')
   const [expandedAllTeamsByDept, setExpandedAllTeamsByDept] = useState<Record<string, boolean>>({})
+
+  const queryClient = useQueryClient()
+  const { canId } = usePermission()
+  const canManageOrg = canId('hr.org.manage')
+
+  type OrgCrudModal =
+    | null
+    | { kind: 'dept-create' }
+    | { kind: 'dept-edit'; dept: OrgAdminDepartmentRow }
+    | { kind: 'dept-delete'; dept: OrgAdminDepartmentRow }
+    | { kind: 'team-create' }
+    | { kind: 'team-edit'; team: OrgAdminTeamRow }
+    | { kind: 'team-delete'; team: OrgAdminTeamRow }
+
+  const [crudModal, setCrudModal] = useState<OrgCrudModal>(null)
+  const [crudName, setCrudName] = useState('')
+
+  const invalidateOrgStructure = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: DEPTS_WITH_TEAMS_QUERY_KEY })
+  }, [queryClient])
+
+  const createDeptM = useMutation({
+    mutationFn: (name: string) => orgCrudApi.createDepartment(name),
+    onSuccess: () => {
+      toast.success('Đã tạo phòng ban')
+      setCrudModal(null)
+      setCrudName('')
+      invalidateOrgStructure()
+    },
+    onError: (e) => toast.error(readApiErrorMessage(e)),
+  })
+
+  const updateDeptM = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      orgCrudApi.updateDepartment(id, name),
+    onSuccess: () => {
+      toast.success('Đã cập nhật phòng ban')
+      setCrudModal(null)
+      setCrudName('')
+      invalidateOrgStructure()
+    },
+    onError: (e) => toast.error(readApiErrorMessage(e)),
+  })
+
+  const deleteDeptM = useMutation({
+    mutationFn: (id: string) => orgCrudApi.deleteDepartment(id),
+    onSuccess: () => {
+      toast.success('Đã xóa phòng ban')
+      setCrudModal(null)
+      invalidateOrgStructure()
+    },
+    onError: (e) => toast.error(readApiErrorMessage(e)),
+  })
+
+  const createTeamM = useMutation({
+    mutationFn: (name: string) => orgCrudApi.createTeam(name),
+    onSuccess: () => {
+      toast.success('Đã tạo team')
+      setCrudModal(null)
+      setCrudName('')
+      invalidateOrgStructure()
+    },
+    onError: (e) => toast.error(readApiErrorMessage(e)),
+  })
+
+  const updateTeamM = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => orgCrudApi.updateTeam(id, { name }),
+    onSuccess: () => {
+      toast.success('Đã cập nhật team')
+      setCrudModal(null)
+      setCrudName('')
+      invalidateOrgStructure()
+    },
+    onError: (e) => toast.error(readApiErrorMessage(e)),
+  })
+
+  const deleteTeamM = useMutation({
+    mutationFn: (id: string) => orgCrudApi.deleteTeam(id),
+    onSuccess: (_data, id) => {
+      toast.success('Đã xóa team')
+      setCrudModal(null)
+      setMembersTeamId((cur) => (cur === id ? null : cur))
+      invalidateOrgStructure()
+    },
+    onError: (e) => toast.error(readApiErrorMessage(e)),
+  })
+
+  const orgCrudPending =
+    createDeptM.isPending ||
+    updateDeptM.isPending ||
+    deleteDeptM.isPending ||
+    createTeamM.isPending ||
+    updateTeamM.isPending ||
+    deleteTeamM.isPending
+
+  const openCreateDepartment = useCallback(() => {
+    setCrudName('')
+    setCrudModal({ kind: 'dept-create' })
+  }, [])
+
+  const openCreateTeam = useCallback(() => {
+    setCrudName('')
+    setCrudModal({ kind: 'team-create' })
+  }, [])
+
+  const submitNameModal = useCallback(() => {
+    const name = crudName.trim()
+    if (!name) {
+      toast.error('Vui lòng nhập tên')
+      return
+    }
+    if (!crudModal) return
+    if (crudModal.kind === 'dept-create') createDeptM.mutate(name)
+    else if (crudModal.kind === 'dept-edit') updateDeptM.mutate({ id: crudModal.dept.id, name })
+    else if (crudModal.kind === 'team-create') createTeamM.mutate(name)
+    else if (crudModal.kind === 'team-edit') updateTeamM.mutate({ id: crudModal.team.id, name })
+  }, [crudModal, crudName, createDeptM, createTeamM, updateDeptM, updateTeamM])
+
+  const submitDeleteModal = useCallback(() => {
+    if (!crudModal) return
+    if (crudModal.kind === 'dept-delete') deleteDeptM.mutate(crudModal.dept.id)
+    if (crudModal.kind === 'team-delete') deleteTeamM.mutate(crudModal.team.id)
+  }, [crudModal, deleteDeptM, deleteTeamM])
 
   const structureQ = useQuery({
     queryKey: DEPTS_WITH_TEAMS_QUERY_KEY,
@@ -135,9 +385,9 @@ export function HrOrgStructure() {
       .map((dept) => {
         const deptMatched = dept.name.toLowerCase().includes(q) || dept.id.toLowerCase().includes(q)
         if (deptMatched) return dept
-        const teams = dept.teams.filter(
-          (team) => team.name.toLowerCase().includes(q) || team.id.toLowerCase().includes(q)
-        )
+        const teams = dept.teams.filter((team) => {
+          return team.name.toLowerCase().includes(q) || team.id.toLowerCase().includes(q)
+        })
         return { ...dept, teams }
       })
       .filter((dept) => dept.teams.length > 0)
@@ -188,8 +438,12 @@ export function HrOrgStructure() {
             <span className={PAGE_HEADER_GRADIENT}>Phòng ban & Team</span>
           </h1>
           <p className={PAGE_HEADER_DESCRIPTION}>
-            Một phòng ban có nhiều team. Mở rộng từng phòng ban để xem team, leader và danh sách
-            thành viên (chỉ xem).
+            Một phòng ban có thể có nhiều team (theo dữ liệu nhân sự). Mở rộng từng phòng ban để xem
+            team và thành viên. Nếu có quyền{' '}
+            <code className="rounded bg-muted px-1">hr.org.manage</code>, bạn có thể thêm / sửa /
+            xóa phòng ban và team qua API{' '}
+            <code className="rounded bg-muted px-1">/org/departments</code> và{' '}
+            <code className="rounded bg-muted px-1">/org/teams</code>.
           </p>
         </div>
 
@@ -238,10 +492,33 @@ export function HrOrgStructure() {
                 value={orgSearch}
                 onChange={(e) => setOrgSearch(e.target.value)}
                 className="pl-9"
-                placeholder="Tìm phòng ban, team, leader, mã ID..."
+                placeholder="Tìm phòng ban, team, mã ID..."
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {canManageOrg && !mockBanner ? (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={openCreateDepartment}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Phòng ban
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="rounded-full"
+                    onClick={openCreateTeam}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Team
+                  </Button>
+                </>
+              ) : null}
               <Button
                 type="button"
                 size="sm"
@@ -290,8 +567,8 @@ export function HrOrgStructure() {
                 value={dept.id}
                 className="overflow-hidden rounded-2xl border border-primary/15 bg-card shadow-sm transition-[box-shadow,ring,border-color] data-[state=open]:border-primary/35 data-[state=open]:shadow-[0_10px_40px_rgb(106_90_224/0.16)] data-[state=open]:ring-1 data-[state=open]:ring-primary/20"
               >
-                <div className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-accent/10 px-4 py-3 sm:py-4">
-                  <AccordionTrigger className="-mx-1 flex w-full justify-start gap-0 py-1 sm:-mx-0">
+                <div className="flex items-start gap-1 border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-accent/10 px-2 py-3 sm:gap-2 sm:px-4 sm:py-4">
+                  <AccordionTrigger className="-mx-1 flex min-w-0 flex-1 justify-start gap-0 py-1 sm:-mx-0">
                     <ChevronDown className="chevron-accordion mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
                     <Building2 className="mx-2 mt-0.5 h-5 w-5 shrink-0 text-primary" />
                     <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5 text-left">
@@ -330,6 +607,37 @@ export function HrOrgStructure() {
                       </span>
                     </span>
                   </AccordionTrigger>
+                  {canManageOrg && !mockBanner ? (
+                    <div
+                      className="flex shrink-0 items-center gap-0.5 pt-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                      role="presentation"
+                    >
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        aria-label="Sửa phòng ban"
+                        onClick={() => {
+                          setCrudName(dept.name)
+                          setCrudModal({ kind: 'dept-edit', dept })
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-destructive/80 hover:text-destructive"
+                        aria-label="Xóa phòng ban"
+                        onClick={() => setCrudModal({ kind: 'dept-delete', dept })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
                 <AccordionContent className="px-0">
                   <div className="overflow-x-auto">
@@ -337,7 +645,7 @@ export function HrOrgStructure() {
                       <TableHeader>
                         <TableRow className="border-b border-border/80 bg-gradient-to-r from-primary/10 via-muted/20 to-accent/10 hover:bg-muted/25">
                           <TableHead className="w-[28%] pl-6">Team</TableHead>
-                          <TableHead className="max-w-[260px]">Ghi chú</TableHead>
+                          <TableHead className="max-w-[260px]">Leader</TableHead>
                           <TableHead className="w-[108px]">Thành viên</TableHead>
                           <TableHead className="pr-6 text-right">Thao tác</TableHead>
                         </TableRow>
@@ -361,6 +669,13 @@ export function HrOrgStructure() {
                               team={team}
                               membersOpen={membersTeamId === team.id}
                               onOpenMembers={() => toggleTeamMembers(dept.id, team.id)}
+                              canManageOrg={canManageOrg}
+                              mockBanner={mockBanner}
+                              onEditTeam={() => {
+                                setCrudName(team.name)
+                                setCrudModal({ kind: 'team-edit', team })
+                              }}
+                              onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
                             />
                           ))
                         )}
@@ -416,6 +731,57 @@ export function HrOrgStructure() {
             </DialogContent>
           </Dialog>
         )}
+
+        <OrgCrudNameDialog
+          open={Boolean(
+            crudModal &&
+            (crudModal.kind === 'dept-create' ||
+              crudModal.kind === 'dept-edit' ||
+              crudModal.kind === 'team-create' ||
+              crudModal.kind === 'team-edit')
+          )}
+          title={
+            crudModal?.kind === 'dept-create'
+              ? 'Thêm phòng ban'
+              : crudModal?.kind === 'dept-edit'
+                ? 'Sửa phòng ban'
+                : crudModal?.kind === 'team-create'
+                  ? 'Thêm team'
+                  : crudModal?.kind === 'team-edit'
+                    ? 'Sửa team'
+                    : ''
+          }
+          description={
+            crudModal?.kind === 'team-create'
+              ? 'Team được tạo trong danh mục chung; hiển thị dưới phòng ban khi có nhân sự gán đúng phòng ban + team.'
+              : undefined
+          }
+          name={crudName}
+          onNameChange={setCrudName}
+          pending={orgCrudPending}
+          onClose={() => {
+            setCrudModal(null)
+            setCrudName('')
+          }}
+          onSubmit={submitNameModal}
+        />
+
+        <OrgCrudConfirmDialog
+          open={Boolean(
+            crudModal && (crudModal.kind === 'dept-delete' || crudModal.kind === 'team-delete')
+          )}
+          title={crudModal?.kind === 'dept-delete' ? 'Xóa phòng ban?' : 'Xóa team?'}
+          body={
+            crudModal?.kind === 'dept-delete'
+              ? `Xóa phòng ban «${crudModal.dept.name}»? Thao tác có thể thất bại nếu còn nhân sự tham chiếu.`
+              : crudModal?.kind === 'team-delete'
+                ? `Xóa team «${crudModal.team.name}»? Thao tác có thể thất bại nếu còn nhân sự tham chiếu.`
+                : ''
+          }
+          pending={orgCrudPending}
+          onClose={() => setCrudModal(null)}
+          onConfirm={submitDeleteModal}
+        />
       </div>
     </TooltipProvider>
   )
@@ -425,10 +791,18 @@ function FragmentTeamRow({
   team,
   membersOpen,
   onOpenMembers,
+  canManageOrg,
+  mockBanner,
+  onEditTeam,
+  onDeleteTeam,
 }: {
   team: OrgAdminTeamRow
   membersOpen: boolean
   onOpenMembers: () => void
+  canManageOrg: boolean
+  mockBanner: boolean
+  onEditTeam: () => void
+  onDeleteTeam: () => void
 }) {
   return (
     <TableRow
@@ -454,16 +828,38 @@ function FragmentTeamRow({
           </TooltipContent>
         </Tooltip>
       </TableCell>
-      <TableCell className="max-w-[260px] align-top text-sm">
-        <span className="text-muted-foreground/90 italic">Không còn trường leader trong API</span>
-      </TableCell>
+      <TableCell className="max-w-[260px] align-top text-sm text-muted-foreground">—</TableCell>
       <TableCell className="align-top">
         <Badge variant="outline" className="border-accent/35 bg-accent/10 tabular-nums text-accent">
           {team._count.users}
         </Badge>
       </TableCell>
       <TableCell className="pr-6 text-right align-top">
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {canManageOrg && !mockBanner ? (
+            <>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label="Sửa team"
+                onClick={onEditTeam}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 shrink-0 text-destructive/80 hover:text-destructive"
+                aria-label="Xóa team"
+                onClick={onDeleteTeam}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
+          ) : null}
           <Button type="button" size="sm" variant="outline" className="rounded-full" asChild>
             <Link to="/hr-admin/org/$teamId" params={{ teamId: team.id }}>
               Quản lý
@@ -607,7 +1003,8 @@ function TeamMembersPanel({
         <DialogDescription asChild>
           <div className="text-left">
             <span className="mt-2 block text-xs text-muted-foreground">
-              Chỉ xem danh sách. Thêm hoặc sửa phòng ban/team qua kênh quản trị nguồn khác.
+              Chỉ xem danh sách thành viên tại đây. Thêm / sửa / xóa phòng ban và team thực hiện ở
+              trang này (khi có quyền <code className="rounded bg-muted px-1">hr.org.manage</code>).
             </span>
           </div>
         </DialogDescription>

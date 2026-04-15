@@ -1,6 +1,6 @@
-import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Award, CheckCircle2, ChevronRight, Info, Sparkles } from 'lucide-react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
   PAGE_HEADER_GRADIENT,
@@ -104,8 +104,11 @@ export function GraderPhanLopScreen({
 
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
 
-  const [selected, setSelected] = useState<ExamResultCode>('DAT')
-  const [comment, setComment] = useState('')
+  const classifyForm = useForm<{ selected: ExamResultCode; comment: string }>({
+    defaultValues: { selected: 'DAT', comment: '' },
+  })
+  const selected = useWatch({ control: classifyForm.control, name: 'selected' }) ?? 'DAT'
+  const comment = useWatch({ control: classifyForm.control, name: 'comment' }) ?? ''
 
   const onConfirm = () => {
     const c = comment.trim()
@@ -114,7 +117,7 @@ export function GraderPhanLopScreen({
       return
     }
     classify.mutate(
-      { examId, employeeId, result: selected },
+      { examId, employeeId, result: classifyForm.getValues('selected') },
       {
         onSuccess: () => {
           toast.success('Đã xác nhận phân lớp')
@@ -204,7 +207,7 @@ export function GraderPhanLopScreen({
                             opt.danger && 'text-danger focus:ring-danger/30'
                           )}
                           checked={active}
-                          onChange={() => setSelected(opt.result)}
+                          onChange={() => classifyForm.setValue('selected', opt.result)}
                         />
                         <div className="min-w-0 flex-1">
                           <span className={cn('block text-sm font-bold', opt.titleClass)}>
@@ -233,25 +236,30 @@ export function GraderPhanLopScreen({
                     Bắt buộc
                   </span>
                 </div>
-                <textarea
-                  id="phanlop-comment"
-                  className="h-40 w-full resize-y rounded-xl border-0 bg-muted/80 px-4 py-3 text-sm text-foreground outline-none ring-1 ring-border transition-[box-shadow] placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/35"
-                  placeholder="Nhập những lưu ý quan trọng, điểm mạnh và điểm cần cải thiện của thí sinh trong kỳ thi này..."
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
+                <Controller
+                  control={classifyForm.control}
+                  name="comment"
+                  render={({ field }) => (
+                    <textarea
+                      id="phanlop-comment"
+                      className="h-40 w-full resize-y rounded-xl border-0 bg-muted/80 px-4 py-3 text-sm text-foreground outline-none ring-1 ring-border transition-[box-shadow] placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/35"
+                      placeholder="Nhập những lưu ý quan trọng, điểm mạnh và điểm cần cải thiện của thí sinh trong kỳ thi này..."
+                      {...field}
+                    />
+                  )}
                 />
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
                     className="rounded-lg bg-primary/10 px-4 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/15"
-                    onClick={() => setComment(COMMENT_TEMPLATE_PASS)}
+                    onClick={() => classifyForm.setValue('comment', COMMENT_TEMPLATE_PASS)}
                   >
                     Dùng mẫu nhận xét Đạt
                   </button>
                   <button
                     type="button"
                     className="rounded-lg bg-muted px-4 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted/80"
-                    onClick={() => setComment(COMMENT_TEMPLATE_FAIL)}
+                    onClick={() => classifyForm.setValue('comment', COMMENT_TEMPLATE_FAIL)}
                   >
                     Dùng mẫu nhận xét Rớt
                   </button>
