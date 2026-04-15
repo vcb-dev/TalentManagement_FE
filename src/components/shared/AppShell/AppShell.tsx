@@ -140,7 +140,7 @@ export function AppShell({ children, title }: AppShellProps) {
                   <MemberLeaderHeaderNav />
                 </div>
               </div>
-              <div className="flex shrink-0 items-center justify-self-end border-l border-border/90 pl-2 sm:pl-3 md:pl-4">
+              <div className="flex shrink-0 items-center justify-self-end pl-2 sm:pl-3 md:pl-4">
                 {toolbar}
               </div>
             </div>

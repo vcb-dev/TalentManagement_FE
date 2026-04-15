@@ -13,13 +13,7 @@ import { LEVEL_LABELS, LEVELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/con
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 
-const levelIdSchema = z.enum([
-  'tap_su',
-  'biet_viec',
-  'duoc_viec',
-  'dong_gop_ket_qua',
-  'tuong',
-])
+const levelIdSchema = z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong'])
 
 const learningSearchSchema = z.object({
   levelId: levelIdSchema.optional().default('biet_viec'),
@@ -111,7 +105,7 @@ function LearningPathPickerPage() {
       <div className="space-y-6">
         <Card className="border-primary/15 bg-primary/[0.03]">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <CardTitle className="flex items-center gap-2 text-xl md:text-2xl font-semibold">
               <Sparkles className="h-5 w-5 text-primary" aria-hidden />
               Bạn sẽ làm gì ở đây?
             </CardTitle>
@@ -119,13 +113,16 @@ function LearningPathPickerPage() {
           <CardContent className="text-sm leading-relaxed text-muted-foreground">
             <ol className="list-inside list-decimal space-y-2">
               <li>
-                <span className="text-foreground">Chọn cấp năng lực</span> (Tập sự, Biết việc, …) — khung phù hợp với giai đoạn của bạn.
+                <span className="text-foreground">Chọn cấp năng lực</span> (Tập sự, Biết việc, …) —
+                khung phù hợp với giai đoạn của bạn.
               </li>
               <li>
-                <span className="text-foreground">Chọn mốc sao</span> — mỗi sao là một nhóm nhiệm vụ trong checklist.
+                <span className="text-foreground">Chọn mốc sao</span> — mỗi sao là một nhóm nhiệm vụ
+                trong checklist.
               </li>
               <li>
-                <span className="text-foreground">Mở checklist</span> — xem từng bước, đánh dấu hoàn thành và tải minh chứng nếu cần.
+                <span className="text-foreground">Mở checklist</span> — xem từng bước, đánh dấu hoàn
+                thành và tải minh chứng nếu cần.
               </li>
             </ol>
           </CardContent>
@@ -133,7 +130,7 @@ function LearningPathPickerPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">1. Chọn cấp năng lực</CardTitle>
+            <CardTitle className="text-xl md:text-2xl">1. Chọn cấp năng lực</CardTitle>
             <p className="text-sm text-muted-foreground">
               Cấp hiện tại: <span className="font-medium text-foreground">{levelLabel}</span>
             </p>
@@ -153,7 +150,7 @@ function LearningPathPickerPage() {
                     'inline-flex min-h-10 items-center rounded-full border px-4 text-sm font-medium transition-colors',
                     active
                       ? 'border-primary bg-primary/10 text-foreground shadow-sm'
-                      : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:bg-muted/60 hover:text-foreground',
+                      : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:bg-muted/60 hover:text-foreground'
                   )}
                   aria-current={active ? 'page' : undefined}
                 >
@@ -166,14 +163,16 @@ function LearningPathPickerPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">2. Chọn mốc (sao)</CardTitle>
+            <CardTitle className="text-xl md:text-2xl">2. Chọn mốc (sao)</CardTitle>
             {maxStars > 0 ? (
               <p className="text-sm text-muted-foreground">
-                Nhấn một sao để chọn mốc tương ứng (đang chọn: sao {search.starId}). Sau đó dùng nút bên dưới để vào checklist.
+                Nhấn một sao để chọn mốc tương ứng (đang chọn: sao {search.starId}). Sau đó dùng nút
+                bên dưới để vào checklist.
               </p>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Ở cấp <span className="font-medium text-foreground">{levelLabel}</span>, lộ trình có thể được chia theo mục thay vì sao. Bạn vẫn mở checklist để xem nhiệm vụ chi tiết.
+                Ở cấp <span className="font-medium text-foreground">{levelLabel}</span>, lộ trình có
+                thể được chia theo mục thay vì sao. Bạn vẫn mở checklist để xem nhiệm vụ chi tiết.
               </p>
             )}
           </CardHeader>
@@ -191,19 +190,22 @@ function LearningPathPickerPage() {
                 }}
               />
             ) : (
-              <p className="text-sm text-muted-foreground">Không có lưới sao cho cấp này — dùng nút bên dưới để vào checklist.</p>
+              <p className="text-sm text-muted-foreground">
+                Không có lưới sao cho cấp này — dùng nút bên dưới để vào checklist.
+              </p>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
               <ListChecks className="h-5 w-5 text-primary" aria-hidden />
               3. Mở checklist
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Checklist hiển thị nhiệm vụ theo thứ tự, trạng thái đã làm / đang làm / chưa mở, và khu vực nộp file minh chứng.
+              Checklist hiển thị nhiệm vụ theo thứ tự, trạng thái đã làm / đang làm / chưa mở, và
+              khu vực nộp file minh chứng.
             </p>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -213,7 +215,10 @@ function LearningPathPickerPage() {
               {maxStars > 0 ? `Sao ${star}` : 'Mục 1'}
             </p>
             <Button asChild size="lg" className="w-full shrink-0 sm:w-auto">
-              <Link to="/learning-path/$levelId/$starId" params={{ levelId: search.levelId, starId: star }}>
+              <Link
+                to="/learning-path/$levelId/$starId"
+                params={{ levelId: search.levelId, starId: star }}
+              >
                 Vào checklist
                 <ChevronRight className="h-4 w-4" aria-hidden />
               </Link>

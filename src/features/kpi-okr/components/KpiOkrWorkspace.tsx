@@ -205,7 +205,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         style={{ animationDelay: '50ms' }}
       >
         <CardHeader className="pb-4">
-          <CardTitle className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 bg-clip-text text-base font-bold text-transparent">
+          <CardTitle className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
             Bộ lọc KPI/OKR theo đội nhóm
           </CardTitle>
         </CardHeader>
@@ -331,7 +331,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         style={{ animationDelay: '180ms' }}
       >
         <CardHeader className="pb-3">
-          <CardTitle className="bg-gradient-to-r from-violet-700 via-primary to-teal-600 bg-clip-text text-base font-bold text-transparent">
+          <CardTitle className="bg-gradient-to-r from-violet-700 via-primary to-teal-600 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
             Điều hướng nhanh theo chức năng
           </CardTitle>
         </CardHeader>
@@ -491,16 +491,18 @@ function memberMetaForDisplay(members: TeamMemberRow[], userId: string): string 
 }
 
 /** Bảng KPI/OKR — viền & nền theo token Lumina (giữ layout ô bảng). */
-const XL_BORDER = 'border border-border'
+const XL_BORDER = 'border border-slate-200/85 dark:border-slate-800/80'
 const XL_TH = cn(
   XL_BORDER,
-  'sticky top-0 z-10 whitespace-nowrap bg-muted/85 px-2 py-2 text-left text-xs font-bold uppercase tracking-wide text-foreground backdrop-blur-sm'
+  'sticky top-0 z-10 whitespace-nowrap bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100 px-3 py-2.5 text-left text-xs font-extrabold uppercase tracking-wide text-slate-700 shadow-[inset_0_-1px_0_rgba(148,163,184,0.3)] backdrop-blur-sm dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 dark:text-slate-200'
 )
 const xlTd = (stripe: boolean) =>
   cn(
     XL_BORDER,
-    'px-1.5 py-1 align-top text-xs leading-snug text-foreground',
-    stripe ? 'bg-muted/50' : 'bg-card'
+    'px-2.5 py-2 align-top text-xs leading-snug text-slate-700 dark:text-slate-200',
+    stripe
+      ? 'bg-gradient-to-r from-slate-50/90 via-slate-50/80 to-sky-50/50 dark:from-slate-900/65 dark:via-slate-900/50 dark:to-slate-900/40'
+      : 'bg-card/95'
   )
 const XL_INPUT = cn(
   'box-border h-9 w-full min-w-0 rounded-xl border border-slate-200/80 bg-white/95 px-2 text-xs text-slate-700 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] outline-none transition',
@@ -528,10 +530,10 @@ function KindBadge({ kind }: { kind: PerformanceAssignment['kind'] }) {
   return (
     <span
       className={cn(
-        'inline-block rounded-sm px-1.5 py-0.5 text-[11px] font-semibold',
+        'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold shadow-sm ring-1',
         kind === 'KPI'
-          ? 'bg-primary/15 text-primary ring-1 ring-primary/20'
-          : 'bg-accent/12 text-accent ring-1 ring-accent/25'
+          ? 'bg-gradient-to-r from-indigo-500/20 to-blue-500/20 text-indigo-700 ring-indigo-300/60 dark:text-indigo-200'
+          : 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-700 ring-emerald-300/60 dark:text-emerald-200'
       )}
     >
       {kind}
@@ -548,7 +550,7 @@ function ReadOnlyAssignmentRow({
 }) {
   const td = xlTd(rowStripe)
   return (
-    <TableRow className="hover:bg-muted/70">
+    <TableRow className="transition-colors hover:bg-sky-50/70 dark:hover:bg-slate-800/60">
       <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-muted-foreground')}>
         {periodLabel(row)}
       </TableCell>
@@ -680,7 +682,7 @@ function LeaderAssignmentRow({
   return (
     <TableRow
       className={cn(
-        'hover:bg-success-muted/35',
+        'transition-colors hover:bg-cyan-50/80 dark:hover:bg-slate-800/65',
         mode === 'results' &&
           'outline outline-1 outline-amber-400/45 -outline-offset-1 dark:outline-amber-600/40'
       )}
@@ -874,19 +876,22 @@ function AssignmentTableSingleUser({
 }) {
   return (
     <div
-      className={cn(XL_BORDER, 'overflow-hidden rounded-lg bg-card shadow-[var(--shadow-card)]')}
+      className={cn(
+        XL_BORDER,
+        'overflow-hidden rounded-xl bg-gradient-to-b from-white to-slate-50/70 shadow-[0_10px_28px_-16px_rgba(15,23,42,0.35)] dark:from-slate-950 dark:to-slate-900/80'
+      )}
     >
-      <div className="border-b border-border bg-muted/70 px-3 py-2 text-sm font-bold text-foreground">
-        <span className="text-muted-foreground">Nhân sự:</span>{' '}
+      <div className="border-b border-slate-200/80 bg-gradient-to-r from-slate-100/80 via-slate-50 to-sky-50/70 px-3.5 py-2.5 text-sm font-bold text-slate-800 dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900/70 dark:text-slate-100">
+        <span className="text-slate-500 dark:text-slate-400">Nhân sự:</span>{' '}
         <span className="font-semibold text-foreground">{nameForMember(members, userId)}</span>
-        <span className="ml-2 inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+        <span className="ml-2 inline-flex rounded-full border border-slate-200/80 bg-white/90 px-2 py-0.5 text-xs font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
           {memberMetaForDisplay(members, userId)}
         </span>
       </div>
-      <div className="max-h-[min(75vh,720px)] overflow-auto">
+      <div className="max-h-[min(75vh,720px)] overflow-auto rounded-b-xl">
         <Table className="w-full min-w-[880px] border-collapse text-left">
           <TableHeader>
-            <TableRow>
+            <TableRow className="shadow-[inset_0_-1px_0_rgba(148,163,184,0.35)] dark:shadow-[inset_0_-1px_0_rgba(51,65,85,0.6)]">
               {ASSIGN_TABLE_HEAD.map((h) => (
                 <TableHead key={h} className={cn(XL_TH, 'min-w-[84px]')}>
                   {h}
@@ -953,7 +958,7 @@ function UserAssignmentWorkbench({
     <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm">
+          <CardTitle className="flex items-center gap-2 text-xl">
             <Users className="h-4 w-4" />
             Danh sách nhân sự
           </CardTitle>
@@ -1059,7 +1064,7 @@ function WorkReportPanel({
     return (
       <Card className={cn(CARD_ENTRANCE)}>
         <CardHeader>
-          <CardTitle className="text-base">Đang tải dữ liệu KPI/OKR</CardTitle>
+          <CardTitle className="text-xl">Đang tải dữ liệu KPI/OKR</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <Skeleton className="h-8 w-full" />
@@ -1087,7 +1092,7 @@ function WorkReportPanel({
           <CardContent className="space-y-4 pt-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
-                <h2 className="text-lg font-bold text-blue-700">
+                <h2 className="text-xl md:text-2xl font-bold text-blue-700">
                   1. Mục tiêu KPI/OKR tháng này — T{month}/{year}
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -1147,7 +1152,7 @@ function WorkReportPanel({
           <CardContent className="space-y-4 pt-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
-                <h2 className="text-lg font-bold text-emerald-700">
+                <h2 className="text-xl md:text-2xl font-bold text-emerald-700">
                   2. Kết quả & đánh giá tháng trước — T{prevMonth}/{prevYear}
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -1461,7 +1466,7 @@ function SummaryPanel({
     return (
       <Card id="summary-section" className={cn('scroll-mt-24', CARD_ENTRANCE)}>
         <CardHeader>
-          <CardTitle className="text-base font-bold text-amber-700">
+          <CardTitle className="text-xl md:text-2xl font-bold text-amber-700">
             Tổng chỉ số hiệu suất — T{month}/{year}
           </CardTitle>
         </CardHeader>
@@ -1486,7 +1491,7 @@ function SummaryPanel({
           className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-400"
         />
         <CardHeader>
-          <CardTitle className="text-base font-bold text-amber-700">
+          <CardTitle className="text-xl md:text-2xl font-bold text-amber-700">
             Tổng chỉ số hiệu suất — T{month}/{year}
           </CardTitle>
         </CardHeader>
@@ -1527,7 +1532,7 @@ function SummaryPanel({
         className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-400"
       />
       <CardHeader>
-        <CardTitle className="text-base font-bold text-amber-700">
+        <CardTitle className="text-xl md:text-2xl font-bold text-amber-700">
           Tổng chỉ số hiệu suất — T{month}/{year}
         </CardTitle>
       </CardHeader>
@@ -1672,7 +1677,7 @@ function FormPanel({
     return (
       <Card id="form-section" className={cn('scroll-mt-24', CARD_ENTRANCE)}>
         <CardHeader>
-          <CardTitle className="text-base">Form câu hỏi</CardTitle>
+          <CardTitle className="text-xl">Form câu hỏi</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <Skeleton className="h-8 w-full" />
@@ -1695,7 +1700,7 @@ function FormPanel({
         className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fuchsia-500 via-purple-500 to-indigo-500"
       />
       <CardHeader>
-        <CardTitle className="text-base font-bold text-fuchsia-700">
+        <CardTitle className="text-xl md:text-2xl font-bold text-fuchsia-700">
           Form câu hỏi theo tháng
         </CardTitle>
       </CardHeader>

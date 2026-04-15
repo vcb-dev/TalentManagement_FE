@@ -316,11 +316,11 @@ function ProfileIdentityCard({
 
   return (
     <div className="flex flex-wrap items-center gap-4">
-      <div className="group relative shrink-0">
+      <div className="group relative shrink-0 rounded-[2rem] border border-[#c6ab79] bg-[linear-gradient(145deg,#f4ecdd_0%,#e5d3b4_48%,#d6bd8d_100%)] p-3 shadow-[0_18px_42px_-28px_rgba(122,85,28,0.6)]">
         <EmployeeAvatar
           name={displayName}
           photoUrl={resolvePublicAssetUrl(portraitRef)}
-          className="h-20 w-20 shrink-0 rounded-3xl text-lg ring-4 ring-primary/30 shadow-[0_18px_30px_-20px_hsl(var(--primary)/0.75)] md:h-24 md:w-24 md:text-xl"
+          className="h-20 w-20 shrink-0 rounded-full border-2 border-white/80 bg-[linear-gradient(150deg,#f7f2e8_0%,#dfd9e8_100%)] text-lg text-[#3d2f23] ring-4 ring-[#efe5d1] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_12px_24px_-18px_rgba(90,64,30,0.65)] md:h-24 md:w-24 md:text-xl"
         />
         <input
           id={avatarUploadInputId}
@@ -339,7 +339,7 @@ function ProfileIdentityCard({
           size="sm"
           variant="outline"
           className={cn(
-            'absolute -bottom-2 left-1/2 h-8 -translate-x-1/2 rounded-full px-3 text-xs shadow-sm',
+            'absolute -bottom-2 left-1/2 h-8 -translate-x-1/2 rounded-full border-[#9f7a3c] bg-[linear-gradient(180deg,#a7803f_0%,#8a652f_100%)] px-3 text-xs font-semibold text-[#fff6e6] shadow-[0_10px_20px_-14px_rgba(84,53,18,0.9)] hover:brightness-105',
             portraitUploading && 'pointer-events-none'
           )}
         >
