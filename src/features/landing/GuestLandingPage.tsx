@@ -168,7 +168,7 @@ export function GuestLandingPage() {
             : 'motion-reduce:animate-none animate-[guest-landing-fade-in_0.45s_ease-out_both]'
         )}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5 font-bold tracking-tight text-gray-900">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
               <Award className="h-5 w-5" aria-hidden />
@@ -209,7 +209,7 @@ export function GuestLandingPage() {
 
       <main>
         {/* Hero */}
-        <section className="relative z-10 mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16 lg:py-20">
+        <section className="relative z-10 mx-auto max-w-[1400px] px-4 py-14 sm:px-6 sm:py-16 lg:py-20">
           <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
             <div className="relative z-10 min-w-0 space-y-6">
               <HeroBlock delayMs={0} reduced={reduced}>
@@ -356,7 +356,7 @@ export function GuestLandingPage() {
           id="features"
           className="relative z-10 border-t border-gray-100 bg-gradient-to-b from-white to-gray-50/50 py-16 sm:py-20"
         >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6">
             <div
               className={cn(
                 'rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/[0.06] via-white to-sky-50/50',
@@ -404,7 +404,7 @@ export function GuestLandingPage() {
 
         {/* CTA */}
         <section className="relative z-10 py-14 sm:py-16">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6">
             <Reveal reduced={reduced}>
               <div className="overflow-hidden rounded-3xl vcb-banner-gradient px-6 py-10 text-white shadow-lg sm:px-10 sm:py-12">
                 <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between lg:gap-12">

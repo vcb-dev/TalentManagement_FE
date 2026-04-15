@@ -88,7 +88,7 @@ export function HrTeamManagementScreen({ teamId }: { teamId: string }) {
 
   if (deptQ.isLoading || (membersQ.isLoading && !membersQ.data)) {
     return (
-      <div className="mx-auto max-w-6xl space-y-4 px-3 py-8 md:px-4">
+      <div className="mx-auto max-w-[1400px] space-y-4 px-3 py-8 md:px-4">
         <Skeleton className="h-10 w-64 rounded-lg" />
         <Skeleton className="h-28 w-full rounded-2xl" />
         <Skeleton className="h-72 w-full rounded-2xl" />
@@ -98,7 +98,7 @@ export function HrTeamManagementScreen({ teamId }: { teamId: string }) {
 
   if (!context) {
     return (
-      <div className="mx-auto max-w-4xl px-3 py-8 md:px-4">
+      <div className="mx-auto max-w-[1400px] px-3 py-8 md:px-4">
         <Card className="border-destructive/30 bg-destructive/5">
           <CardContent className="space-y-3 py-6">
             <p className="text-sm text-destructive">
@@ -115,7 +115,7 @@ export function HrTeamManagementScreen({ teamId }: { teamId: string }) {
 
   const memberCount = membersQ.data?.members.length ?? 0
   return (
-    <div className="mx-auto max-w-6xl space-y-5 px-3 py-8 md:px-4">
+    <div className="mx-auto max-w-[1400px] space-y-5 px-3 py-8 md:px-4">
       <div className="flex items-center gap-2">
         <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
           <Link to="/hr-admin/org">

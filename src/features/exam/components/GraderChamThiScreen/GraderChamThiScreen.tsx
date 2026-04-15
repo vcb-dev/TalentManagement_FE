@@ -307,7 +307,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
       </div>
 
       <div className="page-shell">
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Left: Answers */}
           <div className="flex flex-col gap-6 lg:col-span-8">
             {/* Member info */}

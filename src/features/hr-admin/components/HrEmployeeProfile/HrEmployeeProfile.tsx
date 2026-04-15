@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { type Control, useForm, useWatch } from 'react-hook-form'
+import { FormProvider, type Control, useForm, useWatch } from 'react-hook-form'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
@@ -48,6 +48,18 @@ import { cn } from '@/lib/utils'
 
 const PROFILE_EDIT_FIELD =
   'h-11 rounded-lg border-0 bg-muted/40 px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 disabled:opacity-60'
+
+type OptionItem = { value: string; label: string }
+
+function dedupeOptionsByValue(options: OptionItem[]): OptionItem[] {
+  const seen = new Set<string>()
+  return options.filter((option) => {
+    const value = option.value.trim()
+    if (!value || seen.has(value)) return false
+    seen.add(value)
+    return true
+  })
+}
 
 const LEVEL_ORDER: EmployeeLevel[] = [
   'tap_su',
@@ -259,296 +271,304 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
   const hasAnyTeam = Boolean(teamName.trim())
 
   return (
-    <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-slate-50/80 via-app-canvas to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
-      <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 px-4 pb-6 pt-6 md:px-6 lg:flex-row lg:items-start lg:gap-8 lg:pt-8">
-        <aside className="w-full shrink-0 lg:w-[280px]">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:mb-0 lg:block">
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              <Link
-                to="/hr-admin"
-                search={{ page: 1, pageSize: 15 }}
-                className="font-semibold text-primary hover:underline"
-              >
-                ← Danh sách nhân sự
-              </Link>
-              <span className="text-muted-foreground/50">/</span>
-              <span className="font-semibold text-foreground">{employee.name}</span>
-            </div>
-            <div className="flex flex-wrap items-center gap-1.5 lg:hidden">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 px-2.5 text-[11px]"
-                onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
-              >
-                Đổi PB
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 px-2.5 text-[11px]"
-                onClick={onDemoAction('Đổi role: kết nối API sau.')}
-              >
-                Role
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-6 rounded-2xl border border-primary/10 bg-card p-5 shadow-[var(--shadow-card)] ring-1 ring-primary/5">
-            <div className="relative mx-auto">
-              <EmployeeAvatar
-                name={employee.name}
-                showOnlineDot={employee.status === 'ACTIVE'}
-                className="h-44 w-44 rounded-2xl border-[3px] border-white text-4xl shadow-[var(--shadow-game-float)] ring-4 ring-primary/15"
-              />
-            </div>
-
-            <div>
-              <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                Phân công
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold leading-snug text-foreground">
-                      {deptName}
-                    </span>
-                    <span className="shrink-0 rounded-md bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-800">
-                      Chính
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    VP · Ngân hàng TMCP Ngoại thương VCB
-                  </p>
-                </div>
-                {hasAnyTeam ? (
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-sm font-semibold leading-snug text-foreground">
-                        {teamName}
-                      </span>
-                      <span className="shrink-0 rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
-                        Team
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Mã {empCode} · Vào {new Date(employee.createdAt).toLocaleDateString('vi-VN')}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="h-px bg-border" />
-
-            <div>
-              <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                Kỹ năng &amp; huy hiệu
-              </div>
-              <ul className="space-y-2">
-                <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                  <Award
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  <span>{levelPillText(employee.currentLevel)}</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                  <RoleBadgeIcon
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  <span>{ROLE_LABEL_VI[employee.role]}</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                  <CheckCircle2
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  <span>{statusLabelVi(employee.status)}</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </aside>
-
-        <main className="min-w-0 flex-1">
-          <div className="mb-4 hidden flex-wrap items-center justify-end gap-2 lg:flex">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
-            >
-              Đổi phòng ban
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onDemoAction('Đổi role: kết nối API sau.')}
-            >
-              Đổi role
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
-            >
-              Hủy hoạt động
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={onDemoAction('Lưu thay đổi: kết nối API sau.')}
-            >
-              Lưu thay đổi
-            </Button>
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-primary/10 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/5">
-            <div className="border-b border-border/80 px-5 py-5 md:px-6">
-              <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
-                {employee.name}
-              </h1>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                <Building2
-                  className="h-4 w-4 shrink-0 text-primary/70"
-                  strokeWidth={2}
-                  aria-hidden
-                />
-                <span>{hasAnyTeam ? `${deptName} · ${teamName}` : deptName}</span>
-              </div>
-              <p className="mt-2 text-lg font-semibold text-primary md:text-xl">
-                {ROLE_LABEL_VI[employee.role]} · {LEVEL_LABELS[employee.currentLevel as LevelCode]}
-              </p>
-
-              <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border/60 pt-4">
-                <span className="text-3xl font-bold tabular-nums tracking-tight text-foreground">
-                  {profileScoreDisplay}
-                </span>
-                <FiveStarRank filled={rankStarsFive} />
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary ring-1 ring-primary/15">
-                    <Star className="h-3.5 w-3.5" variant="filled" />
-                    {points.toLocaleString('vi-VN')} pts
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-900 ring-1 ring-amber-500/20">
-                    <Crown className="h-3.5 w-3.5 text-amber-600" strokeWidth={2} />#{rank}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
-                  <RoleBadgeIcon
-                    className="h-3.5 w-3.5 shrink-0 text-primary/90"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  {ROLE_LABEL_VI[employee.role]}
-                </span>
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full border border-primary/15 px-2.5 py-1 text-xs font-medium',
-                    tierClass
-                  )}
+    <FormProvider {...editForm}>
+      <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-slate-50/80 via-app-canvas to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
+        <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 pb-6 pt-6 md:px-6 lg:flex-row lg:items-start lg:gap-8 lg:pt-8">
+          <aside className="w-full shrink-0 lg:w-[280px]">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:mb-0 lg:block">
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                <Link
+                  to="/hr-admin"
+                  search={{ page: 1, pageSize: 15 }}
+                  className="font-semibold text-primary hover:underline"
                 >
-                  <Award className="h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
-                  {tierLabel}
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
-                  <CheckCircle2
-                    className="h-3.5 w-3.5 shrink-0 text-primary/90"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  {statusLabelVi(employee.status)}
-                </span>
+                  ← Danh sách nhân sự
+                </Link>
+                <span className="text-muted-foreground/50">/</span>
+                <span className="font-semibold text-foreground">{employee.name}</span>
               </div>
-
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <Button type="button" className="gap-2" onClick={() => setTab(4)}>
-                  Chỉnh sửa hồ sơ
+              <div className="flex flex-wrap items-center gap-1.5 lg:hidden">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2.5 text-[11px]"
+                  onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
+                >
+                  Đổi PB
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  size="icon"
-                  className="shrink-0"
-                  onClick={() => toast.info('Cài đặt nhân viên (demo)')}
-                  aria-label="Cài đặt"
+                  size="sm"
+                  className="h-8 px-2.5 text-[11px]"
+                  onClick={onDemoAction('Đổi role: kết nối API sau.')}
                 >
-                  <Settings className="h-5 w-5" strokeWidth={2} />
+                  Role
                 </Button>
               </div>
             </div>
 
-            <nav
-              className="flex flex-wrap gap-0 border-b border-border px-2 md:px-4"
-              aria-label="Mục hồ sơ nhân viên"
-            >
-              {tabLabels.map((label, i) => {
-                const Icon = tabIcons[i]!
-                const active = tab === i
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => setTab(i)}
+            <div className="flex flex-col gap-6 rounded-2xl border border-primary/10 bg-card p-5 shadow-[var(--shadow-card)] ring-1 ring-primary/5">
+              <div className="relative mx-auto">
+                <EmployeeAvatar
+                  name={employee.name}
+                  showOnlineDot={employee.status === 'ACTIVE'}
+                  className="h-44 w-44 rounded-2xl border-[3px] border-white text-4xl shadow-[var(--shadow-game-float)] ring-4 ring-primary/15"
+                />
+              </div>
+
+              <div>
+                <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Phân công
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-semibold leading-snug text-foreground">
+                        {deptName}
+                      </span>
+                      <span className="shrink-0 rounded-md bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-800">
+                        Chính
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      VP · Ngân hàng TMCP Ngoại thương VCB
+                    </p>
+                  </div>
+                  {hasAnyTeam ? (
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-sm font-semibold leading-snug text-foreground">
+                          {teamName}
+                        </span>
+                        <span className="shrink-0 rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
+                          Team
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Mã {empCode} · Vào{' '}
+                        {new Date(employee.createdAt).toLocaleDateString('vi-VN')}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="h-px bg-border" />
+
+              <div>
+                <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Kỹ năng &amp; huy hiệu
+                </div>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
+                    <Award
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    <span>{levelPillText(employee.currentLevel)}</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
+                    <RoleBadgeIcon
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    <span>{ROLE_LABEL_VI[employee.role]}</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
+                    <CheckCircle2
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    <span>{statusLabelVi(employee.status)}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </aside>
+
+          <main className="min-w-0 flex-1">
+            <div className="mb-4 hidden flex-wrap items-center justify-end gap-2 lg:flex">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
+              >
+                Đổi phòng ban
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onDemoAction('Đổi role: kết nối API sau.')}
+              >
+                Đổi role
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
+              >
+                Hủy hoạt động
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={onDemoAction('Lưu thay đổi: kết nối API sau.')}
+              >
+                Lưu thay đổi
+              </Button>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-primary/10 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/5">
+              <div className="border-b border-border/80 px-5 py-5 md:px-6">
+                <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
+                  {employee.name}
+                </h1>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                  <Building2
+                    className="h-4 w-4 shrink-0 text-primary/70"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                  <span>{hasAnyTeam ? `${deptName} · ${teamName}` : deptName}</span>
+                </div>
+                <p className="mt-2 text-lg font-semibold text-primary md:text-xl">
+                  {ROLE_LABEL_VI[employee.role]} ·{' '}
+                  {LEVEL_LABELS[employee.currentLevel as LevelCode]}
+                </p>
+
+                <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border/60 pt-4">
+                  <span className="text-3xl font-bold tabular-nums tracking-tight text-foreground">
+                    {profileScoreDisplay}
+                  </span>
+                  <FiveStarRank filled={rankStarsFive} />
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary ring-1 ring-primary/15">
+                      <Star className="h-3.5 w-3.5" variant="filled" />
+                      {points.toLocaleString('vi-VN')} pts
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-900 ring-1 ring-amber-500/20">
+                      <Crown className="h-3.5 w-3.5 text-amber-600" strokeWidth={2} />#{rank}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
+                    <RoleBadgeIcon
+                      className="h-3.5 w-3.5 shrink-0 text-primary/90"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    {ROLE_LABEL_VI[employee.role]}
+                  </span>
+                  <span
                     className={cn(
-                      'relative flex items-center gap-2 px-3 py-3.5 text-sm font-semibold transition-colors md:px-4',
-                      active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                      'inline-flex items-center gap-1.5 rounded-full border border-primary/15 px-2.5 py-1 text-xs font-medium',
+                      tierClass
                     )}
                   >
-                    <Icon className="h-4 w-4 shrink-0 opacity-85" strokeWidth={2} />
-                    {label}
-                    {active ? (
-                      <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary md:left-4 md:right-4" />
-                    ) : null}
-                  </button>
-                )
-              })}
-            </nav>
+                    <Award
+                      className="h-3.5 w-3.5 shrink-0 opacity-90"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    {tierLabel}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
+                    <CheckCircle2
+                      className="h-3.5 w-3.5 shrink-0 text-primary/90"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    {statusLabelVi(employee.status)}
+                  </span>
+                </div>
 
-            <div className="page-shell">
-              {tab === 0 && (
-                <OverviewTab
-                  employee={employee}
-                  tierLabel={tierLabel}
-                  tierClass={tierClass}
-                  xpPct={xpPct}
-                  maxStars={maxStars}
-                  levelStarVariants={levelStarVariants}
-                />
-              )}
-              {tab === 1 && <LearningPathTab employee={employee} levelIdx={levelIdx} />}
-              {tab === 2 && <ExamResultsTab />}
-              {tab === 3 && <WorkHistoryTab />}
-              {tab === 4 && (
-                <EditTab
-                  employee={employee}
-                  control={editControl}
-                  empCode={empCode}
-                  canEdit={canEdit}
-                  canDeactivate={canDeactivate}
-                  isSaving={isSaving}
-                  onSave={handleSaveProfile}
-                  onDeactivate={handleDeactivateProfile}
-                  onReactivate={handleReactivateProfile}
-                />
-              )}
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <Button type="button" className="gap-2" onClick={() => setTab(4)}>
+                    Chỉnh sửa hồ sơ
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => toast.info('Cài đặt nhân viên (demo)')}
+                    aria-label="Cài đặt"
+                  >
+                    <Settings className="h-5 w-5" strokeWidth={2} />
+                  </Button>
+                </div>
+              </div>
+
+              <nav
+                className="flex flex-wrap gap-0 border-b border-border px-2 md:px-4"
+                aria-label="Mục hồ sơ nhân viên"
+              >
+                {tabLabels.map((label, i) => {
+                  const Icon = tabIcons[i]!
+                  const active = tab === i
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setTab(i)}
+                      className={cn(
+                        'relative flex items-center gap-2 px-3 py-3.5 text-sm font-semibold transition-colors md:px-4',
+                        active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0 opacity-85" strokeWidth={2} />
+                      {label}
+                      {active ? (
+                        <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary md:left-4 md:right-4" />
+                      ) : null}
+                    </button>
+                  )
+                })}
+              </nav>
+
+              <div className="page-shell">
+                {tab === 0 && (
+                  <OverviewTab
+                    employee={employee}
+                    tierLabel={tierLabel}
+                    tierClass={tierClass}
+                    xpPct={xpPct}
+                    maxStars={maxStars}
+                    levelStarVariants={levelStarVariants}
+                  />
+                )}
+                {tab === 1 && <LearningPathTab employee={employee} levelIdx={levelIdx} />}
+                {tab === 2 && <ExamResultsTab />}
+                {tab === 3 && <WorkHistoryTab />}
+                {tab === 4 && (
+                  <EditTab
+                    employee={employee}
+                    control={editControl}
+                    empCode={empCode}
+                    canEdit={canEdit}
+                    canDeactivate={canDeactivate}
+                    isSaving={isSaving}
+                    onSave={handleSaveProfile}
+                    onDeactivate={handleDeactivateProfile}
+                    onReactivate={handleReactivateProfile}
+                  />
+                )}
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
+    </FormProvider>
   )
 }
 
@@ -1001,30 +1021,33 @@ function EditTab({
   const departmentOptions = useMemo(() => {
     const base = [...orgSel.departments]
     if (editDepartmentId && !base.some((o) => o.value === editDepartmentId)) {
-      return [
+      return dedupeOptionsByValue([
         { value: editDepartmentId, label: `Phòng ban (${shortId(editDepartmentId)})` },
         ...base,
-      ]
+      ])
     }
-    return base
+    return dedupeOptionsByValue(base)
   }, [orgSel.departments, editDepartmentId])
 
   const teamOptions = useMemo(() => {
     const fromDept = orgSel.teamsByDept.get(editDepartmentId) ?? []
     const base = [...fromDept]
     if (editTeamId && !base.some((o) => o.value === editTeamId)) {
-      return [{ value: editTeamId, label: `Nhóm (${shortId(editTeamId)})` }, ...base]
+      return dedupeOptionsByValue([
+        { value: editTeamId, label: `Nhóm (${shortId(editTeamId)})` },
+        ...base,
+      ])
     }
-    return base
+    return dedupeOptionsByValue(base)
   }, [orgSel.teamsByDept, editDepartmentId, editTeamId])
 
   const secondaryTeamOptions = useMemo(() => {
     const base = [...orgSel.allTeams]
     const v = (editSecondaryTeamId ?? '').trim()
     if (v && !base.some((o) => o.value === v)) {
-      return [{ value: v, label: `Nhóm phụ (${shortId(v)})` }, ...base]
+      return dedupeOptionsByValue([{ value: v, label: `Nhóm phụ (${shortId(v)})` }, ...base])
     }
-    return base
+    return dedupeOptionsByValue(base)
   }, [orgSel.allTeams, editSecondaryTeamId])
 
   const roleSelectOptions = useMemo((): Role[] => {

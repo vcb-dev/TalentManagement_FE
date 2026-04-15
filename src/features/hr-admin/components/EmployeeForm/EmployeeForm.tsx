@@ -62,7 +62,7 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
         noValidate
       >
         <div className="page-shell">
-          <div className="mx-auto max-w-5xl space-y-8 pb-8">
+          <div className="mx-auto max-w-[1400px] space-y-8 pb-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
                 <button

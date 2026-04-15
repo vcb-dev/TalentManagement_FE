@@ -286,7 +286,7 @@ export function OrgManagementScreen() {
       />
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
-        <div className="mx-auto max-w-5xl space-y-6">
+        <div className="mx-auto max-w-[1400px] space-y-6">
           {/* ── Section: Nhóm (Teams) — accordion ──────────────────── */}
           <div>
             <div className="mb-3 flex items-center justify-between">

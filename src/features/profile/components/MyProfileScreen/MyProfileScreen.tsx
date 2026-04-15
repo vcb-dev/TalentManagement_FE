@@ -430,7 +430,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_95%_60%_at_50%_-10%,hsl(var(--primary)/0.14),transparent_58%),radial-gradient(ellipse_70%_46%_at_100%_38%,hsl(var(--accent)/0.12),transparent_58%)]"
         aria-hidden
       />
-      <div className="mx-auto w-full max-w-[min(100%,80rem)] px-4 md:px-6">
+      <div className="mx-auto w-full max-w-[1400px] px-4 md:px-6">
         <header className="relative mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
           <div className="min-w-0">
             <h1 className="bg-gradient-to-r from-primary via-primary-600 to-accent bg-clip-text text-3xl font-bold tracking-tight text-transparent">

@@ -271,7 +271,7 @@ export function ChecklistStarScreen({
 
       <div className="page-shell">
         {isLoading ? (
-          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-12">
+          <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 lg:grid-cols-12">
             <div className="space-y-4 lg:col-span-7">
               <div>
                 <Skeleton className="mb-2 h-5 w-48 rounded-md" />
@@ -289,7 +289,7 @@ export function ChecklistStarScreen({
             </div>
           </div>
         ) : (
-          <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-[1400px]">
             <nav className="mb-6 flex flex-wrap items-center gap-2 text-[13px]">
               <span className="font-bold uppercase tracking-widest text-gray-500">{levelName}</span>
               <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden />

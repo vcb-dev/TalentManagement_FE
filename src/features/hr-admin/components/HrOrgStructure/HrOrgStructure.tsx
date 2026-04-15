@@ -177,7 +177,7 @@ function OrgCrudConfirmDialog({
 
 function OrgStructureLoading() {
   return (
-    <div className="mx-auto max-w-6xl space-y-4 px-3 py-8 md:px-4">
+    <div className="mx-auto max-w-[1400px] space-y-4 px-3 py-8 md:px-4">
       <div className="space-y-2">
         <Skeleton className="h-9 w-64 max-w-[85%] rounded-lg" />
         <Skeleton className="h-4 w-full max-w-xl rounded" />
@@ -413,7 +413,7 @@ export function HrOrgStructure() {
 
   if (structureQ.isError && !mockBanner) {
     return (
-      <div className="mx-auto max-w-6xl px-3 py-10 md:px-4">
+      <div className="mx-auto max-w-[1400px] px-3 py-10 md:px-4">
         <Card className="border-destructive/40 bg-destructive/5">
           <CardContent className="py-8 text-center">
             <p className="text-base font-medium text-destructive">
@@ -428,7 +428,7 @@ export function HrOrgStructure() {
 
   return (
     <TooltipProvider delayDuration={280}>
-      <div className="mx-auto max-w-6xl px-3 py-8 md:px-4">
+      <div className="mx-auto max-w-[1400px] px-3 py-8 md:px-4">
         <div
           className={cn(
             'mb-8 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-accent/10 to-transparent p-4 md:p-6',

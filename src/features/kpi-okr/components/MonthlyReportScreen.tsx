@@ -15,7 +15,7 @@ export function MonthlyReportScreen() {
   const isLeader = role === 'LEADER'
 
   return (
-    <div className="mx-auto max-w-[900px] px-3 py-6 md:px-4">
+    <div className="mx-auto max-w-[1400px] px-3 py-6 md:px-4">
       <div className={cn('mb-6', PAGE_HEADER_SURFACE)}>
         <h1 className={PAGE_HEADER_TITLE}>
           <span className={PAGE_HEADER_GRADIENT}>

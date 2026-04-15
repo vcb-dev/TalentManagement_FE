@@ -180,7 +180,7 @@ export function GraderPhanLopScreen({
       </div>
 
       <div className="page-shell">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-[1400px]">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             <div className="space-y-6 lg:col-span-8">
               <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-card)] md:p-8">

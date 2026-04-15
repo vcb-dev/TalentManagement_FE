@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Controller, useForm } from 'react-hook-form'
-import { ChevronRight, ClipboardList, FileText, RefreshCw, Target, Users } from 'lucide-react'
+import {
+  ChevronRight,
+  ClipboardList,
+  FileText,
+  Pencil,
+  RefreshCw,
+  Target,
+  Users,
+} from 'lucide-react'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -9,6 +17,7 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
+import { CARD_ENTRANCE, SECTION_FADE_UP } from '@/lib/cardMotion'
 import { useAuthStore } from '@/stores/auth.store'
 import { resolveEffectivePermissionSet } from '@/features/permissions/resolveEffective'
 import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
@@ -16,18 +25,23 @@ import {
   performanceApi,
   type PerformanceAssignment,
   type PerformanceQuestionnaire,
-  type PerformanceStatus,
   type PerformanceSummaryRow,
 } from '@/features/kpi-okr/api'
 import { organizationApi, type TeamMemberRow } from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { SelectController, TextareaController } from '@/components/ui/form-controllers'
+import {
+  InputController,
+  SelectController,
+  TextareaController,
+} from '@/components/ui/form-controllers'
+import { Form } from '@/components/ui/form'
 import {
   Dialog,
   DialogContent,
@@ -81,8 +95,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     return false
   }, [variant, eff])
 
-  const canEditOwn = useMemo(() => eff.has('kpi.edit_own'), [eff])
-
   const departments = useMemo(() => treeQ.data?.departments ?? [], [treeQ.data])
   const selectedDept = useMemo(
     () => departments.find((d) => d.teams.some((t) => t.id === selectedTeamId)),
@@ -112,8 +124,8 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     [selectedTeamId, prevYear, prevMonth]
   )
   const sumKey = useMemo(
-    () => ['kpi-summaries', selectedTeamId, year, month] as const,
-    [selectedTeamId, year, month]
+    () => ['kpi-summaries', selectedTeamId, prevYear, prevMonth] as const,
+    [selectedTeamId, prevYear, prevMonth]
   )
   const membersKpiKey = useMemo(
     () => ['team-members-kpi', selectedTeamId] as const,
@@ -148,7 +160,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     queryKey: sumKey,
     queryFn: () =>
       selectedTeamId
-        ? performanceApi.listSummaries(selectedTeamId, year, month)
+        ? performanceApi.listSummaries(selectedTeamId, prevYear, prevMonth)
         : Promise.resolve([] as PerformanceSummaryRow[]),
     enabled: Boolean(selectedTeamId) && !isMockApiEnabled(),
   })
@@ -162,15 +174,36 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   const mockHint = isMockApiEnabled()
 
   return (
-    <div className="mx-auto max-w-7xl px-3 py-6 md:px-4">
-      <div className={cn('mb-6', PAGE_HEADER_SURFACE)}>
+    <div className="relative isolate mx-auto max-w-[1400px] px-3 py-6 md:px-4">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl"
+      >
+        <div className="absolute -left-20 -top-16 h-72 w-72 rounded-full bg-primary/22 blur-3xl motion-safe:animate-[dash-glow-orb_9s_ease-in-out_infinite] motion-reduce:animate-none" />
+        <div className="absolute -right-16 top-24 h-80 w-80 rounded-full bg-accent/20 blur-3xl motion-safe:animate-[dash-glow-orb_11s_ease-in-out_infinite_1.2s] motion-reduce:animate-none" />
+        <div className="absolute bottom-8 left-1/3 h-56 w-56 -translate-x-1/2 rounded-full bg-violet-500/16 blur-3xl motion-safe:animate-[dash-glow-orb_14s_ease-in-out_infinite_0.4s] motion-reduce:animate-none" />
+      </div>
+
+      <div
+        className={cn(
+          'mb-6 border border-primary/15 bg-gradient-to-br from-primary/[0.07] via-card to-teal-500/[0.05] shadow-[var(--shadow-card)] backdrop-blur-[2px]',
+          PAGE_HEADER_SURFACE,
+          SECTION_FADE_UP
+        )}
+      >
         <h1 className={PAGE_HEADER_TITLE}>
           <span className={PAGE_HEADER_GRADIENT}>{title}</span>
         </h1>
         <p className={PAGE_HEADER_DESCRIPTION}>{description}</p>
       </div>
 
-      <Card className="mb-6">
+      <Card
+        className={cn(
+          'mb-6 border-primary/15 bg-card/95 shadow-lg shadow-primary/5 backdrop-blur-sm transition-shadow duration-300 motion-safe:hover:shadow-xl motion-safe:hover:shadow-primary/10',
+          CARD_ENTRANCE
+        )}
+        style={{ animationDelay: '50ms' }}
+      >
         <CardHeader className="pb-4">
           <CardTitle className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 bg-clip-text text-base font-bold text-transparent">
             Bộ lọc KPI/OKR theo đội nhóm
@@ -183,7 +216,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                 Phòng ban
               </Label>
               <select
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
                 value={selectedDept?.id ?? ''}
                 onChange={(e) => {
                   const d = departments.find((x) => x.id === e.target.value)
@@ -202,7 +235,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
             <label className="flex flex-col gap-1.5">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Team</Label>
               <select
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
                 value={selectedTeamId}
                 onChange={(e) => setSelectedTeamId(e.target.value)}
               >
@@ -217,7 +250,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
             <label className="flex flex-col gap-1.5">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tháng</Label>
               <select
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
                 value={month}
                 onChange={(e) => setMonth(Number(e.target.value))}
               >
@@ -235,6 +268,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                 value={year}
                 min={2020}
                 max={2035}
+                className="rounded-lg shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:ring-2 focus-visible:ring-primary/25"
                 onChange={(e) => setYear(Number(e.target.value))}
               />
             </label>
@@ -249,7 +283,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
             <Button
               type="button"
               variant="outline"
-              className="ml-auto inline-flex items-center gap-1 border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100"
+              className="ml-auto inline-flex items-center gap-1 border-cyan-300 bg-cyan-50 text-cyan-700 shadow-sm transition-[transform,box-shadow] hover:bg-cyan-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0"
               onClick={() => {
                 void treeQ.refetch()
                 void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
@@ -263,33 +297,53 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         </CardContent>
       </Card>
 
-      <Card className="mb-6">
-        <CardContent className="pt-6 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Luồng theo tháng:</span> nhập{' '}
-          <strong className="text-foreground">
-            tháng {month}/{year}
-          </strong>{' '}
-          để lập mục tiêu tháng này; cập nhật kết quả tại kỳ{' '}
-          <strong className="text-foreground">
-            tháng {prevMonth}/{prevYear}
-          </strong>
-          .
+      <Card
+        className={cn(
+          'mb-6 overflow-hidden border-teal-500/20 bg-gradient-to-r from-teal-500/[0.07] via-card to-violet-500/[0.06] shadow-md shadow-teal-500/5 backdrop-blur-sm transition-shadow duration-300 motion-safe:hover:shadow-lg motion-safe:hover:shadow-teal-500/10',
+          CARD_ENTRANCE
+        )}
+        style={{ animationDelay: '120ms' }}
+      >
+        <CardContent className="relative pt-6 text-sm text-muted-foreground">
+          <div
+            aria-hidden
+            className="absolute inset-y-3 left-0 w-1 rounded-full bg-gradient-to-b from-teal-500 via-primary to-violet-500 opacity-80"
+          />
+          <div className="pl-4">
+            <span className="font-medium text-foreground">Luồng theo tháng:</span> nhập{' '}
+            <strong className="text-foreground">
+              tháng {month}/{year}
+            </strong>{' '}
+            để lập mục tiêu tháng này; cập nhật kết quả tại kỳ{' '}
+            <strong className="text-foreground">
+              tháng {prevMonth}/{prevYear}
+            </strong>
+            .
+          </div>
         </CardContent>
       </Card>
 
-      <Card className="mb-6">
+      <Card
+        className={cn(
+          'mb-6 border-violet-200/30 bg-card/95 shadow-md shadow-violet-500/5 backdrop-blur-sm dark:border-violet-900/35',
+          CARD_ENTRANCE
+        )}
+        style={{ animationDelay: '180ms' }}
+      >
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Điều hướng nhanh theo chức năng</CardTitle>
+          <CardTitle className="bg-gradient-to-r from-violet-700 via-primary to-teal-600 bg-clip-text text-base font-bold text-transparent">
+            Điều hướng nhanh theo chức năng
+          </CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2 pt-0">
+        <CardContent className="flex flex-wrap gap-2.5 pt-0">
           <Button
             asChild
             variant="outline"
             size="sm"
-            className="border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+            className="rounded-full border-blue-300/90 bg-blue-50/95 px-4 text-blue-800 shadow-sm transition-[transform,box-shadow,background-color] hover:bg-blue-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98]"
           >
-            <a href="#planning-section" className="inline-flex items-center gap-1">
-              <Target className="h-3.5 w-3.5" />
+            <a href="#planning-section" className="inline-flex items-center gap-1.5">
+              <Target className="h-3.5 w-3.5 motion-safe:animate-[dash-float-slow_5s_ease-in-out_infinite] motion-reduce:animate-none" />
               Lập KPI/OKR
             </a>
           </Button>
@@ -297,10 +351,10 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
             asChild
             variant="outline"
             size="sm"
-            className="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+            className="rounded-full border-emerald-300/90 bg-emerald-50/95 px-4 text-emerald-800 shadow-sm transition-[transform,box-shadow,background-color] hover:bg-emerald-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98]"
           >
-            <a href="#results-section" className="inline-flex items-center gap-1">
-              <ClipboardList className="h-3.5 w-3.5" />
+            <a href="#results-section" className="inline-flex items-center gap-1.5">
+              <ClipboardList className="h-3.5 w-3.5 motion-safe:animate-[dash-float-slow_5.5s_ease-in-out_infinite] motion-reduce:animate-none" />
               Cập nhật kết quả
             </a>
           </Button>
@@ -308,10 +362,10 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
             asChild
             variant="outline"
             size="sm"
-            className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+            className="rounded-full border-amber-300/90 bg-amber-50/95 px-4 text-amber-900 shadow-sm transition-[transform,box-shadow,background-color] hover:bg-amber-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98]"
           >
-            <a href="#summary-section" className="inline-flex items-center gap-1">
-              <RefreshCw className="h-3.5 w-3.5" />
+            <a href="#summary-section" className="inline-flex items-center gap-1.5">
+              <RefreshCw className="h-3.5 w-3.5 motion-safe:animate-[dash-float-slow_6s_ease-in-out_infinite] motion-reduce:animate-none" />
               Tổng hợp hiệu suất
             </a>
           </Button>
@@ -319,10 +373,10 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
             asChild
             variant="outline"
             size="sm"
-            className="border-fuchsia-300 bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100"
+            className="rounded-full border-fuchsia-300/90 bg-fuchsia-50/95 px-4 text-fuchsia-900 shadow-sm transition-[transform,box-shadow,background-color] hover:bg-fuchsia-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98]"
           >
-            <a href="#form-section" className="inline-flex items-center gap-1">
-              <FileText className="h-3.5 w-3.5" />
+            <a href="#form-section" className="inline-flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5 motion-safe:animate-[dash-float-slow_6.5s_ease-in-out_infinite] motion-reduce:animate-none" />
               Form câu hỏi
             </a>
           </Button>
@@ -344,7 +398,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           members={membersForTeamQ.data?.members ?? []}
           membersLoading={membersForTeamQ.isLoading}
           canEditTeam={canEditTeam}
-          canEditOwn={canEditOwn}
           selectedTeamId={selectedTeamId}
           year={year}
           month={month}
@@ -357,10 +410,12 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           rows={summariesQ.data ?? []}
           loading={summariesQ.isLoading}
           teamId={selectedTeamId}
-          year={year}
-          month={month}
+          year={prevYear}
+          month={prevMonth}
           canRecalculate={canEditTeam}
           onRecalculated={refresh}
+          prioritizeAssigneeUserId={user?.id}
+          viewerVariant={variant}
         />
         <FormPanel
           teamId={selectedTeamId}
@@ -371,8 +426,16 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         />
       </div>
 
-      <aside className="mt-8 rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 p-4 text-xs text-muted-foreground">
-        <div className="mb-2 font-semibold text-foreground">Điều hướng nhanh</div>
+      <aside
+        className={cn(
+          'mt-8 rounded-xl border border-dashed border-primary/25 bg-gradient-to-br from-muted/40 via-card/80 to-primary/[0.04] p-4 text-xs text-muted-foreground shadow-sm backdrop-blur-sm transition-shadow motion-safe:hover:shadow-md',
+          CARD_ENTRANCE
+        )}
+        style={{ animationDelay: '260ms' }}
+      >
+        <div className="mb-2 bg-gradient-to-r from-primary to-teal-600 bg-clip-text font-semibold text-transparent">
+          Điều hướng nhanh
+        </div>
         <ul className="space-y-1">
           {departments.map((d) => (
             <li key={d.id}>
@@ -398,15 +461,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
       </aside>
     </div>
   )
-}
-
-const STATUS_OPTS: PerformanceStatus[] = ['not_started', 'in_progress', 'done', 'blocked']
-
-const STATUS_LABEL_VI: Record<PerformanceStatus, string> = {
-  not_started: 'Chưa bắt đầu',
-  in_progress: 'Đang thực hiện',
-  done: 'Hoàn thành',
-  blocked: 'Bị chặn',
 }
 
 function formatKpiSetAt(iso: string | null | undefined): string {
@@ -467,151 +521,8 @@ const ASSIGN_TABLE_HEAD = [
   'Ưu tiên',
   'Nội dung',
   'Chỉ tiêu',
-  'Số KQ',
-  'Tiến độ',
-  'Trạng thái',
-  'Người ĐG',
-  'QL ĐG',
-  'QL nhận xét',
-  '',
+  'Thao tác',
 ] as const
-
-function AssignmentProgressCell({
-  row,
-  currentUserId,
-  canEditOwn,
-  onUpdated,
-  excel = false,
-}: {
-  row: PerformanceAssignment
-  currentUserId: string | undefined
-  canEditOwn: boolean
-  onUpdated: () => void
-  /** Gọn trong ô bảng kiểu Excel */
-  excel?: boolean
-}) {
-  const editable =
-    !isMockApiEnabled() &&
-    Boolean(currentUserId) &&
-    row.assigneeUserId === currentUserId &&
-    canEditOwn
-  const [progress, setProgress] = useState(row.progressPercent)
-  const [status, setStatus] = useState<PerformanceStatus>(row.status)
-  const [actualResult, setActualResult] = useState(row.actualResult ?? '')
-  const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    const id = window.setTimeout(() => {
-      setProgress(row.progressPercent)
-      setStatus(row.status)
-      setActualResult(row.actualResult ?? '')
-    }, 0)
-    return () => window.clearTimeout(id)
-  }, [row.id, row.progressPercent, row.status, row.actualResult])
-
-  if (!editable) {
-    return (
-      <div className={cn('space-y-1', excel && 'min-w-[88px]')}>
-        <span className="tabular-nums text-foreground">{row.progressPercent}</span>
-        {!excel && row.actualResult ? (
-          <p className="text-[10px] text-muted-foreground">Số KQ: {row.actualResult}</p>
-        ) : null}
-      </div>
-    )
-  }
-
-  return (
-    <div className={cn('flex flex-col gap-1', excel && 'min-w-[100px]')}>
-      <div
-        className={cn(
-          'flex flex-col gap-1',
-          !excel && 'sm:flex-row sm:flex-wrap sm:items-center sm:gap-2'
-        )}
-      >
-        <label className="flex items-center gap-1">
-          <input
-            type="number"
-            min={0}
-            max={100}
-            value={progress}
-            onChange={(e) => {
-              const n = Number(e.target.value)
-              if (Number.isNaN(n)) return
-              setProgress(Math.min(100, Math.max(0, n)))
-            }}
-            className={
-              excel
-                ? cn(XL_INPUT, 'h-7 w-14 tabular-nums')
-                : 'h-7 w-14 rounded border border-input bg-background px-1 py-0.5 text-xs tabular-nums'
-            }
-          />
-          <span className="text-[10px] text-muted-foreground">%</span>
-        </label>
-        {!excel ? (
-          <select
-            className="rounded border border-input bg-background px-1.5 py-1 text-xs"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as PerformanceStatus)}
-          >
-            {STATUS_OPTS.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABEL_VI[s]}
-              </option>
-            ))}
-          </select>
-        ) : null}
-      </div>
-      {!excel ? (
-        <label className="block text-[10px] font-medium text-muted-foreground">
-          Số kết quả
-          <input
-            type="text"
-            className="mt-0.5 w-full max-w-[160px] rounded border border-input bg-background px-1.5 py-1 text-xs"
-            value={actualResult}
-            onChange={(e) => setActualResult(e.target.value)}
-            placeholder="VD: 50"
-          />
-        </label>
-      ) : (
-        <input
-          type="text"
-          className={XL_INPUT}
-          title="Số kết quả (tự cập nhật)"
-          value={actualResult}
-          onChange={(e) => setActualResult(e.target.value)}
-          placeholder="Số KQ"
-        />
-      )}
-      <Button
-        type="button"
-        disabled={saving}
-        className={cn(
-          XL_SAVE_BTN,
-          excel ? 'px-1.5 py-0.5 text-[10px]' : 'w-fit rounded-md px-2 py-1 text-xs'
-        )}
-        onClick={() => {
-          if (progress < 0 || progress > 100) {
-            return
-          }
-          if (actualResult.trim().length > 120) {
-            return
-          }
-          setSaving(true)
-          void performanceApi
-            .patchAssignmentSelf(row.id, {
-              progressPercent: progress,
-              status,
-              actualResult: actualResult.trim() || null,
-            })
-            .then(() => onUpdated())
-            .finally(() => setSaving(false))
-        }}
-      >
-        Lưu
-      </Button>
-    </div>
-  )
-}
 
 function KindBadge({ kind }: { kind: PerformanceAssignment['kind'] }) {
   return (
@@ -630,50 +541,40 @@ function KindBadge({ kind }: { kind: PerformanceAssignment['kind'] }) {
 
 function ReadOnlyAssignmentRow({
   row,
-  currentUserId,
-  canEditOwn,
-  onRefresh,
   rowStripe,
 }: {
   row: PerformanceAssignment
-  currentUserId: string | undefined
-  canEditOwn: boolean
-  onRefresh: () => void
   rowStripe: boolean
 }) {
   const td = xlTd(rowStripe)
   return (
-    <tr className="hover:bg-muted/70">
-      <td className={cn(td, 'whitespace-nowrap tabular-nums text-muted-foreground')}>
+    <TableRow className="hover:bg-muted/70">
+      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-muted-foreground')}>
         {periodLabel(row)}
-      </td>
-      <td className={cn(td, 'whitespace-nowrap tabular-nums')}>{formatKpiSetAt(row.kpiSetAt)}</td>
-      <td className={td}>
+      </TableCell>
+      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums')}>
+        {formatKpiSetAt(row.kpiSetAt)}
+      </TableCell>
+      <TableCell className={td}>
         <KindBadge kind={row.kind} />
-      </td>
-      <td className={cn(td, 'text-center tabular-nums')}>{row.priority}</td>
-      <td className={cn(td, 'min-w-[220px] max-w-md whitespace-pre-wrap')}>{row.content}</td>
-      <td className={cn(td, 'tabular-nums')}>{row.targetMetric ?? ''}</td>
-      <td className={cn(td, 'tabular-nums')}>{row.actualResult ?? ''}</td>
-      <td className={cn(td, 'min-w-[140px]')}>
-        <AssignmentProgressCell
-          row={row}
-          currentUserId={currentUserId}
-          canEditOwn={canEditOwn}
-          onUpdated={onRefresh}
-        />
-      </td>
-      <td className={cn(td, 'whitespace-nowrap')}>{STATUS_LABEL_VI[row.status]}</td>
-      <td className={td}>{row.reviewerName ?? ''}</td>
-      <td className={cn(td, 'font-medium tabular-nums')}>{row.managerEvalStatus ?? ''}</td>
-      <td
-        className={cn(td, 'min-w-[140px] max-w-[200px] whitespace-pre-wrap text-muted-foreground')}
-      >
-        {row.managerReviewNote ?? ''}
-      </td>
-      <td className={td} />
-    </tr>
+      </TableCell>
+      <TableCell className={cn(td, 'text-center tabular-nums')}>{row.priority}</TableCell>
+      <TableCell className={cn(td, 'min-w-[220px] max-w-md whitespace-pre-wrap')}>
+        {row.content}
+      </TableCell>
+      <TableCell className={cn(td, 'tabular-nums')}>{row.targetMetric ?? ''}</TableCell>
+      <TableCell className={td} />
+    </TableRow>
   )
+}
+
+type LeaderEditFormValues = {
+  kpiSetAt: string
+  priority: number
+  content: string
+  targetMetric: string
+  managerEvalStatus: string
+  managerReviewNote: string
 }
 
 function LeaderAssignmentRow({
@@ -681,242 +582,252 @@ function LeaderAssignmentRow({
   mode,
   onSaved,
   rowStripe,
+  canEditTeam,
 }: {
   row: PerformanceAssignment
   mode: 'planning' | 'results'
   onSaved: () => void
   rowStripe: boolean
+  canEditTeam: boolean
 }) {
-  const [content, setContent] = useState(row.content)
-  const [priority, setPriority] = useState(row.priority)
-  const [targetMetric, setTargetMetric] = useState(row.targetMetric ?? '')
-  const [actualResult, setActualResult] = useState(row.actualResult ?? '')
-  const [reviewerName, setReviewerName] = useState(row.reviewerName ?? '')
-  const [managerEvalStatus, setManagerEvalStatus] = useState(row.managerEvalStatus ?? '')
-  const [managerReviewNote, setManagerReviewNote] = useState(row.managerReviewNote ?? '')
-  const [kpiSetAt, setKpiSetAt] = useState(row.kpiSetAt ? row.kpiSetAt.slice(0, 10) : '')
-  const [progressPercent, setProgressPercent] = useState(row.progressPercent)
-  const [status, setStatus] = useState<PerformanceStatus>(row.status)
-  const [saving, setSaving] = useState(false)
+  const [open, setOpen] = useState(false)
+
+  const form = useForm<LeaderEditFormValues>({
+    defaultValues: {
+      kpiSetAt: row.kpiSetAt ? row.kpiSetAt.slice(0, 10) : '',
+      priority: row.priority,
+      content: row.content,
+      targetMetric: row.targetMetric ?? '',
+      managerEvalStatus: row.managerEvalStatus ?? '',
+      managerReviewNote: row.managerReviewNote ?? '',
+    },
+    mode: 'onChange',
+  })
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting },
+  } = form
 
   useEffect(() => {
-    const id = window.setTimeout(() => {
-      if (mode === 'planning') {
-        setContent(row.content)
-        setPriority(row.priority)
-        setTargetMetric(row.targetMetric ?? '')
-      }
-      setActualResult(row.actualResult ?? '')
-      setReviewerName(row.reviewerName ?? '')
-      setManagerEvalStatus(row.managerEvalStatus ?? '')
-      setManagerReviewNote(row.managerReviewNote ?? '')
-      setKpiSetAt(row.kpiSetAt ? row.kpiSetAt.slice(0, 10) : '')
-      setProgressPercent(row.progressPercent)
-      setStatus(row.status)
-    }, 0)
-    return () => window.clearTimeout(id)
-  }, [
-    row.id,
-    row.updatedAt,
-    mode,
-    row.content,
-    row.priority,
-    row.targetMetric,
-    row.actualResult,
-    row.reviewerName,
-    row.managerEvalStatus,
-    row.managerReviewNote,
-    row.kpiSetAt,
-    row.progressPercent,
-    row.status,
-  ])
+    if (!open) return
+    reset({
+      kpiSetAt: row.kpiSetAt ? row.kpiSetAt.slice(0, 10) : '',
+      priority: row.priority,
+      content: row.content,
+      targetMetric: row.targetMetric ?? '',
+      managerEvalStatus: row.managerEvalStatus ?? '',
+      managerReviewNote: row.managerReviewNote ?? '',
+    })
+  }, [open, reset, row])
 
-  const save = () => {
-    if (mode === 'planning' && !content.trim()) {
+  const onSubmit = handleSubmit(async (values) => {
+    if (mode === 'planning' && !values.content.trim()) {
+      toast.error('Nội dung không được trống.')
       return
     }
-    if (mode === 'planning' && content.trim().length > 500) {
+    if (mode === 'planning' && values.content.trim().length > 500) {
+      toast.error('Nội dung tối đa 500 ký tự.')
       return
     }
-    if (priority < 0) {
-      return
-    }
-    if (priority > 99) {
-      return
-    }
-    if (progressPercent < 0 || progressPercent > 100) {
-      return
-    }
-    if (kpiSetAt.trim()) {
-      const dt = new Date(`${kpiSetAt.trim()}T12:00:00`)
-      if (Number.isNaN(dt.getTime())) {
+    if (mode === 'planning') {
+      if (values.priority < 0 || values.priority > 99) {
+        toast.error('Ưu tiên không hợp lệ.')
         return
       }
+      if (values.kpiSetAt.trim()) {
+        const dt = new Date(`${values.kpiSetAt.trim()}T12:00:00`)
+        if (Number.isNaN(dt.getTime())) {
+          toast.error('Ngày xét không hợp lệ.')
+          return
+        }
+      }
     }
-    setSaving(true)
-    const kpiIso = kpiSetAt.trim() ? new Date(`${kpiSetAt.trim()}T12:00:00`).toISOString() : null
+
+    const kpiIso =
+      mode === 'planning' && values.kpiSetAt.trim()
+        ? new Date(`${values.kpiSetAt.trim()}T12:00:00`).toISOString()
+        : null
+
     const patch =
       mode === 'results'
         ? {
-            actualResult: actualResult.trim() || null,
-            reviewerName: reviewerName.trim() || null,
-            managerEvalStatus: managerEvalStatus.trim() || null,
-            managerReviewNote: managerReviewNote.trim() || null,
-            kpiSetAt: kpiIso,
-            progressPercent,
-            status,
+            managerEvalStatus: values.managerEvalStatus.trim() || null,
+            managerReviewNote: values.managerReviewNote.trim() || null,
           }
         : {
-            content: content.trim(),
-            priority,
-            targetMetric: targetMetric.trim() || null,
-            actualResult: actualResult.trim() || null,
-            reviewerName: reviewerName.trim() || null,
-            managerEvalStatus: managerEvalStatus.trim() || null,
-            managerReviewNote: managerReviewNote.trim() || null,
+            content: values.content.trim(),
+            priority: values.priority,
+            targetMetric: values.targetMetric.trim() || null,
             kpiSetAt: kpiIso,
-            progressPercent,
-            status,
           }
-    void performanceApi
-      .patchAssignment(row.id, patch)
-      .then(() => onSaved())
-      .finally(() => setSaving(false))
-  }
+
+    try {
+      await performanceApi.patchAssignment(row.id, patch)
+      toast.success('Đã cập nhật.')
+      setOpen(false)
+      onSaved()
+    } catch {
+      toast.error('Cập nhật thất bại, vui lòng thử lại.')
+    }
+  })
 
   const td = xlTd(rowStripe)
+  const editable = canEditTeam && !isMockApiEnabled()
 
   return (
-    <tr
+    <TableRow
       className={cn(
         'hover:bg-success-muted/35',
         mode === 'results' &&
           'outline outline-1 outline-amber-400/45 -outline-offset-1 dark:outline-amber-600/40'
       )}
     >
-      <td className={cn(td, 'whitespace-nowrap tabular-nums text-muted-foreground')}>
+      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-muted-foreground')}>
         {periodLabel(row)}
-      </td>
-      <td className={td}>
-        <input
-          type="date"
-          className={XL_INPUT}
-          value={kpiSetAt}
-          onChange={(e) => setKpiSetAt(e.target.value)}
-        />
-      </td>
-      <td className={td}>
+      </TableCell>
+      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums')}>
+        {formatKpiSetAt(row.kpiSetAt)}
+      </TableCell>
+      <TableCell className={td}>
         <KindBadge kind={row.kind} />
-      </td>
-      <td className={cn(td, 'text-center')}>
-        {mode === 'planning' ? (
-          <input
-            type="number"
-            min={0}
-            max={99}
-            className={cn(XL_INPUT, 'mx-auto w-12 text-center tabular-nums')}
-            value={priority}
-            onChange={(e) => setPriority(Number(e.target.value) || 0)}
-          />
-        ) : (
-          <span className="tabular-nums">{row.priority}</span>
-        )}
-      </td>
-      <td className={td}>
-        {mode === 'planning' ? (
-          <textarea
-            className={XL_TEXTAREA}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
-        ) : (
-          <span className="block max-w-md whitespace-pre-wrap text-[12px]">{row.content}</span>
-        )}
-      </td>
-      <td className={td}>
-        {mode === 'planning' ? (
-          <input
-            type="text"
-            className={cn(XL_INPUT, 'tabular-nums')}
-            value={targetMetric}
-            onChange={(e) => setTargetMetric(e.target.value)}
-          />
-        ) : (
-          <span className="tabular-nums">{row.targetMetric ?? ''}</span>
-        )}
-      </td>
-      <td className={td}>
-        <input
-          type="text"
-          className={cn(XL_INPUT, 'tabular-nums')}
-          value={actualResult}
-          onChange={(e) => setActualResult(e.target.value)}
-        />
-      </td>
-      <td className={cn(td, 'w-[4.5rem]')}>
-        <input
-          type="number"
-          min={0}
-          max={100}
-          value={progressPercent}
-          onChange={(e) => {
-            const n = Number(e.target.value)
-            if (Number.isNaN(n)) return
-            setProgressPercent(Math.min(100, Math.max(0, n)))
-          }}
-          className={cn(XL_INPUT, 'w-full tabular-nums')}
-        />
-      </td>
-      <td className={cn(td, 'min-w-[8rem]')}>
-        <select
-          className={cn(XL_INPUT, 'h-auto min-h-[28px] py-0.5 text-[11px]')}
-          value={status}
-          onChange={(e) => setStatus(e.target.value as PerformanceStatus)}
-        >
-          {STATUS_OPTS.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABEL_VI[s]}
-            </option>
-          ))}
-        </select>
-      </td>
-      <td className={td}>
-        <input
-          type="text"
-          className={XL_INPUT}
-          value={reviewerName}
-          onChange={(e) => setReviewerName(e.target.value)}
-        />
-      </td>
-      <td className={td}>
-        <select
-          className={cn(XL_INPUT, 'h-auto min-h-[28px] text-[11px]')}
-          value={managerEvalStatus}
-          onChange={(e) => setManagerEvalStatus(e.target.value)}
-        >
-          <option value="">—</option>
-          <option value="OK">OK</option>
-          <option value="NOT">NOT</option>
-        </select>
-      </td>
-      <td className={td}>
-        <textarea
-          className={cn(XL_TEXTAREA, 'min-h-[40px] max-w-[220px]')}
-          value={managerReviewNote}
-          onChange={(e) => setManagerReviewNote(e.target.value)}
-        />
-      </td>
-      <td className={cn(td, 'whitespace-nowrap')}>
-        <Button
-          type="button"
-          disabled={saving}
-          className={cn(XL_SAVE_BTN, 'px-2 py-1 text-[11px]')}
-          onClick={save}
-        >
-          Lưu
-        </Button>
-      </td>
-    </tr>
+      </TableCell>
+      <TableCell className={cn(td, 'text-center tabular-nums')}>{row.priority}</TableCell>
+      <TableCell className={cn(td, 'min-w-[220px] max-w-md whitespace-pre-wrap')}>
+        {row.content}
+      </TableCell>
+      <TableCell className={cn(td, 'tabular-nums')}>{row.targetMetric ?? ''}</TableCell>
+      <TableCell className={cn(td, 'whitespace-nowrap text-right')}>
+        {editable ? (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'h-8 gap-1 px-2 text-xs shadow-sm transition-[transform,box-shadow,background-color,border-color,color] motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0',
+                  mode === 'results'
+                    ? 'border-amber-300 bg-amber-50/95 text-amber-800 hover:bg-amber-100'
+                    : 'border-blue-300 bg-blue-50/95 text-blue-800 hover:bg-blue-100'
+                )}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                {mode === 'results' ? 'đánh giá' : 'Sửa'}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>
+                  {mode === 'planning' ? 'Sửa mục tiêu KPI/OKR' : 'Sửa đánh giá KPI/OKR'}
+                </DialogTitle>
+                <DialogDescription>
+                  {mode === 'planning'
+                    ? 'Cập nhật nội dung/ưu tiên/chỉ tiêu và ngày xét cho kỳ đang chọn.'
+                    : 'Chỉ cập nhật QL đánh giá (OK/NOT) và QL nhận xét — các trường khác giữ nguyên.'}
+                </DialogDescription>
+              </DialogHeader>
+
+              <Form {...form}>
+                <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
+                  {mode === 'planning' ? (
+                    <label className="md:col-span-2 flex flex-col gap-1 text-xs font-medium">
+                      Ngày xét KPI/OKR
+                      <Controller
+                        control={control}
+                        name="kpiSetAt"
+                        render={({ field }) => (
+                          <input type="date" className={cn(XL_INPUT, 'h-9')} {...field} />
+                        )}
+                      />
+                    </label>
+                  ) : null}
+
+                  {mode === 'planning' ? (
+                    <>
+                      <SelectController
+                        control={control}
+                        name="priority"
+                        label="Ưu tiên"
+                        required
+                        rules={{ required: true, min: 0, max: 99 }}
+                        className="space-y-1 text-xs font-medium"
+                      >
+                        <option value={0}>Không xếp (0)</option>
+                        <option value={1}>Ưu tiên 1</option>
+                        <option value={2}>Ưu tiên 2</option>
+                        <option value={3}>Ưu tiên 3</option>
+                      </SelectController>
+
+                      <InputController
+                        control={control}
+                        name="targetMetric"
+                        label="Chỉ tiêu"
+                        className="space-y-1 text-xs font-medium"
+                        placeholder="VD: 60"
+                      />
+
+                      <label className="md:col-span-2 flex flex-col gap-1 text-xs font-medium">
+                        <TextareaController
+                          control={control}
+                          name="content"
+                          label="Nội dung KPI/OKR"
+                          required
+                          rules={{ required: true, maxLength: 500 }}
+                          className="space-y-1 text-xs font-medium"
+                          maxLength={500}
+                          textareaClassName={cn(XL_TEXTAREA, 'max-w-none min-h-[96px]')}
+                          placeholder="Mô tả chỉ tiêu…"
+                        />
+                      </label>
+                    </>
+                  ) : (
+                    <>
+                      <SelectController
+                        control={control}
+                        name="managerEvalStatus"
+                        label="QL đánh giá"
+                        className="space-y-1 text-xs font-medium"
+                      >
+                        <option value="">—</option>
+                        <option value="OK">OK</option>
+                        <option value="NOT">NOT</option>
+                      </SelectController>
+
+                      <label className="md:col-span-2 flex flex-col gap-1 text-xs font-medium">
+                        <TextareaController
+                          control={control}
+                          name="managerReviewNote"
+                          label="QL nhận xét"
+                          className="space-y-1 text-xs font-medium"
+                          textareaClassName={cn(XL_TEXTAREA, 'max-w-none min-h-[96px]')}
+                          placeholder="Nhận xét…"
+                        />
+                      </label>
+                    </>
+                  )}
+
+                  <div className="flex items-end justify-end gap-2 md:col-span-2">
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                      Hủy
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className={cn(XL_SAVE_BTN, 'px-4 py-2 text-sm')}
+                    >
+                      {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        ) : null}
+      </TableCell>
+    </TableRow>
   )
 }
 
@@ -933,13 +844,24 @@ function groupAssignmentsByUser(assignments: PerformanceAssignment[]) {
   return m
 }
 
+/** Đưa user được ưu tiên (vd. chính mình) lên đầu danh sách chọn nhân sự. */
+function orderUserEntriesFirst(
+  entries: [string, PerformanceAssignment[]][],
+  userId: string | undefined
+): [string, PerformanceAssignment[]][] {
+  if (!userId?.trim()) return entries
+  const i = entries.findIndex(([id]) => id === userId)
+  if (i <= 0) return entries
+  const copy = [...entries]
+  const [first] = copy.splice(i, 1)
+  return first ? [first, ...copy] : entries
+}
+
 function AssignmentTableSingleUser({
   userId,
   rows,
   members,
   canEditTeam,
-  canEditOwn,
-  currentUserId,
   onRefresh,
   leaderMode,
 }: {
@@ -947,8 +869,6 @@ function AssignmentTableSingleUser({
   rows: PerformanceAssignment[]
   members: TeamMemberRow[]
   canEditTeam: boolean
-  canEditOwn: boolean
-  currentUserId: string | undefined
   onRefresh: () => void
   leaderMode: 'planning' | 'results'
 }) {
@@ -964,17 +884,17 @@ function AssignmentTableSingleUser({
         </span>
       </div>
       <div className="max-h-[min(75vh,720px)] overflow-auto">
-        <table className="w-full min-w-[1520px] border-collapse text-left">
-          <thead>
-            <tr>
+        <Table className="w-full min-w-[880px] border-collapse text-left">
+          <TableHeader>
+            <TableRow>
               {ASSIGN_TABLE_HEAD.map((h) => (
-                <th key={h || 'act'} className={cn(XL_TH, 'min-w-[84px]')}>
-                  {h || ' '}
-                </th>
+                <TableHead key={h} className={cn(XL_TH, 'min-w-[84px]')}>
+                  {h}
+                </TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((r, idx) =>
               canEditTeam ? (
                 <LeaderAssignmentRow
@@ -983,20 +903,14 @@ function AssignmentTableSingleUser({
                   mode={leaderMode}
                   onSaved={onRefresh}
                   rowStripe={idx % 2 === 1}
+                  canEditTeam={canEditTeam}
                 />
               ) : (
-                <ReadOnlyAssignmentRow
-                  key={r.id}
-                  row={r}
-                  currentUserId={currentUserId}
-                  canEditOwn={canEditOwn}
-                  onRefresh={onRefresh}
-                  rowStripe={idx % 2 === 1}
-                />
+                <ReadOnlyAssignmentRow key={r.id} row={r} rowStripe={idx % 2 === 1} />
               )
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   )
@@ -1006,30 +920,33 @@ function UserAssignmentWorkbench({
   byUser,
   members,
   canEditTeam,
-  canEditOwn,
-  currentUserId,
   onRefresh,
   leaderMode,
   emptyText,
+  prioritizeUserId,
 }: {
   byUser: Map<string, PerformanceAssignment[]>
   members: TeamMemberRow[]
   canEditTeam: boolean
-  canEditOwn: boolean
-  currentUserId: string | undefined
   onRefresh: () => void
   leaderMode: 'planning' | 'results'
   emptyText: string
+  /** User hiển thị mặc định & xếp đầu danh sách (thường là user đang đăng nhập). */
+  prioritizeUserId?: string
 }) {
-  const userEntries = useMemo(() => Array.from(byUser.entries()), [byUser])
+  const userEntries = useMemo(
+    () => orderUserEntriesFirst(Array.from(byUser.entries()), prioritizeUserId),
+    [byUser, prioritizeUserId]
+  )
   const [selectedUserId, setSelectedUserId] = useState<string>('')
 
   if (!userEntries.length) {
     return <p className="text-sm text-muted-foreground">{emptyText}</p>
   }
 
-  const activeUserId =
-    selectedUserId && byUser.has(selectedUserId) ? selectedUserId : userEntries[0]![0]
+  const defaultUserId =
+    prioritizeUserId && byUser.has(prioritizeUserId) ? prioritizeUserId : userEntries[0]![0]
+  const activeUserId = selectedUserId && byUser.has(selectedUserId) ? selectedUserId : defaultUserId
   const activeRows = byUser.get(activeUserId) ?? []
 
   return (
@@ -1062,10 +979,15 @@ function UserAssignmentWorkbench({
                 <div className="mt-1 truncate text-xs text-muted-foreground">
                   {memberMetaForDisplay(members, uid)}
                 </div>
-                <div className="mt-2">
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
                     {rows.length} hạng mục
                   </span>
+                  {prioritizeUserId && uid === prioritizeUserId ? (
+                    <span className="inline-flex rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                      Bạn
+                    </span>
+                  ) : null}
                 </div>
               </button>
             )
@@ -1077,8 +999,6 @@ function UserAssignmentWorkbench({
         rows={activeRows}
         members={members}
         canEditTeam={canEditTeam}
-        canEditOwn={canEditOwn}
-        currentUserId={currentUserId}
         onRefresh={onRefresh}
         leaderMode={leaderMode}
       />
@@ -1094,7 +1014,6 @@ function WorkReportPanel({
   members,
   membersLoading,
   canEditTeam,
-  canEditOwn,
   selectedTeamId,
   year,
   month,
@@ -1110,7 +1029,6 @@ function WorkReportPanel({
   members: TeamMemberRow[]
   membersLoading: boolean
   canEditTeam: boolean
-  canEditOwn: boolean
   selectedTeamId: string
   year: number
   month: number
@@ -1130,7 +1048,7 @@ function WorkReportPanel({
 
   if (!selectedTeamId) {
     return (
-      <Card>
+      <Card className="border-dashed border-primary/25 bg-muted/20">
         <CardContent className="pt-6 text-sm text-muted-foreground">
           Chọn team để xem báo cáo công việc.
         </CardContent>
@@ -1139,7 +1057,7 @@ function WorkReportPanel({
   }
   if (loadingThis || loadingPrev || membersLoading) {
     return (
-      <Card>
+      <Card className={cn(CARD_ENTRANCE)}>
         <CardHeader>
           <CardTitle className="text-base">Đang tải dữ liệu KPI/OKR</CardTitle>
         </CardHeader>
@@ -1155,7 +1073,17 @@ function WorkReportPanel({
   return (
     <div className="space-y-10">
       <section id="planning-section" className="scroll-mt-24">
-        <Card>
+        <Card
+          className={cn(
+            'relative overflow-hidden border-blue-200/45 shadow-lg shadow-blue-500/10 transition-shadow duration-300 motion-safe:hover:shadow-xl motion-safe:hover:shadow-blue-500/15 dark:border-blue-900/40',
+            CARD_ENTRANCE
+          )}
+          style={{ animationDelay: '90ms' }}
+        >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-400"
+          />
           <CardContent className="space-y-4 pt-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
@@ -1167,10 +1095,16 @@ function WorkReportPanel({
                 </p>
               </div>
               <div className="flex gap-2">
-                <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700">
+                <Badge
+                  variant="outline"
+                  className="border-blue-300 bg-blue-50 text-blue-700 shadow-sm transition-transform motion-safe:hover:scale-[1.02]"
+                >
                   {assignmentsThisMonth.length} hạng mục
                 </Badge>
-                <Badge variant="muted" className="bg-indigo-100 text-indigo-700">
+                <Badge
+                  variant="muted"
+                  className="bg-indigo-100 text-indigo-700 shadow-sm transition-transform motion-safe:hover:scale-[1.02]"
+                >
                   {byUserThis.size} nhân sự
                 </Badge>
               </div>
@@ -1189,18 +1123,27 @@ function WorkReportPanel({
               byUser={byUserThis}
               members={members}
               canEditTeam={canEditTeam}
-              canEditOwn={canEditOwn}
-              currentUserId={currentUserId}
               onRefresh={onRefresh}
               leaderMode="planning"
               emptyText="Chưa có mục tiêu cho tháng này."
+              prioritizeUserId={currentUserId}
             />
           </CardContent>
         </Card>
       </section>
 
       <section id="results-section" className="scroll-mt-24 pt-2">
-        <Card>
+        <Card
+          className={cn(
+            'relative overflow-hidden border-emerald-200/45 shadow-lg shadow-emerald-500/10 transition-shadow duration-300 motion-safe:hover:shadow-xl motion-safe:hover:shadow-emerald-500/15 dark:border-emerald-900/40',
+            CARD_ENTRANCE
+          )}
+          style={{ animationDelay: '140ms' }}
+        >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500"
+          />
           <CardContent className="space-y-4 pt-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
@@ -1214,11 +1157,14 @@ function WorkReportPanel({
               <div className="flex gap-2">
                 <Badge
                   variant="outline"
-                  className="border-emerald-300 bg-emerald-50 text-emerald-700"
+                  className="border-emerald-300 bg-emerald-50 text-emerald-700 shadow-sm transition-transform motion-safe:hover:scale-[1.02]"
                 >
                   {assignmentsPrevMonth.length} hạng mục
                 </Badge>
-                <Badge variant="muted" className="bg-teal-100 text-teal-700">
+                <Badge
+                  variant="muted"
+                  className="bg-teal-100 text-teal-700 shadow-sm transition-transform motion-safe:hover:scale-[1.02]"
+                >
                   {byUserPrev.size} nhân sự
                 </Badge>
               </div>
@@ -1227,11 +1173,10 @@ function WorkReportPanel({
               byUser={byUserPrev}
               members={members}
               canEditTeam={canEditTeam}
-              canEditOwn={canEditOwn}
-              currentUserId={currentUserId}
               onRefresh={onRefresh}
               leaderMode="results"
               emptyText={`Chưa có dữ liệu KPI/OKR cho tháng ${prevMonth}/${prevYear}.`}
+              prioritizeUserId={currentUserId}
             />
           </CardContent>
         </Card>
@@ -1270,13 +1215,7 @@ function MiniCreateForm({
       return defaultAssigneeId
     return members[0]?.userId ?? ''
   }, [members, defaultAssigneeId])
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    reset,
-    formState: { isSubmitting },
-  } = useForm<MiniCreateValues>({
+  const form = useForm<MiniCreateValues>({
     defaultValues: {
       assigneeUserId: fallbackAssigneeId,
       content: '',
@@ -1288,6 +1227,13 @@ function MiniCreateForm({
     },
     mode: 'onChange',
   })
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { isSubmitting },
+  } = form
 
   useEffect(() => {
     setValue('assigneeUserId', fallbackAssigneeId, { shouldValidate: true })
@@ -1330,7 +1276,7 @@ function MiniCreateForm({
       <DialogTrigger asChild>
         <Button
           type="button"
-          className="w-fit bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white hover:from-blue-700 hover:to-indigo-700"
+          className="w-fit bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg shadow-blue-600/35 transition-[transform,box-shadow] hover:from-blue-700 hover:to-indigo-700 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-xl motion-safe:active:translate-y-0"
         >
           Thêm mục tiêu KPI/OKR
         </Button>
@@ -1342,112 +1288,114 @@ function MiniCreateForm({
             Nhập nhanh theo kỳ T{month}/{year}. Sau khi tạo xong, dữ liệu sẽ tự làm mới.
           </DialogDescription>
         </DialogHeader>
-        <form className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" onSubmit={onSubmit}>
-          <SelectController
-            control={control}
-            name="kind"
-            label="Hạng mục"
-            required
-            rules={{ required: true }}
-            className="space-y-1 text-xs font-medium"
-          >
-            <option value="KPI">KPI</option>
-            <option value="OKR">OKR</option>
-          </SelectController>
-          <SelectController
-            control={control}
-            name="assigneeUserId"
-            label="Nhân sự nhận việc"
-            required
-            rules={{ required: true }}
-            className="space-y-1 text-xs font-medium"
-          >
-            {members.map((m) => (
-              <option key={m.userId} value={m.userId}>
-                {(m.displayName ?? m.email ?? 'chưa có tên').slice(0, 48)}
-              </option>
-            ))}
-          </SelectController>
-          <SelectController
-            control={control}
-            name="priority"
-            label="Thứ tự ưu tiên"
-            required
-            rules={{ required: true, min: 0, max: 99 }}
-            className="space-y-1 text-xs font-medium"
-            onChange={(e) => {
-              const v = Number(e.target.value)
-              setValue('priority', v, { shouldValidate: true, shouldDirty: true })
-            }}
-          >
-            <option value={0}>Không xếp (0)</option>
-            <option value={1}>Ưu tiên 1</option>
-            <option value={2}>Ưu tiên 2</option>
-            <option value={3}>Ưu tiên 3</option>
-          </SelectController>
-          <label className="flex flex-col gap-1 text-xs font-medium">
-            Ngày xét KPI/OKR
-            <Controller
+        <Form {...form}>
+          <form className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" onSubmit={onSubmit}>
+            <SelectController
               control={control}
-              name="kpiSetAt"
-              render={({ field }) => (
-                <input type="date" className={cn(XL_INPUT, 'h-9')} {...field} />
-              )}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-medium">
-            Chỉ số mục tiêu
-            <Controller
-              control={control}
-              name="targetMetric"
-              render={({ field }) => (
-                <input
-                  type="text"
-                  className={cn(XL_INPUT, 'h-9 tabular-nums')}
-                  placeholder="VD: 60"
-                  {...field}
-                />
-              )}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-medium">
-            Người đánh giá (tùy chọn)
-            <Controller
-              control={control}
-              name="reviewerName"
-              render={({ field }) => (
-                <input
-                  type="text"
-                  className={cn(XL_INPUT, 'h-9')}
-                  placeholder="Họ tên QL / Leader"
-                  {...field}
-                />
-              )}
-            />
-          </label>
-          <label className="md:col-span-2 lg:col-span-3 flex flex-col gap-1 text-xs font-medium">
-            <TextareaController
-              control={control}
-              name="content"
-              label="Nội dung KPI/OKR"
+              name="kind"
+              label="Hạng mục"
               required
-              rules={{ required: true, maxLength: 500 }}
-              className="md:col-span-2 lg:col-span-3 space-y-1 text-xs font-medium"
-              maxLength={500}
-              textareaClassName={cn(XL_TEXTAREA, 'max-w-none min-h-[80px]')}
-              placeholder="Mô tả chỉ tiêu…"
-            />
-          </label>
-          <div className="flex items-end md:col-span-2 lg:col-span-3">
-            <Button
-              type="submit"
-              disabled={isSubmitting || !members.length}
-              className={cn(XL_SAVE_BTN, 'px-4 py-2 text-sm')}
+              rules={{ required: true }}
+              className="space-y-1 text-xs font-medium"
             >
-              {isSubmitting ? 'Đang tạo...' : 'Tạo mới'}
-            </Button>
-          </div>
-        </form>
+              <option value="KPI">KPI</option>
+              <option value="OKR">OKR</option>
+            </SelectController>
+            <SelectController
+              control={control}
+              name="assigneeUserId"
+              label="Nhân sự nhận việc"
+              required
+              rules={{ required: true }}
+              className="space-y-1 text-xs font-medium"
+            >
+              {members.map((m) => (
+                <option key={m.userId} value={m.userId}>
+                  {(m.displayName ?? m.email ?? 'chưa có tên').slice(0, 48)}
+                </option>
+              ))}
+            </SelectController>
+            <SelectController
+              control={control}
+              name="priority"
+              label="Thứ tự ưu tiên"
+              required
+              rules={{ required: true, min: 0, max: 99 }}
+              className="space-y-1 text-xs font-medium"
+              onChange={(e) => {
+                const v = Number(e.target.value)
+                setValue('priority', v, { shouldValidate: true, shouldDirty: true })
+              }}
+            >
+              <option value={0}>Không xếp (0)</option>
+              <option value={1}>Ưu tiên 1</option>
+              <option value={2}>Ưu tiên 2</option>
+              <option value={3}>Ưu tiên 3</option>
+            </SelectController>
+            <label className="flex flex-col gap-1 text-xs font-medium">
+              Ngày xét KPI/OKR
+              <Controller
+                control={control}
+                name="kpiSetAt"
+                render={({ field }) => (
+                  <input type="date" className={cn(XL_INPUT, 'h-9')} {...field} />
+                )}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium">
+              Chỉ số mục tiêu
+              <Controller
+                control={control}
+                name="targetMetric"
+                render={({ field }) => (
+                  <input
+                    type="text"
+                    className={cn(XL_INPUT, 'h-9 tabular-nums')}
+                    placeholder="VD: 60"
+                    {...field}
+                  />
+                )}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium">
+              Người đánh giá (tùy chọn)
+              <Controller
+                control={control}
+                name="reviewerName"
+                render={({ field }) => (
+                  <input
+                    type="text"
+                    className={cn(XL_INPUT, 'h-9')}
+                    placeholder="Họ tên QL / Leader"
+                    {...field}
+                  />
+                )}
+              />
+            </label>
+            <label className="md:col-span-2 lg:col-span-3 flex flex-col gap-1 text-xs font-medium">
+              <TextareaController
+                control={control}
+                name="content"
+                label="Nội dung KPI/OKR"
+                required
+                rules={{ required: true, maxLength: 500 }}
+                className="md:col-span-2 lg:col-span-3 space-y-1 text-xs font-medium"
+                maxLength={500}
+                textareaClassName={cn(XL_TEXTAREA, 'max-w-none min-h-[80px]')}
+                placeholder="Mô tả chỉ tiêu…"
+              />
+            </label>
+            <div className="flex items-end md:col-span-2 lg:col-span-3">
+              <Button
+                type="submit"
+                disabled={isSubmitting || !members.length}
+                className={cn(XL_SAVE_BTN, 'px-4 py-2 text-sm')}
+              >
+                {isSubmitting ? 'Đang tạo...' : 'Tạo mới'}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )
@@ -1461,6 +1409,8 @@ function SummaryPanel({
   month,
   canRecalculate,
   onRecalculated,
+  prioritizeAssigneeUserId,
+  viewerVariant,
 }: {
   rows: PerformanceSummaryRow[]
   loading: boolean
@@ -1469,8 +1419,38 @@ function SummaryPanel({
   month: number
   canRecalculate: boolean
   onRecalculated: () => void
+  /** Leader: đưa dòng user này lên đầu. Member: chỉ hiển thị dòng của user này. */
+  prioritizeAssigneeUserId?: string
+  viewerVariant: 'leader' | 'member'
 }) {
   const [recalcBusy, setRecalcBusy] = useState(false)
+  const displayRows = useMemo(() => {
+    const selfId = prioritizeAssigneeUserId?.trim()
+    if (viewerVariant === 'member') {
+      if (!selfId) return [] as PerformanceSummaryRow[]
+      return rows.filter((r) => r.assigneeUserId === selfId)
+    }
+    if (!selfId) return rows
+    const i = rows.findIndex((r) => r.assigneeUserId === selfId)
+    if (i <= 0) return rows
+    const next = [...rows]
+    const [mine] = next.splice(i, 1)
+    return mine ? [mine, ...next] : rows
+  }, [rows, viewerVariant, prioritizeAssigneeUserId])
+
+  const emptyBlurb = useMemo(() => {
+    if (viewerVariant !== 'member') {
+      return `Chưa có bản tổng hợp cho kỳ T${month}/${year} — nhập đánh giá tháng trước rồi bấm tính lại (leader).`
+    }
+    if (!prioritizeAssigneeUserId?.trim()) {
+      return 'Không thể hiển thị tổng hợp cá nhân (thiếu thông tin tài khoản).'
+    }
+    if (rows.length > 0) {
+      return `Chưa có bản tổng hợp cho bạn trong kỳ T${month}/${year}. Khi leader đã tính lại tổng hợp, dòng của bạn sẽ hiển thị tại đây.`
+    }
+    return `Chưa có bản tổng hợp cho kỳ T${month}/${year}.`
+  }, [viewerVariant, rows.length, prioritizeAssigneeUserId, month, year])
+
   const rowName = useCallback(
     (r: PerformanceSummaryRow) =>
       r.assigneeDisplayName?.trim() || r.assigneeEmail?.trim() || 'Thành viên',
@@ -1479,10 +1459,10 @@ function SummaryPanel({
 
   if (loading) {
     return (
-      <Card id="summary-section" className="scroll-mt-24">
+      <Card id="summary-section" className={cn('scroll-mt-24', CARD_ENTRANCE)}>
         <CardHeader>
           <CardTitle className="text-base font-bold text-amber-700">
-            Tổng chỉ số hiệu suất
+            Tổng chỉ số hiệu suất — T{month}/{year}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -1492,12 +1472,22 @@ function SummaryPanel({
       </Card>
     )
   }
-  if (rows.length === 0) {
+  if (displayRows.length === 0) {
     return (
-      <Card id="summary-section" className="scroll-mt-24">
+      <Card
+        id="summary-section"
+        className={cn(
+          'scroll-mt-24 relative overflow-hidden border-amber-200/50 shadow-md shadow-amber-500/10 dark:border-amber-900/35',
+          CARD_ENTRANCE
+        )}
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-400"
+        />
         <CardHeader>
           <CardTitle className="text-base font-bold text-amber-700">
-            Tổng chỉ số hiệu suất
+            Tổng chỉ số hiệu suất — T{month}/{year}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -1506,7 +1496,7 @@ function SummaryPanel({
               <Button
                 type="button"
                 disabled={recalcBusy}
-                className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 shadow-sm transition-[transform,box-shadow] hover:bg-amber-100 disabled:opacity-50 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0"
                 onClick={() => {
                   setRecalcBusy(true)
                   void performanceApi
@@ -1519,17 +1509,27 @@ function SummaryPanel({
               </Button>
             </div>
           )}
-          <p className="text-sm text-muted-foreground">
-            Chưa có bản tổng hợp — thêm KPI hoặc bấm tính lại (leader).
-          </p>
+          <p className="text-sm text-muted-foreground">{emptyBlurb}</p>
         </CardContent>
       </Card>
     )
   }
   return (
-    <Card id="summary-section" className="scroll-mt-24">
+    <Card
+      id="summary-section"
+      className={cn(
+        'scroll-mt-24 relative overflow-hidden border-amber-200/50 shadow-lg shadow-amber-500/10 transition-shadow duration-300 motion-safe:hover:shadow-xl motion-safe:hover:shadow-amber-500/15 dark:border-amber-900/35',
+        CARD_ENTRANCE
+      )}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-400"
+      />
       <CardHeader>
-        <CardTitle className="text-base font-bold text-amber-700">Tổng chỉ số hiệu suất</CardTitle>
+        <CardTitle className="text-base font-bold text-amber-700">
+          Tổng chỉ số hiệu suất — T{month}/{year}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {canRecalculate && teamId && !isMockApiEnabled() && (
@@ -1537,7 +1537,7 @@ function SummaryPanel({
             <Button
               type="button"
               disabled={recalcBusy}
-              className="rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 text-sm font-semibold text-white hover:from-amber-600 hover:to-orange-600 disabled:opacity-50"
+              className="rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-amber-600/30 transition-[transform,box-shadow] hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-lg motion-safe:active:translate-y-0"
               onClick={() => {
                 setRecalcBusy(true)
                 void performanceApi
@@ -1546,7 +1546,7 @@ function SummaryPanel({
                   .finally(() => setRecalcBusy(false))
               }}
             >
-              Tính lại tổng hợp (A–D)
+              Tính lại tổng hợp (A–C)
             </Button>
           </div>
         )}
@@ -1572,8 +1572,8 @@ function SummaryPanel({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((r) => (
-              <TableRow key={r.id}>
+            {displayRows.map((r) => (
+              <TableRow key={r.id} className="transition-colors motion-safe:hover:bg-muted/40">
                 <TableCell>
                   <div className="font-medium">{rowName(r)}</div>
                   <div className="text-xs text-muted-foreground">
@@ -1670,7 +1670,7 @@ function FormPanel({
   if (!teamId) return <p className="text-sm text-muted-foreground">Chọn team.</p>
   if (q.isLoading) {
     return (
-      <Card id="form-section" className="scroll-mt-24">
+      <Card id="form-section" className={cn('scroll-mt-24', CARD_ENTRANCE)}>
         <CardHeader>
           <CardTitle className="text-base">Form câu hỏi</CardTitle>
         </CardHeader>
@@ -1683,7 +1683,17 @@ function FormPanel({
   }
 
   return (
-    <Card id="form-section" className="scroll-mt-24">
+    <Card
+      id="form-section"
+      className={cn(
+        'scroll-mt-24 relative overflow-hidden border-fuchsia-200/45 shadow-lg shadow-fuchsia-500/10 transition-shadow duration-300 motion-safe:hover:shadow-xl motion-safe:hover:shadow-fuchsia-500/15 dark:border-fuchsia-900/40',
+        CARD_ENTRANCE
+      )}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fuchsia-500 via-purple-500 to-indigo-500"
+      />
       <CardHeader>
         <CardTitle className="text-base font-bold text-fuchsia-700">
           Form câu hỏi theo tháng
