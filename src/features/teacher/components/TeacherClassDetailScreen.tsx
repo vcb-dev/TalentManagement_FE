@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ArrowLeft, CalendarDays, Filter, Pencil, Search, Trash2, X } from 'lucide-react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
@@ -139,6 +139,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   })
   const filterKey = useWatch({ control: filtersForm.control, name: 'filterKey' }) ?? 'all'
   const searchDraft = useWatch({ control: filtersForm.control, name: 'searchDraft' }) ?? ''
+  const deferredSearchDraft = useDeferredValue(searchDraft)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
@@ -159,7 +160,10 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     getValues: getScheduleValues,
     reset: resetScheduleValues,
   } = scheduleForm
-  const scheduleValues = useWatch({ control: scheduleControl })
+  const [startHour, startMinute, endHour, endMinute] = useWatch({
+    control: scheduleControl,
+    name: ['startHour', 'startMinute', 'endHour', 'endMinute'],
+  })
 
   const scheduleInitial = {
     dateIso: '',
@@ -234,7 +238,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   }
 
   const filtered = useMemo(() => {
-    const q = searchDraft.trim().toLowerCase()
+    const q = deferredSearchDraft.trim().toLowerCase()
     return members.filter((m) => {
       const hasResult = m.examResult != null && m.examResult.length > 0
       if (filterKey === 'has' && !hasResult) return false
@@ -246,7 +250,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
         (m.examResult?.toLowerCase().includes(q) ?? false)
       )
     })
-  }, [members, filterKey, searchDraft])
+  }, [members, filterKey, deferredSearchDraft])
 
   const total = members.length
   const page = 1
@@ -476,8 +480,8 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     <TimeHmField
                       label="Giờ bắt đầu"
                       idPrefix="schedule-start"
-                      hour={scheduleValues.startHour ?? '08'}
-                      minute={scheduleValues.startMinute ?? '00'}
+                      hour={startHour ?? '08'}
+                      minute={startMinute ?? '00'}
                       onHourChange={(v) => scheduleForm.setValue('startHour', v)}
                       onMinuteChange={(v) => scheduleForm.setValue('startMinute', v)}
                       onHourBlur={() =>
@@ -496,8 +500,8 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     <TimeHmField
                       label="Giờ kết thúc"
                       idPrefix="schedule-end"
-                      hour={scheduleValues.endHour ?? '10'}
-                      minute={scheduleValues.endMinute ?? '00'}
+                      hour={endHour ?? '10'}
+                      minute={endMinute ?? '00'}
                       onHourChange={(v) => scheduleForm.setValue('endHour', v)}
                       onMinuteChange={(v) => scheduleForm.setValue('endMinute', v)}
                       onHourBlur={() =>

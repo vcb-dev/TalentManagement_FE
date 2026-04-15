@@ -107,11 +107,14 @@ export function GraderPhanLopScreen({
   const classifyForm = useForm<{ selected: ExamResultCode; comment: string }>({
     defaultValues: { selected: 'DAT', comment: '' },
   })
-  const selected = useWatch({ control: classifyForm.control, name: 'selected' }) ?? 'DAT'
-  const comment = useWatch({ control: classifyForm.control, name: 'comment' }) ?? ''
+  const [selected, comment] = useWatch({
+    control: classifyForm.control,
+    name: ['selected', 'comment'],
+  })
+  const selectedValue = selected ?? 'DAT'
 
   const onConfirm = () => {
-    const c = comment.trim()
+    const c = (comment ?? '').trim()
     if (!c) {
       toast.error('Vui lòng nhập nhận xét tổng kết kỳ thi')
       return
@@ -187,7 +190,7 @@ export function GraderPhanLopScreen({
                 </h2>
                 <div className="space-y-3">
                   {OPTIONS.map((opt, idx) => {
-                    const active = selected === opt.result
+                    const active = selectedValue === opt.result
                     return (
                       <label
                         key={opt.result}

@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { ArrowRight, Building2, Calendar, Clock, Link2, MapPin, Shield } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { ProgressStar } from '@/components/shared/ProgressStar/ProgressStar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -73,6 +73,7 @@ export function ExamResultsSchedule({
 }: ExamResultsScheduleProps) {
   const filterForm = useForm<{ yearFilter: string }>({ defaultValues: { yearFilter: 'all' } })
   const yearFilter = useWatch({ control: filterForm.control, name: 'yearFilter' }) ?? 'all'
+  const deferredYearFilter = useDeferredValue(yearFilter)
   const [questionBankClassIds, setQuestionBankClassIds] = useState<Set<string>>(new Set())
   const [submittedExamIds, setSubmittedExamIds] = useState<Set<string>>(new Set())
 
@@ -116,10 +117,10 @@ export function ExamResultsSchedule({
   }, [completed])
 
   const filteredCompleted = useMemo(() => {
-    if (yearFilter === 'all') return completed
-    const y = Number.parseInt(yearFilter, 10)
+    if (deferredYearFilter === 'all') return completed
+    const y = Number.parseInt(deferredYearFilter, 10)
     return completed.filter((e) => new Date(e.scheduledAt).getFullYear() === y)
-  }, [completed, yearFilter])
+  }, [completed, deferredYearFilter])
 
   const upcomingShow = upcoming.slice(0, 2)
 

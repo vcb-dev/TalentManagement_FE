@@ -993,10 +993,10 @@ function EditTab({
   const orgSel = useHrOrgSelectOptions()
   const orgDisabled = !canEdit || isSaving
   const inactive = employee.status === 'INACTIVE'
-  const editRole = useWatch({ control, name: 'role' })
-  const editDepartmentId = useWatch({ control, name: 'departmentId' })
-  const editTeamId = useWatch({ control, name: 'teamId' })
-  const editSecondaryTeamId = useWatch({ control, name: 'secondaryTeamId' })
+  const [editRole, editDepartmentId, editTeamId, editSecondaryTeamId] = useWatch({
+    control,
+    name: ['role', 'departmentId', 'teamId', 'secondaryTeamId'],
+  })
 
   const departmentOptions = useMemo(() => {
     const base = [...orgSel.departments]
@@ -1020,7 +1020,7 @@ function EditTab({
 
   const secondaryTeamOptions = useMemo(() => {
     const base = [...orgSel.allTeams]
-    const v = editSecondaryTeamId.trim()
+    const v = (editSecondaryTeamId ?? '').trim()
     if (v && !base.some((o) => o.value === v)) {
       return [{ value: v, label: `Nhóm phụ (${shortId(v)})` }, ...base]
     }

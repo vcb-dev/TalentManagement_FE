@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useDeferredValue, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import {
@@ -84,6 +84,7 @@ function TeamAccordion({
   const [editing, setEditing] = useState(false)
   const searchForm = useForm<{ search: string }>({ defaultValues: { search: '' } })
   const search = useWatch({ control: searchForm.control, name: 'search' }) ?? ''
+  const deferredSearch = useDeferredValue(search)
 
   const { data: empData, isLoading } = useQuery({
     queryKey: ['team-members', team.id],
@@ -96,8 +97,8 @@ function TeamAccordion({
   })
 
   const members = empData?.data ?? []
-  const filtered = search.trim()
-    ? members.filter((m) => m.name.toLowerCase().includes(search.toLowerCase()))
+  const filtered = deferredSearch.trim()
+    ? members.filter((m) => m.name.toLowerCase().includes(deferredSearch.toLowerCase()))
     : members
 
   return (
@@ -189,7 +190,7 @@ function TeamAccordion({
               <div className="flex flex-col items-center gap-2 py-6 text-gray-400">
                 <UserCircle2 className="h-8 w-8 text-gray-200" />
                 <span className="text-sm">
-                  {search ? 'Không tìm thấy thành viên' : 'Chưa có thành viên nào'}
+                  {deferredSearch ? 'Không tìm thấy thành viên' : 'Chưa có thành viên nào'}
                 </span>
               </div>
             ) : (

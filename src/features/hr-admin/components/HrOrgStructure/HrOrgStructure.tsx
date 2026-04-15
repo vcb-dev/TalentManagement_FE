@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { toast } from 'sonner'
@@ -212,6 +212,7 @@ export function HrOrgStructure() {
   const [expandedDeptIds, setExpandedDeptIds] = useState<Set<string>>(new Set())
   const [membersTeamId, setMembersTeamId] = useState<string | null>(null)
   const [orgSearch, setOrgSearch] = useState('')
+  const deferredOrgSearch = useDeferredValue(orgSearch)
   const [expandedAllTeamsByDept, setExpandedAllTeamsByDept] = useState<Record<string, boolean>>({})
 
   const queryClient = useQueryClient()
@@ -379,7 +380,7 @@ export function HrOrgStructure() {
     return { deptCount, teamCount, memberCount }
   }, [departments])
   const filteredDepartments = useMemo(() => {
-    const q = orgSearch.trim().toLowerCase()
+    const q = deferredOrgSearch.trim().toLowerCase()
     if (!q) return departments
     return departments
       .map((dept) => {
@@ -391,7 +392,7 @@ export function HrOrgStructure() {
         return { ...dept, teams }
       })
       .filter((dept) => dept.teams.length > 0)
-  }, [departments, orgSearch])
+  }, [departments, deferredOrgSearch])
 
   let activeMemberContext: { team: OrgAdminTeamRow; deptName: string } | null = null
   if (membersTeamId) {
@@ -970,9 +971,10 @@ function TeamMembersPanel({
   loading: boolean
 }) {
   const [tableFilter, setTableFilter] = useState('')
+  const deferredTableFilter = useDeferredValue(tableFilter)
 
   const filteredMembers = useMemo(() => {
-    const q = tableFilter.trim().toLowerCase()
+    const q = deferredTableFilter.trim().toLowerCase()
     if (!q) return members
     return members.filter((m) => {
       const name = (m.displayName ?? '').toLowerCase()
@@ -988,7 +990,7 @@ function TeamMembersPanel({
         st.includes(q)
       )
     })
-  }, [members, tableFilter])
+  }, [members, deferredTableFilter])
 
   return (
     <>

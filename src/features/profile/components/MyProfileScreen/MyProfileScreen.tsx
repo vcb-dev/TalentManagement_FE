@@ -1,6 +1,6 @@
 import { useId, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
 import { toast } from 'sonner'
 import { Building2, Upload } from 'lucide-react'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
@@ -279,6 +279,101 @@ function renderField(
   )
 }
 
+function ProfileIdentityCard({
+  control,
+  u,
+  role,
+  currentLevelTitle,
+  portraitUploading,
+  avatarUploadInputId,
+  onPortraitFile,
+  fallbackUserName,
+  fallbackUserEmail,
+}: {
+  control: Control<EditRecord>
+  u: MeUserSelf
+  role: keyof typeof ROLE_LABEL_VI
+  currentLevelTitle: string
+  portraitUploading: boolean
+  avatarUploadInputId: string
+  onPortraitFile: (file: File) => void
+  fallbackUserName: string
+  fallbackUserEmail: string
+}) {
+  const watchedDisplayName = useWatch({ control, name: 'displayName' }) ?? ''
+  const watchedFullNameLegal = useWatch({ control, name: 'fullNameLegal' }) ?? ''
+  const portraitRef = useWatch({ control, name: 'portraitRef' }) ?? ''
+
+  const displayName = useMemo(() => {
+    const fromForm = watchedDisplayName.trim() || watchedFullNameLegal.trim()
+    if (fromForm) return fromForm
+    return u.displayName?.trim() || u.fullNameLegal?.trim() || fallbackUserName || 'Nhân viên'
+  }, [fallbackUserName, u, watchedDisplayName, watchedFullNameLegal])
+
+  const email = useMemo(() => {
+    return u.email?.trim() || fallbackUserEmail || '—'
+  }, [u, fallbackUserEmail])
+
+  return (
+    <div className="flex flex-wrap items-center gap-4">
+      <div className="group relative shrink-0">
+        <EmployeeAvatar
+          name={displayName}
+          photoUrl={resolvePublicAssetUrl(portraitRef)}
+          className="h-20 w-20 shrink-0 rounded-3xl text-lg ring-4 ring-primary/30 shadow-[0_18px_30px_-20px_hsl(var(--primary)/0.75)] md:h-24 md:w-24 md:text-xl"
+        />
+        <input
+          id={avatarUploadInputId}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="sr-only"
+          disabled={portraitUploading}
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) onPortraitFile(f)
+            e.target.value = ''
+          }}
+        />
+        <Button
+          asChild
+          size="sm"
+          variant="outline"
+          className={cn(
+            'absolute -bottom-2 left-1/2 h-8 -translate-x-1/2 rounded-full px-3 text-xs shadow-sm',
+            portraitUploading && 'pointer-events-none'
+          )}
+        >
+          <label htmlFor={avatarUploadInputId}>
+            <Upload className="h-3.5 w-3.5" aria-hidden />
+            {portraitUploading ? 'Đang tải…' : 'Đổi ảnh'}
+          </label>
+        </Button>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-2xl font-semibold leading-tight">{displayName}</p>
+        <p className="mt-1 text-base text-muted-foreground">{email}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <span className="rounded-full bg-primary/10 px-3 py-1 font-semibold text-primary ring-1 ring-primary/15">
+            {ROLE_LABEL_VI[role]}
+          </span>
+          <span className="flex items-center gap-1 text-muted-foreground">
+            <Building2 className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+            <span>
+              {u.departmentName?.trim() || '—'} · {u.teamGroup?.trim() || '—'}
+            </span>
+          </span>
+        </div>
+        <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/[0.06] px-3 py-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Cấp độ
+          </span>
+          <span className="text-sm font-semibold text-primary">{currentLevelTitle}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf }) {
   const user = useAuthStore((s) => s.user)
   const { mutate: patchUser, isPending: patchPending } = usePatchMeUser()
@@ -286,9 +381,6 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
   const { control, handleSubmit } = useForm<EditRecord>({
     defaultValues: userToEdit(u),
   })
-  const watchedDisplayName = useWatch({ control, name: 'displayName' }) ?? ''
-  const watchedFullNameLegal = useWatch({ control, name: 'fullNameLegal' }) ?? ''
-  const portraitRef = useWatch({ control, name: 'portraitRef' }) ?? ''
 
   const role = user?.role ?? 'MEMBER'
   const totalStars = Math.max(page.currentLevel.totalStars || 0, 0)
@@ -306,18 +398,6 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
       page.currentLevel.currentStarIndex,
     ]
   )
-
-  const displayName = useMemo(() => {
-    const fromForm = watchedDisplayName.trim() || watchedFullNameLegal.trim()
-    if (fromForm) return fromForm
-    if (!u) return user?.name ?? 'Nhân viên'
-    return u.displayName?.trim() || u.fullNameLegal?.trim() || user?.name || 'Nhân viên'
-  }, [u, user?.name, watchedDisplayName, watchedFullNameLegal])
-
-  const email = useMemo(() => {
-    if (!u) return user?.email ?? '—'
-    return u.email?.trim() || user?.email || '—'
-  }, [u, user?.email])
 
   const onPortraitFile = (file: File) => {
     uploadPortrait(file, {
@@ -374,64 +454,17 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
 
         <section className="rounded-3xl border border-primary/15 bg-card/95 p-4 shadow-[var(--shadow-card)] backdrop-blur-[2px] md:p-5">
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(16rem,0.85fr)] xl:items-start">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="group relative shrink-0">
-                <EmployeeAvatar
-                  name={displayName}
-                  photoUrl={resolvePublicAssetUrl(portraitRef)}
-                  className="h-20 w-20 shrink-0 rounded-3xl text-lg ring-4 ring-primary/30 shadow-[0_18px_30px_-20px_hsl(var(--primary)/0.75)] md:h-24 md:w-24 md:text-xl"
-                />
-                <input
-                  id={avatarUploadInputId}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  className="sr-only"
-                  disabled={portraitUploading}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) onPortraitFile(f)
-                    e.target.value = ''
-                  }}
-                />
-                <Button
-                  asChild
-                  size="sm"
-                  variant="outline"
-                  className={cn(
-                    'absolute -bottom-2 left-1/2 h-8 -translate-x-1/2 rounded-full px-3 text-xs shadow-sm',
-                    portraitUploading && 'pointer-events-none'
-                  )}
-                >
-                  <label htmlFor={avatarUploadInputId}>
-                    <Upload className="h-3.5 w-3.5" aria-hidden />
-                    {portraitUploading ? 'Đang tải…' : 'Đổi ảnh'}
-                  </label>
-                </Button>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-2xl font-semibold leading-tight">{displayName}</p>
-                <p className="mt-1 text-base text-muted-foreground">{email}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                  <span className="rounded-full bg-primary/10 px-3 py-1 font-semibold text-primary ring-1 ring-primary/15">
-                    {ROLE_LABEL_VI[role]}
-                  </span>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Building2 className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                    <span>
-                      {u.departmentName?.trim() || '—'} · {u.teamGroup?.trim() || '—'}
-                    </span>
-                  </span>
-                </div>
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/[0.06] px-3 py-1.5">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Cấp độ
-                  </span>
-                  <span className="text-sm font-semibold text-primary">
-                    {page.currentLevel.title}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <ProfileIdentityCard
+              control={control}
+              u={u}
+              role={role}
+              currentLevelTitle={page.currentLevel.title}
+              portraitUploading={portraitUploading}
+              avatarUploadInputId={avatarUploadInputId}
+              onPortraitFile={onPortraitFile}
+              fallbackUserName={user?.name ?? ''}
+              fallbackUserEmail={user?.email ?? ''}
+            />
 
             <aside className="rounded-2xl border border-border/70 bg-background/85 p-4">
               <div className="flex items-center gap-3">

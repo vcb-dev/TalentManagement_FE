@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Eye, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -129,11 +137,13 @@ export function MemberClassesPanel() {
   })
   const startDate = useWatch({ control: filterForm.control, name: 'startDate' }) ?? ''
   const endDate = useWatch({ control: filterForm.control, name: 'endDate' }) ?? ''
+  const deferredStartDate = useDeferredValue(startDate)
+  const deferredEndDate = useDeferredValue(endDate)
   const scheduleRange = useMemo(() => {
-    const s = startDate.trim() || undefined
-    const e = endDate.trim() || undefined
+    const s = deferredStartDate.trim() || undefined
+    const e = deferredEndDate.trim() || undefined
     return { startDate: s, endDate: e }
-  }, [startDate, endDate])
+  }, [deferredStartDate, deferredEndDate])
   const hasDateFilter = Boolean(scheduleRange.startDate || scheduleRange.endDate)
 
   const { data, isLoading, isError, isFetching } = useMyEnrolledClass(scheduleRange)

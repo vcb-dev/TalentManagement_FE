@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Filter, Search } from 'lucide-react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
@@ -28,6 +28,7 @@ export function TeacherClassesScreen() {
   })
   const filterKey = useWatch({ control: filtersForm.control, name: 'filterKey' }) ?? 'all'
   const searchDraft = useWatch({ control: filtersForm.control, name: 'searchDraft' }) ?? ''
+  const deferredSearchDraft = useDeferredValue(searchDraft)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -52,7 +53,7 @@ export function TeacherClassesScreen() {
   )
 
   const filtered = useMemo(() => {
-    const q = searchDraft.trim().toLowerCase()
+    const q = deferredSearchDraft.trim().toLowerCase()
     return rows.filter((c) => {
       if (filterKey !== 'all' && c.track !== filterKey) return false
       if (!q) return true
@@ -62,7 +63,7 @@ export function TeacherClassesScreen() {
         c.periodBadge.toLowerCase().includes(q)
       )
     })
-  }, [rows, filterKey, searchDraft])
+  }, [rows, filterKey, deferredSearchDraft])
 
   const totalPages = 1
   const page = 1
