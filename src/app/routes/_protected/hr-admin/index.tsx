@@ -4,8 +4,8 @@ import { HrEmployeeList } from '@/features/hr-admin/components/HrEmployeeList'
 import { requireEmployeeDirectoryAccess } from '@/features/hr-admin/requireHrAdmin'
 
 const hrAdminSearchSchema = z.object({
-  page: z.coerce.number().int().positive().optional().default(1),
-  pageSize: z.coerce.number().int().min(12).max(100).optional().default(48),
+  page: z.coerce.number().int().positive().optional(),
+  pageSize: z.coerce.number().int().min(12).max(100).optional(),
   role: z.enum(['MEMBER', 'LEADER', 'MANAGER', 'HR', 'TEACHER', 'BOD']).optional(),
   status: z.enum(['active', 'inactive', 'probation', 'reserved']).optional(),
   mode: z.enum(['view', 'edit']).optional(),
