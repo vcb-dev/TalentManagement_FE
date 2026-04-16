@@ -7,7 +7,6 @@ import {
   Building2,
   ChevronDown,
   FolderOpen,
-  Hash,
   Pencil,
   Plus,
   Search,
@@ -48,7 +47,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/auth'
@@ -427,244 +425,226 @@ export function HrOrgStructure() {
   }
 
   return (
-    <TooltipProvider delayDuration={280}>
-      <div className="mx-auto max-w-[1400px] px-3 py-8 md:px-4">
-        <div
-          className={cn(
-            'mb-8 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-accent/10 to-transparent p-4 md:p-6',
-            PAGE_HEADER_SURFACE
-          )}
-        >
-          <h1 className={PAGE_HEADER_TITLE}>
-            <span className={PAGE_HEADER_GRADIENT}>Phòng ban & Team</span>
-          </h1>
-          <p className={PAGE_HEADER_DESCRIPTION}>
-            Một phòng ban có thể có nhiều team (theo dữ liệu nhân sự). Mở rộng từng phòng ban để xem
-            team và thành viên. Nếu có quyền{' '}
-            <code className="rounded bg-muted px-1">hr.org.manage</code>, bạn có thể thêm / sửa /
-            xóa phòng ban và team qua API{' '}
-            <code className="rounded bg-muted px-1">/org/departments</code> và{' '}
-            <code className="rounded bg-muted px-1">/org/teams</code>.
-          </p>
+    <div className="mx-auto max-w-[1400px] px-3 py-8 md:px-4">
+      <div
+        className={cn(
+          'mb-8 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-accent/10 to-transparent p-4 md:p-6',
+          PAGE_HEADER_SURFACE
+        )}
+      >
+        <h1 className={PAGE_HEADER_TITLE}>
+          <span className={PAGE_HEADER_GRADIENT}>Phòng ban & Team</span>
+        </h1>
+        <p className={PAGE_HEADER_DESCRIPTION}>
+          Một phòng ban có thể có nhiều team (theo dữ liệu nhân sự). Mở rộng từng phòng ban để xem
+          team và thành viên. Nếu có quyền{' '}
+          <code className="rounded bg-muted px-1">hr.org.manage</code>, bạn có thể thêm / sửa / xóa
+          phòng ban và team qua API <code className="rounded bg-muted px-1">/org/departments</code>{' '}
+          và <code className="rounded bg-muted px-1">/org/teams</code>.
+        </p>
+      </div>
+
+      {mockBanner && (
+        <Card className="mb-6 border-amber-500/40 bg-amber-500/10 shadow-none">
+          <CardContent className="py-3 text-sm text-amber-950 dark:text-amber-100">
+            Đang bật mock API — quản trị org thật cần tắt mock và gọi server.
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Card className="border-primary/30 bg-gradient-to-br from-primary/15 via-card to-card shadow-sm">
+            <CardContent className="py-3">
+              <p className="text-xs font-medium text-primary">Phòng ban</p>
+              <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
+                {summary.deptCount}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border-accent/40 bg-gradient-to-br from-accent/15 via-card to-card shadow-sm">
+            <CardContent className="py-3">
+              <p className="text-xs font-medium text-accent">Team</p>
+              <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
+                {summary.teamCount}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border-blue-500/35 bg-gradient-to-br from-blue-500/15 via-card to-card shadow-sm">
+            <CardContent className="py-3">
+              <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                Thành viên (gộp team)
+              </p>
+              <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
+                {summary.memberCount}
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
-        {mockBanner && (
-          <Card className="mb-6 border-amber-500/40 bg-amber-500/10 shadow-none">
-            <CardContent className="py-3 text-sm text-amber-950 dark:text-amber-100">
-              Đang bật mock API — quản trị org thật cần tắt mock và gọi server.
+        <div className="flex flex-col gap-2 rounded-xl border border-accent/25 bg-gradient-to-r from-card via-muted/25 to-accent/10 p-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={orgSearch}
+              onChange={(e) => setOrgSearch(e.target.value)}
+              className="pl-9"
+              placeholder="Tìm phòng ban, team..."
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {canManageOrg && !mockBanner ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={openCreateDepartment}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Phòng ban
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="rounded-full"
+                  onClick={openCreateTeam}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Team
+                </Button>
+              </>
+            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="border-primary/35 text-primary hover:bg-primary/10"
+              onClick={() => setExpandedDeptIds(new Set(filteredDepartments.map((d) => d.id)))}
+            >
+              Mở tất cả
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-accent hover:bg-accent/15 hover:text-accent"
+              onClick={() => setExpandedDeptIds(new Set())}
+            >
+              Thu gọn
+            </Button>
+          </div>
+        </div>
+
+        {departments.length === 0 && !structureQ.isLoading && (
+          <Card className="border-dashed border-2 border-border/80 bg-muted/15 shadow-none">
+            <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                <FolderOpen className="h-8 w-8" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-base font-medium text-foreground">Chưa có phòng ban</p>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  Dữ liệu sẽ hiển thị khi đã có phòng ban trên hệ thống.
+                </p>
+              </div>
             </CardContent>
           </Card>
         )}
-
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Card className="border-primary/30 bg-gradient-to-br from-primary/15 via-card to-card shadow-sm">
-              <CardContent className="py-3">
-                <p className="text-xs font-medium text-primary">Phòng ban</p>
-                <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
-                  {summary.deptCount}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-accent/40 bg-gradient-to-br from-accent/15 via-card to-card shadow-sm">
-              <CardContent className="py-3">
-                <p className="text-xs font-medium text-accent">Team</p>
-                <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
-                  {summary.teamCount}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-blue-500/35 bg-gradient-to-br from-blue-500/15 via-card to-card shadow-sm">
-              <CardContent className="py-3">
-                <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                  Thành viên (gộp team)
-                </p>
-                <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
-                  {summary.memberCount}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex flex-col gap-2 rounded-xl border border-accent/25 bg-gradient-to-r from-card via-muted/25 to-accent/10 p-3 sm:flex-row sm:items-center">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={orgSearch}
-                onChange={(e) => setOrgSearch(e.target.value)}
-                className="pl-9"
-                placeholder="Tìm phòng ban, team, mã ID..."
-              />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {canManageOrg && !mockBanner ? (
-                <>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={openCreateDepartment}
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" />
-                    Phòng ban
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="rounded-full"
-                    onClick={openCreateTeam}
-                  >
-                    <Plus className="mr-1 h-3.5 w-3.5" />
-                    Team
-                  </Button>
-                </>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="border-primary/35 text-primary hover:bg-primary/10"
-                onClick={() => setExpandedDeptIds(new Set(filteredDepartments.map((d) => d.id)))}
-              >
-                Mở tất cả
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="text-accent hover:bg-accent/15 hover:text-accent"
-                onClick={() => setExpandedDeptIds(new Set())}
-              >
-                Thu gọn
-              </Button>
-            </div>
-          </div>
-
-          {departments.length === 0 && !structureQ.isLoading && (
-            <Card className="border-dashed border-2 border-border/80 bg-muted/15 shadow-none">
-              <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
-                  <FolderOpen className="h-8 w-8" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-base font-medium text-foreground">Chưa có phòng ban</p>
-                  <p className="max-w-md text-sm text-muted-foreground">
-                    Dữ liệu sẽ hiển thị khi đã có phòng ban trên hệ thống.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          <Accordion
-            type="multiple"
-            className="space-y-4"
-            value={Array.from(expandedDeptIds)}
-            onValueChange={(vals) => setExpandedDeptIds(new Set(vals))}
-          >
-            {filteredDepartments.map((dept) => (
-              <AccordionItem
-                key={dept.id}
-                value={dept.id}
-                className="overflow-hidden rounded-2xl border border-primary/15 bg-card shadow-sm transition-[box-shadow,ring,border-color] data-[state=open]:border-primary/35 data-[state=open]:shadow-[0_10px_40px_rgb(106_90_224/0.16)] data-[state=open]:ring-1 data-[state=open]:ring-primary/20"
-              >
-                <div className="flex items-start gap-1 border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-accent/10 px-2 py-3 sm:gap-2 sm:px-4 sm:py-4">
-                  <AccordionTrigger className="-mx-1 flex min-w-0 flex-1 justify-start gap-0 py-1 sm:-mx-0">
-                    <ChevronDown className="chevron-accordion mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
-                    <Building2 className="mx-2 mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                    <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5 text-left">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className="text-base font-semibold leading-snug">{dept.name}</span>
-                        {!dept.isActive && (
-                          <Badge
-                            variant="outline"
-                            className="border-destructive/50 bg-destructive/10 text-destructive"
-                          >
-                            Ngưng dùng
-                          </Badge>
-                        )}
-                      </span>
-                      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">
+        <Accordion
+          type="multiple"
+          className="space-y-4"
+          value={Array.from(expandedDeptIds)}
+          onValueChange={(vals) => setExpandedDeptIds(new Set(vals))}
+        >
+          {filteredDepartments.map((dept) => (
+            <AccordionItem
+              key={dept.id}
+              value={dept.id}
+              className="overflow-hidden rounded-2xl border border-primary/15 bg-card shadow-sm transition-[box-shadow,ring,border-color] data-[state=open]:border-primary/35 data-[state=open]:shadow-[0_10px_40px_rgb(106_90_224/0.16)] data-[state=open]:ring-1 data-[state=open]:ring-primary/20"
+            >
+              <div className="flex items-start gap-1 border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-accent/10 px-2 py-3 sm:gap-2 sm:px-4 sm:py-4">
+                <AccordionTrigger className="-mx-1 flex min-w-0 flex-1 justify-start gap-0 py-1 sm:-mx-0">
+                  <ChevronDown className="chevron-accordion mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
+                  <Building2 className="mx-2 mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5 text-left">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-base font-semibold leading-snug">{dept.name}</span>
+                      {!dept.isActive && (
                         <Badge
                           variant="outline"
-                          className="border-primary/30 bg-primary/10 font-normal tabular-nums text-primary"
+                          className="border-destructive/50 bg-destructive/10 text-destructive"
                         >
-                          {dept.teams.length} team
+                          Ngưng dùng
                         </Badge>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-flex cursor-help items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 font-mono text-[11px]">
-                              <Hash className="h-3 w-3" />
-                              {dept.id.slice(0, 8)}…
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="bottom"
-                            className="max-w-sm break-all font-mono text-xs"
-                          >
-                            {dept.id}
-                          </TooltipContent>
-                        </Tooltip>
-                      </span>
+                      )}
                     </span>
-                  </AccordionTrigger>
-                  {canManageOrg && !mockBanner ? (
-                    <div
-                      className="flex shrink-0 items-center gap-0.5 pt-0.5"
-                      onClick={(e) => e.stopPropagation()}
-                      role="presentation"
+                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">
+                      <Badge
+                        variant="outline"
+                        className="border-primary/30 bg-primary/10 font-normal tabular-nums text-primary"
+                      >
+                        {dept.teams.length} team
+                      </Badge>
+                    </span>
+                  </span>
+                </AccordionTrigger>
+                {canManageOrg && !mockBanner ? (
+                  <div
+                    className="flex shrink-0 items-center gap-0.5 pt-0.5"
+                    onClick={(e) => e.stopPropagation()}
+                    role="presentation"
+                  >
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      aria-label="Sửa phòng ban"
+                      onClick={() => {
+                        setCrudName(dept.name)
+                        setCrudModal({ kind: 'dept-edit', dept })
+                      }}
                     >
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                        aria-label="Sửa phòng ban"
-                        onClick={() => {
-                          setCrudName(dept.name)
-                          setCrudModal({ kind: 'dept-edit', dept })
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-destructive/80 hover:text-destructive"
-                        aria-label="Xóa phòng ban"
-                        onClick={() => setCrudModal({ kind: 'dept-delete', dept })}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : null}
-                </div>
-                <AccordionContent className="px-0">
-                  <div className="overflow-x-auto">
-                    <Table className="min-w-[640px]">
-                      <TableHeader>
-                        <TableRow className="border-b border-border/80 bg-gradient-to-r from-primary/10 via-muted/20 to-accent/10 hover:bg-muted/25">
-                          <TableHead className="w-[28%] pl-6">Team</TableHead>
-                          <TableHead className="max-w-[260px]">Leader</TableHead>
-                          <TableHead className="w-[108px]">Thành viên</TableHead>
-                          <TableHead className="pr-6 text-right">Thao tác</TableHead>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-destructive/80 hover:text-destructive"
+                      aria-label="Xóa phòng ban"
+                      onClick={() => setCrudModal({ kind: 'dept-delete', dept })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+              <AccordionContent className="px-0">
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[640px]">
+                    <TableHeader>
+                      <TableRow className="border-b border-border/80 bg-gradient-to-r from-primary/10 via-muted/20 to-accent/10 hover:bg-muted/25">
+                        <TableHead className="w-[28%] pl-6">Team</TableHead>
+                        <TableHead className="max-w-[260px]">Leader</TableHead>
+                        <TableHead className="w-[108px]">Thành viên</TableHead>
+                        <TableHead className="pr-6 text-right">Thao tác</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dept.teams.length === 0 ? (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={4} className="py-12 text-center">
+                            <p className="text-sm text-muted-foreground">
+                              Chưa có team trong phòng ban này.
+                            </p>
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dept.teams.length === 0 ? (
-                          <TableRow className="hover:bg-transparent">
-                            <TableCell colSpan={4} className="py-12 text-center">
-                              <p className="text-sm text-muted-foreground">
-                                Chưa có team trong phòng ban này.
-                              </p>
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          (expandedAllTeamsByDept[dept.id]
-                            ? dept.teams
-                            : dept.teams.slice(0, 6)
-                          ).map((team) => (
+                      ) : (
+                        (expandedAllTeamsByDept[dept.id] ? dept.teams : dept.teams.slice(0, 6)).map(
+                          (team) => (
                             <FragmentTeamRow
                               key={team.id}
                               team={team}
@@ -678,113 +658,113 @@ export function HrOrgStructure() {
                               }}
                               onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
                             />
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                    {dept.teams.length > 6 ? (
-                      <div className="flex justify-center border-t border-border/60 bg-gradient-to-r from-primary/5 to-accent/5 px-4 py-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            setExpandedAllTeamsByDept((prev) => ({
-                              ...prev,
-                              [dept.id]: !prev[dept.id],
-                            }))
-                          }
-                        >
-                          {expandedAllTeamsByDept[dept.id]
-                            ? 'Thu gọn team'
-                            : `Xem thêm ${dept.teams.length - 6} team`}
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-          {orgSearch.trim() && filteredDepartments.length === 0 ? (
-            <Card className="border-dashed border-border/80 bg-muted/15 shadow-none">
-              <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                Không có phòng ban hoặc team nào khớp từ khóa tìm kiếm.
-              </CardContent>
-            </Card>
-          ) : null}
-        </div>
-
-        {activeMemberContext && membersTeamId && (
-          <Dialog
-            open
-            onOpenChange={(open) => {
-              if (!open) setMembersTeamId(null)
-            }}
-          >
-            <DialogContent className="flex h-[min(92vh,900px)] w-[calc(100vw-1rem)] max-w-5xl flex-col gap-0 overflow-hidden p-0">
-              <TeamMembersPanel
-                teamName={activeMemberContext.team.name}
-                deptLabel={activeMemberContext.deptName}
-                members={membersQ.data?.members ?? []}
-                loading={membersQ.isLoading}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
-
-        <OrgCrudNameDialog
-          open={Boolean(
-            crudModal &&
-            (crudModal.kind === 'dept-create' ||
-              crudModal.kind === 'dept-edit' ||
-              crudModal.kind === 'team-create' ||
-              crudModal.kind === 'team-edit')
-          )}
-          title={
-            crudModal?.kind === 'dept-create'
-              ? 'Thêm phòng ban'
-              : crudModal?.kind === 'dept-edit'
-                ? 'Sửa phòng ban'
-                : crudModal?.kind === 'team-create'
-                  ? 'Thêm team'
-                  : crudModal?.kind === 'team-edit'
-                    ? 'Sửa team'
-                    : ''
-          }
-          description={
-            crudModal?.kind === 'team-create'
-              ? 'Team được tạo trong danh mục chung; hiển thị dưới phòng ban khi có nhân sự gán đúng phòng ban + team.'
-              : undefined
-          }
-          name={crudName}
-          onNameChange={setCrudName}
-          pending={orgCrudPending}
-          onClose={() => {
-            setCrudModal(null)
-            setCrudName('')
-          }}
-          onSubmit={submitNameModal}
-        />
-
-        <OrgCrudConfirmDialog
-          open={Boolean(
-            crudModal && (crudModal.kind === 'dept-delete' || crudModal.kind === 'team-delete')
-          )}
-          title={crudModal?.kind === 'dept-delete' ? 'Xóa phòng ban?' : 'Xóa team?'}
-          body={
-            crudModal?.kind === 'dept-delete'
-              ? `Xóa phòng ban «${crudModal.dept.name}»? Thao tác có thể thất bại nếu còn nhân sự tham chiếu.`
-              : crudModal?.kind === 'team-delete'
-                ? `Xóa team «${crudModal.team.name}»? Thao tác có thể thất bại nếu còn nhân sự tham chiếu.`
-                : ''
-          }
-          pending={orgCrudPending}
-          onClose={() => setCrudModal(null)}
-          onConfirm={submitDeleteModal}
-        />
+                          )
+                        )
+                      )}
+                    </TableBody>
+                  </Table>
+                  {dept.teams.length > 6 ? (
+                    <div className="flex justify-center border-t border-border/60 bg-gradient-to-r from-primary/5 to-accent/5 px-4 py-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          setExpandedAllTeamsByDept((prev) => ({
+                            ...prev,
+                            [dept.id]: !prev[dept.id],
+                          }))
+                        }
+                      >
+                        {expandedAllTeamsByDept[dept.id]
+                          ? 'Thu gọn team'
+                          : `Xem thêm ${dept.teams.length - 6} team`}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+        {orgSearch.trim() && filteredDepartments.length === 0 ? (
+          <Card className="border-dashed border-border/80 bg-muted/15 shadow-none">
+            <CardContent className="py-10 text-center text-sm text-muted-foreground">
+              Không có phòng ban hoặc team nào khớp từ khóa tìm kiếm.
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
-    </TooltipProvider>
+
+      {activeMemberContext && membersTeamId && (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setMembersTeamId(null)
+          }}
+        >
+          <DialogContent className="flex h-[min(92vh,900px)] w-[calc(100vw-1rem)] max-w-5xl flex-col gap-0 overflow-hidden p-0">
+            <TeamMembersPanel
+              teamName={activeMemberContext.team.name}
+              deptLabel={activeMemberContext.deptName}
+              members={membersQ.data?.members ?? []}
+              loading={membersQ.isLoading}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      <OrgCrudNameDialog
+        open={Boolean(
+          crudModal &&
+          (crudModal.kind === 'dept-create' ||
+            crudModal.kind === 'dept-edit' ||
+            crudModal.kind === 'team-create' ||
+            crudModal.kind === 'team-edit')
+        )}
+        title={
+          crudModal?.kind === 'dept-create'
+            ? 'Thêm phòng ban'
+            : crudModal?.kind === 'dept-edit'
+              ? 'Sửa phòng ban'
+              : crudModal?.kind === 'team-create'
+                ? 'Thêm team'
+                : crudModal?.kind === 'team-edit'
+                  ? 'Sửa team'
+                  : ''
+        }
+        description={
+          crudModal?.kind === 'team-create'
+            ? 'Team được tạo trong danh mục chung; hiển thị dưới phòng ban khi có nhân sự gán đúng phòng ban + team.'
+            : undefined
+        }
+        name={crudName}
+        onNameChange={setCrudName}
+        pending={orgCrudPending}
+        onClose={() => {
+          setCrudModal(null)
+          setCrudName('')
+        }}
+        onSubmit={submitNameModal}
+      />
+
+      <OrgCrudConfirmDialog
+        open={Boolean(
+          crudModal && (crudModal.kind === 'dept-delete' || crudModal.kind === 'team-delete')
+        )}
+        title={crudModal?.kind === 'dept-delete' ? 'Xóa phòng ban?' : 'Xóa team?'}
+        body={
+          crudModal?.kind === 'dept-delete'
+            ? `Xóa phòng ban «${crudModal.dept.name}»? Thao tác có thể thất bại nếu còn nhân sự tham chiếu.`
+            : crudModal?.kind === 'team-delete'
+              ? `Xóa team «${crudModal.team.name}»? Thao tác có thể thất bại nếu còn nhân sự tham chiếu.`
+              : ''
+        }
+        pending={orgCrudPending}
+        onClose={() => setCrudModal(null)}
+        onConfirm={submitDeleteModal}
+      />
+    </div>
   )
 }
 
@@ -814,20 +794,6 @@ function FragmentTeamRow({
     >
       <TableCell className="pl-6 align-top">
         <div className="font-semibold text-foreground">{team.name}</div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-md bg-muted/50 px-1.5 py-0.5 text-left font-mono text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <Hash className="h-3 w-3 shrink-0 opacity-70" />
-              <span className="truncate">{team.id.slice(0, 10)}…</span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="max-w-md break-all font-mono text-xs">
-            ID đầy đủ: {team.id}
-          </TooltipContent>
-        </Tooltip>
       </TableCell>
       <TableCell className="max-w-[260px] align-top text-sm text-muted-foreground">—</TableCell>
       <TableCell className="align-top">

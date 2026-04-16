@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { MoreHorizontal, Plus, X } from 'lucide-react'
-import { Award, Calendar, GraduationCap } from '@/components/icons'
+import { MoreHorizontal, X } from 'lucide-react'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { toast } from 'sonner'
 import { CARD_ENTRANCE } from '@/lib/cardMotion'
@@ -13,7 +12,9 @@ import {
   roleBadgeClass,
   roleShortLabel,
   employeeDeptDisplay,
+  employeeTeamsDisplay,
   shortId,
+  statusLabelVi,
   statusDotClass,
 } from './employeeListUtils'
 
@@ -43,6 +44,33 @@ function statusBadge(status: EmployeeEntity['status']) {
   }
 }
 
+function fmtDateTime(value: string | null | undefined): string {
+  if (!value?.trim()) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return value
+  return d.toLocaleString('vi-VN')
+}
+
+function fmtDate(value: string | null | undefined): string {
+  if (!value?.trim()) return '—'
+  const v = value.trim()
+  // Ho tro du lieu cu dang Unix timestamp (seconds/ms) de tranh hien thi so tho.
+  if (/^\d{10,13}$/.test(v)) {
+    const raw = Number(v)
+    if (!Number.isNaN(raw)) {
+      const ts = v.length === 10 ? raw * 1000 : raw
+      const d = new Date(ts)
+      if (!Number.isNaN(d.getTime())) return d.toLocaleDateString('vi-VN')
+    }
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    return new Date(`${v}T12:00:00`).toLocaleDateString('vi-VN')
+  }
+  const d = new Date(v)
+  if (Number.isNaN(d.getTime())) return v
+  return d.toLocaleDateString('vi-VN')
+}
+
 export interface EmployeeDetailSheetProps {
   employee: EmployeeEntity | null
   onClose: () => void
@@ -67,15 +95,16 @@ export function EmployeeDetailSheet({
   const tierLine = levelPillText(employee.currentLevel)
   const positionLabel = ROLE_LABEL_VI[employee.role]
   const idShort = shortId(employee.id)
+  const teamLine = employeeTeamsDisplay(employee)
 
   return (
     <aside
       className={cn(
-        'flex w-[min(100vw-1rem,380px)] min-w-[280px] max-w-[420px] flex-shrink-0 flex-col overflow-hidden border-l border-border bg-card shadow-[var(--shadow-card)]',
+        'fixed bottom-0 right-0 top-16 z-40 flex w-[min(100vw,380px)] min-w-[280px] max-w-[420px] flex-shrink-0 flex-col overflow-hidden border-l border-primary/20 bg-gradient-to-b from-indigo-50/50 via-card to-cyan-50/40 shadow-[var(--shadow-card)]',
         CARD_ENTRANCE
       )}
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-border px-6 pb-4 pt-6">
+      <div className="flex shrink-0 items-center justify-between border-b border-primary/15 bg-gradient-to-r from-white via-indigo-50/60 to-cyan-50/50 px-6 pb-4 pt-6">
         <h2 className="text-lg font-bold tracking-tight text-foreground">Chi tiết nhân sự</h2>
         <div className="flex items-center gap-0.5">
           <button
@@ -101,8 +130,12 @@ export function EmployeeDetailSheet({
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="relative mb-4">
             <div
+              className="pointer-events-none absolute -inset-2 rounded-3xl bg-gradient-to-br from-primary/20 to-cyan-400/20 blur-xl"
+              aria-hidden
+            />
+            <div
               className={cn(
-                'flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-primary/20 text-3xl font-extrabold shadow-lg ring-2 ring-background',
+                'relative flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-primary/20 text-3xl font-extrabold shadow-lg ring-2 ring-background',
                 avatarClassForRole(employee.role)
               )}
             >
@@ -116,12 +149,12 @@ export function EmployeeDetailSheet({
             />
           </div>
           <h3 className="mb-1 text-xl font-bold text-foreground">{employee.name}</h3>
-          <p className="mb-3 text-sm font-medium text-primary">{positionLabel}</p>
+          <p className="mb-3 text-sm font-semibold text-indigo-600">{positionLabel}</p>
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[10px] font-bold tracking-tight text-primary">
+            <span className="rounded-full border border-indigo-300/40 bg-indigo-500/12 px-3 py-1 text-[10px] font-bold tracking-tight text-indigo-700">
               {tierLine}
             </span>
-            <span className="rounded-full bg-muted px-3 py-1 text-[10px] font-bold text-muted-foreground">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-slate-600">
               ID: {idShort.toUpperCase()}
             </span>
             {statusBadge(employee.status)}
@@ -139,7 +172,7 @@ export function EmployeeDetailSheet({
               {roleShortLabel(employee.role)}
             </span>
             <span
-              className="max-w-[140px] truncate text-[10px] text-muted-foreground"
+              className="max-w-[150px] truncate rounded-full bg-primary/[0.08] px-2 py-0.5 text-[10px] font-semibold text-primary-700"
               title={employeeDeptDisplay(employee)}
             >
               {employeeDeptDisplay(employee)}
@@ -148,49 +181,50 @@ export function EmployeeDetailSheet({
         </div>
 
         <div className="mb-8 grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-border bg-muted/40 p-4">
+          <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] to-indigo-500/[0.06] p-4">
             <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Cấp sao
             </span>
-            <span className="text-xl font-bold text-primary">{employee.currentStar}/6</span>
+            <span className="text-xl font-bold text-indigo-600">{employee.currentStar}/6</span>
           </div>
-          <div className="rounded-xl border border-border bg-muted/40 p-4">
+          <div className="rounded-xl border border-cyan-300/35 bg-gradient-to-br from-cyan-500/[0.08] to-blue-500/[0.06] p-4">
             <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Tiến độ
             </span>
-            <span className="text-xl font-bold text-primary">{xpPct}%</span>
+            <span className="text-xl font-bold text-cyan-700">{xpPct}%</span>
           </div>
         </div>
 
         <div className="mb-8">
-          <h4 className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Thành tích (demo)
+          <h4 className="mb-3 text-xs font-bold uppercase tracking-widest text-indigo-700/80">
+            Thông tin từ API
           </h4>
-          <div className="flex flex-wrap gap-2">
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary"
-              title="Cấp bậc"
-            >
-              <Award className="size-5 shrink-0" strokeWidth={2} aria-hidden />
+          <div className="grid grid-cols-1 gap-2.5">
+            <div className="rounded-lg border border-indigo-200/70 bg-white/85 px-3 py-2 shadow-sm">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Phòng ban</p>
+              <p className="text-xs font-semibold text-foreground">
+                {employeeDeptDisplay(employee)}
+              </p>
             </div>
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground"
-              title="Tham gia"
-            >
-              <Calendar className="size-5 shrink-0" strokeWidth={2} aria-hidden />
+            <div className="rounded-lg border border-cyan-200/70 bg-white/85 px-3 py-2 shadow-sm">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Team</p>
+              <p className="text-xs font-semibold text-foreground">{teamLine}</p>
             </div>
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground"
-              title="Học tập"
-            >
-              <GraduationCap className="size-5 shrink-0" strokeWidth={2} aria-hidden />
+            <div className="rounded-lg border border-emerald-200/70 bg-white/85 px-3 py-2 shadow-sm">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Số điện thoại
+              </p>
+              <p className="text-xs font-semibold text-foreground">{employee.phone || '—'}</p>
             </div>
-            <div
-              className="flex h-10 items-center justify-center gap-0.5 rounded-lg border border-primary/20 bg-primary/10 px-2.5 text-xs font-bold text-primary"
-              title="Thêm thành tích (demo)"
-            >
-              <Plus className="size-4 shrink-0" strokeWidth={2.5} aria-hidden />
-              <span>3</span>
+            <div className="rounded-lg border border-violet-200/70 bg-white/85 px-3 py-2 shadow-sm">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ngày sinh</p>
+              <p className="text-xs font-semibold text-foreground">{fmtDate(employee.birthDate)}</p>
+            </div>
+            <div className="rounded-lg border border-amber-200/75 bg-white/85 px-3 py-2 shadow-sm">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Ngày bắt đầu
+              </p>
+              <p className="text-xs font-semibold text-foreground">{fmtDate(employee.startDate)}</p>
             </div>
           </div>
         </div>
@@ -208,7 +242,7 @@ export function EmployeeDetailSheet({
               <div>
                 <p className="text-xs font-bold text-foreground">Cập nhật hồ sơ</p>
                 <p className="text-[10px] text-muted-foreground">
-                  {new Date(employee.updatedAt).toLocaleString('vi-VN')}
+                  {fmtDateTime(employee.updatedAt)}
                 </p>
               </div>
             </div>
@@ -218,8 +252,22 @@ export function EmployeeDetailSheet({
                 aria-hidden
               />
               <div>
-                <p className="text-xs font-medium text-foreground">Đồng bộ từ hệ thống HRM</p>
-                <p className="text-[10px] text-muted-foreground">Theo dữ liệu API</p>
+                <p className="text-xs font-medium text-foreground">Tạo hồ sơ</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {fmtDateTime(employee.createdAt)}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div
+                className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40"
+                aria-hidden
+              />
+              <div>
+                <p className="text-xs font-medium text-foreground">Trạng thái hiện tại</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {statusLabelVi(employee.status)}
+                </p>
               </div>
             </div>
           </div>

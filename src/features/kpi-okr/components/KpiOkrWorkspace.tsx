@@ -78,6 +78,7 @@ export type KpiOkrWorkspaceProps = {
 
 export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspaceProps) {
   const user = useAuthStore((s) => s.user)
+  const isMemberView = variant === 'member'
   const qc = useQueryClient()
   const treeQ = useHrOrgTree()
   const { year: y0, month: m0 } = nowYm()
@@ -95,7 +96,18 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     return false
   }, [variant, eff])
 
-  const departments = useMemo(() => treeQ.data?.departments ?? [], [treeQ.data])
+  const departments = useMemo(() => {
+    const allDepartments = treeQ.data?.departments ?? []
+    if (!isMemberView) return allDepartments
+    const memberTeamIds = new Set((user?.teamIds ?? []).filter(Boolean))
+    if (!memberTeamIds.size) return []
+    return allDepartments
+      .map((dept) => ({
+        ...dept,
+        teams: dept.teams.filter((team) => memberTeamIds.has(team.id)),
+      }))
+      .filter((dept) => dept.teams.length > 0)
+  }, [treeQ.data, isMemberView, user?.teamIds])
   const selectedDept = useMemo(
     () => departments.find((d) => d.teams.some((t) => t.id === selectedTeamId)),
     [departments, selectedTeamId]
@@ -104,14 +116,22 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
 
   useEffect(() => {
     if (selectedTeamId) return
-    const ids = user?.teamIds ?? []
-    const first = ids[0]
+    const ids = user?.teamIds?.filter(Boolean) ?? []
+    const firstMemberTeamId = ids.find((id) =>
+      departments.some((d) => d.teams.some((t) => t.id === id))
+    )
+    const fallbackTeamId = departments[0]?.teams[0]?.id
     const id = window.setTimeout(() => {
-      if (first) setSelectedTeamId(first)
-      else if (departments[0]?.teams[0]?.id) setSelectedTeamId(departments[0].teams[0].id)
+      if (firstMemberTeamId) {
+        setSelectedTeamId(firstMemberTeamId)
+        return
+      }
+      if (!isMemberView && fallbackTeamId) {
+        setSelectedTeamId(fallbackTeamId)
+      }
     }, 0)
     return () => window.clearTimeout(id)
-  }, [user?.teamIds, departments, selectedTeamId])
+  }, [user?.teamIds, departments, selectedTeamId, isMemberView])
 
   const { prevYear, prevMonth } = useMemo(() => prevMonthYear(year, month), [year, month])
 
@@ -137,6 +157,14 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     queryFn: () => organizationApi.getTeamMembers(selectedTeamId!),
     enabled: Boolean(selectedTeamId) && !isMockApiEnabled(),
   })
+
+  const visibleMembers = useMemo(() => {
+    const allMembers = membersForTeamQ.data?.members ?? []
+    if (!isMemberView) return allMembers
+    const selfId = user?.id?.trim()
+    if (!selfId) return []
+    return allMembers.filter((member) => member.userId === selfId)
+  }, [membersForTeamQ.data?.members, isMemberView, user?.id])
 
   const assignmentsQ = useQuery({
     queryKey: assignKey,
@@ -164,6 +192,22 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         : Promise.resolve([] as PerformanceSummaryRow[]),
     enabled: Boolean(selectedTeamId) && !isMockApiEnabled(),
   })
+
+  const visibleAssignmentsThisMonth = useMemo(() => {
+    const rows = assignmentsQ.data ?? []
+    if (!isMemberView) return rows
+    const selfId = user?.id?.trim()
+    if (!selfId) return []
+    return rows.filter((row) => row.assigneeUserId === selfId)
+  }, [assignmentsQ.data, isMemberView, user?.id])
+
+  const visibleAssignmentsPrevMonth = useMemo(() => {
+    const rows = assignmentsPrevQ.data ?? []
+    if (!isMemberView) return rows
+    const selfId = user?.id?.trim()
+    if (!selfId) return []
+    return rows.filter((row) => row.assigneeUserId === selfId)
+  }, [assignmentsPrevQ.data, isMemberView, user?.id])
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: assignKey })
@@ -218,6 +262,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
               <select
                 className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
                 value={selectedDept?.id ?? ''}
+                disabled={isMemberView}
                 onChange={(e) => {
                   const d = departments.find((x) => x.id === e.target.value)
                   const tid = d?.teams[0]?.id ?? ''
@@ -237,6 +282,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
               <select
                 className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
                 value={selectedTeamId}
+                disabled={isMemberView}
                 onChange={(e) => setSelectedTeamId(e.target.value)}
               >
                 <option value="">— Chọn team —</option>
@@ -391,11 +437,11 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
 
       <div className="space-y-6">
         <WorkReportPanel
-          assignmentsThisMonth={assignmentsQ.data ?? []}
-          assignmentsPrevMonth={assignmentsPrevQ.data ?? []}
+          assignmentsThisMonth={visibleAssignmentsThisMonth}
+          assignmentsPrevMonth={visibleAssignmentsPrevMonth}
           loadingThis={assignmentsQ.isLoading}
           loadingPrev={assignmentsPrevQ.isLoading}
-          members={membersForTeamQ.data?.members ?? []}
+          members={visibleMembers}
           membersLoading={membersForTeamQ.isLoading}
           canEditTeam={canEditTeam}
           selectedTeamId={selectedTeamId}
@@ -426,39 +472,41 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         />
       </div>
 
-      <aside
-        className={cn(
-          'mt-8 rounded-xl border border-dashed border-primary/25 bg-gradient-to-br from-muted/40 via-card/80 to-primary/[0.04] p-4 text-xs text-muted-foreground shadow-sm backdrop-blur-sm transition-shadow motion-safe:hover:shadow-md',
-          CARD_ENTRANCE
-        )}
-        style={{ animationDelay: '260ms' }}
-      >
-        <div className="mb-2 bg-gradient-to-r from-primary to-teal-600 bg-clip-text font-semibold text-transparent">
-          Điều hướng nhanh
-        </div>
-        <ul className="space-y-1">
-          {departments.map((d) => (
-            <li key={d.id}>
-              <span className="font-medium text-foreground">{d.name}</span>
-              <ul className="ml-3 mt-1 space-y-0.5">
-                {d.teams.map((t) => (
-                  <li key={t.id}>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="inline-flex h-auto items-center gap-1 p-0 text-primary"
-                      onClick={() => setSelectedTeamId(t.id)}
-                    >
-                      <ChevronRight className="h-3 w-3" />
-                      {t.name}
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
-      </aside>
+      {!isMemberView ? (
+        <aside
+          className={cn(
+            'mt-8 rounded-xl border border-dashed border-primary/25 bg-gradient-to-br from-muted/40 via-card/80 to-primary/[0.04] p-4 text-xs text-muted-foreground shadow-sm backdrop-blur-sm transition-shadow motion-safe:hover:shadow-md',
+            CARD_ENTRANCE
+          )}
+          style={{ animationDelay: '260ms' }}
+        >
+          <div className="mb-2 bg-gradient-to-r from-primary to-teal-600 bg-clip-text font-semibold text-transparent">
+            Điều hướng nhanh
+          </div>
+          <ul className="space-y-1">
+            {departments.map((d) => (
+              <li key={d.id}>
+                <span className="font-medium text-foreground">{d.name}</span>
+                <ul className="ml-3 mt-1 space-y-0.5">
+                  {d.teams.map((t) => (
+                    <li key={t.id}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="inline-flex h-auto items-center gap-1 p-0 text-primary"
+                        onClick={() => setSelectedTeamId(t.id)}
+                      >
+                        <ChevronRight className="h-3 w-3" />
+                        {t.name}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      ) : null}
     </div>
   )
 }
@@ -929,6 +977,7 @@ function UserAssignmentWorkbench({
   leaderMode,
   emptyText,
   prioritizeUserId,
+  showUserList = true,
 }: {
   byUser: Map<string, PerformanceAssignment[]>
   members: TeamMemberRow[]
@@ -938,6 +987,7 @@ function UserAssignmentWorkbench({
   emptyText: string
   /** User hiển thị mặc định & xếp đầu danh sách (thường là user đang đăng nhập). */
   prioritizeUserId?: string
+  showUserList?: boolean
 }) {
   const userEntries = useMemo(
     () => orderUserEntriesFirst(Array.from(byUser.entries()), prioritizeUserId),
@@ -953,6 +1003,19 @@ function UserAssignmentWorkbench({
     prioritizeUserId && byUser.has(prioritizeUserId) ? prioritizeUserId : userEntries[0]![0]
   const activeUserId = selectedUserId && byUser.has(selectedUserId) ? selectedUserId : defaultUserId
   const activeRows = byUser.get(activeUserId) ?? []
+
+  if (!showUserList) {
+    return (
+      <AssignmentTableSingleUser
+        userId={activeUserId}
+        rows={activeRows}
+        members={members}
+        canEditTeam={canEditTeam}
+        onRefresh={onRefresh}
+        leaderMode={leaderMode}
+      />
+    )
+  }
 
   return (
     <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -1132,6 +1195,7 @@ function WorkReportPanel({
               leaderMode="planning"
               emptyText="Chưa có mục tiêu cho tháng này."
               prioritizeUserId={currentUserId}
+              showUserList={canEditTeam}
             />
           </CardContent>
         </Card>
@@ -1182,6 +1246,7 @@ function WorkReportPanel({
               leaderMode="results"
               emptyText={`Chưa có dữ liệu KPI/OKR cho tháng ${prevMonth}/${prevYear}.`}
               prioritizeUserId={currentUserId}
+              showUserList={canEditTeam}
             />
           </CardContent>
         </Card>

@@ -197,9 +197,14 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     'Quản lý và theo dõi hiệu suất cũng như thành tích của nhân sự (HR, BOD, Quản lý dùng chung).'
 
   return (
-    <div className="-m-5 flex min-h-[calc(100vh-3.5rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
+    <div className="-m-5 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="page-shell">
+        <div
+          className={cn(
+            'page-shell scrollbar-hide overflow-x-hidden',
+            selectedId ? 'lg:pr-[380px]' : undefined
+          )}
+        >
           {/* Tiêu đề + nút + thống kê — bố cục như code.html, giữ màu ô thống kê hiện tại */}
           <div className="mb-8 flex flex-col gap-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
