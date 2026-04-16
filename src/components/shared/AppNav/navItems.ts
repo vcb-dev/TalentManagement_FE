@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   LineChart,
   ListOrdered,
+  Network,
   School,
   ShieldCheck,
   Target,
@@ -88,9 +89,20 @@ const HR_ITEMS: AppNavItem[] = [
     to: '/hr-admin',
     label: 'Danh sách nhân sự',
     icon: Users,
-    match: 'prefix',
+    match: 'custom',
+    customMatch: (p) => {
+      if (p === '/hr-admin/org' || p.startsWith('/hr-admin/org/')) return false
+      return p === '/hr-admin' || p.startsWith('/hr-admin/')
+    },
     search: { page: 1 },
     permissionIdsAny: ['hr.employees.view', 'manager.team.view', 'kpi.team_view', 'kpi.team_edit'],
+  },
+  {
+    to: '/hr-admin/org',
+    label: 'Phòng ban & Team',
+    icon: Network,
+    match: 'prefix',
+    permissionId: 'hr.org.manage',
   },
 ]
 
@@ -263,8 +275,34 @@ export function filterNavByPermissions(
 }
 
 /**
- * Gộp menu header (layout compact) theo quyền catalog — không phụ thuộc một `user.role` duy nhất.
- * Thứ tự: cá nhân → BOD → HR → trưởng nhóm KPI → quản lý → giảng viên/chấm thi.
+ * Sidebar: flat route list (permission filter + dedupe by `to` + search).
+ * Order: BOD, manager ops, HR, leader KPI, member self, teacher.
+ */
+export function flatSidebarNavItems(canId: (permissionId: string) => boolean): AppNavItem[] {
+  const sources = [
+    BOD_ITEMS,
+    MANAGER_OPS_ITEMS,
+    HR_ITEMS,
+    LEADER_KPI_ITEMS,
+    MEMBER_SELF_ITEMS,
+    TEACHER_HEADER_ITEMS,
+  ]
+  const seen = new Set<string>()
+  const out: AppNavItem[] = []
+  for (const source of sources) {
+    for (const item of filterNavByPermissions(source, canId)) {
+      const key = item.to + (item.search !== undefined ? JSON.stringify(item.search) : '')
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(item)
+    }
+  }
+  return out
+}
+
+/**
+ * Compact header nav: merge by catalog permissions (not a single role).
+ * Order: member self, BOD, HR, leader KPI, manager ops, teacher.
  */
 export function mergeCompactHeaderNavItems(canId: (permissionId: string) => boolean): AppNavItem[] {
   const seen = new Set<string>()

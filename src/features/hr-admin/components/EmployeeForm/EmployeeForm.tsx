@@ -2,23 +2,23 @@ import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { ArrowLeft, Bell, Network, User } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Controller, FormProvider, type UseFormReturn } from 'react-hook-form'
+import { Controller, FormProvider, useWatch, type UseFormReturn } from 'react-hook-form'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
   PAGE_HEADER_SURFACE,
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import type { CreateEmployeeForm } from '@/features/hr-admin/schemas'
-import { useQuery } from '@tanstack/react-query'
-import { managerApi } from '@/features/manager/api'
-import { managerKeys } from '@/features/manager/queryKeys'
+import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 
 const ROLE_OPTIONS: { value: CreateEmployeeForm['role']; label: string }[] = [
   { value: 'MEMBER', label: 'Nhân viên' },
-  { value: 'LEADER', label: 'Trưởng nhóm KPI' },
+  { value: 'LEADER', label: 'Leader' },
   { value: 'MANAGER', label: 'Quản lý' },
   { value: 'HR', label: 'HR' },
   { value: 'BOD', label: 'BOD' },
@@ -29,8 +29,12 @@ const LEVEL_OPTIONS: { value: CreateEmployeeForm['initialLevel']; label: string 
   { value: 'biet_viec', label: 'Biết việc' },
 ]
 
-const inputClass =
-  'w-full rounded-lg border-0 bg-muted/40 px-4 py-3 text-sm text-foreground shadow-sm outline-none transition-[box-shadow] placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20'
+/** Same surface as Input (Lumina); native select only. */
+const selectClass =
+  'flex h-12 w-full cursor-pointer rounded-lg border-0 bg-muted/40 px-4 py-3 text-sm text-foreground shadow-sm outline-none transition-[box-shadow] focus:ring-2 focus:ring-primary/20'
+
+const inputFieldClass =
+  'h-12 rounded-lg border-0 bg-muted/40 px-4 py-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20'
 
 const labelClass = 'text-xs font-semibold uppercase tracking-wider text-muted-foreground'
 
@@ -42,15 +46,13 @@ export interface EmployeeFormProps {
 
 export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps) {
   const navigate = useNavigate()
-  const { data: depts = [] } = useQuery({
-    queryKey: managerKeys.departments(),
-    queryFn: managerApi.getDepartments,
-  })
-  const { data: teams = [] } = useQuery({
-    queryKey: managerKeys.teams(),
-    queryFn: managerApi.getTeams,
-  })
   const { register, handleSubmit, control, formState } = form
+  const { departments, teamsByDept, allTeams } = useHrOrgSelectOptions()
+  const departmentId = useWatch({ control, name: 'departmentId' })
+  const teamOptions =
+    (departmentId && teamsByDept.get(departmentId)?.length
+      ? teamsByDept.get(departmentId)
+      : allTeams) ?? allTeams
 
   return (
     <FormProvider {...form}>
@@ -60,13 +62,15 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
         noValidate
       >
         <div className="page-shell">
-          <div className="mx-auto max-w-5xl space-y-8 pb-8">
+          <div className="mx-auto max-w-[1400px] space-y-8 pb-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
                 <button
                   type="button"
                   className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/90"
-                  onClick={() => void navigate({ to: '/hr-admin', search: { page: 1 } })}
+                  onClick={() =>
+                    void navigate({ to: '/hr-admin', search: { page: 1, pageSize: 15 } })
+                  }
                 >
                   <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
                   Quay lại
@@ -84,15 +88,15 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
               <SectionCard icon={User} title="Thông tin cơ bản" entranceIndex={0}>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <Field label="Họ và tên *" error={formState.errors.name?.message}>
-                    <input
-                      className={inputClass}
+                    <Input
+                      className={inputFieldClass}
                       placeholder="Nhập họ và tên..."
                       {...register('name')}
                     />
                   </Field>
                   <Field label="Email công ty *" error={formState.errors.email?.message}>
-                    <input
-                      className={inputClass}
+                    <Input
+                      className={inputFieldClass}
                       type="email"
                       autoComplete="off"
                       placeholder="ten@vcb.com"
@@ -100,14 +104,14 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                     />
                   </Field>
                   <Field label="Số điện thoại" error={formState.errors.phone?.message}>
-                    <input
-                      className={inputClass}
+                    <Input
+                      className={inputFieldClass}
                       placeholder="09xx xxx xxx"
                       {...register('phone')}
                     />
                   </Field>
                   <Field label="Ngày sinh" error={formState.errors.birthDate?.message}>
-                    <input className={inputClass} type="date" {...register('birthDate')} />
+                    <Input className={inputFieldClass} type="date" {...register('birthDate')} />
                   </Field>
                 </div>
               </SectionCard>
@@ -119,7 +123,7 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       name="role"
                       control={control}
                       render={({ field }) => (
-                        <select {...field} className={cn(inputClass, 'cursor-pointer')}>
+                        <select {...field} className={selectClass}>
                           {ROLE_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
                               {o.label}
@@ -134,11 +138,10 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       name="departmentId"
                       control={control}
                       render={({ field }) => (
-                        <select {...field} className={cn(inputClass, 'cursor-pointer')}>
-                          <option value="">-- Chọn chi nhánh / phòng ban --</option>
-                          {depts.map((o) => (
-                            <option key={o.id} value={o.id}>
-                              {o.name}
+                        <select {...field} className={selectClass}>
+                          {departments.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
                             </option>
                           ))}
                         </select>
@@ -146,18 +149,17 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                     />
                   </Field>
                   <Field label="Ngày bắt đầu" error={formState.errors.startDate?.message}>
-                    <input className={inputClass} type="date" {...register('startDate')} />
+                    <Input className={inputFieldClass} type="date" {...register('startDate')} />
                   </Field>
                   <Field label="Team chính *" error={formState.errors.teamId?.message}>
                     <Controller
                       name="teamId"
                       control={control}
                       render={({ field }) => (
-                        <select {...field} className={cn(inputClass, 'cursor-pointer')}>
-                          <option value="">-- Chọn nhóm/bộ phận --</option>
-                          {teams.map((o) => (
-                            <option key={o.id} value={o.id}>
-                              {o.name}
+                        <select {...field} className={selectClass}>
+                          {teamOptions.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
                             </option>
                           ))}
                         </select>
@@ -172,11 +174,11 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       name="secondaryTeamId"
                       control={control}
                       render={({ field }) => (
-                        <select {...field} className={cn(inputClass, 'cursor-pointer')}>
-                          <option value="">-- Chọn nhóm/bộ phận phụ --</option>
-                          {teams.map((o) => (
-                            <option key={o.id} value={o.id}>
-                              {o.name}
+                        <select {...field} className={selectClass}>
+                          <option value="">-- Không gán --</option>
+                          {allTeams.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
                             </option>
                           ))}
                         </select>
@@ -188,7 +190,7 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       name="initialLevel"
                       control={control}
                       render={({ field }) => (
-                        <select {...field} className={cn(inputClass, 'cursor-pointer')}>
+                        <select {...field} className={selectClass}>
                           {LEVEL_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
                               {o.label}
@@ -230,27 +232,26 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-4 pt-2">
-              <button
+              <Button
                 type="button"
-                className="rounded-lg px-8 py-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
-                onClick={() => void navigate({ to: '/hr-admin', search: { page: 1 } })}
+                variant="ghost"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() =>
+                  void navigate({ to: '/hr-admin', search: { page: 1, pageSize: 15 } })
+                }
               >
                 Hủy
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="rounded-lg border border-button bg-button px-10 py-3 text-xs font-medium text-button-foreground shadow-[0_8px_20px_hsl(var(--primary)/0.25)] transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
-              >
+              </Button>
+              <Button type="submit" size="lg" disabled={isSubmitting}>
                 {isSubmitting ? 'Đang tạo…' : 'Tạo tài khoản'}
-              </button>
+              </Button>
             </div>
 
             <p className="text-center text-xs text-muted-foreground">
               Cần quay về danh sách?{' '}
               <Link
                 to="/hr-admin"
-                search={{ page: 1 }}
+                search={{ page: 1, pageSize: 15 }}
                 className="font-semibold text-primary hover:underline"
               >
                 Danh sách nhân sự
@@ -306,7 +307,7 @@ function Field({
     <div className="flex flex-col gap-2">
       <div className={labelClass}>{label}</div>
       {children}
-      {error ? <p className="text-xs font-medium text-red-700">{error}</p> : null}
+      {error ? <p className="text-xs font-medium text-danger">{error}</p> : null}
     </div>
   )
 }

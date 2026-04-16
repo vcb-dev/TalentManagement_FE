@@ -1,4 +1,4 @@
-/** HR, Member, Teacher (chấm thi theo kỳ), Manager, Leader (KPI/OKR team), BOD. */
+/** HR, Member, Teacher (chấm thi theo kỳ), Manager, Leader (LEADER — trưởng nhóm KPI/OKR), BOD. */
 export type Role = 'MEMBER' | 'LEADER' | 'MANAGER' | 'HR' | 'TEACHER' | 'BOD'
 export type StaffLevel = 'PROBATION' | 'PROFICIENT' | 'GENERAL' | 'UNKNOWN'
 

@@ -9,9 +9,11 @@ export function LevelProgressDashboard({ levelTitle, summary }: LevelProgressDas
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{levelTitle}</CardTitle>
+        <CardTitle className="text-xl md:text-2xl">{levelTitle}</CardTitle>
       </CardHeader>
-      {summary ? <CardContent className="text-sm text-muted-foreground">{summary}</CardContent> : null}
+      {summary ? (
+        <CardContent className="text-sm text-muted-foreground">{summary}</CardContent>
+      ) : null}
     </Card>
   )
 }

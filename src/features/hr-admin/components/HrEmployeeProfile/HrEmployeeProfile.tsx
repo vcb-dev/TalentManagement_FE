@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { FormProvider, type Control, useForm, useWatch } from 'react-hook-form'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
@@ -23,11 +24,8 @@ import {
 } from '@/components/icons'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { useDeactivateEmployee, useUpdateEmployee } from '@/features/hr-admin/hooks'
-import {
-  DEFAULT_TEAM_ID,
-  HR_DEPARTMENT_OPTIONS,
-  HR_TEAM_OPTIONS,
-} from '@/features/hr-admin/hrOrgOptions'
+import { DEFAULT_TEAM_ID } from '@/features/hr-admin/hrOrgOptions'
+import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 import {
   levelMeta,
   levelPillText,
@@ -43,7 +41,25 @@ import type { EmployeeLevel } from '@/types/employee'
 import type { Role } from '@/types/auth'
 import type { PatchEmployeeInput } from '@/types/api'
 import { usePermission } from '@/hooks/usePermission'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { InputController, SelectController } from '@/components/ui/form-controllers'
 import { cn } from '@/lib/utils'
+
+const PROFILE_EDIT_FIELD =
+  'h-11 rounded-lg border-0 bg-muted/40 px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 disabled:opacity-60'
+
+type OptionItem = { value: string; label: string }
+
+function dedupeOptionsByValue(options: OptionItem[]): OptionItem[] {
+  const seen = new Set<string>()
+  return options.filter((option) => {
+    const value = option.value.trim()
+    if (!value || seen.has(value)) return false
+    seen.add(value)
+    return true
+  })
+}
 
 const LEVEL_ORDER: EmployeeLevel[] = [
   'tap_su',
@@ -99,6 +115,19 @@ export interface HrEmployeeProfileProps {
   initialTab?: number
 }
 
+type EmployeeEditFormValues = {
+  name: string
+  email: string
+  role: Role
+  departmentId: string
+  teamId: string
+  phone: string
+  birthDate: string
+  startDate: string
+  secondaryTeamId: string
+  currentLevel: EmployeeEntity['currentLevel']
+}
+
 export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfileProps) {
   const { canId } = usePermission()
   const canEdit = canId('hr.employees.edit')
@@ -115,30 +144,36 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
     maxStars > 0 ? Math.min(100, Math.round((employee.currentStar / maxStars) * 100)) : 0
   const levelIdx = LEVEL_ORDER.indexOf(employee.currentLevel)
 
-  const [editName, setEditName] = useState(employee.name)
-  const [editEmail, setEditEmail] = useState(employee.email)
-  const [editRole, setEditRole] = useState<Role>(employee.role)
-  const [editDepartmentId, setEditDepartmentId] = useState(employee.departmentId)
-  const [editTeamId, setEditTeamId] = useState(() => employee.teamIds[0] ?? DEFAULT_TEAM_ID)
-  const [editPhone, setEditPhone] = useState(() => employee.phone?.trim() ?? '')
-  const [editBirthDate, setEditBirthDate] = useState(() => employee.birthDate?.trim() ?? '')
-  const [editStartDate, setEditStartDate] = useState(() => employee.startDate?.trim() ?? '')
-  const [editSecondaryTeamId, setEditSecondaryTeamId] = useState(() => employee.teamIds[1] ?? '')
-  const [editCurrentLevel, setEditCurrentLevel] = useState(employee.currentLevel)
+  const editForm = useForm<EmployeeEditFormValues>({
+    defaultValues: {
+      name: employee.name,
+      email: employee.email,
+      role: employee.role,
+      departmentId: employee.departmentId,
+      teamId: employee.teamIds[0] ?? DEFAULT_TEAM_ID,
+      phone: employee.phone?.trim() ?? '',
+      birthDate: employee.birthDate?.trim() ?? '',
+      startDate: employee.startDate?.trim() ?? '',
+      secondaryTeamId: employee.teamIds[1] ?? '',
+      currentLevel: employee.currentLevel,
+    },
+  })
+  const { control: editControl, getValues: getEditValues, reset: resetEditForm } = editForm
 
   /* Đồng bộ form sửa khi nhân viên được refetch sau lưu / điều hướng. */
-  /* eslint-disable react-hooks/set-state-in-effect -- bản ghi từ server đổi sau PATCH/refetch */
   useEffect(() => {
-    setEditName(employee.name)
-    setEditEmail(employee.email)
-    setEditRole(employee.role)
-    setEditDepartmentId(employee.departmentId)
-    setEditTeamId(employee.teamIds[0] ?? DEFAULT_TEAM_ID)
-    setEditPhone(employee.phone?.trim() ?? '')
-    setEditBirthDate(employee.birthDate?.trim() ?? '')
-    setEditStartDate(employee.startDate?.trim() ?? '')
-    setEditSecondaryTeamId(employee.teamIds[1] ?? '')
-    setEditCurrentLevel(employee.currentLevel)
+    resetEditForm({
+      name: employee.name,
+      email: employee.email,
+      role: employee.role,
+      departmentId: employee.departmentId,
+      teamId: employee.teamIds[0] ?? DEFAULT_TEAM_ID,
+      phone: employee.phone?.trim() ?? '',
+      birthDate: employee.birthDate?.trim() ?? '',
+      startDate: employee.startDate?.trim() ?? '',
+      secondaryTeamId: employee.teamIds[1] ?? '',
+      currentLevel: employee.currentLevel,
+    })
   }, [
     employee.id,
     employee.updatedAt,
@@ -151,36 +186,36 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
     employee.birthDate,
     employee.startDate,
     employee.currentLevel,
+    resetEditForm,
   ])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
-  const buildEditPatch = (): PatchEmployeeInput | null => {
+  const buildEditPatch = (values: EmployeeEditFormValues): PatchEmployeeInput | null => {
     const patch: PatchEmployeeInput = {}
-    if (editName.trim() !== employee.name) patch.name = editName.trim()
-    if (editEmail.trim() !== employee.email) patch.email = editEmail.trim()
-    if (editRole !== employee.role) {
-      patch.role = editRole as NonNullable<PatchEmployeeInput['role']>
+    if (values.name.trim() !== employee.name) patch.name = values.name.trim()
+    if (values.email.trim() !== employee.email) patch.email = values.email.trim()
+    if (values.role !== employee.role) {
+      patch.role = values.role as NonNullable<PatchEmployeeInput['role']>
     }
-    if (editDepartmentId !== employee.departmentId) patch.departmentId = editDepartmentId
+    if (values.departmentId !== employee.departmentId) patch.departmentId = values.departmentId
     const origTeam = employee.teamIds[0] ?? DEFAULT_TEAM_ID
-    if (editTeamId !== origTeam) patch.teamId = editTeamId
+    if (values.teamId !== origTeam) patch.teamId = values.teamId
     const origPhone = employee.phone?.trim() ?? ''
-    if (editPhone.trim() !== origPhone) patch.phone = editPhone.trim()
+    if (values.phone.trim() !== origPhone) patch.phone = values.phone.trim()
     const origBirth = employee.birthDate?.trim() ?? ''
-    if (editBirthDate.trim() !== origBirth) patch.birthDate = editBirthDate.trim()
+    if (values.birthDate.trim() !== origBirth) patch.birthDate = values.birthDate.trim()
     const origStart = employee.startDate?.trim() ?? ''
-    if (editStartDate.trim() !== origStart) patch.startDate = editStartDate.trim()
+    if (values.startDate.trim() !== origStart) patch.startDate = values.startDate.trim()
     const origSec = employee.teamIds[1]?.trim() ?? ''
-    if (editSecondaryTeamId.trim() !== origSec) {
-      patch.secondaryTeamId = editSecondaryTeamId.trim()
+    if (values.secondaryTeamId.trim() !== origSec) {
+      patch.secondaryTeamId = values.secondaryTeamId.trim()
     }
-    if (editCurrentLevel !== employee.currentLevel) patch.currentLevel = editCurrentLevel
+    if (values.currentLevel !== employee.currentLevel) patch.currentLevel = values.currentLevel
     return Object.keys(patch).length > 0 ? patch : null
   }
 
   const handleSaveProfile = () => {
     if (!canEdit) return
-    const patch = buildEditPatch()
+    const patch = buildEditPatch(getEditValues())
     if (!patch) {
       toast.info('Không có thay đổi để lưu.')
       return
@@ -207,6 +242,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
   )
 
   const onDemoAction = (msg: string) => () => toast.info(msg)
+  const orgSel = useHrOrgSelectOptions()
 
   const tabLabels = TABS
   const tabIcons = TAB_ICONS_HR
@@ -214,314 +250,325 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
   const rankStarsFive = (xpPct / 100) * 5
   const levelStarVariants = starVariants(employee.currentStar, maxStars)
   const RoleBadgeIcon = ROLE_BADGE_ICONS[employee.role]
-  const deptName = `PB ${shortId(employee.departmentId)}`
-  const teamName = `Team ${shortId(employee.teamIds[0] ?? employee.departmentId)}`
+  const deptName = useMemo(() => {
+    const fromApi = employee.departmentName?.trim()
+    if (fromApi) return fromApi
+    const byId = orgSel.departments.find((d) => d.value === employee.departmentId)?.label
+    return byId ?? `Phòng ban (${shortId(employee.departmentId)})`
+  }, [employee.departmentName, employee.departmentId, orgSel.departments])
+
+  const teamName = useMemo(() => {
+    const byApiNames = (employee.teamNames ?? []).map((t) => t.trim()).filter(Boolean)
+    if (byApiNames.length > 0) return byApiNames.join(', ')
+    if (!employee.teamIds?.length) return ''
+    const teamNameById = new Map(orgSel.allTeams.map((t) => [t.value, t.label]))
+    const mapped = employee.teamIds
+      .map((id) => teamNameById.get(id) ?? `Nhóm (${shortId(id)})`)
+      .filter(Boolean)
+    return mapped.join(', ')
+  }, [employee.teamNames, employee.teamIds, orgSel.allTeams])
+
+  const hasAnyTeam = Boolean(teamName.trim())
 
   return (
-    <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-slate-50/80 via-app-canvas to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
-      <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 px-4 pb-6 pt-6 md:px-6 lg:flex-row lg:items-start lg:gap-8 lg:pt-8">
-        <aside className="w-full shrink-0 lg:w-[280px]">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:mb-0 lg:block">
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              <Link
-                to="/hr-admin"
-                search={{ page: 1, pageSize: 48 }}
-                className="font-semibold text-primary hover:underline"
-              >
-                ← Danh sách nhân sự
-              </Link>
-              <span className="text-muted-foreground/50">/</span>
-              <span className="font-semibold text-foreground">{employee.name}</span>
+    <FormProvider {...editForm}>
+      <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-slate-50/80 via-app-canvas to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
+        <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 pb-6 pt-6 md:px-6 lg:flex-row lg:items-start lg:gap-8 lg:pt-8">
+          <aside className="w-full shrink-0 lg:w-[280px]">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:mb-0 lg:block">
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                <Link
+                  to="/hr-admin"
+                  search={{ page: 1, pageSize: 15 }}
+                  className="font-semibold text-primary hover:underline"
+                >
+                  ← Danh sách nhân sự
+                </Link>
+                <span className="text-muted-foreground/50">/</span>
+                <span className="font-semibold text-foreground">{employee.name}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 lg:hidden">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2.5 text-[11px]"
+                  onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
+                >
+                  Đổi PB
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2.5 text-[11px]"
+                  onClick={onDemoAction('Đổi role: kết nối API sau.')}
+                >
+                  Role
+                </Button>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-1.5 lg:hidden">
-              <button
+
+            <div className="flex flex-col gap-6 rounded-2xl border border-primary/10 bg-card p-5 shadow-[var(--shadow-card)] ring-1 ring-primary/5">
+              <div className="relative mx-auto">
+                <EmployeeAvatar
+                  name={employee.name}
+                  showOnlineDot={employee.status === 'ACTIVE'}
+                  className="h-44 w-44 rounded-2xl border-[3px] border-white text-4xl shadow-[var(--shadow-game-float)] ring-4 ring-primary/15"
+                />
+              </div>
+
+              <div>
+                <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Phân công
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-semibold leading-snug text-foreground">
+                        {deptName}
+                      </span>
+                      <span className="shrink-0 rounded-md bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-800">
+                        Chính
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      VP · Ngân hàng TMCP Ngoại thương VCB
+                    </p>
+                  </div>
+                  {hasAnyTeam ? (
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-sm font-semibold leading-snug text-foreground">
+                          {teamName}
+                        </span>
+                        <span className="shrink-0 rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
+                          Team
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Mã {empCode} · Vào{' '}
+                        {new Date(employee.createdAt).toLocaleDateString('vi-VN')}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="h-px bg-border" />
+
+              <div>
+                <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Kỹ năng &amp; huy hiệu
+                </div>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
+                    <Award
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    <span>{levelPillText(employee.currentLevel)}</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
+                    <RoleBadgeIcon
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    <span>{ROLE_LABEL_VI[employee.role]}</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
+                    <CheckCircle2
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    <span>{statusLabelVi(employee.status)}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </aside>
+
+          <main className="min-w-0 flex-1">
+            <div className="mb-4 hidden flex-wrap items-center justify-end gap-2 lg:flex">
+              <Button
                 type="button"
-                className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold shadow-sm hover:bg-muted"
+                variant="outline"
+                size="sm"
                 onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
               >
-                Đổi PB
-              </button>
-              <button
+                Đổi phòng ban
+              </Button>
+              <Button
                 type="button"
-                className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold shadow-sm hover:bg-muted"
+                variant="outline"
+                size="sm"
                 onClick={onDemoAction('Đổi role: kết nối API sau.')}
               >
-                Role
-              </button>
+                Đổi role
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
+              >
+                Hủy hoạt động
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={onDemoAction('Lưu thay đổi: kết nối API sau.')}
+              >
+                Lưu thay đổi
+              </Button>
             </div>
-          </div>
 
-          <div className="flex flex-col gap-6 rounded-2xl border border-primary/10 bg-card p-5 shadow-[var(--shadow-card)] ring-1 ring-primary/5">
-            <div className="relative mx-auto">
-              <EmployeeAvatar
-                name={employee.name}
-                showOnlineDot={employee.status === 'ACTIVE'}
-                className="h-44 w-44 rounded-2xl border-[3px] border-white text-4xl shadow-[var(--shadow-game-float)] ring-4 ring-primary/15"
-              />
-            </div>
+            <div className="overflow-hidden rounded-2xl border border-primary/10 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/5">
+              <div className="border-b border-border/80 px-5 py-5 md:px-6">
+                <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
+                  {employee.name}
+                </h1>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                  <Building2
+                    className="h-4 w-4 shrink-0 text-primary/70"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                  <span>{hasAnyTeam ? `${deptName} · ${teamName}` : deptName}</span>
+                </div>
+                <p className="mt-2 text-lg font-semibold text-primary md:text-xl">
+                  {ROLE_LABEL_VI[employee.role]} ·{' '}
+                  {LEVEL_LABELS[employee.currentLevel as LevelCode]}
+                </p>
 
-            <div>
-              <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                Phân công
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold leading-snug text-foreground">
-                      {deptName}
+                <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border/60 pt-4">
+                  <span className="text-3xl font-bold tabular-nums tracking-tight text-foreground">
+                    {profileScoreDisplay}
+                  </span>
+                  <FiveStarRank filled={rankStarsFive} />
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary ring-1 ring-primary/15">
+                      <Star className="h-3.5 w-3.5" variant="filled" />
+                      {points.toLocaleString('vi-VN')} pts
                     </span>
-                    <span className="shrink-0 rounded-md bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-800">
-                      Chính
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-900 ring-1 ring-amber-500/20">
+                      <Crown className="h-3.5 w-3.5 text-amber-600" strokeWidth={2} />#{rank}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    VP · Ngân hàng TMCP Ngoại thương VCB
-                  </p>
                 </div>
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold leading-snug text-foreground">
-                      {teamName}
-                    </span>
-                    <span className="shrink-0 rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
-                      Phụ
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Mã {empCode} · Vào {new Date(employee.createdAt).toLocaleDateString('vi-VN')}
-                  </p>
-                </div>
-              </div>
-            </div>
 
-            <div className="h-px bg-border" />
-
-            <div>
-              <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                Kỹ năng &amp; huy hiệu
-              </div>
-              <ul className="space-y-2">
-                <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                  <Award
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  <span>{levelPillText(employee.currentLevel)}</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                  <RoleBadgeIcon
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  <span>{ROLE_LABEL_VI[employee.role]}</span>
-                </li>
-                <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                  <CheckCircle2
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  <span>{statusLabelVi(employee.status)}</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </aside>
-
-        <main className="min-w-0 flex-1">
-          <div className="mb-4 hidden flex-wrap items-center justify-end gap-2 lg:flex">
-            <button
-              type="button"
-              className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
-              onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
-            >
-              Đổi phòng ban
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
-              onClick={onDemoAction('Đổi role: kết nối API sau.')}
-            >
-              Đổi role
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-red-300/80 bg-red-50 px-3.5 py-2 text-xs font-semibold text-red-800 transition-colors hover:bg-red-100"
-              onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
-            >
-              Hủy hoạt động
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-              onClick={onDemoAction('Lưu thay đổi: kết nối API sau.')}
-            >
-              Lưu thay đổi
-            </button>
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-primary/10 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/5">
-            <div className="border-b border-border/80 px-5 py-5 md:px-6">
-              <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
-                {employee.name}
-              </h1>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                <Building2
-                  className="h-4 w-4 shrink-0 text-primary/70"
-                  strokeWidth={2}
-                  aria-hidden
-                />
-                <span>
-                  {deptName} · {teamName}
-                </span>
-              </div>
-              <p className="mt-2 text-lg font-semibold text-primary md:text-xl">
-                {ROLE_LABEL_VI[employee.role]} · {LEVEL_LABELS[employee.currentLevel as LevelCode]}
-              </p>
-
-              <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border/60 pt-4">
-                <span className="text-3xl font-bold tabular-nums tracking-tight text-foreground">
-                  {profileScoreDisplay}
-                </span>
-                <FiveStarRank filled={rankStarsFive} />
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary ring-1 ring-primary/15">
-                    <Star className="h-3.5 w-3.5" variant="filled" />
-                    {points.toLocaleString('vi-VN')} pts
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
+                    <RoleBadgeIcon
+                      className="h-3.5 w-3.5 shrink-0 text-primary/90"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    {ROLE_LABEL_VI[employee.role]}
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-900 ring-1 ring-amber-500/20">
-                    <Crown className="h-3.5 w-3.5 text-amber-600" strokeWidth={2} />#{rank}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
-                  <RoleBadgeIcon
-                    className="h-3.5 w-3.5 shrink-0 text-primary/90"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  {ROLE_LABEL_VI[employee.role]}
-                </span>
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full border border-primary/15 px-2.5 py-1 text-xs font-medium',
-                    tierClass
-                  )}
-                >
-                  <Award className="h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
-                  {tierLabel}
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
-                  <CheckCircle2
-                    className="h-3.5 w-3.5 shrink-0 text-primary/90"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  {statusLabelVi(employee.status)}
-                </span>
-              </div>
-
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setTab(4)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-                >
-                  Chỉnh sửa hồ sơ
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toast.info('Cài đặt nhân viên (demo)')}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-muted"
-                  aria-label="Cài đặt"
-                >
-                  <Settings className="h-5 w-5" strokeWidth={2} />
-                </button>
-              </div>
-            </div>
-
-            <nav
-              className="flex flex-wrap gap-0 border-b border-border px-2 md:px-4"
-              aria-label="Mục hồ sơ nhân viên"
-            >
-              {tabLabels.map((label, i) => {
-                const Icon = tabIcons[i]!
-                const active = tab === i
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => setTab(i)}
+                  <span
                     className={cn(
-                      'relative flex items-center gap-2 px-3 py-3.5 text-sm font-semibold transition-colors md:px-4',
-                      active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                      'inline-flex items-center gap-1.5 rounded-full border border-primary/15 px-2.5 py-1 text-xs font-medium',
+                      tierClass
                     )}
                   >
-                    <Icon className="h-4 w-4 shrink-0 opacity-85" strokeWidth={2} />
-                    {label}
-                    {active ? (
-                      <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary md:left-4 md:right-4" />
-                    ) : null}
-                  </button>
-                )
-              })}
-            </nav>
+                    <Award
+                      className="h-3.5 w-3.5 shrink-0 opacity-90"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    {tierLabel}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
+                    <CheckCircle2
+                      className="h-3.5 w-3.5 shrink-0 text-primary/90"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    {statusLabelVi(employee.status)}
+                  </span>
+                </div>
 
-            <div className="page-shell">
-              {tab === 0 && (
-                <OverviewTab
-                  employee={employee}
-                  tierLabel={tierLabel}
-                  tierClass={tierClass}
-                  xpPct={xpPct}
-                  maxStars={maxStars}
-                  levelStarVariants={levelStarVariants}
-                />
-              )}
-              {tab === 1 && <LearningPathTab employee={employee} levelIdx={levelIdx} />}
-              {tab === 2 && <ExamResultsTab />}
-              {tab === 3 && <WorkHistoryTab />}
-              {tab === 4 && (
-                <EditTab
-                  employee={employee}
-                  editName={editName}
-                  editEmail={editEmail}
-                  editRole={editRole}
-                  editDepartmentId={editDepartmentId}
-                  editTeamId={editTeamId}
-                  editPhone={editPhone}
-                  editBirthDate={editBirthDate}
-                  editStartDate={editStartDate}
-                  editSecondaryTeamId={editSecondaryTeamId}
-                  editCurrentLevel={editCurrentLevel}
-                  empCode={empCode}
-                  onName={setEditName}
-                  onEmail={setEditEmail}
-                  onRole={setEditRole}
-                  onDepartmentId={setEditDepartmentId}
-                  onTeamId={setEditTeamId}
-                  onPhone={setEditPhone}
-                  onBirthDate={setEditBirthDate}
-                  onStartDate={setEditStartDate}
-                  onSecondaryTeamId={setEditSecondaryTeamId}
-                  onCurrentLevel={setEditCurrentLevel}
-                  canEdit={canEdit}
-                  canDeactivate={canDeactivate}
-                  isSaving={isSaving}
-                  onSave={handleSaveProfile}
-                  onDeactivate={handleDeactivateProfile}
-                  onReactivate={handleReactivateProfile}
-                />
-              )}
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <Button type="button" className="gap-2" onClick={() => setTab(4)}>
+                    Chỉnh sửa hồ sơ
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => toast.info('Cài đặt nhân viên (demo)')}
+                    aria-label="Cài đặt"
+                  >
+                    <Settings className="h-5 w-5" strokeWidth={2} />
+                  </Button>
+                </div>
+              </div>
+
+              <nav
+                className="flex flex-wrap gap-0 border-b border-border px-2 md:px-4"
+                aria-label="Mục hồ sơ nhân viên"
+              >
+                {tabLabels.map((label, i) => {
+                  const Icon = tabIcons[i]!
+                  const active = tab === i
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setTab(i)}
+                      className={cn(
+                        'relative flex items-center gap-2 px-3 py-3.5 text-sm font-semibold transition-colors md:px-4',
+                        active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0 opacity-85" strokeWidth={2} />
+                      {label}
+                      {active ? (
+                        <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary md:left-4 md:right-4" />
+                      ) : null}
+                    </button>
+                  )
+                })}
+              </nav>
+
+              <div className="page-shell">
+                {tab === 0 && (
+                  <OverviewTab
+                    employee={employee}
+                    tierLabel={tierLabel}
+                    tierClass={tierClass}
+                    xpPct={xpPct}
+                    maxStars={maxStars}
+                    levelStarVariants={levelStarVariants}
+                  />
+                )}
+                {tab === 1 && <LearningPathTab employee={employee} levelIdx={levelIdx} />}
+                {tab === 2 && <ExamResultsTab />}
+                {tab === 3 && <WorkHistoryTab />}
+                {tab === 4 && (
+                  <EditTab
+                    employee={employee}
+                    control={editControl}
+                    empCode={empCode}
+                    canEdit={canEdit}
+                    canDeactivate={canDeactivate}
+                    isSaving={isSaving}
+                    onSave={handleSaveProfile}
+                    onDeactivate={handleDeactivateProfile}
+                    onReactivate={handleReactivateProfile}
+                  />
+                )}
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
+    </FormProvider>
   )
 }
 
@@ -944,27 +991,8 @@ function WorkHistoryTab() {
 
 function EditTab({
   employee,
-  editName,
-  editEmail,
-  editRole,
-  editDepartmentId,
-  editTeamId,
-  editPhone,
-  editBirthDate,
-  editStartDate,
-  editSecondaryTeamId,
-  editCurrentLevel,
+  control,
   empCode,
-  onName,
-  onEmail,
-  onRole,
-  onDepartmentId,
-  onTeamId,
-  onPhone,
-  onBirthDate,
-  onStartDate,
-  onSecondaryTeamId,
-  onCurrentLevel,
   canEdit,
   canDeactivate,
   isSaving,
@@ -973,27 +1001,8 @@ function EditTab({
   onReactivate,
 }: {
   employee: EmployeeEntity
-  editName: string
-  editEmail: string
-  editRole: Role
-  editDepartmentId: string
-  editTeamId: string
-  editPhone: string
-  editBirthDate: string
-  editStartDate: string
-  editSecondaryTeamId: string
-  editCurrentLevel: EmployeeEntity['currentLevel']
+  control: Control<EmployeeEditFormValues>
   empCode: string
-  onName: (v: string) => void
-  onEmail: (v: string) => void
-  onRole: (v: Role) => void
-  onDepartmentId: (v: string) => void
-  onTeamId: (v: string) => void
-  onPhone: (v: string) => void
-  onBirthDate: (v: string) => void
-  onStartDate: (v: string) => void
-  onSecondaryTeamId: (v: string) => void
-  onCurrentLevel: (v: EmployeeEntity['currentLevel']) => void
   canEdit: boolean
   canDeactivate: boolean
   isSaving: boolean
@@ -1001,36 +1010,45 @@ function EditTab({
   onDeactivate: () => void
   onReactivate: () => void
 }) {
+  const orgSel = useHrOrgSelectOptions()
   const orgDisabled = !canEdit || isSaving
   const inactive = employee.status === 'INACTIVE'
+  const [editRole, editDepartmentId, editTeamId, editSecondaryTeamId] = useWatch({
+    control,
+    name: ['role', 'departmentId', 'teamId', 'secondaryTeamId'],
+  })
 
   const departmentOptions = useMemo(() => {
-    const base = [...HR_DEPARTMENT_OPTIONS]
-    if (!base.some((o) => o.value === editDepartmentId)) {
-      return [
+    const base = [...orgSel.departments]
+    if (editDepartmentId && !base.some((o) => o.value === editDepartmentId)) {
+      return dedupeOptionsByValue([
         { value: editDepartmentId, label: `Phòng ban (${shortId(editDepartmentId)})` },
         ...base,
-      ]
+      ])
     }
-    return base
-  }, [editDepartmentId])
+    return dedupeOptionsByValue(base)
+  }, [orgSel.departments, editDepartmentId])
 
   const teamOptions = useMemo(() => {
-    const base = [...HR_TEAM_OPTIONS]
-    if (!base.some((o) => o.value === editTeamId)) {
-      return [{ value: editTeamId, label: `Nhóm (${shortId(editTeamId)})` }, ...base]
+    const fromDept = orgSel.teamsByDept.get(editDepartmentId) ?? []
+    const base = [...fromDept]
+    if (editTeamId && !base.some((o) => o.value === editTeamId)) {
+      return dedupeOptionsByValue([
+        { value: editTeamId, label: `Nhóm (${shortId(editTeamId)})` },
+        ...base,
+      ])
     }
-    return base
-  }, [editTeamId])
+    return dedupeOptionsByValue(base)
+  }, [orgSel.teamsByDept, editDepartmentId, editTeamId])
 
   const secondaryTeamOptions = useMemo(() => {
-    const base = [...HR_TEAM_OPTIONS]
-    const v = editSecondaryTeamId.trim()
+    const base = [...orgSel.allTeams]
+    const v = (editSecondaryTeamId ?? '').trim()
     if (v && !base.some((o) => o.value === v)) {
-      return [{ value: v, label: `Nhóm phụ (${shortId(v)})` }, ...base]
+      return dedupeOptionsByValue([{ value: v, label: `Nhóm phụ (${shortId(v)})` }, ...base])
     }
-    return base
-  }, [editSecondaryTeamId])
+    return dedupeOptionsByValue(base)
+  }, [orgSel.allTeams, editSecondaryTeamId])
 
   const roleSelectOptions = useMemo((): Role[] => {
     if (editRole === 'TEACHER') {
@@ -1044,64 +1062,55 @@ function EditTab({
     []
   )
 
-  const inputCls =
-    'w-full rounded-[9px] border border-border bg-white px-3 py-2 text-sm disabled:opacity-60'
-
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
       <div>
         <PfCard title="Phân công tổ chức" entranceIndex={0}>
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">Role</label>
-          <select
-            className={cn(inputCls, 'mb-3')}
-            value={editRole}
+          <SelectController
+            control={control}
+            name="role"
+            label="Role"
+            className="mb-3"
             disabled={orgDisabled}
-            onChange={(e) => onRole(e.target.value as Role)}
           >
             {roleSelectOptions.map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABEL_VI[r]}
               </option>
             ))}
-          </select>
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
-            Phòng ban
-          </label>
-          <select
-            className={cn(inputCls, 'mb-3')}
-            value={editDepartmentId}
+          </SelectController>
+          <SelectController
+            control={control}
+            name="departmentId"
+            label="Phòng ban"
+            className="mb-3"
             disabled={orgDisabled}
-            onChange={(e) => onDepartmentId(e.target.value)}
           >
             {departmentOptions.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
-          </select>
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
-            Team chính
-          </label>
-          <select
-            className={cn(inputCls, 'mb-3')}
-            value={editTeamId}
+          </SelectController>
+          <SelectController
+            control={control}
+            name="teamId"
+            label="Team chính"
+            className="mb-3"
             disabled={orgDisabled}
-            onChange={(e) => onTeamId(e.target.value)}
           >
             {teamOptions.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
-          </select>
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
-            Team phụ (tùy chọn)
-          </label>
-          <select
-            className={cn(inputCls, 'mb-3')}
-            value={editSecondaryTeamId}
+          </SelectController>
+          <SelectController
+            control={control}
+            name="secondaryTeamId"
+            label="Team phụ (tùy chọn)"
+            className="mb-3"
             disabled={orgDisabled}
-            onChange={(e) => onSecondaryTeamId(e.target.value)}
           >
             <option value="">— Không gán —</option>
             {secondaryTeamOptions.map((o) => (
@@ -1109,116 +1118,89 @@ function EditTab({
                 {o.label}
               </option>
             ))}
-          </select>
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
-            Ngày bắt đầu
-          </label>
-          <input
+          </SelectController>
+          <InputController
+            control={control}
+            name="startDate"
+            label="Ngày bắt đầu"
             type="date"
-            className={cn(inputCls, 'mb-3')}
-            value={editStartDate}
             disabled={orgDisabled}
-            onChange={(e) => onStartDate(e.target.value)}
           />
-          <label className="mb-2 block text-xs font-semibold text-muted-foreground">
-            Cấp năng lực (career)
-          </label>
-          <select
-            className={inputCls}
-            value={editCurrentLevel}
+          <SelectController
+            control={control}
+            name="currentLevel"
+            label="Cấp năng lực (career)"
             disabled={orgDisabled}
-            onChange={(e) => onCurrentLevel(e.target.value as EmployeeEntity['currentLevel'])}
           >
             {levelSelectOptions.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
-          </select>
+          </SelectController>
         </PfCard>
         <div className="mt-2 flex flex-col gap-2 sm:flex-row">
           {inactive ? (
-            <button
+            <Button
               type="button"
-              className="flex-1 rounded-[9px] border border-primary/35 bg-primary/10 py-2.5 text-sm font-bold text-primary hover:bg-primary/15 disabled:opacity-50"
+              variant="outline"
+              className="flex-1 border-primary/35 bg-primary/10 py-2.5 text-sm font-bold text-primary hover:bg-primary/15"
               disabled={!canEdit || isSaving}
               onClick={onReactivate}
             >
               Kích hoạt lại
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               type="button"
-              className="flex-1 rounded-[9px] border border-[#FCA5A5] bg-[#FEE2E2] py-2.5 text-sm font-bold text-[#991B1B] hover:bg-[#FECACA] disabled:opacity-50"
+              variant="destructive"
+              className="flex-1 py-2.5 text-sm font-bold"
               disabled={!canDeactivate || isSaving}
               onClick={onDeactivate}
             >
               Hủy hoạt động
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             type="button"
-            className="flex-[2] rounded-lg border border-button bg-button py-2.5 text-sm font-bold text-button-foreground hover:opacity-90 disabled:opacity-50"
+            className="flex-[2] py-2.5 text-sm font-bold"
             disabled={!canEdit || isSaving}
             onClick={onSave}
           >
             {isSaving ? 'Đang lưu…' : 'Lưu thay đổi'}
-          </button>
+          </Button>
         </div>
       </div>
       <PfCard title="Thông tin cá nhân" entranceIndex={1}>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-              Họ và tên
-            </label>
-            <input
-              className={inputCls}
-              value={editName}
-              disabled={orgDisabled}
-              onChange={(e) => onName(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Email</label>
-            <input
-              type="email"
-              className={inputCls}
-              value={editEmail}
-              disabled={orgDisabled}
-              onChange={(e) => onEmail(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-              Số điện thoại
-            </label>
-            <input
-              className={inputCls}
-              value={editPhone}
-              disabled={orgDisabled}
-              placeholder="09xx xxx xxx"
-              onChange={(e) => onPhone(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-              Ngày sinh
-            </label>
-            <input
-              type="date"
-              className={inputCls}
-              value={editBirthDate}
-              disabled={orgDisabled}
-              onChange={(e) => onBirthDate(e.target.value)}
-            />
-          </div>
+          <InputController control={control} name="name" label="Họ và tên" disabled={orgDisabled} />
+          <InputController
+            control={control}
+            name="email"
+            label="Email"
+            type="email"
+            disabled={orgDisabled}
+          />
+          <InputController
+            control={control}
+            name="phone"
+            label="Số điện thoại"
+            placeholder="09xx xxx xxx"
+            disabled={orgDisabled}
+          />
+          <InputController
+            control={control}
+            name="birthDate"
+            label="Ngày sinh"
+            type="date"
+            disabled={orgDisabled}
+          />
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">
               Mã nhân viên (hệ thống)
             </label>
-            <input
-              className={cn(inputCls, 'bg-muted/50 text-muted-foreground')}
+            <Input
+              className={cn(PROFILE_EDIT_FIELD, 'bg-muted/50 text-muted-foreground')}
               readOnly
               value={empCode}
             />

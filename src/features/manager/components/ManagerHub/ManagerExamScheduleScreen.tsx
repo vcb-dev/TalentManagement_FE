@@ -1,7 +1,8 @@
 import { useQueries } from '@tanstack/react-query'
-import { Calendar, CheckSquare, Circle, FileUp, ListPlus, Loader2, Trash2, X } from 'lucide-react'
-import { Fragment, useEffect, useMemo, useState } from 'react'
-import { z } from 'zod'
+import { Calendar, Loader2, X } from 'lucide-react'
+import { Fragment, useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import type { z } from 'zod'
 import { toast } from 'sonner'
 import {
   PAGE_HEADER_DESCRIPTION,
@@ -13,7 +14,10 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { managerApi } from '@/features/manager/api'
 import { managerKeys } from '@/features/manager/queryKeys'
-import { managerClassApiSchema, managerClassScheduleApiSchema } from '@/features/manager/schemas'
+import type {
+  managerClassApiSchema,
+  managerClassScheduleApiSchema,
+} from '@/features/manager/schemas'
 import {
   useManagerClasses,
   useTeacherOptions,
@@ -34,10 +38,6 @@ function toLocalDateInputValue(value: Date): string {
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0')
-}
-
-function toLocalTimeParts(value: Date): { hour: string; minute: string } {
-  return { hour: pad2(value.getHours()), minute: pad2(value.getMinutes()) }
 }
 
 function clampTwoDigit(value: string, min: number, max: number): string {
@@ -110,10 +110,15 @@ export function ManagerExamScheduleScreen() {
   const anyScheduleFetching = scheduleQueries.some((q) => q.isFetching)
 
   const [examModalClassId, setExamModalClassId] = useState<string | null>(null)
-  const [examDate, setExamDate] = useState('')
-  const [examHour, setExamHour] = useState('08')
-  const [examMinute, setExamMinute] = useState('00')
-  const [examTeacherQuery, setExamTeacherQuery] = useState('')
+  const examForm = useForm<{
+    examDate: string
+    examHour: string
+    examMinute: string
+    examTeacherQuery: string
+  }>({
+    defaultValues: { examDate: '', examHour: '08', examMinute: '00', examTeacherQuery: '' },
+  })
+  const { setValue: setExamValue, getValues: getExamValues, reset: resetExamForm } = examForm
   const [examTeacher, setExamTeacher] = useState<{
     userId: string
     name: string
@@ -122,22 +127,24 @@ export function ManagerExamScheduleScreen() {
 
   const modalClass = classes.find((c) => c.id === examModalClassId) ?? null
   const isTapSuClass = modalClass?.levelFrom === 'tap_su' && modalClass?.levelTo === 'biet_viec'
+  const examTeacherQuery = getExamValues('examTeacherQuery')
   const { data: examTeacherOptions = [], isFetching: fetchingExamTeachers } =
     useTeacherOptions(examTeacherQuery)
   const updateClass = useUpdateManagerClass()
 
   const closeExamModal = () => {
     setExamModalClassId(null)
-    setExamTeacherQuery('')
+    resetExamForm({ examDate: '', examHour: '08', examMinute: '00', examTeacherQuery: '' })
   }
 
   const saveExamSchedule = () => {
     if (!examModalClassId) return
-    if (!examDate.trim()) {
+    const values = getExamValues()
+    if (!values.examDate.trim()) {
       toast.error('Vui lòng chọn ngày giờ kỳ thi')
       return
     }
-    const at = new Date(`${examDate}T${examHour}:${examMinute}:00`)
+    const at = new Date(`${values.examDate}T${values.examHour}:${values.examMinute}:00`)
     if (Number.isNaN(at.getTime())) {
       toast.error('Thời gian thi không hợp lệ')
       return
@@ -449,26 +456,34 @@ export function ManagerExamScheduleScreen() {
                   <div className="grid grid-cols-[1fr_auto] gap-2">
                     <input
                       type="date"
-                      value={examDate}
-                      onChange={(e) => setExamDate(e.target.value)}
+                      value={getExamValues('examDate')}
+                      onChange={(e) => setExamValue('examDate', e.target.value)}
                       min={toLocalDateInputValue(new Date())}
                       className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                     <div className="flex items-center gap-1.5">
                       <input
                         inputMode="numeric"
-                        value={examHour}
-                        onChange={(e) => setExamHour(clampTwoDigit(e.target.value, 0, 23))}
-                        onBlur={(e) => setExamHour(clampTwoDigit(e.target.value, 0, 23))}
+                        value={getExamValues('examHour')}
+                        onChange={(e) =>
+                          setExamValue('examHour', clampTwoDigit(e.target.value, 0, 23))
+                        }
+                        onBlur={(e) =>
+                          setExamValue('examHour', clampTwoDigit(e.target.value, 0, 23))
+                        }
                         className="h-[38px] w-[64px] rounded-lg border border-border bg-background px-2 text-center text-sm font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                         aria-label="Giờ thi (00-23)"
                       />
                       <span className="text-sm font-bold text-muted-foreground">:</span>
                       <input
                         inputMode="numeric"
-                        value={examMinute}
-                        onChange={(e) => setExamMinute(clampTwoDigit(e.target.value, 0, 59))}
-                        onBlur={(e) => setExamMinute(clampTwoDigit(e.target.value, 0, 59))}
+                        value={getExamValues('examMinute')}
+                        onChange={(e) =>
+                          setExamValue('examMinute', clampTwoDigit(e.target.value, 0, 59))
+                        }
+                        onBlur={(e) =>
+                          setExamValue('examMinute', clampTwoDigit(e.target.value, 0, 59))
+                        }
                         className="h-[38px] w-[64px] rounded-lg border border-border bg-background px-2 text-center text-sm font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                         aria-label="Phút thi (00-59)"
                       />
@@ -489,8 +504,8 @@ export function ManagerExamScheduleScreen() {
                 ) : (
                   <>
                     <input
-                      value={examTeacherQuery}
-                      onChange={(e) => setExamTeacherQuery(e.target.value)}
+                      value={getExamValues('examTeacherQuery')}
+                      onChange={(e) => setExamValue('examTeacherQuery', e.target.value)}
                       placeholder="Gõ tên/email giáo viên..."
                       className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
@@ -513,7 +528,7 @@ export function ManagerExamScheduleScreen() {
                               className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-primary/10"
                               onClick={() => {
                                 setExamTeacher(opt)
-                                setExamTeacherQuery('')
+                                setExamValue('examTeacherQuery', '')
                               }}
                             >
                               <p className="font-semibold text-foreground">{opt.name}</p>

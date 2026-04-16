@@ -1,19 +1,11 @@
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
-import {
-  ArrowRight,
-  Building2,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Link2,
-  MapPin,
-  Shield,
-} from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { ArrowRight, Building2, Calendar, Clock, Link2, MapPin, Shield } from 'lucide-react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { ProgressStar } from '@/components/shared/ProgressStar/ProgressStar'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PaginationCardStepper } from '@/components/ui/pagination'
 import { formatViDate } from '@/lib/date'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -79,7 +71,9 @@ export function ExamResultsSchedule({
   membersTitle,
   mySubmissions,
 }: ExamResultsScheduleProps) {
-  const [yearFilter, setYearFilter] = useState<string>('all')
+  const filterForm = useForm<{ yearFilter: string }>({ defaultValues: { yearFilter: 'all' } })
+  const yearFilter = useWatch({ control: filterForm.control, name: 'yearFilter' }) ?? 'all'
+  const deferredYearFilter = useDeferredValue(yearFilter)
   const [questionBankClassIds, setQuestionBankClassIds] = useState<Set<string>>(new Set())
   const [submittedExamIds, setSubmittedExamIds] = useState<Set<string>>(new Set())
 
@@ -123,10 +117,10 @@ export function ExamResultsSchedule({
   }, [completed])
 
   const filteredCompleted = useMemo(() => {
-    if (yearFilter === 'all') return completed
-    const y = Number.parseInt(yearFilter, 10)
+    if (deferredYearFilter === 'all') return completed
+    const y = Number.parseInt(deferredYearFilter, 10)
     return completed.filter((e) => new Date(e.scheduledAt).getFullYear() === y)
-  }, [completed, yearFilter])
+  }, [completed, deferredYearFilter])
 
   const upcomingShow = upcoming.slice(0, 2)
 
@@ -275,18 +269,23 @@ export function ExamResultsSchedule({
           {membersInClass ? null : (
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="sr-only">Lọc theo năm</span>
-              <select
-                value={yearFilter}
-                onChange={(e) => setYearFilter(e.target.value)}
-                className="rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="all">Tất cả</option>
-                {yearOptions.map((y) => (
-                  <option key={y} value={String(y)}>
-                    Năm {y}
-                  </option>
-                ))}
-              </select>
+              <Controller
+                control={filterForm.control}
+                name="yearFilter"
+                render={({ field }) => (
+                  <select
+                    {...field}
+                    className="rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="all">Tất cả</option>
+                    {yearOptions.map((y) => (
+                      <option key={y} value={String(y)}>
+                        Năm {y}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              />
             </label>
           )}
         </div>
@@ -496,29 +495,11 @@ export function ExamResultsSchedule({
           <p className="text-sm text-muted-foreground">
             Hiển thị {exams.length} kỳ thi trên trang · Tổng {total} kỳ thi
           </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => onPageChange(page - 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/50 text-foreground transition-colors hover:bg-muted disabled:opacity-40"
-              aria-label="Trang trước"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="min-w-[7rem] text-center text-sm font-medium text-foreground">
-              Trang {page} / {Math.max(totalPages, 1)}
-            </span>
-            <button
-              type="button"
-              disabled={page >= totalPages}
-              onClick={() => onPageChange(page + 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/50 text-foreground transition-colors hover:bg-muted disabled:opacity-40"
-              aria-label="Trang sau"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          <PaginationCardStepper
+            page={page}
+            totalPages={Math.max(totalPages, 1)}
+            onPageChange={onPageChange}
+          />
         </div>
       </section>
     </div>

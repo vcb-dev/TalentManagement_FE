@@ -40,7 +40,7 @@ export function ManagerHubNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
   return (
-    <div className="sticky top-0 z-10 border-b border-[hsl(248_35%_90%)] bg-gradient-to-r from-white/98 via-[hsl(248_100%_99%)] to-white/95 px-3 py-2.5 shadow-[0_6px_20px_-12px_rgb(106_90_224/0.25)] backdrop-blur-sm md:px-4">
+    <div className="sticky top-0 z-10 border-b border-border bg-card/95 px-3 py-2.5 shadow-[var(--shadow-card)] backdrop-blur-sm md:px-4">
       <div className="mx-auto flex max-w-[1400px] flex-wrap gap-1.5 md:gap-2">
         {MANAGER_NAV.map((item) => {
           const Icon = item.icon
@@ -52,7 +52,7 @@ export function ManagerHubNav() {
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors md:text-sm',
                 active
-                  ? 'bg-game-accent text-game-accent-foreground shadow-[0_4px_14px_rgb(106_90_224/0.35)]'
+                  ? 'bg-primary text-primary-foreground shadow-[var(--shadow-game-float)]'
                   : 'border border-border/80 bg-card text-muted-foreground hover:border-primary/25 hover:bg-primary/[0.06] hover:text-foreground'
               )}
             >

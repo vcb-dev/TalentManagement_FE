@@ -14,7 +14,7 @@ export function LearningProgressCard({ level, currentStar }: LearningProgressCar
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Tiến độ lộ trình</CardTitle>
+        <CardTitle className="text-xl md:text-2xl">Tiến độ lộ trình</CardTitle>
         <LevelBadge level={level} />
       </CardHeader>
       <CardContent className="flex gap-1">

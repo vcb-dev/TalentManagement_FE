@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useDeactivateEmployee, useEmployees, useUpdateEmployee } from '@/features/hr-admin/hooks'
 import type { EmployeeFilters } from '@/features/hr-admin/types'
 
-const defaultFilters: EmployeeFilters = { page: 1, pageSize: 48 }
+const defaultFilters: EmployeeFilters = { page: 1, pageSize: 15 }
 
 /**
  * Bộ lọc từ URL (search params) luôn lấy từ `initial`; chỉ `search` giữ trong state nội bộ

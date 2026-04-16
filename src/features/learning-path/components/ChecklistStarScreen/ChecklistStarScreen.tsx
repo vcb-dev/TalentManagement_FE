@@ -1,6 +1,16 @@
 import { useMemo, useRef, useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ChevronDown, ChevronRight, Clock, CloudUpload, ListChecks, Lock, Paperclip, Trophy } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  CloudUpload,
+  ListChecks,
+  Lock,
+  Paperclip,
+  Trophy,
+} from 'lucide-react'
 import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
   useLearningChecklist,
@@ -108,7 +118,11 @@ export function ChecklistStarScreen({
       .sort((a, b) => a.sortOrder - b.sortOrder)
   }, [embedInLearningPath, myPath])
 
-  const useProbationFlow = embedInLearningPath && levelId === 'tap_su' && probationMilestones.length > 0
+  /** Tập sự trên `/learning-path`: ưu tiên dữ liệu probation (milestone và/hoặc roadmap topic). Nếu chỉ có topic mà không có milestone, vẫn phải hiển thị checklist — tránh rơi về API sao rỗng. */
+  const useProbationFlow =
+    embedInLearningPath &&
+    levelId === 'tap_su' &&
+    (probationMilestones.length > 0 || probationRoadmapTopics.length > 0)
   const { data, isLoading } = useLearningChecklist(levelId, starId, !useProbationFlow)
   const sortedItems = useMemo(() => {
     const arr = [...(data?.items ?? [])]
@@ -119,11 +133,13 @@ export function ChecklistStarScreen({
   const { data: submissions } = useStarSubmissions(starId)
   const submit = useSubmitEvidence()
   const fileRef = useRef<HTMLInputElement>(null)
-  const [note, setNote] = useState('')
+  const evidenceForm = useForm<{ note: string }>({ defaultValues: { note: '' } })
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
 
   const levelName = LEVEL_VI[levelId] ?? levelId
-  const total = useProbationFlow ? probationMilestones.length : sortedItems.length
+  const probationStepCount =
+    probationRoadmapTopics.length > 0 ? probationRoadmapTopics.length : probationMilestones.length
+  const total = useProbationFlow ? probationStepCount : sortedItems.length
   const doneCount = useProbationFlow
     ? probationMilestones.filter((m) => m.status === 'done').length
     : sortedItems.filter((i) => checklist.isCompleted(i.id)).length
@@ -149,7 +165,8 @@ export function ChecklistStarScreen({
         description: topic.objectives.map((o) => o.objective).join('\n'),
         completedAt:
           idx < doneMilestones
-            ? probationMilestones[Math.min(idx, probationMilestones.length - 1)]?.completedAt ?? null
+            ? (probationMilestones[Math.min(idx, probationMilestones.length - 1)]?.completedAt ??
+              null)
             : null,
         kind:
           idx < doneMilestones
@@ -200,7 +217,7 @@ export function ChecklistStarScreen({
       { levelId, starId, itemId: currentItem.id, file },
       {
         onSuccess: () => {
-          setNote('')
+          evidenceForm.reset({ note: '' })
           e.target.value = ''
         },
       }
@@ -254,7 +271,7 @@ export function ChecklistStarScreen({
 
       <div className="page-shell">
         {isLoading ? (
-          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-12">
+          <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 lg:grid-cols-12">
             <div className="space-y-4 lg:col-span-7">
               <div>
                 <Skeleton className="mb-2 h-5 w-48 rounded-md" />
@@ -272,7 +289,7 @@ export function ChecklistStarScreen({
             </div>
           </div>
         ) : (
-          <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-[1400px]">
             <nav className="mb-6 flex flex-wrap items-center gap-2 text-[13px]">
               <span className="font-bold uppercase tracking-widest text-gray-500">{levelName}</span>
               <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden />
@@ -328,43 +345,52 @@ export function ChecklistStarScreen({
                   </span>
                 </div>
                 <div className="space-y-4">
-                  {tasks.map((it) => {
-                    const doneDate = it.completedAt
-                      ? new Date(it.completedAt).toLocaleDateString('vi-VN')
-                      : undefined
-                    return (
-                      <ChecklistTaskCard
-                        key={it.id}
-                        id={it.id}
-                        title={it.title}
-                        kind={it.kind}
-                        expanded={activeTaskId === it.id}
-                        onToggle={() => setExpandedTaskId((prev) => (prev === it.id ? null : it.id))}
-                        objective={it.description?.trim() || 'Chưa có objective cho đầu mục này.'}
-                        objectiveList={it.objectives}
-                        subtitle={
-                          it.kind === 'done'
-                            ? doneDate
-                              ? `Hoàn thành ${doneDate}`
-                              : 'Đã hoàn thành'
-                            : it.kind === 'current'
-                              ? 'Ấn vào để xem chi tiết'
-                              : 'Hoàn thành nhiệm vụ trước để mở'
-                        }
-                        primaryAction={
-                          it.kind === 'done'
-                            ? it.order === 2
-                              ? { label: 'Xem kết quả', onClick: () => {} }
-                              : { label: 'Xem bằng chứng', onClick: () => {} }
-                            : it.kind === 'current'
-                              ? useProbationFlow
-                                ? undefined
-                                : { label: 'Nộp bằng chứng', onClick: onPickFile }
-                              : undefined
-                        }
-                      />
-                    )
-                  })}
+                  {tasks.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+                      Chưa có nhiệm vụ cho mốc này. Thử tải lại trang; nếu vẫn trống, liên hệ quản
+                      lý hoặc đơn vị đào tạo.
+                    </p>
+                  ) : (
+                    tasks.map((it) => {
+                      const doneDate = it.completedAt
+                        ? new Date(it.completedAt).toLocaleDateString('vi-VN')
+                        : undefined
+                      return (
+                        <ChecklistTaskCard
+                          key={it.id}
+                          id={it.id}
+                          title={it.title}
+                          kind={it.kind}
+                          expanded={activeTaskId === it.id}
+                          onToggle={() =>
+                            setExpandedTaskId((prev) => (prev === it.id ? null : it.id))
+                          }
+                          objective={it.description?.trim() || 'Chưa có objective cho đầu mục này.'}
+                          objectiveList={it.objectives}
+                          subtitle={
+                            it.kind === 'done'
+                              ? doneDate
+                                ? `Hoàn thành ${doneDate}`
+                                : 'Đã hoàn thành'
+                              : it.kind === 'current'
+                                ? 'Ấn vào để xem chi tiết'
+                                : 'Hoàn thành nhiệm vụ trước để mở'
+                          }
+                          primaryAction={
+                            it.kind === 'done'
+                              ? it.order === 2
+                                ? { label: 'Xem kết quả', onClick: () => {} }
+                                : { label: 'Xem bằng chứng', onClick: () => {} }
+                              : it.kind === 'current'
+                                ? useProbationFlow
+                                  ? undefined
+                                  : { label: 'Nộp bằng chứng', onClick: onPickFile }
+                                : undefined
+                          }
+                        />
+                      )
+                    })
+                  )}
                 </div>
               </div>
 
@@ -419,13 +445,18 @@ export function ChecklistStarScreen({
                           >
                             Mô tả
                           </label>
-                          <textarea
-                            id="evidence-note"
-                            className="w-full resize-y rounded-lg border-0 bg-primary-50/40 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600"
-                            placeholder="Mô tả ngắn gọn về tài liệu bạn nộp…"
-                            rows={4}
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
+                          <Controller
+                            control={evidenceForm.control}
+                            name="note"
+                            render={({ field }) => (
+                              <textarea
+                                id="evidence-note"
+                                className="w-full resize-y rounded-lg border-0 bg-primary-50/40 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600"
+                                placeholder="Mô tả ngắn gọn về tài liệu bạn nộp…"
+                                rows={4}
+                                {...field}
+                              />
+                            )}
                           />
                         </div>
                         <button
@@ -542,11 +573,26 @@ function ChecklistTaskCard({
   primaryAction?: { label: string; onClick: () => void }
 }) {
   const parseMaterialRef = (value: string | null) => {
-    if (!value) return { daoTao: null as string | null, slide: null as string | null, taiLieu: null as string | null, raw: null as string | null }
+    if (!value)
+      return {
+        daoTao: null as string | null,
+        slide: null as string | null,
+        taiLieu: null as string | null,
+        raw: null as string | null,
+      }
     const text = value.trim()
-    const daoTao = text.match(/(?:Đào tạo|Dao tao)\s*:?\s*(.+?)(?=(?:\s*(?:Slide|Tài liệu|Tai lieu)\s*:)|$)/i)?.[1]?.trim() ?? null
-    const slide = text.match(/Slide\s*:?\s*(.+?)(?=(?:\s*(?:Đào tạo|Dao tao|Tài liệu|Tai lieu)\s*:)|$)/i)?.[1]?.trim() ?? null
-    const taiLieu = text.match(/(?:Tài liệu|Tai lieu)\s*:?\s*(.+?)(?=(?:\s*(?:Đào tạo|Dao tao|Slide)\s*:)|$)/i)?.[1]?.trim() ?? null
+    const daoTao =
+      text
+        .match(/(?:Đào tạo|Dao tao)\s*:?\s*(.+?)(?=(?:\s*(?:Slide|Tài liệu|Tai lieu)\s*:)|$)/i)?.[1]
+        ?.trim() ?? null
+    const slide =
+      text
+        .match(/Slide\s*:?\s*(.+?)(?=(?:\s*(?:Đào tạo|Dao tao|Tài liệu|Tai lieu)\s*:)|$)/i)?.[1]
+        ?.trim() ?? null
+    const taiLieu =
+      text
+        .match(/(?:Tài liệu|Tai lieu)\s*:?\s*(.+?)(?=(?:\s*(?:Đào tạo|Dao tao|Slide)\s*:)|$)/i)?.[1]
+        ?.trim() ?? null
     const raw = text.replace(/^(?:Tài liệu|Tai lieu)\s*:?\s*/i, '').trim()
     return { daoTao, slide, taiLieu, raw: raw.length > 0 ? raw : null }
   }
@@ -580,14 +626,22 @@ function ChecklistTaskCard({
     objectiveList && objectiveList.length > 0 ? (
       <ul className="space-y-2">
         {objectiveList.map((obj, index) => (
-          <li key={obj.id} className="rounded-lg border border-primary-100/70 bg-white p-3 shadow-sm">
+          <li
+            key={obj.id}
+            className="rounded-lg border border-primary-100/70 bg-white p-3 shadow-sm"
+          >
             <p className="text-sm font-medium text-gray-800">
               {index + 1}. {obj.objective}
             </p>
             {(() => {
               const material = parseMaterialRef(obj.materialRef)
               const hasAnyMeta =
-                !!material.daoTao || !!material.slide || !!material.taiLieu || !!material.raw || !!obj.trainer || !!obj.assessment
+                !!material.daoTao ||
+                !!material.slide ||
+                !!material.taiLieu ||
+                !!material.raw ||
+                !!obj.trainer ||
+                !!obj.assessment
               if (!hasAnyMeta) return null
               return (
                 <div className="mt-2 space-y-1 text-xs text-gray-600">
@@ -650,7 +704,10 @@ function ChecklistTaskCard({
           <Lock className="mt-0.5 h-5 w-5 shrink-0 text-gray-300" strokeWidth={2} aria-hidden />
         </button>
         {expanded ? (
-          <div id={`objective-${id}`} className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-sm text-gray-500">
+          <div
+            id={`objective-${id}`}
+            className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-sm text-gray-500"
+          >
             {objectiveContent}
           </div>
         ) : null}
@@ -676,7 +733,10 @@ function ChecklistTaskCard({
               <div className="flex flex-wrap items-center gap-2">
                 <h4 className="text-base font-bold text-gray-900">{title}</h4>
                 <ChevronDown
-                  className={cn('h-4 w-4 text-gray-500 transition-transform', expanded && 'rotate-180')}
+                  className={cn(
+                    'h-4 w-4 text-gray-500 transition-transform',
+                    expanded && 'rotate-180'
+                  )}
                   aria-hidden
                 />
               </div>
@@ -686,7 +746,10 @@ function ChecklistTaskCard({
             </div>
           </button>
           {expanded ? (
-            <div id={`objective-${id}`} className="rounded-lg bg-white/80 px-3 py-2 text-sm text-gray-700">
+            <div
+              id={`objective-${id}`}
+              className="rounded-lg bg-white/80 px-3 py-2 text-sm text-gray-700"
+            >
               {objectiveContent}
             </div>
           ) : null}
@@ -724,11 +787,16 @@ function ChecklistTaskCard({
             <div className="flex items-center gap-2">
               <h4 className="text-base font-bold text-primary-600">{title}</h4>
               <ChevronDown
-                className={cn('h-4 w-4 text-primary-600 transition-transform', expanded && 'rotate-180')}
+                className={cn(
+                  'h-4 w-4 text-primary-600 transition-transform',
+                  expanded && 'rotate-180'
+                )}
                 aria-hidden
               />
             </div>
-            <span className="shrink-0 rounded bg-primary-100/80 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-primary-700">Active</span>
+            <span className="shrink-0 rounded bg-primary-100/80 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-primary-700">
+              Active
+            </span>
           </div>
           {subtitle ? (
             <p className="mt-1 text-sm leading-relaxed text-gray-500">{subtitle}</p>
@@ -736,7 +804,10 @@ function ChecklistTaskCard({
         </div>
       </button>
       {expanded ? (
-        <div id={`objective-${id}`} className="mt-3 rounded-lg bg-primary-50/50 px-3 py-2 text-sm text-gray-700">
+        <div
+          id={`objective-${id}`}
+          className="mt-3 rounded-lg bg-primary-50/50 px-3 py-2 text-sm text-gray-700"
+        >
           {objectiveContent}
         </div>
       ) : null}

@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
 import { StarEmblem } from '@/components/icons/StarEmblem'
 import { Skeleton, SkeletonStatTile } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE_HOVER, CARD_HOVER, PROGRESS_BAR_FILL, staggerStyle } from '@/lib/cardMotion'
@@ -95,9 +97,16 @@ export function TeamProgressTable({
   summary,
   isLoading,
 }: TeamProgressTableProps) {
+  const teamForm = useForm<{ teamId: string }>({
+    defaultValues: { teamId: teamId ?? teams?.[0]?.id ?? '' },
+  })
   const user = useAuthStore((s) => s.user)
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const displayName = user?.name ?? 'Manager'
+
+  useEffect(() => {
+    teamForm.reset({ teamId: teamId ?? teams?.[0]?.id ?? '' })
+  }, [teamId, teams, teamForm])
 
   return (
     <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
@@ -119,8 +128,9 @@ export function TeamProgressTable({
           {teams && teams.length > 0 && onTeamChange && (
             <select
               className="rounded-lg border border-primary/20 bg-card/95 px-3 py-2 text-sm text-foreground shadow-sm outline-none ring-1 ring-primary/10 backdrop-blur-sm focus:border-primary focus:ring-2 focus:ring-primary/20 md:text-base"
-              value={teamId ?? teams[0]?.id}
-              onChange={(e) => onTeamChange(e.target.value)}
+              {...teamForm.register('teamId', {
+                onChange: (e) => onTeamChange(e.target.value),
+              })}
             >
               {teams.map((t) => (
                 <option key={t.id} value={t.id}>

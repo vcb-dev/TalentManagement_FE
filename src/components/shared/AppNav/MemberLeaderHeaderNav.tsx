@@ -13,7 +13,7 @@ function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) 
     'inline-flex h-10 flex-none shrink-0 items-center gap-2 whitespace-nowrap rounded-none border-b-2 border-transparent px-2 text-sm font-medium tracking-tight sm:gap-2.5 sm:px-3 sm:text-[0.9375rem]',
     active
       ? 'border-primary-600 font-semibold text-primary-600'
-      : 'text-gray-700 hover:text-primary-600'
+      : 'text-muted-foreground hover:text-primary-600'
   )
 
   const inner = (
@@ -21,7 +21,7 @@ function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) 
       <Icon
         className={cn(
           'h-4 w-4 shrink-0 sm:h-[1.125rem] sm:w-[1.125rem]',
-          active ? 'text-primary-600' : 'text-gray-600'
+          active ? 'text-primary-600' : 'text-muted-foreground'
         )}
         strokeWidth={2.25}
       />

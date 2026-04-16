@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Filter, Search } from 'lucide-react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
   PAGE_HEADER_DESCRIPTION,
@@ -9,6 +10,7 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
 import { cn } from '@/lib/utils'
 import { useTeacherClasses } from '@/features/teacher/hooks'
 import { TeacherClassCard } from './TeacherClassCard'
@@ -21,8 +23,12 @@ const FILTERS: { key: 'all' | TeacherClassTrack; label: string }[] = [
 ]
 
 export function TeacherClassesScreen() {
-  const [filterKey, setFilterKey] = useState<(typeof FILTERS)[number]['key']>('all')
-  const [searchDraft, setSearchDraft] = useState('')
+  const filtersForm = useForm<{ filterKey: (typeof FILTERS)[number]['key']; searchDraft: string }>({
+    defaultValues: { filterKey: 'all', searchDraft: '' },
+  })
+  const filterKey = useWatch({ control: filtersForm.control, name: 'filterKey' }) ?? 'all'
+  const searchDraft = useWatch({ control: filtersForm.control, name: 'searchDraft' }) ?? ''
+  const deferredSearchDraft = useDeferredValue(searchDraft)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -47,7 +53,7 @@ export function TeacherClassesScreen() {
   )
 
   const filtered = useMemo(() => {
-    const q = searchDraft.trim().toLowerCase()
+    const q = deferredSearchDraft.trim().toLowerCase()
     return rows.filter((c) => {
       if (filterKey !== 'all' && c.track !== filterKey) return false
       if (!q) return true
@@ -57,7 +63,7 @@ export function TeacherClassesScreen() {
         c.periodBadge.toLowerCase().includes(q)
       )
     })
-  }, [rows, filterKey, searchDraft])
+  }, [rows, filterKey, deferredSearchDraft])
 
   const totalPages = 1
   const page = 1
@@ -142,7 +148,7 @@ export function TeacherClassesScreen() {
                           ? 'bg-primary text-primary-foreground shadow-sm'
                           : 'text-muted-foreground hover:bg-muted/70 hover:text-primary'
                       )}
-                      onClick={() => setFilterKey(key)}
+                      onClick={() => filtersForm.setValue('filterKey', key)}
                     >
                       {label}
                     </button>
@@ -155,13 +161,18 @@ export function TeacherClassesScreen() {
                 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden
               />
-              <input
-                type="search"
-                placeholder="Tìm theo tên lớp, kỳ thi, lộ trình…"
-                className="min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
-                value={searchDraft}
-                onChange={(e) => setSearchDraft(e.target.value)}
-                aria-label="Tìm lớp"
+              <Controller
+                control={filtersForm.control}
+                name="searchDraft"
+                render={({ field }) => (
+                  <input
+                    type="search"
+                    placeholder="Tìm theo tên lớp, kỳ thi, lộ trình…"
+                    className="min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
+                    aria-label="Tìm lớp"
+                    {...field}
+                  />
+                )}
               />
             </label>
           </div>
@@ -225,14 +236,7 @@ export function TeacherClassesScreen() {
                 <span>
                   Trang {page} — {filtered.length} lớp hiển thị
                 </span>
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" size="sm" disabled>
-                    Trước
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" disabled>
-                    Tiếp
-                  </Button>
-                </div>
+                <PaginationPrevNext page={page} totalPages={totalPages} onPageChange={() => {}} />
               </div>
             </div>
           ) : (
@@ -268,28 +272,7 @@ export function TeacherClassesScreen() {
               <span className="text-xs font-medium text-muted-foreground">
                 Hiển thị {filtered.length} / {rows.length} lớp
               </span>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
-                  disabled={page <= 1}
-                >
-                  ← Trước
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-button bg-button px-3 py-1.5 text-xs font-medium text-button-foreground"
-                >
-                  {page}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
-                  disabled={page >= totalPages}
-                >
-                  Tiếp →
-                </button>
-              </div>
+              <PaginationCardStepper page={page} totalPages={totalPages} onPageChange={() => {}} />
             </div>
           ) : null}
         </div>

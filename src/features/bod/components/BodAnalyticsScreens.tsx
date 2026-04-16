@@ -24,7 +24,7 @@ function PlaceholderBlock({
 
 export function BodTraineeRankingScreen() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-[1400px] px-4 py-8">
       <PageHeader
         title="Điểm tập sự cao nhất"
         description="Bảng xếp hạng nhân viên tập sự theo điểm — nhận diện nhân tài nổi bật sớm."
@@ -40,7 +40,7 @@ export function BodTraineeRankingScreen() {
 
 export function BodTeamComparisonScreen() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-[1400px] px-4 py-8">
       <PageHeader
         title="Team hoạt động xuất sắc"
         description="So sánh hiệu suất giữa các team — tỉ lệ đạt kỳ thi, tốc độ thăng cấp, số bài hoàn thành."

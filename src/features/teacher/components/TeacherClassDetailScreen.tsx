@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ArrowLeft, CalendarDays, Filter, Pencil, Search, Trash2, X } from 'lucide-react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Button } from '@/components/ui/button'
+import { InputController } from '@/components/ui/form-controllers'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
   PAGE_HEADER_SURFACE,
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
+import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import {
   clampHourPart,
@@ -131,13 +134,38 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     [data?.members]
   )
 
-  const [filterKey, setFilterKey] = useState<(typeof FILTERS)[number]['key']>('all')
-  const [searchDraft, setSearchDraft] = useState('')
+  const filtersForm = useForm<{ filterKey: (typeof FILTERS)[number]['key']; searchDraft: string }>({
+    defaultValues: { filterKey: 'all', searchDraft: '' },
+  })
+  const filterKey = useWatch({ control: filtersForm.control, name: 'filterKey' }) ?? 'all'
+  const searchDraft = useWatch({ control: filtersForm.control, name: 'searchDraft' }) ?? ''
+  const deferredSearchDraft = useDeferredValue(searchDraft)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
-  const [scheduleForm, setScheduleForm] = useState({
+  const scheduleForm = useForm({
+    defaultValues: {
+      dateIso: '',
+      startHour: '08',
+      startMinute: '00',
+      endHour: '10',
+      endMinute: '00',
+      topic: '',
+      location: '',
+    },
+  })
+  const {
+    control: scheduleControl,
+    getValues: getScheduleValues,
+    reset: resetScheduleValues,
+  } = scheduleForm
+  const [startHour, startMinute, endHour, endMinute] = useWatch({
+    control: scheduleControl,
+    name: ['startHour', 'startMinute', 'endHour', 'endMinute'],
+  })
+
+  const scheduleInitial = {
     dateIso: '',
     startHour: '08',
     startMinute: '00',
@@ -145,7 +173,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     endMinute: '00',
     topic: '',
     location: '',
-  })
+  }
 
   const onEditSchedule = (scheduleId: string) => {
     const s = schedules.find((x) => x.id === scheduleId)
@@ -156,7 +184,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     const [eh, em] = splitTimeToParts(s.endTime)
     const todayMin = getTodayIsoLocal()
     const dateIso = s.dateIso >= todayMin ? s.dateIso : todayMin
-    setScheduleForm({
+    resetScheduleValues({
       dateIso,
       startHour: sh,
       startMinute: sm,
@@ -174,35 +202,28 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
   const resetScheduleForm = () => {
     setEditingScheduleId(null)
-    setScheduleForm({
-      dateIso: '',
-      startHour: '08',
-      startMinute: '00',
-      endHour: '10',
-      endMinute: '00',
-      topic: '',
-      location: '',
-    })
+    resetScheduleValues(scheduleInitial)
   }
 
   const onSubmitSchedule = () => {
     const todayMin = getTodayIsoLocal()
-    if (!scheduleForm.dateIso) {
+    const values = getScheduleValues()
+    if (!values.dateIso) {
       toast.error('Chọn ngày học.')
       return
     }
-    if (scheduleForm.dateIso < todayMin) {
+    if (values.dateIso < todayMin) {
       toast.error('Chỉ được chọn ngày từ hôm nay trở đi.')
       return
     }
-    const startTime = joinTimeHm(scheduleForm.startHour, scheduleForm.startMinute)
-    const endTime = joinTimeHm(scheduleForm.endHour, scheduleForm.endMinute)
+    const startTime = joinTimeHm(values.startHour, values.startMinute)
+    const endTime = joinTimeHm(values.endHour, values.endMinute)
     const input = {
-      dateIso: scheduleForm.dateIso,
+      dateIso: values.dateIso,
       startTime,
       endTime,
-      topic: scheduleForm.topic.trim(),
-      location: scheduleForm.location.trim() || null,
+      topic: values.topic.trim(),
+      location: values.location.trim() || null,
     }
     if (editingScheduleId) {
       updateSchedule.mutate(
@@ -217,7 +238,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   }
 
   const filtered = useMemo(() => {
-    const q = searchDraft.trim().toLowerCase()
+    const q = deferredSearchDraft.trim().toLowerCase()
     return members.filter((m) => {
       const hasResult = m.examResult != null && m.examResult.length > 0
       if (filterKey === 'has' && !hasResult) return false
@@ -229,7 +250,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
         (m.examResult?.toLowerCase().includes(q) ?? false)
       )
     })
-  }, [members, filterKey, searchDraft])
+  }, [members, filterKey, deferredSearchDraft])
 
   const total = members.length
   const page = 1
@@ -247,15 +268,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     const t = window.setTimeout(() => {
       document.getElementById('lich-hoc')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       setEditingScheduleId(null)
-      setScheduleForm({
-        dateIso: '',
-        startHour: '08',
-        startMinute: '00',
-        endHour: '10',
-        endMinute: '00',
-        topic: '',
-        location: '',
-      })
+      resetScheduleValues(scheduleInitial)
       setScheduleModalOpen(true)
     }, 100)
     return () => window.clearTimeout(t)
@@ -267,20 +280,12 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       if (e.key === 'Escape') {
         setScheduleModalOpen(false)
         setEditingScheduleId(null)
-        setScheduleForm({
-          dateIso: '',
-          startHour: '08',
-          startMinute: '00',
-          endHour: '10',
-          endMinute: '00',
-          topic: '',
-          location: '',
-        })
+        resetScheduleValues(scheduleInitial)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [scheduleModalOpen])
+  }, [scheduleModalOpen, resetScheduleValues])
 
   return (
     <div className="-m-5 flex min-h-[calc(100vh-3.5rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
@@ -361,7 +366,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           ? 'bg-primary text-primary-foreground shadow-sm'
                           : 'text-muted-foreground hover:bg-muted/70 hover:text-primary'
                       )}
-                      onClick={() => setFilterKey(key)}
+                      onClick={() => filtersForm.setValue('filterKey', key)}
                     >
                       {label}
                     </button>
@@ -374,13 +379,18 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden
               />
-              <input
-                type="search"
-                placeholder="Tìm theo tên, email, kết quả…"
-                className="min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
-                value={searchDraft}
-                onChange={(e) => setSearchDraft(e.target.value)}
-                aria-label="Tìm thành viên"
+              <Controller
+                control={filtersForm.control}
+                name="searchDraft"
+                render={({ field }) => (
+                  <input
+                    type="search"
+                    placeholder="Tìm theo tên, email, kết quả…"
+                    className="min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
+                    aria-label="Tìm thành viên"
+                    {...field}
+                  />
+                )}
               />
             </label>
           </div>
@@ -454,56 +464,57 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <label className="block text-xs font-semibold text-muted-foreground">
-                      Ngày
-                      <input
-                        type="date"
-                        min={getTodayIsoLocal()}
-                        value={scheduleForm.dateIso}
-                        onChange={(e) =>
-                          setScheduleForm((s) => ({ ...s, dateIso: e.target.value }))
-                        }
-                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      />
-                    </label>
-                    <label className="block text-xs font-semibold text-muted-foreground">
-                      Nội dung buổi
-                      <input
-                        value={scheduleForm.topic}
-                        onChange={(e) => setScheduleForm((s) => ({ ...s, topic: e.target.value }))}
-                        placeholder="Ví dụ: Ôn tập Spring Boot — Buổi 3"
-                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      />
-                    </label>
+                    <InputController
+                      control={scheduleControl}
+                      name="dateIso"
+                      label="Ngày"
+                      type="date"
+                      min={getTodayIsoLocal()}
+                    />
+                    <InputController
+                      control={scheduleControl}
+                      name="topic"
+                      label="Nội dung buổi"
+                      placeholder="Ví dụ: Ôn tập Spring Boot — Buổi 3"
+                    />
                     <TimeHmField
                       label="Giờ bắt đầu"
                       idPrefix="schedule-start"
-                      hour={scheduleForm.startHour}
-                      minute={scheduleForm.startMinute}
-                      onHourChange={(v) => setScheduleForm((s) => ({ ...s, startHour: v }))}
-                      onMinuteChange={(v) => setScheduleForm((s) => ({ ...s, startMinute: v }))}
+                      hour={startHour ?? '08'}
+                      minute={startMinute ?? '00'}
+                      onHourChange={(v) => scheduleForm.setValue('startHour', v)}
+                      onMinuteChange={(v) => scheduleForm.setValue('startMinute', v)}
                       onHourBlur={() =>
-                        setScheduleForm((s) => ({ ...s, startHour: clampHourPart(s.startHour) }))
+                        scheduleForm.setValue(
+                          'startHour',
+                          clampHourPart(getScheduleValues('startHour') ?? '00')
+                        )
                       }
                       onMinuteBlur={() =>
-                        setScheduleForm((s) => ({
-                          ...s,
-                          startMinute: clampMinutePart(s.startMinute),
-                        }))
+                        scheduleForm.setValue(
+                          'startMinute',
+                          clampMinutePart(getScheduleValues('startMinute') ?? '00')
+                        )
                       }
                     />
                     <TimeHmField
                       label="Giờ kết thúc"
                       idPrefix="schedule-end"
-                      hour={scheduleForm.endHour}
-                      minute={scheduleForm.endMinute}
-                      onHourChange={(v) => setScheduleForm((s) => ({ ...s, endHour: v }))}
-                      onMinuteChange={(v) => setScheduleForm((s) => ({ ...s, endMinute: v }))}
+                      hour={endHour ?? '10'}
+                      minute={endMinute ?? '00'}
+                      onHourChange={(v) => scheduleForm.setValue('endHour', v)}
+                      onMinuteChange={(v) => scheduleForm.setValue('endMinute', v)}
                       onHourBlur={() =>
-                        setScheduleForm((s) => ({ ...s, endHour: clampHourPart(s.endHour) }))
+                        scheduleForm.setValue(
+                          'endHour',
+                          clampHourPart(getScheduleValues('endHour') ?? '00')
+                        )
                       }
                       onMinuteBlur={() =>
-                        setScheduleForm((s) => ({ ...s, endMinute: clampMinutePart(s.endMinute) }))
+                        scheduleForm.setValue(
+                          'endMinute',
+                          clampMinutePart(getScheduleValues('endMinute') ?? '00')
+                        )
                       }
                     />
                     <p
@@ -513,18 +524,13 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                       Giờ theo định dạng 24h — nhập riêng giờ và phút; dấu{' '}
                       <span className="font-mono">:</span> hiển thị sẵn, không cần gõ.
                     </p>
-                    <label className="md:col-span-2 block text-xs font-semibold text-muted-foreground">
-                      Địa điểm{' '}
-                      <span className="font-normal text-muted-foreground/80">(tuỳ chọn)</span>
-                      <input
-                        value={scheduleForm.location}
-                        onChange={(e) =>
-                          setScheduleForm((s) => ({ ...s, location: e.target.value }))
-                        }
-                        placeholder="Phòng họp A / MS Teams…"
-                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      />
-                    </label>
+                    <InputController
+                      control={scheduleControl}
+                      name="location"
+                      label="Địa điểm (tuỳ chọn)"
+                      className="md:col-span-2"
+                      placeholder="Phòng họp A / MS Teams…"
+                    />
                   </div>
                   <div className="mt-4 flex flex-wrap justify-end gap-2">
                     <Button type="button" variant="outline" onClick={resetScheduleForm}>
@@ -649,14 +655,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                 <span>
                   Trang {page} — {filtered.length} thành viên hiển thị
                 </span>
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" size="sm" disabled>
-                    Trước
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" disabled>
-                    Tiếp
-                  </Button>
-                </div>
+                <PaginationPrevNext page={page} totalPages={totalPages} onPageChange={() => {}} />
               </div>
             </div>
           ) : (
@@ -692,28 +691,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
               <span className="text-xs font-medium text-muted-foreground">
                 Hiển thị {filtered.length} / {total} thành viên
               </span>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
-                  disabled={page <= 1}
-                >
-                  ← Trước
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-button bg-button px-3 py-1.5 text-xs font-medium text-button-foreground"
-                >
-                  {page}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
-                  disabled={page >= totalPages}
-                >
-                  Tiếp →
-                </button>
-              </div>
+              <PaginationCardStepper page={page} totalPages={totalPages} onPageChange={() => {}} />
             </div>
           ) : null}
         </div>

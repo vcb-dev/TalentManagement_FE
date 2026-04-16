@@ -12,6 +12,7 @@ import {
   levelPillText,
   roleBadgeClass,
   roleShortLabel,
+  employeeDeptDisplay,
   shortId,
   statusDotClass,
 } from './employeeListUtils'
@@ -137,8 +138,11 @@ export function EmployeeDetailSheet({
             >
               {roleShortLabel(employee.role)}
             </span>
-            <span className="text-[10px] text-muted-foreground">
-              PB · {shortId(employee.departmentId)}
+            <span
+              className="max-w-[140px] truncate text-[10px] text-muted-foreground"
+              title={employeeDeptDisplay(employee)}
+            >
+              {employeeDeptDisplay(employee)}
             </span>
           </div>
         </div>

@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Eye, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -123,13 +132,18 @@ function MemberScheduleTableSkeleton() {
 }
 
 export function MemberClassesPanel() {
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const filterForm = useForm<{ startDate: string; endDate: string }>({
+    defaultValues: { startDate: '', endDate: '' },
+  })
+  const startDate = useWatch({ control: filterForm.control, name: 'startDate' }) ?? ''
+  const endDate = useWatch({ control: filterForm.control, name: 'endDate' }) ?? ''
+  const deferredStartDate = useDeferredValue(startDate)
+  const deferredEndDate = useDeferredValue(endDate)
   const scheduleRange = useMemo(() => {
-    const s = startDate.trim() || undefined
-    const e = endDate.trim() || undefined
+    const s = deferredStartDate.trim() || undefined
+    const e = deferredEndDate.trim() || undefined
     return { startDate: s, endDate: e }
-  }, [startDate, endDate])
+  }, [deferredStartDate, deferredEndDate])
   const hasDateFilter = Boolean(scheduleRange.startDate || scheduleRange.endDate)
 
   const { data, isLoading, isError, isFetching } = useMyEnrolledClass(scheduleRange)
@@ -187,22 +201,32 @@ export function MemberClassesPanel() {
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <label className="block min-w-[10rem] flex-1 text-xs font-semibold text-muted-foreground sm:max-w-[13rem]">
             Từ ngày
-            <input
-              type="date"
-              value={startDate}
-              max={endDate || undefined}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+            <Controller
+              control={filterForm.control}
+              name="startDate"
+              render={({ field }) => (
+                <input
+                  type="date"
+                  max={endDate || undefined}
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  {...field}
+                />
+              )}
             />
           </label>
           <label className="block min-w-[10rem] flex-1 text-xs font-semibold text-muted-foreground sm:max-w-[13rem]">
             Đến ngày
-            <input
-              type="date"
-              value={endDate}
-              min={startDate || undefined}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+            <Controller
+              control={filterForm.control}
+              name="endDate"
+              render={({ field }) => (
+                <input
+                  type="date"
+                  min={startDate || undefined}
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  {...field}
+                />
+              )}
             />
           </label>
           <Button
@@ -212,8 +236,7 @@ export function MemberClassesPanel() {
             className="shrink-0 rounded-xl"
             disabled={!hasDateFilter}
             onClick={() => {
-              setStartDate('')
-              setEndDate('')
+              filterForm.reset({ startDate: '', endDate: '' })
             }}
           >
             Xóa lọc

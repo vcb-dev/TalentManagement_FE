@@ -1,5 +1,6 @@
 import { Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useFieldArray, useForm } from 'react-hook-form'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -7,6 +8,11 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import {
+  InputController,
+  SelectController,
+  TextareaController,
+} from '@/components/ui/form-controllers'
 import { cn } from '@/lib/utils'
 import {
   useCreateManagerRoadmapItem,
@@ -53,7 +59,16 @@ export function ManagerExercisesScreen() {
   const [topicFilter, setTopicFilter] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const form = useForm<FormState>({ defaultValues: EMPTY_FORM, mode: 'onChange' })
+  const { control, handleSubmit, reset, register } = form
+  const {
+    fields: materialRefFields,
+    append: appendMaterialRef,
+    remove: removeMaterialRef,
+  } = useFieldArray({
+    control,
+    name: 'materialRefs',
+  })
 
   const { data: items = [], isLoading } = useManagerRoadmapItems({
     q,
@@ -77,7 +92,7 @@ export function ManagerExercisesScreen() {
 
   const startCreate = () => {
     setEditingId(null)
-    setForm({ ...EMPTY_FORM, levelLabel: levelLabel || EMPTY_FORM.levelLabel })
+    reset({ ...EMPTY_FORM, levelLabel: levelLabel || EMPTY_FORM.levelLabel })
     setIsFormOpen(true)
   }
 
@@ -85,7 +100,7 @@ export function ManagerExercisesScreen() {
     const row = items.find((x) => x.id === id)
     if (!row) return
     setEditingId(id)
-    setForm({
+    reset({
       levelLabel: row.levelLabel,
       topic: row.topic,
       objective: row.objective,
@@ -97,29 +112,33 @@ export function ManagerExercisesScreen() {
     setIsFormOpen(true)
   }
 
-  const onSubmit = () => {
-    const safeMaterialRefs = Array.isArray(form.materialRefs) ? form.materialRefs : ['']
+  const closeFormModal = () => {
+    setIsFormOpen(false)
+    setEditingId(null)
+    reset(EMPTY_FORM)
+  }
+
+  const onSubmit = handleSubmit((values) => {
+    const safeMaterialRefs = Array.isArray(values.materialRefs) ? values.materialRefs : ['']
     const payload = {
-      levelLabel: form.levelLabel.trim(),
-      topic: form.topic.trim(),
-      objective: form.objective.trim(),
+      levelLabel: values.levelLabel.trim(),
+      topic: values.topic.trim(),
+      objective: values.objective.trim(),
       materialRef:
         safeMaterialRefs
           .map((x) => x.trim())
           .filter(Boolean)
           .join('\n') || null,
-      trainer: form.trainer.trim() || null,
-      assessment: form.assessment.trim() || null,
-      rowOrder: form.rowOrder.trim() ? Number.parseInt(form.rowOrder, 10) : null,
+      trainer: values.trainer.trim() || null,
+      assessment: values.assessment.trim() || null,
+      rowOrder: values.rowOrder.trim() ? Number.parseInt(values.rowOrder, 10) : null,
     }
     if (editingId) {
       updateItem.mutate(
         { id: editingId, input: payload },
         {
           onSuccess: () => {
-            setEditingId(null)
-            setForm(EMPTY_FORM)
-            setIsFormOpen(false)
+            closeFormModal()
           },
         }
       )
@@ -127,11 +146,10 @@ export function ManagerExercisesScreen() {
     }
     createItem.mutate(payload, {
       onSuccess: () => {
-        setForm(EMPTY_FORM)
-        setIsFormOpen(false)
+        closeFormModal()
       },
     })
-  }
+  })
 
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
@@ -255,54 +273,49 @@ export function ManagerExercisesScreen() {
               <button
                 type="button"
                 className="rounded p-1 text-muted-foreground hover:bg-muted"
-                onClick={() => {
-                  setIsFormOpen(false)
-                  setEditingId(null)
-                  setForm(EMPTY_FORM)
-                }}
+                onClick={closeFormModal}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              <select
-                value={form.levelLabel}
-                onChange={(e) => setForm((s) => ({ ...s, levelLabel: e.target.value }))}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+            <form className="grid grid-cols-1 gap-2 md:grid-cols-2" onSubmit={onSubmit}>
+              <SelectController
+                control={control}
+                name="levelLabel"
+                label="Lộ trình"
+                required
+                rules={{ required: true }}
               >
                 {LEVEL_LABEL_OPTIONS.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
                   </option>
                 ))}
-              </select>
-              <input
-                value={form.topic}
-                onChange={(e) => setForm((s) => ({ ...s, topic: e.target.value }))}
+              </SelectController>
+              <InputController
+                control={control}
+                name="topic"
+                label="Topic"
+                required
+                rules={{ required: true, minLength: 2 }}
                 placeholder="Topic"
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               />
-              <textarea
-                value={form.objective}
-                onChange={(e) => setForm((s) => ({ ...s, objective: e.target.value }))}
+              <TextareaController
+                control={control}
+                name="objective"
+                label="Objective"
+                required
+                rules={{ required: true, minLength: 2 }}
+                className="md:col-span-2"
+                textareaClassName="min-h-[100px]"
                 placeholder="Objective"
-                rows={3}
-                className="md:col-span-2 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               />
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground">Tài liệu / link</p>
-                {(Array.isArray(form.materialRefs) ? form.materialRefs : ['']).map((ref, idx) => (
-                  <div key={`material-ref-${idx}`} className="flex gap-2">
+                {materialRefFields.map((refField, idx) => (
+                  <div key={refField.id} className="flex gap-2">
                     <input
-                      value={ref}
-                      onChange={(e) =>
-                        setForm((s) => ({
-                          ...s,
-                          materialRefs: s.materialRefs.map((x, i) =>
-                            i === idx ? e.target.value : x
-                          ),
-                        }))
-                      }
+                      {...register(`materialRefs.${idx}`)}
                       placeholder={`Link tài liệu ${idx + 1}`}
                       className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                     />
@@ -311,15 +324,10 @@ export function ManagerExercisesScreen() {
                       size="icon"
                       variant="ghost"
                       className="text-destructive hover:text-destructive"
-                      onClick={() =>
-                        setForm((s) => ({
-                          ...s,
-                          materialRefs:
-                            s.materialRefs.length <= 1
-                              ? ['']
-                              : s.materialRefs.filter((_, i) => i !== idx),
-                        }))
-                      }
+                      onClick={() => {
+                        if (materialRefFields.length <= 1) return
+                        removeMaterialRef(idx)
+                      }}
                       aria-label={`Xóa link ${idx + 1}`}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -330,53 +338,45 @@ export function ManagerExercisesScreen() {
                   type="button"
                   variant="outline"
                   className="gap-2"
-                  onClick={() => setForm((s) => ({ ...s, materialRefs: [...s.materialRefs, ''] }))}
+                  onClick={() => appendMaterialRef('')}
                 >
                   <Plus className="h-4 w-4" />
                   Thêm link
                 </Button>
               </div>
-              <input
-                value={form.trainer}
-                onChange={(e) => setForm((s) => ({ ...s, trainer: e.target.value }))}
+              <InputController
+                control={control}
+                name="trainer"
+                label="Trainer"
                 placeholder="Trainer"
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               />
-              <input
-                value={form.assessment}
-                onChange={(e) => setForm((s) => ({ ...s, assessment: e.target.value }))}
+              <InputController
+                control={control}
+                name="assessment"
+                label="Phương thức đánh giá"
                 placeholder="Phương thức đánh giá"
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
               />
-              <input
-                value={form.rowOrder}
-                onChange={(e) => setForm((s) => ({ ...s, rowOrder: e.target.value }))}
+              <InputController
+                control={control}
+                name="rowOrder"
+                label="Thứ tự (rowOrder)"
                 placeholder="Thứ tự (rowOrder)"
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                inputMode="numeric"
               />
-            </div>
-            <div className="mt-3 flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsFormOpen(false)
-                  setEditingId(null)
-                  setForm(EMPTY_FORM)
-                }}
-              >
-                Hủy
-              </Button>
-              <Button
-                type="button"
-                className="gap-2"
-                onClick={onSubmit}
-                disabled={createItem.isPending || updateItem.isPending}
-              >
-                <Plus className="h-4 w-4" />
-                {editingId ? 'Lưu chỉnh sửa' : 'Thêm bài tập'}
-              </Button>
-            </div>
+              <div className="mt-3 flex justify-end gap-2 md:col-span-2">
+                <Button type="button" variant="outline" onClick={closeFormModal}>
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  className="gap-2"
+                  disabled={createItem.isPending || updateItem.isPending}
+                >
+                  <Plus className="h-4 w-4" />
+                  {editingId ? 'Lưu chỉnh sửa' : 'Thêm bài tập'}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       ) : null}

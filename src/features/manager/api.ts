@@ -332,8 +332,8 @@ export const managerApi = {
     const res = await apiClient.post<unknown>('/org/teams', { name })
     return safeParse(orgCreateResponseApiSchema, res.data, 'POST /org/teams')
   },
-  updateTeam: async (id: string, name: string) => {
-    const res = await apiClient.patch<unknown>(`/org/teams/${id}`, { name })
+  updateTeam: async (id: string, body: { name?: string }) => {
+    const res = await apiClient.patch<unknown>(`/org/teams/${id}`, body)
     return safeParse(orgItemApiSchema, res.data, 'PATCH /org/teams/:id')
   },
   deleteTeam: async (id: string) => {

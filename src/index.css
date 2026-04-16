@@ -1,4 +1,12 @@
 @import 'tailwindcss';
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap');
+
+/*
+ * HRM Lumina — Employee & Growth
+ * Canonical UI for employee-facing flows: learning, profile, gamification (levels / stars / tiers).
+ * Foundation: violet primary + teal accent; tokens in :root and @theme below; use components/ui.
+ * Reporting, BOD, and spreadsheet-style tools may stay flatter but should reuse this palette; avoid ad-hoc hex.
+ */
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -125,7 +133,8 @@ html {
   --login-bg: linear-gradient(180deg, #eef2ff 0%, #f8fafc 100%);
   --banner-gradient: linear-gradient(135deg, #4f46e5 0%, #1e40af 100%);
   --cta-exam-gradient: linear-gradient(135deg, #4f46e5 0%, #0d9488 100%);
-  --font-primary: 'Be Vietnam Pro', 'Inter', system-ui, sans-serif;
+  --font-primary: 'Montserrat', 'Be Vietnam Pro', 'Inter', system-ui, sans-serif;
+  --font-display: 'Playfair Display', 'Times New Roman', serif;
 }
 
 .dark {
@@ -329,6 +338,79 @@ html {
     background-position: -100% 50%;
   }
 }
+
+/* shadcn Dialog — không phụ thuộc tailwindcss-animate */
+@keyframes dialog-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dialog-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes dialog-content-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dialog-content-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* shadcn Accordion — Radix đặt --radix-accordion-content-height */
+@keyframes accordion-down {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+    opacity: 1;
+  }
+}
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+@layer utilities {
+  .animate-accordion-down {
+    animation: accordion-down 0.22s ease-out;
+  }
+  .animate-accordion-up {
+    animation: accordion-up 0.18s ease-in;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-accordion-down,
+  .animate-accordion-up {
+    animation: none;
+  }
+}
+
 @layer components {
   .skeleton-shimmer {
     background: linear-gradient(
@@ -395,7 +477,7 @@ html {
     position: relative;
     isolation: isolate;
     min-height: 100vh;
-    background: #64748b;
+    background: var(--login-bg);
   }
   .login-page-bg::before {
     content: '';
@@ -439,7 +521,19 @@ html {
     margin: 0;
     font-family: var(--font-primary);
     font-size: 1rem;
-    line-height: 1.55;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-primary);
+    letter-spacing: 0.005em;
   }
 }

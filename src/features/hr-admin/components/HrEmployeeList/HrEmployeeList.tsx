@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
+import { useForm } from 'react-hook-form'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -14,6 +15,7 @@ import type { EmployeeEntity } from '@/features/hr-admin/api'
 import type { Role } from '@/types/auth'
 import type { EmployeeFilters, EmployeeListStatus } from '@/features/hr-admin/types'
 import { Button } from '@/components/ui/button'
+import { PaginationCardStepper } from '@/components/ui/pagination'
 import { SkeletonEmployeeCardGrid, SkeletonStatTile } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -23,12 +25,13 @@ import { EmployeeDetailSheet } from './EmployeeDetailSheet'
 
 const hrAdminListRoute = getRouteApi('/_protected/hr-admin/')
 
-const PAGE_SIZE_OPTIONS = [12, 24, 48, 100] as const
+/** Cố định 15 nhân viên / trang (màn danh sách HR). */
+const HR_EMPLOYEE_PAGE_SIZE = 15
 
 const FILTERS: { key: 'all' | Role | 'reserved'; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
   { key: 'MEMBER', label: 'Nhân viên' },
-  { key: 'LEADER', label: 'Trưởng nhóm KPI' },
+  { key: 'LEADER', label: 'Leader' },
   { key: 'MANAGER', label: 'Quản lý' },
   { key: 'TEACHER', label: 'Người chấm' },
   { key: 'HR', label: 'HR' },
@@ -62,16 +65,41 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
-  const [searchDraft, setSearchDraft] = useState(filters.search ?? '')
+  const searchForm = useForm<{ searchDraft: string }>({
+    defaultValues: { searchDraft: filters.search ?? '' },
+  })
+  const searchDraft = searchForm.watch('searchDraft')
+  /** Bo qua lan debounce dau (giu page tu URL khi vao truc tiep ?page=2). */
+  const skipInitialSearchDebounce = useRef(true)
 
   useEffect(() => {
+    if (filters.pageSize === HR_EMPLOYEE_PAGE_SIZE) return
+    void navigate({
+      to: '/hr-admin',
+      search: (s) => ({ ...s, pageSize: HR_EMPLOYEE_PAGE_SIZE, page: 1 }),
+    })
+  }, [filters.pageSize, navigate])
+
+  useEffect(() => {
+    searchForm.reset({ searchDraft: filters.search ?? '' })
+  }, [filters.search, searchForm])
+
+  useEffect(() => {
+    if (skipInitialSearchDebounce.current) {
+      skipInitialSearchDebounce.current = false
+      return
+    }
     const t = window.setTimeout(() => {
       setFilters((f) => ({ ...f, search: searchDraft || undefined, page: 1 }))
       setSelectedId(null)
-      void navigate({ search: (s) => ({ ...s, page: 1 }) })
+      void navigate({
+        to: '/hr-admin',
+        search: (s) => ({ ...s, page: 1, pageSize: HR_EMPLOYEE_PAGE_SIZE }),
+      })
     }, 320)
     return () => window.clearTimeout(t)
-  }, [searchDraft, setFilters, navigate])
+    // Chi phu thuoc searchDraft.
+  }, [searchDraft])
 
   const selected = useMemo(
     () => employees.find((e) => e.id === selectedId) ?? null,
@@ -110,7 +138,10 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
 
   const handlePageChange = (nextPage: number) => {
     setSelectedId(null)
-    void navigate({ search: (s) => ({ ...s, page: nextPage }) })
+    void navigate({
+      to: '/hr-admin',
+      search: (s) => ({ ...s, page: nextPage, pageSize: HR_EMPLOYEE_PAGE_SIZE }),
+    })
   }
 
   const setRoleFilter = (key: (typeof FILTERS)[number]['key']) => {
@@ -118,7 +149,14 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     if (key === 'all') {
       setFilters((f) => ({ ...f, page: 1, role: undefined, status: undefined }))
       void navigate({
-        search: (s) => ({ ...s, page: 1, role: undefined, status: undefined }),
+        to: '/hr-admin',
+        search: (s) => ({
+          ...s,
+          page: 1,
+          pageSize: HR_EMPLOYEE_PAGE_SIZE,
+          role: undefined,
+          status: undefined,
+        }),
       })
       return
     }
@@ -130,9 +168,11 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         role: undefined,
       }))
       void navigate({
+        to: '/hr-admin',
         search: (s) => ({
           ...s,
           page: 1,
+          pageSize: HR_EMPLOYEE_PAGE_SIZE,
           role: undefined,
           status: 'reserved' as const,
         }),
@@ -141,9 +181,11 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     }
     setFilters((f) => ({ ...f, page: 1, role: key as Role, status: undefined }))
     void navigate({
+      to: '/hr-admin',
       search: (s) => ({
         ...s,
         page: 1,
+        pageSize: HR_EMPLOYEE_PAGE_SIZE,
         role: key as Role,
         status: undefined,
       }),
@@ -310,7 +352,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
           {/* Bộ lọc + tìm kiếm: mobile xếp dọc, lg chia đôi 50/50 */}
           <div
             id="hr-emp-filters"
-            className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_auto] lg:items-stretch lg:gap-4"
+            className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr] lg:items-stretch lg:gap-4"
           >
             <div className="scrollbar-hide flex min-w-0 w-full overflow-x-auto rounded-xl border border-border bg-card p-1 shadow-sm">
               <div
@@ -362,36 +404,10 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
                 type="search"
                 placeholder="Tìm kiếm nhân sự..."
                 className="min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
-                value={searchDraft}
-                onChange={(e) => setSearchDraft(e.target.value)}
                 aria-label="Tìm kiếm nhân sự"
+                {...searchForm.register('searchDraft')}
               />
             </label>
-            <div className="flex min-h-[42px] items-center gap-2">
-              <label htmlFor="hr-emp-page-size" className="sr-only">
-                Số nhân viên mỗi trang
-              </label>
-              <select
-                id="hr-emp-page-size"
-                className="h-full min-h-[42px] w-full min-w-[7.5rem] rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-sm ring-1 ring-border/60 lg:w-auto"
-                value={filters.pageSize}
-                onChange={(e) => {
-                  const nextSize = Number(e.target.value)
-                  setSelectedId(null)
-                  setFilters((f) => ({ ...f, pageSize: nextSize, page: 1 }))
-                  void navigate({
-                    search: (s) => ({ ...s, page: 1, pageSize: nextSize }),
-                  })
-                }}
-                aria-label="Số bản ghi mỗi trang"
-              >
-                {PAGE_SIZE_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    {n} / trang
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
           {viewMode === 'table' ? (
@@ -463,35 +479,11 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
                   ? 'Không có nhân viên phù hợp'
                   : `Hiển thị ${rangeFrom}–${rangeTo} trong ${pagination.total} nhân viên`}
               </span>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-muted-foreground">
-                  Trang {pagination.page}/{totalPages}
-                </span>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
-                    disabled={pagination.page <= 1}
-                    onClick={() => handlePageChange(pagination.page - 1)}
-                  >
-                    ← Trước
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-button bg-button px-3 py-1.5 text-xs font-medium text-button-foreground"
-                  >
-                    {pagination.page}
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-40"
-                    disabled={pagination.page >= totalPages}
-                    onClick={() => handlePageChange(pagination.page + 1)}
-                  >
-                    Tiếp →
-                  </button>
-                </div>
-              </div>
+              <PaginationCardStepper
+                page={pagination.page}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
             </div>
           ) : null}
         </div>

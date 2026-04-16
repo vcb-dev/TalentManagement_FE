@@ -179,6 +179,14 @@ const nodes: PermissionNode[] = [
     scope: 'global',
     legacy: { action: 'view', resource: 'department' },
   },
+  {
+    id: 'hr.org.manage',
+    parentId: 'mod.hr',
+    label: 'Quản lý phòng ban & team',
+    kind: 'function',
+    scope: 'global',
+    legacy: { action: 'edit', resource: 'department' },
+  },
 
   { id: 'mod.manager', parentId: null, label: 'Quản lý vận hành', kind: 'module', scope: 'global' },
   {

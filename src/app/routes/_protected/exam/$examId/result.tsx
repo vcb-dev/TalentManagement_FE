@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,57 @@ function formatTime(seconds: number): string {
   const s = seconds % 60
   return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':')
 }
+
+type ExamQuestion = { id: string; stem: string; options: string[] }
+
+const ExamQuestionCard = memo(function ExamQuestionCard({
+  q,
+  idx,
+  answer,
+  submitted,
+  onAnswerChange,
+}: {
+  q: ExamQuestion
+  idx: number
+  answer: string
+  submitted: boolean
+  onAnswerChange: (questionId: string, value: string) => void
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <p className="text-sm font-semibold text-foreground">
+        Câu {idx + 1}: {q.stem}
+      </p>
+      {q.options.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          {q.options.map((opt, oi) => (
+            <label key={`${q.id}-${oi}`} className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name={q.id}
+                value={opt}
+                checked={answer === opt}
+                onChange={(e) => onAnswerChange(q.id, e.target.value)}
+                disabled={submitted}
+              />
+              <span>
+                {String.fromCharCode(65 + oi)}. {opt}
+              </span>
+            </label>
+          ))}
+        </div>
+      ) : (
+        <textarea
+          value={answer}
+          onChange={(e) => onAnswerChange(q.id, e.target.value)}
+          disabled={submitted}
+          placeholder="Nhập câu trả lời của bạn..."
+          className="mt-3 min-h-[92px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+        />
+      )}
+    </div>
+  )
+})
 
 function ExamResultPage() {
   const { examId } = Route.useParams()
@@ -123,6 +174,16 @@ function ExamResultPage() {
     return questionBank.questions.filter((q) => !answers[q.id]?.trim()).length
   }, [questionBank, answers])
 
+  const handleAnswerChange = useCallback((questionId: string, value: string) => {
+    setAnswers((prev) => {
+      if (prev[questionId] === value) return prev
+      return {
+        ...prev,
+        [questionId]: value,
+      }
+    })
+  }, [])
+
   const submitAction = async (isAuto = false) => {
     if (!questionBank) return
     if (!isAuto && unansweredCount > 0) {
@@ -221,48 +282,14 @@ function ExamResultPage() {
             </div>
           ) : null}
           {questionBank.questions.map((q, idx) => (
-            <div key={q.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <p className="text-sm font-semibold text-foreground">
-                Câu {idx + 1}: {q.stem}
-              </p>
-              {q.options.length > 0 ? (
-                <div className="mt-3 space-y-2">
-                  {q.options.map((opt, oi) => (
-                    <label key={`${q.id}-${oi}`} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        name={q.id}
-                        value={opt}
-                        checked={answers[q.id] === opt}
-                        onChange={(e) =>
-                          setAnswers((prev) => ({
-                            ...prev,
-                            [q.id]: e.target.value,
-                          }))
-                        }
-                        disabled={submitted}
-                      />
-                      <span>
-                        {String.fromCharCode(65 + oi)}. {opt}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <textarea
-                  value={answers[q.id] ?? ''}
-                  onChange={(e) =>
-                    setAnswers((prev) => ({
-                      ...prev,
-                      [q.id]: e.target.value,
-                    }))
-                  }
-                  disabled={submitted}
-                  placeholder="Nhập câu trả lời của bạn..."
-                  className="mt-3 min-h-[92px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-              )}
-            </div>
+            <ExamQuestionCard
+              key={q.id}
+              q={q}
+              idx={idx}
+              answer={answers[q.id] ?? ''}
+              submitted={submitted}
+              onAnswerChange={handleAnswerChange}
+            />
           ))}
           <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
             <p className="text-sm text-muted-foreground">

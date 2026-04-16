@@ -2,8 +2,6 @@ import { useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ROLE_LABEL_VI } from '@/lib/roleLabels'
-import { useAuthStore } from '@/stores/auth.store'
 import { useMySubmissions } from '@/features/exam/hooks'
 
 export interface MemberSubmissionResultScreenProps {
@@ -12,7 +10,6 @@ export interface MemberSubmissionResultScreenProps {
 
 export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionResultScreenProps) {
   const navigate = useNavigate()
-  const user = useAuthStore((s) => s.user)
   const { data: submissions = [], isLoading } = useMySubmissions()
   const submission = useMemo(
     () => submissions.find((s) => s.id === submissionId),
@@ -39,8 +36,6 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
       return {}
     }
   }, [])
-
-  const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
 
   if (isLoading) {
     return (
@@ -105,7 +100,7 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
       </div>
 
       <div className="page-shell">
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Left: Answers & Feedback */}
           <div className="flex flex-col gap-6 lg:col-span-8">
             <div className="rounded-xl border border-border bg-card p-5 shadow-sm">

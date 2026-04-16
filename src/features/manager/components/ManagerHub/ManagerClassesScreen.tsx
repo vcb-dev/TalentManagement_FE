@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import {
   Calendar,
   Loader2,
@@ -18,6 +19,7 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import { InputController, SelectController } from '@/components/ui/form-controllers'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import {
@@ -81,9 +83,7 @@ function toViDate(iso: string | null): string {
 
 export function ManagerClassesScreen() {
   const [search, setSearch] = useState('')
-  const [name, setName] = useState('')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [createLevelFrom, setCreateLevelFrom] = useState<CreateLevel>('tap_su')
   const [createMemberQuery, setCreateMemberQuery] = useState('')
   const [selectedCreateMembers, setSelectedCreateMembers] = useState<
     Array<{ userId: string; name: string; email: string }>
@@ -97,13 +97,25 @@ export function ManagerClassesScreen() {
   const [memberQueries, setMemberQueries] = useState<Record<string, string>>({})
   const [activeClassForDropdown, setActiveClassForDropdown] = useState<string | null>(null)
   const [editClassId, setEditClassId] = useState<string | null>(null)
-  const [editClassName, setEditClassName] = useState('')
   const [editModalTeacherQuery, setEditModalTeacherQuery] = useState('')
   const [selectedTeacher, setSelectedTeacher] = useState<{
     userId: string
     name: string
     email: string
   } | null>(null)
+  const createForm = useForm<{ name: string; levelFrom: CreateLevel }>({
+    defaultValues: { name: '', levelFrom: 'tap_su' },
+  })
+  const {
+    control: createControl,
+    handleSubmit: handleCreateSubmit,
+    reset: resetCreateForm,
+  } = createForm
+  const createLevelFrom = useWatch({ control: createControl, name: 'levelFrom' }) ?? 'tap_su'
+  const editForm = useForm<{ name: string }>({
+    defaultValues: { name: '' },
+  })
+  const { control: editControl, handleSubmit: handleEditSubmit, reset: resetEditForm } = editForm
 
   const { data: rows = [], isLoading } = useManagerClasses({ search })
   const createClass = useCreateManagerClass()
@@ -134,8 +146,8 @@ export function ManagerClassesScreen() {
   const totalMembers = rows.reduce((a, r) => a + r.memberCount, 0)
   const openCount = rows.filter((r) => r.status === 'open').length
 
-  const onCreate = () => {
-    const n = name.trim()
+  const onCreate = handleCreateSubmit((values) => {
+    const n = values.name.trim()
     if (n.length < 3) {
       toast.error('Tên lớp ít nhất 3 ký tự')
       return
@@ -143,25 +155,24 @@ export function ManagerClassesScreen() {
     createClass.mutate(
       {
         name: n,
-        levelFrom: createLevelFrom,
-        levelTo: NEXT_LEVEL_BY_FROM[createLevelFrom],
+        levelFrom: values.levelFrom,
+        levelTo: NEXT_LEVEL_BY_FROM[values.levelFrom],
         status: 'open',
         memberUserIds: selectedCreateMembers.map((m) => m.userId),
         teacherUserId: selectedCreateTeacher?.userId ?? null,
       },
       {
         onSuccess: () => {
-          setName('')
           setIsCreateOpen(false)
           setCreateMemberQuery('')
           setSelectedCreateMembers([])
-          setCreateLevelFrom('tap_su')
+          resetCreateForm({ name: '', levelFrom: 'tap_su' })
           setCreateTeacherQuery('')
           setSelectedCreateTeacher(null)
         },
       }
     )
-  }
+  })
 
   const pageSubtitle =
     'Quản lý và điều phối nhân sự vào các lớp đào tạo. Dữ liệu lấy trực tiếp từ API manager/classes.'
@@ -175,21 +186,21 @@ export function ManagerClassesScreen() {
   }, [activeClassForDropdown, rows, memberOptions])
   const closeEditClassModal = () => {
     setEditClassId(null)
-    setEditClassName('')
+    resetEditForm({ name: '' })
     setEditModalTeacherQuery('')
     setSelectedTeacher(null)
   }
 
   const openEditClassModal = (row: (typeof rows)[number]) => {
     setEditClassId(row.id)
-    setEditClassName(row.name)
+    resetEditForm({ name: row.name })
     setSelectedTeacher(row.teacher ?? null)
     setEditModalTeacherQuery('')
   }
 
-  const saveEditClass = () => {
+  const saveEditClass = handleEditSubmit((values) => {
     if (!editClassId) return
-    const n = editClassName.trim()
+    const n = values.name.trim()
     if (n.length < 3) {
       toast.error('Tên lớp ít nhất 3 ký tự')
       return
@@ -202,7 +213,7 @@ export function ManagerClassesScreen() {
         },
       }
     )
-  }
+  })
 
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
@@ -309,7 +320,7 @@ export function ManagerClassesScreen() {
                 className="rounded p-1 text-muted-foreground hover:bg-muted"
                 onClick={() => {
                   setIsCreateOpen(false)
-                  setName('')
+                  resetCreateForm({ name: '', levelFrom: 'tap_su' })
                   setCreateMemberQuery('')
                   setSelectedCreateMembers([])
                   setCreateTeacherQuery('')
@@ -321,39 +332,30 @@ export function ManagerClassesScreen() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <label
-                  htmlFor="new-class-name"
-                  className="mb-1 block text-xs font-semibold text-muted-foreground"
-                >
-                  Tên lớp
-                </label>
-                <input
-                  id="new-class-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ví dụ: Tập sự — Đợt Q2/2026"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
+            <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={onCreate}>
+              <InputController
+                control={createControl}
+                name="name"
+                label="Tên lớp"
+                required
+                rules={{ required: true, minLength: 3 }}
+                className="md:col-span-2"
+                placeholder="Ví dụ: Tập sự — Đợt Q2/2026"
+              />
 
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                  Cấp lớp
-                </label>
-                <select
-                  value={createLevelFrom}
-                  onChange={(e) => setCreateLevelFrom(e.target.value as typeof createLevelFrom)}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                >
-                  {LEVEL_FLOW_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SelectController
+                control={createControl}
+                name="levelFrom"
+                label="Cấp lớp"
+                required
+                rules={{ required: true }}
+              >
+                {LEVEL_FLOW_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </SelectController>
 
               <div>
                 <label className="mb-1 block text-xs font-semibold text-muted-foreground">
@@ -491,34 +493,29 @@ export function ManagerClassesScreen() {
                   </div>
                 )}
               </div>
-            </div>
 
-            <div className="mt-5 flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsCreateOpen(false)
-                  setName('')
-                  setCreateMemberQuery('')
-                  setSelectedCreateMembers([])
-                  setCreateTeacherQuery('')
-                  setSelectedCreateTeacher(null)
-                }}
-                disabled={createClass.isPending}
-              >
-                Hủy
-              </Button>
-              <Button
-                type="button"
-                className="gap-2 font-bold"
-                onClick={onCreate}
-                disabled={createClass.isPending}
-              >
-                <PlusCircle className="h-4 w-4" />
-                {createClass.isPending ? 'Đang tạo…' : 'Tạo lớp'}
-              </Button>
-            </div>
+              <div className="mt-5 flex justify-end gap-2 md:col-span-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsCreateOpen(false)
+                    resetCreateForm({ name: '', levelFrom: 'tap_su' })
+                    setCreateMemberQuery('')
+                    setSelectedCreateMembers([])
+                    setCreateTeacherQuery('')
+                    setSelectedCreateTeacher(null)
+                  }}
+                  disabled={createClass.isPending}
+                >
+                  Hủy
+                </Button>
+                <Button type="submit" className="gap-2 font-bold" disabled={createClass.isPending}>
+                  <PlusCircle className="h-4 w-4" />
+                  {createClass.isPending ? 'Đang tạo…' : 'Tạo lớp'}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       ) : null}
@@ -706,18 +703,15 @@ export function ManagerClassesScreen() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                  Tên lớp
-                </label>
-                <input
-                  value={editClassName}
-                  onChange={(e) => setEditClassName(e.target.value)}
-                  placeholder="Ví dụ: Tập sự – Đợt Q2/2026"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
+            <form className="space-y-4" onSubmit={saveEditClass}>
+              <InputController
+                control={editControl}
+                name="name"
+                label="Tên lớp"
+                required
+                rules={{ required: true, minLength: 3 }}
+                placeholder="Ví dụ: Tập sự – Đợt Q2/2026"
+              />
               <div className="relative">
                 <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                   Giáo viên phụ trách lớp
@@ -764,15 +758,16 @@ export function ManagerClassesScreen() {
                   Lịch thi kỳ &amp; người chấm đặt tại mục Lịch thi &amp; chỉ định người chấm.
                 </p>
               </div>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={closeEditClassModal}>
-                Hủy
-              </Button>
-              <Button type="button" onClick={saveEditClass} disabled={updateClass.isPending}>
-                {updateClass.isPending ? 'Đang lưu...' : 'Lưu'}
-              </Button>
-            </div>
+
+              <div className="mt-5 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={closeEditClassModal}>
+                  Hủy
+                </Button>
+                <Button type="submit" disabled={updateClass.isPending}>
+                  {updateClass.isPending ? 'Đang lưu...' : 'Lưu'}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       ) : null}

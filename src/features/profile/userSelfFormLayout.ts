@@ -8,7 +8,10 @@ export type UserSelfFieldSpec = {
 }
 
 /** Các mục ngày chỉnh sửa được — `<input type="date">` (`startDateWork` chỉ đọc, không nằm đây). */
-export const USER_DATE_FIELD_KEYS = ['birthDate', 'profileReviewDate'] as const satisfies readonly MeUserDisplayKey[]
+export const USER_DATE_FIELD_KEYS = [
+  'birthDate',
+  'profileReviewDate',
+] as const satisfies readonly MeUserDisplayKey[]
 
 export function isDateFormField(key: MeUserDisplayKey): boolean {
   return (USER_DATE_FIELD_KEYS as readonly string[]).includes(key)
@@ -20,6 +23,9 @@ export const USER_WORK_ORG_READONLY_KEYS = [
   'startDateWork',
   'employeeCodePrimary',
   'hrOfficerName',
+  /** Lấy từ team_memberships trên BE — không sửa qua /me/user. */
+  'departmentName',
+  'teamGroup',
 ] as const satisfies readonly MeUserDisplayKey[]
 
 export function isWorkOrgReadonlyField(key: MeUserDisplayKey): boolean {

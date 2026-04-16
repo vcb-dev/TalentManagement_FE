@@ -1,5 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import {
+  Controller,
+  useForm,
+  useWatch,
+  type Control,
+  type UseFormGetValues,
+  type UseFormSetValue,
+} from 'react-hook-form'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -11,6 +19,130 @@ export interface GraderChamThiScreenProps {
   /** This is actually the submission ID */
   examId: string
   employeeId: string
+}
+
+type GradeFormValues = {
+  graderNote: string
+  grades: Record<string, { criteria: string[]; score: number }>
+}
+
+const CRITERIA_WEIGHTS: Record<string, number> = {
+  ly_thuyet: 40,
+  thuc_te: 50,
+  trinh_bay: 10,
+}
+
+function GraderQuestionItem({
+  qId,
+  idx,
+  answer,
+  questionText,
+  control,
+  getValues,
+  setValue,
+  disabled,
+}: {
+  qId: string
+  idx: number
+  answer: string
+  questionText: string
+  control: Control<GradeFormValues>
+  getValues: UseFormGetValues<GradeFormValues>
+  setValue: UseFormSetValue<GradeFormValues>
+  disabled: boolean
+}) {
+  const questionGrade = useWatch({ control, name: `grades.${qId}` }) ?? { criteria: [], score: 0 }
+
+  const toggleCriteria = (criteriaId: string) => {
+    const current = getValues('grades') ?? {}
+    const prevCriteria = current[qId]?.criteria || []
+    const isSelected = prevCriteria.includes(criteriaId)
+    const newCriteria = isSelected
+      ? prevCriteria.filter((c) => c !== criteriaId)
+      : [...prevCriteria, criteriaId]
+    const newScore = newCriteria.reduce((sum, c) => sum + (CRITERIA_WEIGHTS[c] || 0), 0)
+    setValue('grades', {
+      ...current,
+      [qId]: { criteria: newCriteria, score: newScore },
+    })
+  }
+
+  return (
+    <div className="border-b border-border/50 pb-6 last:border-0 last:pb-0">
+      <p className="mb-2 text-sm font-semibold text-foreground">
+        <span className="mr-1 font-bold text-primary">Câu {idx + 1}:</span>
+        {questionText}
+      </p>
+      <div
+        className={cn(
+          'mb-4 min-h-[44px] rounded-lg border border-border p-3 text-sm',
+          answer?.trim()
+            ? 'bg-muted/30 text-foreground'
+            : 'bg-muted/10 italic text-muted-foreground'
+        )}
+      >
+        {answer?.trim() || 'Thí sinh không trả lời câu này'}
+      </div>
+
+      <div className="rounded-lg border border-primary/10 bg-primary/5 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Đánh giá câu trả lời
+          </span>
+          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-bold text-primary">
+            {questionGrade.score}%
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
+              checked={questionGrade.criteria.includes('ly_thuyet')}
+              disabled={disabled}
+              onChange={() => toggleCriteria('ly_thuyet')}
+            />
+            Đúng lý thuyết (40%)
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
+              checked={questionGrade.criteria.includes('thuc_te')}
+              disabled={disabled}
+              onChange={() => toggleCriteria('thuc_te')}
+            />
+            Ví dụ thực tế (50%)
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
+              checked={questionGrade.criteria.includes('trinh_bay')}
+              disabled={disabled}
+              onChange={() => toggleCriteria('trinh_bay')}
+            />
+            Trình bày (10%)
+          </label>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LiveTotalScore({
+  control,
+  answeredCount,
+}: {
+  control: Control<GradeFormValues>
+  answeredCount: number
+}) {
+  const grades = useWatch({ control, name: 'grades' }) ?? {}
+  const totalScore =
+    answeredCount > 0
+      ? Math.round(Object.values(grades).reduce((acc, g) => acc + g.score, 0) / answeredCount)
+      : 0
+  return <span className="text-lg font-bold text-primary">{totalScore}%</span>
 }
 
 export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
@@ -42,17 +174,17 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
     }
   }, [])
 
-  const [graderNote, setGraderNote] = useState(submission?.graderNote ?? '')
-  const [grades, setGrades] = useState<Record<string, { criteria: string[]; score: number }>>(
-    (submission?.grades as Record<string, { criteria: string[]; score: number }>) || {}
-  )
-  const [noteInitialized, setNoteInitialized] = useState(false)
+  const gradeForm = useForm<GradeFormValues>({
+    defaultValues: { graderNote: '', grades: {} },
+  })
 
-  if (submission && !noteInitialized) {
-    setGraderNote(submission.graderNote ?? '')
-    setGrades((submission.grades as Record<string, { criteria: string[]; score: number }>) || {})
-    setNoteInitialized(true)
-  }
+  useEffect(() => {
+    if (!submission) return
+    gradeForm.reset({
+      graderNote: submission.graderNote ?? '',
+      grades: (submission.grades as Record<string, { criteria: string[]; score: number }>) || {},
+    })
+  }, [submission, gradeForm])
 
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
 
@@ -65,20 +197,28 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
 
   const answeredEntries = Object.entries(answersObj)
 
-  const totalScore =
-    answeredEntries.length > 0
-      ? Math.round(
-          Object.values(grades).reduce((acc, g) => acc + g.score, 0) / answeredEntries.length
-        )
-      : 0
-
   const handleComplete = (status: 'grading' | 'done') => {
+    const graderNote = gradeForm.getValues('graderNote') ?? ''
     if (status === 'done' && !graderNote.trim()) {
       toast.error('Vui lòng nhập nhận xét trước khi hoàn thành chấm')
       return
     }
+    const currentGrades = gradeForm.getValues('grades') ?? {}
+    const totalScore =
+      answeredEntries.length > 0
+        ? Math.round(
+            Object.values(currentGrades).reduce((acc, g) => acc + g.score, 0) /
+              answeredEntries.length
+          )
+        : 0
     gradeMutation.mutate(
-      { submissionId: examId, graderNote, status, grades, totalScore },
+      {
+        submissionId: examId,
+        graderNote,
+        status,
+        grades: currentGrades,
+        totalScore,
+      },
       {
         onSuccess: () => {
           toast.success(status === 'done' ? 'Đã hoàn thành chấm bài' : 'Đã lưu nháp')
@@ -167,7 +307,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
       </div>
 
       <div className="page-shell">
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Left: Answers */}
           <div className="flex flex-col gap-6 lg:col-span-8">
             {/* Member info */}
@@ -212,102 +352,19 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                 <div className="space-y-5">
                   {answeredEntries.map(([qId, answer], idx) => {
                     const questionText = questionMap[qId] || `Câu hỏi ${idx + 1}`
-                    const questionGrade = grades[qId] || { criteria: [], score: 0 }
-
-                    const toggleCriteria = (criteriaId: string, weight: number) => {
-                      setGrades((prev) => {
-                        const prevCriteria = prev[qId]?.criteria || []
-                        const isSelected = prevCriteria.includes(criteriaId)
-
-                        let newCriteria = []
-                        if (isSelected) {
-                          newCriteria = prevCriteria.filter((c) => c !== criteriaId)
-                        } else {
-                          newCriteria = [...prevCriteria, criteriaId]
-                        }
-
-                        // Calculate new score based on active criteria
-                        const CRITERIA_WEIGHTS: Record<string, number> = {
-                          ly_thuyet: 40,
-                          thuc_te: 50,
-                          trinh_bay: 10,
-                        }
-
-                        const newScore = newCriteria.reduce(
-                          (sum, c) => sum + (CRITERIA_WEIGHTS[c] || 0),
-                          0
-                        )
-
-                        return {
-                          ...prev,
-                          [qId]: { criteria: newCriteria, score: newScore },
-                        }
-                      })
-                    }
 
                     return (
-                      <div
+                      <GraderQuestionItem
                         key={qId}
-                        className="border-b border-border/50 pb-6 last:border-0 last:pb-0"
-                      >
-                        <p className="mb-2 text-sm font-semibold text-foreground">
-                          <span className="mr-1 font-bold text-primary">Câu {idx + 1}:</span>
-                          {questionText}
-                        </p>
-                        <div
-                          className={cn(
-                            'mb-4 min-h-[44px] rounded-lg border border-border p-3 text-sm',
-                            answer?.trim()
-                              ? 'bg-muted/30 text-foreground'
-                              : 'bg-muted/10 italic text-muted-foreground'
-                          )}
-                        >
-                          {answer?.trim() || 'Thí sinh không trả lời câu này'}
-                        </div>
-
-                        <div className="rounded-lg border border-primary/10 bg-primary/5 p-4">
-                          <div className="mb-3 flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                              Đánh giá câu trả lời
-                            </span>
-                            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-bold text-primary">
-                              {questionGrade.score}%
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-4">
-                            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
-                                checked={questionGrade.criteria.includes('ly_thuyet')}
-                                disabled={submission.status === 'done' && !gradeMutation.isPending}
-                                onChange={() => toggleCriteria('ly_thuyet', 40)}
-                              />
-                              Đúng lý thuyết (40%)
-                            </label>
-                            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
-                                checked={questionGrade.criteria.includes('thuc_te')}
-                                disabled={submission.status === 'done' && !gradeMutation.isPending}
-                                onChange={() => toggleCriteria('thuc_te', 50)}
-                              />
-                              Ví dụ thực tế (50%)
-                            </label>
-                            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
-                                checked={questionGrade.criteria.includes('trinh_bay')}
-                                disabled={submission.status === 'done' && !gradeMutation.isPending}
-                                onChange={() => toggleCriteria('trinh_bay', 10)}
-                              />
-                              Trình bày (10%)
-                            </label>
-                          </div>
-                        </div>
-                      </div>
+                        qId={qId}
+                        idx={idx}
+                        answer={answer}
+                        questionText={questionText}
+                        control={gradeForm.control}
+                        getValues={gradeForm.getValues}
+                        setValue={gradeForm.setValue}
+                        disabled={submission.status === 'done' && !gradeMutation.isPending}
+                      />
                     )
                   })}
                 </div>
@@ -319,12 +376,17 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
               <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-primary">
                 Nhận xét của người chấm
               </h2>
-              <textarea
-                className="min-h-[140px] w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary/25"
-                placeholder="Nhập nhận xét, đánh giá chung về bài làm của thí sinh... (bắt buộc khi hoàn thành chấm)"
-                value={graderNote}
-                onChange={(e) => setGraderNote(e.target.value)}
-                disabled={submission.status === 'done' && !gradeMutation.isPending}
+              <Controller
+                control={gradeForm.control}
+                name="graderNote"
+                render={({ field }) => (
+                  <textarea
+                    className="min-h-[140px] w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary/25"
+                    placeholder="Nhập nhận xét, đánh giá chung về bài làm của thí sinh... (bắt buộc khi hoàn thành chấm)"
+                    disabled={submission.status === 'done' && !gradeMutation.isPending}
+                    {...field}
+                  />
+                )}
               />
               {submission.gradedAt && (
                 <p className="mt-2 text-xs text-muted-foreground">
@@ -355,7 +417,10 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                 <div className="my-2 h-px w-full bg-border" />
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Tổng điểm trung bình</span>
-                  <span className="text-lg font-bold text-primary">{totalScore}%</span>
+                  <LiveTotalScore
+                    control={gradeForm.control}
+                    answeredCount={answeredEntries.length}
+                  />
                 </div>
                 <div className="my-2 h-px w-full bg-border" />
                 <div className="flex items-center justify-between">

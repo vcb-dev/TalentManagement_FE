@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { requirePermissionPrefix } from '@/lib/permissionGuards'
 import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
 import { GraderExamListScreen } from '@/features/exam/components/GraderExamListScreen'
 

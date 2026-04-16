@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
+import { Controller, useForm } from 'react-hook-form'
 import {
   countFunctionsUnderModule,
   getChildNodeIds,
@@ -36,6 +37,20 @@ export function PermissionTree({
   onExpandedChange,
 }: PermissionTreeProps) {
   const moduleIds = useMemo(() => getModuleRootIds(), [])
+  const checkboxForm = useForm<Record<string, boolean>>({ defaultValues: {} })
+
+  useEffect(() => {
+    const defaults: Record<string, boolean> = {}
+    for (const m of moduleIds) {
+      defaults[`module:${m}`] = triState(m, selected) === 'checked'
+      for (const cid of getChildNodeIds(m)) {
+        const node = getPermissionNode(cid)
+        if (!node || node.kind === 'module') continue
+        defaults[`leaf:${cid}`] = selected.has(cid)
+      }
+    }
+    checkboxForm.reset(defaults)
+  }, [selected, moduleIds, checkboxForm])
 
   const toggleExpand = (id: string) => {
     const n = new Set(expanded)
@@ -127,14 +142,23 @@ export function PermissionTree({
                   )}
                 </button>
                 <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary/30"
-                    checked={ts === 'checked'}
-                    ref={(el) => {
-                      if (el) el.indeterminate = ts === 'indeterminate'
-                    }}
-                    onChange={(e) => setModuleAll(modId, e.target.checked)}
+                  <Controller
+                    control={checkboxForm.control}
+                    name={`module:${modId}`}
+                    render={({ field }) => (
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary/30"
+                        checked={Boolean(field.value)}
+                        ref={(el) => {
+                          if (el) el.indeterminate = ts === 'indeterminate'
+                        }}
+                        onChange={(e) => {
+                          field.onChange(e.target.checked)
+                          setModuleAll(modId, e.target.checked)
+                        }}
+                      />
+                    )}
                   />
                   <span className="min-w-0 font-semibold text-foreground">{mod.label}</span>
                   <span className="shrink-0 rounded-full bg-primary/12 px-2 py-0.5 text-xs font-semibold tabular-nums text-primary">
@@ -176,8 +200,11 @@ export function PermissionTree({
                           <input
                             type="checkbox"
                             className="mt-0.5 h-4 w-4 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary/30"
-                            checked={selected.has(cid)}
-                            onChange={() => toggleLeaf(cid, false)}
+                            checked={Boolean(checkboxForm.watch(`leaf:${cid}`))}
+                            onChange={(e) => {
+                              checkboxForm.setValue(`leaf:${cid}`, e.target.checked)
+                              toggleLeaf(cid, false)
+                            }}
                           />
                           <div>
                             <div className="text-sm font-medium text-foreground">{node.label}</div>
@@ -192,12 +219,21 @@ export function PermissionTree({
 
                     return (
                       <li key={cid} className="flex items-center gap-2.5">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
-                          checked={selected.has(cid)}
-                          disabled={disabled}
-                          onChange={() => toggleLeaf(cid, !!disabled)}
+                        <Controller
+                          control={checkboxForm.control}
+                          name={`leaf:${cid}`}
+                          render={({ field }) => (
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+                              checked={Boolean(field.value)}
+                              disabled={disabled}
+                              onChange={(e) => {
+                                field.onChange(e.target.checked)
+                                toggleLeaf(cid, !!disabled)
+                              }}
+                            />
+                          )}
                         />
                         <span
                           className={cn(

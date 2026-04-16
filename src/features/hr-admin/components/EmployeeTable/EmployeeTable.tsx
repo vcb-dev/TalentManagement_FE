@@ -4,6 +4,7 @@ import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
+import { PaginationPrevNext } from '@/components/ui/pagination'
 import { formatViDate } from '@/lib/date'
 import type { PaginationState } from '@/types/common'
 import type { EmployeeStatus } from '@/types/employee'
@@ -14,11 +15,11 @@ export interface EmployeeTableProps {
   onView: (id: string) => void
   onEdit: (id: string) => void
   onDeactivate: (id: string) => void
-  /** Kích hoạt lại (status ACTIVE) — cần quyền chỉnh sửa. */
+  /** Kích hoạt lại (ACTIVE) — cần quyền ch��nh sửa. */
   onReactivate?: (id: string) => void
   pagination: PaginationState & { total: number }
   onPageChange: (page: number) => void
-  /** Quản lý team: chỉ cột Xem. */
+  /** Danh sách HR vs team: khác cột hành động. */
   listMode?: 'hr' | 'team'
   canEdit?: boolean
   canDeactivate?: boolean
@@ -41,8 +42,6 @@ export function EmployeeTable({
   const totalPages = pagination.totalPages ?? Math.max(1, Math.ceil(pagination.total / pageSize))
   const from = pagination.total === 0 ? 0 : (pagination.page - 1) * pageSize + 1
   const to = Math.min(pagination.page * pageSize, pagination.total)
-  const canGoNext = pagination.page < totalPages
-
   const columns: DataTableColumn<EmployeeEntity>[] = [
     {
       id: 'name',
@@ -111,26 +110,11 @@ export function EmployeeTable({
             ? 'Không có bản ghi'
             : `Hiển thị ${from}–${to} trong ${pagination.total} · Trang ${pagination.page}/${totalPages}`}
         </span>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={pagination.page <= 1}
-            onClick={() => onPageChange(pagination.page - 1)}
-          >
-            Trước
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={!canGoNext}
-            onClick={() => onPageChange(pagination.page + 1)}
-          >
-            Sau
-          </Button>
-        </div>
+        <PaginationPrevNext
+          page={pagination.page}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+        />
       </div>
     </div>
   )

@@ -1,27 +1,38 @@
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import type { EmployeeFilters } from '@/features/hr-admin/types'
 import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
+import { HR_DEPARTMENT_IDS, HR_TEAM_OPTIONS } from '@/features/hr-admin/hrOrgOptions'
 
 export type CreateEmployeeMeta = {
   initialLevel?: 'tap_su' | 'biet_viec'
   secondaryTeamId?: string
 }
 
-const DEPT = '11111111-1111-4111-8111-111111111111'
-/** Team NS-01 — đồng bộ lựa chọn team Quản lý */
-export const MOCK_TEAM_NS01 = '22222222-2222-4222-8222-222222222222'
-/** Team NS-02 */
-export const MOCK_TEAM_NS02 = '33333333-3333-4333-8333-333333333333'
+const DEPT = HR_DEPARTMENT_IDS.khoiKinhDoanh
+const DEPT_NAME = 'KH\u1ED0I KINH DOANH'
+/** Team demo — LIVESTREAM 1 */
+export const MOCK_TEAM_NS01 = '02d0d0d0-0001-4001-8001-000000000301'
+/** Team demo — LIVESTREAM 2 */
+export const MOCK_TEAM_NS02 = '02d0d0d0-0001-4001-8001-000000000302'
+
+function teamLabelForMock(teamId: string): string {
+  return HR_TEAM_OPTIONS.find((t) => t.value === teamId)?.label ?? 'Nh\u00F3m (mock)'
+}
 
 function emp(
-  p: Omit<EmployeeEntity, 'departmentId' | 'teamIds' | 'createdAt' | 'updatedAt'>,
+  p: Omit<
+    EmployeeEntity,
+    'departmentId' | 'departmentName' | 'teamIds' | 'teamNames' | 'createdAt' | 'updatedAt'
+  >,
   teamIds: string[] = [MOCK_TEAM_NS01]
 ): EmployeeEntity {
   const now = new Date().toISOString()
   return {
     ...p,
     departmentId: DEPT,
+    departmentName: DEPT_NAME,
     teamIds,
+    teamNames: teamIds.map(teamLabelForMock),
     createdAt: now,
     updatedAt: now,
   }
@@ -62,6 +73,18 @@ let rows: EmployeeEntity[] = [
       status: 'ACTIVE',
       currentLevel: 'dong_gop_ket_qua',
       currentStar: 6,
+    },
+    [MOCK_TEAM_NS01]
+  ),
+  emp(
+    {
+      id: '10000000-0000-4000-8000-000000000007',
+      name: 'Hoàng Kiệt',
+      email: 'h.kiet@vcb.com',
+      role: 'LEADER',
+      status: 'ACTIVE',
+      currentLevel: 'duoc_viec',
+      currentStar: 4,
     },
     [MOCK_TEAM_NS01]
   ),
@@ -125,7 +148,17 @@ export function getMockEmployees(filters: EmployeeFilters): {
   if (filters.teamId) {
     list = list.filter((e) => e.teamIds.includes(filters.teamId!))
   }
-  if (filters.role) list = list.filter((e) => e.role === filters.role)
+  if (filters.roles?.trim()) {
+    const rs = new Set(
+      filters.roles
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean)
+    )
+    list = list.filter((e) => rs.has(e.role))
+  } else if (filters.role) {
+    list = list.filter((e) => e.role === filters.role)
+  }
   const st = statusFilter(filters.status)
   if (st) list = list.filter((e) => e.status === st)
   if (filters.search?.trim()) {
@@ -165,14 +198,19 @@ export function mockPatchEmployee(
   if (patch.name !== undefined) next.name = patch.name.trim()
   if (patch.email !== undefined) next.email = patch.email.trim()
   if (patch.role !== undefined) next.role = patch.role
-  if (patch.departmentId !== undefined) next.departmentId = patch.departmentId
+  if (patch.departmentId !== undefined) {
+    next.departmentId = patch.departmentId
+    next.departmentName = DEPT_NAME
+  }
   if (patch.teamId !== undefined) {
     next.teamIds = [patch.teamId, ...cur.teamIds.slice(1)]
+    next.teamNames = next.teamIds.map(teamLabelForMock)
   }
   if (patch.secondaryTeamId !== undefined) {
     const primary = next.teamIds[0] ?? MOCK_TEAM_NS01
     const s = patch.secondaryTeamId.trim()
     next.teamIds = s ? [primary, s] : [primary]
+    next.teamNames = next.teamIds.map(teamLabelForMock)
   }
   if (patch.status !== undefined) next.status = patch.status
   if (patch.phone !== undefined) next.phone = patch.phone.trim() || null
@@ -199,7 +237,9 @@ export function mockCreateEmployee(
     role: input.role,
     status: 'ACTIVE',
     departmentId: input.departmentId,
+    departmentName: 'Phòng ban (mock)',
     teamIds,
+    teamNames: teamIds.map(teamLabelForMock),
     currentLevel: meta?.initialLevel ?? 'tap_su',
     currentStar: 0,
     phone: input.phone?.trim() || null,

@@ -11,6 +11,6 @@ export async function ensureSessionFromCookie(): Promise<void> {
     const d = await authApi.me()
     useAuthStore.getState().setSession(d.user, d.accessToken ?? null)
   } catch {
-    /* chưa đăng nhập hoặc cookie hết hạn */
+    /* chưa đăng nhập hoặc hết phiên */
   }
 }
