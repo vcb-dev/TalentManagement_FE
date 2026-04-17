@@ -1,7 +1,13 @@
+import { lazy, Suspense } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { BodTraineeRankingScreen } from '@/features/bod/components/BodAnalyticsScreens'
 import { requirePermissionPrefix } from '@/lib/permissionGuards'
 import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
+
+const BodTraineeRankingScreen = lazy(() =>
+  import('@/features/bod/components/BodAnalyticsScreens').then((module) => ({
+    default: module.BodTraineeRankingScreen,
+  }))
+)
 
 export const Route = createFileRoute('/_protected/bod/trainee-ranking')({
   beforeLoad: () => {
@@ -12,5 +18,9 @@ export const Route = createFileRoute('/_protected/bod/trainee-ranking')({
 })
 
 function BodTraineeRankingPage() {
-  return <BodTraineeRankingScreen />
+  return (
+    <Suspense fallback={null}>
+      <BodTraineeRankingScreen />
+    </Suspense>
+  )
 }

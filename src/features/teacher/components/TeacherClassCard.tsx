@@ -1,5 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { Award, Presentation, School, TrendingUp, Users } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { CARD_ENTRANCE, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import type { TeacherClassRow } from './teacherClassTypes'
@@ -28,7 +31,7 @@ export function TeacherClassCard({
   const progressPct = Math.min(100, Math.round((c.memberCount / 24) * 100))
 
   return (
-    <div
+    <Card
       role="button"
       tabIndex={0}
       onClick={onSelect}
@@ -39,7 +42,7 @@ export function TeacherClassCard({
         }
       }}
       className={cn(
-        'group relative flex w-full cursor-pointer flex-col rounded-2xl border bg-card p-5 text-left shadow-sm',
+        'group relative flex w-full cursor-pointer flex-col rounded-2xl p-5 text-left shadow-sm',
         cardIndex !== undefined && CARD_ENTRANCE,
         selected ? 'border-2 border-primary shadow-md ring-1 ring-primary/15' : 'border-border'
       )}
@@ -55,18 +58,19 @@ export function TeacherClassCard({
           <IconMain className="h-10 w-10 sm:h-11 sm:w-11" strokeWidth={2} aria-hidden />
         </div>
         <div className="flex min-w-0 flex-col items-end gap-1.5">
-          <span
+          <Badge
             className={cn(
-              'max-w-[10.5rem] truncate rounded-md px-2 py-0.5 text-center text-[10px] font-bold tracking-tight sm:max-w-[11rem] sm:text-[11px]',
+              'max-w-[10.5rem] truncate px-2 py-0.5 text-center text-[10px] font-bold tracking-tight sm:max-w-[11rem] sm:text-[11px]',
               badgeWrap
             )}
+            variant="muted"
           >
             {c.periodBadge}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-md bg-muted/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+          </Badge>
+          <Badge className="inline-flex items-center gap-1 bg-muted/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
             <Users className="size-3 shrink-0" strokeWidth={2} aria-hidden />
             {c.memberCount} HV
-          </span>
+          </Badge>
         </div>
       </div>
 
@@ -74,10 +78,10 @@ export function TeacherClassCard({
         <h3 className="text-base font-bold leading-snug text-foreground">{c.title}</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">Lớp phụ trách</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-0.5 rounded-full bg-muted/70 px-2 py-0.5 text-[10px] font-bold text-foreground/90">
+          <Badge className="inline-flex items-center gap-0.5 rounded-full bg-muted/70 px-2 py-0.5 text-[10px] font-bold text-foreground/90">
             <MetaIcon className="size-3 shrink-0" strokeWidth={2} aria-hidden />
             {c.track === 'tap_su' ? 'Tập sự' : 'Biết việc'}
-          </span>
+          </Badge>
           <span className="text-border">·</span>
           <span className="line-clamp-2 text-foreground/80">{c.examLine}</span>
         </div>
@@ -100,18 +104,22 @@ export function TeacherClassCard({
         </span>
       </div>
 
-      <Link
-        to="/teacher/classes/$classId"
-        params={{ classId: c.id }}
-        aria-label={`Xem chi tiết lớp ${c.title}`}
+      <Button
+        asChild
         className={cn(
-          'mt-auto flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-sm transition-colors hover:opacity-90',
+          'mt-auto w-full rounded-xl text-sm font-bold shadow-sm transition-colors hover:opacity-90',
           selected && 'ring-2 ring-primary/30 ring-offset-2 ring-offset-card'
         )}
-        onClick={(e) => e.stopPropagation()}
       >
-        Xem chi tiết
-      </Link>
-    </div>
+        <Link
+          to="/teacher/classes/$classId"
+          params={{ classId: c.id }}
+          aria-label={`Xem chi tiết lớp ${c.title}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          Xem chi tiết
+        </Link>
+      </Button>
+    </Card>
   )
 }

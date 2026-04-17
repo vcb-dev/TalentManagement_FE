@@ -1,6 +1,12 @@
+import { lazy, Suspense } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { ChecklistStarScreen } from '@/features/learning-path/components/ChecklistStarScreen'
 import { useAuthStore } from '@/stores/auth.store'
+
+const ChecklistStarScreen = lazy(() =>
+  import('@/features/learning-path/components/ChecklistStarScreen').then((module) => ({
+    default: module.ChecklistStarScreen,
+  }))
+)
 
 export const Route = createFileRoute('/_protected/learning-path/$levelId/$starId')({
   beforeLoad: () => {
@@ -16,5 +22,9 @@ export const Route = createFileRoute('/_protected/learning-path/$levelId/$starId
 
 function LearningChecklistPage() {
   const { levelId, starId } = Route.useParams()
-  return <ChecklistStarScreen levelId={levelId} starId={starId} />
+  return (
+    <Suspense fallback={null}>
+      <ChecklistStarScreen levelId={levelId} starId={starId} />
+    </Suspense>
+  )
 }

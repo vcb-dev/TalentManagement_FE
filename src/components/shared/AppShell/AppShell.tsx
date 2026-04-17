@@ -131,14 +131,14 @@ export function AppShell({ children, title }: AppShellProps) {
         </div>
       ) : null}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 shrink-0 border-b border-cyan-300/35 bg-gradient-to-r from-[#2a1361] via-[#4338ca] to-[#0f5ea8] shadow-[0_8px_24px_-12px_rgba(37,99,235,0.65)] backdrop-blur-sm dark:border-primary/30 dark:from-primary/60 dark:via-primary/45 dark:to-primary/60">
+        <header className="sticky top-0 z-30 shrink-0 border-b border-primary-300/40 bg-gradient-to-r from-primary-700 via-primary-600 to-accent shadow-[0_8px_24px_-14px_rgba(79,70,229,0.45)] backdrop-blur-sm dark:border-primary/30 dark:from-primary/60 dark:via-primary/45 dark:to-primary/60">
           <div className="flex min-h-12 items-center justify-between gap-2 px-3 py-1.5 md:hidden">
             <div className="flex items-center gap-1.5">
               <MobileHeaderNav />
               <Link
                 to={brandHomeTo}
                 search={brandHomeSearch}
-                className="flex h-9 shrink-0 items-center bg-gradient-to-r from-cyan-100 via-white to-cyan-200 bg-clip-text text-base font-bold leading-none tracking-tight text-transparent"
+                className="flex h-9 shrink-0 items-center text-base font-extrabold leading-none tracking-tight text-white drop-shadow-[0_1px_2px_rgba(15,23,42,0.45)]"
               >
                 VCB HRM
               </Link>
@@ -150,7 +150,7 @@ export function AppShell({ children, title }: AppShellProps) {
               <Link
                 to={brandHomeTo}
                 search={brandHomeSearch}
-                className="flex h-9 shrink-0 items-center bg-gradient-to-r from-cyan-100 via-white to-cyan-200 bg-clip-text text-base font-bold leading-none tracking-tight text-transparent sm:text-[17px]"
+                className="flex h-9 shrink-0 items-center text-base font-extrabold leading-none tracking-tight text-white drop-shadow-[0_1px_2px_rgba(15,23,42,0.45)] sm:text-[17px]"
               >
                 VCB HRM
               </Link>
@@ -166,7 +166,7 @@ export function AppShell({ children, title }: AppShellProps) {
           ) : (
             <div className="mx-auto hidden w-full max-w-[1400px] min-h-14 flex-wrap items-center gap-2 px-5 py-2 sm:gap-3 md:flex md:px-6">
               {title ? (
-                <span className="min-w-0 flex-1 truncate text-lg font-bold tracking-tight text-primary-600 sm:text-[18px]">
+                <span className="min-w-0 flex-1 truncate text-lg font-extrabold tracking-tight text-white drop-shadow-[0_1px_2px_rgba(15,23,42,0.45)] sm:text-[18px]">
                   {title}
                 </span>
               ) : (

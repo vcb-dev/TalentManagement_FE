@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import {
-  ChevronRight,
-  ClipboardList,
-  FileText,
-  Pencil,
-  RefreshCw,
-  Target,
-  Users,
-} from 'lucide-react'
+import { Pencil, RefreshCw, Users } from 'lucide-react'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -387,66 +379,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         </CardContent>
       </Card>
 
-      <Card
-        className={cn(
-          'mb-6 border-violet-200/30 bg-card/95 shadow-md shadow-violet-500/5 backdrop-blur-sm dark:border-violet-900/35',
-          CARD_ENTRANCE
-        )}
-        style={{ animationDelay: '180ms' }}
-      >
-        <CardHeader className="pb-3">
-          <CardTitle className="bg-gradient-to-r from-violet-700 via-primary to-teal-600 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
-            Điều hướng nhanh theo chức năng
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2.5 pt-0">
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="rounded-full border-blue-300/90 bg-blue-50/95 px-4 text-blue-800 shadow-sm transition-[transform,box-shadow,background-color] hover:bg-blue-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98]"
-          >
-            <a href="#planning-section" className="inline-flex items-center gap-1.5">
-              <Target className="h-3.5 w-3.5 motion-safe:animate-[dash-float-slow_5s_ease-in-out_infinite] motion-reduce:animate-none" />
-              Lập KPI/OKR
-            </a>
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="rounded-full border-emerald-300/90 bg-emerald-50/95 px-4 text-emerald-800 shadow-sm transition-[transform,box-shadow,background-color] hover:bg-emerald-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98]"
-          >
-            <a href="#results-section" className="inline-flex items-center gap-1.5">
-              <ClipboardList className="h-3.5 w-3.5 motion-safe:animate-[dash-float-slow_5.5s_ease-in-out_infinite] motion-reduce:animate-none" />
-              Cập nhật kết quả
-            </a>
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="rounded-full border-amber-300/90 bg-amber-50/95 px-4 text-amber-900 shadow-sm transition-[transform,box-shadow,background-color] hover:bg-amber-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98]"
-          >
-            <a href="#summary-section" className="inline-flex items-center gap-1.5">
-              <RefreshCw className="h-3.5 w-3.5 motion-safe:animate-[dash-float-slow_6s_ease-in-out_infinite] motion-reduce:animate-none" />
-              Tổng hợp hiệu suất
-            </a>
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="rounded-full border-fuchsia-300/90 bg-fuchsia-50/95 px-4 text-fuchsia-900 shadow-sm transition-[transform,box-shadow,background-color] hover:bg-fuchsia-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98]"
-          >
-            <a href="#form-section" className="inline-flex items-center gap-1.5">
-              <FileText className="h-3.5 w-3.5 motion-safe:animate-[dash-float-slow_6.5s_ease-in-out_infinite] motion-reduce:animate-none" />
-              Form câu hỏi
-            </a>
-          </Button>
-        </CardContent>
-      </Card>
-
       {mockHint && (
         <p className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
           Đang bật mock API — dữ liệu KPI từ server không tải được. Tắt mock để dùng đầy đủ.
@@ -490,42 +422,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           readOnly={isManagerReadOnly}
         />
       </div>
-
-      {!isMemberView ? (
-        <aside
-          className={cn(
-            'mt-8 rounded-xl border border-dashed border-primary/25 bg-gradient-to-br from-muted/40 via-card/80 to-primary/[0.04] p-4 text-xs text-muted-foreground shadow-sm backdrop-blur-sm transition-shadow motion-safe:hover:shadow-md',
-            CARD_ENTRANCE
-          )}
-          style={{ animationDelay: '260ms' }}
-        >
-          <div className="mb-2 bg-gradient-to-r from-primary to-teal-600 bg-clip-text font-semibold text-transparent">
-            Điều hướng nhanh
-          </div>
-          <ul className="space-y-1">
-            {departments.map((d) => (
-              <li key={d.id}>
-                <span className="font-medium text-foreground">{d.name}</span>
-                <ul className="ml-3 mt-1 space-y-0.5">
-                  {d.teams.map((t) => (
-                    <li key={t.id}>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="inline-flex h-auto items-center gap-1 p-0 text-primary"
-                        onClick={() => setSelectedTeamId(t.id)}
-                      >
-                        <ChevronRight className="h-3 w-3" />
-                        {t.name}
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      ) : null}
     </div>
   )
 }

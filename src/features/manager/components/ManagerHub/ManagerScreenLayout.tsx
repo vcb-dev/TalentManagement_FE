@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { ManagerHubNav } from './ManagerHubNav'
 
@@ -32,7 +33,7 @@ export function ManagerScreenLayout({
       )}
     >
       {hideToolbar ? null : (
-        <div className="page-toolbar-gradient">
+        <Card className="page-toolbar-gradient rounded-none border-0 bg-transparent shadow-none">
           <div
             className="pointer-events-none absolute inset-0 opacity-25 motion-safe:animate-[dash-shimmer_10s_ease-in-out_infinite] motion-reduce:animate-none"
             style={{
@@ -49,10 +50,14 @@ export function ManagerScreenLayout({
             </div>
           ) : null}
           {subtitle ? (
-            <p className="relative mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
+            <p className="relative mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              {subtitle}
+            </p>
           ) : null}
-          {toolbarExtra ? <div className="relative mt-2 flex flex-wrap gap-2">{toolbarExtra}</div> : null}
-        </div>
+          {toolbarExtra ? (
+            <div className="relative mt-2 flex flex-wrap gap-2">{toolbarExtra}</div>
+          ) : null}
+        </Card>
       )}
       {hideHubNav ? null : <ManagerHubNav />}
       <div className="page-shell">{children}</div>

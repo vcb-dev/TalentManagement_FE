@@ -1,4 +1,5 @@
 import { DataTable, type DataTableColumn } from '@/components/shared/DataTable'
+import { Card, CardContent } from '@/components/ui/card'
 import { formatViDate } from '@/lib/date'
 import type { z } from 'zod'
 import { type examResultApiSchema } from '@/features/exam/schemas'
@@ -16,5 +17,11 @@ export function ExamHistory({ rows, isLoading }: ExamHistoryProps) {
     { id: 'result', header: 'Kết quả', cell: (r) => r.result },
     { id: 'at', header: 'Thời điểm', cell: (r) => formatViDate(r.classifiedAt) },
   ]
-  return <DataTable columns={columns} data={rows} isLoading={isLoading} />
+  return (
+    <Card>
+      <CardContent className="p-4 sm:p-6">
+        <DataTable columns={columns} data={rows} isLoading={isLoading} />
+      </CardContent>
+    </Card>
+  )
 }
