@@ -7,13 +7,12 @@ import {
   PAGE_HEADER_SURFACE,
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
-import { AlertTriangle, Filter, Search } from 'lucide-react'
+import { Filter, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { EmployeeTable } from '@/features/hr-admin/components/EmployeeTable'
 import { useEmployeeTable } from '@/features/hr-admin/components/EmployeeTable/useEmployeeTable'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
-import type { Role } from '@/types/auth'
-import type { EmployeeFilters, EmployeeListStatus } from '@/features/hr-admin/types'
+import type { EmployeeFilters } from '@/features/hr-admin/types'
 import { Button } from '@/components/ui/button'
 import { PaginationCardStepper } from '@/components/ui/pagination'
 import { SkeletonEmployeeCardGrid, SkeletonStatTile } from '@/components/ui/skeleton'
@@ -29,17 +28,6 @@ const hrAdminListRoute = getRouteApi('/_protected/hr-admin/')
 
 /** Cố định 15 nhân viên / trang (màn danh sách HR). */
 const HR_EMPLOYEE_PAGE_SIZE = 15
-
-const FILTERS: { key: 'all' | Role | 'reserved'; label: string }[] = [
-  { key: 'all', label: 'Tất cả' },
-  { key: 'MEMBER', label: 'Nhân viên' },
-  { key: 'LEADER', label: 'Leader' },
-  { key: 'MANAGER', label: 'Quản lý' },
-  { key: 'TEACHER', label: 'Người chấm' },
-  { key: 'HR', label: 'HR' },
-  { key: 'BOD', label: 'BOD' },
-  { key: 'reserved', label: 'Bảo lưu' },
-]
 
 export interface HrEmployeeListProps {
   initialFilters?: Partial<EmployeeFilters>
@@ -133,65 +121,11 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const activeFilter = useMemo(() => {
-    if (filters.status === 'reserved') return 'reserved' as const
-    if (filters.role) return filters.role
-    return 'all' as const
-  }, [filters.role, filters.status])
-
   const handlePageChange = (nextPage: number) => {
     setSelectedId(null)
     void navigate({
       to: '/hr-admin',
       search: (s) => ({ ...s, page: nextPage, pageSize: HR_EMPLOYEE_PAGE_SIZE }),
-    })
-  }
-
-  const setRoleFilter = (key: (typeof FILTERS)[number]['key']) => {
-    setSelectedId(null)
-    if (key === 'all') {
-      setFilters((f) => ({ ...f, page: 1, role: undefined, status: undefined }))
-      void navigate({
-        to: '/hr-admin',
-        search: (s) => ({
-          ...s,
-          page: 1,
-          pageSize: HR_EMPLOYEE_PAGE_SIZE,
-          role: undefined,
-          status: undefined,
-        }),
-      })
-      return
-    }
-    if (key === 'reserved') {
-      setFilters((f) => ({
-        ...f,
-        page: 1,
-        status: 'reserved' as EmployeeListStatus,
-        role: undefined,
-      }))
-      void navigate({
-        to: '/hr-admin',
-        search: (s) => ({
-          ...s,
-          page: 1,
-          pageSize: HR_EMPLOYEE_PAGE_SIZE,
-          role: undefined,
-          status: 'reserved' as const,
-        }),
-      })
-      return
-    }
-    setFilters((f) => ({ ...f, page: 1, role: key as Role, status: undefined }))
-    void navigate({
-      to: '/hr-admin',
-      search: (s) => ({
-        ...s,
-        page: 1,
-        pageSize: HR_EMPLOYEE_PAGE_SIZE,
-        role: key as Role,
-        status: undefined,
-      }),
     })
   }
 
@@ -360,52 +294,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
           </div>
 
           {/* Bộ lọc + tìm kiếm: mobile xếp dọc, lg chia đôi 50/50 */}
-          <div
-            id="hr-emp-filters"
-            className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr] lg:items-stretch lg:gap-4"
-          >
-            <div className="scrollbar-hide flex min-w-0 w-full overflow-x-auto rounded-xl border border-border bg-card p-1 shadow-sm">
-              <div
-                role="tablist"
-                aria-label="Lọc theo vai trò và trạng thái"
-                className="flex min-w-min gap-0.5"
-              >
-                {FILTERS.map(({ key, label }) => {
-                  const selected = activeFilter === key
-                  return (
-                    <Button
-                      key={key}
-                      type="button"
-                      variant="ghost"
-                      role="tab"
-                      aria-selected={selected}
-                      id={`hr-emp-filter-${key}`}
-                      className={cn(
-                        'inline-flex h-auto min-h-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-xs font-semibold transition-colors md:text-[13px]',
-                        selected
-                          ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground'
-                          : 'text-muted-foreground hover:bg-muted/70 hover:text-primary'
-                      )}
-                      onClick={() => setRoleFilter(key)}
-                    >
-                      {key === 'reserved' ? (
-                        <AlertTriangle
-                          className={cn(
-                            'size-3.5 shrink-0',
-                            selected
-                              ? 'text-primary-foreground'
-                              : 'text-amber-500 dark:text-amber-400'
-                          )}
-                          strokeWidth={2.25}
-                          aria-hidden
-                        />
-                      ) : null}
-                      {label}
-                    </Button>
-                  )
-                })}
-              </div>
-            </div>
+          <div id="hr-emp-filters" className="mb-6">
             <Form {...searchForm}>
               <div className="relative flex min-h-[42px] w-full min-w-0 items-center rounded-xl border border-border bg-card px-3 shadow-sm ring-1 ring-border/60">
                 <InputFieldController
