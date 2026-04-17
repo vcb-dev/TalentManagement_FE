@@ -1,8 +1,7 @@
 import * as React from 'react'
-import { type VariantProps } from 'class-variance-authority'
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button, type ButtonProps, buttonVariants } from '@/components/ui/button'
+import { Button, type ButtonProps } from '@/components/ui/button'
 
 /** Label for the previous-page control (Unicode escapes). */
 const LABEL_PREV_PAGE = 'Tr\u01B0\u1EDBc'
@@ -64,7 +63,7 @@ const PaginationItem = React.forwardRef<HTMLLIElement, React.ComponentProps<'li'
 )
 PaginationItem.displayName = 'PaginationItem'
 
-type ButtonSize = NonNullable<VariantProps<typeof buttonVariants>['size']>
+type ButtonSize = NonNullable<ButtonProps['size']>
 
 type PaginationLinkProps = {
   isActive?: boolean

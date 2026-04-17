@@ -87,6 +87,7 @@ export type KpiOkrWorkspaceProps = {
 export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspaceProps) {
   const user = useAuthStore((s) => s.user)
   const isMemberView = variant === 'member'
+  const isManagerReadOnly = user?.role === 'MANAGER'
   const qc = useQueryClient()
   const treeQ = useHrOrgTree()
   const { year: y0, month: m0 } = nowYm()
@@ -100,9 +101,9 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   )
 
   const canEditTeam = useMemo(() => {
-    if (variant === 'leader') return eff.has('kpi.team_edit')
+    if (variant === 'leader') return !isManagerReadOnly && eff.has('kpi.team_edit')
     return false
-  }, [variant, eff])
+  }, [variant, eff, isManagerReadOnly])
 
   const departments = useMemo(() => {
     const allDepartments = treeQ.data?.departments ?? []
@@ -486,6 +487,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           month={month}
           canEditTeam={canEditTeam}
           currentUserId={user?.id ?? ''}
+          readOnly={isManagerReadOnly}
         />
       </div>
 
@@ -1665,12 +1667,14 @@ function FormPanel({
   month,
   canEditTeam,
   currentUserId,
+  readOnly = false,
 }: {
   teamId: string
   year: number
   month: number
   canEditTeam: boolean
   currentUserId: string
+  readOnly?: boolean
 }) {
   const q = useQuery({
     queryKey: ['kpi-form', teamId, year, month],
@@ -1685,6 +1689,7 @@ function FormPanel({
   const [answerDraft, setAnswerDraft] = useState<Record<string, string>>({})
   const [busySaveQuestions, setBusySaveQuestions] = useState(false)
   const [busySaveAnswers, setBusySaveAnswers] = useState(false)
+  const isManagerViewOnly = readOnly
 
   useEffect(() => {
     if (!data?.questions?.length) return
@@ -1798,11 +1803,13 @@ function FormPanel({
 
         {!data && (
           <p className="text-sm text-muted-foreground">
-            Chưa có form cho kỳ này (leader cần tạo câu hỏi).
+            {isManagerViewOnly
+              ? 'Chưa có form câu hỏi cho kỳ này.'
+              : 'Chưa có form cho kỳ này (leader cần tạo câu hỏi).'}
           </p>
         )}
 
-        {data?.questions?.length ? (
+        {data?.questions?.length && !isManagerViewOnly ? (
           <div className="space-y-4">
             {data.questions.map((qs) => (
               <label key={qs.id} className="block rounded-lg border border-border/80 p-3">
@@ -1811,11 +1818,11 @@ function FormPanel({
                   className="mt-2 min-h-[72px] w-full rounded border border-input bg-background p-2 text-sm"
                   value={answerDraft[qs.id] ?? ''}
                   onChange={(e) => setAnswerDraft((prev) => ({ ...prev, [qs.id]: e.target.value }))}
-                  disabled={!currentUserId}
+                  disabled={!currentUserId || readOnly}
                 />
               </label>
             ))}
-            {!isMockApiEnabled() && currentUserId && (
+            {!isMockApiEnabled() && currentUserId && !readOnly && (
               <Button
                 type="button"
                 disabled={busySaveAnswers}
@@ -1839,10 +1846,12 @@ function FormPanel({
           </div>
         ) : null}
 
-        {canEditTeam && data?.questions?.length ? (
+        {(canEditTeam || isManagerViewOnly) && data?.questions?.length ? (
           <div className="space-y-3 rounded-xl border border-border/80 p-4">
             <div className="text-sm font-semibold text-foreground">
-              Tổng hợp câu trả lời theo nhân sự
+              {isManagerViewOnly
+                ? 'Danh sách câu hỏi & câu trả lời theo nhân sự'
+                : 'Tổng hợp câu trả lời theo nhân sự'}
             </div>
             {answersByRespondent.length === 0 ? (
               <p className="text-sm text-muted-foreground">Chưa có câu trả lời nào cho kỳ này.</p>
