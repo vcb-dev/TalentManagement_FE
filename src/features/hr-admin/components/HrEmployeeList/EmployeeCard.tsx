@@ -81,37 +81,43 @@ export function EmployeeCard({
     { cardBg: string; glow: string; chip: string; cta: string }
   > = {
     MEMBER: {
-      cardBg: 'from-emerald-50/85 via-card to-teal-50/70',
+      cardBg:
+        'from-emerald-100/65 via-slate-50/95 to-teal-100/50 dark:from-emerald-900/35 dark:via-slate-900 dark:to-teal-900/30',
       glow: 'bg-emerald-400/20',
       chip: 'bg-emerald-100/90 text-emerald-800',
       cta: 'from-emerald-500 to-teal-500',
     },
     LEADER: {
-      cardBg: 'from-sky-50/85 via-card to-indigo-50/70',
+      cardBg:
+        'from-sky-100/65 via-slate-50/95 to-indigo-100/50 dark:from-sky-900/35 dark:via-slate-900 dark:to-indigo-900/30',
       glow: 'bg-sky-400/20',
       chip: 'bg-sky-100/90 text-sky-800',
       cta: 'from-sky-500 to-indigo-500',
     },
     MANAGER: {
-      cardBg: 'from-amber-50/85 via-card to-orange-50/70',
+      cardBg:
+        'from-amber-100/65 via-slate-50/95 to-orange-100/55 dark:from-amber-900/35 dark:via-slate-900 dark:to-orange-900/30',
       glow: 'bg-amber-400/20',
       chip: 'bg-amber-100/90 text-amber-800',
       cta: 'from-amber-500 to-orange-500',
     },
     HR: {
-      cardBg: 'from-violet-50/90 via-card to-fuchsia-50/70',
+      cardBg:
+        'from-violet-100/70 via-slate-50/95 to-fuchsia-100/55 dark:from-violet-900/35 dark:via-slate-900 dark:to-fuchsia-900/30',
       glow: 'bg-violet-400/20',
       chip: 'bg-violet-100/90 text-violet-800',
       cta: 'from-violet-500 to-fuchsia-500',
     },
     TEACHER: {
-      cardBg: 'from-cyan-50/90 via-card to-blue-50/70',
+      cardBg:
+        'from-cyan-100/70 via-slate-50/95 to-blue-100/55 dark:from-cyan-900/35 dark:via-slate-900 dark:to-blue-900/30',
       glow: 'bg-cyan-400/20',
       chip: 'bg-cyan-100/90 text-cyan-800',
       cta: 'from-cyan-500 to-blue-500',
     },
     BOD: {
-      cardBg: 'from-rose-50/85 via-card to-pink-50/70',
+      cardBg:
+        'from-rose-100/65 via-slate-50/95 to-pink-100/50 dark:from-rose-900/35 dark:via-slate-900 dark:to-pink-900/30',
       glow: 'bg-rose-400/20',
       chip: 'bg-rose-100/90 text-rose-800',
       cta: 'from-rose-500 to-pink-500',
@@ -131,13 +137,13 @@ export function EmployeeCard({
         }
       }}
       className={cn(
-        'group relative flex w-full cursor-pointer flex-col rounded-2xl border bg-gradient-to-br p-5 text-left shadow-sm',
+        'group relative flex w-full cursor-pointer flex-col rounded-2xl border border-slate-200/80 bg-gradient-to-br p-5 text-left shadow-[0_10px_24px_-14px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/60 backdrop-blur-[1px] dark:border-slate-800 dark:ring-slate-800/70',
         tone.cardBg,
         'transition-[transform,box-shadow,border-color] duration-200 ease-out',
         'hover:-translate-y-1 hover:border-primary/50 hover:shadow-[0_14px_32px_-14px_rgba(37,99,235,0.45)]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
         cardIndex !== undefined && CARD_ENTRANCE,
-        selected ? 'border-2 border-primary shadow-md ring-1 ring-primary/15' : 'border-border',
+        selected ? 'border-2 border-primary shadow-md ring-1 ring-primary/20' : '',
         inactive && 'opacity-[0.55]'
       )}
       style={cardIndex !== undefined ? staggerStyle(Math.min(cardIndex, 16)) : undefined}

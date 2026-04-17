@@ -134,7 +134,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     'Quản lý và theo dõi hiệu suất cũng như thành tích của nhân sự (HR, BOD, Quản lý dùng chung).'
 
   return (
-    <div className="-m-5 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
+    <div className="-m-5 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-gradient-to-b from-slate-50/95 via-slate-100/70 to-slate-100/90 text-sm text-foreground md:-m-6 lg:-m-8 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div
           className={cn(
@@ -155,7 +155,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
                 <Button
                   type="button"
                   variant="outline"
-                  className="inline-flex h-auto rounded-lg border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm hover:bg-muted"
+                  className="inline-flex h-auto rounded-lg border-border/80 bg-card/90 px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm backdrop-blur-sm hover:bg-muted"
                   onClick={scrollToFilters}
                 >
                   <Filter className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -168,7 +168,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
                     'inline-flex h-auto rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors',
                     viewMode === 'table'
                       ? 'border-button bg-button text-button-foreground'
-                      : 'border-border bg-card text-foreground hover:bg-muted'
+                      : 'border-border/80 bg-card/90 text-foreground backdrop-blur-sm hover:bg-muted'
                   )}
                   onClick={() => setViewMode((v) => (v === 'cards' ? 'table' : 'cards'))}
                 >
@@ -296,7 +296,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
           {/* Bộ lọc + tìm kiếm: mobile xếp dọc, lg chia đôi 50/50 */}
           <div id="hr-emp-filters" className="mb-6">
             <Form {...searchForm}>
-              <div className="relative flex min-h-[42px] w-full min-w-0 items-center rounded-xl border border-border bg-card px-3 shadow-sm ring-1 ring-border/60">
+              <div className="relative flex min-h-[42px] w-full min-w-0 items-center rounded-xl border border-border/80 bg-card/90 px-3 shadow-sm ring-1 ring-border/60 backdrop-blur-sm">
                 <InputFieldController
                   control={control}
                   name="searchDraft"

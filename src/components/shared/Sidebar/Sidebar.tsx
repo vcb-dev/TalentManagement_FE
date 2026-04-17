@@ -7,6 +7,16 @@ import {
   isNavItemActive,
 } from '@/components/shared/AppNav/navItems'
 import { Button } from '@/components/ui/button'
+import {
+  Sidebar as UiSidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 import { usePermission } from '@/hooks/usePermission'
 import { useAuthStore } from '@/stores/auth.store'
@@ -28,14 +38,6 @@ function NavLink({
   collapsed: boolean
 }) {
   const Icon = item.icon
-  const className = cn(
-    'mb-1 flex items-center gap-3 rounded-lg py-2.5 text-sm font-medium leading-snug tracking-tight transition-colors',
-    collapsed ? 'justify-center px-0' : 'px-3',
-    active
-      ? 'border-l-[3px] border-primary-600 bg-primary-50 font-semibold text-primary-600'
-      : 'border-l-[3px] border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
-  )
-
   const inner = (
     <>
       <Icon
@@ -53,16 +55,24 @@ function NavLink({
 
   if (item.search !== undefined) {
     return (
-      <Link to={item.to} search={item.search} className={className} title={title}>
-        {inner}
-      </Link>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild collapsed={collapsed} active={active}>
+          <Link to={item.to} search={item.search} title={title}>
+            {inner}
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
     )
   }
 
   return (
-    <Link to={item.to} className={className} title={title}>
-      {inner}
-    </Link>
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild collapsed={collapsed} active={active}>
+        <Link to={item.to} title={title}>
+          {inner}
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   )
 }
 
@@ -85,15 +95,8 @@ function SidebarInner() {
   const displayName = user?.name ?? 'Ng\u01b0\u1eddi d\u00f9ng'
 
   return (
-    <aside
-      className={cn(
-        'relative flex h-full min-h-0 shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200',
-        collapsed ? 'w-[4.25rem]' : 'w-64 min-w-[256px]'
-      )}
-    >
-      <div
-        className={cn('border-b border-border', collapsed ? 'px-2 pb-3 pt-4' : 'px-3 pb-3 pt-4')}
-      >
+    <UiSidebar collapsed={collapsed}>
+      <SidebarHeader className={cn(collapsed ? 'px-2 pb-3 pt-4' : 'px-3 pb-3 pt-4')}>
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
             <div className="mx-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-600 text-base font-extrabold text-white shadow-md ring-2 ring-primary-600/15">
@@ -130,23 +133,26 @@ function SidebarInner() {
             </Button>
           </div>
         )}
-      </div>
+      </SidebarHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        <nav
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-3"
-          aria-label="Menu \u0111i\u1ec1u h\u01b0\u1edbng"
-        >
-          {items.map((item) => (
-            <NavLink
-              key={navItemDedupeKey(item) + item.label}
-              item={item}
-              active={isNavItemActive(pathname, item)}
-              collapsed={collapsed}
-            />
-          ))}
-        </nav>
-      </div>
-    </aside>
+      <SidebarContent>
+        <SidebarGroup className="min-h-0 flex-1 px-2 py-3">
+          <SidebarGroupContent className="h-full overflow-y-auto">
+            <nav aria-label="Menu \u0111i\u1ec1u h\u01b0\u1edbng">
+              <SidebarMenu>
+                {items.map((item) => (
+                  <NavLink
+                    key={navItemDedupeKey(item) + item.label}
+                    item={item}
+                    active={isNavItemActive(pathname, item)}
+                    collapsed={collapsed}
+                  />
+                ))}
+              </SidebarMenu>
+            </nav>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </UiSidebar>
   )
 }
