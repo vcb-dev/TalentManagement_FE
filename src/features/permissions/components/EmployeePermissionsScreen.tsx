@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { ArrowLeft, Info } from 'lucide-react'
@@ -11,6 +11,7 @@ import {
 } from '@/components/shared/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { authApi } from '@/features/auth/api'
 import { ManagerScreenLayout } from '@/features/manager/components/ManagerHub/ManagerScreenLayout'
 import { useAuthStore } from '@/stores/auth.store'
@@ -222,17 +223,9 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
                       : 'border-border bg-muted/30 text-foreground hover:border-primary/25 hover:bg-muted/50'
                   )}
                 >
-                  <Controller
-                    control={templateForm.control}
-                    name="roleTemplateIds"
-                    render={() => (
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary/30"
-                        checked={active}
-                        onChange={(e) => onToggleTemplate(t.id, e.target.checked)}
-                      />
-                    )}
+                  <Checkbox
+                    checked={active}
+                    onCheckedChange={(v) => onToggleTemplate(t.id, v === true)}
                   />
                   {t.name}
                 </label>

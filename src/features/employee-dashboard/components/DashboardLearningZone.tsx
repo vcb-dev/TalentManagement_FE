@@ -10,13 +10,9 @@ import {
   Zap,
 } from 'lucide-react'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
-import {
-  LEVELS,
-  LEVEL_LABELS,
-  STARS_PER_LEVEL,
-  type LevelCode,
-} from '@/lib/constants'
+import { LEVELS, LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 const quartOut = '[transition-timing-function:cubic-bezier(0.25,1,0.48,1)]'
 
@@ -63,9 +59,7 @@ export function DashboardLearningZone({
   const currentIndex = levelIndex >= 0 ? levelIndex : 0
   const maxStarsActive = STARS_PER_LEVEL[currentLevel]
   const progressPct =
-    maxStarsActive > 0
-      ? Math.round(Math.min(100, (currentStars / maxStarsActive) * 100))
-      : null
+    maxStarsActive > 0 ? Math.round(Math.min(100, (currentStars / maxStarsActive) * 100)) : null
 
   return (
     <div className="space-y-8 text-sm text-foreground">
@@ -185,7 +179,10 @@ export function DashboardLearningZone({
                 return (
                   <div
                     key={stepCode}
-                    className={cn('relative pl-12 opacity-[0.72]', !isLast ? 'pb-10' : 'opacity-90')}
+                    className={cn(
+                      'relative pl-12 opacity-[0.72]',
+                      !isLast ? 'pb-10' : 'opacity-90'
+                    )}
                   >
                     <div
                       className={cn(
@@ -213,9 +210,7 @@ export function DashboardLearningZone({
                     <span
                       className={cn(
                         'mt-1 inline-block text-sm font-medium',
-                        isLast
-                          ? 'text-muted-foreground'
-                          : 'text-muted-foreground italic'
+                        isLast ? 'text-muted-foreground' : 'text-muted-foreground italic'
                       )}
                     >
                       {isLast ? 'Mục tiêu cuối' : 'Chưa mở'}
@@ -267,10 +262,10 @@ export function DashboardLearningZone({
                   </div>
                 </div>
               </div>
-              <button
+              <Button
                 type="button"
                 className={cn(
-                  'relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary via-primary-600 to-accent py-3.5 text-sm font-black text-primary-foreground shadow-lg shadow-primary/30',
+                  'relative h-auto w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary via-primary-600 to-accent py-3.5 text-sm font-black text-primary-foreground shadow-lg shadow-primary/30',
                   quartOut,
                   'transition-all hover:brightness-110 hover:shadow-xl active:scale-[0.98] motion-reduce:active:scale-100'
                 )}
@@ -280,7 +275,7 @@ export function DashboardLearningZone({
                   className="pointer-events-none absolute inset-0 -translate-x-full skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent motion-safe:transition-transform motion-safe:duration-700 motion-safe:ease-out group-hover:translate-x-full motion-reduce:hidden"
                   aria-hidden
                 />
-              </button>
+              </Button>
             </div>
 
             <div

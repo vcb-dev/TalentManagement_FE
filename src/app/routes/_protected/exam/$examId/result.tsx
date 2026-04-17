@@ -1,8 +1,12 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Form } from '@/components/ui/form'
+import { RadioGroupController } from '@/components/ui/form-controllers'
+import { Textarea } from '@/components/ui/textarea'
 import { ExamHistory } from '@/features/exam/components/ExamHistory'
 import { ClassifyResultContainer } from '@/features/exam/components/ClassifyResult'
 import { useExamResults, useSubmitExam } from '@/features/exam/hooks'
@@ -22,6 +26,7 @@ function formatTime(seconds: number): string {
 }
 
 type ExamQuestion = { id: string; stem: string; options: string[] }
+type ApiErrorShape = { response?: { data?: { message?: string } } }
 
 const ExamQuestionCard = memo(function ExamQuestionCard({
   q,
@@ -36,36 +41,50 @@ const ExamQuestionCard = memo(function ExamQuestionCard({
   submitted: boolean
   onAnswerChange: (questionId: string, value: string) => void
 }) {
+  const optionForm = useForm<{ choice: string }>({ defaultValues: { choice: answer } })
+  const selectedChoice = useWatch({ control: optionForm.control, name: 'choice' }) ?? ''
+
+  useEffect(() => {
+    optionForm.setValue('choice', answer, { shouldDirty: false, shouldTouch: false })
+  }, [answer, optionForm])
+
+  useEffect(() => {
+    if (selectedChoice === answer) return
+    onAnswerChange(q.id, selectedChoice)
+  }, [selectedChoice, answer, onAnswerChange, q.id])
+
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <p className="text-sm font-semibold text-foreground">
         Câu {idx + 1}: {q.stem}
       </p>
       {q.options.length > 0 ? (
-        <div className="mt-3 space-y-2">
-          {q.options.map((opt, oi) => (
-            <label key={`${q.id}-${oi}`} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name={q.id}
-                value={opt}
-                checked={answer === opt}
-                onChange={(e) => onAnswerChange(q.id, e.target.value)}
-                disabled={submitted}
-              />
-              <span>
-                {String.fromCharCode(65 + oi)}. {opt}
-              </span>
-            </label>
-          ))}
-        </div>
+        <Form {...optionForm}>
+          <RadioGroupController
+            control={optionForm.control}
+            name="choice"
+            label="Đáp án"
+            labelClassName="sr-only"
+            className="mt-3 space-y-0"
+            radioGroupClassName="space-y-2"
+            options={q.options.map((opt, oi) => ({
+              value: opt,
+              optionClassName: 'flex items-center gap-2 border-0 bg-transparent p-0',
+              label: (
+                <span>
+                  {String.fromCharCode(65 + oi)}. {opt}
+                </span>
+              ),
+            }))}
+          />
+        </Form>
       ) : (
-        <textarea
+        <Textarea
           value={answer}
           onChange={(e) => onAnswerChange(q.id, e.target.value)}
           disabled={submitted}
           placeholder="Nhập câu trả lời của bạn..."
-          className="mt-3 min-h-[92px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          className="mt-3 min-h-[92px] w-full rounded-lg text-sm focus-visible:border-primary focus-visible:ring-primary/20"
         />
       )}
     </div>
@@ -104,14 +123,14 @@ function ExamResultPage() {
       const byClass = myClassId ? parsed[myClassId] : undefined
       const byExamId = parsed[examId]
       const bank = byClass ?? byExamId ?? null
-      setQuestionBank(bank)
+      queueMicrotask(() => setQuestionBank(bank))
 
       if (bank) {
         if (existingSubmission) {
-          setSubmitted(true)
+          queueMicrotask(() => setSubmitted(true))
           try {
             const parsedSub = JSON.parse(existingSubmission)
-            setAnswers(parsedSub.answers || {})
+            queueMicrotask(() => setAnswers(parsedSub.answers || {}))
           } catch {
             // ignore
           }
@@ -129,7 +148,7 @@ function ExamResultPage() {
         } else {
           for (const q of bank.questions) initialAnswers[q.id] = ''
         }
-        setAnswers(initialAnswers)
+        queueMicrotask(() => setAnswers(initialAnswers))
 
         const startKey = `exam_start_time_v1:${examId}`
         let startTimeStr = localStorage.getItem(startKey)
@@ -142,10 +161,10 @@ function ExamResultPage() {
         const elapsedRaw = Math.floor((Date.now() - startTime) / 1000)
         const remaining = Math.max(0, EXAM_DURATION_SECONDS - elapsedRaw)
 
-        setTimeLeft(remaining)
+        queueMicrotask(() => setTimeLeft(remaining))
       }
     } catch {
-      setQuestionBank(null)
+      queueMicrotask(() => setQuestionBank(null))
     }
   }, [examId, myClassId])
 
@@ -223,15 +242,19 @@ function ExamResultPage() {
       setTimeout(() => {
         navigate({ to: '/exam' })
       }, 1500)
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Có lỗi xảy ra khi nộp bài')
+    } catch (err: unknown) {
+      const maybeMessage = (err as ApiErrorShape)?.response?.data?.message
+      toast.error(maybeMessage || 'Có lỗi xảy ra khi nộp bài')
     }
   }
 
   // Tự động nộp khi hết giờ
   useEffect(() => {
     if (timeLeft !== 0 || submitted || isSubmitting) return
-    void submitAction(true)
+    const timer = setTimeout(() => {
+      void submitAction(true)
+    }, 0)
+    return () => clearTimeout(timer)
   }, [timeLeft]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Màu timer: đỏ nhấp nháy <= 5 phút, vàng <= 15 phút, xanh bình thường

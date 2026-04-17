@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
-  Controller,
   useForm,
   useWatch,
   type Control,
@@ -10,7 +9,11 @@ import {
 } from 'react-hook-form'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
+import { Form } from '@/components/ui/form'
+import { TextareaController } from '@/components/ui/form-controllers'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { useGradeSubmission, useManagerSubmissions } from '@/features/exam/hooks'
@@ -95,32 +98,29 @@ function GraderQuestionItem({
         </div>
         <div className="flex flex-wrap gap-4">
           <label className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
+            <Checkbox
+              className="shrink-0"
               checked={questionGrade.criteria.includes('ly_thuyet')}
               disabled={disabled}
-              onChange={() => toggleCriteria('ly_thuyet')}
+              onCheckedChange={() => toggleCriteria('ly_thuyet')}
             />
             Đúng lý thuyết (40%)
           </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
+            <Checkbox
+              className="shrink-0"
               checked={questionGrade.criteria.includes('thuc_te')}
               disabled={disabled}
-              onChange={() => toggleCriteria('thuc_te')}
+              onCheckedChange={() => toggleCriteria('thuc_te')}
             />
             Ví dụ thực tế (50%)
           </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded-sm border-border text-primary focus:ring-primary"
+            <Checkbox
+              className="shrink-0"
               checked={questionGrade.criteria.includes('trinh_bay')}
               disabled={disabled}
-              onChange={() => toggleCriteria('trinh_bay')}
+              onCheckedChange={() => toggleCriteria('trinh_bay')}
             />
             Trình bày (10%)
           </label>
@@ -245,13 +245,14 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
     return (
       <div className="flex min-h-[300px] flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Không tìm thấy bài nộp này.</p>
-        <button
+        <Button
           type="button"
-          className="text-sm text-primary underline"
+          variant="ghost"
+          className="h-auto p-0 text-sm font-normal normal-case tracking-normal text-primary underline hover:bg-transparent"
           onClick={() => void navigate({ to: '/exam/grader' })}
         >
           ← Quay lại danh sách
-        </button>
+        </Button>
       </div>
     )
   }
@@ -265,214 +266,218 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
   })
 
   return (
-    <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
-      {/* Sub header */}
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-primary/10 bg-card/50 px-6 py-3 shadow-sm backdrop-blur-sm">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-          <button
-            type="button"
-            className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-primary"
-            onClick={() => void navigate({ to: '/exam/grader' })}
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            DS bài thi
-          </button>
-          <div className="hidden h-4 w-px shrink-0 bg-border sm:block" />
-          <p className="min-w-0 truncate text-xs text-muted-foreground">
-            Chấm thi: <span className="font-bold text-foreground">{submission.fullName}</span>
-            {submission.learningClass?.name && ` · Lớp ${submission.learningClass.name}`}
-          </p>
-          <span className="shrink-0 rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-            Vai trò: {roleLabel}
-          </span>
+    <Form {...gradeForm}>
+      <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
+        {/* Sub header */}
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-primary/10 bg-card/50 px-6 py-3 shadow-sm backdrop-blur-sm">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-auto shrink-0 gap-1 px-0 py-0 text-xs font-semibold normal-case tracking-normal text-muted-foreground hover:bg-transparent hover:text-primary"
+              onClick={() => void navigate({ to: '/exam/grader' })}
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              DS bài thi
+            </Button>
+            <div className="hidden h-4 w-px shrink-0 bg-border sm:block" />
+            <p className="min-w-0 truncate text-xs text-muted-foreground">
+              Chấm thi: <span className="font-bold text-foreground">{submission.fullName}</span>
+              {submission.learningClass?.name && ` · Lớp ${submission.learningClass.name}`}
+            </p>
+            <span className="shrink-0 rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+              Vai trò: {roleLabel}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={gradeMutation.isPending}
+              className="whitespace-nowrap rounded-lg px-3.5 py-1.5 text-xs font-medium"
+              onClick={() => handleComplete('grading')}
+            >
+              Lưu nháp
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={gradeMutation.isPending}
+              className="gap-1 whitespace-nowrap rounded-lg px-3.5 py-1.5 text-xs font-bold shadow-sm"
+              onClick={() => handleComplete('done')}
+            >
+              {gradeMutation.isPending ? 'Đang lưu...' : 'Hoàn thành chấm'}
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            disabled={gradeMutation.isPending}
-            className="whitespace-nowrap rounded-lg border border-border bg-card px-3.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-60"
-            onClick={() => handleComplete('grading')}
-          >
-            Lưu nháp
-          </button>
-          <button
-            type="button"
-            disabled={gradeMutation.isPending}
-            className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-button bg-button px-3.5 py-1.5 text-xs font-bold text-button-foreground shadow-sm hover:opacity-90 disabled:opacity-60"
-            onClick={() => handleComplete('done')}
-          >
-            {gradeMutation.isPending ? 'Đang lưu...' : 'Hoàn thành chấm'}
-          </button>
-        </div>
-      </div>
 
-      <div className="page-shell">
-        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-6 lg:grid-cols-12">
-          {/* Left: Answers */}
-          <div className="flex flex-col gap-6 lg:col-span-8">
-            {/* Member info */}
-            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-              <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">
-                Thông tin thí sinh
-              </h2>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground">Họ và tên</p>
-                  <p className="font-semibold text-foreground">{submission.fullName}</p>
+        <div className="page-shell">
+          <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-6 lg:grid-cols-12">
+            {/* Left: Answers */}
+            <div className="flex flex-col gap-6 lg:col-span-8">
+              {/* Member info */}
+              <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">
+                  Thông tin thí sinh
+                </h2>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Họ và tên</p>
+                    <p className="font-semibold text-foreground">{submission.fullName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Team</p>
+                    <p className="font-semibold text-foreground">{submission.teamGroup || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Lớp</p>
+                    <p className="font-semibold text-foreground">
+                      {submission.learningClass?.name || (
+                        <span className="italic text-muted-foreground">Chưa gắn lớp</span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Ngày nộp</p>
+                    <p className="font-semibold text-foreground">{formattedDate}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Team</p>
-                  <p className="font-semibold text-foreground">{submission.teamGroup || '—'}</p>
+              </div>
+
+              {/* Answers */}
+              <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-muted-foreground">
+                  Phần làm bài của thí sinh ({answeredEntries.length} câu)
+                </h2>
+                {answeredEntries.length === 0 ? (
+                  <p className="italic text-muted-foreground">
+                    Không có câu trả lời nào được ghi nhận.
+                  </p>
+                ) : (
+                  <div className="space-y-5">
+                    {answeredEntries.map(([qId, answer], idx) => {
+                      const questionText = questionMap[qId] || `Câu hỏi ${idx + 1}`
+
+                      return (
+                        <GraderQuestionItem
+                          key={qId}
+                          qId={qId}
+                          idx={idx}
+                          answer={answer}
+                          questionText={questionText}
+                          control={gradeForm.control}
+                          getValues={gradeForm.getValues}
+                          setValue={gradeForm.setValue}
+                          disabled={submission.status === 'done' && !gradeMutation.isPending}
+                        />
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Grader note */}
+              <div className="rounded-xl border border-primary/20 bg-card p-5 shadow-sm">
+                <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-primary">
+                  Nhận xét của người chấm
+                </h2>
+                <TextareaController
+                  control={gradeForm.control}
+                  name="graderNote"
+                  label="Nhận xét của người chấm"
+                  labelClassName="sr-only"
+                  disabled={submission.status === 'done' && !gradeMutation.isPending}
+                  placeholder="Nhập nhận xét, đánh giá chung về bài làm của thí sinh... (bắt buộc khi hoàn thành chấm)"
+                  textareaClassName="min-h-[140px] rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary/25"
+                />
+                {submission.gradedAt && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Đã chấm lúc:{' '}
+                    {new Date(submission.gradedAt).toLocaleString('vi-VN', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Summary sidebar */}
+            <div className="flex flex-col gap-4 lg:col-span-4">
+              <div className="sticky top-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+                <h3 className="mb-4 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Tóm tắt bài thi
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Số câu trả lời</span>
+                    <span className="font-bold text-foreground">{answeredEntries.length}</span>
+                  </div>
+                  <div className="my-2 h-px w-full bg-border" />
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-foreground">Tổng điểm trung bình</span>
+                    <LiveTotalScore
+                      control={gradeForm.control}
+                      answeredCount={answeredEntries.length}
+                    />
+                  </div>
+                  <div className="my-2 h-px w-full bg-border" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Trạng thái</span>
+                    <span
+                      className={cn(
+                        'rounded-full px-2 py-0.5 text-xs font-bold',
+                        submission.status === 'done'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : submission.status === 'grading'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-rose-100 text-rose-700'
+                      )}
+                    >
+                      {submission.status === 'done'
+                        ? 'Đã chấm'
+                        : submission.status === 'grading'
+                          ? 'Đang chấm'
+                          : 'Chờ chấm'}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Lớp</p>
-                  <p className="font-semibold text-foreground">
-                    {submission.learningClass?.name || (
-                      <span className="italic text-muted-foreground">Chưa gắn lớp</span>
-                    )}
+
+                <div className="mt-5 space-y-2">
+                  <Button
+                    type="button"
+                    disabled={gradeMutation.isPending}
+                    className="w-full rounded-lg py-2 text-sm font-bold"
+                    onClick={() => handleComplete('done')}
+                  >
+                    {gradeMutation.isPending ? 'Đang lưu...' : 'Hoàn thành chấm'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={gradeMutation.isPending}
+                    className="w-full rounded-lg border-border py-2 text-sm font-medium"
+                    onClick={() => handleComplete('grading')}
+                  >
+                    Lưu nháp
+                  </Button>
+                </div>
+
+                <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+                  <p className="text-xs italic text-muted-foreground leading-relaxed">
+                    Hãy đọc kỹ từng câu trả lời rồi nhập nhận xét đánh giá toàn diện trước khi hoàn
+                    tất chấm bài.
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Ngày nộp</p>
-                  <p className="font-semibold text-foreground">{formattedDate}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Answers */}
-            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-              <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-muted-foreground">
-                Phần làm bài của thí sinh ({answeredEntries.length} câu)
-              </h2>
-              {answeredEntries.length === 0 ? (
-                <p className="italic text-muted-foreground">
-                  Không có câu trả lời nào được ghi nhận.
-                </p>
-              ) : (
-                <div className="space-y-5">
-                  {answeredEntries.map(([qId, answer], idx) => {
-                    const questionText = questionMap[qId] || `Câu hỏi ${idx + 1}`
-
-                    return (
-                      <GraderQuestionItem
-                        key={qId}
-                        qId={qId}
-                        idx={idx}
-                        answer={answer}
-                        questionText={questionText}
-                        control={gradeForm.control}
-                        getValues={gradeForm.getValues}
-                        setValue={gradeForm.setValue}
-                        disabled={submission.status === 'done' && !gradeMutation.isPending}
-                      />
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Grader note */}
-            <div className="rounded-xl border border-primary/20 bg-card p-5 shadow-sm">
-              <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-primary">
-                Nhận xét của người chấm
-              </h2>
-              <Controller
-                control={gradeForm.control}
-                name="graderNote"
-                render={({ field }) => (
-                  <textarea
-                    className="min-h-[140px] w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary/25"
-                    placeholder="Nhập nhận xét, đánh giá chung về bài làm của thí sinh... (bắt buộc khi hoàn thành chấm)"
-                    disabled={submission.status === 'done' && !gradeMutation.isPending}
-                    {...field}
-                  />
-                )}
-              />
-              {submission.gradedAt && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Đã chấm lúc:{' '}
-                  {new Date(submission.gradedAt).toLocaleString('vi-VN', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Right: Summary sidebar */}
-          <div className="flex flex-col gap-4 lg:col-span-4">
-            <div className="sticky top-4 rounded-xl border border-border bg-card p-5 shadow-sm">
-              <h3 className="mb-4 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Tóm tắt bài thi
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Số câu trả lời</span>
-                  <span className="font-bold text-foreground">{answeredEntries.length}</span>
-                </div>
-                <div className="my-2 h-px w-full bg-border" />
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-foreground">Tổng điểm trung bình</span>
-                  <LiveTotalScore
-                    control={gradeForm.control}
-                    answeredCount={answeredEntries.length}
-                  />
-                </div>
-                <div className="my-2 h-px w-full bg-border" />
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Trạng thái</span>
-                  <span
-                    className={cn(
-                      'rounded-full px-2 py-0.5 text-xs font-bold',
-                      submission.status === 'done'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : submission.status === 'grading'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-rose-100 text-rose-700'
-                    )}
-                  >
-                    {submission.status === 'done'
-                      ? 'Đã chấm'
-                      : submission.status === 'grading'
-                        ? 'Đang chấm'
-                        : 'Chờ chấm'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-5 space-y-2">
-                <button
-                  type="button"
-                  disabled={gradeMutation.isPending}
-                  className="w-full rounded-lg border border-button bg-button py-2 text-sm font-bold text-button-foreground hover:opacity-90 disabled:opacity-60"
-                  onClick={() => handleComplete('done')}
-                >
-                  {gradeMutation.isPending ? 'Đang lưu...' : 'Hoàn thành chấm'}
-                </button>
-                <button
-                  type="button"
-                  disabled={gradeMutation.isPending}
-                  className="w-full rounded-lg border border-border bg-card py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-60"
-                  onClick={() => handleComplete('grading')}
-                >
-                  Lưu nháp
-                </button>
-              </div>
-
-              <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
-                <p className="text-xs italic text-muted-foreground leading-relaxed">
-                  Hãy đọc kỹ từng câu trả lời rồi nhập nhận xét đánh giá toàn diện trước khi hoàn
-                  tất chấm bài.
-                </p>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </Form>
   )
 }

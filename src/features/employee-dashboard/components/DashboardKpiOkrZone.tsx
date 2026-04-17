@@ -18,6 +18,7 @@ import {
 } from '@/components/shared/PageHeader'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import type { Role } from '@/types/auth'
 
 export type KpiOkrPaths = { kpiOkr: string }
@@ -215,20 +216,24 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
                 </p>
               </div>
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
-                  className="rounded-lg border border-border bg-card p-2 text-muted-foreground transition-colors hover:bg-muted"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0 rounded-lg border-border bg-card p-2 text-muted-foreground hover:bg-muted"
                   aria-label="Lọc"
                 >
                   <Filter className="h-5 w-5" strokeWidth={2} />
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="rounded-lg border border-border bg-card p-2 text-muted-foreground transition-colors hover:bg-muted"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0 rounded-lg border-border bg-card p-2 text-muted-foreground hover:bg-muted"
                   aria-label="Tải xuống"
                 >
                   <Download className="h-5 w-5" strokeWidth={2} />
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -408,12 +413,13 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
                 </div>
               ))}
             </div>
-            <button
+            <Button
               type="button"
-              className="mt-8 w-full rounded-xl py-3 text-sm font-bold text-primary transition-colors hover:bg-primary/5"
+              variant="ghost"
+              className="mt-8 h-auto w-full rounded-xl py-3 text-sm font-bold text-primary hover:bg-primary/5"
             >
               Xem tất cả thông báo
-            </button>
+            </Button>
           </div>
         </div>
       </div>

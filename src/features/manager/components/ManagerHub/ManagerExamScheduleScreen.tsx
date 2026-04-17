@@ -11,6 +11,8 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { cn } from '@/lib/utils'
 import { managerApi } from '@/features/manager/api'
 import { managerKeys } from '@/features/manager/queryKeys'
@@ -195,22 +197,20 @@ export function ManagerExamScheduleScreen() {
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
             <label className="block min-w-[10rem] flex-1 text-xs font-semibold text-muted-foreground sm:max-w-[13rem]">
               Từ ngày
-              <input
-                type="date"
+              <DatePicker
                 value={startDate}
+                onChange={setStartDate}
                 max={endDate || undefined}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                className="mt-1 h-[42px] w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
               />
             </label>
             <label className="block min-w-[10rem] flex-1 text-xs font-semibold text-muted-foreground sm:max-w-[13rem]">
               Đến ngày
-              <input
-                type="date"
+              <DatePicker
                 value={endDate}
+                onChange={setEndDate}
                 min={startDate || undefined}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                className="mt-1 h-[42px] w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
               />
             </label>
             <Button
@@ -438,14 +438,16 @@ export function ManagerExamScheduleScreen() {
                   {modalClass.teacher?.name ? ` — ${modalClass.teacher.name} chấm` : ''}
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
-                className="rounded p-1 text-muted-foreground hover:bg-muted"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted"
                 onClick={closeExamModal}
                 aria-label="Đóng"
               >
                 <X className="h-5 w-5" strokeWidth={2} />
-              </button>
+              </Button>
             </div>
             <div className="space-y-4">
               <div>
@@ -454,15 +456,14 @@ export function ManagerExamScheduleScreen() {
                 </label>
                 <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
                   <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <input
-                      type="date"
+                    <DatePicker
                       value={getExamValues('examDate')}
-                      onChange={(e) => setExamValue('examDate', e.target.value)}
+                      onChange={(value) => setExamValue('examDate', value)}
                       min={toLocalDateInputValue(new Date())}
-                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="h-[38px] rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
                     />
                     <div className="flex items-center gap-1.5">
-                      <input
+                      <Input
                         inputMode="numeric"
                         value={getExamValues('examHour')}
                         onChange={(e) =>
@@ -471,11 +472,11 @@ export function ManagerExamScheduleScreen() {
                         onBlur={(e) =>
                           setExamValue('examHour', clampTwoDigit(e.target.value, 0, 23))
                         }
-                        className="h-[38px] w-[64px] rounded-lg border border-border bg-background px-2 text-center text-sm font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        className="h-[38px] w-[64px] rounded-lg border border-border bg-background px-2 py-0 text-center text-sm font-semibold shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
                         aria-label="Giờ thi (00-23)"
                       />
                       <span className="text-sm font-bold text-muted-foreground">:</span>
-                      <input
+                      <Input
                         inputMode="numeric"
                         value={getExamValues('examMinute')}
                         onChange={(e) =>
@@ -484,7 +485,7 @@ export function ManagerExamScheduleScreen() {
                         onBlur={(e) =>
                           setExamValue('examMinute', clampTwoDigit(e.target.value, 0, 59))
                         }
-                        className="h-[38px] w-[64px] rounded-lg border border-border bg-background px-2 text-center text-sm font-semibold outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        className="h-[38px] w-[64px] rounded-lg border border-border bg-background px-2 py-0 text-center text-sm font-semibold shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
                         aria-label="Phút thi (00-59)"
                       />
                     </div>
@@ -496,18 +497,18 @@ export function ManagerExamScheduleScreen() {
                   Giáo viên phụ trách (người chấm thi)
                 </label>
                 {isTapSuClass ? (
-                  <input
+                  <Input
                     value={modalClass.teacher?.name || 'Chưa gán giáo viên phụ trách lớp'}
                     disabled
-                    className="w-full rounded-xl border border-border bg-muted px-3 py-2.5 text-sm text-muted-foreground outline-none"
+                    className="w-full rounded-xl border border-border bg-muted px-3 py-2.5 text-sm text-muted-foreground shadow-none outline-none"
                   />
                 ) : (
                   <>
-                    <input
+                    <Input
                       value={getExamValues('examTeacherQuery')}
                       onChange={(e) => setExamValue('examTeacherQuery', e.target.value)}
                       placeholder="Gõ tên/email giáo viên..."
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
                     />
                     {examTeacherQuery.trim().length > 0 ? (
                       <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-card p-1 shadow-lg">
@@ -522,10 +523,11 @@ export function ManagerExamScheduleScreen() {
                           </div>
                         ) : (
                           examTeacherOptions.map((opt) => (
-                            <button
+                            <Button
                               key={opt.userId}
                               type="button"
-                              className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-primary/10"
+                              variant="ghost"
+                              className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
                               onClick={() => {
                                 setExamTeacher(opt)
                                 setExamValue('examTeacherQuery', '')
@@ -533,7 +535,7 @@ export function ManagerExamScheduleScreen() {
                             >
                               <p className="font-semibold text-foreground">{opt.name}</p>
                               <p className="text-muted-foreground">{opt.email}</p>
-                            </button>
+                            </Button>
                           ))
                         )}
                       </div>

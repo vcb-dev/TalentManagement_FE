@@ -19,6 +19,7 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { InputController, SelectController } from '@/components/ui/form-controllers'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -291,11 +292,11 @@ export function ManagerClassesScreen() {
             className="pointer-events-none absolute left-4 top-1/2 h-[1.125rem] w-[1.125rem] -translate-y-1/2 text-muted-foreground group-focus-within:text-primary"
             strokeWidth={2}
           />
-          <input
+          <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm theo tên lớp, ví dụ: Tập sự — Đợt Q2/2026"
-            className="w-full rounded-xl border border-transparent bg-muted/80 py-3 pl-11 pr-4 text-sm shadow-inner outline-none ring-offset-background transition-all placeholder:text-muted-foreground focus:border-primary/30 focus:ring-2 focus:ring-primary/20"
+            className="h-auto w-full rounded-xl border border-transparent bg-muted/80 py-3 pl-11 pr-4 text-sm shadow-inner shadow-none outline-none ring-offset-background transition-all placeholder:text-muted-foreground focus-visible:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20"
           />
         </div>
         <div className="flex shrink-0 gap-3">
@@ -315,9 +316,11 @@ export function ManagerClassesScreen() {
           <div className="w-full max-w-2xl rounded-2xl border bg-card p-5 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-foreground">Tạo lớp học mới</h3>
-              <button
+              <Button
                 type="button"
-                className="rounded p-1 text-muted-foreground hover:bg-muted"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted"
                 onClick={() => {
                   setIsCreateOpen(false)
                   resetCreateForm({ name: '', levelFrom: 'tap_su' })
@@ -329,7 +332,7 @@ export function ManagerClassesScreen() {
                 aria-label="Đóng"
               >
                 <X className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
 
             <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={onCreate}>
@@ -371,14 +374,14 @@ export function ManagerClassesScreen() {
                 <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                   Giáo viên phụ trách lớp
                 </label>
-                <input
+                <Input
                   value={selectedCreateTeacher ? selectedCreateTeacher.name : createTeacherQuery}
                   onChange={(e) => {
                     setCreateTeacherQuery(e.target.value)
                     if (selectedCreateTeacher) setSelectedCreateTeacher(null)
                   }}
                   placeholder="Gõ tên/email giáo viên..."
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
                 />
                 {!selectedCreateTeacher && createTeacherQuery.trim().length > 0 ? (
                   <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
@@ -393,10 +396,11 @@ export function ManagerClassesScreen() {
                       </div>
                     ) : (
                       createTeacherOptions.map((opt) => (
-                        <button
+                        <Button
                           key={opt.userId}
                           type="button"
-                          className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-primary/10"
+                          variant="ghost"
+                          className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
                           onClick={() => {
                             setSelectedCreateTeacher(opt)
                             setCreateTeacherQuery('')
@@ -407,7 +411,7 @@ export function ManagerClassesScreen() {
                         >
                           <p className="font-semibold text-foreground">{opt.name}</p>
                           <p className="text-muted-foreground">{opt.email}</p>
-                        </button>
+                        </Button>
                       ))
                     )}
                   </div>
@@ -418,11 +422,11 @@ export function ManagerClassesScreen() {
                 <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                   Thêm nhân sự cho lớp (theo cấp đã chọn)
                 </label>
-                <input
+                <Input
                   value={createMemberQuery}
                   onChange={(e) => setCreateMemberQuery(e.target.value)}
                   placeholder="Gõ tên/email để tìm nhân sự..."
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
                 />
                 {createMemberQuery.trim().length > 0 ? (
                   <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
@@ -447,10 +451,11 @@ export function ManagerClassesScreen() {
                             opt.userId !== selectedCreateTeacher?.userId
                         )
                         .map((opt) => (
-                          <button
+                          <Button
                             key={opt.userId}
                             type="button"
-                            className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-primary/10"
+                            variant="ghost"
+                            className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
                             onClick={() => {
                               setSelectedCreateMembers((prev) => [...prev, opt])
                               setCreateMemberQuery('')
@@ -458,7 +463,7 @@ export function ManagerClassesScreen() {
                           >
                             <p className="font-semibold text-foreground">{opt.name}</p>
                             <p className="text-muted-foreground">{opt.email}</p>
-                          </button>
+                          </Button>
                         ))
                     )}
                   </div>
@@ -477,9 +482,11 @@ export function ManagerClassesScreen() {
                         className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs"
                       >
                         {m.name}
-                        <button
+                        <Button
                           type="button"
-                          className="rounded p-0.5 hover:bg-primary/20"
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 min-h-0 shrink-0 rounded p-0.5 hover:bg-primary/20"
                           onClick={() =>
                             setSelectedCreateMembers((prev) =>
                               prev.filter((x) => x.userId !== m.userId)
@@ -487,7 +494,7 @@ export function ManagerClassesScreen() {
                           }
                         >
                           <X className="h-3 w-3" />
-                        </button>
+                        </Button>
                       </span>
                     ))}
                   </div>
@@ -586,20 +593,22 @@ export function ManagerClassesScreen() {
                         <p className="truncate font-semibold text-foreground">{m.name}</p>
                         <p className="truncate text-muted-foreground">{m.email}</p>
                       </div>
-                      <button
+                      <Button
                         type="button"
-                        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                         onClick={() => removeMember.mutate({ classId: row.id, userId: m.userId })}
                         title="Xóa khỏi lớp"
                       >
                         <X className="h-3.5 w-3.5" />
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
 
                 <div className="relative mt-3">
-                  <input
+                  <Input
                     value={memberQuery}
                     onFocus={() => setActiveClassForDropdown(row.id)}
                     onChange={(e) => {
@@ -607,7 +616,7 @@ export function ManagerClassesScreen() {
                       setMemberQueries((prev) => ({ ...prev, [row.id]: e.target.value }))
                     }}
                     placeholder="Gõ tên/email để thêm nhân sự..."
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="h-auto w-full rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
                   />
                   {showDropdown ? (
                     <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
@@ -622,10 +631,11 @@ export function ManagerClassesScreen() {
                         </div>
                       ) : (
                         optionsByClass.map((opt) => (
-                          <button
+                          <Button
                             type="button"
                             key={opt.userId}
-                            className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-primary/10"
+                            variant="ghost"
+                            className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
                             onClick={() => {
                               addMember.mutate({ classId: row.id, userId: opt.userId })
                               setMemberQueries((prev) => ({ ...prev, [row.id]: '' }))
@@ -634,7 +644,7 @@ export function ManagerClassesScreen() {
                           >
                             <p className="font-semibold text-foreground">{opt.name}</p>
                             <p className="text-muted-foreground">{opt.email}</p>
-                          </button>
+                          </Button>
                         ))
                       )}
                     </div>
@@ -681,13 +691,14 @@ export function ManagerClassesScreen() {
       ) : null}
 
       <div className="mt-10 flex justify-center">
-        <button
+        <Button
           type="button"
-          className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline"
+          variant="ghost"
+          className="h-auto gap-2 p-0 text-sm font-bold text-primary hover:underline"
           onClick={() => toast.info('Danh sách đầy đủ — nối API phân trang')}
         >
           Xem thêm tất cả các lớp
-        </button>
+        </Button>
       </div>
 
       {editClassId ? (
@@ -695,13 +706,15 @@ export function ManagerClassesScreen() {
           <div className="w-full max-w-xl rounded-2xl border bg-card p-5 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-foreground">Chỉnh sửa lớp</h3>
-              <button
+              <Button
                 type="button"
-                className="rounded p-1 text-muted-foreground hover:bg-muted"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted"
                 onClick={closeEditClassModal}
               >
                 <X className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
             <form className="space-y-4" onSubmit={saveEditClass}>
               <InputController
@@ -716,14 +729,14 @@ export function ManagerClassesScreen() {
                 <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                   Giáo viên phụ trách lớp
                 </label>
-                <input
+                <Input
                   value={selectedTeacher ? selectedTeacher.name : editModalTeacherQuery}
                   onChange={(e) => {
                     setEditModalTeacherQuery(e.target.value)
                     if (selectedTeacher) setSelectedTeacher(null)
                   }}
                   placeholder="Gõ tên/email giáo viên..."
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
                 />
                 {!selectedTeacher && editModalTeacherQuery.trim().length > 0 ? (
                   <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
@@ -738,10 +751,11 @@ export function ManagerClassesScreen() {
                       </div>
                     ) : (
                       editModalTeacherOptions.map((opt) => (
-                        <button
+                        <Button
                           key={opt.userId}
                           type="button"
-                          className="block w-full rounded px-2 py-2 text-left text-xs hover:bg-primary/10"
+                          variant="ghost"
+                          className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
                           onClick={() => {
                             setSelectedTeacher(opt)
                             setEditModalTeacherQuery('')
@@ -749,7 +763,7 @@ export function ManagerClassesScreen() {
                         >
                           <p className="font-semibold text-foreground">{opt.name}</p>
                           <p className="text-muted-foreground">{opt.email}</p>
-                        </button>
+                        </Button>
                       ))
                     )}
                   </div>

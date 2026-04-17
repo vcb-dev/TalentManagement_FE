@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Controller, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import {
   ChevronRight,
   ClipboardList,
@@ -35,8 +35,16 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
+  DateController,
   InputController,
   SelectController,
   TextareaController,
@@ -259,53 +267,62 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                 Phòng ban
               </Label>
-              <select
-                className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
-                value={selectedDept?.id ?? ''}
+              <Select
+                value={selectedDept?.id ?? '__none'}
                 disabled={isMemberView}
-                onChange={(e) => {
-                  const d = departments.find((x) => x.id === e.target.value)
+                onValueChange={(value) => {
+                  const d = departments.find((x) => x.id === value)
                   const tid = d?.teams[0]?.id ?? ''
                   setSelectedTeamId(tid)
                 }}
               >
-                <option value="">— Chọn —</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Chọn —</SelectItem>
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Team</Label>
-              <select
-                className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
-                value={selectedTeamId}
+              <Select
+                value={selectedTeamId || '__none'}
                 disabled={isMemberView}
-                onChange={(e) => setSelectedTeamId(e.target.value)}
+                onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
               >
-                <option value="">— Chọn team —</option>
-                {teamsInDept.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Chọn team —</SelectItem>
+                  {teamsInDept.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tháng</Label>
-              <select
-                className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
-                value={month}
-                onChange={(e) => setMonth(Number(e.target.value))}
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>
-                    Tháng {m}
-                  </option>
-                ))}
-              </select>
+              <Select value={String(month)} onValueChange={(value) => setMonth(Number(value))}>
+                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <SelectItem key={m} value={String(m)}>
+                      Tháng {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Năm</Label>
@@ -783,16 +800,13 @@ function LeaderAssignmentRow({
               <Form {...form}>
                 <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
                   {mode === 'planning' ? (
-                    <label className="md:col-span-2 flex flex-col gap-1 text-xs font-medium">
-                      Ngày xét KPI/OKR
-                      <Controller
-                        control={control}
-                        name="kpiSetAt"
-                        render={({ field }) => (
-                          <input type="date" className={cn(XL_INPUT, 'h-9')} {...field} />
-                        )}
-                      />
-                    </label>
+                    <DateController
+                      control={control}
+                      name="kpiSetAt"
+                      label="Ngày xét KPI/OKR"
+                      className="md:col-span-2 space-y-1 text-xs font-medium"
+                      datePickerClassName={cn(XL_INPUT, 'h-9')}
+                    />
                   ) : null}
 
                   {mode === 'planning' ? (
@@ -805,10 +819,10 @@ function LeaderAssignmentRow({
                         rules={{ required: true, min: 0, max: 99 }}
                         className="space-y-1 text-xs font-medium"
                       >
-                        <option value={0}>Không xếp (0)</option>
-                        <option value={1}>Ưu tiên 1</option>
-                        <option value={2}>Ưu tiên 2</option>
-                        <option value={3}>Ưu tiên 3</option>
+                        <SelectItem value="0">Không xếp (0)</SelectItem>
+                        <SelectItem value="1">Ưu tiên 1</SelectItem>
+                        <SelectItem value="2">Ưu tiên 2</SelectItem>
+                        <SelectItem value="3">Ưu tiên 3</SelectItem>
                       </SelectController>
 
                       <InputController
@@ -841,9 +855,9 @@ function LeaderAssignmentRow({
                         label="QL đánh giá"
                         className="space-y-1 text-xs font-medium"
                       >
-                        <option value="">—</option>
-                        <option value="OK">OK</option>
-                        <option value="NOT">NOT</option>
+                        <SelectItem value="__none">—</SelectItem>
+                        <SelectItem value="OK">OK</SelectItem>
+                        <SelectItem value="NOT">NOT</SelectItem>
                       </SelectController>
 
                       <label className="md:col-span-2 flex flex-col gap-1 text-xs font-medium">
@@ -1030,14 +1044,15 @@ function UserAssignmentWorkbench({
           {userEntries.map(([uid, rows]) => {
             const active = uid === activeUserId
             return (
-              <button
+              <Button
                 key={uid}
                 type="button"
+                variant="ghost"
                 onClick={() => setSelectedUserId(uid)}
                 className={cn(
-                  'w-full rounded-xl border px-3 py-2.5 text-left transition-colors',
+                  'h-auto w-full justify-start rounded-xl border px-3 py-2.5 text-left font-normal normal-case tracking-normal transition-colors',
                   active
-                    ? 'border-primary/50 bg-primary/10 text-foreground shadow-sm'
+                    ? 'border-primary/50 bg-primary/10 text-foreground shadow-sm hover:bg-primary/10'
                     : 'border-border/80 bg-background hover:bg-muted/60'
                 )}
               >
@@ -1057,7 +1072,7 @@ function UserAssignmentWorkbench({
                     </span>
                   ) : null}
                 </div>
-              </button>
+              </Button>
             )
           })}
         </CardContent>
@@ -1368,8 +1383,8 @@ function MiniCreateForm({
               rules={{ required: true }}
               className="space-y-1 text-xs font-medium"
             >
-              <option value="KPI">KPI</option>
-              <option value="OKR">OKR</option>
+              <SelectItem value="KPI">KPI</SelectItem>
+              <SelectItem value="OKR">OKR</SelectItem>
             </SelectController>
             <SelectController
               control={control}
@@ -1380,9 +1395,9 @@ function MiniCreateForm({
               className="space-y-1 text-xs font-medium"
             >
               {members.map((m) => (
-                <option key={m.userId} value={m.userId}>
+                <SelectItem key={m.userId} value={m.userId}>
                   {(m.displayName ?? m.email ?? 'chưa có tên').slice(0, 48)}
-                </option>
+                </SelectItem>
               ))}
             </SelectController>
             <SelectController
@@ -1392,56 +1407,35 @@ function MiniCreateForm({
               required
               rules={{ required: true, min: 0, max: 99 }}
               className="space-y-1 text-xs font-medium"
-              onChange={(e) => {
-                const v = Number(e.target.value)
-                setValue('priority', v, { shouldValidate: true, shouldDirty: true })
-              }}
             >
-              <option value={0}>Không xếp (0)</option>
-              <option value={1}>Ưu tiên 1</option>
-              <option value={2}>Ưu tiên 2</option>
-              <option value={3}>Ưu tiên 3</option>
+              <SelectItem value="0">Không xếp (0)</SelectItem>
+              <SelectItem value="1">Ưu tiên 1</SelectItem>
+              <SelectItem value="2">Ưu tiên 2</SelectItem>
+              <SelectItem value="3">Ưu tiên 3</SelectItem>
             </SelectController>
-            <label className="flex flex-col gap-1 text-xs font-medium">
-              Ngày xét KPI/OKR
-              <Controller
-                control={control}
-                name="kpiSetAt"
-                render={({ field }) => (
-                  <input type="date" className={cn(XL_INPUT, 'h-9')} {...field} />
-                )}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs font-medium">
-              Chỉ số mục tiêu
-              <Controller
-                control={control}
-                name="targetMetric"
-                render={({ field }) => (
-                  <input
-                    type="text"
-                    className={cn(XL_INPUT, 'h-9 tabular-nums')}
-                    placeholder="VD: 60"
-                    {...field}
-                  />
-                )}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs font-medium">
-              Người đánh giá (tùy chọn)
-              <Controller
-                control={control}
-                name="reviewerName"
-                render={({ field }) => (
-                  <input
-                    type="text"
-                    className={cn(XL_INPUT, 'h-9')}
-                    placeholder="Họ tên QL / Leader"
-                    {...field}
-                  />
-                )}
-              />
-            </label>
+            <DateController
+              control={control}
+              name="kpiSetAt"
+              label="Ngày xét KPI/OKR"
+              className="space-y-1 text-xs font-medium"
+              datePickerClassName={cn(XL_INPUT, 'h-9')}
+            />
+            <InputController
+              control={control}
+              name="targetMetric"
+              label="Chỉ số mục tiêu"
+              className="space-y-1 text-xs font-medium"
+              inputClassName={cn(XL_INPUT, 'h-9 tabular-nums')}
+              placeholder="VD: 60"
+            />
+            <InputController
+              control={control}
+              name="reviewerName"
+              label="Người đánh giá (tùy chọn)"
+              className="space-y-1 text-xs font-medium"
+              inputClassName={cn(XL_INPUT, 'h-9')}
+              placeholder="Họ tên QL / Leader"
+            />
             <label className="md:col-span-2 lg:col-span-3 flex flex-col gap-1 text-xs font-medium">
               <TextareaController
                 control={control}

@@ -10,7 +10,7 @@ export const Route = createFileRoute('/')({
     const { accessToken: token, user } = useAuthStore.getState()
     if (!user && !token) return
     const to = defaultEntryPathFromSession(user ?? undefined)
-    if (to === '/hr-admin') throw redirect({ to: '/hr-admin', search: { page: 1 } })
+    if (to === '/hr-admin') throw redirect({ to: '/hr-admin', search: { page: 1, pageSize: 15 } })
     throw redirect({ to })
   },
   component: GuestLandingPage,

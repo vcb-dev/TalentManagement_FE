@@ -7,9 +7,11 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { Eye, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Form } from '@/components/ui/form'
+import { DateController } from '@/components/ui/form-controllers'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -57,9 +59,10 @@ function Modal({
       className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4"
       role="presentation"
     >
-      <button
+      <Button
         type="button"
-        className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
+        variant="ghost"
+        className="absolute inset-0 z-0 h-full w-full rounded-none border-0 bg-black/45 p-0 backdrop-blur-[2px] hover:bg-black/50"
         aria-label="Đóng"
         onClick={onClose}
       />
@@ -84,14 +87,16 @@ function Modal({
               </p>
             ) : null}
           </div>
-          <button
+          <Button
             type="button"
-            className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            variant="ghost"
+            size="icon"
+            className="shrink-0 rounded-full"
             onClick={onClose}
             aria-label="Đóng hộp thoại"
           >
             <X className="h-5 w-5" strokeWidth={2} />
-          </button>
+          </Button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
           {children}
@@ -109,6 +114,10 @@ function formatDateIsoVi(dateIso: string): string {
   const d = parts[2]!
   const dt = new Date(y, mo - 1, d)
   return dt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function formatTimeRange(startTime: string, endTime: string): string {
+  return `${startTime} - ${endTime}`
 }
 
 function classStatusUi(status: MeEnrolledClass['status']): { label: string; badgeClass: string } {
@@ -198,57 +207,94 @@ export function MemberClassesPanel() {
         <p className="mt-1 text-xs text-muted-foreground">
           Thông tin lớp và lịch do giáo viên phụ trách cập nhật.
         </p>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-          <label className="block min-w-[10rem] flex-1 text-xs font-semibold text-muted-foreground sm:max-w-[13rem]">
-            Từ ngày
-            <Controller
+        <Form {...filterForm}>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <DateController
               control={filterForm.control}
               name="startDate"
-              render={({ field }) => (
-                <input
-                  type="date"
-                  max={endDate || undefined}
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  {...field}
-                />
-              )}
+              label="Từ ngày"
+              max={endDate || undefined}
+              className="block min-w-[10rem] flex-1 sm:max-w-[13rem]"
+              labelClassName="text-xs font-semibold text-muted-foreground"
+              datePickerClassName="mt-1 h-[42px] w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
             />
-          </label>
-          <label className="block min-w-[10rem] flex-1 text-xs font-semibold text-muted-foreground sm:max-w-[13rem]">
-            Đến ngày
-            <Controller
+            <DateController
               control={filterForm.control}
               name="endDate"
-              render={({ field }) => (
-                <input
-                  type="date"
-                  min={startDate || undefined}
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  {...field}
-                />
-              )}
+              label="Đến ngày"
+              min={startDate || undefined}
+              className="block min-w-[10rem] flex-1 sm:max-w-[13rem]"
+              labelClassName="text-xs font-semibold text-muted-foreground"
+              datePickerClassName="mt-1 h-[42px] w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
             />
-          </label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="shrink-0 rounded-xl"
-            disabled={!hasDateFilter}
-            onClick={() => {
-              filterForm.reset({ startDate: '', endDate: '' })
-            }}
-          >
-            Xóa lọc
-          </Button>
-        </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 rounded-xl"
+              disabled={!hasDateFilter}
+              onClick={() => {
+                filterForm.reset({ startDate: '', endDate: '' })
+              }}
+            >
+              Xóa lọc
+            </Button>
+          </div>
+        </Form>
         <div
           className={cn(
             'mt-4 overflow-x-auto rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10 transition-opacity',
             isFetching && 'opacity-60'
           )}
         >
-          <table className="w-full min-w-[960px] border-collapse text-left text-sm">
+          <div className="space-y-3 p-3 md:hidden">
+            {cls.schedules.length === 0 ? (
+              <div className="rounded-xl border border-border/80 bg-card px-4 py-5 text-sm text-muted-foreground">
+                {hasDateFilter
+                  ? 'Không có buổi học trong khoảng thời gian đã chọn.'
+                  : 'Chưa có buổi học nào được xếp lịch.'}
+              </div>
+            ) : (
+              cls.schedules.map((s) => (
+                <article
+                  key={s.id}
+                  className="rounded-xl border border-border/80 bg-background px-4 py-3 shadow-sm"
+                >
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <p className="line-clamp-2 text-sm font-semibold text-foreground">{cls.name}</p>
+                    <span
+                      className={cn(
+                        'inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap',
+                        st.badgeClass
+                      )}
+                    >
+                      {st.label}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Giáo viên: {cls.teacherName}</p>
+                  <div className="mt-2 grid grid-cols-1 gap-1.5 text-sm">
+                    <p>
+                      <span className="font-medium text-foreground">Ngày:</span>{' '}
+                      {formatDateIsoVi(s.dateIso)}
+                    </p>
+                    <p>
+                      <span className="font-medium text-foreground">Giờ:</span>{' '}
+                      {formatTimeRange(s.startTime, s.endTime)}
+                    </p>
+                    <p>
+                      <span className="font-medium text-foreground">Nội dung:</span> {s.topic}
+                    </p>
+                    <p>
+                      <span className="font-medium text-foreground">Địa điểm:</span>{' '}
+                      {s.location?.trim() || '—'}
+                    </p>
+                  </div>
+                </article>
+              ))
+            )}
+            <div className="flex justify-end">{actionsCell}</div>
+          </div>
+          <table className="hidden w-full min-w-[960px] border-collapse text-left text-sm md:table">
             <thead>
               <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">
                 <th className="px-3 py-3 font-semibold">Tên lớp</th>

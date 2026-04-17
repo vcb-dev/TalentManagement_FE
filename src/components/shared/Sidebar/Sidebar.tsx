@@ -6,6 +6,7 @@ import {
   flatSidebarNavItems,
   isNavItemActive,
 } from '@/components/shared/AppNav/navItems'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { usePermission } from '@/hooks/usePermission'
 import { useAuthStore } from '@/stores/auth.store'
@@ -98,15 +99,17 @@ function SidebarInner() {
             <div className="mx-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-600 text-base font-extrabold text-white shadow-md ring-2 ring-primary-600/15">
               V
             </div>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={toggleSidebar}
               aria-label={'M\u1edf r\u1ed9ng menu'}
               title={'M\u1edf r\u1ed9ng menu'}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
             >
               <ChevronRight className="h-5 w-5" strokeWidth={2} />
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="flex items-start gap-1">
@@ -114,15 +117,17 @@ function SidebarInner() {
               <div className="text-lg font-extrabold tracking-tight text-primary-600">VCB HRM</div>
               <div className="mt-1 text-sm leading-snug text-muted-foreground">{displayName}</div>
             </div>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={toggleSidebar}
               aria-label="Thu gọn menu"
               title="Thu gọn menu"
-              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="mt-0.5 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="h-5 w-5" strokeWidth={2} />
-            </button>
+            </Button>
           </div>
         )}
       </div>

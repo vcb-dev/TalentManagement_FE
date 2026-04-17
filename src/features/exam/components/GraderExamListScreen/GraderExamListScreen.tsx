@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
   PAGE_HEADER_DESCRIPTION,
@@ -38,8 +39,11 @@ function statusBadge(status: SubmissionRow['status']) {
 
 function getInitials(name: string) {
   const parts = name.trim().split(' ')
-  if (parts.length >= 2)
-    return (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase()
+  if (parts.length >= 2) {
+    const a = parts[parts.length - 2]?.[0]
+    const b = parts[parts.length - 1]?.[0]
+    if (a && b) return (a + b).toUpperCase()
+  }
   return name.substring(0, 2).toUpperCase()
 }
 
@@ -89,25 +93,27 @@ export function GraderExamListScreen() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <button
+                <Button
                   type="button"
+                  variant={onlyPending ? 'default' : 'outline'}
+                  size="sm"
                   className={cn(
-                    'inline-flex items-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors',
-                    onlyPending
-                      ? 'border-button bg-button text-button-foreground'
-                      : 'border-border bg-card text-foreground hover:bg-muted'
+                    'rounded-lg border px-5 py-2.5 text-sm font-semibold shadow-sm',
+                    !onlyPending && 'border-border bg-card hover:bg-muted'
                   )}
                   onClick={() => setOnlyPending((v) => !v)}
                 >
                   {onlyPending ? 'Hiện tất cả' : 'Chỉ chờ chấm'}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground hover:bg-muted"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg border-border px-5 py-2.5 text-sm font-semibold"
                   onClick={() => void navigate({ to: '/manager/grading' as any })}
                 >
                   ← Quay lại
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -208,13 +214,14 @@ export function GraderExamListScreen() {
                               {statusBadge(row.status)}
                             </td>
                             <td className="px-6 py-4 align-middle text-center">
-                              <button
+                              <Button
                                 type="button"
+                                variant={row.status === 'done' ? 'outline' : 'default'}
+                                size="sm"
                                 className={cn(
-                                  'whitespace-nowrap rounded-lg border px-4 py-1.5 text-xs font-bold shadow-sm transition-transform active:scale-95 hover:opacity-90',
-                                  row.status === 'done'
-                                    ? 'border-border bg-card text-muted-foreground hover:bg-muted/40'
-                                    : 'border-button bg-button text-button-foreground'
+                                  'whitespace-nowrap rounded-lg px-4 py-1.5 text-xs font-bold shadow-sm transition-transform active:scale-95',
+                                  row.status === 'done' &&
+                                    'border-border bg-card text-muted-foreground hover:bg-muted/40'
                                 )}
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -226,7 +233,7 @@ export function GraderExamListScreen() {
                                   : row.status === 'grading'
                                     ? 'Tiếp tục'
                                     : 'Chấm thi'}
-                              </button>
+                              </Button>
                             </td>
                           </tr>
                         )

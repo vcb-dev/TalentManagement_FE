@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { ArrowLeft, Bell, Network, User } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Controller, FormProvider, useWatch, type UseFormReturn } from 'react-hook-form'
+import { FormProvider, useWatch, type UseFormReturn } from 'react-hook-form'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -10,7 +10,13 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import {
+  CheckboxController,
+  DateController,
+  InputController,
+  SelectController,
+} from '@/components/ui/form-controllers'
+import { SelectItem } from '@/components/ui/select'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import type { CreateEmployeeForm } from '@/features/hr-admin/schemas'
@@ -29,8 +35,7 @@ const LEVEL_OPTIONS: { value: CreateEmployeeForm['initialLevel']; label: string 
   { value: 'biet_viec', label: 'Biết việc' },
 ]
 
-/** Same surface as Input (Lumina); native select only. */
-const selectClass =
+const selectTriggerClass =
   'flex h-12 w-full cursor-pointer rounded-lg border-0 bg-muted/40 px-4 py-3 text-sm text-foreground shadow-sm outline-none transition-[box-shadow] focus:ring-2 focus:ring-primary/20'
 
 const inputFieldClass =
@@ -46,7 +51,7 @@ export interface EmployeeFormProps {
 
 export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps) {
   const navigate = useNavigate()
-  const { register, handleSubmit, control, formState } = form
+  const { handleSubmit, control } = form
   const { departments, teamsByDept, allTeams } = useHrOrgSelectOptions()
   const departmentId = useWatch({ control, name: 'departmentId' })
   const teamOptions =
@@ -65,16 +70,17 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
           <div className="mx-auto max-w-[1400px] space-y-8 pb-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
-                <button
+                <Button
                   type="button"
-                  className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/90"
+                  variant="ghost"
+                  className="mb-4 h-auto justify-start gap-2 px-0 py-0 text-sm font-semibold text-primary hover:bg-transparent hover:text-primary/90"
                   onClick={() =>
                     void navigate({ to: '/hr-admin', search: { page: 1, pageSize: 15 } })
                   }
                 >
                   <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
                   Quay lại
-                </button>
+                </Button>
                 <h1 className={PAGE_HEADER_TITLE}>
                   <span className={PAGE_HEADER_GRADIENT}>Thêm nhân sự mới</span>
                 </h1>
@@ -87,146 +93,135 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
             <div className="grid grid-cols-1 gap-8">
               <SectionCard icon={User} title="Thông tin cơ bản" entranceIndex={0}>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <Field label="Họ và tên *" error={formState.errors.name?.message}>
-                    <Input
-                      className={inputFieldClass}
-                      placeholder="Nhập họ và tên..."
-                      {...register('name')}
-                    />
-                  </Field>
-                  <Field label="Email công ty *" error={formState.errors.email?.message}>
-                    <Input
-                      className={inputFieldClass}
-                      type="email"
-                      autoComplete="off"
-                      placeholder="ten@vcb.com"
-                      {...register('email')}
-                    />
-                  </Field>
-                  <Field label="Số điện thoại" error={formState.errors.phone?.message}>
-                    <Input
-                      className={inputFieldClass}
-                      placeholder="09xx xxx xxx"
-                      {...register('phone')}
-                    />
-                  </Field>
-                  <Field label="Ngày sinh" error={formState.errors.birthDate?.message}>
-                    <Input className={inputFieldClass} type="date" {...register('birthDate')} />
-                  </Field>
+                  <InputController
+                    control={control}
+                    name="name"
+                    label="Họ và tên"
+                    required
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                    placeholder="Nhập họ và tên..."
+                  />
+                  <InputController
+                    control={control}
+                    name="email"
+                    label="Email công ty"
+                    required
+                    type="email"
+                    autoComplete="off"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                    placeholder="ten@vcb.com"
+                  />
+                  <InputController
+                    control={control}
+                    name="phone"
+                    label="Số điện thoại"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                    placeholder="09xx xxx xxx"
+                  />
+                  <DateController
+                    control={control}
+                    name="birthDate"
+                    label="Ngày sinh"
+                    labelClassName={labelClass}
+                    datePickerClassName={inputFieldClass}
+                  />
                 </div>
               </SectionCard>
 
               <SectionCard icon={Network} title="Phân công tổ chức" entranceIndex={1}>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  <Field label="Role *" error={formState.errors.role?.message}>
-                    <Controller
-                      name="role"
-                      control={control}
-                      render={({ field }) => (
-                        <select {...field} className={selectClass}>
-                          {ROLE_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    />
-                  </Field>
-                  <Field label="Phòng ban *" error={formState.errors.departmentId?.message}>
-                    <Controller
-                      name="departmentId"
-                      control={control}
-                      render={({ field }) => (
-                        <select {...field} className={selectClass}>
-                          {departments.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    />
-                  </Field>
-                  <Field label="Ngày bắt đầu" error={formState.errors.startDate?.message}>
-                    <Input className={inputFieldClass} type="date" {...register('startDate')} />
-                  </Field>
-                  <Field label="Team chính *" error={formState.errors.teamId?.message}>
-                    <Controller
-                      name="teamId"
-                      control={control}
-                      render={({ field }) => (
-                        <select {...field} className={selectClass}>
-                          {teamOptions.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    />
-                  </Field>
-                  <Field
-                    label="Team phụ (tùy chọn)"
-                    error={formState.errors.secondaryTeamId?.message}
+                  <SelectController
+                    control={control}
+                    name="role"
+                    label="Role"
+                    required
+                    labelClassName={labelClass}
+                    triggerClassName={selectTriggerClass}
                   >
-                    <Controller
-                      name="secondaryTeamId"
-                      control={control}
-                      render={({ field }) => (
-                        <select {...field} className={selectClass}>
-                          <option value="">-- Không gán --</option>
-                          {allTeams.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    />
-                  </Field>
-                  <Field label="Cấp độ ban đầu" error={formState.errors.initialLevel?.message}>
-                    <Controller
-                      name="initialLevel"
-                      control={control}
-                      render={({ field }) => (
-                        <select {...field} className={selectClass}>
-                          {LEVEL_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    />
-                  </Field>
+                    {ROLE_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectController>
+                  <SelectController
+                    control={control}
+                    name="departmentId"
+                    label="Phòng ban"
+                    required
+                    labelClassName={labelClass}
+                    triggerClassName={selectTriggerClass}
+                  >
+                    {departments.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectController>
+                  <DateController
+                    control={control}
+                    name="startDate"
+                    label="Ngày bắt đầu"
+                    labelClassName={labelClass}
+                    datePickerClassName={inputFieldClass}
+                  />
+                  <SelectController
+                    control={control}
+                    name="teamId"
+                    label="Team chính"
+                    required
+                    labelClassName={labelClass}
+                    triggerClassName={selectTriggerClass}
+                  >
+                    {teamOptions.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectController>
+                  <SelectController
+                    control={control}
+                    name="secondaryTeamId"
+                    label="Team phụ (tùy chọn)"
+                    labelClassName={labelClass}
+                    triggerClassName={selectTriggerClass}
+                  >
+                    <SelectItem value="__none">-- Không gán --</SelectItem>
+                    {allTeams.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectController>
+                  <SelectController
+                    control={control}
+                    name="initialLevel"
+                    label="Cấp độ ban đầu"
+                    labelClassName={labelClass}
+                    triggerClassName={selectTriggerClass}
+                  >
+                    {LEVEL_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectController>
                 </div>
               </SectionCard>
 
               <SectionCard icon={Bell} title="Thông báo hệ thống" entranceIndex={2}>
                 <div className="space-y-4">
-                  <label className="group flex cursor-pointer items-center gap-4 rounded-lg p-4 transition-colors hover:bg-muted/50">
-                    <Controller
-                      name="notifyEmail"
-                      control={control}
-                      render={({ field }) => (
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 shrink-0 rounded border-border text-primary focus:ring-primary/40"
-                          checked={field.value}
-                          onChange={field.onChange}
-                        />
-                      )}
-                    />
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        Gửi email thông tin đăng nhập
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Tự động gửi thông tin đăng nhập tới nhân viên sau khi tạo tài khoản.
-                      </p>
-                    </div>
-                  </label>
+                  <CheckboxController
+                    control={control}
+                    name="notifyEmail"
+                    label="Gửi email thông tin đăng nhập"
+                    className="group cursor-pointer hover:bg-muted/50"
+                    labelClassName="text-sm font-semibold normal-case tracking-normal text-foreground"
+                    description="Tự động gửi thông tin đăng nhập tới nhân viên sau khi tạo tài khoản."
+                  />
                 </div>
               </SectionCard>
             </div>
@@ -291,23 +286,5 @@ function SectionCard({
       </div>
       {children}
     </section>
-  )
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string
-  error?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className={labelClass}>{label}</div>
-      {children}
-      {error ? <p className="text-xs font-medium text-danger">{error}</p> : null}
-    </div>
   )
 }

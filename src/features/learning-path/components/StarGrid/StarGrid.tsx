@@ -1,4 +1,5 @@
 import { ProgressStar } from '@/components/shared/ProgressStar'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export interface StarGridProps {
@@ -15,18 +16,25 @@ export interface StarGridProps {
 export function StarGrid({ count, activeIndex, onSelect, variant = 'progress' }: StarGridProps) {
   const isSelect = variant === 'select'
   return (
-    <div className="flex flex-wrap gap-2" role={isSelect ? 'radiogroup' : undefined} aria-label={isSelect ? 'Chọn mốc sao' : undefined}>
+    <div
+      className="flex flex-wrap gap-2"
+      role={isSelect ? 'radiogroup' : undefined}
+      aria-label={isSelect ? 'Chọn mốc sao' : undefined}
+    >
       {Array.from({ length: count }).map((_, i) => {
         const starNo = i + 1
         const selected = isSelect && starNo === activeIndex
         const filled = isSelect ? selected : i < activeIndex
         return (
-          <button
+          <Button
             key={i}
             type="button"
+            variant="outline"
             className={cn(
-              'rounded-md border p-2 transition-colors hover:bg-muted',
-              isSelect && selected ? 'border-primary bg-primary/10 ring-2 ring-primary/40' : 'border-border',
+              'h-auto rounded-md border p-2 font-normal normal-case tracking-normal transition-colors hover:bg-muted',
+              isSelect && selected
+                ? 'border-primary bg-primary/10 ring-2 ring-primary/40'
+                : 'border-border'
             )}
             onClick={() => onSelect?.(starNo)}
             aria-checked={isSelect ? selected : undefined}
@@ -34,7 +42,7 @@ export function StarGrid({ count, activeIndex, onSelect, variant = 'progress' }:
             aria-label={isSelect ? `Sao ${starNo}` : undefined}
           >
             <ProgressStar filled={filled} />
-          </button>
+          </Button>
         )
       })}
     </div>

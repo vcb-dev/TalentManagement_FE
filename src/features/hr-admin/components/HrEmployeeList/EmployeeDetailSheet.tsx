@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { CARD_ENTRANCE } from '@/lib/cardMotion'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import {
   avatarClassForRole,
   initialsFromName,
@@ -107,22 +108,26 @@ export function EmployeeDetailSheet({
       <div className="flex shrink-0 items-center justify-between border-b border-primary/15 bg-gradient-to-r from-white via-indigo-50/60 to-cyan-50/50 px-6 pb-4 pt-6">
         <h2 className="text-lg font-bold tracking-tight text-foreground">Chi tiết nhân sự</h2>
         <div className="flex items-center gap-0.5">
-          <button
+          <Button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Thao tác khác"
             onClick={() => toast.info('Menu thao tác sẽ được bổ sung.')}
           >
             <MoreHorizontal className="size-5" strokeWidth={2} />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={onClose}
             aria-label="Đóng"
           >
             <X className="size-5" strokeWidth={2} />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -283,22 +288,24 @@ export function EmployeeDetailSheet({
           Xem hồ sơ đầy đủ
         </Link>
         {employee.status === 'INACTIVE' && onReactivate && canReactivate ? (
-          <button
+          <Button
             type="button"
-            className="w-full rounded-xl border border-primary/30 bg-primary/10 py-3 text-sm font-bold text-primary transition-colors hover:bg-primary/15"
+            variant="outline"
+            className="h-auto w-full rounded-xl border-primary/30 bg-primary/10 py-3 text-sm font-bold text-primary hover:bg-primary/15"
             onClick={() => onReactivate(employee.id)}
           >
             Kích hoạt lại
-          </button>
+          </Button>
         ) : null}
         {employee.status !== 'INACTIVE' && canDeactivate ? (
-          <button
+          <Button
             type="button"
-            className="w-full rounded-xl border border-destructive/40 bg-destructive/10 py-3 text-sm font-bold text-destructive transition-colors hover:bg-destructive/15"
+            variant="outline"
+            className="h-auto w-full rounded-xl border-destructive/40 bg-destructive/10 py-3 text-sm font-bold text-destructive hover:bg-destructive/15"
             onClick={() => onDeactivate(employee.id)}
           >
             Hủy hoạt động
-          </button>
+          </Button>
         ) : null}
       </div>
     </aside>

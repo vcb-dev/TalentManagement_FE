@@ -2,6 +2,7 @@ import { CircleHelp, Pencil } from 'lucide-react'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { CARD_ENTRANCE, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
@@ -226,10 +227,11 @@ export function EmployeeCard({
       <div className="mt-auto flex gap-2">
         {inactive ? (
           <>
-            <button
+            <Button
               type="button"
+              variant="ghost"
               className={cn(
-                'flex min-h-9 flex-1 items-center justify-center rounded-lg py-2 text-xs font-bold transition-colors',
+                'flex h-auto min-h-9 flex-1 items-center justify-center rounded-lg py-2 text-xs font-bold',
                 selected
                   ? 'bg-primary/15 text-primary hover:bg-primary/20'
                   : 'bg-muted/80 text-foreground hover:bg-muted'
@@ -240,25 +242,25 @@ export function EmployeeCard({
               }}
             >
               Xem lịch sử
-            </button>
+            </Button>
             {variant === 'hr' ? (
-              <button
+              <Button
                 type="button"
-                className="min-h-9 min-w-0 flex-1 rounded-lg border-[1.5px] border-button bg-button py-2 text-xs font-semibold text-button-foreground"
+                className="h-auto min-h-9 min-w-0 flex-1 rounded-lg border-[1.5px] border-button bg-button py-2 text-xs font-semibold text-button-foreground"
                 onClick={(e) => {
                   e.stopPropagation()
                 }}
               >
                 Khôi phục
-              </button>
+              </Button>
             ) : null}
           </>
         ) : (
           <>
-            <button
+            <Button
               type="button"
               className={cn(
-                'flex min-h-9 flex-1 items-center justify-center rounded-lg py-2 text-xs font-bold text-white shadow-sm transition-opacity hover:opacity-95',
+                'flex h-auto min-h-9 flex-1 items-center justify-center rounded-lg py-2 text-xs font-bold text-white shadow-sm hover:opacity-95',
                 'bg-gradient-to-r',
                 tone.cta,
                 selected ? 'ring-1 ring-primary/30' : ''
@@ -269,11 +271,13 @@ export function EmployeeCard({
               }}
             >
               Xem hồ sơ
-            </button>
+            </Button>
             {variant === 'hr' ? (
-              <button
+              <Button
                 type="button"
-                className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card px-2.5 py-2 text-primary transition-colors hover:bg-muted"
+                variant="outline"
+                size="icon"
+                className="inline-flex h-auto min-h-9 shrink-0 rounded-lg border-border bg-card px-2.5 py-2 text-primary hover:bg-muted"
                 title={employee.status === 'RESERVED' ? 'Hỗ trợ' : 'Sửa'}
                 aria-label={employee.status === 'RESERVED' ? 'Hỗ trợ' : 'Sửa'}
                 onClick={(e) => {
@@ -286,7 +290,7 @@ export function EmployeeCard({
                 ) : (
                   <Pencil className="size-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
                 )}
-              </button>
+              </Button>
             ) : null}
           </>
         )}

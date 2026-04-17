@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { Skeleton, SkeletonStatTile } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE_HOVER, PROGRESS_BAR_FILL, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -134,20 +135,23 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
           Dashboard BOD — Tháng {page?.monthLabel ?? '—'}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onExportPdf}
-            className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+            className="rounded-lg px-3 py-1.5 text-xs font-medium"
           >
             Xuất PDF
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            size="sm"
             onClick={onShare}
-            className="rounded-lg border border-button bg-button px-3 py-1.5 text-xs font-medium text-button-foreground hover:opacity-90"
+            className="rounded-lg px-3 py-1.5 text-xs font-medium"
           >
             Chia sẻ link
-          </button>
+          </Button>
           <span className="rounded-full bg-[#FEE2E2] px-2.5 py-1 text-xs font-medium text-[#991B1B]">
             {displayName} ({roleLabel})
           </span>

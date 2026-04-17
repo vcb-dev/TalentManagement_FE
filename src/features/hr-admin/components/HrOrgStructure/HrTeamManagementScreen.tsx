@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { ArrowLeft, ShieldUser, Users } from 'lucide-react'
 import {
   PAGE_HEADER_DESCRIPTION,
@@ -11,7 +11,8 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { Form } from '@/components/ui/form'
+import { InputFieldController } from '@/components/ui/form-controllers'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -164,17 +165,15 @@ export function HrTeamManagementScreen({ teamId }: { teamId: string }) {
         <CardContent className="space-y-4 py-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-medium">Danh sách thành viên team</p>
-            <Controller
-              control={searchForm.control}
-              name="search"
-              render={({ field }) => (
-                <Input
-                  className="sm:max-w-xs"
-                  placeholder="Tìm tên, email, mã NV, vai trò..."
-                  {...field}
-                />
-              )}
-            />
+            <Form {...searchForm}>
+              <InputFieldController
+                control={searchForm.control}
+                name="search"
+                placeholder="Tìm tên, email, mã NV, vai trò..."
+                className="sm:max-w-xs"
+                inputClassName="sm:max-w-xs"
+              />
+            </Form>
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-border/70">

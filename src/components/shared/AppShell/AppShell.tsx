@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MemberLeaderHeaderNav } from '@/components/shared/AppNav/MemberLeaderHeaderNav'
+import { MobileHeaderNav } from '@/components/shared/AppNav/MobileHeaderNav'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Sidebar } from '@/components/shared/Sidebar'
 import { defaultEntryPathFromSession } from '@/lib/routeGuards'
@@ -55,11 +56,12 @@ export function AppShell({ children, title }: AppShellProps) {
 
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             title="Nhấn để mở hồ sơ cá nhân"
             className={cn(
-              'group ml-0.5 flex shrink-0 items-center gap-2 rounded-full border border-primary-600/15 bg-primary-50 py-1 pl-1 pr-2 text-left shadow-sm outline-none transition-[box-shadow,background-color] hover:bg-primary-100/80 focus-visible:ring-2 focus-visible:ring-primary-600/30 sm:pr-2.5 lg:pr-3'
+              'group ml-0.5 h-auto min-h-0 shrink-0 gap-2 rounded-full border border-primary-600/15 bg-primary-50 py-1 pl-1 pr-2 text-left font-normal normal-case tracking-normal shadow-sm outline-none transition-[box-shadow,background-color] hover:bg-primary-100/80 focus-visible:ring-2 focus-visible:ring-primary-600/30 sm:pr-2.5 lg:pr-3'
             )}
             aria-label="Mở menu hồ sơ cá nhân"
             aria-haspopup="menu"
@@ -77,7 +79,7 @@ export function AppShell({ children, title }: AppShellProps) {
               strokeWidth={2}
               aria-hidden
             />
-          </button>
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" sideOffset={8} className="w-[min(calc(100vw-2rem),17rem)]">
           <DropdownMenuLabel className="font-normal">
@@ -123,11 +125,28 @@ export function AppShell({ children, title }: AppShellProps) {
 
   return (
     <div className="flex h-screen min-h-0 overflow-hidden bg-app-canvas">
-      {!compactNavNoSidebar ? <Sidebar /> : null}
+      {!compactNavNoSidebar ? (
+        <div className="hidden md:block">
+          <Sidebar />
+        </div>
+      ) : null}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <header className="sticky top-0 z-30 shrink-0 border-b border-border bg-card/95 shadow-[var(--shadow-card)] backdrop-blur-sm">
+          <div className="flex min-h-14 items-center justify-between gap-2 px-4 py-2 md:hidden">
+            <div className="flex items-center gap-1.5">
+              <MobileHeaderNav />
+              <Link
+                to={brandHomeTo}
+                search={brandHomeSearch}
+                className="flex h-10 shrink-0 items-center text-base font-bold leading-none tracking-tight text-primary-600"
+              >
+                VCB HRM
+              </Link>
+            </div>
+            <div className="flex shrink-0 items-center">{toolbar}</div>
+          </div>
           {compactNavNoSidebar && user ? (
-            <div className="grid w-full min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:gap-4 lg:px-8">
+            <div className="hidden w-full min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 md:grid lg:gap-4 lg:px-8">
               <Link
                 to={brandHomeTo}
                 search={brandHomeSearch}
@@ -145,7 +164,7 @@ export function AppShell({ children, title }: AppShellProps) {
               </div>
             </div>
           ) : (
-            <div className="mx-auto flex w-full max-w-[1400px] min-h-14 flex-wrap items-center gap-2 px-5 py-2 sm:gap-3 md:px-6">
+            <div className="mx-auto hidden w-full max-w-[1400px] min-h-14 flex-wrap items-center gap-2 px-5 py-2 sm:gap-3 md:flex md:px-6">
               {title ? (
                 <span className="min-w-0 flex-1 truncate text-lg font-bold tracking-tight text-primary-600 sm:text-[18px]">
                   {title}

@@ -1,6 +1,6 @@
 import { useDeferredValue, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import {
   Plus,
   Trash2,
@@ -17,7 +17,9 @@ import {
 import { managerApi } from '@/features/manager/api'
 import { managerKeys } from '@/features/manager/queryKeys'
 import { PageHeader } from '@/components/shared/PageHeader/PageHeader'
-import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Form } from '@/components/ui/form'
+import { InputFieldController } from '@/components/ui/form-controllers'
 
 type OrgItem = { id: string; name: string }
 
@@ -31,37 +33,43 @@ function InlineEditor({
   onSave: (v: string) => void
   onCancel: () => void
 }) {
-  const { control, handleSubmit } = useForm<{ value: string }>({ defaultValues: { value } })
+  const inlineForm = useForm<{ value: string }>({ defaultValues: { value } })
+  const { handleSubmit, control } = inlineForm
   return (
-    <form
-      className="flex items-center gap-1.5"
-      onSubmit={handleSubmit((v) => onSave(v.value.trim()))}
-    >
-      <Controller
-        control={control}
-        name="value"
-        render={({ field }) => (
-          <Input
-            autoFocus
-            className="h-8 rounded border border-gray-300 bg-white px-2 py-1 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-            {...field}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') onCancel()
-            }}
-          />
-        )}
-      />
-      <button type="submit" className="rounded p-1 text-green-600 hover:bg-green-50">
-        <Check className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={onCancel}
-        className="rounded p-1 text-gray-400 hover:bg-gray-100"
+    <Form {...inlineForm}>
+      <form
+        className="flex items-center gap-1.5"
+        onSubmit={handleSubmit((v) => onSave(v.value.trim()))}
       >
-        <X className="h-3.5 w-3.5" />
-      </button>
-    </form>
+        <InputFieldController
+          control={control}
+          name="value"
+          autoFocus
+          className="min-w-0 flex-1"
+          inputClassName="h-8 rounded border border-gray-300 bg-white px-2 py-1 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') onCancel()
+          }}
+        />
+        <Button
+          type="submit"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded p-1 text-green-600 hover:bg-green-50"
+        >
+          <Check className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onCancel}
+          className="h-8 w-8 rounded p-1 text-gray-400 hover:bg-gray-100"
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </form>
+    </Form>
   )
 }
 
@@ -134,22 +142,28 @@ function TeamAccordion({
 
         {/* Actions */}
         <div className="ml-auto flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={() => setEditing(true)}
-            className="rounded p-1.5 text-gray-400 hover:bg-primary-50 hover:text-primary-600"
+            className="h-8 w-8 rounded p-1.5 text-gray-400 hover:bg-primary-50 hover:text-primary-600"
             title="Sửa tên"
           >
             <Edit2 className="h-3.5 w-3.5" />
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={() => {
               if (window.confirm('Xoá nhóm này? Nhân sự sẽ bị gỡ cấu hình nhóm.')) onDelete(team.id)
             }}
-            className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+            className="h-8 w-8 rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
             title="Xoá"
           >
             <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
 
         <ChevronDown
@@ -166,20 +180,18 @@ function TeamAccordion({
           {/* Search bar (show if > 5 members) */}
           {members.length > 5 && (
             <div className="border-b border-gray-50 px-5 py-2">
-              <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-1.5">
-                <Search className="h-4 w-4 text-gray-400 shrink-0" />
-                <Controller
-                  control={searchForm.control}
-                  name="search"
-                  render={({ field }) => (
-                    <Input
-                      placeholder="Tìm thành viên..."
-                      className="h-auto border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
-                      {...field}
-                    />
-                  )}
-                />
-              </div>
+              <Form {...searchForm}>
+                <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-1.5">
+                  <Search className="h-4 w-4 text-gray-400 shrink-0" />
+                  <InputFieldController
+                    control={searchForm.control}
+                    name="search"
+                    placeholder="Tìm thành viên..."
+                    className="min-w-0 flex-1"
+                    inputClassName="h-auto border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
+                  />
+                </div>
+              </Form>
             </div>
           )}
 
@@ -301,16 +313,16 @@ export function OrgManagementScreen() {
                   </span>
                 )}
               </div>
-              <button
+              <Button
                 type="button"
+                className="inline-flex gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700"
                 onClick={() => {
                   setAddingTeam(true)
                   addTeamForm.reset({ teamVal: '' })
                 }}
-                className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700 transition-colors"
               >
                 <Plus className="h-3.5 w-3.5" /> Thêm nhóm
-              </button>
+              </Button>
             </div>
 
             {loadingTeams ? (
@@ -336,42 +348,47 @@ export function OrgManagementScreen() {
                 ))}
 
                 {addingTeam && (
-                  <form
-                    className="flex items-center gap-2 rounded-xl border border-primary-300 bg-primary-50 px-5 py-3"
-                    onSubmit={addTeamForm.handleSubmit(async (values) => {
-                      const trimmed = values.teamVal.trim()
-                      if (!trimmed) return
-                      await createTeam.mutateAsync(trimmed)
-                      setAddingTeam(false)
-                    })}
-                  >
-                    <Building2 className="h-5 w-5 text-primary-400 shrink-0" />
-                    <Controller
-                      control={addTeamForm.control}
-                      name="teamVal"
-                      render={({ field }) => (
-                        <Input
-                          autoFocus
-                          placeholder="Tên nhóm mới..."
-                          className="h-auto flex-1 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
-                          {...field}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Escape') setAddingTeam(false)
-                          }}
-                        />
-                      )}
-                    />
-                    <button type="submit" className="rounded p-1 text-green-600 hover:bg-green-50">
-                      <Check className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAddingTeam(false)}
-                      className="rounded p-1 text-gray-400 hover:bg-gray-100"
+                  <Form {...addTeamForm}>
+                    <form
+                      className="flex items-center gap-2 rounded-xl border border-primary-300 bg-primary-50 px-5 py-3"
+                      onSubmit={addTeamForm.handleSubmit(async (values) => {
+                        const trimmed = values.teamVal.trim()
+                        if (!trimmed) return
+                        await createTeam.mutateAsync(trimmed)
+                        setAddingTeam(false)
+                      })}
                     >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </form>
+                      <Building2 className="h-5 w-5 text-primary-400 shrink-0" />
+                      <InputFieldController
+                        control={addTeamForm.control}
+                        name="teamVal"
+                        autoFocus
+                        placeholder="Tên nhóm mới..."
+                        className="min-w-0 flex-1"
+                        inputClassName="h-auto flex-1 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') setAddingTeam(false)
+                        }}
+                      />
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded p-1 text-green-600 hover:bg-green-50"
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setAddingTeam(false)}
+                        className="h-8 w-8 rounded p-1 text-gray-400 hover:bg-gray-100"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </form>
+                  </Form>
                 )}
 
                 {teams.length === 0 && !addingTeam && (

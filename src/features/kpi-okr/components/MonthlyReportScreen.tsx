@@ -12,6 +12,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE, CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -161,50 +168,59 @@ export function MonthlyReportScreen() {
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                 Phòng ban
               </Label>
-              <select
-                className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm"
-                value={selectedDept?.id ?? ''}
-                onChange={(e) => {
-                  const dept = departments.find((d) => d.id === e.target.value)
+              <Select
+                value={selectedDept?.id ?? '__none'}
+                onValueChange={(value) => {
+                  const dept = departments.find((d) => d.id === value)
                   setSelectedTeamId(dept?.teams[0]?.id ?? '')
                 }}
               >
-                <option value="">— Chọn —</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Chọn —</SelectItem>
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Team</Label>
-              <select
-                className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm"
-                value={selectedTeamId}
-                onChange={(e) => setSelectedTeamId(e.target.value)}
+              <Select
+                value={selectedTeamId || '__none'}
+                onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
               >
-                <option value="">— Chọn team —</option>
-                {teamsInDept.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Chọn team —</SelectItem>
+                  {teamsInDept.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tháng</Label>
-              <select
-                className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm"
-                value={month}
-                onChange={(e) => setMonth(Number(e.target.value))}
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>
-                    Tháng {m}
-                  </option>
-                ))}
-              </select>
+              <Select value={String(month)} onValueChange={(value) => setMonth(Number(value))}>
+                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <SelectItem key={m} value={String(m)}>
+                      Tháng {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Năm</Label>

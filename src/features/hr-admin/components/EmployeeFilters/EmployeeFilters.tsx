@@ -2,7 +2,9 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import type { Role } from '@/types/auth'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Form } from '@/components/ui/form'
+import { InputController, SelectController } from '@/components/ui/form-controllers'
+import { SelectItem } from '@/components/ui/select'
 import type { EmployeeListStatus } from '@/features/hr-admin/types'
 
 export interface EmployeeFiltersProps {
@@ -55,40 +57,48 @@ export function EmployeeFilters({
   })
 
   return (
-    <form className="flex flex-wrap items-end gap-2" onSubmit={applyFilters}>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">Tìm kiếm</span>
-        <Input {...filtersForm.register('search')} placeholder="Tên, email…" />
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">Vai trò</span>
-        <select
-          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
-          {...filtersForm.register('role')}
+    <Form {...filtersForm}>
+      <form className="flex flex-wrap items-end gap-2" onSubmit={applyFilters}>
+        <InputController
+          control={filtersForm.control}
+          name="search"
+          label="Tìm kiếm"
+          labelClassName="text-xs font-normal text-muted-foreground"
+          className="min-w-[200px] space-y-1"
+          placeholder="Tên, email…"
+        />
+        <SelectController
+          control={filtersForm.control}
+          name="role"
+          label="Vai trò"
+          labelClassName="text-xs font-normal text-muted-foreground"
+          className="min-w-[140px] space-y-1"
+          triggerClassName="h-9 rounded-md"
         >
-          <option value="">Tất cả</option>
+          <SelectItem value="__none">Tất cả</SelectItem>
           {roles.map((r) => (
-            <option key={r} value={r}>
+            <SelectItem key={r} value={r}>
               {r}
-            </option>
+            </SelectItem>
           ))}
-        </select>
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">Trạng thái</span>
-        <select
-          className="h-9 rounded-md border border-border bg-background px-2 text-sm"
-          {...filtersForm.register('status')}
+        </SelectController>
+        <SelectController
+          control={filtersForm.control}
+          name="status"
+          label="Trạng thái"
+          labelClassName="text-xs font-normal text-muted-foreground"
+          className="min-w-[160px] space-y-1"
+          triggerClassName="h-9 rounded-md"
         >
-          <option value="">Tất cả</option>
+          <SelectItem value="__none">Tất cả</SelectItem>
           {statuses.map((s) => (
-            <option key={s} value={s}>
+            <SelectItem key={s} value={s}>
               {s}
-            </option>
+            </SelectItem>
           ))}
-        </select>
-      </div>
-      <Button type="submit">Áp dụng</Button>
-    </form>
+        </SelectController>
+        <Button type="submit">Áp dụng</Button>
+      </form>
+    </Form>
   )
 }

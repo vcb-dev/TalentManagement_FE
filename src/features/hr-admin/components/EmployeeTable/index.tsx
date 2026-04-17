@@ -17,7 +17,10 @@ export function EmployeeTableContainer(props?: { initial?: Partial<EmployeeFilte
       onReactivate={table.onReactivate}
       pagination={table.pagination}
       onPageChange={(page) => {
-        void navigate({ to: '/hr-admin', search: (s) => ({ ...s, page }) })
+        void navigate({
+          to: '/hr-admin',
+          search: (s) => ({ ...s, page, pageSize: s.pageSize ?? 15 }),
+        })
       }}
       listMode="hr"
     />

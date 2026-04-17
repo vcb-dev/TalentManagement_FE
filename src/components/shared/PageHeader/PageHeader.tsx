@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
   PAGE_HEADER_DESCRIPTION,
@@ -26,14 +27,16 @@ export function PageHeader({ title, description, actions, onBack }: PageHeaderPr
       <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
         <h1 className={cn(PAGE_HEADER_TITLE, 'flex items-center')}>
           {onBack && (
-            <button
+            <Button
               onClick={onBack}
               type="button"
-              className="mr-3 inline-flex shrink-0 items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
+              variant="ghost"
+              size="icon"
+              className="mr-3 shrink-0 rounded-full"
               aria-label="Quay lại"
             >
               <ArrowLeft className="h-6 w-6 text-foreground" />
-            </button>
+            </Button>
           )}
           <span className={PAGE_HEADER_GRADIENT}>{title}</span>
         </h1>

@@ -2,6 +2,13 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { StarEmblem } from '@/components/icons/StarEmblem'
 import { Skeleton, SkeletonStatTile } from '@/components/ui/skeleton'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { CARD_ENTRANCE_HOVER, CARD_HOVER, PROGRESS_BAR_FILL, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
@@ -126,18 +133,24 @@ export function TeamProgressTable({
         </div>
         <div className="relative flex flex-wrap items-center gap-2">
           {teams && teams.length > 0 && onTeamChange && (
-            <select
-              className="rounded-lg border border-primary/20 bg-card/95 px-3 py-2 text-sm text-foreground shadow-sm outline-none ring-1 ring-primary/10 backdrop-blur-sm focus:border-primary focus:ring-2 focus:ring-primary/20 md:text-base"
-              {...teamForm.register('teamId', {
-                onChange: (e) => onTeamChange(e.target.value),
-              })}
+            <Select
+              value={teamForm.watch('teamId')}
+              onValueChange={(value) => {
+                teamForm.setValue('teamId', value)
+                onTeamChange(value)
+              }}
             >
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="rounded-lg border border-primary/20 bg-card/95 px-3 py-2 text-sm text-foreground shadow-sm ring-1 ring-primary/10 backdrop-blur-sm md:text-base">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {teams.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
           <span className="rounded-full border border-emerald-200/70 bg-gradient-to-r from-emerald-500/12 to-teal-500/10 px-3 py-1.5 text-sm font-semibold text-emerald-950 shadow-sm ring-1 ring-emerald-500/12 md:text-base">
             {displayName} ({roleLabel})

@@ -1,4 +1,5 @@
 import { DataTable, type DataTableColumn } from '@/components/shared/DataTable'
+import { Button } from '@/components/ui/button'
 import { formatViDate } from '@/lib/date'
 import type { z } from 'zod'
 import { type examSummaryApiSchema } from '@/features/exam/schemas'
@@ -25,9 +26,14 @@ export function ExamList({ exams, isLoading, onOpen }: ExamListProps) {
       header: '',
       cell: (e) =>
         onOpen ? (
-          <button type="button" className="text-primary underline" onClick={() => onOpen(e.id)}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-auto p-0 font-normal normal-case tracking-normal text-primary underline hover:bg-transparent"
+            onClick={() => onOpen(e.id)}
+          >
             Mở
-          </button>
+          </Button>
         ) : null,
     },
   ]
