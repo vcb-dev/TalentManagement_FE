@@ -1,1 +1,0 @@
-export { PermissionGate } from './PermissionGate'
