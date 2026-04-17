@@ -272,7 +272,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
 
   return (
     <FormProvider {...editForm}>
-      <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-slate-50/80 via-app-canvas to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
+      <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-indigo-50/60 via-sky-50/40 to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
         <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 pb-6 pt-6 md:px-6 lg:flex-row lg:items-start lg:gap-8 lg:pt-8">
           <aside className="w-full shrink-0 lg:w-[280px]">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:mb-0 lg:block">
@@ -287,29 +287,10 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                 <span className="text-muted-foreground/50">/</span>
                 <span className="font-semibold text-foreground">{employee.name}</span>
               </div>
-              <div className="flex flex-wrap items-center gap-1.5 lg:hidden">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 px-2.5 text-[11px]"
-                  onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
-                >
-                  Đổi PB
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 px-2.5 text-[11px]"
-                  onClick={onDemoAction('Đổi role: kết nối API sau.')}
-                >
-                  Role
-                </Button>
-              </div>
+              <div className="flex flex-wrap items-center gap-1.5 lg:hidden"></div>
             </div>
 
-            <div className="flex flex-col gap-6 rounded-2xl border border-primary/10 bg-card p-5 shadow-[var(--shadow-card)] ring-1 ring-primary/5">
+            <div className="flex flex-col gap-6 rounded-2xl border border-indigo-200/60 bg-gradient-to-b from-white via-indigo-50/30 to-sky-50/30 p-5 shadow-[0_14px_34px_-22px_rgba(59,130,246,0.35)]">
               <div className="relative mx-auto">
                 <EmployeeAvatar
                   name={employee.name}
@@ -328,13 +309,10 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                       <span className="text-sm font-semibold leading-snug text-foreground">
                         {deptName}
                       </span>
-                      <span className="shrink-0 rounded-md bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-800">
+                      <span className="shrink-0 rounded-md bg-indigo-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-800">
                         Chính
                       </span>
                     </div>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      VP · Ngân hàng TMCP Ngoại thương VCB
-                    </p>
                   </div>
                   {hasAnyTeam ? (
                     <div>
@@ -342,14 +320,10 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                         <span className="text-sm font-semibold leading-snug text-foreground">
                           {teamName}
                         </span>
-                        <span className="shrink-0 rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-700">
+                        <span className="shrink-0 rounded-md bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-800">
                           Team
                         </span>
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Mã {empCode} · Vào{' '}
-                        {new Date(employee.createdAt).toLocaleDateString('vi-VN')}
-                      </p>
                     </div>
                   ) : null}
                 </div>
@@ -395,22 +369,6 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
             <div className="mb-4 hidden flex-wrap items-center justify-end gap-2 lg:flex">
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                onClick={onDemoAction('Đổi phòng ban: kết nối API sau.')}
-              >
-                Đổi phòng ban
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onDemoAction('Đổi role: kết nối API sau.')}
-              >
-                Đổi role
-              </Button>
-              <Button
-                type="button"
                 variant="destructive"
                 size="sm"
                 onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
@@ -426,8 +384,8 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
               </Button>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-primary/10 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/5">
-              <div className="border-b border-border/80 px-5 py-5 md:px-6">
+            <div className="overflow-hidden rounded-2xl border border-indigo-200/60 bg-gradient-to-b from-white to-indigo-50/20 shadow-[0_16px_36px_-22px_rgba(30,64,175,0.35)]">
+              <div className="border-b border-indigo-100/90 bg-gradient-to-r from-indigo-50/65 via-white to-cyan-50/45 px-5 py-5 md:px-6">
                 <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
                   {employee.name}
                 </h1>
@@ -439,7 +397,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                   />
                   <span>{hasAnyTeam ? `${deptName} · ${teamName}` : deptName}</span>
                 </div>
-                <p className="mt-2 text-lg font-semibold text-primary md:text-xl">
+                <p className="mt-2 text-lg font-semibold text-indigo-700 md:text-xl">
                   {ROLE_LABEL_VI[employee.role]} ·{' '}
                   {LEVEL_LABELS[employee.currentLevel as LevelCode]}
                 </p>
@@ -450,12 +408,12 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                   </span>
                   <FiveStarRank filled={rankStarsFive} />
                   <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary ring-1 ring-primary/15">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/12 px-2.5 py-1 font-semibold text-indigo-700 ring-1 ring-indigo-300/35">
                       <Star className="h-3.5 w-3.5" variant="filled" />
                       {points.toLocaleString('vi-VN')} pts
                     </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-900 ring-1 ring-amber-500/20">
-                      <Crown className="h-3.5 w-3.5 text-amber-600" strokeWidth={2} />#{rank}
+                    <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/12 px-2.5 py-1 font-semibold text-cyan-900 ring-1 ring-cyan-400/30">
+                      <Crown className="h-3.5 w-3.5 text-cyan-700" strokeWidth={2} />#{rank}
                     </span>
                   </div>
                 </div>
@@ -510,7 +468,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
               </div>
 
               <nav
-                className="flex flex-wrap gap-0 border-b border-border px-2 md:px-4"
+                className="flex flex-wrap gap-0 border-b border-indigo-100/80 bg-white/65 px-2 md:px-4"
                 aria-label="Mục hồ sơ nhân viên"
               >
                 {tabLabels.map((label, i) => {
@@ -523,13 +481,15 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                       onClick={() => setTab(i)}
                       className={cn(
                         'relative flex items-center gap-2 px-3 py-3.5 text-sm font-semibold transition-colors md:px-4',
-                        active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                        active
+                          ? 'text-indigo-700'
+                          : 'text-muted-foreground hover:bg-indigo-50/70 hover:text-indigo-700'
                       )}
                     >
                       <Icon className="h-4 w-4 shrink-0 opacity-85" strokeWidth={2} />
                       {label}
                       {active ? (
-                        <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary md:left-4 md:right-4" />
+                        <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-indigo-600 md:left-4 md:right-4" />
                       ) : null}
                     </button>
                   )

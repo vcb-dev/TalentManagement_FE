@@ -67,14 +67,6 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     },
     permissionId: 'exam.view',
   },
-  /** Route `/_protected/kpi-okr` chỉ MEMBER — dùng `kpi.edit_own` (không dùng chung `kpi.view` với trưởng nhóm). */
-  {
-    to: '/kpi-okr',
-    label: 'KPI & OKR của tôi',
-    icon: Target,
-    match: 'prefix',
-    permissionId: 'kpi.edit_own',
-  },
   {
     to: '/monthly-report',
     label: 'Báo cáo hàng tháng',
@@ -195,7 +187,7 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
     permissionId: 'admin.permissions.assign',
   },
   {
-    to: '/manager/org',
+    to: '/hr-admin/org',
     label: 'Đơn vị & Nhóm',
     icon: Building2,
     match: 'prefix',
@@ -276,15 +268,15 @@ export function filterNavByPermissions(
 
 /**
  * Sidebar: flat route list (permission filter + dedupe by `to` + search).
- * Order: BOD, manager ops, HR, leader KPI, member self, teacher.
+ * Order ưu tiên luồng sử dụng: Dashboard/KPI → tác vụ manager → nhân sự/org → BOD → teacher.
  */
 export function flatSidebarNavItems(canId: (permissionId: string) => boolean): AppNavItem[] {
   const sources = [
-    BOD_ITEMS,
-    MANAGER_OPS_ITEMS,
-    HR_ITEMS,
     LEADER_KPI_ITEMS,
     MEMBER_SELF_ITEMS,
+    MANAGER_OPS_ITEMS,
+    HR_ITEMS,
+    BOD_ITEMS,
     TEACHER_HEADER_ITEMS,
   ]
   const seen = new Set<string>()

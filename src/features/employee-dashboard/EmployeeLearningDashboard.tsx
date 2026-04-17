@@ -19,6 +19,7 @@ import {
 } from '@/components/shared/PageHeader'
 import { useMyDashboard } from '@/features/dashboard/hooks'
 import { DashboardKpiOkrZone } from '@/features/employee-dashboard/components/DashboardKpiOkrZone'
+import { MemberKpiOkrScreen } from '@/features/kpi-okr/components/MemberKpiOkrScreen'
 import { DashboardLearningZone } from '@/features/employee-dashboard/components/DashboardLearningZone'
 import { CARD_ENTRANCE_HOVER, STAR_POP, staggerStyle } from '@/lib/cardMotion'
 import { LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
@@ -33,9 +34,6 @@ function kpiOkrPaths(role: Role | undefined): { kpiOkr: string } {
 }
 
 type DashboardTab = 'learning' | 'kpi'
-
-/** Tạm thời khóa tab KPI/OKR — chỉ xem khu vực học tập. */
-const KPI_DASHBOARD_TAB_DISABLED = true
 
 function shortId(id: string): string {
   return id.replace(/-/g, '').slice(0, 8).toUpperCase()
@@ -113,7 +111,8 @@ export function EmployeeLearningDashboard() {
   const maxStars = STARS_PER_LEVEL[levelKey]
   const filledStars = apiCareer?.currentStars ?? meDashboard?.levelSource?.starCount ?? 0
 
-  const deptLine = apiUser?.departmentName?.trim() || (user ? formatDepartment(user.departmentId) : '—')
+  const deptLine =
+    apiUser?.departmentName?.trim() || (user ? formatDepartment(user.departmentId) : '—')
   const classLine = apiUser?.learningClassName?.trim() || 'Không có'
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const fullName = apiUser?.fullNameLegal?.trim() || user?.name || '—'
@@ -401,7 +400,8 @@ export function EmployeeLearningDashboard() {
             ) : (
               highlightAchievements.map((achievement, idx) => {
                 const style =
-                  achievementCardStyles[idx % achievementCardStyles.length] ?? achievementCardStyles[0]!
+                  achievementCardStyles[idx % achievementCardStyles.length] ??
+                  achievementCardStyles[0]!
                 return (
                   <div
                     key={achievement.id}
@@ -431,7 +431,8 @@ export function EmployeeLearningDashboard() {
                         <style.icon className="h-5 w-5" strokeWidth={2.5} aria-hidden />
                       </div>
                       <span className="rounded-full bg-background/70 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-tight text-foreground shadow-sm backdrop-blur-sm">
-                        {achievement.badge?.trim() || (achievement.score != null ? `+${achievement.score}` : 'Nổi bật')}
+                        {achievement.badge?.trim() ||
+                          (achievement.score != null ? `+${achievement.score}` : 'Nổi bật')}
                       </span>
                     </div>
                     <h3 className="relative text-[0.65rem] font-bold uppercase tracking-widest text-foreground/80">
@@ -469,13 +470,13 @@ export function EmployeeLearningDashboard() {
                   type="button"
                   role="tab"
                   id="dash-tab-learning"
-                  aria-selected={KPI_DASHBOARD_TAB_DISABLED ? true : tab === 'learning'}
+                  aria-selected={tab === 'learning'}
                   aria-controls="dash-panel-learning"
-                  tabIndex={KPI_DASHBOARD_TAB_DISABLED || tab === 'learning' ? 0 : -1}
+                  tabIndex={tab === 'learning' ? 0 : -1}
                   onClick={() => setTab('learning')}
                   className={cn(
                     'inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-all duration-300',
-                    KPI_DASHBOARD_TAB_DISABLED || tab === 'learning'
+                    tab === 'learning'
                       ? 'scale-[1.02] bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-[var(--shadow-game-float)] ring-2 ring-primary/25 ring-offset-2 ring-offset-background motion-reduce:scale-100 motion-reduce:ring-0 motion-reduce:ring-offset-0'
                       : 'text-muted-foreground hover:bg-background/80 hover:text-foreground hover:shadow-sm'
                   )}
@@ -487,22 +488,15 @@ export function EmployeeLearningDashboard() {
                   type="button"
                   role="tab"
                   id="dash-tab-kpi"
-                  disabled={KPI_DASHBOARD_TAB_DISABLED}
-                  aria-disabled={KPI_DASHBOARD_TAB_DISABLED}
-                  aria-selected={false}
+                  aria-selected={tab === 'kpi'}
                   aria-controls="dash-panel-kpi"
-                  tabIndex={-1}
-                  title="Tạm thời chưa mở"
-                  onClick={
-                    KPI_DASHBOARD_TAB_DISABLED ? undefined : () => setTab('kpi')
-                  }
+                  tabIndex={tab === 'kpi' ? 0 : -1}
+                  onClick={() => setTab('kpi')}
                   className={cn(
                     'inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-all duration-300',
-                    KPI_DASHBOARD_TAB_DISABLED
-                      ? 'cursor-not-allowed opacity-45 grayscale-[0.35] text-muted-foreground shadow-none ring-0'
-                      : tab === 'kpi'
-                        ? 'scale-[1.02] bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-[var(--shadow-game-float)] ring-2 ring-primary/25 ring-offset-2 ring-offset-background motion-reduce:scale-100 motion-reduce:ring-0 motion-reduce:ring-offset-0'
-                        : 'text-muted-foreground hover:bg-background/80 hover:text-foreground hover:shadow-sm'
+                    tab === 'kpi'
+                      ? 'scale-[1.02] bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-[var(--shadow-game-float)] ring-2 ring-primary/25 ring-offset-2 ring-offset-background motion-reduce:scale-100 motion-reduce:ring-0 motion-reduce:ring-offset-0'
+                      : 'text-muted-foreground hover:bg-background/80 hover:text-foreground hover:shadow-sm'
                   )}
                 >
                   <Target className="h-4 w-4 shrink-0" strokeWidth={2} />
@@ -515,7 +509,7 @@ export function EmployeeLearningDashboard() {
               id="dash-panel-learning"
               role="tabpanel"
               aria-labelledby="dash-tab-learning"
-              hidden={KPI_DASHBOARD_TAB_DISABLED ? false : tab !== 'learning'}
+              hidden={tab !== 'learning'}
               className="motion-safe:animate-[dash-fade-up_0.4s_ease-out_both] motion-reduce:animate-none"
             >
               <DashboardLearningZone
@@ -528,10 +522,14 @@ export function EmployeeLearningDashboard() {
               id="dash-panel-kpi"
               role="tabpanel"
               aria-labelledby="dash-tab-kpi"
-              hidden={KPI_DASHBOARD_TAB_DISABLED ? true : tab !== 'kpi'}
+              hidden={tab !== 'kpi'}
               className="motion-safe:animate-[dash-fade-up_0.4s_ease-out_both] motion-reduce:animate-none"
             >
-              <DashboardKpiOkrZone role={role as 'MEMBER' | 'LEADER'} paths={paths} />
+              {role === 'MEMBER' ? (
+                <MemberKpiOkrScreen />
+              ) : (
+                <DashboardKpiOkrZone role={role as 'MEMBER' | 'LEADER'} paths={paths} />
+              )}
             </div>
           </>
         ) : (

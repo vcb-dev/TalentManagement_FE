@@ -7,6 +7,7 @@ import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
   avatarClassForRole,
   employeeDeptDisplay,
+  employeeTeamsDisplay,
   initialsFromName,
   levelPillText,
   roleBadgeClass,
@@ -72,8 +73,50 @@ export function EmployeeCard({
   const inactive = employee.status === 'INACTIVE'
   const meta = initialsFromName(employee.name)
   const deptLine = employeeDeptDisplay(employee)
+  const teamLine = employeeTeamsDisplay(employee)
   const positionLabel = ROLE_LABEL_VI[employee.role]
-  const starProgressPct = Math.min(100, Math.round((employee.currentStar / 6) * 100))
+  const toneByRole: Record<
+    EmployeeEntity['role'],
+    { cardBg: string; glow: string; chip: string; cta: string }
+  > = {
+    MEMBER: {
+      cardBg: 'from-emerald-50/85 via-card to-teal-50/70',
+      glow: 'bg-emerald-400/20',
+      chip: 'bg-emerald-100/90 text-emerald-800',
+      cta: 'from-emerald-500 to-teal-500',
+    },
+    LEADER: {
+      cardBg: 'from-sky-50/85 via-card to-indigo-50/70',
+      glow: 'bg-sky-400/20',
+      chip: 'bg-sky-100/90 text-sky-800',
+      cta: 'from-sky-500 to-indigo-500',
+    },
+    MANAGER: {
+      cardBg: 'from-amber-50/85 via-card to-orange-50/70',
+      glow: 'bg-amber-400/20',
+      chip: 'bg-amber-100/90 text-amber-800',
+      cta: 'from-amber-500 to-orange-500',
+    },
+    HR: {
+      cardBg: 'from-violet-50/90 via-card to-fuchsia-50/70',
+      glow: 'bg-violet-400/20',
+      chip: 'bg-violet-100/90 text-violet-800',
+      cta: 'from-violet-500 to-fuchsia-500',
+    },
+    TEACHER: {
+      cardBg: 'from-cyan-50/90 via-card to-blue-50/70',
+      glow: 'bg-cyan-400/20',
+      chip: 'bg-cyan-100/90 text-cyan-800',
+      cta: 'from-cyan-500 to-blue-500',
+    },
+    BOD: {
+      cardBg: 'from-rose-50/85 via-card to-pink-50/70',
+      glow: 'bg-rose-400/20',
+      chip: 'bg-rose-100/90 text-rose-800',
+      cta: 'from-rose-500 to-pink-500',
+    },
+  }
+  const tone = toneByRole[employee.role]
 
   return (
     <div
@@ -87,13 +130,25 @@ export function EmployeeCard({
         }
       }}
       className={cn(
-        'group relative flex w-full cursor-pointer flex-col rounded-2xl border bg-card p-5 text-left shadow-sm',
+        'group relative flex w-full cursor-pointer flex-col rounded-2xl border bg-gradient-to-br p-5 text-left shadow-sm',
+        tone.cardBg,
+        'transition-[transform,box-shadow,border-color] duration-200 ease-out',
+        'hover:-translate-y-1 hover:border-primary/50 hover:shadow-[0_14px_32px_-14px_rgba(37,99,235,0.45)]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
         cardIndex !== undefined && CARD_ENTRANCE,
         selected ? 'border-2 border-primary shadow-md ring-1 ring-primary/15' : 'border-border',
         inactive && 'opacity-[0.55]'
       )}
       style={cardIndex !== undefined ? staggerStyle(Math.min(cardIndex, 16)) : undefined}
     >
+      <div
+        className={cn(
+          'pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl transition-opacity duration-200 group-hover:opacity-100',
+          tone.glow,
+          'opacity-70'
+        )}
+        aria-hidden
+      />
       {/* Hàng 1: avatar | cấp + sao (theo mock HTML) */}
       <div className="mb-5 flex items-start justify-between gap-3">
         <div className="relative shrink-0">
@@ -115,7 +170,10 @@ export function EmployeeCard({
         </div>
         <div className="flex min-w-0 flex-col items-end gap-1.5">
           <span
-            className="max-w-[9rem] truncate rounded-md bg-primary/10 px-2 py-0.5 text-center text-[10px] font-bold tracking-tight text-primary sm:max-w-[10rem]"
+            className={cn(
+              'max-w-[9rem] truncate rounded-md px-2 py-0.5 text-center text-[10px] font-bold tracking-tight sm:max-w-[10rem]',
+              tone.chip
+            )}
             title={tierLine}
           >
             {tierLine}
@@ -142,8 +200,8 @@ export function EmployeeCard({
         >
           {employee.name}
         </h3>
-        <p className="mt-0.5 text-xs text-muted-foreground">{positionLabel}</p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+        <p className="mt-0.5 text-xs font-semibold text-foreground/80">{positionLabel}</p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
           <span
             className={cn(
               'inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold',
@@ -152,26 +210,17 @@ export function EmployeeCard({
           >
             {roleShortLabel(employee.role)}
           </span>
-          <span className="text-border">·</span>
-          <span className="text-foreground/80">{deptLine}</span>
+          <span className="inline-flex rounded-full bg-foreground/[0.06] px-2 py-0.5 font-semibold text-foreground">
+            {deptLine}
+          </span>
+          <span className="inline-flex rounded-full bg-primary/[0.08] px-2 py-0.5 font-semibold text-primary-700">
+            {teamLine}
+          </span>
         </div>
       </div>
 
-      <div className="mb-5 flex items-center gap-2">
-        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary transition-[width] duration-300"
-            style={{ width: `${starProgressPct}%` }}
-          />
-        </div>
-        <span
-          className={cn(
-            'shrink-0 tabular-nums text-[10px] font-bold sm:text-xs',
-            starProgressPct > 0 ? 'text-primary' : 'text-muted-foreground'
-          )}
-        >
-          {starProgressPct}%
-        </span>
+      <div className="mb-5 px-1 py-1">
+        {employee.currentStar > 0 ? <StarRow filled={employee.currentStar} /> : null}
       </div>
 
       <div className="mt-auto flex gap-2">
@@ -209,10 +258,10 @@ export function EmployeeCard({
             <button
               type="button"
               className={cn(
-                'flex min-h-9 flex-1 items-center justify-center rounded-lg py-2 text-xs font-bold transition-colors',
-                selected
-                  ? 'bg-primary/15 text-primary hover:bg-primary/20'
-                  : 'bg-muted/80 text-foreground hover:bg-muted'
+                'flex min-h-9 flex-1 items-center justify-center rounded-lg py-2 text-xs font-bold text-white shadow-sm transition-opacity hover:opacity-95',
+                'bg-gradient-to-r',
+                tone.cta,
+                selected ? 'ring-1 ring-primary/30' : ''
               )}
               onClick={(e) => {
                 e.stopPropagation()
@@ -242,6 +291,11 @@ export function EmployeeCard({
           </>
         )}
       </div>
+      {!inactive ? (
+        <p className="mt-2 text-center text-[11px] font-medium text-muted-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          Bấm để xem thông tin tóm tắt
+        </p>
+      ) : null}
       <span className="sr-only">Trạng thái: {statusLabelVi(employee.status)}</span>
     </div>
   )
