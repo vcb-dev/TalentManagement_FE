@@ -60,7 +60,8 @@ function parseLevelFromStaff(staffLevel: StaffLevel | undefined): LevelCode | nu
 function formatDateVi(raw: string | null | undefined): string {
   const text = raw?.trim()
   if (!text) return '—'
-  const asDate = new Date(text)
+  const numCheck = /^\d+$/.test(text) ? parseInt(text, 10) : text
+  const asDate = new Date(numCheck)
   if (!Number.isNaN(asDate.getTime())) return asDate.toLocaleDateString('vi-VN')
   return text
 }
@@ -112,9 +113,9 @@ export function EmployeeLearningDashboard() {
   const maxStars = STARS_PER_LEVEL[levelKey]
   const filledStars = apiCareer?.currentStars ?? meDashboard?.levelSource?.starCount ?? 0
 
+  const teamLine = apiUser?.teamGroup?.trim() || 'Khác'
   const deptLine =
     apiUser?.departmentName?.trim() || (user ? formatDepartment(user.departmentId) : '—')
-  const classLine = apiUser?.learningClassName?.trim() || 'Không có'
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const fullName = apiUser?.fullNameLegal?.trim() || user?.name || '—'
   const birthDate = formatDateVi(apiUser?.birthDate)
@@ -319,8 +320,8 @@ export function EmployeeLearningDashboard() {
               {[
                 ['Họ và tên', fullName],
                 ['Ngày sinh', birthDate],
-                ['Phòng ban', deptLine],
-                ['Lớp', classLine],
+                ['Phòng ban', teamLine],
+                ['Vị trí chuyên môn', deptLine],
                 ['Chức vụ', roleLabel],
                 ['Cấp độ học tập', levelLabel],
               ].map(([label, value], idx) => (
