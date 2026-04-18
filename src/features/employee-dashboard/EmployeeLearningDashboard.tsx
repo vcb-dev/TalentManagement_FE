@@ -25,6 +25,7 @@ import { CARD_ENTRANCE_HOVER, STAR_POP, staggerStyle } from '@/lib/cardMotion'
 import { LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/auth.store'
 import type { Role, StaffLevel } from '@/types/auth'
 
@@ -466,8 +467,9 @@ export function EmployeeLearningDashboard() {
                 )}
                 style={{ animationDelay: '120ms' }}
               >
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   role="tab"
                   id="dash-tab-learning"
                   aria-selected={tab === 'learning'}
@@ -475,17 +477,18 @@ export function EmployeeLearningDashboard() {
                   tabIndex={tab === 'learning' ? 0 : -1}
                   onClick={() => setTab('learning')}
                   className={cn(
-                    'inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-all duration-300',
+                    'inline-flex h-auto min-h-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-all duration-300',
                     tab === 'learning'
-                      ? 'scale-[1.02] bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-[var(--shadow-game-float)] ring-2 ring-primary/25 ring-offset-2 ring-offset-background motion-reduce:scale-100 motion-reduce:ring-0 motion-reduce:ring-offset-0'
+                      ? 'scale-[1.02] bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-[var(--shadow-game-float)] ring-2 ring-primary/25 ring-offset-2 ring-offset-background motion-reduce:scale-100 motion-reduce:ring-0 motion-reduce:ring-offset-0 hover:bg-primary hover:text-primary-foreground'
                       : 'text-muted-foreground hover:bg-background/80 hover:text-foreground hover:shadow-sm'
                   )}
                 >
                   <GraduationCap className="h-4 w-4 shrink-0" strokeWidth={2} />
                   Học tập & thi cử
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
                   role="tab"
                   id="dash-tab-kpi"
                   aria-selected={tab === 'kpi'}
@@ -493,15 +496,15 @@ export function EmployeeLearningDashboard() {
                   tabIndex={tab === 'kpi' ? 0 : -1}
                   onClick={() => setTab('kpi')}
                   className={cn(
-                    'inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-all duration-300',
+                    'inline-flex h-auto min-h-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-all duration-300',
                     tab === 'kpi'
-                      ? 'scale-[1.02] bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-[var(--shadow-game-float)] ring-2 ring-primary/25 ring-offset-2 ring-offset-background motion-reduce:scale-100 motion-reduce:ring-0 motion-reduce:ring-offset-0'
+                      ? 'scale-[1.02] bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-[var(--shadow-game-float)] ring-2 ring-primary/25 ring-offset-2 ring-offset-background motion-reduce:scale-100 motion-reduce:ring-0 motion-reduce:ring-offset-0 hover:bg-primary hover:text-primary-foreground'
                       : 'text-muted-foreground hover:bg-background/80 hover:text-foreground hover:shadow-sm'
                   )}
                 >
                   <Target className="h-4 w-4 shrink-0" strokeWidth={2} />
                   KPI · OKR · Báo cáo
-                </button>
+                </Button>
               </div>
             </div>
 

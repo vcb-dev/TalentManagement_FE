@@ -1,24 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
   PAGE_HEADER_SURFACE,
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
-import { AlertTriangle, Filter, Search } from 'lucide-react'
+import { Filter, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { EmployeeTable } from '@/features/hr-admin/components/EmployeeTable'
 import { useEmployeeTable } from '@/features/hr-admin/components/EmployeeTable/useEmployeeTable'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
-import type { Role } from '@/types/auth'
-import type { EmployeeFilters, EmployeeListStatus } from '@/features/hr-admin/types'
+import type { EmployeeFilters } from '@/features/hr-admin/types'
 import { Button } from '@/components/ui/button'
 import { PaginationCardStepper } from '@/components/ui/pagination'
 import { SkeletonEmployeeCardGrid, SkeletonStatTile } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
+import { Form } from '@/components/ui/form'
+import { InputFieldController } from '@/components/ui/form-controllers'
 import { usePermission } from '@/hooks/usePermission'
 import { EmployeeCard } from './EmployeeCard'
 import { EmployeeDetailSheet } from './EmployeeDetailSheet'
@@ -27,17 +28,6 @@ const hrAdminListRoute = getRouteApi('/_protected/hr-admin/')
 
 /** Cố định 15 nhân viên / trang (màn danh sách HR). */
 const HR_EMPLOYEE_PAGE_SIZE = 15
-
-const FILTERS: { key: 'all' | Role | 'reserved'; label: string }[] = [
-  { key: 'all', label: 'Tất cả' },
-  { key: 'MEMBER', label: 'Nhân viên' },
-  { key: 'LEADER', label: 'Leader' },
-  { key: 'MANAGER', label: 'Quản lý' },
-  { key: 'TEACHER', label: 'Người chấm' },
-  { key: 'HR', label: 'HR' },
-  { key: 'BOD', label: 'BOD' },
-  { key: 'reserved', label: 'Bảo lưu' },
-]
 
 export interface HrEmployeeListProps {
   initialFilters?: Partial<EmployeeFilters>
@@ -68,7 +58,8 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   const searchForm = useForm<{ searchDraft: string }>({
     defaultValues: { searchDraft: filters.search ?? '' },
   })
-  const searchDraft = searchForm.watch('searchDraft')
+  const { control } = searchForm
+  const searchDraft = useWatch({ control, name: 'searchDraft' })
   /** Bo qua lan debounce dau (giu page tu URL khi vao truc tiep ?page=2). */
   const skipInitialSearchDebounce = useRef(true)
 
@@ -99,7 +90,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     }, 320)
     return () => window.clearTimeout(t)
     // Chi phu thuoc searchDraft.
-  }, [searchDraft])
+  }, [navigate, searchDraft, setFilters])
 
   const selected = useMemo(
     () => employees.find((e) => e.id === selectedId) ?? null,
@@ -130,12 +121,6 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const activeFilter = useMemo(() => {
-    if (filters.status === 'reserved') return 'reserved' as const
-    if (filters.role) return filters.role
-    return 'all' as const
-  }, [filters.role, filters.status])
-
   const handlePageChange = (nextPage: number) => {
     setSelectedId(null)
     void navigate({
@@ -144,60 +129,12 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     })
   }
 
-  const setRoleFilter = (key: (typeof FILTERS)[number]['key']) => {
-    setSelectedId(null)
-    if (key === 'all') {
-      setFilters((f) => ({ ...f, page: 1, role: undefined, status: undefined }))
-      void navigate({
-        to: '/hr-admin',
-        search: (s) => ({
-          ...s,
-          page: 1,
-          pageSize: HR_EMPLOYEE_PAGE_SIZE,
-          role: undefined,
-          status: undefined,
-        }),
-      })
-      return
-    }
-    if (key === 'reserved') {
-      setFilters((f) => ({
-        ...f,
-        page: 1,
-        status: 'reserved' as EmployeeListStatus,
-        role: undefined,
-      }))
-      void navigate({
-        to: '/hr-admin',
-        search: (s) => ({
-          ...s,
-          page: 1,
-          pageSize: HR_EMPLOYEE_PAGE_SIZE,
-          role: undefined,
-          status: 'reserved' as const,
-        }),
-      })
-      return
-    }
-    setFilters((f) => ({ ...f, page: 1, role: key as Role, status: undefined }))
-    void navigate({
-      to: '/hr-admin',
-      search: (s) => ({
-        ...s,
-        page: 1,
-        pageSize: HR_EMPLOYEE_PAGE_SIZE,
-        role: key as Role,
-        status: undefined,
-      }),
-    })
-  }
-
   const pageTitle = 'Danh sách nhân sự'
   const pageSubtitle =
     'Quản lý và theo dõi hiệu suất cũng như thành tích của nhân sự (HR, BOD, Quản lý dùng chung).'
 
   return (
-    <div className="-m-5 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
+    <div className="-m-5 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-gradient-to-b from-slate-50/95 via-slate-100/70 to-slate-100/90 text-sm text-foreground md:-m-6 lg:-m-8 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div
           className={cn(
@@ -215,26 +152,28 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
                 <p className={PAGE_HEADER_DESCRIPTION}>{pageSubtitle}</p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <button
+                <Button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+                  variant="outline"
+                  className="inline-flex h-auto rounded-lg border-border/80 bg-card/90 px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm backdrop-blur-sm hover:bg-muted"
                   onClick={scrollToFilters}
                 >
                   <Filter className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   Bộ lọc
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
                   className={cn(
-                    'inline-flex items-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors',
+                    'inline-flex h-auto rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors',
                     viewMode === 'table'
                       ? 'border-button bg-button text-button-foreground'
-                      : 'border-border bg-card text-foreground hover:bg-muted'
+                      : 'border-border/80 bg-card/90 text-foreground backdrop-blur-sm hover:bg-muted'
                   )}
                   onClick={() => setViewMode((v) => (v === 'cards' ? 'table' : 'cards'))}
                 >
                   {viewMode === 'cards' ? 'Dạng bảng' : 'Dạng thẻ'}
-                </button>
+                </Button>
                 {canCreate ? (
                   <Button
                     type="button"
@@ -246,13 +185,13 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
                     <Link to="/hr-admin/new">+ Thêm nhân sự</Link>
                   </Button>
                 ) : null}
-                <button
+                <Button
                   type="button"
-                  className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90"
+                  className="h-auto rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90"
                   onClick={() => toast.info('Xuất Excel sẽ được kết nối API sau.')}
                 >
                   Xuất dữ liệu
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -355,64 +294,22 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
           </div>
 
           {/* Bộ lọc + tìm kiếm: mobile xếp dọc, lg chia đôi 50/50 */}
-          <div
-            id="hr-emp-filters"
-            className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr] lg:items-stretch lg:gap-4"
-          >
-            <div className="scrollbar-hide flex min-w-0 w-full overflow-x-auto rounded-xl border border-border bg-card p-1 shadow-sm">
-              <div
-                role="tablist"
-                aria-label="Lọc theo vai trò và trạng thái"
-                className="flex min-w-min gap-0.5"
-              >
-                {FILTERS.map(({ key, label }) => {
-                  const selected = activeFilter === key
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      role="tab"
-                      aria-selected={selected}
-                      id={`hr-emp-filter-${key}`}
-                      className={cn(
-                        'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-xs font-semibold transition-colors md:text-[13px]',
-                        selected
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-muted-foreground hover:bg-muted/70 hover:text-primary'
-                      )}
-                      onClick={() => setRoleFilter(key)}
-                    >
-                      {key === 'reserved' ? (
-                        <AlertTriangle
-                          className={cn(
-                            'size-3.5 shrink-0',
-                            selected
-                              ? 'text-primary-foreground'
-                              : 'text-amber-500 dark:text-amber-400'
-                          )}
-                          strokeWidth={2.25}
-                          aria-hidden
-                        />
-                      ) : null}
-                      {label}
-                    </button>
-                  )
-                })}
+          <div id="hr-emp-filters" className="mb-6">
+            <Form {...searchForm}>
+              <div className="relative flex min-h-[42px] w-full min-w-0 items-center rounded-xl border border-border/80 bg-card/90 px-3 shadow-sm ring-1 ring-border/60 backdrop-blur-sm">
+                <InputFieldController
+                  control={control}
+                  name="searchDraft"
+                  type="search"
+                  placeholder="Tìm kiếm nhân sự..."
+                  aria-label="Tìm kiếm nhân sự"
+                  className="min-w-0 flex-1"
+                  wrapperClassName="min-w-0 flex-1"
+                  startSlot={<Search className="size-4 text-muted-foreground" aria-hidden />}
+                  inputClassName="h-auto min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm shadow-none focus-visible:ring-0"
+                />
               </div>
-            </div>
-            <label className="relative flex min-h-[42px] w-full min-w-0 items-center rounded-xl border border-border bg-card px-3 shadow-sm ring-1 ring-border/60">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <input
-                type="search"
-                placeholder="Tìm kiếm nhân sự..."
-                className="min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
-                aria-label="Tìm kiếm nhân sự"
-                {...searchForm.register('searchDraft')}
-              />
-            </label>
+            </Form>
           </div>
 
           {viewMode === 'table' ? (

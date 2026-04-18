@@ -43,7 +43,8 @@ import type { PatchEmployeeInput } from '@/types/api'
 import { usePermission } from '@/hooks/usePermission'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { InputController, SelectController } from '@/components/ui/form-controllers'
+import { DateController, InputController, SelectController } from '@/components/ui/form-controllers'
+import { SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
 const PROFILE_EDIT_FIELD =
@@ -475,14 +476,15 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                   const Icon = tabIcons[i]!
                   const active = tab === i
                   return (
-                    <button
+                    <Button
                       key={label}
                       type="button"
+                      variant="ghost"
                       onClick={() => setTab(i)}
                       className={cn(
-                        'relative flex items-center gap-2 px-3 py-3.5 text-sm font-semibold transition-colors md:px-4',
+                        'relative h-auto min-h-0 rounded-none px-3 py-3.5 text-sm font-semibold transition-colors md:px-4',
                         active
-                          ? 'text-indigo-700'
+                          ? 'text-indigo-700 hover:bg-transparent hover:text-indigo-700'
                           : 'text-muted-foreground hover:bg-indigo-50/70 hover:text-indigo-700'
                       )}
                     >
@@ -491,7 +493,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                       {active ? (
                         <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-indigo-600 md:left-4 md:right-4" />
                       ) : null}
-                    </button>
+                    </Button>
                   )
                 })}
               </nav>
@@ -1034,9 +1036,9 @@ function EditTab({
             disabled={orgDisabled}
           >
             {roleSelectOptions.map((r) => (
-              <option key={r} value={r}>
+              <SelectItem key={r} value={r}>
                 {ROLE_LABEL_VI[r]}
-              </option>
+              </SelectItem>
             ))}
           </SelectController>
           <SelectController
@@ -1047,9 +1049,9 @@ function EditTab({
             disabled={orgDisabled}
           >
             {departmentOptions.map((o) => (
-              <option key={o.value} value={o.value}>
+              <SelectItem key={o.value} value={o.value}>
                 {o.label}
-              </option>
+              </SelectItem>
             ))}
           </SelectController>
           <SelectController
@@ -1060,9 +1062,9 @@ function EditTab({
             disabled={orgDisabled}
           >
             {teamOptions.map((o) => (
-              <option key={o.value} value={o.value}>
+              <SelectItem key={o.value} value={o.value}>
                 {o.label}
-              </option>
+              </SelectItem>
             ))}
           </SelectController>
           <SelectController
@@ -1072,18 +1074,17 @@ function EditTab({
             className="mb-3"
             disabled={orgDisabled}
           >
-            <option value="">— Không gán —</option>
+            <SelectItem value="__none">— Không gán —</SelectItem>
             {secondaryTeamOptions.map((o) => (
-              <option key={o.value} value={o.value}>
+              <SelectItem key={o.value} value={o.value}>
                 {o.label}
-              </option>
+              </SelectItem>
             ))}
           </SelectController>
-          <InputController
+          <DateController
             control={control}
             name="startDate"
             label="Ngày bắt đầu"
-            type="date"
             disabled={orgDisabled}
           />
           <SelectController
@@ -1093,9 +1094,9 @@ function EditTab({
             disabled={orgDisabled}
           >
             {levelSelectOptions.map((o) => (
-              <option key={o.value} value={o.value}>
+              <SelectItem key={o.value} value={o.value}>
                 {o.label}
-              </option>
+              </SelectItem>
             ))}
           </SelectController>
         </PfCard>
@@ -1148,11 +1149,10 @@ function EditTab({
             placeholder="09xx xxx xxx"
             disabled={orgDisabled}
           />
-          <InputController
+          <DateController
             control={control}
             name="birthDate"
             label="Ngày sinh"
-            type="date"
             disabled={orgDisabled}
           />
           <div className="sm:col-span-2">

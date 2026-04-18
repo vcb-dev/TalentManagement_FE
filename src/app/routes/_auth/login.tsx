@@ -6,6 +6,9 @@ import { Award, Eye, EyeOff, KeyRound, Lock, Mail, Trophy } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Form } from '@/components/ui/form'
+import { InputController } from '@/components/ui/form-controllers'
 import { useAuthStore } from '@/stores/auth.store'
 import { authApi } from '@/features/auth/api'
 import { loginRequestSchema } from '@/features/auth/schemas'
@@ -178,107 +181,98 @@ function LoginPage() {
           ) : null}
 
           {mockApi ? (
-            <form
-              className="space-y-0"
-              onSubmit={form.handleSubmit((v) =>
-                login.mutate(v, {
-                  onSuccess: onAuthSuccess,
-                })
-              )}
-            >
-              <div className="mb-4">
-                <label
-                  htmlFor="email"
-                  className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                >
-                  ĐỊA CHỈ EMAIL
-                </label>
-                <div className="relative">
-                  <Mail
-                    className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  <input
-                    id="email"
+            <Form {...form}>
+              <form
+                className="space-y-0"
+                onSubmit={form.handleSubmit((v) =>
+                  login.mutate(v, {
+                    onSuccess: onAuthSuccess,
+                  })
+                )}
+              >
+                <div className="mb-4">
+                  <InputController
+                    control={form.control}
+                    name="email"
+                    label="Địa chỉ email"
+                    labelClassName="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                     type="email"
                     autoComplete="username"
                     placeholder="name@vcb.com.vn"
-                    className={cn(
-                      'h-12 w-full rounded-lg border border-border bg-background py-3 pl-11 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground',
-                      'focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/25',
-                      form.formState.errors.email && 'border-red-400'
+                    inputClassName={cn(
+                      'h-12 rounded-lg border border-border bg-background py-3 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground',
+                      'focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/25'
                     )}
-                    {...form.register('email')}
+                    startSlot={
+                      <Mail
+                        className="h-[18px] w-[18px] text-muted-foreground"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                    }
                   />
                 </div>
-                {form.formState.errors.email && (
-                  <p className="mt-1 text-xs text-red-600">{form.formState.errors.email.message}</p>
-                )}
-              </div>
 
-              <div className="mb-2">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <label
-                    htmlFor="password"
-                    className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                  >
-                    MẬT KHẨU
-                  </label>
-                  <a
-                    href="#"
-                    className="text-xs font-medium text-primary hover:opacity-90"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    Chính sách bảo mật
-                  </a>
-                </div>
-                <div className="relative">
-                  <Lock
-                    className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  <input
-                    id="password"
+                <div className="mb-2">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Mật khẩu
+                    </span>
+                    <a
+                      href="#"
+                      className="text-xs font-medium text-primary hover:opacity-90"
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      Chính sách bảo mật
+                    </a>
+                  </div>
+                  <InputController
+                    control={form.control}
+                    name="password"
+                    label="Mật khẩu"
+                    labelClassName="sr-only"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     placeholder="••••••••"
-                    className={cn(
-                      'h-12 w-full rounded-lg border border-border bg-background py-3 pl-11 pr-11 text-sm text-foreground outline-none placeholder:text-muted-foreground',
-                      'focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/25',
-                      form.formState.errors.password && 'border-red-400'
+                    inputClassName={cn(
+                      'h-12 rounded-lg border border-border bg-background py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground',
+                      'focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/25'
                     )}
-                    {...form.register('password')}
+                    startSlot={
+                      <Lock
+                        className="h-[18px] w-[18px] text-muted-foreground"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                    }
+                    endSlot={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                        aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                        onClick={() => setShowPassword((s) => !s)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-[18px] w-[18px]" />
+                        ) : (
+                          <Eye className="h-[18px] w-[18px]" />
+                        )}
+                      </Button>
+                    }
                   />
-                  <button
-                    type="button"
-                    className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                    onClick={() => setShowPassword((s) => !s)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-[18px] w-[18px]" />
-                    ) : (
-                      <Eye className="h-[18px] w-[18px]" />
-                    )}
-                  </button>
                 </div>
-                {form.formState.errors.password && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {form.formState.errors.password.message}
-                  </p>
-                )}
-              </div>
 
-              <button
-                type="submit"
-                disabled={login.isPending}
-                className="mt-5 h-12 w-full rounded-lg bg-primary text-base font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-[0.96] disabled:pointer-events-none disabled:opacity-50"
-              >
-                {login.isPending ? 'Đang đăng nhập…' : 'Đăng nhập'}
-              </button>
-            </form>
+                <Button
+                  type="submit"
+                  disabled={login.isPending}
+                  className="mt-5 h-12 w-full rounded-lg text-base shadow-sm transition-opacity hover:opacity-[0.96]"
+                >
+                  {login.isPending ? 'Đang đăng nhập…' : 'Đăng nhập'}
+                </Button>
+              </form>
+            </Form>
           ) : null}
 
           {mockApi ? (
@@ -300,11 +294,12 @@ function LoginPage() {
               >
                 {MOCK_ACCOUNT_LIST.map((acc) => (
                   <li key={acc.email}>
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
                       className={cn(
-                        'w-full rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-left text-xs transition-colors',
-                        'hover:border-primary/35 hover:bg-primary/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25'
+                        'h-auto w-full justify-start rounded-lg border-border bg-muted/50 px-3 py-2.5 text-left text-xs font-normal normal-case tracking-normal',
+                        'hover:border-primary/35 hover:bg-primary/[0.06]'
                       )}
                       onClick={() => {
                         form.setValue('email', acc.email, { shouldValidate: true })
@@ -321,7 +316,7 @@ function LoginPage() {
                         {' — '}
                         {acc.description}
                       </span>
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>

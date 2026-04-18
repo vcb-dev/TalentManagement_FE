@@ -1,4 +1,5 @@
 import { PageHeader } from '@/components/shared/PageHeader'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 function PlaceholderBlock({
   title,
@@ -10,15 +11,19 @@ function PlaceholderBlock({
   bullets: string[]
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-      <ul className="mt-4 list-inside list-disc space-y-1 text-sm text-foreground/90">
-        {bullets.map((b) => (
-          <li key={b}>{b}</li>
-        ))}
-      </ul>
-    </div>
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg">{title}</CardTitle>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </CardHeader>
+      <CardContent>
+        <ul className="list-inside list-disc space-y-1 text-sm text-foreground/90">
+          {bullets.map((b) => (
+            <li key={b}>{b}</li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   )
 }
 

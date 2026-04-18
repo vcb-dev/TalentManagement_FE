@@ -1,6 +1,7 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import type { LucideIcon } from 'lucide-react'
 import { BookOpen, CalendarClock, ClipboardCheck, LayoutList, School, Users } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 type NavDef = {
@@ -46,19 +47,23 @@ export function ManagerHubNav() {
           const Icon = item.icon
           const active = navActive(pathname, item)
           return (
-            <Link
+            <Button
               key={item.to}
-              to={item.to}
+              asChild
+              size="sm"
+              variant={active ? 'default' : 'outline'}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors md:text-sm',
+                'h-auto min-h-0 gap-1.5 px-3 py-1.5 text-xs md:text-sm',
                 active
-                  ? 'bg-primary text-primary-foreground shadow-[var(--shadow-game-float)]'
-                  : 'border border-border/80 bg-card text-muted-foreground hover:border-primary/25 hover:bg-primary/[0.06] hover:text-foreground'
+                  ? 'shadow-[var(--shadow-game-float)]'
+                  : 'border-border/80 bg-card text-muted-foreground hover:border-primary/25 hover:bg-primary/[0.06] hover:text-foreground'
               )}
             >
-              <Icon className="h-3.5 w-3.5 shrink-0 md:h-4 md:w-4" strokeWidth={2} />
-              {item.label}
-            </Link>
+              <Link to={item.to}>
+                <Icon className="h-3.5 w-3.5 shrink-0 md:h-4 md:w-4" strokeWidth={2} />
+                {item.label}
+              </Link>
+            </Button>
           )
         })}
       </div>

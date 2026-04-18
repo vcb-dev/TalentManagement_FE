@@ -11,6 +11,13 @@ import { Button } from '@/components/ui/button'
 import { PaginationPrevNext } from '@/components/ui/pagination'
 import { Card } from '@/components/ui/card'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Table,
   TableBody,
   TableCell,
@@ -33,6 +40,7 @@ import { ManagerScreenLayout } from '@/features/manager/components/ManagerHub/Ma
 import { requirePermissionPrefix } from '@/lib/permissionGuards'
 import { getApiErrorMessage } from '@/lib/axios'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/auth'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -248,9 +256,9 @@ function PermissionsIndexPage() {
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden
             />
-            <input
+            <Input
               type="search"
-              className="min-h-[42px] w-full rounded-xl border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
+              className="min-h-[42px] w-full rounded-xl border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
               placeholder="Tìm theo tên hoặc email…"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -261,23 +269,28 @@ function PermissionsIndexPage() {
             <label htmlFor="permissions-role-filter" className="sr-only">
               Lọc theo vai trò
             </label>
-            <select
-              id="permissions-role-filter"
-              className="h-full min-h-[42px] w-full min-w-[11rem] rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm ring-1 ring-border/60 sm:w-auto"
-              value={roleFilter ?? ''}
-              onChange={(e) => {
-                const v = e.target.value
-                setRoleFilter(v ? (v as Role) : undefined)
-              }}
-              aria-label="Lọc theo vai trò"
+            <Select
+              value={roleFilter ?? '__all'}
+              onValueChange={(value) =>
+                setRoleFilter(value === '__all' ? undefined : (value as Role))
+              }
             >
-              <option value="">Tất cả vai trò</option>
-              {PERMISSIONS_ROLE_FILTER_OPTIONS.map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABEL_VI[r]}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                id="permissions-role-filter"
+                className="h-full min-h-[42px] w-full min-w-[11rem] rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm ring-1 ring-border/60 sm:w-auto"
+                aria-label="Lọc theo vai trò"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Tất cả vai trò</SelectItem>
+                {PERMISSIONS_ROLE_FILTER_OPTIONS.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {ROLE_LABEL_VI[r]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

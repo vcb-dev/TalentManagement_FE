@@ -2,9 +2,13 @@ import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { ArrowRight, Building2, Calendar, Clock, Link2, MapPin, Shield } from 'lucide-react'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { ProgressStar } from '@/components/shared/ProgressStar/ProgressStar'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Form } from '@/components/ui/form'
+import { SelectController } from '@/components/ui/form-controllers'
+import { SelectItem } from '@/components/ui/select'
 import { PaginationCardStepper } from '@/components/ui/pagination'
 import { formatViDate } from '@/lib/date'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
@@ -50,6 +54,11 @@ function formatViTime(iso: string): string {
 
 function cleanExamTitle(title: string): string {
   return title.replace(/\s*\((?:[a-z_]+\s*->\s*[a-z_]+)\)\s*$/i, '').trim()
+}
+
+function outcomeLabel(outcome?: string | null): string {
+  if (!outcome) return '—'
+  return outcome
 }
 
 const STATUS_LABEL: Record<ExamRow['status'], string> = {
@@ -233,8 +242,9 @@ export function ExamResultsSchedule({
                     <span>Theo lịch hệ thống VCB HRM</span>
                   </div>
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => {
                     if (canOpenExam) {
                       onOpenExam(exam.id)
@@ -242,13 +252,13 @@ export function ExamResultsSchedule({
                   }}
                   disabled={!canOpenExam}
                   className={cn(
-                    'flex w-full items-center justify-center gap-2 rounded-lg py-3 text-base font-bold text-white shadow-sm transition-all',
-                    'vcb-cta-exam-gradient hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70'
+                    'flex w-full items-center justify-center gap-2 rounded-lg border-0 py-3 text-base font-bold text-white shadow-sm transition-all',
+                    'vcb-cta-exam-gradient hover:bg-transparent hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70'
                   )}
                 >
                   {actionLabel}
                   <ArrowRight className="h-4 w-4" aria-hidden />
-                </button>
+                </Button>
               </div>
             )
           })}
@@ -267,30 +277,137 @@ export function ExamResultsSchedule({
             </h2>
           </div>
           {membersInClass ? null : (
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="sr-only">Lọc theo năm</span>
-              <Controller
+            <Form {...filterForm}>
+              <SelectController
                 control={filterForm.control}
                 name="yearFilter"
-                render={({ field }) => (
-                  <select
-                    {...field}
-                    className="rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="all">Tất cả</option>
-                    {yearOptions.map((y) => (
-                      <option key={y} value={String(y)}>
-                        Năm {y}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              />
-            </label>
+                label="Lọc theo năm"
+                labelClassName="sr-only"
+                className="inline-flex"
+                triggerClassName="rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm font-medium text-foreground shadow-sm"
+              >
+                <SelectItem value="all">Tất cả</SelectItem>
+                {yearOptions.map((y) => (
+                  <SelectItem key={y} value={String(y)}>
+                    Năm {y}
+                  </SelectItem>
+                ))}
+              </SelectController>
+            </Form>
           )}
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="space-y-3 md:hidden">
+          {membersInClass ? (
+            membersInClass.length === 0 ? (
+              <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                Chưa có thành viên trong lớp.
+              </div>
+            ) : (
+              membersInClass.map((m) => (
+                <article
+                  key={m.userId}
+                  className="rounded-xl border border-border bg-card p-4 shadow-sm"
+                >
+                  <p className="text-sm font-semibold text-foreground">{m.name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{m.email}</p>
+                  <p className="mt-2 text-sm">
+                    <span className="font-medium text-foreground">KQ gần nhất:</span>{' '}
+                    {outcomeLabel(m.latestResult?.outcome)}
+                  </p>
+                </article>
+              ))
+            )
+          ) : mySubmissions ? (
+            mySubmissions.length === 0 ? (
+              <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                Không có kết quả thi nào.
+              </div>
+            ) : (
+              mySubmissions.map((sub) => (
+                <article
+                  key={sub.id}
+                  className="rounded-xl border border-border bg-card p-4 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground">
+                      {sub.title || 'Kỳ thi nội bộ'}
+                    </p>
+                    <span
+                      className={cn(
+                        'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                        sub.status === 'done'
+                          ? 'bg-success-muted text-success'
+                          : 'bg-warning-muted text-warning'
+                      )}
+                    >
+                      {sub.status === 'done' ? 'Đã chấm' : 'Chờ chấm'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formatViDate(sub.createdAt)}
+                  </p>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-foreground">
+                      Điểm: {sub.totalScore != null ? `${sub.totalScore}%` : '—'}
+                    </span>
+                    <div className="flex gap-1" aria-hidden>
+                      {Array.from({ length: 6 }, (_, s) => (
+                        <ProgressStar
+                          key={`${sub.id}-${s}`}
+                          filled={s < Math.round(((sub.totalScore || 0) / 100) * 6)}
+                          variant="primary"
+                          className="h-4.5 w-4.5"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => onOpenExam(sub.id, true)}
+                    className="mt-3 h-auto justify-start p-0 text-sm font-semibold normal-case tracking-normal text-primary underline-offset-4 hover:bg-transparent hover:underline"
+                  >
+                    Xem kết quả
+                  </Button>
+                </article>
+              ))
+            )
+          ) : filteredCompleted.length === 0 ? (
+            <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+              Không có kỳ thi đã hoàn thành trong mục lọc này.
+            </div>
+          ) : (
+            filteredCompleted.map((exam) => (
+              <article
+                key={exam.id}
+                className="rounded-xl border border-border bg-card p-4 shadow-sm"
+              >
+                <p className="text-sm font-semibold text-foreground">
+                  {cleanExamTitle(exam.title)}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formatViDate(exam.scheduledAt)}
+                </p>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="rounded-full bg-success-muted px-2 py-0.5 text-[10px] font-bold text-success">
+                    HOÀN THÀNH
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => onOpenExam(exam.id, false)}
+                    className="h-auto p-0 text-sm font-semibold normal-case tracking-normal text-primary underline-offset-4 hover:bg-transparent hover:underline"
+                  >
+                    Xem kết quả
+                  </Button>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+
+        <div className="hidden overflow-hidden rounded-xl border border-border bg-card shadow-sm md:block">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] border-collapse text-left">
               <thead>
@@ -412,13 +529,14 @@ export function ExamResultsSchedule({
                           </span>
                         </td>
                         <td className="px-6 py-5">
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
                             onClick={() => onOpenExam(sub.id, true)}
-                            className="text-xs font-bold text-primary underline-offset-4 hover:underline"
+                            className="h-auto p-0 text-xs font-bold normal-case tracking-normal text-primary underline-offset-4 hover:bg-transparent hover:underline"
                           >
                             Xem kết quả
-                          </button>
+                          </Button>
                         </td>
                       </tr>
                     ))
@@ -475,13 +593,14 @@ export function ExamResultsSchedule({
                         </span>
                       </td>
                       <td className="px-6 py-5">
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
                           onClick={() => onOpenExam(exam.id, false)}
-                          className="text-xs font-bold text-primary underline-offset-4 hover:underline"
+                          className="h-auto p-0 text-xs font-bold normal-case tracking-normal text-primary underline-offset-4 hover:bg-transparent hover:underline"
                         >
                           Xem kết quả
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   ))

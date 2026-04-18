@@ -2,6 +2,14 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ExamResultsSchedule } from '@/features/exam/components/ExamResultsSchedule'
 import { useExams, useMySubmissions } from '@/features/exam/hooks'
 import { useMyEnrolledClass } from '@/features/learning-path/hooks'
@@ -65,50 +73,54 @@ function ExamIndexPage() {
         description="Theo dõi lộ trình đào tạo, lịch kiểm tra năng lực và kết quả các kỳ thi nội bộ tại VCB."
       />
       <div className="mb-4 flex items-center gap-2">
-        <button
+        <Button
           type="button"
+          variant={viewMode === 'mine' ? 'default' : 'outline'}
+          size="sm"
           className={cn(
-            'rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors',
-            viewMode === 'mine'
-              ? 'border-primary bg-primary text-primary-foreground'
-              : 'border-border bg-card text-foreground hover:bg-muted'
+            'rounded-lg border px-3 py-1.5 text-sm font-semibold',
+            viewMode === 'mine' ? 'border-primary' : 'border-border bg-card hover:bg-muted'
           )}
           onClick={() => setViewMode('mine')}
         >
           Lịch thi của tôi
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant={viewMode === 'managed' ? 'default' : 'outline'}
+          size="sm"
           className={cn(
-            'rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors',
-            viewMode === 'managed'
-              ? 'border-primary bg-primary text-primary-foreground'
-              : 'border-border bg-card text-foreground hover:bg-muted'
+            'rounded-lg border px-3 py-1.5 text-sm font-semibold',
+            viewMode === 'managed' ? 'border-primary' : 'border-border bg-card hover:bg-muted'
           )}
           onClick={() => setViewMode('managed')}
         >
           Lịch thi của lớp phụ trách
-        </button>
+        </Button>
       </div>
       {viewMode === 'managed' ? (
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-muted-foreground">Chọn lớp:</span>
-          <select
-            value={managedClassId}
-            onChange={(e) => setManagedClassId(e.target.value)}
-            className="h-9 min-w-[260px] rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+          <Select
+            value={managedClassId || '__none'}
+            onValueChange={(value) => setManagedClassId(value === '__none' ? '' : value)}
             disabled={managedClasses.length === 0}
           >
-            {managedClasses.length === 0 ? (
-              <option value="">Không có lớp phụ trách</option>
-            ) : (
-              managedClasses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.memberCount} thành viên)
-                </option>
-              ))
-            )}
-          </select>
+            <SelectTrigger className="h-9 min-w-[260px] rounded-lg border border-border bg-background px-3 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {managedClasses.length === 0 ? (
+                <SelectItem value="__none">Không có lớp phụ trách</SelectItem>
+              ) : (
+                managedClasses.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name} ({c.memberCount} thành viên)
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
         </div>
       ) : null}
       {viewMode === 'managed' && isManagedError ? (

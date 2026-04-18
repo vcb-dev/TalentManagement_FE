@@ -10,7 +10,16 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { InputController, TextareaController } from '@/components/ui/form-controllers'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { managerClassApiSchema } from '@/features/manager/schemas'
 import { useManagerClasses } from '@/features/manager/hooks'
@@ -294,7 +303,7 @@ export function ManagerClassExamsScreen() {
                       <td className="px-3 py-4">
                         {hasQuestionBank ? (
                           <span className="text-emerald-600 font-semibold">
-                            {bank.questions.length} câu hỏi
+                            {bank?.questions.length ?? 0} câu hỏi
                           </span>
                         ) : (
                           <span className="text-muted-foreground italic">Chưa có đề thi</span>
@@ -331,14 +340,16 @@ export function ManagerClassExamsScreen() {
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">Lớp: {assignmentClass.name}</p>
               </div>
-              <button
+              <Button
                 type="button"
-                className="rounded p-1 text-muted-foreground hover:bg-muted"
+                variant="ghost"
+                size="icon"
+                className="rounded-md text-muted-foreground"
                 onClick={closeAssignmentModal}
                 aria-label="Đóng"
               >
                 <X className="h-5 w-5" strokeWidth={2} />
-              </button>
+              </Button>
             </div>
 
             <div className="space-y-4">
@@ -352,30 +363,30 @@ export function ManagerClassExamsScreen() {
               />
 
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
+                  variant={assignmentMode === 'upload' ? 'default' : 'outline'}
+                  size="sm"
                   onClick={() => setAssignmentValue('mode', 'upload')}
                   className={cn(
-                    'rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors',
-                    assignmentMode === 'upload'
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border bg-card text-foreground hover:bg-muted'
+                    'rounded-lg border px-3 py-1.5 text-sm font-semibold',
+                    assignmentMode !== 'upload' && 'border-border bg-card hover:bg-muted'
                   )}
                 >
                   Upload file
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant={assignmentMode === 'compose' ? 'default' : 'outline'}
+                  size="sm"
                   onClick={() => setAssignmentValue('mode', 'compose')}
                   className={cn(
-                    'rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors',
-                    assignmentMode === 'compose'
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border bg-card text-foreground hover:bg-muted'
+                    'rounded-lg border px-3 py-1.5 text-sm font-semibold',
+                    assignmentMode !== 'compose' && 'border-border bg-card hover:bg-muted'
                   )}
                 >
                   Tự soạn câu hỏi
-                </button>
+                </Button>
               </div>
 
               {assignmentMode === 'upload' ? (
@@ -384,14 +395,14 @@ export function ManagerClassExamsScreen() {
                     <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                       Upload file câu hỏi
                     </label>
-                    <input
+                    <Input
                       type="file"
                       accept=".txt,.md,.csv,text/plain,text/markdown"
                       onChange={(e) => {
                         const file = e.target.files?.[0]
                         if (file) void onUploadQuestionFile(file)
                       }}
-                      className="block w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-primary hover:file:bg-primary/20"
+                      className="block w-full cursor-pointer rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-primary hover:file:bg-primary/20"
                     />
                     <p className="mt-1 text-xs text-muted-foreground">
                       Hỗ trợ txt/md/csv. Mỗi câu nên bắt đầu bằng số thứ tự (vd: 1. / Câu 1:) để
@@ -426,52 +437,57 @@ export function ManagerClassExamsScreen() {
                     <div key={q.id} className="rounded-xl border border-border bg-background p-3">
                       <div className="mb-2 flex items-center justify-between gap-2">
                         <p className="text-sm font-bold text-foreground">Câu hỏi {qIdx + 1}</p>
-                        <button
+                        <Button
                           type="button"
-                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                          variant="outline"
+                          size="sm"
+                          className="h-auto gap-1 rounded-md px-2 py-1 text-xs font-normal normal-case tracking-normal text-muted-foreground"
                           onClick={() => removeComposeQuestion(q.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                           Xóa
-                        </button>
+                        </Button>
                       </div>
-                      <input
+                      <Input
                         value={q.title}
                         onChange={(e) =>
                           updateComposeQuestion(q.id, (x) => ({ ...x, title: e.target.value }))
                         }
                         placeholder="Câu hỏi chưa có tiêu đề"
-                        className="mb-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        className="mb-2 w-full rounded-lg text-sm focus-visible:border-primary focus-visible:ring-primary/20"
                       />
                       <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto] md:items-center">
-                        <select
+                        <Select
                           value={q.type}
-                          onChange={(e) =>
+                          onValueChange={(value) =>
                             updateComposeQuestion(q.id, (x) => ({
                               ...x,
-                              type: e.target.value as ComposeQuestionType,
+                              type: value as ComposeQuestionType,
                               options:
-                                e.target.value === 'text'
+                                value === 'text'
                                   ? []
                                   : x.options.length > 0
                                     ? x.options
                                     : ['Lựa chọn 1', 'Lựa chọn 2'],
                             }))
                           }
-                          className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                         >
-                          <option value="single">Trắc nghiệm (1 đáp án)</option>
-                          <option value="multiple">Trắc nghiệm (nhiều đáp án)</option>
-                          <option value="text">Tự luận ngắn</option>
-                        </select>
-                        <label className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                          <input
-                            type="checkbox"
+                          <SelectTrigger className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="single">Trắc nghiệm (1 đáp án)</SelectItem>
+                            <SelectItem value="multiple">Trắc nghiệm (nhiều đáp án)</SelectItem>
+                            <SelectItem value="text">Tự luận ngắn</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-muted-foreground">
+                          <Checkbox
                             checked={q.required}
-                            onChange={(e) =>
+                            onCheckedChange={(v) =>
                               updateComposeQuestion(q.id, (x) => ({
                                 ...x,
-                                required: e.target.checked,
+                                required: v === true,
                               }))
                             }
                           />
@@ -493,7 +509,7 @@ export function ManagerClassExamsScreen() {
                                   <CheckSquare className="h-4 w-4" />
                                 )}
                               </span>
-                              <input
+                              <Input
                                 value={opt}
                                 onChange={(e) =>
                                   updateComposeQuestion(q.id, (x) => ({
@@ -503,26 +519,30 @@ export function ManagerClassExamsScreen() {
                                     ),
                                   }))
                                 }
-                                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                className="flex-1 rounded-lg text-sm focus-visible:border-primary focus-visible:ring-primary/20"
                                 placeholder={`Lựa chọn ${oi + 1}`}
                               />
-                              <button
+                              <Button
                                 type="button"
-                                className="rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                                variant="outline"
+                                size="sm"
+                                className="h-auto rounded-md px-2 py-1 text-xs font-normal normal-case tracking-normal text-muted-foreground"
                                 onClick={() => removeOption(q.id, oi)}
                               >
                                 Xóa
-                              </button>
+                              </Button>
                             </div>
                           ))}
-                          <button
+                          <Button
                             type="button"
-                            className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10"
+                            variant="outline"
+                            size="sm"
+                            className="h-auto gap-1 rounded-md px-2.5 py-1.5 text-xs font-semibold normal-case tracking-normal text-primary hover:bg-primary/10"
                             onClick={() => addOption(q.id)}
                           >
                             <ListPlus className="h-3.5 w-3.5" />
                             Thêm lựa chọn
-                          </button>
+                          </Button>
                         </div>
                       ) : null}
                     </div>

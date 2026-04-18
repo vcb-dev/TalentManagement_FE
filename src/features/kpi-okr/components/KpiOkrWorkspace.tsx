@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Controller, useForm } from 'react-hook-form'
-import {
-  ChevronRight,
-  ClipboardList,
-  FileText,
-  Pencil,
-  RefreshCw,
-  Target,
-  Users,
-} from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { Pencil, RefreshCw, Users } from 'lucide-react'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -35,8 +27,16 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
+  DateController,
   InputController,
   SelectController,
   TextareaController,
@@ -79,6 +79,7 @@ export type KpiOkrWorkspaceProps = {
 export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspaceProps) {
   const user = useAuthStore((s) => s.user)
   const isMemberView = variant === 'member'
+  const isManagerReadOnly = user?.role === 'MANAGER'
   const qc = useQueryClient()
   const treeQ = useHrOrgTree()
   const { year: y0, month: m0 } = nowYm()
@@ -92,9 +93,9 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   )
 
   const canEditTeam = useMemo(() => {
-    if (variant === 'leader') return eff.has('kpi.team_edit')
+    if (variant === 'leader') return !isManagerReadOnly && eff.has('kpi.team_edit')
     return false
-  }, [variant, eff])
+  }, [variant, eff, isManagerReadOnly])
 
   const departments = useMemo(() => {
     const allDepartments = treeQ.data?.departments ?? []
@@ -259,53 +260,62 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                 Phòng ban
               </Label>
-              <select
-                className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
-                value={selectedDept?.id ?? ''}
+              <Select
+                value={selectedDept?.id ?? '__none'}
                 disabled={isMemberView}
-                onChange={(e) => {
-                  const d = departments.find((x) => x.id === e.target.value)
+                onValueChange={(value) => {
+                  const d = departments.find((x) => x.id === value)
                   const tid = d?.teams[0]?.id ?? ''
                   setSelectedTeamId(tid)
                 }}
               >
-                <option value="">— Chọn —</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Chọn —</SelectItem>
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Team</Label>
-              <select
-                className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
-                value={selectedTeamId}
+              <Select
+                value={selectedTeamId || '__none'}
                 disabled={isMemberView}
-                onChange={(e) => setSelectedTeamId(e.target.value)}
+                onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
               >
-                <option value="">— Chọn team —</option>
-                {teamsInDept.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— Chọn team —</SelectItem>
+                  {teamsInDept.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tháng</Label>
-              <select
-                className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
-                value={month}
-                onChange={(e) => setMonth(Number(e.target.value))}
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>
-                    Tháng {m}
-                  </option>
-                ))}
-              </select>
+              <Select value={String(month)} onValueChange={(value) => setMonth(Number(value))}>
+                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <SelectItem key={m} value={String(m)}>
+                      Tháng {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Năm</Label>
@@ -369,66 +379,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         </CardContent>
       </Card>
 
-      <Card
-        className={cn(
-          'mb-6 border-violet-200/30 bg-card/95 shadow-md shadow-violet-500/5 backdrop-blur-sm dark:border-violet-900/35',
-          CARD_ENTRANCE
-        )}
-        style={{ animationDelay: '180ms' }}
-      >
-        <CardHeader className="pb-3">
-          <CardTitle className="bg-gradient-to-r from-violet-700 via-primary to-teal-600 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
-            Điều hướng nhanh theo chức năng
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2.5 pt-0">
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="rounded-full border-blue-300/90 bg-blue-50/95 px-4 text-blue-800 shadow-sm transition-[transform,box-shadow,background-color] hover:bg-blue-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98]"
-          >
-            <a href="#planning-section" className="inline-flex items-center gap-1.5">
-              <Target className="h-3.5 w-3.5 motion-safe:animate-[dash-float-slow_5s_ease-in-out_infinite] motion-reduce:animate-none" />
-              Lập KPI/OKR
-            </a>
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="rounded-full border-emerald-300/90 bg-emerald-50/95 px-4 text-emerald-800 shadow-sm transition-[transform,box-shadow,background-color] hover:bg-emerald-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98]"
-          >
-            <a href="#results-section" className="inline-flex items-center gap-1.5">
-              <ClipboardList className="h-3.5 w-3.5 motion-safe:animate-[dash-float-slow_5.5s_ease-in-out_infinite] motion-reduce:animate-none" />
-              Cập nhật kết quả
-            </a>
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="rounded-full border-amber-300/90 bg-amber-50/95 px-4 text-amber-900 shadow-sm transition-[transform,box-shadow,background-color] hover:bg-amber-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98]"
-          >
-            <a href="#summary-section" className="inline-flex items-center gap-1.5">
-              <RefreshCw className="h-3.5 w-3.5 motion-safe:animate-[dash-float-slow_6s_ease-in-out_infinite] motion-reduce:animate-none" />
-              Tổng hợp hiệu suất
-            </a>
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="rounded-full border-fuchsia-300/90 bg-fuchsia-50/95 px-4 text-fuchsia-900 shadow-sm transition-[transform,box-shadow,background-color] hover:bg-fuchsia-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0 motion-safe:active:scale-[0.98]"
-          >
-            <a href="#form-section" className="inline-flex items-center gap-1.5">
-              <FileText className="h-3.5 w-3.5 motion-safe:animate-[dash-float-slow_6.5s_ease-in-out_infinite] motion-reduce:animate-none" />
-              Form câu hỏi
-            </a>
-          </Button>
-        </CardContent>
-      </Card>
-
       {mockHint && (
         <p className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
           Đang bật mock API — dữ liệu KPI từ server không tải được. Tắt mock để dùng đầy đủ.
@@ -469,44 +419,9 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           month={month}
           canEditTeam={canEditTeam}
           currentUserId={user?.id ?? ''}
+          readOnly={isManagerReadOnly}
         />
       </div>
-
-      {!isMemberView ? (
-        <aside
-          className={cn(
-            'mt-8 rounded-xl border border-dashed border-primary/25 bg-gradient-to-br from-muted/40 via-card/80 to-primary/[0.04] p-4 text-xs text-muted-foreground shadow-sm backdrop-blur-sm transition-shadow motion-safe:hover:shadow-md',
-            CARD_ENTRANCE
-          )}
-          style={{ animationDelay: '260ms' }}
-        >
-          <div className="mb-2 bg-gradient-to-r from-primary to-teal-600 bg-clip-text font-semibold text-transparent">
-            Điều hướng nhanh
-          </div>
-          <ul className="space-y-1">
-            {departments.map((d) => (
-              <li key={d.id}>
-                <span className="font-medium text-foreground">{d.name}</span>
-                <ul className="ml-3 mt-1 space-y-0.5">
-                  {d.teams.map((t) => (
-                    <li key={t.id}>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="inline-flex h-auto items-center gap-1 p-0 text-primary"
-                        onClick={() => setSelectedTeamId(t.id)}
-                      >
-                        <ChevronRight className="h-3 w-3" />
-                        {t.name}
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      ) : null}
     </div>
   )
 }
@@ -783,16 +698,13 @@ function LeaderAssignmentRow({
               <Form {...form}>
                 <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
                   {mode === 'planning' ? (
-                    <label className="md:col-span-2 flex flex-col gap-1 text-xs font-medium">
-                      Ngày xét KPI/OKR
-                      <Controller
-                        control={control}
-                        name="kpiSetAt"
-                        render={({ field }) => (
-                          <input type="date" className={cn(XL_INPUT, 'h-9')} {...field} />
-                        )}
-                      />
-                    </label>
+                    <DateController
+                      control={control}
+                      name="kpiSetAt"
+                      label="Ngày xét KPI/OKR"
+                      className="md:col-span-2 space-y-1 text-xs font-medium"
+                      datePickerClassName={cn(XL_INPUT, 'h-9')}
+                    />
                   ) : null}
 
                   {mode === 'planning' ? (
@@ -805,10 +717,10 @@ function LeaderAssignmentRow({
                         rules={{ required: true, min: 0, max: 99 }}
                         className="space-y-1 text-xs font-medium"
                       >
-                        <option value={0}>Không xếp (0)</option>
-                        <option value={1}>Ưu tiên 1</option>
-                        <option value={2}>Ưu tiên 2</option>
-                        <option value={3}>Ưu tiên 3</option>
+                        <SelectItem value="0">Không xếp (0)</SelectItem>
+                        <SelectItem value="1">Ưu tiên 1</SelectItem>
+                        <SelectItem value="2">Ưu tiên 2</SelectItem>
+                        <SelectItem value="3">Ưu tiên 3</SelectItem>
                       </SelectController>
 
                       <InputController
@@ -841,9 +753,9 @@ function LeaderAssignmentRow({
                         label="QL đánh giá"
                         className="space-y-1 text-xs font-medium"
                       >
-                        <option value="">—</option>
-                        <option value="OK">OK</option>
-                        <option value="NOT">NOT</option>
+                        <SelectItem value="__none">—</SelectItem>
+                        <SelectItem value="OK">OK</SelectItem>
+                        <SelectItem value="NOT">NOT</SelectItem>
                       </SelectController>
 
                       <label className="md:col-span-2 flex flex-col gap-1 text-xs font-medium">
@@ -1030,14 +942,15 @@ function UserAssignmentWorkbench({
           {userEntries.map(([uid, rows]) => {
             const active = uid === activeUserId
             return (
-              <button
+              <Button
                 key={uid}
                 type="button"
+                variant="ghost"
                 onClick={() => setSelectedUserId(uid)}
                 className={cn(
-                  'w-full rounded-xl border px-3 py-2.5 text-left transition-colors',
+                  'h-auto w-full justify-start rounded-xl border px-3 py-2.5 text-left font-normal normal-case tracking-normal transition-colors',
                   active
-                    ? 'border-primary/50 bg-primary/10 text-foreground shadow-sm'
+                    ? 'border-primary/50 bg-primary/10 text-foreground shadow-sm hover:bg-primary/10'
                     : 'border-border/80 bg-background hover:bg-muted/60'
                 )}
               >
@@ -1057,7 +970,7 @@ function UserAssignmentWorkbench({
                     </span>
                   ) : null}
                 </div>
-              </button>
+              </Button>
             )
           })}
         </CardContent>
@@ -1368,8 +1281,8 @@ function MiniCreateForm({
               rules={{ required: true }}
               className="space-y-1 text-xs font-medium"
             >
-              <option value="KPI">KPI</option>
-              <option value="OKR">OKR</option>
+              <SelectItem value="KPI">KPI</SelectItem>
+              <SelectItem value="OKR">OKR</SelectItem>
             </SelectController>
             <SelectController
               control={control}
@@ -1380,9 +1293,9 @@ function MiniCreateForm({
               className="space-y-1 text-xs font-medium"
             >
               {members.map((m) => (
-                <option key={m.userId} value={m.userId}>
+                <SelectItem key={m.userId} value={m.userId}>
                   {(m.displayName ?? m.email ?? 'chưa có tên').slice(0, 48)}
-                </option>
+                </SelectItem>
               ))}
             </SelectController>
             <SelectController
@@ -1392,56 +1305,35 @@ function MiniCreateForm({
               required
               rules={{ required: true, min: 0, max: 99 }}
               className="space-y-1 text-xs font-medium"
-              onChange={(e) => {
-                const v = Number(e.target.value)
-                setValue('priority', v, { shouldValidate: true, shouldDirty: true })
-              }}
             >
-              <option value={0}>Không xếp (0)</option>
-              <option value={1}>Ưu tiên 1</option>
-              <option value={2}>Ưu tiên 2</option>
-              <option value={3}>Ưu tiên 3</option>
+              <SelectItem value="0">Không xếp (0)</SelectItem>
+              <SelectItem value="1">Ưu tiên 1</SelectItem>
+              <SelectItem value="2">Ưu tiên 2</SelectItem>
+              <SelectItem value="3">Ưu tiên 3</SelectItem>
             </SelectController>
-            <label className="flex flex-col gap-1 text-xs font-medium">
-              Ngày xét KPI/OKR
-              <Controller
-                control={control}
-                name="kpiSetAt"
-                render={({ field }) => (
-                  <input type="date" className={cn(XL_INPUT, 'h-9')} {...field} />
-                )}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs font-medium">
-              Chỉ số mục tiêu
-              <Controller
-                control={control}
-                name="targetMetric"
-                render={({ field }) => (
-                  <input
-                    type="text"
-                    className={cn(XL_INPUT, 'h-9 tabular-nums')}
-                    placeholder="VD: 60"
-                    {...field}
-                  />
-                )}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs font-medium">
-              Người đánh giá (tùy chọn)
-              <Controller
-                control={control}
-                name="reviewerName"
-                render={({ field }) => (
-                  <input
-                    type="text"
-                    className={cn(XL_INPUT, 'h-9')}
-                    placeholder="Họ tên QL / Leader"
-                    {...field}
-                  />
-                )}
-              />
-            </label>
+            <DateController
+              control={control}
+              name="kpiSetAt"
+              label="Ngày xét KPI/OKR"
+              className="space-y-1 text-xs font-medium"
+              datePickerClassName={cn(XL_INPUT, 'h-9')}
+            />
+            <InputController
+              control={control}
+              name="targetMetric"
+              label="Chỉ số mục tiêu"
+              className="space-y-1 text-xs font-medium"
+              inputClassName={cn(XL_INPUT, 'h-9 tabular-nums')}
+              placeholder="VD: 60"
+            />
+            <InputController
+              control={control}
+              name="reviewerName"
+              label="Người đánh giá (tùy chọn)"
+              className="space-y-1 text-xs font-medium"
+              inputClassName={cn(XL_INPUT, 'h-9')}
+              placeholder="Họ tên QL / Leader"
+            />
             <label className="md:col-span-2 lg:col-span-3 flex flex-col gap-1 text-xs font-medium">
               <TextareaController
                 control={control}
@@ -1671,12 +1563,14 @@ function FormPanel({
   month,
   canEditTeam,
   currentUserId,
+  readOnly = false,
 }: {
   teamId: string
   year: number
   month: number
   canEditTeam: boolean
   currentUserId: string
+  readOnly?: boolean
 }) {
   const q = useQuery({
     queryKey: ['kpi-form', teamId, year, month],
@@ -1691,6 +1585,7 @@ function FormPanel({
   const [answerDraft, setAnswerDraft] = useState<Record<string, string>>({})
   const [busySaveQuestions, setBusySaveQuestions] = useState(false)
   const [busySaveAnswers, setBusySaveAnswers] = useState(false)
+  const isManagerViewOnly = readOnly
 
   useEffect(() => {
     if (!data?.questions?.length) return
@@ -1804,11 +1699,13 @@ function FormPanel({
 
         {!data && (
           <p className="text-sm text-muted-foreground">
-            Chưa có form cho kỳ này (leader cần tạo câu hỏi).
+            {isManagerViewOnly
+              ? 'Chưa có form câu hỏi cho kỳ này.'
+              : 'Chưa có form cho kỳ này (leader cần tạo câu hỏi).'}
           </p>
         )}
 
-        {data?.questions?.length ? (
+        {data?.questions?.length && !isManagerViewOnly ? (
           <div className="space-y-4">
             {data.questions.map((qs) => (
               <label key={qs.id} className="block rounded-lg border border-border/80 p-3">
@@ -1817,11 +1714,11 @@ function FormPanel({
                   className="mt-2 min-h-[72px] w-full rounded border border-input bg-background p-2 text-sm"
                   value={answerDraft[qs.id] ?? ''}
                   onChange={(e) => setAnswerDraft((prev) => ({ ...prev, [qs.id]: e.target.value }))}
-                  disabled={!currentUserId}
+                  disabled={!currentUserId || readOnly}
                 />
               </label>
             ))}
-            {!isMockApiEnabled() && currentUserId && (
+            {!isMockApiEnabled() && currentUserId && !readOnly && (
               <Button
                 type="button"
                 disabled={busySaveAnswers}
@@ -1845,10 +1742,12 @@ function FormPanel({
           </div>
         ) : null}
 
-        {canEditTeam && data?.questions?.length ? (
+        {(canEditTeam || isManagerViewOnly) && data?.questions?.length ? (
           <div className="space-y-3 rounded-xl border border-border/80 p-4">
             <div className="text-sm font-semibold text-foreground">
-              Tổng hợp câu trả lời theo nhân sự
+              {isManagerViewOnly
+                ? 'Danh sách câu hỏi & câu trả lời theo nhân sự'
+                : 'Tổng hợp câu trả lời theo nhân sự'}
             </div>
             {answersByRespondent.length === 0 ? (
               <p className="text-sm text-muted-foreground">Chưa có câu trả lời nào cho kỳ này.</p>

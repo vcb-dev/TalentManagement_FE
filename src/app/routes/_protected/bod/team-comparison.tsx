@@ -1,7 +1,13 @@
+import { lazy, Suspense } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { BodTeamComparisonScreen } from '@/features/bod/components/BodAnalyticsScreens'
 import { requirePermissionPrefix } from '@/lib/permissionGuards'
 import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
+
+const BodTeamComparisonScreen = lazy(() =>
+  import('@/features/bod/components/BodAnalyticsScreens').then((module) => ({
+    default: module.BodTeamComparisonScreen,
+  }))
+)
 
 export const Route = createFileRoute('/_protected/bod/team-comparison')({
   beforeLoad: () => {
@@ -12,5 +18,9 @@ export const Route = createFileRoute('/_protected/bod/team-comparison')({
 })
 
 function BodTeamComparisonPage() {
-  return <BodTeamComparisonScreen />
+  return (
+    <Suspense fallback={null}>
+      <BodTeamComparisonScreen />
+    </Suspense>
+  )
 }

@@ -1,8 +1,7 @@
 import * as React from 'react'
-import { type VariantProps } from 'class-variance-authority'
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, type ButtonProps } from '@/components/ui/button'
 
 /** Label for the previous-page control (Unicode escapes). */
 const LABEL_PREV_PAGE = 'Tr\u01B0\u1EDBc'
@@ -64,53 +63,53 @@ const PaginationItem = React.forwardRef<HTMLLIElement, React.ComponentProps<'li'
 )
 PaginationItem.displayName = 'PaginationItem'
 
-type ButtonSize = NonNullable<VariantProps<typeof buttonVariants>['size']>
+type ButtonSize = NonNullable<ButtonProps['size']>
 
 type PaginationLinkProps = {
   isActive?: boolean
-} & Omit<React.ComponentProps<'button'>, 'size'> & {
+} & Omit<ButtonProps, 'variant' | 'size' | 'type'> & {
     size?: ButtonSize
   }
 
 const PaginationLink = ({ className, isActive, size = 'icon', ...props }: PaginationLinkProps) => (
-  <button
+  <Button
     type="button"
     aria-current={isActive ? 'page' : undefined}
-    className={cn(
-      buttonVariants({
-        variant: isActive ? 'outline' : 'ghost',
-        size,
-      }),
-      className
-    )}
+    variant={isActive ? 'outline' : 'ghost'}
+    size={size}
+    className={className}
     {...props}
   />
 )
 PaginationLink.displayName = 'PaginationLink'
 
-const PaginationPrevious = ({ className, ...props }: React.ComponentProps<'button'>) => (
-  <button
+const PaginationPrevious = ({ className, ...props }: ButtonProps) => (
+  <Button
     type="button"
+    variant="outline"
+    size="sm"
+    className={cn('gap-1', className)}
     aria-label={`Trang ${LABEL_PREV_PAGE}`}
-    className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1', className)}
     {...props}
   >
     <ChevronLeft className="h-4 w-4 shrink-0" />
     <span>{LABEL_PREV_PAGE}</span>
-  </button>
+  </Button>
 )
 PaginationPrevious.displayName = 'PaginationPrevious'
 
-const PaginationNext = ({ className, ...props }: React.ComponentProps<'button'>) => (
-  <button
+const PaginationNext = ({ className, ...props }: ButtonProps) => (
+  <Button
     type="button"
+    variant="outline"
+    size="sm"
+    className={cn('gap-1', className)}
     aria-label="Trang sau"
-    className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1', className)}
     {...props}
   >
     <span>Sau</span>
     <ChevronRight className="h-4 w-4 shrink-0" />
-  </button>
+  </Button>
 )
 PaginationNext.displayName = 'PaginationNext'
 

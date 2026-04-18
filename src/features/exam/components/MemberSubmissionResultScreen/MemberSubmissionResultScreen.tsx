@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { useMySubmissions } from '@/features/exam/hooks'
 
@@ -49,13 +51,14 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
     return (
       <div className="flex min-h-[300px] flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Không tìm thấy bài nộp này.</p>
-        <button
+        <Button
           type="button"
-          className="text-sm text-primary underline"
+          variant="ghost"
+          className="h-auto p-0 text-sm font-normal normal-case tracking-normal text-primary underline hover:bg-transparent"
           onClick={() => void navigate({ to: '/exam' })}
         >
           ← Quay lại danh sách
-        </button>
+        </Button>
       </div>
     )
   }
@@ -83,18 +86,21 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
       {/* Sub header */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-primary/10 bg-card/50 px-6 py-3 shadow-sm backdrop-blur-sm">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-          <button
+          <Button
             type="button"
-            className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-primary"
+            variant="ghost"
+            className="h-auto shrink-0 gap-1 px-0 py-0 text-xs font-semibold normal-case tracking-normal text-muted-foreground hover:bg-transparent hover:text-primary"
             onClick={() => void navigate({ to: '/exam' })}
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Danh sách kỳ thi
-          </button>
+          </Button>
           <div className="hidden h-4 w-px shrink-0 bg-border sm:block" />
           <p className="min-w-0 truncate text-xs text-muted-foreground">
             Kết quả thi:{' '}
-            <span className="font-bold text-foreground">{submission.title || 'Kỳ thi nội bộ'}</span>
+            <span className="font-bold text-foreground">
+              {submission.learningClass?.name ?? submission.fullName ?? 'Kỳ thi nội bộ'}
+            </span>
           </p>
         </div>
       </div>
@@ -148,32 +154,26 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
                               </span>
                             </div>
                             <div className="flex flex-wrap gap-4">
-                              <label className="flex items-center gap-2 text-sm font-medium opacity-80">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded-sm border-border"
+                              <label className="flex cursor-default items-center gap-2 text-sm font-medium opacity-80">
+                                <Checkbox
+                                  className="shrink-0"
                                   checked={questionGrade.criteria.includes('ly_thuyet')}
-                                  readOnly
                                   disabled
                                 />
                                 Đúng lý thuyết (40%)
                               </label>
-                              <label className="flex items-center gap-2 text-sm font-medium opacity-80">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded-sm border-border"
+                              <label className="flex cursor-default items-center gap-2 text-sm font-medium opacity-80">
+                                <Checkbox
+                                  className="shrink-0"
                                   checked={questionGrade.criteria.includes('thuc_te')}
-                                  readOnly
                                   disabled
                                 />
                                 Ví dụ thực tế (50%)
                               </label>
-                              <label className="flex items-center gap-2 text-sm font-medium opacity-80">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded-sm border-border"
+                              <label className="flex cursor-default items-center gap-2 text-sm font-medium opacity-80">
+                                <Checkbox
+                                  className="shrink-0"
                                   checked={questionGrade.criteria.includes('trinh_bay')}
-                                  readOnly
                                   disabled
                                 />
                                 Trình bày (10%)

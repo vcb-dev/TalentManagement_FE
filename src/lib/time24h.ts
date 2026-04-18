@@ -57,6 +57,6 @@ export function splitTimeToParts(hhmm: string): [string, string] {
   const n = normalizeTimeFromApi(hhmm)
   const p = parseTime24h(n)
   if (!p) return ['00', '00']
-  const [h, m] = p.split(':')
-  return [h, m]
+  const parts = p.split(':')
+  return [parts[0] ?? '00', parts[1] ?? '00']
 }

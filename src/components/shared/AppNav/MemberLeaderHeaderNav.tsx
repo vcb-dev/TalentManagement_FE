@@ -4,24 +4,85 @@ import {
   mergeCompactHeaderNavItems,
   type AppNavItem,
 } from '@/components/shared/AppNav/navItems'
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from '@/components/ui/navigation-menu'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
+
+type HeaderNavGroup = {
+  id: string
+  label: string
+  items: AppNavItem[]
+}
+
+function routeGroup(item: AppNavItem): string {
+  if (item.to.startsWith('/manager')) return 'manager'
+  if (item.to.startsWith('/hr-admin') || item.to.startsWith('/permissions')) return 'hr'
+  if (item.to.startsWith('/teacher') || item.to.startsWith('/exam/grader')) return 'teacher'
+  if (item.to.startsWith('/bod')) return 'bod'
+  if (
+    item.to.startsWith('/leader/kpi-okr') ||
+    item.to.startsWith('/kpi-okr') ||
+    item.to.startsWith('/monthly-report')
+  ) {
+    return 'kpi'
+  }
+  if (
+    item.to.startsWith('/learning-path') ||
+    item.to.startsWith('/learning-classes') ||
+    item.to.startsWith('/exam')
+  ) {
+    return 'learning'
+  }
+  if (item.to.startsWith('/dashboard')) return 'dashboard'
+  return 'other'
+}
+
+function buildHeaderGroups(items: AppNavItem[]): HeaderNavGroup[] {
+  const labels: Record<string, string> = {
+    dashboard: 'Tổng quan',
+    learning: 'Học tập',
+    kpi: 'KPI / Báo cáo',
+    manager: 'Quản lý lớp',
+    hr: 'Nhân sự',
+    teacher: 'Giảng viên',
+    bod: 'BOD',
+    other: 'Khác',
+  }
+  const order = ['dashboard', 'learning', 'kpi', 'manager', 'hr', 'teacher', 'bod', 'other']
+
+  const bucket = new Map<string, AppNavItem[]>()
+  for (const item of items) {
+    const key = routeGroup(item)
+    const list = bucket.get(key) ?? []
+    list.push(item)
+    bucket.set(key, list)
+  }
+
+  return order
+    .map((id) => ({ id, label: labels[id] ?? id, items: bucket.get(id) ?? [] }))
+    .filter((group) => group.items.length > 0)
+}
 
 function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) {
   const Icon = item.icon
   const className = cn(
-    'inline-flex h-10 flex-none shrink-0 items-center gap-2 whitespace-nowrap rounded-none border-b-2 border-transparent px-2 text-sm font-medium tracking-tight sm:gap-2.5 sm:px-3 sm:text-[0.9375rem]',
-    active
-      ? 'border-primary-600 font-semibold text-primary-600'
-      : 'text-muted-foreground hover:text-primary-600'
+    'flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-sm text-[#24292f] transition-colors hover:bg-slate-50',
+    active && 'bg-slate-50 font-medium'
   )
 
   const inner = (
     <>
       <Icon
         className={cn(
-          'h-4 w-4 shrink-0 sm:h-[1.125rem] sm:w-[1.125rem]',
-          active ? 'text-primary-600' : 'text-muted-foreground'
+          'h-4 w-4 shrink-0 sm:h-[1.125rem] sm:w-[1.125rem] text-[#57606a]',
+          active && 'text-[#24292f]'
         )}
         strokeWidth={2.25}
       />
@@ -49,19 +110,48 @@ export function MemberLeaderHeaderNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { canId } = usePermission()
   const items = mergeCompactHeaderNavItems(canId)
+  const groups = buildHeaderGroups(items)
 
   return (
-    <nav
-      className="inline-flex w-max shrink-0 flex-nowrap items-center gap-0 sm:gap-1"
+    <NavigationMenu
+      viewport={false}
+      className="rounded-none border-0 bg-transparent px-0 py-0 shadow-none"
       aria-label="Điều hướng chính"
     >
-      {items.map((item) => (
-        <HeaderNavLink
-          key={item.to + item.label}
-          item={item}
-          active={isNavItemActive(pathname, item)}
-        />
-      ))}
-    </nav>
+      <NavigationMenuList>
+        {groups.map((group) => {
+          const active = group.items.some((item) => isNavItemActive(pathname, item))
+          return (
+            <NavigationMenuItem key={group.id}>
+              <NavigationMenuTrigger
+                onPointerDown={(event) => {
+                  event.preventDefault()
+                }}
+                onClick={(event) => {
+                  event.preventDefault()
+                }}
+                className={cn(
+                  'border-transparent bg-transparent text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white focus:text-white data-[state=open]:border-white/30 data-[state=open]:bg-white/15 data-[state=open]:text-white',
+                  active && 'border-white/30 bg-white/15 text-white'
+                )}
+              >
+                {group.label}
+              </NavigationMenuTrigger>
+              <NavigationMenuContent className="z-50 min-w-[16rem] rounded-md border border-[#d0d7de] bg-white p-1.5 shadow-[0_8px_24px_rgba(140,149,159,0.2)]">
+                <ul className="grid gap-1">
+                  {group.items.map((item) => (
+                    <li key={item.to + item.label}>
+                      <NavigationMenuLink asChild>
+                        <HeaderNavLink item={item} active={isNavItemActive(pathname, item)} />
+                      </NavigationMenuLink>
+                    </li>
+                  ))}
+                </ul>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+          )
+        })}
+      </NavigationMenuList>
+    </NavigationMenu>
   )
 }

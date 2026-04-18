@@ -168,7 +168,7 @@ export function ApprovalQueue({ page, isLoading, onApprove, onReject }: Approval
                 <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                   <Link
                     to="/hr-admin"
-                    search={{ page: 1 }}
+                    search={{ page: 1, pageSize: 15 }}
                     className="rounded-xl border border-primary/20 px-4 py-2 text-xs font-semibold text-primary transition hover:bg-card"
                   >
                     <span className="inline-flex items-center gap-1.5">
@@ -176,16 +176,17 @@ export function ApprovalQueue({ page, isLoading, onApprove, onReject }: Approval
                       Xem lịch sử
                     </span>
                   </Link>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     onClick={() => window.location.reload()}
-                    className="rounded-xl px-4 py-2 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+                    className="rounded-xl px-4 py-2 text-xs font-semibold normal-case tracking-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
                   >
                     <span className="inline-flex items-center gap-1.5">
                       <RefreshCw className="h-3.5 w-3.5" strokeWidth={2} />
                       Tải lại trang
                     </span>
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -233,31 +234,34 @@ export function ApprovalQueue({ page, isLoading, onApprove, onReject }: Approval
                     </div>
                     <div className="flex shrink-0 flex-col gap-1 self-center">
                       {p.state === 'actionable' && onApprove && (
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
                           onClick={() => onApprove(p.id)}
-                          className="whitespace-nowrap rounded-[9px] border border-[#67E8F9] bg-[#CFFAFE] px-3 py-1.5 text-xs font-medium text-[#0E7490] transition-colors hover:bg-[#B2E8E2]"
+                          className="whitespace-nowrap rounded-[9px] border-[#67E8F9] bg-[#CFFAFE] px-3 py-1.5 text-xs font-medium text-[#0E7490] hover:bg-[#B2E8E2]"
                         >
                           ✓ Duyệt thăng
-                        </button>
+                        </Button>
                       )}
                       {p.state === 'actionable' && onReject && (
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
                           onClick={() => onReject(p.id)}
-                          className="whitespace-nowrap rounded-[9px] border border-[#FCA5A5] bg-[#FEE2E2] px-3 py-1.5 text-xs font-medium text-[#991B1B] transition-colors hover:bg-[#FECACA]"
+                          className="whitespace-nowrap rounded-[9px] border-[#FCA5A5] bg-[#FEE2E2] px-3 py-1.5 text-xs font-medium text-[#991B1B] hover:bg-[#FECACA]"
                         >
                           ✗ Từ chối
-                        </button>
+                        </Button>
                       )}
                       {p.state === 'waiting' && (
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
                           disabled
-                          className="cursor-not-allowed whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground opacity-50"
+                          className="cursor-not-allowed whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground opacity-50"
                         >
                           {p.stateLabel ?? 'Chờ chấm xong'}
-                        </button>
+                        </Button>
                       )}
                       {p.state === 'done' && (
                         <span className="text-xs font-medium text-muted-foreground">Đã xử lý</span>
@@ -297,20 +301,22 @@ export function ApprovalQueue({ page, isLoading, onApprove, onReject }: Approval
                         </span>
                       </div>
                       <div className="flex shrink-0 gap-1">
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
                           onClick={() => onGraderConfirm(row.id)}
-                          className="rounded-[9px] border border-[#67E8F9] bg-[#CFFAFE] px-2.5 py-1 text-xs font-medium text-[#0E7490] hover:bg-[#B2E8E2]"
+                          className="rounded-[9px] border-[#67E8F9] bg-[#CFFAFE] px-2.5 py-1 text-xs font-medium text-[#0E7490] hover:bg-[#B2E8E2]"
                         >
                           Xác nhận
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
+                          variant="outline"
                           onClick={() => onGraderRedo(row.id)}
-                          className="rounded-[9px] border border-[#FCA5A5] bg-[#FEE2E2] px-2.5 py-1 text-xs font-medium text-[#991B1B] hover:bg-[#FECACA]"
+                          className="rounded-[9px] border-[#FCA5A5] bg-[#FEE2E2] px-2.5 py-1 text-xs font-medium text-[#991B1B] hover:bg-[#FECACA]"
                         >
                           Chấm lại
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))}

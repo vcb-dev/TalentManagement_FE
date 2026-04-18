@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
   ChevronDown,
@@ -19,9 +19,13 @@ import {
   useSubmitEvidence,
 } from '@/features/learning-path/hooks'
 import { useChecklistItem } from '@/features/learning-path/components/ChecklistItem/useChecklistItem'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Skeleton, SkeletonApprovalCardRow } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
+import { Form } from '@/components/ui/form'
+import { TextareaController } from '@/components/ui/form-controllers'
 
 const LEVEL_VI: Record<string, string> = {
   tap_su: 'Tập sự',
@@ -242,9 +246,10 @@ export function ChecklistStarScreen({
             }}
           />
           <div className="relative flex min-w-0 flex-wrap items-center gap-2">
-            <button
+            <Button
               type="button"
-              className="whitespace-nowrap rounded-[10px] border border-primary-600/20 bg-white px-3.5 py-2 text-sm font-semibold text-primary-600 shadow-sm transition-colors hover:bg-primary-50 md:text-base"
+              variant="outline"
+              className="whitespace-nowrap rounded-[10px] border-primary-600/20 bg-white px-3.5 py-2 text-sm font-semibold text-primary-600 shadow-sm hover:bg-primary-50 md:text-base"
               onClick={() =>
                 void navigate({
                   to: '/learning-path',
@@ -261,7 +266,7 @@ export function ChecklistStarScreen({
               }
             >
               ← Học tập
-            </button>
+            </Button>
           </div>
           <span className="relative rounded-full border border-primary-600/15 bg-primary-50 px-3 py-1 text-sm font-semibold text-primary-700">
             Đang học
@@ -412,62 +417,55 @@ export function ChecklistStarScreen({
                         />
                         Nộp bằng chứng
                       </h3>
-                      <div className="space-y-6">
-                        <button
-                          type="button"
-                          className="group w-full cursor-pointer rounded-lg border-2 border-dashed border-primary-200 bg-primary-50/50 p-8 text-center transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
-                          onClick={onPickFile}
-                          disabled={!currentItem || submit.isPending}
-                        >
-                          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110">
-                            <CloudUpload
-                              className="h-6 w-6 text-primary-600"
-                              strokeWidth={2}
-                              aria-hidden
-                            />
-                          </div>
-                          <p className="text-sm font-bold text-primary-700">Tải tệp lên</p>
-                          <p className="mt-1 text-[13px] text-primary-600/80">
-                            Hoặc nhấn để chọn từ máy tính (Tối đa 25MB)
-                          </p>
-                          <input
+                      <Form {...evidenceForm}>
+                        <div className="space-y-6">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="group h-auto w-full cursor-pointer rounded-lg border-2 border-dashed border-primary-200 bg-primary-50/50 p-8 text-center font-normal normal-case tracking-normal transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            onClick={onPickFile}
+                            disabled={!currentItem || submit.isPending}
+                          >
+                            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110">
+                              <CloudUpload
+                                className="h-6 w-6 text-primary-600"
+                                strokeWidth={2}
+                                aria-hidden
+                              />
+                            </div>
+                            <p className="text-sm font-bold text-primary-700">Tải tệp lên</p>
+                            <p className="mt-1 text-[13px] text-primary-600/80">
+                              Hoặc nhấn để chọn từ máy tính (Tối đa 25MB)
+                            </p>
+                          </Button>
+                          <Input
                             ref={fileRef}
                             type="file"
                             className="hidden"
                             accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4"
                             onChange={onFileChange}
                           />
-                        </button>
-                        <div>
-                          <label
-                            className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-gray-500"
-                            htmlFor="evidence-note"
-                          >
-                            Mô tả
-                          </label>
-                          <Controller
+                          <TextareaController
                             control={evidenceForm.control}
                             name="note"
-                            render={({ field }) => (
-                              <textarea
-                                id="evidence-note"
-                                className="w-full resize-y rounded-lg border-0 bg-primary-50/40 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600"
-                                placeholder="Mô tả ngắn gọn về tài liệu bạn nộp…"
-                                rows={4}
-                                {...field}
-                              />
-                            )}
+                            label="Mô tả"
+                            labelClassName="mb-2 block text-[11px] font-bold uppercase tracking-widest text-gray-500"
+                            id="evidence-note"
+                            rows={4}
+                            placeholder="Mô tả ngắn gọn về tài liệu bạn nộp…"
+                            textareaClassName="w-full resize-y rounded-lg border-0 bg-primary-50/40 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600"
                           />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="w-full rounded-lg border-0 bg-gradient-to-br from-primary-600 to-primary-700 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all hover:bg-transparent hover:shadow-primary-600/35 active:scale-[0.98] disabled:opacity-50"
+                            disabled={!currentItem || submit.isPending}
+                            onClick={onPickFile}
+                          >
+                            {submit.isPending ? 'Đang gửi…' : 'Nộp bài'}
+                          </Button>
                         </div>
-                        <button
-                          type="button"
-                          className="w-full rounded-lg bg-gradient-to-br from-primary-600 to-primary-700 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all hover:shadow-primary-600/35 active:scale-[0.98] disabled:opacity-50"
-                          disabled={!currentItem || submit.isPending}
-                          onClick={onPickFile}
-                        >
-                          {submit.isPending ? 'Đang gửi…' : 'Nộp bài'}
-                        </button>
-                      </div>
+                      </Form>
                     </div>
                   ) : null}
 
@@ -687,9 +685,10 @@ function ChecklistTaskCard({
   if (kind === 'locked') {
     return (
       <div className="rounded-xl bg-gray-50/80 p-5 opacity-90 ring-1 ring-gray-100/80 transition-opacity hover:opacity-100">
-        <button
+        <Button
           type="button"
-          className="flex w-full items-start gap-4 text-left"
+          variant="ghost"
+          className="h-auto w-full justify-start gap-4 p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
           onClick={onToggle}
           aria-expanded={expanded}
           aria-controls={`objective-${id}`}
@@ -702,7 +701,7 @@ function ChecklistTaskCard({
             ) : null}
           </div>
           <Lock className="mt-0.5 h-5 w-5 shrink-0 text-gray-300" strokeWidth={2} aria-hidden />
-        </button>
+        </Button>
         {expanded ? (
           <div
             id={`objective-${id}`}
@@ -719,9 +718,10 @@ function ChecklistTaskCard({
     return (
       <div className="rounded-xl border-l-4 border-success bg-success-muted/40 p-5 shadow-sm ring-1 ring-gray-100 transition-shadow hover:shadow-md">
         <div className="flex flex-col gap-3">
-          <button
+          <Button
             type="button"
-            className="flex min-w-0 flex-1 gap-4 text-left"
+            variant="ghost"
+            className="h-auto min-w-0 flex-1 justify-start gap-4 p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
             onClick={onToggle}
             aria-expanded={expanded}
             aria-controls={`objective-${id}`}
@@ -744,7 +744,7 @@ function ChecklistTaskCard({
                 <p className="mt-1 text-sm leading-relaxed text-gray-600">{subtitle}</p>
               ) : null}
             </div>
-          </button>
+          </Button>
           {expanded ? (
             <div
               id={`objective-${id}`}
@@ -754,13 +754,14 @@ function ChecklistTaskCard({
             </div>
           ) : null}
           {primaryAction ? (
-            <button
+            <Button
               type="button"
-              className="self-start rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-800 shadow-sm transition-all hover:bg-gray-50 active:scale-95"
+              variant="outline"
+              className="self-start rounded-lg border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-800 shadow-sm hover:bg-gray-50 active:scale-95"
               onClick={primaryAction.onClick}
             >
               {primaryAction.label}
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>
@@ -769,9 +770,10 @@ function ChecklistTaskCard({
 
   return (
     <div className="group relative rounded-xl border-l-4 border-primary-600 bg-white p-5 shadow-sm ring-1 ring-gray-100 transition-all duration-300 hover:shadow-md">
-      <button
+      <Button
         type="button"
-        className="flex w-full items-start gap-4 text-left"
+        variant="ghost"
+        className="h-auto w-full justify-start gap-4 p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
         onClick={onToggle}
         aria-expanded={expanded}
         aria-controls={`objective-${id}`}
@@ -802,7 +804,7 @@ function ChecklistTaskCard({
             <p className="mt-1 text-sm leading-relaxed text-gray-500">{subtitle}</p>
           ) : null}
         </div>
-      </button>
+      </Button>
       {expanded ? (
         <div
           id={`objective-${id}`}
@@ -813,13 +815,13 @@ function ChecklistTaskCard({
       ) : null}
       {primaryAction ? (
         <div className="mt-4 flex justify-end">
-          <button
+          <Button
             type="button"
-            className="rounded-lg bg-primary-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-primary-700 active:scale-95"
+            className="rounded-lg border-0 bg-primary-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-primary-700 active:scale-95"
             onClick={primaryAction.onClick}
           >
             {primaryAction.label}
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

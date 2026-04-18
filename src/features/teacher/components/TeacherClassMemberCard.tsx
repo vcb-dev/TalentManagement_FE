@@ -1,5 +1,7 @@
 import { Mail } from 'lucide-react'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
+import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
 import { CARD_ENTRANCE, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import type { ClassMemberRow } from './teacherClassMemberTypes'
@@ -20,7 +22,7 @@ export function TeacherClassMemberCard({
   const hasResult = member.examResult != null && member.examResult.length > 0
 
   return (
-    <div
+    <Card
       role="button"
       tabIndex={0}
       onClick={onSelect}
@@ -31,7 +33,7 @@ export function TeacherClassMemberCard({
         }
       }}
       className={cn(
-        'group relative flex w-full cursor-pointer flex-col rounded-2xl border bg-card p-5 text-left shadow-sm',
+        'group relative flex w-full cursor-pointer flex-col rounded-2xl p-5 text-left shadow-sm',
         cardIndex !== undefined && CARD_ENTRANCE,
         selected ? 'border-2 border-primary shadow-md ring-1 ring-primary/15' : 'border-border'
       )}
@@ -52,16 +54,17 @@ export function TeacherClassMemberCard({
             aria-hidden
           />
         </div>
-        <span
+        <Badge
           className={cn(
-            'max-w-[9rem] truncate rounded-md px-2 py-0.5 text-center text-[10px] font-bold sm:text-[11px]',
+            'max-w-[9rem] truncate px-2 py-0.5 text-center text-[10px] font-bold sm:text-[11px]',
             hasResult
               ? 'bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200'
               : 'bg-muted text-muted-foreground'
           )}
+          variant="muted"
         >
           {hasResult ? member.examResult : 'Chưa có KQ'}
-        </span>
+        </Badge>
       </div>
 
       <div className="mb-4 min-w-0">
@@ -71,6 +74,6 @@ export function TeacherClassMemberCard({
           <span className="truncate">{member.email}</span>
         </p>
       </div>
-    </div>
+    </Card>
   )
 }

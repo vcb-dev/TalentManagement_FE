@@ -16,6 +16,9 @@
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
+  /* shadcn: dropdown / popover — bắt buộc để bg-popover hoạt động */
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
   --color-secondary: hsl(var(--secondary));
@@ -104,6 +107,8 @@ html {
   --app-canvas: 210 40% 98%;
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
   /* Primary violet */
   --primary: 239 84% 59%;
   --primary-foreground: 0 0% 100%;
@@ -143,6 +148,8 @@ html {
   --app-canvas: 222 38% 4%;
   --card: 222 35% 8%;
   --card-foreground: 210 25% 96%;
+  --popover: 222 35% 10%;
+  --popover-foreground: 210 25% 96%;
   --primary: 210 90% 52%;
   --primary-foreground: 0 0% 100%;
   --secondary: 222 28% 14%;

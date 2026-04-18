@@ -15,7 +15,7 @@ function NewEmployeePage() {
   const navigate = useNavigate()
   return (
     <EmployeeFormContainer
-      onSuccess={() => void navigate({ to: '/hr-admin', search: { page: 1 } })}
+      onSuccess={() => void navigate({ to: '/hr-admin', search: { page: 1, pageSize: 15 } })}
     />
   )
 }

@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MemberLeaderHeaderNav } from '@/components/shared/AppNav/MemberLeaderHeaderNav'
+import { MobileHeaderNav } from '@/components/shared/AppNav/MobileHeaderNav'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Sidebar } from '@/components/shared/Sidebar'
 import { defaultEntryPathFromSession } from '@/lib/routeGuards'
@@ -41,12 +42,12 @@ export function AppShell({ children, title }: AppShellProps) {
     user?.role === 'TEACHER'
 
   const toolbar = (
-    <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+    <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        className="shrink-0"
+        className="shrink-0 text-white/85 hover:bg-white/12 hover:text-white"
         aria-label="Thông báo"
         onClick={() => toast.info('Chưa có thông báo mới (demo)')}
       >
@@ -55,11 +56,12 @@ export function AppShell({ children, title }: AppShellProps) {
 
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             title="Nhấn để mở hồ sơ cá nhân"
             className={cn(
-              'group ml-0.5 flex shrink-0 items-center gap-2 rounded-full border border-primary-600/15 bg-primary-50 py-1 pl-1 pr-2 text-left shadow-sm outline-none transition-[box-shadow,background-color] hover:bg-primary-100/80 focus-visible:ring-2 focus-visible:ring-primary-600/30 sm:pr-2.5 lg:pr-3'
+              'group ml-0.5 h-auto min-h-0 shrink-0 gap-2 rounded-full border border-cyan-300/35 bg-white/10 py-1 pl-1 pr-2 text-left font-normal normal-case tracking-normal text-white shadow-[0_0_14px_rgba(34,211,238,0.18)] outline-none transition-[box-shadow,background-color] hover:bg-white/15 hover:shadow-[0_0_18px_rgba(34,211,238,0.28)] focus-visible:ring-2 focus-visible:ring-cyan-300/45 sm:pr-2.5 lg:pr-3'
             )}
             aria-label="Mở menu hồ sơ cá nhân"
             aria-haspopup="menu"
@@ -67,17 +69,17 @@ export function AppShell({ children, title }: AppShellProps) {
             <EmployeeAvatar
               name={displayName}
               showOnlineDot
-              className="h-9 w-9 border-2 border-white bg-gradient-to-br from-primary-600 to-primary-500 text-[12px] font-bold text-white sm:h-10 sm:w-10"
+              className="h-8 w-8 border-2 border-cyan-200/50 bg-gradient-to-br from-[#7c3aed] via-[#5b63f3] to-[#22d3ee] text-[11px] font-bold text-white sm:h-9 sm:w-9"
             />
-            <span className="hidden max-w-[11rem] truncate text-sm font-semibold text-foreground xl:inline">
+            <span className="hidden max-w-[11rem] truncate text-sm font-semibold text-white xl:inline">
               {displayName}
             </span>
             <ChevronDown
-              className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
+              className="h-4 w-4 shrink-0 text-cyan-100/80 transition-transform duration-200 group-data-[state=open]:rotate-180"
               strokeWidth={2}
               aria-hidden
             />
-          </button>
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" sideOffset={8} className="w-[min(calc(100vw-2rem),17rem)]">
           <DropdownMenuLabel className="font-normal">
@@ -123,31 +125,48 @@ export function AppShell({ children, title }: AppShellProps) {
 
   return (
     <div className="flex h-screen min-h-0 overflow-hidden bg-app-canvas">
-      {!compactNavNoSidebar ? <Sidebar /> : null}
+      {!compactNavNoSidebar ? (
+        <div className="hidden md:block">
+          <Sidebar />
+        </div>
+      ) : null}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 shrink-0 border-b border-border bg-card/95 shadow-[var(--shadow-card)] backdrop-blur-sm">
-          {compactNavNoSidebar && user ? (
-            <div className="grid w-full min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:gap-4 lg:px-8">
+        <header className="sticky top-0 z-30 shrink-0 border-b border-primary-300/40 bg-gradient-to-r from-primary-700 via-primary-600 to-accent shadow-[0_8px_24px_-14px_rgba(79,70,229,0.45)] backdrop-blur-sm dark:border-primary/30 dark:from-primary/60 dark:via-primary/45 dark:to-primary/60">
+          <div className="flex min-h-12 items-center justify-between gap-2 px-3 py-1.5 md:hidden">
+            <div className="flex items-center gap-1.5">
+              <MobileHeaderNav />
               <Link
                 to={brandHomeTo}
                 search={brandHomeSearch}
-                className="flex h-10 shrink-0 items-center text-lg font-bold leading-none tracking-tight text-primary-600 sm:text-[18px]"
+                className="flex h-9 shrink-0 items-center text-base font-extrabold leading-none tracking-tight text-white drop-shadow-[0_1px_2px_rgba(15,23,42,0.45)]"
               >
                 VCB HRM
               </Link>
-              <div className="relative min-h-10 min-w-0 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <div className="inline-block min-w-max">
+            </div>
+            <div className="flex shrink-0 items-center">{toolbar}</div>
+          </div>
+          {compactNavNoSidebar && user ? (
+            <div className="hidden w-full min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 py-1.5 sm:gap-2.5 sm:px-5 md:grid lg:gap-3 lg:px-6">
+              <Link
+                to={brandHomeTo}
+                search={brandHomeSearch}
+                className="flex h-9 shrink-0 items-center text-base font-extrabold leading-none tracking-tight text-white drop-shadow-[0_1px_2px_rgba(15,23,42,0.45)] sm:text-[17px]"
+              >
+                VCB HRM
+              </Link>
+              <div className="relative min-h-9 min-w-0 overflow-visible">
+                <div className="inline-flex max-w-full">
                   <MemberLeaderHeaderNav />
                 </div>
               </div>
-              <div className="flex shrink-0 items-center justify-self-end pl-2 sm:pl-3 md:pl-4">
+              <div className="flex shrink-0 items-center justify-self-end pl-1.5 sm:pl-2.5 md:pl-3">
                 {toolbar}
               </div>
             </div>
           ) : (
-            <div className="mx-auto flex w-full max-w-[1400px] min-h-14 flex-wrap items-center gap-2 px-5 py-2 sm:gap-3 md:px-6">
+            <div className="mx-auto hidden w-full max-w-[1400px] min-h-14 flex-wrap items-center gap-2 px-5 py-2 sm:gap-3 md:flex md:px-6">
               {title ? (
-                <span className="min-w-0 flex-1 truncate text-lg font-bold tracking-tight text-primary-600 sm:text-[18px]">
+                <span className="min-w-0 flex-1 truncate text-lg font-extrabold tracking-tight text-white drop-shadow-[0_1px_2px_rgba(15,23,42,0.45)] sm:text-[18px]">
                   {title}
                 </span>
               ) : (

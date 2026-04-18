@@ -1,7 +1,7 @@
 import { useDeferredValue, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Filter, Search } from 'lucide-react'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
   PAGE_HEADER_DESCRIPTION,
@@ -12,6 +12,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
 import { cn } from '@/lib/utils'
+import { Form } from '@/components/ui/form'
+import { InputFieldController } from '@/components/ui/form-controllers'
 import { useTeacherClasses } from '@/features/teacher/hooks'
 import { TeacherClassCard } from './TeacherClassCard'
 import type { TeacherClassRow, TeacherClassTrack } from './teacherClassTypes'
@@ -96,33 +98,33 @@ export function TeacherClassesScreen() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <button
+                <Button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted"
+                  variant="outline"
+                  className="gap-2 rounded-lg border-border px-5 py-2.5 text-sm font-semibold shadow-sm"
                   onClick={scrollToFilters}
                 >
                   <Filter className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   Bộ lọc
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant={viewMode === 'table' ? 'default' : 'outline'}
                   className={cn(
-                    'inline-flex items-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors',
-                    viewMode === 'table'
-                      ? 'border-button bg-button text-button-foreground'
-                      : 'border-border bg-card text-foreground hover:bg-muted'
+                    'gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm',
+                    viewMode !== 'table' && 'border-border bg-card hover:bg-muted'
                   )}
                   onClick={() => setViewMode((v) => (v === 'cards' ? 'table' : 'cards'))}
                 >
                   {viewMode === 'cards' ? 'Dạng bảng' : 'Dạng thẻ'}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90"
+                  className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90"
                   onClick={() => toast.info('Xuất danh sách lớp sẽ nối API sau.')}
                 >
                   Xuất dữ liệu
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -136,45 +138,42 @@ export function TeacherClassesScreen() {
                 {FILTERS.map(({ key, label }) => {
                   const selected = activeFilter === key
                   return (
-                    <button
+                    <Button
                       key={key}
                       type="button"
+                      variant="ghost"
                       role="tab"
                       aria-selected={selected}
                       id={`teacher-class-filter-${key}`}
                       className={cn(
-                        'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-xs font-semibold transition-colors md:text-[13px]',
+                        'h-auto min-h-0 justify-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-xs font-semibold md:text-[13px]',
                         selected
-                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary'
                           : 'text-muted-foreground hover:bg-muted/70 hover:text-primary'
                       )}
                       onClick={() => filtersForm.setValue('filterKey', key)}
                     >
                       {label}
-                    </button>
+                    </Button>
                   )
                 })}
               </div>
             </div>
-            <label className="relative flex min-h-[42px] w-full min-w-0 items-center rounded-xl border border-border bg-card px-3 shadow-sm ring-1 ring-border/60">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Controller
-                control={filtersForm.control}
-                name="searchDraft"
-                render={({ field }) => (
-                  <input
-                    type="search"
-                    placeholder="Tìm theo tên lớp, kỳ thi, lộ trình…"
-                    className="min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
-                    aria-label="Tìm lớp"
-                    {...field}
-                  />
-                )}
-              />
-            </label>
+            <Form {...filtersForm}>
+              <div className="relative flex min-h-[42px] w-full min-w-0 items-center rounded-xl border border-border bg-card px-3 shadow-sm ring-1 ring-border/60">
+                <InputFieldController
+                  control={filtersForm.control}
+                  name="searchDraft"
+                  type="search"
+                  placeholder="Tìm theo tên lớp, kỳ thi, lộ trình…"
+                  aria-label="Tìm lớp"
+                  className="min-w-0 flex-1"
+                  wrapperClassName="min-w-0 flex-1"
+                  startSlot={<Search className="size-4 text-muted-foreground" aria-hidden />}
+                  inputClassName="h-auto min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm shadow-none focus-visible:ring-0"
+                />
+              </div>
+            </Form>
           </div>
 
           {viewMode === 'table' ? (

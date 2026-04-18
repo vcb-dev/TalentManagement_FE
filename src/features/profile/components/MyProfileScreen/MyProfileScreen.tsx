@@ -1,11 +1,18 @@
 import { useId, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
+import { useForm, useWatch, type Control } from 'react-hook-form'
 import { toast } from 'sonner'
 import { Building2, Upload } from 'lucide-react'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { StarEmblem } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Form } from '@/components/ui/form'
+import {
+  DateController,
+  InputController,
+  TextareaController,
+} from '@/components/ui/form-controllers'
 import { cn } from '@/lib/utils'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
@@ -132,77 +139,6 @@ function ProfileReadonlyInfo({ label, value }: { label: string; value: string })
   )
 }
 
-function ProfileEditableText({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <label className={cn('flex flex-col', fieldStackGap, fieldBoxClass)}>
-      <FieldLabel>{label}</FieldLabel>
-      <input
-        type="text"
-        autoComplete="off"
-        className={cn(fieldControlClass, inputEditable)}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </label>
-  )
-}
-
-function ProfileEditableTextarea({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <label
-      className={cn('flex flex-col sm:col-span-2 lg:col-span-2', fieldStackGap, fieldBoxClass)}
-    >
-      <FieldLabel>{label}</FieldLabel>
-      <textarea
-        className={cn(
-          'min-h-[128px] w-full resize-y rounded-xl border px-4 py-3 text-[0.9375rem] leading-relaxed outline-none transition-colors focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring',
-          inputEditable
-        )}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </label>
-  )
-}
-
-function ProfileEditableDate({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <label className={cn('flex flex-col', fieldStackGap, fieldBoxClass)}>
-      <FieldLabel>{label}</FieldLabel>
-      <input
-        type="date"
-        className={cn(fieldControlClass, '[color-scheme:light]', inputEditable)}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </label>
-  )
-}
-
 function renderField(
   field: UserSelfFieldSpec,
   ctx: {
@@ -231,50 +167,46 @@ function renderField(
 
   if (isDateFormField(field.key)) {
     return (
-      <Controller
+      <DateController
         key={field.key}
         control={control}
         name={key}
-        render={({ field: rhfField }) => (
-          <ProfileEditableDate
-            label={field.label}
-            value={rhfField.value ?? ''}
-            onChange={rhfField.onChange}
-          />
-        )}
+        label={field.label}
+        className={cn('space-y-2', fieldBoxClass)}
+        labelClassName="text-sm font-medium text-foreground/90"
+        datePickerClassName={cn(fieldControlClass, '[color-scheme:light]', inputEditable)}
       />
     )
   }
 
   if (field.multiline) {
     return (
-      <Controller
+      <TextareaController
         key={field.key}
         control={control}
         name={key}
-        render={({ field: rhfField }) => (
-          <ProfileEditableTextarea
-            label={field.label}
-            value={rhfField.value ?? ''}
-            onChange={rhfField.onChange}
-          />
+        label={field.label}
+        className={cn('space-y-2 sm:col-span-2 lg:col-span-2', fieldBoxClass)}
+        labelClassName="text-sm font-medium text-foreground/90"
+        textareaClassName={cn(
+          'min-h-[128px] w-full resize-y rounded-xl border px-4 py-3 text-[0.9375rem] leading-relaxed outline-none transition-colors focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring',
+          inputEditable
         )}
       />
     )
   }
 
   return (
-    <Controller
+    <InputController
       key={field.key}
       control={control}
       name={key}
-      render={({ field: rhfField }) => (
-        <ProfileEditableText
-          label={field.label}
-          value={rhfField.value ?? ''}
-          onChange={rhfField.onChange}
-        />
-      )}
+      label={field.label}
+      type="text"
+      autoComplete="off"
+      className={cn('space-y-2', fieldBoxClass)}
+      labelClassName="text-sm font-medium text-foreground/90"
+      inputClassName={cn(fieldControlClass, inputEditable)}
     />
   )
 }
@@ -316,13 +248,13 @@ function ProfileIdentityCard({
 
   return (
     <div className="flex flex-wrap items-center gap-4">
-      <div className="group relative shrink-0 rounded-[2rem] border border-[#c6ab79] bg-[linear-gradient(145deg,#f4ecdd_0%,#e5d3b4_48%,#d6bd8d_100%)] p-3 shadow-[0_18px_42px_-28px_rgba(122,85,28,0.6)]">
+      <div className="group relative shrink-0 rounded-[1.75rem] border border-primary/20 bg-gradient-to-br from-primary/8 via-card to-accent/10 p-3 shadow-[0_20px_38px_-28px_hsl(var(--primary)/0.45)] backdrop-blur-[1px]">
         <EmployeeAvatar
           name={displayName}
           photoUrl={resolvePublicAssetUrl(portraitRef)}
-          className="h-20 w-20 shrink-0 rounded-full border-2 border-white/80 bg-[linear-gradient(150deg,#f7f2e8_0%,#dfd9e8_100%)] text-lg text-[#3d2f23] ring-4 ring-[#efe5d1] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_12px_24px_-18px_rgba(90,64,30,0.65)] md:h-24 md:w-24 md:text-xl"
+          className="h-24 w-24 shrink-0 rounded-full border-2 border-background/80 bg-gradient-to-br from-muted/35 to-accent/10 text-xl text-foreground ring-4 ring-primary/15 shadow-[inset_0_1px_0_hsl(var(--background)/0.9),0_12px_26px_-18px_hsl(var(--primary)/0.6)] md:h-32 md:w-32 md:text-2xl"
         />
-        <input
+        <Input
           id={avatarUploadInputId}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/gif"
@@ -339,7 +271,7 @@ function ProfileIdentityCard({
           size="sm"
           variant="outline"
           className={cn(
-            'absolute -bottom-2 left-1/2 h-8 -translate-x-1/2 rounded-full border-[#9f7a3c] bg-[linear-gradient(180deg,#a7803f_0%,#8a652f_100%)] px-3 text-xs font-semibold text-[#fff6e6] shadow-[0_10px_20px_-14px_rgba(84,53,18,0.9)] hover:brightness-105',
+            'absolute -bottom-2.5 left-1/2 h-9 -translate-x-1/2 rounded-full border-primary/35 bg-gradient-to-r from-primary via-primary-600 to-accent px-3.5 text-xs font-semibold text-primary-foreground shadow-[0_12px_24px_-14px_hsl(var(--primary)/0.8)] hover:brightness-110',
             portraitUploading && 'pointer-events-none'
           )}
         >
@@ -378,9 +310,10 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
   const user = useAuthStore((s) => s.user)
   const { mutate: patchUser, isPending: patchPending } = usePatchMeUser()
   const { mutate: uploadPortrait, isPending: portraitUploading } = useUploadMePortrait()
-  const { control, handleSubmit } = useForm<EditRecord>({
+  const form = useForm<EditRecord>({
     defaultValues: userToEdit(u),
   })
+  const { control, handleSubmit } = form
 
   const role = user?.role ?? 'MEMBER'
   const totalStars = Math.max(page.currentLevel.totalStars || 0, 0)
@@ -425,173 +358,175 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
   const avatarUploadInputId = useId()
 
   return (
-    <div className="relative -m-5 overflow-hidden bg-app-canvas pb-12 pt-6 text-foreground md:-m-6 lg:-m-8">
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_95%_60%_at_50%_-10%,hsl(var(--primary)/0.14),transparent_58%),radial-gradient(ellipse_70%_46%_at_100%_38%,hsl(var(--accent)/0.12),transparent_58%)]"
-        aria-hidden
-      />
-      <div className="mx-auto w-full max-w-[1400px] px-4 md:px-6">
-        <header className="relative mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
-          <div className="min-w-0">
-            <h1 className="bg-gradient-to-r from-primary via-primary-600 to-accent bg-clip-text text-3xl font-bold tracking-tight text-transparent">
-              Hồ sơ cá nhân
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Cập nhật hồ sơ cá nhân và theo dõi lộ trình phát triển ngay trong một màn hình. Nhấn{' '}
-              <span className="font-medium text-foreground">Lưu thay đổi</span> để gửi lên hệ thống;
-              dữ liệu đồng bộ HR có thể ghi đè theo lịch.
-            </p>
-          </div>
-          <button
+    <Form {...form}>
+      <div className="relative -m-5 overflow-hidden bg-app-canvas pb-12 pt-6 text-foreground md:-m-6 lg:-m-8">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_95%_60%_at_50%_-10%,hsl(var(--primary)/0.14),transparent_58%),radial-gradient(ellipse_70%_46%_at_100%_38%,hsl(var(--accent)/0.12),transparent_58%)]"
+          aria-hidden
+        />
+        <div className="mx-auto w-full max-w-[1400px] px-4 md:px-6">
+          <header className="relative mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+            <div className="min-w-0">
+              <h1 className="bg-gradient-to-r from-primary via-primary-600 to-accent bg-clip-text text-3xl font-bold tracking-tight text-transparent">
+                Hồ sơ cá nhân
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                Cập nhật hồ sơ cá nhân và theo dõi lộ trình phát triển ngay trong một màn hình. Nhấn{' '}
+                <span className="font-medium text-foreground">Lưu thay đổi</span> để gửi lên hệ
+                thống; dữ liệu đồng bộ HR có thể ghi đè theo lịch.
+              </p>
+            </div>
+            <Button
+              type="button"
+              disabled={patchPending}
+              onClick={onSaveProfile}
+              className="hidden h-12 shrink-0 rounded-xl bg-gradient-to-r from-primary via-primary-600 to-accent px-8 text-base font-semibold text-primary-foreground shadow-[0_14px_34px_-18px_hsl(var(--primary)/0.55)] transition-all hover:brightness-110 active:scale-[0.99] disabled:opacity-60 sm:inline-flex sm:min-w-[210px] sm:items-center sm:justify-center"
+            >
+              {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
+            </Button>
+          </header>
+
+          <section className="rounded-3xl border border-primary/15 bg-card/95 p-4 shadow-[var(--shadow-card)] backdrop-blur-[2px] md:p-5">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(16rem,0.85fr)] xl:items-start">
+              <ProfileIdentityCard
+                control={control}
+                u={u}
+                role={role}
+                currentLevelTitle={page.currentLevel.title}
+                portraitUploading={portraitUploading}
+                avatarUploadInputId={avatarUploadInputId}
+                onPortraitFile={onPortraitFile}
+                fallbackUserName={user?.name ?? ''}
+                fallbackUserEmail={user?.email ?? ''}
+              />
+
+              <aside className="rounded-2xl border border-border/70 bg-background/85 p-4">
+                <div className="flex items-center gap-3">
+                  <StarEmblem
+                    variant="filled"
+                    className="h-10 w-10 shrink-0 drop-shadow-[0_4px_8px_rgba(212,160,23,0.35)]"
+                    alt="Sao cấp độ"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      {page.currentLevel.progressLine}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Lộ trình hiện tại</p>
+                  </div>
+                </div>
+                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-primary/10">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-primary via-primary-600 to-accent transition-all"
+                    style={{ width: `${levelProgressPct}%` }}
+                  />
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+                  <Link
+                    to="/learning-path"
+                    search={learningPathSearch}
+                    className="font-semibold text-primary underline-offset-4 hover:underline"
+                  >
+                    Lộ trình học
+                  </Link>
+                  <span className="text-muted-foreground">·</span>
+                  <Link
+                    to="/exam"
+                    className="font-semibold text-primary underline-offset-4 hover:underline"
+                  >
+                    Kết quả thi
+                  </Link>
+                </div>
+              </aside>
+            </div>
+            <div className="mt-4 rounded-2xl border border-primary/15 bg-primary/[0.04] px-4 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-foreground">
+                  Sao hiện tại: {page.currentLevel.currentStarIndex}/{totalStars}
+                </p>
+                <p className="text-sm font-medium text-primary">{levelProgressPct}% tiến độ cấp</p>
+              </div>
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                {Array.from({ length: totalStars }, (_, i) => (
+                  <StarEmblem
+                    key={i}
+                    variant={i < filledStars ? 'filled' : 'muted'}
+                    className={cn('h-6 w-6', i < filledStars ? 'drop-shadow-sm' : 'opacity-40')}
+                    alt={i < filledStars ? `Sao đã đạt ${i + 1}` : `Sao chưa đạt ${i + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="mt-6 rounded-3xl border border-primary/12 bg-card/85 p-5 shadow-[var(--shadow-card)] backdrop-blur-[2px] md:p-6">
+            <h2 className="flex items-center gap-3 text-lg font-bold tracking-tight">
+              <span
+                className="h-7 w-1 shrink-0 rounded-full bg-gradient-to-b from-primary to-accent shadow-[0_0_14px_-3px_hsl(var(--primary)/0.5)]"
+                aria-hidden
+              />
+              <span className="bg-gradient-to-r from-primary via-foreground to-primary/80 bg-clip-text text-transparent">
+                Chi tiết hồ sơ
+              </span>
+            </h2>
+
+            <div className="mt-5 space-y-4">
+              <div className="min-w-0 rounded-2xl border border-border/60 bg-background/75 p-4 md:p-5">
+                <SectionTitle>{workSection.title}</SectionTitle>
+                {workReadonlyFields.length > 0 ? (
+                  <div className="mt-4">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Thông tin đồng bộ (chỉ xem)
+                    </p>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
+                      {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
+                    </div>
+                  </div>
+                ) : null}
+                {workEditableFields.length > 0 ? (
+                  <div className="mt-5 border-t border-border/70 pt-4">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Thông tin có thể cập nhật
+                    </p>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
+                      {workEditableFields.map((f) => renderField(f, fieldCtx))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                {detailSections.map((section) => (
+                  <div
+                    key={section.title}
+                    className="min-w-0 rounded-2xl border border-border/60 bg-background/75 p-4 md:p-5"
+                  >
+                    <SectionTitle>{section.title}</SectionTitle>
+                    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
+                      {section.fields.map((f) => renderField(f, fieldCtx))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <p className="mt-8 text-center text-sm text-muted-foreground">
+            Nhớ nhấn Lưu sau khi sửa. Đồng bộ Lark/HR có thể cập nhật lại một số trường theo lịch
+            nội bộ.
+          </p>
+        </div>
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border/80 bg-card/95 px-4 py-3 shadow-[0_-8px_20px_-18px_hsl(var(--primary)/0.65)] backdrop-blur sm:hidden">
+          <Button
             type="button"
             disabled={patchPending}
             onClick={onSaveProfile}
-            className="hidden h-12 shrink-0 rounded-xl bg-gradient-to-r from-primary via-primary-600 to-accent px-8 text-base font-semibold text-primary-foreground shadow-[0_14px_34px_-18px_hsl(var(--primary)/0.55)] transition-all hover:brightness-110 active:scale-[0.99] disabled:opacity-60 sm:inline-flex sm:min-w-[210px] sm:items-center sm:justify-center"
+            className="h-11 w-full rounded-xl bg-gradient-to-r from-primary via-primary-600 to-accent px-5 text-sm font-semibold text-primary-foreground transition-all active:scale-[0.99] disabled:opacity-60"
           >
             {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
-          </button>
-        </header>
-
-        <section className="rounded-3xl border border-primary/15 bg-card/95 p-4 shadow-[var(--shadow-card)] backdrop-blur-[2px] md:p-5">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(16rem,0.85fr)] xl:items-start">
-            <ProfileIdentityCard
-              control={control}
-              u={u}
-              role={role}
-              currentLevelTitle={page.currentLevel.title}
-              portraitUploading={portraitUploading}
-              avatarUploadInputId={avatarUploadInputId}
-              onPortraitFile={onPortraitFile}
-              fallbackUserName={user?.name ?? ''}
-              fallbackUserEmail={user?.email ?? ''}
-            />
-
-            <aside className="rounded-2xl border border-border/70 bg-background/85 p-4">
-              <div className="flex items-center gap-3">
-                <StarEmblem
-                  variant="filled"
-                  className="h-10 w-10 shrink-0 drop-shadow-[0_4px_8px_rgba(212,160,23,0.35)]"
-                  alt="Sao cấp độ"
-                />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">
-                    {page.currentLevel.progressLine}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Lộ trình hiện tại</p>
-                </div>
-              </div>
-              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-primary/10">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-primary via-primary-600 to-accent transition-all"
-                  style={{ width: `${levelProgressPct}%` }}
-                />
-              </div>
-              <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-                <Link
-                  to="/learning-path"
-                  search={learningPathSearch}
-                  className="font-semibold text-primary underline-offset-4 hover:underline"
-                >
-                  Lộ trình học
-                </Link>
-                <span className="text-muted-foreground">·</span>
-                <Link
-                  to="/exam"
-                  className="font-semibold text-primary underline-offset-4 hover:underline"
-                >
-                  Kết quả thi
-                </Link>
-              </div>
-            </aside>
-          </div>
-          <div className="mt-4 rounded-2xl border border-primary/15 bg-primary/[0.04] px-4 py-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-foreground">
-                Sao hiện tại: {page.currentLevel.currentStarIndex}/{totalStars}
-              </p>
-              <p className="text-sm font-medium text-primary">{levelProgressPct}% tiến độ cấp</p>
-            </div>
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-              {Array.from({ length: totalStars }, (_, i) => (
-                <StarEmblem
-                  key={i}
-                  variant={i < filledStars ? 'filled' : 'muted'}
-                  className={cn('h-6 w-6', i < filledStars ? 'drop-shadow-sm' : 'opacity-40')}
-                  alt={i < filledStars ? `Sao đã đạt ${i + 1}` : `Sao chưa đạt ${i + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-3xl border border-primary/12 bg-card/85 p-5 shadow-[var(--shadow-card)] backdrop-blur-[2px] md:p-6">
-          <h2 className="flex items-center gap-3 text-lg font-bold tracking-tight">
-            <span
-              className="h-7 w-1 shrink-0 rounded-full bg-gradient-to-b from-primary to-accent shadow-[0_0_14px_-3px_hsl(var(--primary)/0.5)]"
-              aria-hidden
-            />
-            <span className="bg-gradient-to-r from-primary via-foreground to-primary/80 bg-clip-text text-transparent">
-              Chi tiết hồ sơ
-            </span>
-          </h2>
-
-          <div className="mt-5 space-y-4">
-            <div className="min-w-0 rounded-2xl border border-border/60 bg-background/75 p-4 md:p-5">
-              <SectionTitle>{workSection.title}</SectionTitle>
-              {workReadonlyFields.length > 0 ? (
-                <div className="mt-4">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Thông tin đồng bộ (chỉ xem)
-                  </p>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
-                    {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
-                  </div>
-                </div>
-              ) : null}
-              {workEditableFields.length > 0 ? (
-                <div className="mt-5 border-t border-border/70 pt-4">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Thông tin có thể cập nhật
-                  </p>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
-                    {workEditableFields.map((f) => renderField(f, fieldCtx))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-              {detailSections.map((section) => (
-                <div
-                  key={section.title}
-                  className="min-w-0 rounded-2xl border border-border/60 bg-background/75 p-4 md:p-5"
-                >
-                  <SectionTitle>{section.title}</SectionTitle>
-                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
-                    {section.fields.map((f) => renderField(f, fieldCtx))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <p className="mt-8 text-center text-sm text-muted-foreground">
-          Nhớ nhấn Lưu sau khi sửa. Đồng bộ Lark/HR có thể cập nhật lại một số trường theo lịch nội
-          bộ.
-        </p>
+          </Button>
+        </div>
       </div>
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border/80 bg-card/95 px-4 py-3 shadow-[0_-8px_20px_-18px_hsl(var(--primary)/0.65)] backdrop-blur sm:hidden">
-        <button
-          type="button"
-          disabled={patchPending}
-          onClick={onSaveProfile}
-          className="h-11 w-full rounded-xl bg-gradient-to-r from-primary via-primary-600 to-accent px-5 text-sm font-semibold text-primary-foreground transition-all active:scale-[0.99] disabled:opacity-60"
-        >
-          {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
-        </button>
-      </div>
-    </div>
+    </Form>
   )
 }
 
