@@ -25,7 +25,7 @@ export type AppNavItem = {
   label: string
   icon: LucideIcon
   match: NavMatchMode
-  search?: { page: number }
+  search?: Record<string, unknown>
   customMatch?: (normalizedPath: string) => boolean
   /** Nếu có — chỉ hiển thị khi user có quyền catalog id này */
   permissionId?: string
