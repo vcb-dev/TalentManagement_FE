@@ -29,6 +29,7 @@ function HrAdminIndexPage() {
       initialFilters={{
         page: search.page,
         pageSize: search.pageSize,
+        role: search.role,
         status: search.status,
         teamId: leaderTeamId,
       }}

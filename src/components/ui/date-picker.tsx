@@ -1,5 +1,6 @@
+import * as React from 'react'
 import { CalendarIcon } from 'lucide-react'
-import { format, isValid, parseISO } from 'date-fns'
+import { format, isValid, parseISO, startOfDay } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -32,12 +33,23 @@ export function DatePicker({
   min,
   max,
 }: DatePickerProps) {
+  const [open, setOpen] = React.useState(false)
   const selectedDate = parseDateString(value)
   const minDate = parseDateString(min)
   const maxDate = parseDateString(max)
 
+  const dayDisabled = React.useCallback(
+    (date: Date) => {
+      const d = startOfDay(date)
+      if (minDate && d < startOfDay(minDate)) return true
+      if (maxDate && d > startOfDay(maxDate)) return true
+      return false
+    },
+    [minDate, maxDate]
+  )
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -53,15 +65,17 @@ export function DatePicker({
           {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: vi }) : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto overflow-hidden p-0" align="start">
         <Calendar
           mode="single"
           selected={selectedDate}
-          onSelect={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : '')}
-          disabled={(date) =>
-            (minDate ? date < new Date(minDate.setHours(0, 0, 0, 0)) : false) ||
-            (maxDate ? date > new Date(maxDate.setHours(23, 59, 59, 999)) : false)
-          }
+          defaultMonth={selectedDate}
+          captionLayout="dropdown"
+          onSelect={(date) => {
+            onChange(date ? format(date, 'yyyy-MM-dd') : '')
+            setOpen(false)
+          }}
+          disabled={dayDisabled}
           initialFocus
         />
       </PopoverContent>

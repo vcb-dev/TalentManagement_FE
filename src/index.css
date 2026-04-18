@@ -503,6 +503,87 @@ html {
   }
 }
 
+/*
+ * DatePicker / DayPicker — hover hòa palette Lumina (teal accent),
+ * ô đã chọn giữ primary; danh sách <option> của select là native OS (không tùy chỉnh được).
+ */
+@layer components {
+  /* Select tháng/năm — cùng palette viền/nền như ô ngày (today / hover) */
+  [data-slot='daypicker'] .calendar-caption-dropdown {
+    border-color: hsl(var(--accent) / 0.55);
+    background-color: hsl(var(--accent) / 0.16);
+    box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.06);
+  }
+  [data-slot='daypicker'] .calendar-caption-dropdown:hover {
+    border-color: hsl(var(--accent) / 0.65);
+    background-color: hsl(var(--accent) / 0.22);
+  }
+  [data-slot='daypicker'] .calendar-caption-dropdown:focus-within {
+    border-color: hsl(var(--accent) / 0.65);
+    background-color: hsl(var(--accent) / 0.22);
+    box-shadow:
+      0 0 0 2px hsl(var(--ring) / 0.2),
+      inset 0 0 0 1px hsl(0 0% 100% / 0.08);
+  }
+  [data-slot='daypicker'] td[data-selected] .rdp-day_button {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary-foreground) / 0.42);
+    box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.12);
+  }
+  [data-slot='daypicker'] td[data-selected] .rdp-day_button:hover {
+    background-color: hsl(var(--primary) / 0.92);
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary-foreground) / 0.55);
+  }
+  /* Hôm nay (chưa chọn): vùng lớn + viền teal */
+  [data-slot='daypicker'] td[data-today]:not([data-selected]) .rdp-day_button {
+    background-color: hsl(var(--accent) / 0.16);
+    color: hsl(168 42% 24%);
+    border-color: hsl(var(--accent) / 0.55);
+  }
+  [data-slot='daypicker'] td[data-today]:not([data-selected]) .rdp-day_button:hover {
+    background-color: hsl(var(--accent) / 0.22);
+    border-color: hsl(var(--accent) / 0.65);
+  }
+  [data-slot='daypicker'] .rdp-day_button:not(:disabled):hover {
+    background-color: hsl(var(--accent) / 0.14);
+    color: hsl(168 42% 24%);
+    border-color: hsl(var(--accent) / 0.45);
+  }
+  [data-slot='daypicker'] td[data-selected] .rdp-day_button:not(:disabled):hover {
+    border-color: hsl(var(--primary-foreground) / 0.55);
+  }
+  .dark [data-slot='daypicker'] .calendar-caption-dropdown {
+    border-color: hsl(var(--accent) / 0.5);
+    background-color: hsl(var(--accent) / 0.14);
+    box-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.04);
+  }
+  .dark [data-slot='daypicker'] .calendar-caption-dropdown:hover {
+    border-color: hsl(var(--accent) / 0.58);
+    background-color: hsl(var(--accent) / 0.2);
+  }
+  .dark [data-slot='daypicker'] .calendar-caption-dropdown:focus-within {
+    border-color: hsl(var(--accent) / 0.6);
+    background-color: hsl(var(--accent) / 0.22);
+    box-shadow:
+      0 0 0 2px hsl(var(--ring) / 0.28),
+      inset 0 0 0 1px hsl(0 0% 100% / 0.06);
+  }
+  .dark [data-slot='daypicker'] .rdp-day_button:not(:disabled):hover {
+    background-color: hsl(var(--accent) / 0.22);
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--accent) / 0.42);
+  }
+  .dark [data-slot='daypicker'] td[data-selected] .rdp-day_button {
+    border-color: hsl(var(--primary-foreground) / 0.35);
+  }
+  .dark [data-slot='daypicker'] td[data-today]:not([data-selected]) .rdp-day_button {
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--accent) / 0.5);
+  }
+}
+
 @layer base {
   * {
     border-color: hsl(var(--border));
