@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { ArrowLeft, Info } from 'lucide-react'
 import {
@@ -53,6 +53,7 @@ export interface EmployeePermissionsScreenProps {
 
 export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScreenProps) {
   const currentUserId = useAuthStore((s) => s.user?.id)
+  const navigate = useNavigate()
 
   const templateForm = useForm<{ roleTemplateIds: string[] }>({
     defaultValues: { roleTemplateIds: templateIdsForRole(employee.role) },
@@ -131,6 +132,8 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
         const me = await authApi.me()
         useAuthStore.getState().setSession(me.user, me.accessToken ?? null)
       }
+      // Lưu xong thì đóng màn chi tiết, quay về danh sách nhân viên.
+      void navigate({ to: '/permissions' })
     } catch (e) {
       toast.error(getApiErrorMessage(e) || 'Không lưu được')
     }

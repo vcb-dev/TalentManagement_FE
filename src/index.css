@@ -2,6 +2,16 @@
 @import 'tailwindcss';
 
 /*
+ * Tailwind v4: mặc định `dark:` dùng @media (prefers-color-scheme: dark),
+ * khiến macOS Dark Mode tự kích hoạt các utility `dark:*` đang rải khắp UI
+ * (vd. `dark:from-slate-950`, `dark:bg-slate-900`...) → trang bị đen/xám
+ * loang lổ trong khi các CSS variable trong :root vẫn ở chế độ sáng
+ * (do không có chỗ nào add class `dark` lên <html>).
+ * Khoá `dark:` về class-based để chỉ kích hoạt khi thực sự có .dark trong DOM.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
  * HRM Lumina — Employee & Growth
  * Canonical UI for employee-facing flows: learning, profile, gamification (levels / stars / tiers).
  * Foundation: violet primary + teal accent; tokens in :root and @theme below; use components/ui.
@@ -101,6 +111,7 @@ html {
   Theme: Lumina — violet #4F46E5, teal accent #0D9488, blue #1E40AF, neutral #F8FAFC.
 */
 :root {
+  color-scheme: light;
   --radius: 0.75rem;
   --background: 210 40% 98%;
   --foreground: 222 47% 11%;
@@ -143,6 +154,7 @@ html {
 }
 
 .dark {
+  color-scheme: dark;
   --background: 222 40% 6%;
   --foreground: 210 25% 96%;
   --app-canvas: 222 38% 4%;

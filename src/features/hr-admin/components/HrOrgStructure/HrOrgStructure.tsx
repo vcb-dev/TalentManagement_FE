@@ -2,7 +2,6 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'rea
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { toast } from 'sonner'
-import { Link } from '@tanstack/react-router'
 import {
   Building2,
   ChevronDown,
@@ -827,11 +826,6 @@ function FragmentTeamRow({
               </Button>
             </>
           ) : null}
-          <Button type="button" size="sm" variant="outline" className="rounded-full" asChild>
-            <Link to="/hr-admin/org/$teamId" params={{ teamId: team.id }}>
-              Quản lý
-            </Link>
-          </Button>
           <Button
             type="button"
             variant={membersOpen ? 'secondary' : 'outline'}

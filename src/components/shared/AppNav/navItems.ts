@@ -191,7 +191,7 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
     label: 'Đơn vị & Nhóm',
     icon: Building2,
     match: 'prefix',
-    permissionId: 'admin.permissions.assign',
+    permissionId: 'hr.org.manage',
   },
 ]
 
@@ -290,6 +290,93 @@ export function flatSidebarNavItems(canId: (permissionId: string) => boolean): A
     }
   }
   return out
+}
+
+export type AppNavGroup = {
+  id: string
+  label: string
+  items: AppNavItem[]
+}
+
+/**
+ * Sidebar có nhóm: gom theo luồng sử dụng (Tổng quan → Học tập → Quản lý lớp →
+ * Nhân sự → Ban lãnh đạo) thay vì danh sách phẳng dài. Mỗi item chỉ xuất hiện
+ * 1 lần (dedupe theo `to`+`search`); nhóm rỗng (sau filter quyền) sẽ bị ẩn.
+ */
+export function groupedSidebarNavItems(canId: (permissionId: string) => boolean): AppNavGroup[] {
+  const seen = new Set<string>()
+  const take = (items: AppNavItem[]): AppNavItem[] => {
+    const out: AppNavItem[] = []
+    for (const item of filterNavByPermissions(items, canId)) {
+      const key = item.to + (item.search !== undefined ? JSON.stringify(item.search) : '')
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(item)
+    }
+    return out
+  }
+
+  const find = (items: AppNavItem[], to: string) => items.filter((i) => i.to === to)
+
+  const groups: AppNavGroup[] = [
+    {
+      id: 'overview',
+      label: 'Tổng quan',
+      items: take([
+        ...find(LEADER_KPI_ITEMS, '/dashboard'),
+        ...find(MEMBER_SELF_ITEMS, '/dashboard'),
+        ...find(LEADER_KPI_ITEMS, '/leader/kpi-okr'),
+        ...find(LEADER_KPI_ITEMS, '/monthly-report'),
+        ...find(MEMBER_SELF_ITEMS, '/monthly-report'),
+      ]),
+    },
+    {
+      id: 'learning',
+      label: 'Học tập & Thi cử',
+      items: take([
+        ...find(MEMBER_SELF_ITEMS, '/learning-path'),
+        ...find(MEMBER_SELF_ITEMS, '/learning-classes'),
+        ...find(MEMBER_SELF_ITEMS, '/exam'),
+        ...find(MANAGER_OPS_ITEMS, '/manager/exercises'),
+      ]),
+    },
+    {
+      id: 'manager',
+      label: 'Quản lý lớp & Thi',
+      items: take([
+        ...find(MANAGER_OPS_ITEMS, '/manager/classes'),
+        ...find(TEACHER_HEADER_ITEMS, '/teacher/classes'),
+        ...find(MANAGER_OPS_ITEMS, '/manager/review-submissions'),
+        ...find(MANAGER_OPS_ITEMS, '/manager/exam-schedule'),
+        ...find(MANAGER_OPS_ITEMS, '/manager/class-exams'),
+        ...find(MANAGER_OPS_ITEMS, '/manager/grading'),
+        ...find(TEACHER_HEADER_ITEMS, '/exam/grader'),
+        ...find(MANAGER_OPS_ITEMS, '/manager/approvals'),
+      ]),
+    },
+    {
+      id: 'hr',
+      label: 'Nhân sự & Tổ chức',
+      items: take([
+        ...find(HR_ITEMS, '/hr-admin'),
+        ...find(HR_ITEMS, '/hr-admin/org'),
+        ...find(MANAGER_OPS_ITEMS, '/hr-admin/org'),
+        ...find(MANAGER_OPS_ITEMS, '/permissions'),
+        ...find(BOD_ITEMS, '/permissions'),
+      ]),
+    },
+    {
+      id: 'bod',
+      label: 'Ban lãnh đạo',
+      items: take([
+        ...find(BOD_ITEMS, '/bod/dashboard'),
+        ...find(BOD_ITEMS, '/bod/trainee-ranking'),
+        ...find(BOD_ITEMS, '/bod/team-comparison'),
+      ]),
+    },
+  ]
+
+  return groups.filter((g) => g.items.length > 0)
 }
 
 /**

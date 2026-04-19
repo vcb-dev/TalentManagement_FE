@@ -114,6 +114,14 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     [departments, selectedTeamId]
   )
   const teamsInDept = selectedDept?.teams ?? departments[0]?.teams ?? []
+  /** MANAGER: bộ lọc hiển thị TẤT CẢ team, không gò theo phòng ban. */
+  const allTeamsFlat = useMemo(
+    () =>
+      departments
+        .flatMap((d) => d.teams.map((t) => ({ id: t.id, name: t.name, deptName: d.name })))
+        .sort((a, b) => a.name.localeCompare(b.name, 'vi')),
+    [departments]
+  )
 
   useEffect(() => {
     if (selectedTeamId) return
@@ -255,33 +263,40 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <label className="flex flex-col gap-1.5">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                Phòng ban
-              </Label>
-              <Select
-                value={selectedDept?.id ?? '__none'}
-                disabled={isMemberView}
-                onValueChange={(value) => {
-                  const d = departments.find((x) => x.id === value)
-                  const tid = d?.teams[0]?.id ?? ''
-                  setSelectedTeamId(tid)
-                }}
-              >
-                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">— Chọn —</SelectItem>
-                  {departments.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
+          <div
+            className={cn(
+              'grid gap-4 md:grid-cols-2',
+              isManagerReadOnly ? 'lg:grid-cols-3' : 'lg:grid-cols-4'
+            )}
+          >
+            {!isManagerReadOnly && (
+              <label className="flex flex-col gap-1.5">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Phòng ban
+                </Label>
+                <Select
+                  value={selectedDept?.id ?? '__none'}
+                  disabled={isMemberView}
+                  onValueChange={(value) => {
+                    const d = departments.find((x) => x.id === value)
+                    const tid = d?.teams[0]?.id ?? ''
+                    setSelectedTeamId(tid)
+                  }}
+                >
+                  <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">— Chọn —</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+            )}
             <label className="flex flex-col gap-1.5">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Team</Label>
               <Select
@@ -294,9 +309,12 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none">— Chọn team —</SelectItem>
-                  {teamsInDept.map((t) => (
+                  {(isManagerReadOnly ? allTeamsFlat : teamsInDept).map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
+                      {isManagerReadOnly && 'deptName' in t && t.deptName ? (
+                        <span className="ml-1 text-xs text-muted-foreground">· {t.deptName}</span>
+                      ) : null}
                     </SelectItem>
                   ))}
                 </SelectContent>

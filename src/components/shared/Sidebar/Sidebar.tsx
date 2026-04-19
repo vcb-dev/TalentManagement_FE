@@ -1,9 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   type AppNavItem,
-  flatSidebarNavItems,
+  groupedSidebarNavItems,
   isNavItemActive,
 } from '@/components/shared/AppNav/navItems'
 import { Button } from '@/components/ui/button'
@@ -90,7 +90,30 @@ function SidebarInner() {
   const { canId } = usePermission()
   const collapsed = !sidebarOpen
 
-  const items = useMemo(() => flatSidebarNavItems(canId), [canId])
+  const groups = useMemo(() => groupedSidebarNavItems(canId), [canId])
+
+  /**
+   * Trạng thái mở/đóng từng nhóm — chỉ lưu các nhóm user đã đóng tay.
+   * - Mặc định: nhóm mở.
+   * - User click → toggle, lưu `false` nếu đóng / xoá khỏi map nếu mở lại.
+   * - Nhóm chứa item đang active luôn mở (không cho đóng) để tránh ẩn route hiện tại.
+   */
+  const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(() => new Set())
+
+  const isGroupOpen = (groupId: string, hasActive: boolean) => {
+    if (collapsed) return true
+    if (hasActive) return true
+    return !collapsedGroupIds.has(groupId)
+  }
+
+  const toggleGroup = (id: string) => {
+    setCollapsedGroupIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const displayName = user?.name ?? 'Ng\u01b0\u1eddi d\u00f9ng'
 
@@ -138,17 +161,57 @@ function SidebarInner() {
       <SidebarContent>
         <SidebarGroup className="min-h-0 flex-1 px-2 py-3">
           <SidebarGroupContent className="h-full overflow-y-auto">
-            <nav aria-label="Menu \u0111i\u1ec1u h\u01b0\u1edbng">
-              <SidebarMenu>
-                {items.map((item) => (
-                  <NavLink
-                    key={navItemDedupeKey(item) + item.label}
-                    item={item}
-                    active={isNavItemActive(pathname, item)}
-                    collapsed={collapsed}
-                  />
-                ))}
-              </SidebarMenu>
+            <nav aria-label="Menu \u0111i\u1ec1u h\u01b0\u1edbng" className="flex flex-col gap-2">
+              {groups.map((group, idx) => {
+                const groupHasActive = group.items.some((it) => isNavItemActive(pathname, it))
+                const isOpen = isGroupOpen(group.id, groupHasActive)
+                return (
+                  <div key={group.id} className="flex flex-col">
+                    {!collapsed ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(group.id)}
+                        aria-expanded={isOpen}
+                        aria-controls={`sidebar-group-${group.id}`}
+                        className={cn(
+                          'group/header mx-1 flex items-center justify-between rounded-md px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors',
+                          groupHasActive
+                            ? 'text-indigo-700 dark:text-indigo-200'
+                            : 'text-muted-foreground/75 hover:bg-white/55 hover:text-foreground dark:hover:bg-white/5',
+                          idx === 0 ? 'mt-0' : 'mt-1'
+                        )}
+                      >
+                        <span className="truncate">{group.label}</span>
+                        <ChevronDown
+                          className={cn(
+                            'h-3.5 w-3.5 shrink-0 transition-transform duration-200',
+                            isOpen ? 'rotate-0' : '-rotate-90'
+                          )}
+                          strokeWidth={2.25}
+                          aria-hidden
+                        />
+                      </button>
+                    ) : idx > 0 ? (
+                      <div
+                        aria-hidden
+                        className="mx-2 my-1 h-px bg-indigo-200/50 dark:bg-indigo-900/40"
+                      />
+                    ) : null}
+                    {isOpen ? (
+                      <SidebarMenu id={`sidebar-group-${group.id}`} className="mt-1">
+                        {group.items.map((item) => (
+                          <NavLink
+                            key={navItemDedupeKey(item) + item.label}
+                            item={item}
+                            active={isNavItemActive(pathname, item)}
+                            collapsed={collapsed}
+                          />
+                        ))}
+                      </SidebarMenu>
+                    ) : null}
+                  </div>
+                )
+              })}
             </nav>
           </SidebarGroupContent>
         </SidebarGroup>
