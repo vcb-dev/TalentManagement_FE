@@ -10,35 +10,62 @@ export type OrgMasterEntity = {
   updatedAt: string
 }
 
+export type DivisionEntity = {
+  id: string
+  name: string
+  code: string | null
+  description: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 function assertOrgCrudNotMock(action: string): void {
   if (isMockApiEnabled()) {
     throw new Error(`Đang bật mock API — không thể ${action}.`)
   }
 }
 
-/** CRUD phòng ban & team (backend `OrgController` → `/org/departments`, `/org/teams`). */
+/**
+ * CRUD phòng ban (divisions) & team (backend `OrgController`).
+ *
+ * Lưu ý: "phòng ban" ở màn tổ chức = `divisions` (organizational unit).
+ * `departments` giờ dành riêng cho chuyên môn (professional position) và
+ * có CRUD tách riêng nếu cần.
+ */
 export const orgCrudApi = {
-  createDepartment: async (name: string): Promise<OrgMasterEntity> => {
+  createDivision: async (payload: {
+    name: string
+    code?: string
+    description?: string
+    isActive?: boolean
+  }): Promise<DivisionEntity> => {
     assertOrgCrudNotMock('tạo phòng ban')
-    const res = await apiClient.post<OrgMasterEntity>('/org/departments', { name })
+    const res = await apiClient.post<DivisionEntity>('/org/divisions', payload)
     return res.data
   },
-  updateDepartment: async (id: string, name: string): Promise<OrgMasterEntity> => {
+  updateDivision: async (
+    id: string,
+    body: { name?: string; code?: string; description?: string; isActive?: boolean }
+  ): Promise<DivisionEntity> => {
     assertOrgCrudNotMock('sửa phòng ban')
-    const res = await apiClient.patch<OrgMasterEntity>(`/org/departments/${id}`, { name })
+    const res = await apiClient.patch<DivisionEntity>(`/org/divisions/${id}`, body)
     return res.data
   },
-  deleteDepartment: async (id: string): Promise<OrgMasterEntity> => {
+  deleteDivision: async (id: string): Promise<DivisionEntity> => {
     assertOrgCrudNotMock('xóa phòng ban')
-    const res = await apiClient.delete<OrgMasterEntity>(`/org/departments/${id}`)
+    const res = await apiClient.delete<DivisionEntity>(`/org/divisions/${id}`)
     return res.data
   },
-  createTeam: async (name: string): Promise<OrgMasterEntity> => {
+  createTeam: async (name: string, divisionId: string): Promise<OrgMasterEntity> => {
     assertOrgCrudNotMock('tạo team')
-    const res = await apiClient.post<OrgMasterEntity>('/org/teams', { name })
+    const res = await apiClient.post<OrgMasterEntity>('/org/teams', { name, divisionId })
     return res.data
   },
-  updateTeam: async (id: string, body: { name?: string }): Promise<OrgMasterEntity> => {
+  updateTeam: async (
+    id: string,
+    body: { name?: string; divisionId?: string }
+  ): Promise<OrgMasterEntity> => {
     assertOrgCrudNotMock('sửa team')
     const res = await apiClient.patch<OrgMasterEntity>(`/org/teams/${id}`, body)
     return res.data
@@ -67,20 +94,26 @@ export type OrgTreeResponse = {
   departments: OrgTreeDepartment[]
 }
 
-/** Team row từ GET /organization/departments-with-teams */
+/** Row từ GET /organization/divisions-with-teams (mỗi row là 1 phòng ban + teams). */
 export type OrgAdminTeamRow = {
   id: string
   name: string
+  /** Giữ tên `departmentId` để không phá các kiểu dùng chung; logic là divisionId. */
   departmentId: string
   _count: { users: number }
 }
 
-export type OrgAdminDepartmentRow = {
+export type OrgAdminDivisionRow = {
   id: string
   name: string
+  code: string | null
+  description: string | null
   isActive: boolean
   teams: OrgAdminTeamRow[]
 }
+
+/** @deprecated Dùng `OrgAdminDivisionRow` — giữ alias để khỏi phá import cũ. */
+export type OrgAdminDepartmentRow = OrgAdminDivisionRow
 
 export type TeamMemberRow = {
   userId: string
@@ -94,7 +127,9 @@ export type TeamMemberRow = {
   portraitRef: string | null
 }
 
-export const DEPTS_WITH_TEAMS_QUERY_KEY = ['organization', 'departments-with-teams'] as const
+export const DIVISIONS_WITH_TEAMS_QUERY_KEY = ['organization', 'divisions-with-teams'] as const
+/** @deprecated Dùng `DIVISIONS_WITH_TEAMS_QUERY_KEY`. */
+export const DEPTS_WITH_TEAMS_QUERY_KEY = DIVISIONS_WITH_TEAMS_QUERY_KEY
 
 export function teamMembersQueryKey(teamId: string) {
   return ['organization', 'team-members', teamId] as const
@@ -144,12 +179,14 @@ export const organizationApi = {
     return res.data
   },
 
-  listDepartmentsWithTeams: async (): Promise<OrgAdminDepartmentRow[]> => {
+  listDivisionsWithTeams: async (): Promise<OrgAdminDivisionRow[]> => {
     if (isMockApiEnabled()) {
       const tree = mockOrgTree()
       return tree.departments.map((d) => ({
         id: d.id,
         name: d.name,
+        code: null,
+        description: null,
         isActive: d.isActive,
         teams: d.teams.map((t) => ({
           id: t.id,
@@ -159,7 +196,7 @@ export const organizationApi = {
         })),
       }))
     }
-    const res = await apiClient.get<OrgAdminDepartmentRow[]>('/organization/departments-with-teams')
+    const res = await apiClient.get<OrgAdminDivisionRow[]>('/organization/divisions-with-teams')
     return res.data
   },
 

@@ -108,6 +108,18 @@ html {
 }
 
 /*
+ * Khoá scroll ở cấp document: AppShell đã quản lý chiều cao bằng `h-screen
+ * overflow-hidden`, nên không cần thanh scroll ngoài cùng của trình duyệt.
+ * Mọi vùng nội dung dài (main, sheet, dialog…) tự xử lý scroll bên trong.
+ */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/*
   Theme: Lumina — violet #4F46E5, teal accent #0D9488, blue #1E40AF, neutral #F8FAFC.
 */
 :root {

@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { toast } from 'sonner'
 import {
+  ArrowDownAZ,
+  ArrowUpZA,
   Building2,
   ChevronDown,
   FolderOpen,
@@ -35,8 +37,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -50,11 +61,11 @@ import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/auth'
 import {
-  DEPTS_WITH_TEAMS_QUERY_KEY,
+  DIVISIONS_WITH_TEAMS_QUERY_KEY,
   orgCrudApi,
   organizationApi,
   teamMembersQueryKey,
-  type OrgAdminDepartmentRow,
+  type OrgAdminDivisionRow,
   type OrgAdminTeamRow,
   type TeamMemberRow,
 } from '@/features/organization/api'
@@ -118,6 +129,109 @@ function OrgCrudNameDialog({
               }
             }}
           />
+        </div>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+            Hủy
+          </Button>
+          <Button type="button" onClick={onSubmit} disabled={pending}>
+            {pending ? 'Đang lưu…' : 'Lưu'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+type DivisionFormValues = {
+  name: string
+  code: string
+  description: string
+  isActive: boolean
+}
+
+function DivisionFormDialog({
+  open,
+  mode,
+  values,
+  onChange,
+  pending,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean
+  mode: 'create' | 'edit'
+  values: DivisionFormValues
+  onChange: (next: DivisionFormValues) => void
+  pending: boolean
+  onClose: () => void
+  onSubmit: () => void
+}) {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose()
+      }}
+    >
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{mode === 'create' ? 'Thêm phòng ban' : 'Sửa phòng ban'}</DialogTitle>
+          <DialogDescription>
+            Phòng ban là đơn vị tổ chức cha chứa các team. Mã & mô tả chỉ bắt buộc nếu cần tra cứu.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-1">
+          <div className="space-y-1.5">
+            <Label htmlFor="division-name">
+              Tên <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="division-name"
+              value={values.name}
+              onChange={(e) => onChange({ ...values, name: e.target.value })}
+              placeholder="VD: Phòng Công nghệ"
+              disabled={pending}
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="division-code">Mã (tuỳ chọn)</Label>
+            <Input
+              id="division-code"
+              value={values.code}
+              onChange={(e) => onChange({ ...values, code: e.target.value })}
+              placeholder="VD: CNTT"
+              disabled={pending}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="division-desc">Mô tả (tuỳ chọn)</Label>
+            <Textarea
+              id="division-desc"
+              value={values.description}
+              onChange={(e) => onChange({ ...values, description: e.target.value })}
+              placeholder="Ghi chú ngắn gọn về phòng ban…"
+              rows={3}
+              disabled={pending}
+            />
+          </div>
+          <div className="flex items-start gap-2 pt-1">
+            <Checkbox
+              id="division-active"
+              checked={values.isActive}
+              onCheckedChange={(v) => onChange({ ...values, isActive: v === true })}
+              disabled={pending}
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="division-active" className="cursor-pointer">
+                Đang hoạt động
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Bỏ đánh dấu nếu muốn lưu trữ phòng ban mà không xoá team.
+              </p>
+            </div>
+          </div>
         </div>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
@@ -211,6 +325,12 @@ export function HrOrgStructure() {
   const [orgSearch, setOrgSearch] = useState('')
   const deferredOrgSearch = useDeferredValue(orgSearch)
   const [expandedAllTeamsByDept, setExpandedAllTeamsByDept] = useState<Record<string, boolean>>({})
+  type TeamCountFilter = 'all' | 'with-teams' | 'without-teams'
+  type StatusFilter = 'all' | 'active-only' | 'inactive-only'
+  type SortKey = 'name-asc' | 'name-desc' | 'most-teams' | 'most-members'
+  const [teamCountFilter, setTeamCountFilter] = useState<TeamCountFilter>('all')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [sortKey, setSortKey] = useState<SortKey>('name-asc')
 
   const queryClient = useQueryClient()
   const { canId } = usePermission()
@@ -219,44 +339,59 @@ export function HrOrgStructure() {
   type OrgCrudModal =
     | null
     | { kind: 'dept-create' }
-    | { kind: 'dept-edit'; dept: OrgAdminDepartmentRow }
-    | { kind: 'dept-delete'; dept: OrgAdminDepartmentRow }
-    | { kind: 'team-create' }
+    | { kind: 'dept-edit'; dept: OrgAdminDivisionRow }
+    | { kind: 'dept-delete'; dept: OrgAdminDivisionRow }
+    | { kind: 'team-create'; dept: OrgAdminDivisionRow }
     | { kind: 'team-edit'; team: OrgAdminTeamRow }
     | { kind: 'team-delete'; team: OrgAdminTeamRow }
 
   const [crudModal, setCrudModal] = useState<OrgCrudModal>(null)
   const [crudName, setCrudName] = useState('')
+  const emptyDivisionForm = useMemo<DivisionFormValues>(
+    () => ({ name: '', code: '', description: '', isActive: true }),
+    []
+  )
+  const [divisionForm, setDivisionForm] = useState<DivisionFormValues>(emptyDivisionForm)
 
   const invalidateOrgStructure = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: DEPTS_WITH_TEAMS_QUERY_KEY })
+    void queryClient.invalidateQueries({ queryKey: DIVISIONS_WITH_TEAMS_QUERY_KEY })
   }, [queryClient])
 
   const createDeptM = useMutation({
-    mutationFn: (name: string) => orgCrudApi.createDepartment(name),
+    mutationFn: (payload: {
+      name: string
+      code?: string
+      description?: string
+      isActive?: boolean
+    }) => orgCrudApi.createDivision(payload),
     onSuccess: () => {
       toast.success('Đã tạo phòng ban')
       setCrudModal(null)
-      setCrudName('')
+      setDivisionForm(emptyDivisionForm)
       invalidateOrgStructure()
     },
     onError: (e) => toast.error(readApiErrorMessage(e)),
   })
 
   const updateDeptM = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) =>
-      orgCrudApi.updateDepartment(id, name),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string
+      payload: { name?: string; code?: string; description?: string; isActive?: boolean }
+    }) => orgCrudApi.updateDivision(id, payload),
     onSuccess: () => {
       toast.success('Đã cập nhật phòng ban')
       setCrudModal(null)
-      setCrudName('')
+      setDivisionForm(emptyDivisionForm)
       invalidateOrgStructure()
     },
     onError: (e) => toast.error(readApiErrorMessage(e)),
   })
 
   const deleteDeptM = useMutation({
-    mutationFn: (id: string) => orgCrudApi.deleteDepartment(id),
+    mutationFn: (id: string) => orgCrudApi.deleteDivision(id),
     onSuccess: () => {
       toast.success('Đã xóa phòng ban')
       setCrudModal(null)
@@ -266,7 +401,8 @@ export function HrOrgStructure() {
   })
 
   const createTeamM = useMutation({
-    mutationFn: (name: string) => orgCrudApi.createTeam(name),
+    mutationFn: ({ name, divisionId }: { name: string; divisionId: string }) =>
+      orgCrudApi.createTeam(name, divisionId),
     onSuccess: () => {
       toast.success('Đã tạo team')
       setCrudModal(null)
@@ -307,14 +443,52 @@ export function HrOrgStructure() {
     deleteTeamM.isPending
 
   const openCreateDepartment = useCallback(() => {
-    setCrudName('')
+    setDivisionForm(emptyDivisionForm)
     setCrudModal({ kind: 'dept-create' })
+  }, [emptyDivisionForm])
+
+  const openEditDepartment = useCallback((dept: OrgAdminDivisionRow) => {
+    setDivisionForm({
+      name: dept.name,
+      code: dept.code ?? '',
+      description: dept.description ?? '',
+      isActive: dept.isActive,
+    })
+    setCrudModal({ kind: 'dept-edit', dept })
   }, [])
 
-  const openCreateTeam = useCallback(() => {
+  const openCreateTeamForDept = useCallback((dept: OrgAdminDivisionRow) => {
     setCrudName('')
-    setCrudModal({ kind: 'team-create' })
+    setCrudModal({ kind: 'team-create', dept })
   }, [])
+
+  const submitDivisionForm = useCallback(() => {
+    const name = divisionForm.name.trim()
+    if (!name) {
+      toast.error('Vui lòng nhập tên phòng ban')
+      return
+    }
+    const code = divisionForm.code.trim()
+    const description = divisionForm.description.trim()
+    if (crudModal?.kind === 'dept-create') {
+      createDeptM.mutate({
+        name,
+        code: code || undefined,
+        description: description || undefined,
+        isActive: divisionForm.isActive,
+      })
+    } else if (crudModal?.kind === 'dept-edit') {
+      updateDeptM.mutate({
+        id: crudModal.dept.id,
+        payload: {
+          name,
+          code,
+          description,
+          isActive: divisionForm.isActive,
+        },
+      })
+    }
+  }, [crudModal, divisionForm, createDeptM, updateDeptM])
 
   const submitNameModal = useCallback(() => {
     const name = crudName.trim()
@@ -323,11 +497,10 @@ export function HrOrgStructure() {
       return
     }
     if (!crudModal) return
-    if (crudModal.kind === 'dept-create') createDeptM.mutate(name)
-    else if (crudModal.kind === 'dept-edit') updateDeptM.mutate({ id: crudModal.dept.id, name })
-    else if (crudModal.kind === 'team-create') createTeamM.mutate(name)
+    if (crudModal.kind === 'team-create')
+      createTeamM.mutate({ name, divisionId: crudModal.dept.id })
     else if (crudModal.kind === 'team-edit') updateTeamM.mutate({ id: crudModal.team.id, name })
-  }, [crudModal, crudName, createDeptM, createTeamM, updateDeptM, updateTeamM])
+  }, [crudModal, crudName, createTeamM, updateTeamM])
 
   const submitDeleteModal = useCallback(() => {
     if (!crudModal) return
@@ -336,8 +509,8 @@ export function HrOrgStructure() {
   }, [crudModal, deleteDeptM, deleteTeamM])
 
   const structureQ = useQuery({
-    queryKey: DEPTS_WITH_TEAMS_QUERY_KEY,
-    queryFn: () => organizationApi.listDepartmentsWithTeams(),
+    queryKey: DIVISIONS_WITH_TEAMS_QUERY_KEY,
+    queryFn: () => organizationApi.listDivisionsWithTeams(),
     enabled: !isMockApiEnabled(),
   })
 
@@ -378,18 +551,58 @@ export function HrOrgStructure() {
   }, [departments])
   const filteredDepartments = useMemo(() => {
     const q = deferredOrgSearch.trim().toLowerCase()
-    if (!q) return departments
-    return departments
-      .map((dept) => {
-        const deptMatched = dept.name.toLowerCase().includes(q) || dept.id.toLowerCase().includes(q)
-        if (deptMatched) return dept
-        const teams = dept.teams.filter((team) => {
-          return team.name.toLowerCase().includes(q) || team.id.toLowerCase().includes(q)
+    let list: OrgAdminDivisionRow[] = departments
+    if (q) {
+      list = list
+        .map((dept) => {
+          const deptMatched =
+            dept.name.toLowerCase().includes(q) ||
+            dept.id.toLowerCase().includes(q) ||
+            (dept.code ?? '').toLowerCase().includes(q)
+          if (deptMatched) return dept
+          const teams = dept.teams.filter((team) => {
+            return team.name.toLowerCase().includes(q) || team.id.toLowerCase().includes(q)
+          })
+          return { ...dept, teams }
         })
-        return { ...dept, teams }
-      })
-      .filter((dept) => dept.teams.length > 0)
-  }, [departments, deferredOrgSearch])
+        .filter((dept) => {
+          const deptMatched =
+            dept.name.toLowerCase().includes(q) ||
+            dept.id.toLowerCase().includes(q) ||
+            (dept.code ?? '').toLowerCase().includes(q)
+          return deptMatched || dept.teams.length > 0
+        })
+    }
+    if (teamCountFilter === 'with-teams') {
+      list = list.filter((d) => d.teams.length > 0)
+    } else if (teamCountFilter === 'without-teams') {
+      list = list.filter((d) => d.teams.length === 0)
+    }
+    if (statusFilter === 'active-only') {
+      list = list.filter((d) => d.isActive)
+    } else if (statusFilter === 'inactive-only') {
+      list = list.filter((d) => !d.isActive)
+    }
+    const sorted = [...list]
+    if (sortKey === 'name-asc') {
+      sorted.sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+    } else if (sortKey === 'name-desc') {
+      sorted.sort((a, b) => b.name.localeCompare(a.name, 'vi'))
+    } else if (sortKey === 'most-teams') {
+      sorted.sort((a, b) => b.teams.length - a.teams.length || a.name.localeCompare(b.name, 'vi'))
+    } else if (sortKey === 'most-members') {
+      const sumMembers = (d: OrgAdminDivisionRow) =>
+        d.teams.reduce((acc, t) => acc + t._count.users, 0)
+      sorted.sort((a, b) => sumMembers(b) - sumMembers(a) || a.name.localeCompare(b.name, 'vi'))
+    }
+    return sorted
+  }, [departments, deferredOrgSearch, teamCountFilter, statusFilter, sortKey])
+
+  const hasActiveFilter =
+    Boolean(orgSearch.trim()) ||
+    teamCountFilter !== 'all' ||
+    statusFilter !== 'all' ||
+    sortKey !== 'name-asc'
 
   let activeMemberContext: { team: OrgAdminTeamRow; deptName: string } | null = null
   if (membersTeamId) {
@@ -435,11 +648,11 @@ export function HrOrgStructure() {
           <span className={PAGE_HEADER_GRADIENT}>Phòng ban & Team</span>
         </h1>
         <p className={PAGE_HEADER_DESCRIPTION}>
-          Một phòng ban có thể có nhiều team (theo dữ liệu nhân sự). Mở rộng từng phòng ban để xem
-          team và thành viên. Nếu có quyền{' '}
-          <code className="rounded bg-muted px-1">hr.org.manage</code>, bạn có thể thêm / sửa / xóa
-          phòng ban và team qua API <code className="rounded bg-muted px-1">/org/departments</code>{' '}
-          và <code className="rounded bg-muted px-1">/org/teams</code>.
+          Một phòng ban (đơn vị tổ chức) chứa nhiều team. Mở rộng từng phòng ban để xem team và
+          thành viên. Nếu có quyền <code className="rounded bg-muted px-1">hr.org.manage</code>, bạn
+          có thể thêm / sửa / xóa phòng ban và team qua API{' '}
+          <code className="rounded bg-muted px-1">/org/divisions</code> và{' '}
+          <code className="rounded bg-muted px-1">/org/teams</code>.
         </p>
       </div>
 
@@ -481,19 +694,19 @@ export function HrOrgStructure() {
           </Card>
         </div>
 
-        <div className="flex flex-col gap-2 rounded-xl border border-accent/25 bg-gradient-to-r from-card via-muted/25 to-accent/10 p-3 sm:flex-row sm:items-center">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={orgSearch}
-              onChange={(e) => setOrgSearch(e.target.value)}
-              className="pl-9"
-              placeholder="Tìm phòng ban, team..."
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {canManageOrg && !mockBanner ? (
-              <>
+        <div className="flex flex-col gap-3 rounded-xl border border-accent/25 bg-gradient-to-r from-card via-muted/25 to-accent/10 p-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={orgSearch}
+                onChange={(e) => setOrgSearch(e.target.value)}
+                className="pl-9"
+                placeholder="Tìm theo tên / mã phòng ban, team..."
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {canManageOrg && !mockBanner ? (
                 <Button
                   type="button"
                   size="sm"
@@ -503,36 +716,106 @@ export function HrOrgStructure() {
                   <Plus className="mr-1 h-3.5 w-3.5" />
                   Phòng ban
                 </Button>
+              ) : null}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="border-primary/35 text-primary hover:bg-primary/10"
+                onClick={() => setExpandedDeptIds(new Set(filteredDepartments.map((d) => d.id)))}
+              >
+                Mở tất cả
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-accent hover:bg-accent/15 hover:text-accent"
+                onClick={() => setExpandedDeptIds(new Set())}
+              >
+                Thu gọn
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-border/40 pt-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex min-w-0 items-center gap-2">
+              <Label className="shrink-0 text-xs font-medium text-muted-foreground">Team</Label>
+              <Select
+                value={teamCountFilter}
+                onValueChange={(v) => setTeamCountFilter(v as TeamCountFilter)}
+              >
+                <SelectTrigger className="h-9 w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="with-teams">Có team</SelectItem>
+                  <SelectItem value="without-teams">Chưa có team</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex min-w-0 items-center gap-2">
+              <Label className="shrink-0 text-xs font-medium text-muted-foreground">
+                Trạng thái
+              </Label>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+              >
+                <SelectTrigger className="h-9 w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="active-only">Đang hoạt động</SelectItem>
+                  <SelectItem value="inactive-only">Ngưng dùng</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex min-w-0 items-center gap-2">
+              <Label className="shrink-0 text-xs font-medium text-muted-foreground">Sắp xếp</Label>
+              <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+                <SelectTrigger className="h-9 w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name-asc">
+                    <span className="flex items-center gap-2">
+                      <ArrowDownAZ className="h-3.5 w-3.5" /> Tên A → Z
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="name-desc">
+                    <span className="flex items-center gap-2">
+                      <ArrowUpZA className="h-3.5 w-3.5" /> Tên Z → A
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="most-teams">Nhiều team nhất</SelectItem>
+                  <SelectItem value="most-members">Nhiều thành viên nhất</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="tabular-nums">
+                {filteredDepartments.length}/{departments.length} phòng ban
+              </span>
+              {hasActiveFilter ? (
                 <Button
                   type="button"
                   size="sm"
-                  variant="secondary"
-                  className="rounded-full"
-                  onClick={openCreateTeam}
+                  variant="ghost"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => {
+                    setOrgSearch('')
+                    setTeamCountFilter('all')
+                    setStatusFilter('all')
+                    setSortKey('name-asc')
+                  }}
                 >
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  Team
+                  Xóa lọc
                 </Button>
-              </>
-            ) : null}
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="border-primary/35 text-primary hover:bg-primary/10"
-              onClick={() => setExpandedDeptIds(new Set(filteredDepartments.map((d) => d.id)))}
-            >
-              Mở tất cả
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="text-accent hover:bg-accent/15 hover:text-accent"
-              onClick={() => setExpandedDeptIds(new Set())}
-            >
-              Thu gọn
-            </Button>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -545,9 +828,21 @@ export function HrOrgStructure() {
               <div className="space-y-1">
                 <p className="text-base font-medium text-foreground">Chưa có phòng ban</p>
                 <p className="max-w-md text-sm text-muted-foreground">
-                  Dữ liệu sẽ hiển thị khi đã có phòng ban trên hệ thống.
+                  Hãy tạo phòng ban trước. Sau khi có phòng ban, bạn mới có thể tạo team trong phòng
+                  ban đó.
                 </p>
               </div>
+              {canManageOrg && !mockBanner ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={openCreateDepartment}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Tạo phòng ban đầu tiên
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
         )}
@@ -570,6 +865,14 @@ export function HrOrgStructure() {
                   <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5 text-left">
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="text-base font-semibold leading-snug">{dept.name}</span>
+                      {dept.code ? (
+                        <Badge
+                          variant="outline"
+                          className="border-primary/30 bg-primary/5 font-mono text-[11px] font-normal uppercase tracking-wide text-primary"
+                        >
+                          {dept.code}
+                        </Badge>
+                      ) : null}
                       {!dept.isActive && (
                         <Badge
                           variant="outline"
@@ -586,25 +889,37 @@ export function HrOrgStructure() {
                       >
                         {dept.teams.length} team
                       </Badge>
+                      {dept.description ? (
+                        <span className="line-clamp-1 max-w-[420px] text-xs text-muted-foreground/90">
+                          {dept.description}
+                        </span>
+                      ) : null}
                     </span>
                   </span>
                 </AccordionTrigger>
                 {canManageOrg && !mockBanner ? (
                   <div
-                    className="flex shrink-0 items-center gap-0.5 pt-0.5"
+                    className="flex shrink-0 items-center gap-1 pt-0.5"
                     onClick={(e) => e.stopPropagation()}
                     role="presentation"
                   >
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-8 rounded-full px-2.5 text-xs"
+                      onClick={() => openCreateTeamForDept(dept)}
+                    >
+                      <Plus className="mr-1 h-3.5 w-3.5" />
+                      Team
+                    </Button>
                     <Button
                       type="button"
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8 text-muted-foreground hover:text-foreground"
                       aria-label="Sửa phòng ban"
-                      onClick={() => {
-                        setCrudName(dept.name)
-                        setCrudModal({ kind: 'dept-edit', dept })
-                      }}
+                      onClick={() => openEditDepartment(dept)}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -635,10 +950,24 @@ export function HrOrgStructure() {
                     <TableBody>
                       {dept.teams.length === 0 ? (
                         <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={4} className="py-12 text-center">
-                            <p className="text-sm text-muted-foreground">
-                              Chưa có team trong phòng ban này.
-                            </p>
+                          <TableCell colSpan={4} className="py-10 text-center">
+                            <div className="flex flex-col items-center gap-3">
+                              <p className="text-sm text-muted-foreground">
+                                Chưa có team trong phòng ban này.
+                              </p>
+                              {canManageOrg && !mockBanner ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="rounded-full"
+                                  onClick={() => openCreateTeamForDept(dept)}
+                                >
+                                  <Plus className="mr-1 h-3.5 w-3.5" />
+                                  Tạo team đầu tiên
+                                </Button>
+                              ) : null}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -713,28 +1042,35 @@ export function HrOrgStructure() {
         </Dialog>
       )}
 
+      <DivisionFormDialog
+        open={Boolean(
+          crudModal && (crudModal.kind === 'dept-create' || crudModal.kind === 'dept-edit')
+        )}
+        mode={crudModal?.kind === 'dept-edit' ? 'edit' : 'create'}
+        values={divisionForm}
+        onChange={setDivisionForm}
+        pending={orgCrudPending}
+        onClose={() => {
+          setCrudModal(null)
+          setDivisionForm(emptyDivisionForm)
+        }}
+        onSubmit={submitDivisionForm}
+      />
+
       <OrgCrudNameDialog
         open={Boolean(
-          crudModal &&
-          (crudModal.kind === 'dept-create' ||
-            crudModal.kind === 'dept-edit' ||
-            crudModal.kind === 'team-create' ||
-            crudModal.kind === 'team-edit')
+          crudModal && (crudModal.kind === 'team-create' || crudModal.kind === 'team-edit')
         )}
         title={
-          crudModal?.kind === 'dept-create'
-            ? 'Thêm phòng ban'
-            : crudModal?.kind === 'dept-edit'
-              ? 'Sửa phòng ban'
-              : crudModal?.kind === 'team-create'
-                ? 'Thêm team'
-                : crudModal?.kind === 'team-edit'
-                  ? 'Sửa team'
-                  : ''
+          crudModal?.kind === 'team-create'
+            ? `Thêm team trong «${crudModal.dept.name}»`
+            : crudModal?.kind === 'team-edit'
+              ? 'Sửa team'
+              : ''
         }
         description={
           crudModal?.kind === 'team-create'
-            ? 'Team được tạo trong danh mục chung; hiển thị dưới phòng ban khi có nhân sự gán đúng phòng ban + team.'
+            ? `Team sẽ được gán cứng vào phòng ban «${crudModal.dept.name}». Sau đó bạn có thể gán nhân sự cho team.`
             : undefined
         }
         name={crudName}

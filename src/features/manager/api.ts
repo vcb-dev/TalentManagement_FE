@@ -328,11 +328,11 @@ export const managerApi = {
     const res = await apiClient.get<unknown>('/org/teams')
     return safeParse(z.array(orgItemApiSchema), res.data, 'GET /org/teams')
   },
-  createTeam: async (name: string) => {
-    const res = await apiClient.post<unknown>('/org/teams', { name })
+  createTeam: async (name: string, divisionId: string) => {
+    const res = await apiClient.post<unknown>('/org/teams', { name, divisionId })
     return safeParse(orgCreateResponseApiSchema, res.data, 'POST /org/teams')
   },
-  updateTeam: async (id: string, body: { name?: string }) => {
+  updateTeam: async (id: string, body: { name?: string; divisionId?: string }) => {
     const res = await apiClient.patch<unknown>(`/org/teams/${id}`, body)
     return safeParse(orgItemApiSchema, res.data, 'PATCH /org/teams/:id')
   },

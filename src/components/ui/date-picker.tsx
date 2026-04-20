@@ -65,7 +65,17 @@ export function DatePicker({
           {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: vi }) : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+      <PopoverContent
+        className="w-auto overflow-hidden p-0"
+        align="start"
+        /*
+         * Radix mặc định auto-focus phần tử đầu tiên trong content. Với
+         * `captionLayout="dropdown"`, đó là <select> tháng/năm (opacity-0) —
+         * trên Windows có thể làm dropdown native mở ngay khi mở popover.
+         * Giữ focus trên trigger; user Tab / click vào lịch như bình thường.
+         */
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <Calendar
           mode="single"
           selected={selectedDate}
@@ -76,7 +86,6 @@ export function DatePicker({
             setOpen(false)
           }}
           disabled={dayDisabled}
-          initialFocus
         />
       </PopoverContent>
     </Popover>
