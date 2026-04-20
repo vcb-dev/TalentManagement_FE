@@ -2,7 +2,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { HrEmployeeList } from '@/features/hr-admin/components/HrEmployeeList'
 import { requireEmployeeDirectoryAccess } from '@/features/hr-admin/requireHrAdmin'
-import { useAuthStore } from '@/stores/auth.store'
 
 const hrAdminSearchSchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
@@ -22,8 +21,6 @@ export const Route = createFileRoute('/_protected/hr-admin/')({
 
 function HrAdminIndexPage() {
   const search = Route.useSearch()
-  const user = useAuthStore((s) => s.user)
-  const leaderTeamId = user?.role === 'LEADER' ? user.teamIds?.[0] : undefined
   return (
     <HrEmployeeList
       initialFilters={{
@@ -31,7 +28,6 @@ function HrAdminIndexPage() {
         pageSize: search.pageSize,
         role: search.role,
         status: search.status,
-        teamId: leaderTeamId,
       }}
     />
   )

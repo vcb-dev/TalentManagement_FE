@@ -46,11 +46,7 @@ export interface HrEmployeeListProps {
 
 export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   const routeSearch = hrAdminListRoute.useSearch()
-  const sessionUser = useAuthStore((s) => s.user)
-  const hideRoleTabsForLeader = sessionUser?.role === 'LEADER'
-  const totalStatHint = hideRoleTabsForLeader
-    ? 'theo nhóm và tìm kiếm'
-    : 'theo tab vai trò và tìm kiếm'
+  const totalStatHint = 'theo tab vai trò và tìm kiếm'
   const { canId } = usePermission()
   const canCreate = canId('hr.employees.create')
   const canEdit = canId('hr.employees.edit')
@@ -87,19 +83,6 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
       search: (s) => ({ ...s, pageSize: HR_EMPLOYEE_PAGE_SIZE, page: 1 }),
     })
   }, [filters.pageSize, navigate])
-
-  /** Leader chỉ xem theo team — không áp dụng lọc `role` từ URL. */
-  useEffect(() => {
-    if (!hideRoleTabsForLeader || routeSearch.role === undefined) return
-    void navigate({
-      to: '/hr-admin',
-      search: (prev) => {
-        const { role: _r, ...rest } = prev
-        return { ...rest, page: 1, pageSize: HR_EMPLOYEE_PAGE_SIZE }
-      },
-      replace: true,
-    })
-  }, [hideRoleTabsForLeader, navigate, routeSearch.role])
 
   useEffect(() => {
     searchForm.reset({ searchDraft: filters.search ?? '' })
@@ -323,39 +306,37 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
             </div>
           </div>
 
-          {/* Tab vai trò (GET /employees?role=) — ẩn với Leader (chỉ xem theo team) + tìm kiếm */}
+          {/* Tab vai trò (GET /employees?role=) — và tìm kiếm */}
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-            {!hideRoleTabsForLeader ? (
-              <div
-                className="flex shrink-0 flex-wrap items-center gap-1 rounded-xl border border-border/80 bg-card/90 p-1 shadow-sm ring-1 ring-border/60 backdrop-blur-sm"
-                role="tablist"
-                aria-label="Lọc theo vai trò nhân sự"
-              >
-                {HR_ROLE_TABS.map((tab) => {
-                  const selected =
-                    tab.value === 'all'
-                      ? routeSearch.role === undefined
-                      : routeSearch.role === tab.value
-                  return (
-                    <button
-                      key={tab.value}
-                      type="button"
-                      role="tab"
-                      aria-selected={selected}
-                      className={cn(
-                        'rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm',
-                        selected
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                      )}
-                      onClick={() => applyRoleTab(tab.value)}
-                    >
-                      {tab.label}
-                    </button>
-                  )
-                })}
-              </div>
-            ) : null}
+            <div
+              className="flex shrink-0 flex-wrap items-center gap-1 rounded-xl border border-border/80 bg-card/90 p-1 shadow-sm ring-1 ring-border/60 backdrop-blur-sm"
+              role="tablist"
+              aria-label="Lọc theo vai trò nhân sự"
+            >
+              {HR_ROLE_TABS.map((tab) => {
+                const selected =
+                  tab.value === 'all'
+                    ? routeSearch.role === undefined
+                    : routeSearch.role === tab.value
+                return (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    className={cn(
+                      'rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm',
+                      selected
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                    onClick={() => applyRoleTab(tab.value)}
+                  >
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </div>
             <div className="min-w-0 flex-1">
               <Form {...searchForm}>
                 <div className="relative flex min-h-[42px] w-full min-w-0 items-center rounded-xl border border-border/80 bg-card/90 px-3 shadow-sm ring-1 ring-border/60 backdrop-blur-sm">

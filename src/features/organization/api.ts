@@ -127,6 +127,16 @@ export type TeamMemberRow = {
   portraitRef: string | null
 }
 
+export type EligibleUserRow = {
+  userId: string
+  displayName: string | null
+  email: string | null
+  employeeCodePrimary: string | null
+  avatarUrl: string | null
+  currentTeamId: string | null
+  currentTeamName: string | null
+}
+
 export const DIVISIONS_WITH_TEAMS_QUERY_KEY = ['organization', 'divisions-with-teams'] as const
 /** @deprecated Dùng `DIVISIONS_WITH_TEAMS_QUERY_KEY`. */
 export const DEPTS_WITH_TEAMS_QUERY_KEY = DIVISIONS_WITH_TEAMS_QUERY_KEY
@@ -206,6 +216,43 @@ export const organizationApi = {
     }
     const res = await apiClient.get<{ teamId: string; members: TeamMemberRow[] }>(
       `/organization/teams/${teamId}/members`
+    )
+    return res.data
+  },
+
+  searchEligibleUsers: async (
+    teamId: string,
+    q?: string,
+    limit = 20
+  ): Promise<EligibleUserRow[]> => {
+    if (isMockApiEnabled()) return []
+    const res = await apiClient.get<EligibleUserRow[]>(
+      `/organization/teams/${teamId}/eligible-users`,
+      { params: { q: q?.trim() || undefined, limit } }
+    )
+    return res.data
+  },
+
+  addTeamMember: async (
+    teamId: string,
+    userId: string
+  ): Promise<{ teamId: string; userId: string; movedFromTeamId: string | null }> => {
+    assertOrgCrudNotMock('thêm thành viên')
+    const res = await apiClient.post<{
+      teamId: string
+      userId: string
+      movedFromTeamId: string | null
+    }>(`/organization/teams/${teamId}/members`, { userId })
+    return res.data
+  },
+
+  removeTeamMember: async (
+    teamId: string,
+    userId: string
+  ): Promise<{ teamId: string; userId: string }> => {
+    assertOrgCrudNotMock('xoá thành viên')
+    const res = await apiClient.delete<{ teamId: string; userId: string }>(
+      `/organization/teams/${teamId}/members/${userId}`
     )
     return res.data
   },

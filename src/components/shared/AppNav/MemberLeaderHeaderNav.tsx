@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/navigation-menu'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth.store'
 
 type HeaderNavGroup = {
   id: string
@@ -109,7 +110,8 @@ function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) 
 export function MemberLeaderHeaderNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { canId } = usePermission()
-  const items = mergeCompactHeaderNavItems(canId)
+  const role = useAuthStore((s) => s.user?.role)
+  const items = mergeCompactHeaderNavItems(canId, role)
   const groups = buildHeaderGroups(items)
 
   return (
@@ -121,6 +123,28 @@ export function MemberLeaderHeaderNav() {
       <NavigationMenuList>
         {groups.map((group) => {
           const active = group.items.some((item) => isNavItemActive(pathname, item))
+          const isSingle = group.items.length === 1
+          const singleItem = group.items[0]!
+
+          if (isSingle) {
+            return (
+              <NavigationMenuItem key={group.id}>
+                <NavigationMenuLink asChild>
+                  <Link
+                    to={singleItem.to}
+                    search={singleItem.search}
+                    className={cn(
+                      'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors border border-transparent bg-transparent text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white focus:text-white',
+                      active && 'border-white/30 bg-white/15 text-white'
+                    )}
+                  >
+                    {group.label}
+                  </Link>
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+            )
+          }
+
           return (
             <NavigationMenuItem key={group.id}>
               <NavigationMenuTrigger

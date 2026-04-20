@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Checkbox } from '@/components/ui/checkbox'
-import { DatePicker } from '@/components/ui/date-picker'
+import { DatePicker, type LockToMonth } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -334,12 +334,14 @@ export function DateController<
   max,
   disabled,
   placeholder,
+  lockToMonth,
 }: LabeledControllerProps<TFieldValues, TName> & {
   min?: string
   max?: string
   disabled?: boolean
   placeholder?: string
   datePickerClassName?: string
+  lockToMonth?: LockToMonth
 }) {
   return (
     <FormField
@@ -360,6 +362,7 @@ export function DateController<
               disabled={disabled}
               placeholder={placeholder}
               className={datePickerClassName}
+              lockToMonth={lockToMonth}
             />
           </FormControl>
           <FormMessage />

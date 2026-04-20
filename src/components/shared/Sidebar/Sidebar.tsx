@@ -90,7 +90,7 @@ function SidebarInner() {
   const { canId } = usePermission()
   const collapsed = !sidebarOpen
 
-  const groups = useMemo(() => groupedSidebarNavItems(canId), [canId])
+  const groups = useMemo(() => groupedSidebarNavItems(canId, user?.role), [canId, user?.role])
 
   /**
    * Trạng thái mở/đóng từng nhóm — chỉ lưu các nhóm user đã đóng tay.

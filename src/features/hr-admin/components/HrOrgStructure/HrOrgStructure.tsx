@@ -12,6 +12,8 @@ import {
   Plus,
   Search,
   Trash2,
+  UserMinus,
+  UserPlus,
   Users,
 } from 'lucide-react'
 import {
@@ -65,6 +67,7 @@ import {
   orgCrudApi,
   organizationApi,
   teamMembersQueryKey,
+  type EligibleUserRow,
   type OrgAdminDivisionRow,
   type OrgAdminTeamRow,
   type TeamMemberRow,
@@ -1033,10 +1036,12 @@ export function HrOrgStructure() {
         >
           <DialogContent className="flex h-[min(92vh,900px)] w-[calc(100vw-1rem)] max-w-5xl flex-col gap-0 overflow-hidden p-0">
             <TeamMembersPanel
+              teamId={activeMemberContext.team.id}
               teamName={activeMemberContext.team.name}
               deptLabel={activeMemberContext.deptName}
               members={membersQ.data?.members ?? []}
               loading={membersQ.isLoading}
+              canManage={canManageOrg && !mockBanner}
             />
           </DialogContent>
         </Dialog>
@@ -1256,18 +1261,54 @@ function memberRowStatus(m: TeamMemberRow): TeamMemberRow['status'] {
 }
 
 function TeamMembersPanel({
+  teamId,
   teamName,
   deptLabel,
   members,
   loading,
+  canManage,
 }: {
+  teamId: string
   teamName: string
   deptLabel: string
   members: TeamMemberRow[]
   loading: boolean
+  canManage: boolean
 }) {
   const [tableFilter, setTableFilter] = useState('')
   const deferredTableFilter = useDeferredValue(tableFilter)
+  const queryClient = useQueryClient()
+
+  const [addOpen, setAddOpen] = useState(false)
+  const [pendingRemove, setPendingRemove] = useState<TeamMemberRow | null>(null)
+
+  const invalidateMembers = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: teamMembersQueryKey(teamId) })
+    void queryClient.invalidateQueries({ queryKey: DIVISIONS_WITH_TEAMS_QUERY_KEY })
+  }, [queryClient, teamId])
+
+  const addMemberM = useMutation({
+    mutationFn: (userId: string) => organizationApi.addTeamMember(teamId, userId),
+    onSuccess: (data) => {
+      if (data.movedFromTeamId) {
+        toast.success('Đã chuyển nhân sự sang team này')
+      } else {
+        toast.success('Đã thêm thành viên vào team')
+      }
+      invalidateMembers()
+    },
+    onError: (e) => toast.error(readApiErrorMessage(e)),
+  })
+
+  const removeMemberM = useMutation({
+    mutationFn: (userId: string) => organizationApi.removeTeamMember(teamId, userId),
+    onSuccess: () => {
+      toast.success('Đã xoá thành viên khỏi team')
+      setPendingRemove(null)
+      invalidateMembers()
+    },
+    onError: (e) => toast.error(readApiErrorMessage(e)),
+  })
 
   const filteredMembers = useMemo(() => {
     const q = deferredTableFilter.trim().toLowerCase()
@@ -1288,6 +1329,8 @@ function TeamMembersPanel({
     })
   }, [members, deferredTableFilter])
 
+  const existingMemberIds = useMemo(() => new Set(members.map((m) => m.userId)), [members])
+
   return (
     <>
       <DialogHeader className="shrink-0 space-y-1 border-b border-border/70 bg-gradient-to-r from-primary/[0.08] via-card to-card px-6 py-5 pr-14">
@@ -1301,8 +1344,9 @@ function TeamMembersPanel({
         <DialogDescription asChild>
           <div className="text-left">
             <span className="mt-2 block text-xs text-muted-foreground">
-              Chỉ xem danh sách thành viên tại đây. Thêm / sửa / xóa phòng ban và team thực hiện ở
-              trang này (khi có quyền <code className="rounded bg-muted px-1">hr.org.manage</code>).
+              {canManage
+                ? 'Quản lý thành viên trực tiếp trong team: bấm "Thêm thành viên" để gán nhân sự, hoặc xoá khỏi team qua nút trong cột "Hành động".'
+                : 'Chỉ xem danh sách thành viên. Để thêm / xoá thành viên cần quyền hr.org.manage.'}
             </span>
           </div>
         </DialogDescription>
@@ -1310,19 +1354,34 @@ function TeamMembersPanel({
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="shrink-0 border-b border-border/50 bg-muted/15 px-4 py-3 sm:px-6">
-          <Label htmlFor="team-members-table-filter" className="text-xs text-muted-foreground">
-            Tìm trong bảng
-          </Label>
-          <div className="relative mt-1.5">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="team-members-table-filter"
-              className="pl-9"
-              placeholder="Tên, email, mã NV, vai trò, trạng thái…"
-              value={tableFilter}
-              onChange={(e) => setTableFilter(e.target.value)}
-              autoComplete="off"
-            />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex-1">
+              <Label htmlFor="team-members-table-filter" className="text-xs text-muted-foreground">
+                Tìm trong bảng
+              </Label>
+              <div className="relative mt-1.5">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="team-members-table-filter"
+                  className="pl-9"
+                  placeholder="Tên, email, mã NV, vai trò, trạng thái…"
+                  value={tableFilter}
+                  onChange={(e) => setTableFilter(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+            {canManage ? (
+              <Button
+                type="button"
+                className="sm:shrink-0"
+                onClick={() => setAddOpen(true)}
+                disabled={addMemberM.isPending}
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Thêm thành viên
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -1336,6 +1395,18 @@ function TeamMembersPanel({
           ) : members.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
               <p className="text-sm text-muted-foreground">Chưa có thành viên trong team.</p>
+              {canManage ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => setAddOpen(true)}
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Thêm thành viên đầu tiên
+                </Button>
+              ) : null}
             </div>
           ) : (
             <Table className="min-w-[720px]">
@@ -1346,13 +1417,16 @@ function TeamMembersPanel({
                   <TableHead className="min-w-[180px]">Email</TableHead>
                   <TableHead className="min-w-[130px]">Vai trò</TableHead>
                   <TableHead className="min-w-[130px]">Trạng thái</TableHead>
+                  {canManage ? (
+                    <TableHead className="w-[96px] text-right pr-3">Hành động</TableHead>
+                  ) : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredMembers.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
                     <TableCell
-                      colSpan={5}
+                      colSpan={canManage ? 6 : 5}
                       className="py-10 text-center text-sm text-muted-foreground"
                     >
                       Không có dòng nào khớp bộ lọc.
@@ -1362,6 +1436,7 @@ function TeamMembersPanel({
                   filteredMembers.map((m) => {
                     const role = memberRowRole(m)
                     const status = memberRowStatus(m)
+                    const removing = removeMemberM.isPending && removeMemberM.variables === m.userId
                     return (
                       <TableRow key={m.userId} className="group">
                         <TableCell className="pl-3 align-middle">
@@ -1388,6 +1463,22 @@ function TeamMembersPanel({
                             {MEMBER_STATUS_VI[status]}
                           </Badge>
                         </TableCell>
+                        {canManage ? (
+                          <TableCell className="pr-3 text-right align-middle">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => setPendingRemove(m)}
+                              disabled={removing}
+                              title="Xoá khỏi team"
+                            >
+                              <UserMinus className="mr-1.5 h-4 w-4" />
+                              {removing ? 'Đang xoá…' : 'Xoá'}
+                            </Button>
+                          </TableCell>
+                        ) : null}
                       </TableRow>
                     )
                   })
@@ -1397,6 +1488,183 @@ function TeamMembersPanel({
           )}
         </div>
       </div>
+
+      {canManage && addOpen ? (
+        <AddTeamMemberDialog
+          teamId={teamId}
+          teamName={teamName}
+          existingMemberIds={existingMemberIds}
+          pending={addMemberM.isPending}
+          onClose={() => setAddOpen(false)}
+          onPick={(userId) => addMemberM.mutate(userId)}
+        />
+      ) : null}
+
+      {canManage ? (
+        <OrgCrudConfirmDialog
+          open={Boolean(pendingRemove)}
+          title="Xoá thành viên khỏi team?"
+          body={
+            pendingRemove
+              ? `Sẽ gỡ «${memberRowDisplayName(pendingRemove)}» khỏi team «${teamName}». Hành động này không xoá tài khoản; có thể thêm lại sau.`
+              : ''
+          }
+          pending={removeMemberM.isPending}
+          onClose={() => {
+            if (!removeMemberM.isPending) setPendingRemove(null)
+          }}
+          onConfirm={() => {
+            if (pendingRemove) removeMemberM.mutate(pendingRemove.userId)
+          }}
+        />
+      ) : null}
     </>
+  )
+}
+
+function AddTeamMemberDialog({
+  teamId,
+  teamName,
+  existingMemberIds,
+  pending,
+  onClose,
+  onPick,
+}: {
+  teamId: string
+  teamName: string
+  existingMemberIds: Set<string>
+  pending: boolean
+  onClose: () => void
+  onPick: (userId: string) => void
+}) {
+  const [q, setQ] = useState('')
+  const deferredQ = useDeferredValue(q)
+
+  const eligibleQ = useQuery({
+    queryKey: ['organization', 'eligible-users', teamId, deferredQ.trim()] as const,
+    queryFn: () => organizationApi.searchEligibleUsers(teamId, deferredQ.trim() || undefined, 20),
+    enabled: !isMockApiEnabled(),
+    staleTime: 15_000,
+  })
+
+  const rows = useMemo(() => {
+    const list = eligibleQ.data ?? []
+    return list.filter((r) => !existingMemberIds.has(r.userId))
+  }, [eligibleQ.data, existingMemberIds])
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next && !pending) onClose()
+      }}
+    >
+      <DialogContent className="flex h-[min(86vh,720px)] w-[calc(100vw-1rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 space-y-1 border-b border-border/70 px-6 py-5">
+          <DialogTitle>Thêm thành viên vào «{teamName}»</DialogTitle>
+          <DialogDescription>
+            Tìm theo tên, email hoặc mã nhân viên. Nhân sự đang thuộc team khác sẽ được chuyển sang
+            team này khi bạn chọn.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="shrink-0 border-b border-border/50 px-6 py-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder="Nhập từ khoá…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              autoFocus
+              autoComplete="off"
+            />
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto px-3 py-2 sm:px-4">
+          {eligibleQ.isLoading ? (
+            <div className="space-y-2 p-2">
+              <Skeleton className="h-14 w-full rounded-lg" />
+              <Skeleton className="h-14 w-full rounded-lg" />
+              <Skeleton className="h-14 w-full rounded-lg" />
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
+              <p className="text-sm text-muted-foreground">
+                {deferredQ.trim()
+                  ? 'Không tìm thấy nhân sự phù hợp.'
+                  : 'Gõ để tìm nhân sự cần thêm vào team.'}
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {rows.map((r) => (
+                <EligibleUserRowItem
+                  key={r.userId}
+                  row={r}
+                  pending={pending}
+                  onPick={() => onPick(r.userId)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <DialogFooter className="shrink-0 gap-2 border-t border-border/70 px-6 py-3 sm:gap-0">
+          <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+            Đóng
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function EligibleUserRowItem({
+  row,
+  pending,
+  onPick,
+}: {
+  row: EligibleUserRow
+  pending: boolean
+  onPick: () => void
+}) {
+  const name = row.displayName?.trim() || row.email?.trim() || '—'
+  return (
+    <li className="flex items-center gap-3 px-2 py-2.5 sm:px-3">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/70 bg-muted/40 text-xs font-semibold uppercase text-muted-foreground">
+        {row.avatarUrl ? (
+          <img src={row.avatarUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <span>{(name[0] ?? '?').toUpperCase()}</span>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium">{name}</div>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+          {row.employeeCodePrimary ? <span>{row.employeeCodePrimary}</span> : null}
+          {row.email ? <span className="truncate">{row.email}</span> : null}
+        </div>
+        {row.currentTeamName ? (
+          <div className="mt-0.5 text-[11px] text-amber-600 dark:text-amber-400">
+            Đang thuộc team: {row.currentTeamName} (sẽ chuyển sang team mới)
+          </div>
+        ) : (
+          <div className="mt-0.5 text-[11px] text-muted-foreground">Chưa thuộc team nào</div>
+        )}
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="shrink-0"
+        onClick={onPick}
+        disabled={pending}
+      >
+        <UserPlus className="mr-1.5 h-4 w-4" />
+        Thêm
+      </Button>
+    </li>
   )
 }

@@ -1,11 +1,18 @@
 import * as React from 'react'
 import { CalendarIcon } from 'lucide-react'
-import { format, isValid, parseISO, startOfDay } from 'date-fns'
+import { endOfMonth, format, isValid, parseISO, startOfDay, startOfMonth } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+
+export type LockToMonth = {
+  /** Năm (4 chữ số) */
+  year: number
+  /** Tháng 1..12 */
+  month: number
+}
 
 type DatePickerProps = {
   value?: string
@@ -15,6 +22,11 @@ type DatePickerProps = {
   className?: string
   min?: string
   max?: string
+  /**
+   * Khoá lịch chỉ cho chọn ngày trong đúng tháng/năm này — ẩn nút điều hướng,
+   * chặn chuyển sang tháng/năm khác qua dropdown.
+   */
+  lockToMonth?: LockToMonth
 }
 
 function parseDateString(value?: string): Date | undefined {
@@ -32,11 +44,24 @@ export function DatePicker({
   className,
   min,
   max,
+  lockToMonth,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
   const selectedDate = parseDateString(value)
-  const minDate = parseDateString(min)
-  const maxDate = parseDateString(max)
+
+  const lockedFirstDay = React.useMemo(
+    () =>
+      lockToMonth ? startOfMonth(new Date(lockToMonth.year, lockToMonth.month - 1, 1)) : undefined,
+    [lockToMonth]
+  )
+  const lockedLastDay = React.useMemo(
+    () =>
+      lockToMonth ? endOfMonth(new Date(lockToMonth.year, lockToMonth.month - 1, 1)) : undefined,
+    [lockToMonth]
+  )
+
+  const minDate = lockedFirstDay ?? parseDateString(min)
+  const maxDate = lockedLastDay ?? parseDateString(max)
 
   const dayDisabled = React.useCallback(
     (date: Date) => {
@@ -79,8 +104,12 @@ export function DatePicker({
         <Calendar
           mode="single"
           selected={selectedDate}
-          defaultMonth={selectedDate}
-          captionLayout="dropdown"
+          defaultMonth={selectedDate ?? lockedFirstDay}
+          month={lockToMonth ? lockedFirstDay : undefined}
+          startMonth={lockedFirstDay}
+          endMonth={lockedLastDay}
+          disableNavigation={Boolean(lockToMonth)}
+          captionLayout={lockToMonth ? 'label' : 'dropdown'}
           onSelect={(date) => {
             onChange(date ? format(date, 'yyyy-MM-dd') : '')
             setOpen(false)

@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import type { Role } from '@/types/auth'
 import {
   BarChart3,
   BookOpen,
@@ -31,6 +32,8 @@ export type AppNavItem = {
   permissionId?: string
   /** Nếu có — hiển thị khi user có ít nhất một trong các quyền (ưu tiên hơn `permissionId` nếu cả hai đều có). */
   permissionIdsAny?: string[]
+  /** Nếu có — ẩn mục khỏi nav nếu user đang ở một trong các role này (ưu tiên cao hơn mọi check quyền). */
+  hiddenForRoles?: Role[]
 }
 
 /** Member: dashboard, lộ trình, thi, KPI, báo cáo — quyền bám route + catalog (tránh link tới màn không vào được). */
@@ -87,7 +90,7 @@ const HR_ITEMS: AppNavItem[] = [
       return p === '/hr-admin' || p.startsWith('/hr-admin/')
     },
     search: { page: 1 },
-    permissionIdsAny: ['hr.employees.view', 'manager.team.view', 'kpi.team_view', 'kpi.team_edit'],
+    permissionIdsAny: ['hr.employees.view', 'manager.team.view'],
   },
   {
     to: '/hr-admin/org',
@@ -236,6 +239,7 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
     icon: Target,
     match: 'prefix',
     permissionIdsAny: ['kpi.team_view', 'kpi.team_edit'],
+    hiddenForRoles: ['MANAGER'],
   },
   {
     to: '/monthly-report',
@@ -255,9 +259,11 @@ export function normalizePath(p: string): string {
 
 export function filterNavByPermissions(
   items: AppNavItem[],
-  hasPermission: (permissionId: string) => boolean
+  hasPermission: (permissionId: string) => boolean,
+  role?: Role
 ): AppNavItem[] {
   return items.filter((item) => {
+    if (role && item.hiddenForRoles?.includes(role)) return false
     if (item.permissionIdsAny?.length) {
       return item.permissionIdsAny.some((id) => hasPermission(id))
     }
@@ -270,7 +276,10 @@ export function filterNavByPermissions(
  * Sidebar: flat route list (permission filter + dedupe by `to` + search).
  * Order ưu tiên luồng sử dụng: Dashboard/KPI → tác vụ manager → nhân sự/org → BOD → teacher.
  */
-export function flatSidebarNavItems(canId: (permissionId: string) => boolean): AppNavItem[] {
+export function flatSidebarNavItems(
+  canId: (permissionId: string) => boolean,
+  role?: Role
+): AppNavItem[] {
   const sources = [
     LEADER_KPI_ITEMS,
     MEMBER_SELF_ITEMS,
@@ -282,7 +291,7 @@ export function flatSidebarNavItems(canId: (permissionId: string) => boolean): A
   const seen = new Set<string>()
   const out: AppNavItem[] = []
   for (const source of sources) {
-    for (const item of filterNavByPermissions(source, canId)) {
+    for (const item of filterNavByPermissions(source, canId, role)) {
       const key = item.to + (item.search !== undefined ? JSON.stringify(item.search) : '')
       if (seen.has(key)) continue
       seen.add(key)
@@ -303,11 +312,14 @@ export type AppNavGroup = {
  * Nhân sự → Ban lãnh đạo) thay vì danh sách phẳng dài. Mỗi item chỉ xuất hiện
  * 1 lần (dedupe theo `to`+`search`); nhóm rỗng (sau filter quyền) sẽ bị ẩn.
  */
-export function groupedSidebarNavItems(canId: (permissionId: string) => boolean): AppNavGroup[] {
+export function groupedSidebarNavItems(
+  canId: (permissionId: string) => boolean,
+  role?: Role
+): AppNavGroup[] {
   const seen = new Set<string>()
   const take = (items: AppNavItem[]): AppNavItem[] => {
     const out: AppNavItem[] = []
-    for (const item of filterNavByPermissions(items, canId)) {
+    for (const item of filterNavByPermissions(items, canId, role)) {
       const key = item.to + (item.search !== undefined ? JSON.stringify(item.search) : '')
       if (seen.has(key)) continue
       seen.add(key)
@@ -383,11 +395,14 @@ export function groupedSidebarNavItems(canId: (permissionId: string) => boolean)
  * Compact header nav: merge by catalog permissions (not a single role).
  * Order: member self, BOD, HR, leader KPI, manager ops, teacher.
  */
-export function mergeCompactHeaderNavItems(canId: (permissionId: string) => boolean): AppNavItem[] {
+export function mergeCompactHeaderNavItems(
+  canId: (permissionId: string) => boolean,
+  role?: Role
+): AppNavItem[] {
   const seen = new Set<string>()
   const out: AppNavItem[] = []
   const push = (items: AppNavItem[]) => {
-    for (const item of filterNavByPermissions(items, canId)) {
+    for (const item of filterNavByPermissions(items, canId, role)) {
       const key = item.to + (item.search ? JSON.stringify(item.search) : '')
       if (seen.has(key)) continue
       seen.add(key)

@@ -18,6 +18,7 @@ import {
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth.store'
 
 function MobileNavLink({
   item,
@@ -91,7 +92,8 @@ function MobileNavLink({
 export function MobileHeaderNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { canId } = usePermission()
-  const items = mergeCompactHeaderNavItems(canId)
+  const role = useAuthStore((s) => s.user?.role)
+  const items = mergeCompactHeaderNavItems(canId, role)
   const [open, setOpen] = useState(false)
 
   if (items.length === 0) return null

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { Pencil, RefreshCw, Users } from 'lucide-react'
+import { CheckCircle2, Lock, Pencil, RefreshCw, Users, X } from 'lucide-react'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -62,6 +62,25 @@ import {
 function nowYm() {
   const n = new Date()
   return { year: n.getFullYear(), month: n.getMonth() + 1 }
+}
+
+/**
+ * Cửa sổ mở form khảo sát: từ 00:00 ngày 01 của `month/year` đến 23:59 ngày 05 tháng liền sau.
+ * Ví dụ kỳ T4/2026 mở từ 01/04/2026 đến 05/05/2026 23:59. Hết hạn thì FE khoá form,
+ * BE (`assertAnswerWindowOpen` ở performance.service.ts) sẽ trả 403 nếu client cố gọi.
+ */
+function isAnswerWindowOpen(year: number, month: number, now: Date = new Date()): boolean {
+  const start = new Date(year, month - 1, 1, 0, 0, 0, 0)
+  const end = new Date(year, month, 5, 23, 59, 59, 999)
+  return now >= start && now <= end
+}
+
+function formatAnswerWindow(year: number, month: number): string {
+  const nextMonth = month === 12 ? 1 : month + 1
+  const nextYear = month === 12 ? year + 1 : year
+  const mm = String(month).padStart(2, '0')
+  const nmm = String(nextMonth).padStart(2, '0')
+  return `01/${mm}/${year} → 05/${nmm}/${nextYear}`
 }
 
 /** Tháng liền kề trước (dùng cho luồng: tháng này nhập mục tiêu + kết quả tháng trước). */
@@ -239,134 +258,141 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
 
       <div
         className={cn(
-          'mb-6 border border-primary/15 bg-gradient-to-br from-primary/[0.07] via-card to-teal-500/[0.05] shadow-[var(--shadow-card)] backdrop-blur-[2px]',
-          PAGE_HEADER_SURFACE,
+          'mb-8 border-none bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-8 text-white shadow-2xl rounded-3xl relative overflow-hidden',
           SECTION_FADE_UP
         )}
       >
-        <h1 className={PAGE_HEADER_TITLE}>
-          <span className={PAGE_HEADER_GRADIENT}>{title}</span>
-        </h1>
-        <p className={PAGE_HEADER_DESCRIPTION}>{description}</p>
+        <div className="absolute right-0 top-0 h-full w-1/3 bg-white/10 [mask-image:linear-gradient(to_left,white,transparent)]" />
+        <div className="relative z-10">
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2">{title}</h1>
+          <p className="text-blue-50/80 max-w-2xl font-medium">{description}</p>
+        </div>
       </div>
 
       <Card
         className={cn(
-          'mb-6 border-primary/15 bg-card/95 shadow-lg shadow-primary/5 backdrop-blur-sm transition-shadow duration-300 motion-safe:hover:shadow-xl motion-safe:hover:shadow-primary/10',
+          'mb-8 border-slate-200 bg-white/50 shadow-sm backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/50',
           CARD_ENTRANCE
         )}
         style={{ animationDelay: '50ms' }}
       >
-        <CardHeader className="pb-4">
-          <CardTitle className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
-            Bộ lọc KPI/OKR theo đội nhóm
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div
-            className={cn(
-              'grid gap-4 md:grid-cols-2',
-              isManagerReadOnly ? 'lg:grid-cols-3' : 'lg:grid-cols-4'
-            )}
-          >
-            {!isManagerReadOnly && (
-              <label className="flex flex-col gap-1.5">
-                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Phòng ban
+        <CardContent className="p-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
+            <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {!isManagerReadOnly && (
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Phòng ban
+                  </Label>
+                  <Select
+                    value={selectedDept?.id ?? '__none'}
+                    disabled={isMemberView}
+                    onValueChange={(value) => {
+                      const d = departments.find((x) => x.id === value)
+                      const tid = d?.teams[0]?.id ?? ''
+                      setSelectedTeamId(tid)
+                    }}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                      <SelectValue placeholder="Chọn phòng ban" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">— Chọn —</SelectItem>
+                      {departments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Team / Đội nhóm
                 </Label>
                 <Select
-                  value={selectedDept?.id ?? '__none'}
+                  value={selectedTeamId || '__none'}
                   disabled={isMemberView}
-                  onValueChange={(value) => {
-                    const d = departments.find((x) => x.id === value)
-                    const tid = d?.teams[0]?.id ?? ''
-                    setSelectedTeamId(tid)
-                  }}
+                  onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
                 >
-                  <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25">
-                    <SelectValue />
+                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                    <SelectValue placeholder="Chọn team" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none">— Chọn —</SelectItem>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name}
+                    <SelectItem value="__none">— Chọn team —</SelectItem>
+                    {(isManagerReadOnly ? allTeamsFlat : teamsInDept).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                        {isManagerReadOnly && 'deptName' in t && t.deptName ? (
+                          <span className="ml-1 text-[11px] text-slate-400">· {t.deptName}</span>
+                        ) : null}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </label>
-            )}
-            <label className="flex flex-col gap-1.5">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Team</Label>
-              <Select
-                value={selectedTeamId || '__none'}
-                disabled={isMemberView}
-                onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Tháng
+                </Label>
+                <Select value={String(month)} onValueChange={(value) => setMonth(Number(value))}>
+                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                      <SelectItem key={m} value={String(m)}>
+                        Tháng {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Năm
+                </Label>
+                <Input
+                  type="number"
+                  value={year}
+                  min={2020}
+                  max={2035}
+                  className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+                  onChange={(e) => setYear(Number(e.target.value))}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3 lg:border-l lg:pl-6 lg:border-slate-100 dark:lg:border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 shrink-0 rounded-xl border-slate-200 transition-all hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800"
+                onClick={() => {
+                  void treeQ.refetch()
+                  void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
+                  refresh()
+                }}
               >
-                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">— Chọn team —</SelectItem>
-                  {(isManagerReadOnly ? allTeamsFlat : teamsInDept).map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                      {isManagerReadOnly && 'deptName' in t && t.deptName ? (
-                        <span className="ml-1 text-xs text-muted-foreground">· {t.deptName}</span>
-                      ) : null}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tháng</Label>
-              <Select value={String(month)} onValueChange={(value) => setMonth(Number(value))}>
-                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                    <SelectItem key={m} value={String(m)}>
-                      Tháng {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Năm</Label>
-              <Input
-                type="number"
-                value={year}
-                min={2020}
-                max={2035}
-                className="rounded-lg shadow-sm transition-[border-color,box-shadow] hover:border-primary/35 focus-visible:ring-2 focus-visible:ring-primary/25"
-                onChange={(e) => setYear(Number(e.target.value))}
-              />
-            </label>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700">
-              Kỳ chọn: T{month}/{year}
-            </Badge>
-            <Badge variant="muted" className="bg-violet-100 text-violet-700">
-              KQ kỳ trước: T{prevMonth}/{prevYear}
-            </Badge>
-            <Button
-              type="button"
-              variant="outline"
-              className="ml-auto inline-flex items-center gap-1 border-cyan-300 bg-cyan-50 text-cyan-700 shadow-sm transition-[transform,box-shadow] hover:bg-cyan-100 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0"
-              onClick={() => {
-                void treeQ.refetch()
-                void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
-                refresh()
-              }}
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Làm mới dữ liệu
-            </Button>
+                <RefreshCw className="h-4 w-4 text-slate-500" />
+                <span className="sr-only">Làm mới</span>
+              </Button>
+              <div className="flex flex-col gap-1">
+                <Badge
+                  variant="outline"
+                  className="h-5 rounded-md border-blue-100 bg-blue-50 text-[10px] font-bold text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
+                >
+                  KỲ CHỌN: T{month}/{year}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="h-5 rounded-md border-fuchsia-100 bg-fuchsia-50 text-[10px] font-bold text-fuchsia-600 dark:border-fuchsia-900/30 dark:bg-fuchsia-900/20 dark:text-fuchsia-400"
+                >
+                  KQ TRƯỚC: T{prevMonth}/{prevYear}
+                </Badge>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -412,6 +438,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           members={visibleMembers}
           membersLoading={membersForTeamQ.isLoading}
           canEditTeam={canEditTeam}
+          isMemberView={isMemberView}
           selectedTeamId={selectedTeamId}
           year={year}
           month={month}
@@ -471,31 +498,30 @@ function memberMetaForDisplay(members: TeamMemberRow[], userId: string): string 
   return 'chưa có email'
 }
 
-/** Bảng KPI/OKR — viền & nền theo token Lumina (giữ layout ô bảng). */
-const XL_BORDER = 'border border-slate-200/85 dark:border-slate-800/80'
+/** Bảng KPI/OKR — viền & nền theo style doanh nghiệp tinh gọn. */
+const XL_BORDER = 'border border-slate-200/60 dark:border-slate-800/50'
 const XL_TH = cn(
   XL_BORDER,
-  'sticky top-0 z-10 whitespace-nowrap bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100 px-3 py-2.5 text-left text-xs font-extrabold uppercase tracking-wide text-slate-700 shadow-[inset_0_-1px_0_rgba(148,163,184,0.3)] backdrop-blur-sm dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 dark:text-slate-200'
+  'sticky top-0 z-10 whitespace-nowrap bg-slate-50/80 px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 shadow-sm backdrop-blur-md dark:bg-slate-900/90 dark:text-slate-400'
 )
 const xlTd = (stripe: boolean) =>
   cn(
     XL_BORDER,
-    'px-2.5 py-2 align-top text-xs leading-snug text-slate-700 dark:text-slate-200',
-    stripe
-      ? 'bg-gradient-to-r from-slate-50/90 via-slate-50/80 to-sky-50/50 dark:from-slate-900/65 dark:via-slate-900/50 dark:to-slate-900/40'
-      : 'bg-card/95'
+    'px-4 py-3 align-middle text-[13px] leading-relaxed',
+    stripe ? 'bg-slate-50/30 dark:bg-slate-900/20' : 'bg-transparent'
   )
+
 const XL_INPUT = cn(
-  'box-border h-9 w-full min-w-0 rounded-xl border border-slate-200/80 bg-white/95 px-2 text-xs text-slate-700 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] outline-none transition',
-  'placeholder:text-slate-400 focus:z-[1] focus:border-sky-400 focus:ring-2 focus:ring-sky-200/70'
+  'box-border h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-[13px] text-slate-700 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
+  'placeholder:text-slate-400'
 )
 const XL_TEXTAREA = cn(
-  'box-border min-h-[56px] w-full min-w-[200px] max-w-[420px] resize-y rounded-xl border border-slate-200/80 bg-white/95 p-2 text-xs text-slate-700 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] outline-none transition',
-  'placeholder:text-slate-400 focus:z-[1] focus:border-sky-400 focus:ring-2 focus:ring-sky-200/70'
+  'box-border min-h-[80px] w-full min-w-[200px] max-w-[420px] resize-y rounded-lg border border-slate-200 bg-white p-3 text-[13px] text-slate-700 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
+  'placeholder:text-slate-400'
 )
 
 const XL_SAVE_BTN =
-  'rounded-sm border border-primary/35 bg-primary font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50'
+  'rounded-lg bg-primary font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50'
 
 const ASSIGN_TABLE_HEAD = [
   'Kỳ',
@@ -504,21 +530,80 @@ const ASSIGN_TABLE_HEAD = [
   'Ưu tiên',
   'Nội dung',
   'Chỉ tiêu',
+  'Kết quả',
   'Thao tác',
 ] as const
 
+function EvalStatusBadge({ status }: { status: string | null | undefined }) {
+  if (!status || status === '__none') return <span className="text-slate-400">—</span>
+
+  const isOk = status === 'OK'
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        'h-5 px-1.5 text-[10px] font-bold shadow-none rounded-md',
+        isOk
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
+          : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300'
+      )}
+    >
+      {status}
+    </Badge>
+  )
+}
+
 function KindBadge({ kind }: { kind: PerformanceAssignment['kind'] }) {
   return (
-    <span
+    <Badge
+      variant="outline"
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold shadow-sm ring-1',
+        'h-5 px-1.5 text-[10px] font-black uppercase tracking-widest shadow-none rounded-md',
         kind === 'KPI'
-          ? 'bg-gradient-to-r from-indigo-500/20 to-blue-500/20 text-indigo-700 ring-indigo-300/60 dark:text-indigo-200'
-          : 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-700 ring-emerald-300/60 dark:text-emerald-200'
+          ? 'border-indigo-400/30 bg-indigo-500/10 text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300'
+          : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-600 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
       )}
     >
       {kind}
-    </span>
+    </Badge>
+  )
+}
+
+function PriorityBadge({ priority }: { priority: number }) {
+  const configs: Record<number, { label: string; className: string }> = {
+    1: {
+      label: 'P1 - Cao',
+      className:
+        'border-rose-400/30 bg-rose-500/10 text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300',
+    },
+    2: {
+      label: 'P2 - Trung bình',
+      className:
+        'border-amber-400/30 bg-amber-500/10 text-amber-600 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300',
+    },
+    3: {
+      label: 'P3 - Thấp',
+      className:
+        'border-slate-400/30 bg-slate-500/10 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400',
+    },
+  }
+
+  const config = configs[priority] || {
+    label: priority === 0 ? 'Chưa xếp' : `P${priority}`,
+    className:
+      'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400',
+  }
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        'h-5 px-1.5 text-[10px] font-black shadow-none whitespace-nowrap rounded-md uppercase tracking-wider',
+        config.className
+      )}
+    >
+      {config.label}
+    </Badge>
   )
 }
 
@@ -531,21 +616,40 @@ function ReadOnlyAssignmentRow({
 }) {
   const td = xlTd(rowStripe)
   return (
-    <TableRow className="transition-colors hover:bg-sky-50/70 dark:hover:bg-slate-800/60">
-      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-muted-foreground')}>
+    <TableRow className="group transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-slate-500 font-medium')}>
         {periodLabel(row)}
       </TableCell>
-      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums')}>
+      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-slate-500')}>
         {formatKpiSetAt(row.kpiSetAt)}
       </TableCell>
       <TableCell className={td}>
         <KindBadge kind={row.kind} />
       </TableCell>
-      <TableCell className={cn(td, 'text-center tabular-nums')}>{row.priority}</TableCell>
-      <TableCell className={cn(td, 'min-w-[220px] max-w-md whitespace-pre-wrap')}>
+      <TableCell className={td}>
+        <PriorityBadge priority={row.priority} />
+      </TableCell>
+      <TableCell
+        className={cn(td, 'min-w-[300px] max-w-xl font-medium text-slate-900 dark:text-slate-100')}
+      >
         {row.content}
       </TableCell>
-      <TableCell className={cn(td, 'tabular-nums')}>{row.targetMetric ?? ''}</TableCell>
+      <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
+        {row.targetMetric || '—'}
+      </TableCell>
+      <TableCell className={td}>
+        <div className="flex flex-col gap-1">
+          <EvalStatusBadge status={row.managerEvalStatus} />
+          {row.managerReviewNote && (
+            <div
+              className="text-[10px] text-slate-500 italic max-w-[150px] truncate"
+              title={row.managerReviewNote}
+            >
+              {row.managerReviewNote}
+            </div>
+          )}
+        </div>
+      </TableCell>
       <TableCell className={td} />
     </TableRow>
   )
@@ -663,42 +767,56 @@ function LeaderAssignmentRow({
   return (
     <TableRow
       className={cn(
-        'transition-colors hover:bg-cyan-50/80 dark:hover:bg-slate-800/65',
+        'group transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40',
         mode === 'results' &&
-          'outline outline-1 outline-amber-400/45 -outline-offset-1 dark:outline-amber-600/40'
+          'bg-amber-50/10 hover:bg-amber-50/20 dark:bg-amber-900/5 dark:hover:bg-amber-900/10'
       )}
     >
-      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-muted-foreground')}>
+      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-slate-500 font-medium')}>
         {periodLabel(row)}
       </TableCell>
-      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums')}>
+      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-slate-500')}>
         {formatKpiSetAt(row.kpiSetAt)}
       </TableCell>
       <TableCell className={td}>
         <KindBadge kind={row.kind} />
       </TableCell>
-      <TableCell className={cn(td, 'text-center tabular-nums')}>{row.priority}</TableCell>
-      <TableCell className={cn(td, 'min-w-[220px] max-w-md whitespace-pre-wrap')}>
+      <TableCell className={td}>
+        <PriorityBadge priority={row.priority} />
+      </TableCell>
+      <TableCell
+        className={cn(td, 'min-w-[300px] max-w-xl font-medium text-slate-900 dark:text-slate-100')}
+      >
         {row.content}
       </TableCell>
-      <TableCell className={cn(td, 'tabular-nums')}>{row.targetMetric ?? ''}</TableCell>
+      <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
+        {row.targetMetric || '—'}
+      </TableCell>
+      <TableCell className={td}>
+        <div className="flex flex-col gap-1">
+          <EvalStatusBadge status={row.managerEvalStatus} />
+          {row.managerReviewNote && (
+            <div
+              className="text-[10px] text-slate-500 italic max-w-[150px] truncate"
+              title={row.managerReviewNote}
+            >
+              {row.managerReviewNote}
+            </div>
+          )}
+        </div>
+      </TableCell>
       <TableCell className={cn(td, 'whitespace-nowrap text-right')}>
         {editable ? (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                className={cn(
-                  'h-8 gap-1 px-2 text-xs shadow-sm transition-[transform,box-shadow,background-color,border-color,color] motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0',
-                  mode === 'results'
-                    ? 'border-amber-300 bg-amber-50/95 text-amber-800 hover:bg-amber-100'
-                    : 'border-blue-300 bg-blue-50/95 text-blue-800 hover:bg-blue-100'
-                )}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-800"
               >
-                <Pencil className="h-3.5 w-3.5" />
-                {mode === 'results' ? 'đánh giá' : 'Sửa'}
+                <Pencil className="h-4 w-4" />
+                <span className="sr-only">Sửa</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
@@ -721,7 +839,8 @@ function LeaderAssignmentRow({
                       name="kpiSetAt"
                       label="Ngày xét KPI/OKR"
                       className="md:col-span-2 space-y-1 text-xs font-medium"
-                      datePickerClassName={cn(XL_INPUT, 'h-9')}
+                      datePickerClassName="h-9 rounded-lg border-slate-200"
+                      lockToMonth={{ year: row.year, month: row.month }}
                     />
                   ) : null}
 
@@ -747,6 +866,7 @@ function LeaderAssignmentRow({
                         label="Chỉ tiêu"
                         className="space-y-1 text-xs font-medium"
                         placeholder="VD: 60"
+                        inputClassName="h-9 rounded-lg border-slate-200"
                       />
 
                       <label className="md:col-span-2 flex flex-col gap-1 text-xs font-medium">
@@ -758,7 +878,7 @@ function LeaderAssignmentRow({
                           rules={{ required: true, maxLength: 500 }}
                           className="space-y-1 text-xs font-medium"
                           maxLength={500}
-                          textareaClassName={cn(XL_TEXTAREA, 'max-w-none min-h-[96px]')}
+                          textareaClassName="min-h-[96px] rounded-lg border-slate-200"
                           placeholder="Mô tả chỉ tiêu…"
                         />
                       </label>
@@ -782,21 +902,26 @@ function LeaderAssignmentRow({
                           name="managerReviewNote"
                           label="QL nhận xét"
                           className="space-y-1 text-xs font-medium"
-                          textareaClassName={cn(XL_TEXTAREA, 'max-w-none min-h-[96px]')}
+                          textareaClassName="min-h-[96px] rounded-lg border-slate-200"
                           placeholder="Nhận xét…"
                         />
                       </label>
                     </>
                   )}
 
-                  <div className="flex items-end justify-end gap-2 md:col-span-2">
-                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  <div className="flex items-end justify-end gap-2 md:col-span-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setOpen(false)}
+                      className="rounded-lg"
+                    >
                       Hủy
                     </Button>
                     <Button
                       type="submit"
                       disabled={isSubmitting}
-                      className={cn(XL_SAVE_BTN, 'px-4 py-2 text-sm')}
+                      className="rounded-lg bg-primary px-6 font-semibold"
                     >
                       {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
                     </Button>
@@ -852,44 +977,87 @@ function AssignmentTableSingleUser({
   onRefresh: () => void
   leaderMode: 'planning' | 'results'
 }) {
+  const isPlanning = leaderMode === 'planning'
+
   return (
     <div
       className={cn(
         XL_BORDER,
-        'overflow-hidden rounded-xl bg-gradient-to-b from-white to-slate-50/70 shadow-[0_10px_28px_-16px_rgba(15,23,42,0.35)] dark:from-slate-950 dark:to-slate-900/80'
+        'overflow-hidden rounded-xl bg-white shadow-sm dark:bg-slate-950',
+        isPlanning ? 'border-t-4 border-t-blue-500' : 'border-t-4 border-t-emerald-500'
       )}
     >
-      <div className="border-b border-slate-200/80 bg-gradient-to-r from-slate-100/80 via-slate-50 to-sky-50/70 px-3.5 py-2.5 text-sm font-bold text-slate-800 dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900/70 dark:text-slate-100">
-        <span className="text-slate-500 dark:text-slate-400">Nhân sự:</span>{' '}
-        <span className="font-semibold text-foreground">{nameForMember(members, userId)}</span>
-        <span className="ml-2 inline-flex rounded-full border border-slate-200/80 bg-white/90 px-2 py-0.5 text-xs font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-          {memberMetaForDisplay(members, userId)}
-        </span>
+      <div
+        className={cn(
+          'flex items-center justify-between px-4 py-3 border-b',
+          isPlanning
+            ? 'bg-blue-50/30 dark:bg-blue-900/10 border-blue-100/50'
+            : 'bg-emerald-50/30 dark:bg-emerald-900/10 border-emerald-100/50'
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              'flex h-9 w-9 items-center justify-center rounded-full font-bold',
+              isPlanning ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
+            )}
+          >
+            {nameForMember(members, userId).charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              {nameForMember(members, userId)}
+            </div>
+            <div className="text-xs text-slate-500">{memberMetaForDisplay(members, userId)}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="secondary"
+            className={cn(
+              'h-6 rounded-md shadow-none border-none',
+              isPlanning ? 'bg-blue-100/50 text-blue-700' : 'bg-emerald-100/50 text-emerald-700'
+            )}
+          >
+            {rows.length} hạng mục
+          </Badge>
+        </div>
       </div>
-      <div className="max-h-[min(75vh,720px)] overflow-auto rounded-b-xl">
-        <Table className="w-full min-w-[880px] border-collapse text-left">
+      <div className="max-h-[calc(100vh-400px)] overflow-auto">
+        <Table className="w-full min-w-[900px]">
           <TableHeader>
-            <TableRow className="shadow-[inset_0_-1px_0_rgba(148,163,184,0.35)] dark:shadow-[inset_0_-1px_0_rgba(51,65,85,0.6)]">
+            <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
               {ASSIGN_TABLE_HEAD.map((h) => (
-                <TableHead key={h} className={cn(XL_TH, 'min-w-[84px]')}>
+                <TableHead key={h} className={XL_TH}>
                   {h}
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((r, idx) =>
-              canEditTeam ? (
-                <LeaderAssignmentRow
-                  key={r.id}
-                  row={r}
-                  mode={leaderMode}
-                  onSaved={onRefresh}
-                  rowStripe={idx % 2 === 1}
-                  canEditTeam={canEditTeam}
-                />
-              ) : (
-                <ReadOnlyAssignmentRow key={r.id} row={r} rowStripe={idx % 2 === 1} />
+            {rows.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={ASSIGN_TABLE_HEAD.length}
+                  className="h-32 text-center text-slate-400"
+                >
+                  Chưa có dữ liệu cho nhân sự này.
+                </TableCell>
+              </TableRow>
+            ) : (
+              rows.map((r, idx) =>
+                canEditTeam ? (
+                  <LeaderAssignmentRow
+                    key={r.id}
+                    row={r}
+                    mode={leaderMode}
+                    onSaved={onRefresh}
+                    rowStripe={idx % 2 === 1}
+                    canEditTeam={canEditTeam}
+                  />
+                ) : (
+                  <ReadOnlyAssignmentRow key={r.id} row={r} rowStripe={idx % 2 === 1} />
+                )
               )
             )}
           </TableBody>
@@ -926,7 +1094,11 @@ function UserAssignmentWorkbench({
   const [selectedUserId, setSelectedUserId] = useState<string>('')
 
   if (!userEntries.length) {
-    return <p className="text-sm text-muted-foreground">{emptyText}</p>
+    return (
+      <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50">
+        <p className="text-sm text-slate-400">{emptyText}</p>
+      </div>
+    )
   }
 
   const defaultUserId =
@@ -948,51 +1120,87 @@ function UserAssignmentWorkbench({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <Users className="h-4 w-4" />
-            Danh sách nhân sự
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 pt-0">
+    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 px-1 text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+          <Users
+            className={cn(
+              'h-4 w-4',
+              leaderMode === 'planning' ? 'text-blue-500' : 'text-emerald-500'
+            )}
+          />
+          Danh sách nhân sự
+        </div>
+        <div className="space-y-2 overflow-y-auto pr-1 max-h-[calc(100vh-400px)]">
           {userEntries.map(([uid, rows]) => {
             const active = uid === activeUserId
+            const isPlanning = leaderMode === 'planning'
             return (
-              <Button
+              <button
                 key={uid}
                 type="button"
-                variant="ghost"
                 onClick={() => setSelectedUserId(uid)}
                 className={cn(
-                  'h-auto w-full justify-start rounded-xl border px-3 py-2.5 text-left font-normal normal-case tracking-normal transition-colors',
+                  'group flex w-full flex-col gap-1 rounded-2xl px-4 py-3 text-left transition-all duration-300 relative overflow-hidden',
                   active
-                    ? 'border-primary/50 bg-primary/10 text-foreground shadow-sm hover:bg-primary/10'
-                    : 'border-border/80 bg-background hover:bg-muted/60'
+                    ? isPlanning
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 ring-1 ring-blue-600 dark:shadow-none'
+                      : 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 ring-1 ring-emerald-600 dark:shadow-none'
+                    : 'bg-white hover:bg-slate-50 border border-slate-100 dark:bg-slate-900 dark:border-slate-800'
                 )}
               >
-                <div className="truncate text-sm font-semibold leading-5">
-                  {nameForMember(members, uid)}
+                {active && (
+                  <div className="absolute right-0 top-0 h-full w-24 bg-white/10 [mask-image:linear-gradient(to_left,white,transparent)]" />
+                )}
+                <div className="flex items-center justify-between relative z-10">
+                  <span
+                    className={cn(
+                      'truncate text-sm font-bold',
+                      active
+                        ? 'text-white'
+                        : 'text-slate-700 dark:text-slate-300 group-hover:text-slate-900'
+                    )}
+                  >
+                    {nameForMember(members, uid)}
+                  </span>
                 </div>
-                <div className="mt-1 truncate text-xs text-muted-foreground">
+                <div
+                  className={cn(
+                    'truncate text-[11px] relative z-10',
+                    active ? 'text-blue-100/80' : 'text-slate-500'
+                  )}
+                >
                   {memberMetaForDisplay(members, uid)}
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                <div className="mt-2 flex items-center gap-2 relative z-10">
+                  <span
+                    className={cn(
+                      'inline-flex h-5 items-center rounded-lg px-2 text-[10px] font-bold uppercase tracking-wider transition-colors',
+                      active
+                        ? 'bg-white/20 text-white'
+                        : isPlanning
+                          ? 'bg-blue-50 text-blue-600'
+                          : 'bg-emerald-50 text-emerald-600'
+                    )}
+                  >
                     {rows.length} hạng mục
                   </span>
                   {prioritizeUserId && uid === prioritizeUserId ? (
-                    <span className="inline-flex rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                    <span
+                      className={cn(
+                        'inline-flex h-5 items-center rounded-lg px-2 text-[10px] font-bold uppercase tracking-wider',
+                        active ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-600'
+                      )}
+                    >
                       Bạn
                     </span>
                   ) : null}
                 </div>
-              </Button>
+              </button>
             )
           })}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
       <AssignmentTableSingleUser
         userId={activeUserId}
         rows={activeRows}
@@ -1013,6 +1221,7 @@ function WorkReportPanel({
   members,
   membersLoading,
   canEditTeam,
+  isMemberView,
   selectedTeamId,
   year,
   month,
@@ -1028,6 +1237,7 @@ function WorkReportPanel({
   members: TeamMemberRow[]
   membersLoading: boolean
   canEditTeam: boolean
+  isMemberView: boolean
   selectedTeamId: string
   year: number
   month: number
@@ -1070,43 +1280,35 @@ function WorkReportPanel({
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-12">
       <section id="planning-section" className="scroll-mt-24">
-        <Card
-          className={cn(
-            'relative overflow-hidden border-blue-200/45 shadow-lg shadow-blue-500/10 transition-shadow duration-300 motion-safe:hover:shadow-xl motion-safe:hover:shadow-blue-500/15 dark:border-blue-900/40',
-            CARD_ENTRANCE
-          )}
-          style={{ animationDelay: '90ms' }}
-        >
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-400"
-          />
-          <CardContent className="space-y-4 pt-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h2 className="text-xl md:text-2xl font-bold text-blue-700">
-                  1. Mục tiêu KPI/OKR tháng này — T{month}/{year}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Tập trung lập mục tiêu theo từng nhân sự, thao tác trên panel chi tiết bên phải.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Badge
-                  variant="outline"
-                  className="border-blue-300 bg-blue-50 text-blue-700 shadow-sm transition-transform motion-safe:hover:scale-[1.02]"
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="h-6 w-1 rounded-full bg-blue-600" />
+              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                1. Mục tiêu KPI/OKR tháng này — T{month}/{year}
+              </h2>
+            </div>
+            <p className="text-[13px] text-slate-500">
+              Lập mục tiêu công việc cho từng nhân sự trong team.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex -space-x-2 overflow-hidden">
+              {members.slice(0, 5).map((m, i) => (
+                <div
+                  key={i}
+                  className="inline-block h-7 w-7 rounded-full bg-slate-200 ring-2 ring-white dark:bg-slate-800 dark:ring-slate-950 flex items-center justify-center text-[10px] font-bold text-slate-600"
                 >
-                  {assignmentsThisMonth.length} hạng mục
-                </Badge>
-                <Badge
-                  variant="muted"
-                  className="bg-indigo-100 text-indigo-700 shadow-sm transition-transform motion-safe:hover:scale-[1.02]"
-                >
-                  {byUserThis.size} nhân sự
-                </Badge>
-              </div>
+                  {(m.displayName || '?').charAt(0)}
+                </div>
+              ))}
+              {members.length > 5 && (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 ring-2 ring-white dark:bg-slate-800 dark:ring-slate-950 text-[10px] font-medium text-slate-500">
+                  +{members.length - 5}
+                </div>
+              )}
             </div>
             {canEditTeam && selectedTeamId && !isMockApiEnabled() && (
               <MiniCreateForm
@@ -1118,69 +1320,44 @@ function WorkReportPanel({
                 onCreated={onRefresh}
               />
             )}
-            <UserAssignmentWorkbench
-              byUser={byUserThis}
-              members={members}
-              canEditTeam={canEditTeam}
-              onRefresh={onRefresh}
-              leaderMode="planning"
-              emptyText="Chưa có mục tiêu cho tháng này."
-              prioritizeUserId={currentUserId}
-              showUserList={canEditTeam}
-            />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+        <UserAssignmentWorkbench
+          byUser={byUserThis}
+          members={members}
+          canEditTeam={canEditTeam}
+          onRefresh={onRefresh}
+          leaderMode="planning"
+          emptyText="Chưa có mục tiêu cho tháng này."
+          prioritizeUserId={currentUserId}
+          showUserList={!isMemberView}
+        />
       </section>
 
-      <section id="results-section" className="scroll-mt-24 pt-2">
-        <Card
-          className={cn(
-            'relative overflow-hidden border-emerald-200/45 shadow-lg shadow-emerald-500/10 transition-shadow duration-300 motion-safe:hover:shadow-xl motion-safe:hover:shadow-emerald-500/15 dark:border-emerald-900/40',
-            CARD_ENTRANCE
-          )}
-          style={{ animationDelay: '140ms' }}
-        >
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500"
-          />
-          <CardContent className="space-y-4 pt-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h2 className="text-xl md:text-2xl font-bold text-emerald-700">
-                  2. Kết quả & đánh giá tháng trước — T{prevMonth}/{prevYear}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Duyệt theo nhân sự để cập nhật tiến độ, trạng thái và nhận xét quản lý dễ hơn.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Badge
-                  variant="outline"
-                  className="border-emerald-300 bg-emerald-50 text-emerald-700 shadow-sm transition-transform motion-safe:hover:scale-[1.02]"
-                >
-                  {assignmentsPrevMonth.length} hạng mục
-                </Badge>
-                <Badge
-                  variant="muted"
-                  className="bg-teal-100 text-teal-700 shadow-sm transition-transform motion-safe:hover:scale-[1.02]"
-                >
-                  {byUserPrev.size} nhân sự
-                </Badge>
-              </div>
+      <section id="results-section" className="scroll-mt-24">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="h-6 w-1 rounded-full bg-emerald-600" />
+              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                2. Kết quả & đánh giá tháng trước — T{prevMonth}/{prevYear}
+              </h2>
             </div>
-            <UserAssignmentWorkbench
-              byUser={byUserPrev}
-              members={members}
-              canEditTeam={canEditTeam}
-              onRefresh={onRefresh}
-              leaderMode="results"
-              emptyText={`Chưa có dữ liệu KPI/OKR cho tháng ${prevMonth}/${prevYear}.`}
-              prioritizeUserId={currentUserId}
-              showUserList={canEditTeam}
-            />
-          </CardContent>
-        </Card>
+            <p className="text-[13px] text-slate-500">
+              Cập nhật tiến độ và nhận xét đánh giá cho kỳ trước.
+            </p>
+          </div>
+        </div>
+        <UserAssignmentWorkbench
+          byUser={byUserPrev}
+          members={members}
+          canEditTeam={canEditTeam}
+          onRefresh={onRefresh}
+          leaderMode="results"
+          emptyText={`Chưa có dữ liệu KPI/OKR cho tháng ${prevMonth}/${prevYear}.`}
+          prioritizeUserId={currentUserId}
+          showUserList={!isMemberView}
+        />
       </section>
     </div>
   )
@@ -1277,27 +1454,30 @@ function MiniCreateForm({
       <DialogTrigger asChild>
         <Button
           type="button"
-          className="w-fit bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg shadow-blue-600/35 transition-[transform,box-shadow] hover:from-blue-700 hover:to-indigo-700 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-xl motion-safe:active:translate-y-0"
+          className="rounded-lg bg-primary px-4 font-semibold shadow-sm transition-all hover:bg-primary/90"
         >
           Thêm mục tiêu KPI/OKR
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Tạo hạng mục KPI/OKR mới</DialogTitle>
-          <DialogDescription>
-            Nhập nhanh theo kỳ T{month}/{year}. Sau khi tạo xong, dữ liệu sẽ tự làm mới.
+      <DialogContent className="max-w-4xl rounded-2xl">
+        <DialogHeader className="pb-4">
+          <DialogTitle className="text-xl font-bold tracking-tight">
+            Tạo hạng mục KPI/OKR mới
+          </DialogTitle>
+          <DialogDescription className="text-[13px]">
+            Nhập nhanh mục tiêu công việc cho kỳ T{month}/{year}.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" onSubmit={onSubmit}>
+          <form className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" onSubmit={onSubmit}>
             <SelectController
               control={control}
               name="kind"
               label="Hạng mục"
               required
               rules={{ required: true }}
-              className="space-y-1 text-xs font-medium"
+              className="space-y-1.5"
+              labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
             >
               <SelectItem value="KPI">KPI</SelectItem>
               <SelectItem value="OKR">OKR</SelectItem>
@@ -1308,7 +1488,8 @@ function MiniCreateForm({
               label="Nhân sự nhận việc"
               required
               rules={{ required: true }}
-              className="space-y-1 text-xs font-medium"
+              className="space-y-1.5"
+              labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
             >
               {members.map((m) => (
                 <SelectItem key={m.userId} value={m.userId}>
@@ -1322,56 +1503,71 @@ function MiniCreateForm({
               label="Thứ tự ưu tiên"
               required
               rules={{ required: true, min: 0, max: 99 }}
-              className="space-y-1 text-xs font-medium"
+              className="space-y-1.5"
+              labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
             >
               <SelectItem value="0">Không xếp (0)</SelectItem>
-              <SelectItem value="1">Ưu tiên 1</SelectItem>
-              <SelectItem value="2">Ưu tiên 2</SelectItem>
-              <SelectItem value="3">Ưu tiên 3</SelectItem>
+              <SelectItem value="1">Ưu tiên 1 - Cao</SelectItem>
+              <SelectItem value="2">Ưu tiên 2 - Trung bình</SelectItem>
+              <SelectItem value="3">Ưu tiên 3 - Thấp</SelectItem>
             </SelectController>
             <DateController
               control={control}
               name="kpiSetAt"
               label="Ngày xét KPI/OKR"
-              className="space-y-1 text-xs font-medium"
-              datePickerClassName={cn(XL_INPUT, 'h-9')}
+              className="space-y-1.5"
+              labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+              datePickerClassName={cn(XL_INPUT, 'h-10 rounded-xl')}
+              lockToMonth={{ year, month }}
             />
             <InputController
               control={control}
               name="targetMetric"
               label="Chỉ số mục tiêu"
-              className="space-y-1 text-xs font-medium"
-              inputClassName={cn(XL_INPUT, 'h-9 tabular-nums')}
+              className="space-y-1.5"
+              labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+              inputClassName={cn(XL_INPUT, 'h-10 rounded-xl tabular-nums')}
               placeholder="VD: 60"
             />
             <InputController
               control={control}
               name="reviewerName"
               label="Người đánh giá (tùy chọn)"
-              className="space-y-1 text-xs font-medium"
-              inputClassName={cn(XL_INPUT, 'h-9')}
+              className="space-y-1.5"
+              labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+              inputClassName={cn(XL_INPUT, 'h-10 rounded-xl')}
               placeholder="Họ tên QL / Leader"
             />
-            <label className="md:col-span-2 lg:col-span-3 flex flex-col gap-1 text-xs font-medium">
+            <div className="md:col-span-2 lg:col-span-3 space-y-1.5">
               <TextareaController
                 control={control}
                 name="content"
                 label="Nội dung KPI/OKR"
                 required
                 rules={{ required: true, maxLength: 500 }}
-                className="md:col-span-2 lg:col-span-3 space-y-1 text-xs font-medium"
+                className="space-y-1.5"
+                labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
                 maxLength={500}
-                textareaClassName={cn(XL_TEXTAREA, 'max-w-none min-h-[80px]')}
-                placeholder="Mô tả chỉ tiêu…"
+                textareaClassName={cn(XL_TEXTAREA, 'max-w-none min-h-[100px] rounded-xl')}
+                placeholder="Mô tả cụ thể mục tiêu cần đạt được..."
               />
-            </label>
-            <div className="flex items-end md:col-span-2 lg:col-span-3">
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-2 md:col-span-2 lg:col-span-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setOpen(false)}
+                className="rounded-xl px-6 font-bold text-slate-500 hover:bg-slate-100"
+              >
+                Hủy bỏ
+              </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting || !members.length}
-                className={cn(XL_SAVE_BTN, 'px-4 py-2 text-sm')}
+                className="rounded-xl bg-primary px-8 font-bold shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5"
               >
-                {isSubmitting ? 'Đang tạo...' : 'Tạo mới'}
+                {isSubmitting ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {isSubmitting ? 'Đang tạo...' : 'Tạo mục tiêu'}
               </Button>
             </div>
           </form>
@@ -1457,67 +1653,25 @@ function SummaryPanel({
       <Card
         id="summary-section"
         className={cn(
-          'scroll-mt-24 relative overflow-hidden border-amber-200/50 shadow-md shadow-amber-500/10 dark:border-amber-900/35',
+          'scroll-mt-24 overflow-hidden border-slate-200/60 shadow-sm dark:border-slate-800/50 dark:bg-slate-950/50',
           CARD_ENTRANCE
         )}
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-400"
-        />
-        <CardHeader>
-          <CardTitle className="text-xl md:text-2xl font-bold text-amber-700">
-            Tổng chỉ số hiệu suất — T{month}/{year}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
+          <div>
+            <CardTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              Tổng chỉ số hiệu suất — T{month}/{year}
+            </CardTitle>
+            <p className="mt-1 text-xs text-slate-500">
+              Bảng tổng hợp kết quả KPI/OKR của các thành viên.
+            </p>
+          </div>
           {canRecalculate && teamId && !isMockApiEnabled() && (
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                disabled={recalcBusy}
-                className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 shadow-sm transition-[transform,box-shadow] hover:bg-amber-100 disabled:opacity-50 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md motion-safe:active:translate-y-0"
-                onClick={() => {
-                  setRecalcBusy(true)
-                  void performanceApi
-                    .recalculateSummaries(teamId, year, month)
-                    .then(() => onRecalculated())
-                    .finally(() => setRecalcBusy(false))
-                }}
-              >
-                Tính lại tổng hợp
-              </Button>
-            </div>
-          )}
-          <p className="text-sm text-muted-foreground">{emptyBlurb}</p>
-        </CardContent>
-      </Card>
-    )
-  }
-  return (
-    <Card
-      id="summary-section"
-      className={cn(
-        'scroll-mt-24 relative overflow-hidden border-amber-200/50 shadow-lg shadow-amber-500/10 transition-shadow duration-300 motion-safe:hover:shadow-xl motion-safe:hover:shadow-amber-500/15 dark:border-amber-900/35',
-        CARD_ENTRANCE
-      )}
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-400"
-      />
-      <CardHeader>
-        <CardTitle className="text-xl md:text-2xl font-bold text-amber-700">
-          Tổng chỉ số hiệu suất — T{month}/{year}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {canRecalculate && teamId && !isMockApiEnabled() && (
-          <div className="flex justify-end">
             <Button
               type="button"
               disabled={recalcBusy}
-              className="rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-amber-600/30 transition-[transform,box-shadow] hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-lg motion-safe:active:translate-y-0"
+              variant="outline"
+              className="h-9 rounded-lg border-slate-200 bg-white px-4 font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
               onClick={() => {
                 setRecalcBusy(true)
                 void performanceApi
@@ -1526,62 +1680,149 @@ function SummaryPanel({
                   .finally(() => setRecalcBusy(false))
               }}
             >
-              Tính lại tổng hợp (A–C)
+              {recalcBusy ? 'Đang tính...' : 'Tính lại tổng hợp'}
             </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-32 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/30">
+            <p className="text-sm text-slate-400 text-center">{emptyBlurb}</p>
           </div>
+        </CardContent>
+      </Card>
+    )
+  }
+  return (
+    <Card
+      id="summary-section"
+      className={cn(
+        'scroll-mt-24 overflow-hidden border-slate-200/60 shadow-sm dark:border-slate-800/50 dark:bg-slate-950/50',
+        CARD_ENTRANCE
+      )}
+    >
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
+        <div>
+          <CardTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            Tổng chỉ số hiệu suất — T{month}/{year}
+          </CardTitle>
+          <p className="mt-1 text-xs text-slate-500">
+            Bảng tổng hợp kết quả KPI/OKR của các thành viên.
+          </p>
+        </div>
+        {canRecalculate && teamId && !isMockApiEnabled() && (
+          <Button
+            type="button"
+            disabled={recalcBusy}
+            variant="outline"
+            className="h-9 rounded-lg border-slate-200 bg-white px-4 font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+            onClick={() => {
+              setRecalcBusy(true)
+              void performanceApi
+                .recalculateSummaries(teamId, year, month)
+                .then(() => onRecalculated())
+                .finally(() => setRecalcBusy(false))
+            }}
+          >
+            {recalcBusy ? 'Đang tính...' : 'Tính lại tổng hợp'}
+          </Button>
         )}
-        <Table className="min-w-[720px] text-sm">
-          <TableHeader>
-            <TableRow className="bg-muted/40 text-xs text-muted-foreground hover:bg-muted/40">
-              <TableHead>Nhân sự</TableHead>
-              <TableHead className="bg-amber-500/10" colSpan={3}>
-                KPI
-              </TableHead>
-              <TableHead className="bg-sky-500/10" colSpan={3}>
-                OKR
-              </TableHead>
-            </TableRow>
-            <TableRow className="bg-muted/20 text-xs text-muted-foreground hover:bg-muted/20">
-              <TableHead />
-              <TableHead>Đạt</TableHead>
-              <TableHead>Chưa</TableHead>
-              <TableHead>Loại</TableHead>
-              <TableHead>Đạt</TableHead>
-              <TableHead>Chưa</TableHead>
-              <TableHead>Loại</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {displayRows.map((r) => (
-              <TableRow key={r.id} className="transition-colors motion-safe:hover:bg-muted/40">
-                <TableCell>
-                  <div className="font-medium">{rowName(r)}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {r.assigneeEmployeeCode?.trim() || r.assigneeEmail?.trim() || '—'}
-                  </div>
-                </TableCell>
-                <TableCell className="bg-amber-500/5">{r.kpiOkCount}</TableCell>
-                <TableCell className="bg-amber-500/5">{r.kpiNotCount}</TableCell>
-                <TableCell className="bg-amber-500/5 font-semibold">{r.kpiGrade ?? '—'}</TableCell>
-                <TableCell className="bg-sky-500/5">{r.okrOkCount}</TableCell>
-                <TableCell className="bg-sky-500/5">{r.okrNotCount}</TableCell>
-                <TableCell className="bg-sky-500/5 font-semibold">{r.okrGrade ?? '—'}</TableCell>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <Table className="min-w-[800px]">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
+                <TableHead className="w-[200px] text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Nhân sự
+                </TableHead>
+                <TableHead
+                  className="bg-amber-50/50 text-center text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:bg-amber-900/10"
+                  colSpan={3}
+                >
+                  KPI
+                </TableHead>
+                <TableHead
+                  className="bg-blue-50/50 text-center text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:bg-blue-900/10"
+                  colSpan={3}
+                >
+                  OKR
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+              <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
+                <TableHead />
+                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-400">
+                  Đạt
+                </TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-400">
+                  Chưa
+                </TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-400">
+                  Xếp loại
+                </TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-400">
+                  Đạt
+                </TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-400">
+                  Chưa
+                </TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-400">
+                  Xếp loại
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {displayRows.map((r) => (
+                <TableRow
+                  key={r.id}
+                  className="group transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-900/50 border-b-slate-50 dark:border-b-slate-900"
+                >
+                  <TableCell className="py-4">
+                    <div className="font-bold text-slate-900 dark:text-slate-100">{rowName(r)}</div>
+                    <div className="text-[11px] text-slate-500">
+                      {r.assigneeEmployeeCode?.trim() || r.assigneeEmail?.trim() || '—'}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center tabular-nums text-slate-700 dark:text-slate-300 bg-amber-50/20 dark:bg-amber-900/5">
+                    {r.kpiOkCount}
+                  </TableCell>
+                  <TableCell className="text-center tabular-nums text-slate-700 dark:text-slate-300 bg-amber-50/20 dark:bg-amber-900/5">
+                    {r.kpiNotCount}
+                  </TableCell>
+                  <TableCell className="text-center bg-amber-50/20 dark:bg-amber-900/5">
+                    <span className="inline-flex h-6 items-center rounded-md bg-amber-100 px-2 text-[11px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                      {r.kpiGrade || '—'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-center tabular-nums text-slate-700 dark:text-slate-300 bg-blue-50/20 dark:bg-blue-900/5">
+                    {r.okrOkCount}
+                  </TableCell>
+                  <TableCell className="text-center tabular-nums text-slate-700 dark:text-slate-300 bg-blue-50/20 dark:bg-blue-900/5">
+                    {r.okrNotCount}
+                  </TableCell>
+                  <TableCell className="text-center bg-blue-50/20 dark:bg-blue-900/5">
+                    <span className="inline-flex h-6 items-center rounded-md bg-blue-100 px-2 text-[11px] font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                      {r.okrGrade || '—'}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   )
 }
 
-function FormPanel({
+export function FormPanel({
   teamId,
   year,
   month,
   canEditTeam,
   currentUserId,
   readOnly = false,
+  showResponses,
+  showQuestionForm,
 }: {
   teamId: string
   year: number
@@ -1589,6 +1830,11 @@ function FormPanel({
   canEditTeam: boolean
   currentUserId: string
   readOnly?: boolean
+  /** Nếu undefined: theo mặc định (hiện khi `canEditTeam` hoặc chế độ read-only của Leader/Manager).
+   *  Nếu `false`: luôn ẩn cột "Phản hồi từ nhân sự" (Manager chỉ xem câu hỏi, không xem trả lời). */
+  showResponses?: boolean
+  /** Nếu false: ẩn cột câu hỏi/trả lời khảo sát bên trái, chỉ giữ phản hồi nhân sự. */
+  showQuestionForm?: boolean
 }) {
   const q = useQuery({
     queryKey: ['kpi-form', teamId, year, month],
@@ -1603,7 +1849,28 @@ function FormPanel({
   const [answerDraft, setAnswerDraft] = useState<Record<string, string>>({})
   const [busySaveQuestions, setBusySaveQuestions] = useState(false)
   const [busySaveAnswers, setBusySaveAnswers] = useState(false)
+  const [isEditingAnswers, setIsEditingAnswers] = useState(false)
   const isManagerViewOnly = readOnly
+  const shouldShowResponses = showResponses ?? (canEditTeam || isManagerViewOnly)
+  const shouldShowQuestionForm = showQuestionForm ?? true
+  const windowOpen = useMemo(() => isAnswerWindowOpen(year, month), [year, month])
+  const myAnswers = useMemo(
+    () => data?.answers.filter((a) => a.respondentUserId === currentUserId) ?? [],
+    [data?.answers, currentUserId]
+  )
+  const hasExistingAnswer = myAnswers.length > 0
+  const lastSubmittedAt = useMemo(() => {
+    const iso = myAnswers
+      .map((a) => a.updatedAt)
+      .filter((x): x is string => Boolean(x))
+      .sort()
+      .pop()
+    if (!iso) return null
+    const d = new Date(iso)
+    return Number.isNaN(d.getTime()) ? null : d.toLocaleString('vi-VN')
+  }, [myAnswers])
+  const answerInputDisabled =
+    readOnly || !currentUserId || !windowOpen || (hasExistingAnswer && !isEditingAnswers)
 
   useEffect(() => {
     if (!data?.questions?.length) return
@@ -1650,150 +1917,315 @@ function FormPanel({
     )
   }, [data?.answers])
 
-  if (!teamId) return <p className="text-sm text-muted-foreground">Chọn team.</p>
+  if (!teamId) return null
   if (q.isLoading) {
     return (
-      <Card id="form-section" className={cn('scroll-mt-24', CARD_ENTRANCE)}>
-        <CardHeader>
-          <CardTitle className="text-xl">Form câu hỏi</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </CardContent>
-      </Card>
+      <div id="form-section" className="scroll-mt-24 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Card>
+          <CardContent className="py-12 flex items-center justify-center">
+            <RefreshCw className="h-6 w-6 animate-spin text-slate-300" />
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
   return (
-    <Card
-      id="form-section"
-      className={cn(
-        'scroll-mt-24 relative overflow-hidden border-fuchsia-200/45 shadow-lg shadow-fuchsia-500/10 transition-shadow duration-300 motion-safe:hover:shadow-xl motion-safe:hover:shadow-fuchsia-500/15 dark:border-fuchsia-900/40',
-        CARD_ENTRANCE
-      )}
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fuchsia-500 via-purple-500 to-indigo-500"
-      />
-      <CardHeader>
-        <CardTitle className="text-xl md:text-2xl font-bold text-fuchsia-700">
-          Form câu hỏi theo tháng
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {canEditTeam && !isMockApiEnabled() && (
-          <div className="rounded-xl border border-border p-4">
-            <p className="mb-2 text-sm font-semibold">
-              Tạo / cập nhật câu hỏi tháng (mỗi dòng một câu)
-            </p>
-            <textarea
-              className="mb-2 min-h-[100px] w-full rounded-lg border border-input bg-background p-3 text-sm"
-              value={prompts}
-              onChange={(e) => setPrompts(e.target.value)}
-            />
-            <Button
-              type="button"
-              disabled={busySaveQuestions}
-              className="rounded-lg bg-gradient-to-r from-fuchsia-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white hover:from-fuchsia-700 hover:to-purple-700"
-              onClick={() => {
-                const lines = prompts
-                  .split('\n')
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-                  .map((prompt) => ({ prompt }))
-                setBusySaveQuestions(true)
-                void performanceApi
-                  .upsertQuestionnaire(teamId, { year, month, questions: lines })
-                  .then(() => q.refetch())
-                  .finally(() => setBusySaveQuestions(false))
-              }}
-            >
-              {busySaveQuestions ? 'Đang lưu...' : 'Lưu câu hỏi'}
-            </Button>
+    <div id="form-section" className="scroll-mt-24 space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-6 w-1 rounded-full bg-fuchsia-600" />
+            <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              3. Form câu hỏi theo tháng
+            </h2>
           </div>
-        )}
-
-        {!data && (
-          <p className="text-sm text-muted-foreground">
-            {isManagerViewOnly
-              ? 'Chưa có form câu hỏi cho kỳ này.'
-              : 'Chưa có form cho kỳ này (leader cần tạo câu hỏi).'}
+          <p className="text-[13px] text-slate-500">
+            Khảo sát và ghi nhận ý kiến phản hồi hàng tháng.
           </p>
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          'grid gap-6',
+          shouldShowQuestionForm && shouldShowResponses ? 'lg:grid-cols-2' : 'grid-cols-1'
         )}
+      >
+        {shouldShowQuestionForm ? (
+          <Card className="border-slate-200/60 shadow-sm dark:border-slate-800/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                {isManagerViewOnly ? 'Câu hỏi khảo sát' : 'Trả lời khảo sát'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {!data && (
+                <div className="flex h-32 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/30">
+                  <p className="text-sm text-slate-400">
+                    {isManagerViewOnly
+                      ? 'Chưa có form câu hỏi cho kỳ này.'
+                      : 'Chưa có form cho kỳ này (Quản lý chưa tạo câu hỏi).'}
+                  </p>
+                </div>
+              )}
 
-        {data?.questions?.length && !isManagerViewOnly ? (
-          <div className="space-y-4">
-            {data.questions.map((qs) => (
-              <label key={qs.id} className="block rounded-lg border border-border/80 p-3">
-                <span className="text-sm font-medium text-foreground">{qs.prompt}</span>
-                <textarea
-                  className="mt-2 min-h-[72px] w-full rounded border border-input bg-background p-2 text-sm"
-                  value={answerDraft[qs.id] ?? ''}
-                  onChange={(e) => setAnswerDraft((prev) => ({ ...prev, [qs.id]: e.target.value }))}
-                  disabled={!currentUserId || readOnly}
-                />
-              </label>
-            ))}
-            {!isMockApiEnabled() && currentUserId && !readOnly && (
-              <Button
-                type="button"
-                disabled={busySaveAnswers}
-                className="rounded-lg border border-sky-300 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100"
-                onClick={() => {
-                  setBusySaveAnswers(true)
-                  void performanceApi
-                    .putAnswers(teamId, year, month, {
-                      answers: data.questions.map((qs) => ({
-                        questionId: qs.id,
-                        answerText: answerDraft[qs.id] ?? '',
-                      })),
-                    })
-                    .then(() => q.refetch())
-                    .finally(() => setBusySaveAnswers(false))
-                }}
-              >
-                {busySaveAnswers ? 'Đang gửi...' : 'Gửi câu trả lời'}
-              </Button>
-            )}
-          </div>
-        ) : null}
-
-        {(canEditTeam || isManagerViewOnly) && data?.questions?.length ? (
-          <div className="space-y-3 rounded-xl border border-border/80 p-4">
-            <div className="text-sm font-semibold text-foreground">
-              {isManagerViewOnly
-                ? 'Danh sách câu hỏi & câu trả lời theo nhân sự'
-                : 'Tổng hợp câu trả lời theo nhân sự'}
-            </div>
-            {answersByRespondent.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Chưa có câu trả lời nào cho kỳ này.</p>
-            ) : (
-              <div className="space-y-3">
-                {answersByRespondent.map((entry) => (
-                  <div
-                    key={entry.respondentUserId}
-                    className="rounded-lg border border-border/70 p-3"
-                  >
-                    <div className="mb-2 text-sm font-medium">{entry.respondentName}</div>
-                    <div className="space-y-2">
-                      {data.questions.map((qs) => (
-                        <div key={qs.id} className="rounded-md bg-muted/35 p-2">
-                          <div className="text-xs font-semibold text-foreground">{qs.prompt}</div>
-                          <div className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">
-                            {entry.answers[qs.id]?.trim() || '—'}
-                          </div>
+              {data?.questions?.length ? (
+                <div className="space-y-5">
+                  {!readOnly && !windowOpen && (
+                    <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+                      <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div>
+                        <div className="font-semibold">
+                          Kỳ khảo sát T{month}/{year}{' '}
+                          {(() => {
+                            const now = new Date()
+                            const start = new Date(year, month - 1, 1)
+                            return now < start ? 'chưa mở' : 'đã đóng'
+                          })()}
+                          .
                         </div>
-                      ))}
+                        <div className="text-xs opacity-80">
+                          Thời hạn trả lời: {formatAnswerWindow(year, month)}.
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  )}
+                  {!readOnly && windowOpen && hasExistingAnswer && !isEditingAnswers && (
+                    <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div>
+                        <div className="font-semibold">Bạn đã gửi câu trả lời cho kỳ này.</div>
+                        <div className="text-xs opacity-80">
+                          {lastSubmittedAt ? <>Lần cập nhật gần nhất: {lastSubmittedAt}. </> : null}
+                          Bấm <b>Chỉnh sửa</b> nếu cần cập nhật, trước khi kỳ đóng lúc 05/
+                          {String(month === 12 ? 1 : month + 1).padStart(2, '0')}/
+                          {month === 12 ? year + 1 : year}.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {data.questions.map((qs, i) => (
+                    <div key={qs.id} className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                        {i + 1}. {qs.prompt}
+                      </label>
+                      <textarea
+                        className={cn(
+                          'min-h-[100px] w-full rounded-xl border border-slate-200 bg-slate-50/30 p-4 text-sm transition-all focus:bg-white focus:ring-2 focus:ring-primary/10 outline-none dark:border-slate-800 dark:bg-slate-900/30 dark:focus:bg-slate-950',
+                          answerInputDisabled && 'cursor-not-allowed opacity-70'
+                        )}
+                        placeholder="Nhập câu trả lời của bạn..."
+                        value={answerDraft[qs.id] ?? ''}
+                        onChange={(e) =>
+                          setAnswerDraft((prev) => ({ ...prev, [qs.id]: e.target.value }))
+                        }
+                        disabled={answerInputDisabled}
+                      />
+                    </div>
+                  ))}
+                  {!isMockApiEnabled() && currentUserId && !readOnly && windowOpen && (
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      {!hasExistingAnswer ? (
+                        <Button
+                          type="button"
+                          disabled={busySaveAnswers}
+                          className="w-full rounded-xl bg-primary font-bold shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5"
+                          onClick={() => {
+                            setBusySaveAnswers(true)
+                            void performanceApi
+                              .putAnswers(teamId, year, month, {
+                                answers: data.questions.map((qs) => ({
+                                  questionId: qs.id,
+                                  answerText: answerDraft[qs.id] ?? '',
+                                })),
+                              })
+                              .then(() => {
+                                toast.success('Đã gửi câu trả lời thành công.')
+                                setIsEditingAnswers(false)
+                                q.refetch()
+                              })
+                              .catch((err) => {
+                                const msg =
+                                  err?.response?.data?.message ||
+                                  'Không gửi được câu trả lời. Vui lòng thử lại.'
+                                toast.error(msg)
+                              })
+                              .finally(() => setBusySaveAnswers(false))
+                          }}
+                        >
+                          {busySaveAnswers ? (
+                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          ) : null}
+                          {busySaveAnswers ? 'Đang gửi...' : 'Gửi câu trả lời'}
+                        </Button>
+                      ) : !isEditingAnswers ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full rounded-xl border-primary/40 font-bold text-primary hover:bg-primary/5"
+                          onClick={() => setIsEditingAnswers(true)}
+                        >
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Chỉnh sửa câu trả lời
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            disabled={busySaveAnswers}
+                            className="w-full rounded-xl bg-primary font-bold shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5"
+                            onClick={() => {
+                              setBusySaveAnswers(true)
+                              void performanceApi
+                                .putAnswers(teamId, year, month, {
+                                  answers: data.questions.map((qs) => ({
+                                    questionId: qs.id,
+                                    answerText: answerDraft[qs.id] ?? '',
+                                  })),
+                                })
+                                .then(() => {
+                                  toast.success('Đã cập nhật câu trả lời.')
+                                  setIsEditingAnswers(false)
+                                  q.refetch()
+                                })
+                                .catch((err) => {
+                                  const msg =
+                                    err?.response?.data?.message ||
+                                    'Không cập nhật được câu trả lời. Vui lòng thử lại.'
+                                  toast.error(msg)
+                                })
+                                .finally(() => setBusySaveAnswers(false))
+                            }}
+                          >
+                            {busySaveAnswers ? (
+                              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                            ) : null}
+                            {busySaveAnswers ? 'Đang lưu...' : 'Lưu thay đổi'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={busySaveAnswers}
+                            className="w-full rounded-xl sm:w-auto"
+                            onClick={() => {
+                              const reset: Record<string, string> = {}
+                              for (const qs of data.questions) {
+                                const ans = myAnswers.find((a) => a.questionId === qs.id)
+                                reset[qs.id] = ans?.answerText ?? ''
+                              }
+                              setAnswerDraft(reset)
+                              setIsEditingAnswers(false)
+                            }}
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Huỷ
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
         ) : null}
-      </CardContent>
-    </Card>
+
+        {/* Phần quản lý câu hỏi (dành cho Leader) */}
+        {shouldShowResponses && (
+          <div className="space-y-6">
+            {canEditTeam && !isMockApiEnabled() && (
+              <Card className="border-fuchsia-100 bg-fuchsia-50/20 dark:border-fuchsia-900/20 dark:bg-fuchsia-950/10">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-fuchsia-700">
+                    Cấu hình câu hỏi (Leader)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <textarea
+                    className="min-h-[120px] w-full rounded-xl border border-fuchsia-200 bg-white p-4 text-sm outline-none transition-all focus:ring-2 focus:ring-fuchsia-500/20 dark:border-fuchsia-800 dark:bg-slate-950"
+                    placeholder="Nhập mỗi câu hỏi trên một dòng..."
+                    value={prompts}
+                    onChange={(e) => setPrompts(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    disabled={busySaveQuestions}
+                    variant="outline"
+                    className="w-full border-fuchsia-300 font-bold text-fuchsia-700 hover:bg-fuchsia-50"
+                    onClick={() => {
+                      const lines = prompts
+                        .split('\n')
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                        .map((prompt) => ({ prompt }))
+                      setBusySaveQuestions(true)
+                      void performanceApi
+                        .upsertQuestionnaire(teamId, { year, month, questions: lines })
+                        .then(() => {
+                          toast.success('Đã cập nhật bộ câu hỏi.')
+                          q.refetch()
+                        })
+                        .finally(() => setBusySaveQuestions(false))
+                    }}
+                  >
+                    {busySaveQuestions ? 'Đang lưu...' : 'Lưu bộ câu hỏi'}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card className="border-slate-200/60 shadow-sm dark:border-slate-800/50">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                  Phản hồi từ nhân sự
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {answersByRespondent.length === 0 ? (
+                  <div className="flex h-32 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/30">
+                    <p className="text-sm text-slate-400 text-center">
+                      Chưa có nhân sự nào trả lời khảo sát.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-[500px] overflow-auto pr-1">
+                    {answersByRespondent.map((entry) => (
+                      <div
+                        key={entry.respondentUserId}
+                        className="rounded-xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/50"
+                      >
+                        <div className="mb-3 flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                          <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                            {entry.respondentName}
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          {data?.questions.map((qs) => (
+                            <div
+                              key={qs.id}
+                              className="rounded-lg bg-slate-50/80 p-3 dark:bg-slate-800/40"
+                            >
+                              <div className="text-[11px] font-bold text-slate-400 uppercase">
+                                {qs.prompt}
+                              </div>
+                              <div className="mt-1 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                                {entry.answers[qs.id]?.trim() || '—'}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

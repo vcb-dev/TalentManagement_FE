@@ -20,9 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { CARD_ENTRANCE, CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
+import { CARD_ENTRANCE } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { performanceApi } from '@/features/kpi-okr/api'
+import { FormPanel } from '@/features/kpi-okr/components/KpiOkrWorkspace'
 import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
 import { organizationApi } from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
@@ -41,11 +42,37 @@ function nowYm() {
   return { year: d.getFullYear(), month: d.getMonth() + 1 }
 }
 
-function assignmentStatusLabel(status: 'not_started' | 'in_progress' | 'done' | 'blocked') {
-  if (status === 'done') return 'Hoàn thành'
-  if (status === 'in_progress') return 'Đang thực hiện'
-  if (status === 'blocked') return 'Bị chặn'
-  return 'Chưa bắt đầu'
+function formatKpiSetAt(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('vi-VN')
+}
+
+function PriorityText({ priority }: { priority: number }) {
+  if (priority === 1) return <span className="font-semibold text-rose-600">P1 - Cao</span>
+  if (priority === 2) return <span className="font-semibold text-amber-600">P2 - TB</span>
+  if (priority === 3) return <span className="font-semibold text-slate-600">P3 - Thấp</span>
+  return <span className="text-slate-400">—</span>
+}
+
+function EvalBadge({ status }: { status: string | null | undefined }) {
+  const v = status?.trim().toUpperCase()
+  if (!v || v === '__NONE') return <span className="text-slate-400">—</span>
+  const isOk = v === 'OK'
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        'h-5 px-1.5 text-[10px] font-bold shadow-none rounded-md',
+        isOk
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
+          : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300'
+      )}
+    >
+      {v}
+    </Badge>
+  )
 }
 
 /** Báo cáo hàng tháng — member (cá nhân) / leader (team). Nội dung nối API sau. */
@@ -55,6 +82,8 @@ export function MonthlyReportScreen() {
   const user = useAuthStore((s) => s.user)
   const userId = user?.id
   const isLeader = role === 'LEADER'
+  const isManager = role === 'MANAGER'
+  const canSeeTeamWide = isLeader || isManager
   const { year: currentYear, month: currentMonth } = nowYm()
   const [year, setYear] = useState(currentYear)
   const [month, setMonth] = useState(currentMonth)
@@ -98,7 +127,9 @@ export function MonthlyReportScreen() {
   const summariesData = summariesQ.data ?? []
 
   const summaryRows =
-    !userId || isLeader ? summariesData : summariesData.filter((x) => x.assigneeUserId === userId)
+    !userId || canSeeTeamWide
+      ? summariesData
+      : summariesData.filter((x) => x.assigneeUserId === userId)
 
   const assignmentsByUser = new Map<string, typeof assignmentsData>()
   for (const item of assignmentsData) {
@@ -109,14 +140,16 @@ export function MonthlyReportScreen() {
 
   const selectedDetailUserId = (() => {
     if (selectedUserId && assignmentsByUser.has(selectedUserId)) return selectedUserId
-    if (!isLeader && userId && assignmentsByUser.has(userId)) return userId
+    if (!canSeeTeamWide && userId && assignmentsByUser.has(userId)) return userId
     const first = assignmentsByUser.keys().next().value
     return typeof first === 'string' ? first : ''
   })()
 
   const detailRows = selectedDetailUserId ? (assignmentsByUser.get(selectedDetailUserId) ?? []) : []
 
-  const doneCount = assignmentsData.filter((x) => x.status === 'done').length
+  const okCount = assignmentsData.filter(
+    (x) => (x.managerEvalStatus ?? '').trim().toUpperCase() === 'OK'
+  ).length
 
   const teamMemberName = (userId: string) => {
     const row = membersQ.data?.members.find((m) => m.userId === userId)
@@ -141,126 +174,142 @@ export function MonthlyReportScreen() {
       >
         <h1 className={PAGE_HEADER_TITLE}>
           <span className={PAGE_HEADER_GRADIENT}>
-            {isLeader ? 'Báo cáo hàng tháng (team)' : 'Báo cáo hàng tháng'}
+            {canSeeTeamWide ? 'Báo cáo hàng tháng (team)' : 'Báo cáo hàng tháng'}
           </span>
         </h1>
         <p className={PAGE_HEADER_DESCRIPTION}>
-          {isLeader
-            ? 'Tổng hợp báo cáo theo tháng của các thành viên trong team.'
-            : 'Theo dõi báo cáo tiến độ KPI/OKR theo từng tháng.'}
+          {isManager
+            ? 'Tổng hợp KPI/OKR, chi tiết mục tiêu từng nhân sự và form khảo sát hàng tháng của team đã chọn.'
+            : isLeader
+              ? 'Tổng hợp báo cáo theo tháng của các thành viên trong team kèm danh sách phản hồi khảo sát.'
+              : 'Theo dõi báo cáo tiến độ KPI/OKR và trả lời form khảo sát của Leader theo từng tháng.'}
         </p>
       </div>
 
       <Card
         className={cn(
-          'rounded-2xl border border-primary/20 bg-gradient-to-br from-blue-50/90 via-card to-fuchsia-50/85 shadow-[0_12px_30px_-12px_rgb(106_90_224/0.28)] backdrop-blur-[2px]',
-          CARD_ENTRANCE_HOVER
+          'mb-8 border-slate-200 bg-white/50 shadow-sm backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/50',
+          CARD_ENTRANCE
         )}
+        style={{ animationDelay: '50ms' }}
       >
-        <CardHeader className="pb-4">
-          <CardTitle className="text-xl md:text-2xl text-game-soft-foreground">
-            Chọn kỳ báo cáo
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <label className="flex flex-col gap-1.5">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                Phòng ban
-              </Label>
-              <Select
-                value={selectedDept?.id ?? '__none'}
-                onValueChange={(value) => {
-                  const dept = departments.find((d) => d.id === value)
-                  setSelectedTeamId(dept?.teams[0]?.id ?? '')
+        <CardContent className="p-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
+            <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Phòng ban
+                </Label>
+                <Select
+                  value={selectedDept?.id ?? '__none'}
+                  onValueChange={(value) => {
+                    const dept = departments.find((d) => d.id === value)
+                    setSelectedTeamId(dept?.teams[0]?.id ?? '')
+                  }}
+                >
+                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                    <SelectValue placeholder="Chọn phòng ban" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">— Chọn —</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Team / Đội nhóm
+                </Label>
+                <Select
+                  value={selectedTeamId || '__none'}
+                  onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
+                >
+                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                    <SelectValue placeholder="Chọn team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">— Chọn team —</SelectItem>
+                    {teamsInDept.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Tháng
+                </Label>
+                <Select value={String(month)} onValueChange={(value) => setMonth(Number(value))}>
+                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                      <SelectItem key={m} value={String(m)}>
+                        Tháng {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Năm
+                </Label>
+                <Input
+                  type="number"
+                  value={year}
+                  min={2020}
+                  max={2035}
+                  className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+                  onChange={(e) => setYear(Number(e.target.value))}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3 lg:border-l lg:pl-6 lg:border-slate-100 dark:lg:border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 shrink-0 rounded-xl border-slate-200 transition-all hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800"
+                onClick={() => {
+                  void treeQ.refetch()
+                  void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
+                  void membersQ.refetch()
+                  void summariesQ.refetch()
+                  void assignmentsQ.refetch()
                 }}
               >
-                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">— Chọn —</SelectItem>
-                  {departments.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Team</Label>
-              <Select
-                value={selectedTeamId || '__none'}
-                onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
-              >
-                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">— Chọn team —</SelectItem>
-                  {teamsInDept.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tháng</Label>
-              <Select value={String(month)} onValueChange={(value) => setMonth(Number(value))}>
-                <SelectTrigger className="h-10 rounded-lg border border-input bg-background/90 px-3 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                    <SelectItem key={m} value={String(m)}>
-                      Tháng {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Năm</Label>
-              <Input
-                type="number"
-                min={2020}
-                max={2035}
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
-              />
-            </label>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              variant="outline"
-              className="border-violet-300 bg-violet-50 text-violet-700 shadow-sm"
-            >
-              Kỳ: T{month + '/' + year}
-            </Badge>
-            <Badge className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white">
-              Tổng mục tiêu: {assignmentsData.length}
-            </Badge>
-            <Badge className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
-              Hoàn thành: {doneCount}
-            </Badge>
-            <Button
-              type="button"
-              variant="outline"
-              className="ml-auto inline-flex items-center gap-1 border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100"
-              onClick={() => {
-                void treeQ.refetch()
-                void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
-                void membersQ.refetch()
-                void summariesQ.refetch()
-                void assignmentsQ.refetch()
-              }}
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Làm mới
-            </Button>
+                <RefreshCw className="h-4 w-4 text-slate-500" />
+                <span className="sr-only">Làm mới</span>
+              </Button>
+              <div className="flex flex-col gap-1">
+                <Badge
+                  variant="outline"
+                  className="h-5 rounded-md border-blue-100 bg-blue-50 text-[10px] font-bold text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
+                >
+                  KỲ: T{month}/{year}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="h-5 rounded-md border-cyan-100 bg-cyan-50 text-[10px] font-bold text-cyan-600 dark:border-cyan-900/30 dark:bg-cyan-900/20 dark:text-cyan-400"
+                >
+                  TỔNG MỤC TIÊU: {assignmentsData.length}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="h-5 rounded-md border-emerald-100 bg-emerald-50 text-[10px] font-bold text-emerald-600 dark:border-emerald-900/30 dark:bg-emerald-900/20 dark:text-emerald-400"
+                >
+                  ĐẠT (OK): {okCount}
+                </Badge>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -377,7 +426,7 @@ export function MonthlyReportScreen() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isLeader ? (
+              {canSeeTeamWide ? (
                 <div className="flex flex-wrap gap-2">
                   {Array.from(assignmentsByUser.keys()).map((uid) => (
                     <Button
@@ -406,16 +455,21 @@ export function MonthlyReportScreen() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-blue-500/10">
+                      <TableHead className="whitespace-nowrap">Ngày xét</TableHead>
                       <TableHead>Hạng mục</TableHead>
+                      <TableHead className="whitespace-nowrap">Ưu tiên</TableHead>
                       <TableHead>Nội dung</TableHead>
-                      <TableHead>Tiến độ</TableHead>
-                      <TableHead>Trạng thái</TableHead>
-                      <TableHead>QL đánh giá</TableHead>
+                      <TableHead>Chỉ tiêu</TableHead>
+                      <TableHead className="whitespace-nowrap">QL đánh giá</TableHead>
+                      <TableHead>QL nhận xét</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {detailRows.map((item) => (
                       <TableRow key={item.id} className="transition-colors hover:bg-blue-500/5">
+                        <TableCell className="whitespace-nowrap tabular-nums text-slate-500">
+                          {formatKpiSetAt(item.kpiSetAt)}
+                        </TableCell>
                         <TableCell>
                           <Badge
                             className={
@@ -427,17 +481,59 @@ export function MonthlyReportScreen() {
                             {item.kind}
                           </Badge>
                         </TableCell>
-                        <TableCell className="max-w-[680px] whitespace-pre-wrap">
+                        <TableCell className="whitespace-nowrap">
+                          <PriorityText priority={item.priority} />
+                        </TableCell>
+                        <TableCell className="max-w-[520px] whitespace-pre-wrap">
                           {item.content}
                         </TableCell>
-                        <TableCell>{item.progressPercent}%</TableCell>
-                        <TableCell>{assignmentStatusLabel(item.status)}</TableCell>
-                        <TableCell>{item.managerEvalStatus?.trim() || '—'}</TableCell>
+                        <TableCell className="tabular-nums font-semibold text-primary">
+                          {item.targetMetric?.trim() || '—'}
+                        </TableCell>
+                        <TableCell>
+                          <EvalBadge status={item.managerEvalStatus} />
+                        </TableCell>
+                        <TableCell className="max-w-[280px] text-[12px] italic text-slate-500">
+                          {item.managerReviewNote?.trim() || '—'}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               )}
+            </CardContent>
+          </Card>
+
+          <Card
+            className={cn(
+              'relative overflow-hidden border-fuchsia-200/55 bg-gradient-to-br from-fuchsia-50/70 via-card to-violet-50/60 shadow-lg shadow-fuchsia-500/10',
+              CARD_ENTRANCE
+            )}
+          >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500"
+            />
+            <CardHeader>
+              <CardTitle className="bg-gradient-to-r from-fuchsia-700 via-violet-700 to-indigo-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
+                {canSeeTeamWide ? 'Phản hồi từ nhân sự' : 'Form khảo sát tháng này'}
+              </CardTitle>
+              <p className="text-[13px] text-slate-500">
+                {canSeeTeamWide
+                  ? 'Danh sách câu trả lời của từng nhân sự trong team theo kỳ đã chọn.'
+                  : 'Trả lời câu hỏi khảo sát hàng tháng do Leader thiết lập. Bấm "Gửi câu trả lời" để lưu.'}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <FormPanel
+                teamId={selectedTeamId}
+                year={year}
+                month={month}
+                canEditTeam={false}
+                currentUserId={userId ?? ''}
+                readOnly={canSeeTeamWide}
+                showQuestionForm={!canSeeTeamWide}
+              />
             </CardContent>
           </Card>
 
@@ -448,6 +544,13 @@ export function MonthlyReportScreen() {
               <code className="rounded bg-white/80 px-1 py-0.5">monthly_report</code>
               {isLeader ? (
                 <> · Leader có thể điều phối dữ liệu báo cáo ở màn KPI/OKR team.</>
+              ) : null}
+              {isManager ? (
+                <>
+                  {' '}
+                  · Manager chỉ xem (read-only) dữ liệu tổng hợp, chi tiết mục tiêu và phản hồi khảo
+                  sát của team.
+                </>
               ) : null}
             </span>
           </div>
