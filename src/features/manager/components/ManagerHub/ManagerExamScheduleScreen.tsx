@@ -291,16 +291,30 @@ export function ManagerExamScheduleScreen() {
                   )
 
                   const hasExamSchedule = Boolean(c.examDate)
+                  let isExamEnded = false
+                  if (c.examDate) {
+                    const examTime = new Date(c.examDate).getTime()
+                    if (!Number.isNaN(examTime) && examTime < Date.now()) {
+                      isExamEnded = true
+                    }
+                  }
+
                   const actionCell = (
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="font-bold"
-                        onClick={() => setExamModalClassId(c.id)}
-                      >
-                        {hasExamSchedule ? 'Sửa lịch thi' : 'Tạo lịch thi'}
-                      </Button>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {isExamEnded ? (
+                        <span className="text-sm font-semibold text-rose-600">
+                          Lịch thi đã kết thúc
+                        </span>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="font-bold"
+                          onClick={() => setExamModalClassId(c.id)}
+                        >
+                          {hasExamSchedule ? 'Sửa lịch thi' : 'Tạo lịch thi'}
+                        </Button>
+                      )}
                     </div>
                   )
 
