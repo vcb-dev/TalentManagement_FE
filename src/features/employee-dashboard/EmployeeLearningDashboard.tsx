@@ -19,7 +19,6 @@ import {
 } from '@/components/shared/PageHeader'
 import { useMyDashboard } from '@/features/dashboard/hooks'
 import { DashboardKpiOkrZone } from '@/features/employee-dashboard/components/DashboardKpiOkrZone'
-import { MemberKpiOkrScreen } from '@/features/kpi-okr/components/MemberKpiOkrScreen'
 import { DashboardLearningZone } from '@/features/employee-dashboard/components/DashboardLearningZone'
 import { CARD_ENTRANCE_HOVER, STAR_POP, staggerStyle } from '@/lib/cardMotion'
 import { LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
@@ -31,6 +30,7 @@ import type { Role, StaffLevel } from '@/types/auth'
 
 function kpiOkrPaths(role: Role | undefined): { kpiOkr: string } {
   if (role === 'LEADER') return { kpiOkr: '/leader/kpi-okr' }
+  if (role === 'MANAGER') return { kpiOkr: '/monthly-report' }
   return { kpiOkr: '/kpi-okr' }
 }
 
@@ -100,7 +100,7 @@ const achievementCardStyles = [
 export function EmployeeLearningDashboard() {
   const user = useAuthStore((s) => s.user)
   const role = user?.role
-  const showKpiZone = role === 'MEMBER' || role === 'LEADER'
+  const showKpiZone = role === 'MEMBER' || role === 'LEADER' || role === 'MANAGER'
   const paths = kpiOkrPaths(role)
   const [tab, setTab] = useState<DashboardTab>('learning')
   const { data: meDashboard, isLoading } = useMyDashboard({ enabled: Boolean(user) })
@@ -529,11 +529,7 @@ export function EmployeeLearningDashboard() {
               hidden={tab !== 'kpi'}
               className="motion-safe:animate-[dash-fade-up_0.4s_ease-out_both] motion-reduce:animate-none"
             >
-              {role === 'MEMBER' ? (
-                <MemberKpiOkrScreen />
-              ) : (
-                <DashboardKpiOkrZone role={role as 'MEMBER' | 'LEADER'} paths={paths} />
-              )}
+              <DashboardKpiOkrZone role={role as 'LEADER' | 'MANAGER' | 'MEMBER'} paths={paths} />
             </div>
           </>
         ) : (

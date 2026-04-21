@@ -1,15 +1,15 @@
-import type { ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   Activity,
+  Calendar,
   CheckCircle2,
-  Download,
-  FileText,
-  Filter,
   Flag,
   RefreshCw,
+  Target,
   TrendingUp,
   Trophy,
+  Users,
 } from 'lucide-react'
 import {
   PAGE_HEADER_GRADIENT,
@@ -18,34 +18,58 @@ import {
 } from '@/components/shared/PageHeader'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import type { Role } from '@/types/auth'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { useAuthStore } from '@/stores/auth.store'
+import { useHrOrgTree } from '@/features/hr-admin/useHrOrgTree'
+import { useMyDashboard } from '@/features/dashboard/hooks'
+import { STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
+import type { Role, StaffLevel } from '@/types/auth'
+import { useKpiDashboardData } from './useKpiDashboardData'
+import {
+  GradeDonut,
+  KpiGauge,
+  PerPersonBar,
+  EvalBreakdownDonut,
+  TopPriorityList,
+  TrendLine,
+} from './kpiCharts'
 
 export type KpiOkrPaths = { kpiOkr: string }
 
 const quartOut = '[transition-timing-function:cubic-bezier(0.25,1,0.5,1)]'
 
-function monthLabelVi(d: Date): string {
-  return `Tháng ${d.getMonth() + 1}/${d.getFullYear()}`
+function monthRangeLabel(year: number, startMonth: number, endMonth: number): string {
+  if (startMonth === endMonth) return `Tháng ${startMonth}/${year}`
+  return `Từ tháng ${startMonth} đến tháng ${endMonth}/${year}`
 }
 
-export interface DashboardKpiOkrZoneProps {
-  role: Extract<Role, 'MEMBER' | 'LEADER'>
-  paths: KpiOkrPaths
+function parseLevelFromStaff(staffLevel: StaffLevel | undefined): LevelCode | null {
+  if (staffLevel === 'PROBATION') return 'tap_su'
+  if (staffLevel === 'PROFICIENT') return 'biet_viec'
+  if (staffLevel === 'GENERAL') return 'tuong'
+  return null
 }
 
 type SummaryCardProps = {
   title: string
-  value: string
   percent: number
-  barClass: string
+  color: string
   icon: ReactNode
   footer: ReactNode
   delay: number
+  loading?: boolean
 }
 
-function SummaryCard({ title, value, percent, barClass, icon, footer, delay }: SummaryCardProps) {
-  const w = Math.min(100, Math.max(0, percent))
+function SummaryCard({ title, percent, color, icon, footer, delay, loading }: SummaryCardProps) {
   return (
     <div
       className={cn(
@@ -56,373 +80,610 @@ function SummaryCard({ title, value, percent, barClass, icon, footer, delay }: S
       )}
       style={staggerStyle(delay)}
     >
-      <div className="pointer-events-none absolute right-3 top-3 opacity-[0.1] transition-opacity group-hover:opacity-[0.18]">
+      <div className="pointer-events-none absolute right-3 top-3 opacity-[0.08] transition-opacity group-hover:opacity-[0.14]">
         {icon}
       </div>
-      <div className="relative z-10">
-        <h3 className="mb-2 text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
-          {title}
-        </h3>
-        <p className="mb-4 text-3xl font-bold tabular-nums text-foreground">{value}</p>
-        <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
-          <div className={cn('h-full rounded-full', barClass)} style={{ width: `${w}%` }} />
+      <div className="relative z-10 flex items-center gap-4">
+        <div className="shrink-0">
+          {loading ? (
+            <Skeleton className="h-[140px] w-[140px] rounded-full" />
+          ) : (
+            <KpiGauge percent={percent} color={color} size={140} />
+          )}
         </div>
-        <div className="mt-3 text-xs font-medium text-muted-foreground">{footer}</div>
+        <div className="min-w-0 flex-1">
+          <h3 className="mb-2 text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
+            {title}
+          </h3>
+          {loading ? (
+            <Skeleton className="h-4 w-3/4" />
+          ) : (
+            <div className="text-xs font-medium text-muted-foreground">{footer}</div>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-/** Khối KPI · OKR · Báo cáo — nội dung thuật ngữ khớp màn KPI/OKR & báo cáo hàng tháng trong app (số liệu mẫu trước khi nối API). */
+export interface DashboardKpiOkrZoneProps {
+  role: Extract<Role, 'LEADER' | 'MANAGER' | 'MEMBER'>
+  paths: KpiOkrPaths
+}
+
+type TeamOption = { id: string; name: string; deptName?: string }
+
+/** Khối KPI · OKR · Báo cáo — LEADER/MANAGER: team; MEMBER: báo cáo cá nhân (cùng bộ lọc kỳ). */
 export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
+  const user = useAuthStore((s) => s.user)
   const isLeader = role === 'LEADER'
-  const now = new Date()
+  const isManager = role === 'MANAGER'
+  const isMember = role === 'MEMBER'
+  const [reportYear, setReportYear] = useState(() => new Date().getFullYear())
+  const [rangeStartMonth, setRangeStartMonth] = useState(() => new Date().getMonth() + 1)
+  const [rangeEndMonth, setRangeEndMonth] = useState(() => new Date().getMonth() + 1)
 
-  /** Số liệu mẫu — đồng bộ với màn KPI/OKR & báo cáo tháng khi có API. */
-  const kpi = isLeader
-    ? {
-        percent: 82,
-        display: '82%',
-        trend: '8/10 chỉ tiêu đạt mức tối thiểu · team',
-      }
-    : {
-        percent: 75,
-        display: '75%',
-        trend: '3/4 chỉ tiêu đã hoàn thành',
-      }
-  const okr = isLeader
-    ? {
-        percent: 71,
-        display: '71%',
-        note: '5/7 kết quả then chốt đạt checkpoint',
-      }
-    : {
-        percent: 66,
-        display: '66%',
-        note: '2/3 kết quả then chốt đạt checkpoint',
-      }
-  const report = isLeader
-    ? {
-        percent: 80,
-        display: '80%',
-        note: '4/5 thành viên đã nộp báo cáo đúng hạn',
-      }
-    : {
-        percent: 100,
-        display: '100%',
-        note: 'Đã nộp báo cáo tháng này',
-      }
+  const treeQ = useHrOrgTree()
+  const teamOptions: TeamOption[] = useMemo(() => {
+    const all = (treeQ.data?.departments ?? []).flatMap((d) =>
+      d.teams.map((t) => ({ id: t.id, name: t.name, deptName: d.name }))
+    )
+    if (isManager) return all
+    const myIds = new Set((user?.teamIds ?? []).filter(Boolean))
+    if (!myIds.size) return []
+    return all.filter((t) => myIds.has(t.id))
+  }, [treeQ.data, isManager, user?.teamIds])
 
-  const milestonePct = isLeader ? 68 : 74
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('')
+  useEffect(() => {
+    if (selectedTeamId && teamOptions.some((t) => t.id === selectedTeamId)) return
+    const firstId = teamOptions[0]?.id ?? ''
+    if (firstId && firstId !== selectedTeamId) setSelectedTeamId(firstId)
+  }, [teamOptions, selectedTeamId])
+
+  const selectedTeam = teamOptions.find((t) => t.id === selectedTeamId)
+
+  const data = useKpiDashboardData({
+    teamId: selectedTeamId,
+    year: reportYear,
+    startMonth: rangeStartMonth,
+    endMonth: rangeEndMonth,
+    enabled: Boolean(selectedTeamId && (!isMember || Boolean(user?.id))),
+    onlyAssigneeUserId: isMember ? user?.id : undefined,
+  })
+
+  const setReportYearClamped = (y: number) => {
+    if (!Number.isFinite(y)) return
+    setReportYear(Math.min(2035, Math.max(2020, y)))
+  }
+
+  const setFromMonth = (m: number) => {
+    const mm = Math.min(12, Math.max(1, m))
+    setRangeStartMonth(mm)
+    setRangeEndMonth((prev) => (prev < mm ? mm : prev))
+  }
+
+  const setToMonth = (m: number) => {
+    const mm = Math.min(12, Math.max(1, m))
+    setRangeEndMonth(mm)
+    setRangeStartMonth((prev) => (prev > mm ? mm : prev))
+  }
+
+  const {
+    isLoading,
+    teamSize,
+    monthSpan,
+    kpi,
+    okr,
+    report,
+    evalBreakdown,
+    kpiGradeDist,
+    okrGradeDist,
+    topPriority,
+    perPerson,
+    trend,
+    members,
+  } = data
+
+  /** Tên hiển thị cho user trong team — fallback về 'Thành viên'. */
+  const nameFor = (userId: string): string => {
+    const m = members.find((x) => x.userId === userId)
+    return m?.displayName?.trim() || m?.email?.trim() || 'Thành viên'
+  }
+
+  const surveyMonths = report.expectedSurveyMonths ?? monthSpan
+
+  const kpiFooter = (
+    <span className="flex items-center gap-1">
+      <TrendingUp className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2} aria-hidden />
+      {kpi.totalCount === 0
+        ? monthSpan > 1
+          ? 'Chưa có KPI trong các tháng đã chọn'
+          : 'Chưa có KPI trong kỳ'
+        : isMember
+          ? `${kpi.okCount}/${kpi.totalCount} chỉ tiêu đạt OK (cá nhân)${monthSpan > 1 ? ' · gộp kỳ' : ''}`
+          : `${kpi.okCount}/${kpi.totalCount} chỉ tiêu đạt OK · ${isLeader ? 'team' : 'tất cả team'}${monthSpan > 1 ? ' (gộp kỳ)' : ''}`}
+    </span>
+  )
+  const okrFooter = (
+    <span className="flex items-center gap-1">
+      <RefreshCw className="h-3.5 w-3.5 shrink-0 text-primary-600" strokeWidth={2} aria-hidden />
+      {okr.totalCount === 0
+        ? monthSpan > 1
+          ? 'Chưa có OKR trong các tháng đã chọn'
+          : 'Chưa có OKR trong kỳ'
+        : `${okr.okCount}/${okr.totalCount} kết quả then chốt đạt OK${monthSpan > 1 ? ' (gộp kỳ)' : ''}`}
+    </span>
+  )
+  const reportFooter = (
+    <span className="flex items-center gap-1">
+      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-accent" strokeWidth={2} aria-hidden />
+      {isMember
+        ? monthSpan > 1
+          ? `Bạn đã nộp khảo sát ${report.respondentsCount}/${surveyMonths} tháng trong kỳ`
+          : report.respondentsCount > 0
+            ? 'Bạn đã nộp khảo sát tháng này'
+            : 'Bạn chưa nộp khảo sát trong kỳ đã chọn'
+        : teamSize === 0
+          ? 'Không có thành viên trong team'
+          : monthSpan > 1
+            ? `${report.respondentsCount}/${teamSize} thành viên đã nộp khảo sát (ít nhất một tháng trong kỳ)`
+            : `${report.respondentsCount}/${teamSize} thành viên đã nộp khảo sát`}
+    </span>
+  )
+
+  /* ---------- "Lộ trình học & thăng hạng" — data thật từ /me/dashboard ---------- */
+  const meDashQ = useMyDashboard({ enabled: Boolean(user) })
+  const apiCareer = meDashQ.data?.career
+  const levelFromStaff = parseLevelFromStaff(meDashQ.data?.staffLevel)
+  const levelKey: LevelCode = levelFromStaff ?? apiCareer?.careerLevel ?? 'tap_su'
+  const maxStars = STARS_PER_LEVEL[levelKey]
+  const filledStars = apiCareer?.currentStars ?? meDashQ.data?.levelSource?.starCount ?? 0
+  const starPct = maxStars > 0 ? Math.round((filledStars / maxStars) * 100) : 0
+  const starsToGo = Math.max(0, maxStars - filledStars)
+
+  const periodSummary = monthRangeLabel(reportYear, rangeStartMonth, rangeEndMonth)
 
   return (
-    <div className="space-y-8 text-sm text-foreground">
-      {/* Tiêu đề kỳ */}
+    <div className="mx-auto max-w-[1400px] space-y-8 text-sm text-foreground">
+      {/* 1. Tiêu đề — chỉ nhận diện màn, không chen filter */}
       <section
         className={cn(
-          'flex flex-col justify-between gap-4 md:flex-row md:items-end',
+          PAGE_HEADER_SURFACE,
           'motion-safe:animate-[dash-fade-up_0.45s_ease-out_both] motion-reduce:animate-none'
         )}
       >
-        <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
-          <h1 className={PAGE_HEADER_TITLE}>
-            <span className={PAGE_HEADER_GRADIENT}>KPI · OKR · Báo cáo</span>
-          </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <span className="inline-flex rounded-md bg-primary/12 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-primary">
-              Kỳ báo cáo
-            </span>
-            <p className="text-sm font-medium leading-relaxed text-muted-foreground">
-              {isLeader
-                ? `Phân bổ chỉ tiêu và báo cáo hàng tháng · ${monthLabelVi(now)}`
-                : `Chỉ tiêu được giao và báo cáo tiến độ hàng tháng · ${monthLabelVi(now)}`}
+        <h1 className={PAGE_HEADER_TITLE}>
+          <span className={PAGE_HEADER_GRADIENT}>KPI · OKR · Báo cáo</span>
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+          {isMember
+            ? 'Tổng quan cá nhân: chỉ tiêu được giao, đánh giá quản lý và khảo sát theo kỳ (năm + từ tháng đến tháng) — cùng cách lọc với trưởng nhóm / quản lý.'
+            : isLeader
+              ? 'Theo dõi tiến độ team: chỉ tiêu đã giao, đánh giá quản lý và mức độ tham gia khảo sát theo kỳ bạn chọn.'
+              : 'Tổng quan nhiều team: so sánh KPI/OKR và khảo sát trên cùng một kỳ thời gian.'}
+        </p>
+      </section>
+
+      {/* 2. Thanh ngữ cảnh: Phạm vi (team) → Kỳ — đúng thứ tự “xem gì, trong lúc nào” */}
+      <section
+        className={cn(
+          'rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm backdrop-blur-sm sm:p-5',
+          'motion-safe:animate-[dash-fade-up_0.4s_ease-out_both] motion-reduce:animate-none'
+        )}
+        style={{ animationDelay: '40ms' }}
+      >
+        <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Phạm vi và kỳ
+          </span>
+          <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-semibold tabular-nums text-foreground">
+            {periodSummary}
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-8">
+          {/* Team — đặt trước: người dùng chọn “đối tượng” trước khi lọc thời gian */}
+          <div className="min-w-0 flex-1 lg:max-w-md xl:max-w-lg">
+            <div className="mb-1.5 flex items-center gap-2">
+              <Users className="h-3.5 w-3.5 text-primary" strokeWidth={2} aria-hidden />
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Team đang xem
+              </Label>
+            </div>
+            {teamOptions.length > 1 || isManager ? (
+              <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+                <SelectTrigger className="h-11 w-full rounded-xl border-border bg-background text-left text-sm font-medium">
+                  <SelectValue placeholder="Chọn team để tải số liệu" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamOptions.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                      {t.deptName ? (
+                        <span className="ml-1 text-[11px] text-muted-foreground">
+                          · {t.deptName}
+                        </span>
+                      ) : null}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : selectedTeam ? (
+              <div className="flex h-11 items-center rounded-xl border border-primary/25 bg-primary/5 px-4 text-sm font-bold text-primary">
+                {selectedTeam.name}
+                {isMember ? (
+                  <span className="ml-2 text-xs font-medium text-muted-foreground">
+                    (chỉ số của bạn)
+                  </span>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Chưa có team khả dụng.</p>
+            )}
+          </div>
+
+          <div
+            className="hidden w-px shrink-0 self-stretch min-h-[4.5rem] bg-border lg:block"
+            aria-hidden
+          />
+
+          {/* Kỳ báo cáo */}
+          <div className="w-full lg:flex-1 lg:max-w-xl">
+            <div className="mb-2 flex items-center gap-2">
+              <Calendar className="h-3.5 w-3.5 text-primary" strokeWidth={2} aria-hidden />
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Kỳ báo cáo (cùng năm)
+              </Label>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-1">
+                <span className="text-[10px] font-semibold text-muted-foreground">Năm</span>
+                <Input
+                  type="number"
+                  min={2020}
+                  max={2035}
+                  value={reportYear}
+                  className="h-10 rounded-xl border-border bg-background text-sm tabular-nums"
+                  onChange={(e) => {
+                    const v = Number(e.target.value)
+                    if (Number.isFinite(v)) setReportYearClamped(v)
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-semibold text-muted-foreground">Từ tháng</span>
+                <Select
+                  value={String(rangeStartMonth)}
+                  onValueChange={(v) => setFromMonth(Number(v))}
+                >
+                  <SelectTrigger className="h-10 rounded-xl border-border bg-background text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                      <SelectItem key={m} value={String(m)}>
+                        Tháng {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-semibold text-muted-foreground">Đến tháng</span>
+                <Select value={String(rangeEndMonth)} onValueChange={(v) => setToMonth(Number(v))}>
+                  <SelectTrigger className="h-10 rounded-xl border-border bg-background text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                      <SelectItem key={m} value={String(m)}>
+                        Tháng {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+              Số liệu dưới đây gộp chỉ tiêu và khảo sát trong toàn bộ tháng thuộc kỳ.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Ba thẻ tổng quan */}
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <SummaryCard
-          title="Tiến độ KPI"
-          value={kpi.display}
-          percent={kpi.percent}
-          barClass="bg-primary"
-          icon={<Activity className="h-16 w-16 text-primary" strokeWidth={1.25} aria-hidden />}
-          footer={
-            <span className="flex items-center gap-1">
-              <TrendingUp
-                className="h-3.5 w-3.5 shrink-0 text-primary"
-                strokeWidth={2}
-                aria-hidden
-              />
-              {kpi.trend}
-            </span>
-          }
-          delay={0}
-        />
-        <SummaryCard
-          title="Tiến độ OKR"
-          value={okr.display}
-          percent={okr.percent}
-          barClass="bg-primary-600"
-          icon={<Flag className="h-16 w-16 text-primary-600" strokeWidth={1.25} aria-hidden />}
-          footer={
-            <span className="flex items-center gap-1">
-              <RefreshCw
-                className="h-3.5 w-3.5 shrink-0 text-primary-600"
-                strokeWidth={2}
-                aria-hidden
-              />
-              {okr.note}
-            </span>
-          }
-          delay={1}
-        />
-        <SummaryCard
-          title={isLeader ? 'Báo cáo hàng tháng (team)' : 'Báo cáo hàng tháng'}
-          value={report.display}
-          percent={report.percent}
-          barClass="bg-accent"
-          icon={<FileText className="h-16 w-16 text-accent" strokeWidth={1.25} aria-hidden />}
-          footer={
-            <span className="flex items-center gap-1">
-              <CheckCircle2
-                className="h-3.5 w-3.5 shrink-0 text-accent"
-                strokeWidth={2}
-                aria-hidden
-              />
-              {report.note}
-            </span>
-          }
-          delay={2}
-        />
-      </section>
-
-      {/* Chi tiết + cột phụ */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
-        <div className="space-y-6 lg:col-span-8">
-          <div
-            className={cn('rounded-3xl bg-muted/50 p-6 md:p-8', CARD_ENTRANCE_HOVER)}
-            style={staggerStyle(3)}
-          >
-            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-foreground">Chỉ tiêu KPI/OKR được giao</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {isLeader
-                    ? 'Tổng hợp tiến độ team — cùng nguồn với mục KPI & OKR trong team.'
-                    : 'Tóm tắt tiến độ theo chỉ tiêu được giao — cùng nguồn với KPI & OKR của tôi.'}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9 shrink-0 rounded-lg border-border bg-card p-2 text-muted-foreground hover:bg-muted"
-                  aria-label="Lọc"
-                >
-                  <Filter className="h-5 w-5" strokeWidth={2} />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9 shrink-0 rounded-lg border-border bg-card p-2 text-muted-foreground hover:bg-muted"
-                  aria-label="Tải xuống"
-                >
-                  <Download className="h-5 w-5" strokeWidth={2} />
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                      <TrendingUp className="h-6 w-6" strokeWidth={2} aria-hidden />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-foreground">
-                        {isLeader
-                          ? 'Hoàn thành chỉ tiêu KPI nhóm (đánh giá kỳ)'
-                          : 'Hoàn thành chỉ tiêu KPI cá nhân (đánh giá kỳ)'}
-                      </h3>
-                      <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
-                        KPI được giao · Trọng số 40%
-                      </p>
-                    </div>
-                  </div>
-                  <span className="shrink-0 self-start rounded-full bg-primary/12 px-3 py-1 text-xs font-bold text-primary">
-                    Đang thực hiện
-                  </span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full w-3/4 rounded-full bg-primary" />
-                  </div>
-                  <span className="text-sm font-bold tabular-nums text-foreground">75%</span>
-                </div>
-                <div className="mt-4 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-                  <span>Thực tế: đạt 75% ngưỡng chỉ tiêu kỳ</span>
-                  <span>Hạn: cuối {monthLabelVi(now)}</span>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-warning-muted text-warning">
-                      <Flag className="h-6 w-6" strokeWidth={2} aria-hidden />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-foreground">
-                        {isLeader
-                          ? 'Nâng cao năng lực & lộ trình học tập của team'
-                          : 'Nâng cao năng lực theo lộ trình học & thi cử'}
-                      </h3>
-                      <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
-                        OKR · Kết quả then chốt 1
-                      </p>
-                    </div>
-                  </div>
-                  <span className="shrink-0 self-start rounded-full bg-warning-muted px-3 py-1 text-xs font-bold text-warning">
-                    Cần đẩy nhanh
-                  </span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full w-[42%] rounded-full bg-warning" />
-                  </div>
-                  <span className="text-sm font-bold tabular-nums text-foreground">42%</span>
-                </div>
-                <div className="mt-4 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-                  <span>Tiến độ: 42% — còn bài tập / kỳ thi trong lộ trình</span>
-                  <span>Hạn: cuối {monthLabelVi(now)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-10 flex flex-col justify-end gap-3 sm:flex-row sm:gap-4">
-              <Link
-                to="/monthly-report"
-                className={cn(
-                  'inline-flex items-center justify-center rounded-xl border border-border px-6 py-3 text-sm font-bold text-primary transition-colors hover:bg-muted',
-                  quartOut
-                )}
-              >
-                {isLeader ? 'Báo cáo hàng tháng (team)' : 'Báo cáo hàng tháng'}
-              </Link>
-              <Link
-                to={paths.kpiOkr}
-                className={cn(
-                  'inline-flex items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-600 px-6 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20',
-                  quartOut,
-                  'transition-all hover:opacity-95 active:scale-[0.98]'
-                )}
-              >
-                {isLeader ? 'KPI & OKR trong team' : 'KPI & OKR của tôi'}
-              </Link>
-            </div>
-          </div>
+      {!selectedTeamId ? (
+        <div className="rounded-3xl border border-dashed border-border bg-muted/40 p-8 text-center text-sm text-muted-foreground">
+          {isManager
+            ? 'Chọn team ở phía trên để tải báo cáo KPI/OKR.'
+            : 'Bạn chưa được gán vào team nào. Vui lòng liên hệ HR/Admin.'}
         </div>
-
-        <div className="space-y-6 lg:col-span-4">
-          <div
-            className={cn(
-              'relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-sm',
-              CARD_ENTRANCE_HOVER
-            )}
-            style={staggerStyle(4)}
-          >
-            <div
-              className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/[0.07]"
-              aria-hidden
-            />
-            <h3 className="relative mb-6 text-lg font-bold text-foreground">
-              Lộ trình học & thăng hạng
-            </h3>
-            <div className="relative">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="inline-block rounded-full bg-primary/12 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
-                  {isLeader ? 'Team tiến tới mốc lộ trình chung' : 'Tiến tới cấp độ tiếp theo'}
-                </span>
-                <span className="shrink-0 text-xs font-bold tabular-nums text-primary">
-                  {milestonePct}%
-                </span>
-              </div>
-              <div className="mb-1 h-2 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${milestonePct}%` }}
-                />
-              </div>
+      ) : (
+        <>
+          {/* 3. Tóm tắt nhanh — đọc ngay sau khi đã chọn team & kỳ */}
+          <section aria-label="Tóm tắt KPI, OKR và khảo sát">
+            <h2 className="sr-only">Chỉ số tóm tắt trong kỳ</h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
+              <SummaryCard
+                title="Tiến độ KPI"
+                percent={kpi.percent}
+                color="hsl(var(--primary))"
+                icon={
+                  <Activity className="h-16 w-16 text-primary" strokeWidth={1.25} aria-hidden />
+                }
+                footer={kpiFooter}
+                delay={0}
+                loading={isLoading}
+              />
+              <SummaryCard
+                title="Tiến độ OKR"
+                percent={okr.percent}
+                color="#10b981"
+                icon={
+                  <Flag className="h-16 w-16 text-emerald-500" strokeWidth={1.25} aria-hidden />
+                }
+                footer={okrFooter}
+                delay={1}
+                loading={isLoading}
+              />
+              <SummaryCard
+                title={
+                  isMember
+                    ? 'Báo cáo hàng tháng (cá nhân)'
+                    : isLeader
+                      ? 'Báo cáo hàng tháng (team)'
+                      : 'Báo cáo hàng tháng'
+                }
+                percent={report.percent}
+                color="hsl(var(--accent))"
+                icon={<Target className="h-16 w-16 text-accent" strokeWidth={1.25} aria-hidden />}
+                footer={reportFooter}
+                delay={2}
+                loading={isLoading}
+              />
             </div>
-            <div className="relative mt-6 flex items-center gap-4 rounded-2xl border border-border bg-muted/50 p-4">
-              <Trophy className="h-10 w-10 shrink-0 text-primary" strokeWidth={1.75} aria-hidden />
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground">Còn 1.240 XP để thăng cấp</p>
-                <p className="mt-0.5 text-[0.65rem] font-medium uppercase tracking-tighter text-muted-foreground">
-                  Hoàn thành thêm KPI/OKR & báo cáo để tích điểm
+          </section>
+
+          {/* 4. Hành động tiếp theo — ngay dưới số liệu, không chôn ở cuối trang */}
+          <section
+            className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
+            aria-label="Liên kết chi tiết"
+          >
+            <p className="text-xs text-muted-foreground">
+              Cần chỉnh chỉ tiêu hoặc xem biểu mẫu khảo sát chi tiết?
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+              {!isMember ? (
+                <Link
+                  to="/monthly-report"
+                  className={cn(
+                    'inline-flex min-h-10 items-center justify-center rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-bold text-primary shadow-sm transition-colors hover:bg-muted',
+                    quartOut
+                  )}
+                >
+                  Mở báo cáo hàng tháng
+                </Link>
+              ) : null}
+              {!isManager ? (
+                <Link
+                  to={paths.kpiOkr}
+                  className={cn(
+                    'inline-flex min-h-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-600 px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-md shadow-primary/20',
+                    quartOut,
+                    'transition-all hover:opacity-95 active:scale-[0.98]'
+                  )}
+                >
+                  {isMember
+                    ? 'Nhập tiến độ & KPI của tôi'
+                    : isLeader
+                      ? 'KPI & OKR trong team'
+                      : 'Chi tiết KPI & OKR'}
+                </Link>
+              ) : null}
+            </div>
+          </section>
+
+          {/* 5. Một cột chính: xu hướng → chi tiết chỉ tiêu → phân tích theo người */}
+          <div className="space-y-6">
+            {/* Xu hướng theo thời gian — đặt trước bảng chi tiết để có bối cảnh */}
+            <div
+              className={cn(
+                'rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8',
+                CARD_ENTRANCE_HOVER
+              )}
+              style={staggerStyle(3)}
+            >
+              <div className="mb-4 border-b border-border/70 pb-4">
+                <h3 className="text-lg font-bold text-foreground md:text-xl">
+                  {monthSpan > 1
+                    ? `Xu hướng theo tháng (${monthSpan} tháng)`
+                    : 'Xu hướng trong kỳ đã chọn'}
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground md:text-sm">
+                  {isMember
+                    ? monthSpan > 1
+                      ? '% KPI / OKR của bạn theo từng tháng trong kỳ.'
+                      : '% KPI / OKR của bạn trong tháng đã chọn.'
+                    : monthSpan > 1
+                      ? '% đạt KPI / OKR trung bình từng tháng trong kỳ.'
+                      : 'Một điểm cho tháng hiện tại; mở rộng kỳ để so sánh nhiều tháng liên tiếp.'}
                 </p>
               </div>
+              {isLoading ? (
+                <Skeleton className="h-[220px] w-full rounded-xl" />
+              ) : (
+                <TrendLine points={trend} />
+              )}
             </div>
-          </div>
 
-          <div
-            className={cn(
-              'rounded-3xl border border-border bg-card p-6 shadow-sm',
-              CARD_ENTRANCE_HOVER
-            )}
-            style={staggerStyle(5)}
-          >
-            <h3 className="mb-6 text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
-              Thông báo liên quan KPI/OKR
-            </h3>
-            <div className="space-y-6">
-              {[
-                {
-                  title: 'Đã cập nhật điểm tổng hợp KPI trong kỳ',
-                  meta: '2 giờ trước · Hệ thống',
-                  dot: 'bg-primary',
-                },
-                {
-                  title: 'Nhắc nhở: nộp báo cáo hàng tháng đúng hạn',
-                  meta: 'Hôm qua · Nhân sự',
-                  dot: 'bg-muted-foreground/40',
-                },
-                {
-                  title: isLeader
-                    ? 'Có chỉ tiêu OKR mới cần phân bổ cho thành viên'
-                    : 'OKR mới đã được Leader duyệt',
-                  meta: '2 ngày trước · Leader',
-                  dot: 'bg-muted-foreground/40',
-                },
-              ].map((row) => (
-                <div key={row.title} className="flex gap-4">
+            {/* Chỉ tiêu được giao + trạng thái */}
+            <div
+              className={cn('rounded-3xl bg-muted/40 p-6 md:p-8', CARD_ENTRANCE_HOVER)}
+              style={staggerStyle(4)}
+            >
+              <div className="mb-6 border-b border-border/60 pb-4">
+                <h2 className="text-xl font-bold text-foreground">
+                  {isMember ? 'Chi tiết chỉ tiêu của bạn' : 'Chi tiết chỉ tiêu đã giao'}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {monthSpan > 1
+                    ? `Gộp ${monthSpan} tháng (${monthRangeLabel(data.year, data.startMonth, data.endMonth)})${isMember ? ' — chỉ chỉ tiêu của bạn.' : ' — cùng nguồn với màn KPI & OKR.'}`
+                    : isMember
+                      ? 'Mục tiêu và đánh giá quản lý của bạn trong kỳ.'
+                      : 'Danh sách mục tiêu và đánh giá quản lý trong kỳ.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-8 xl:grid-cols-5">
+                <div className="xl:col-span-3">
+                  <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Ưu tiên cao nhất
+                  </div>
+                  {isLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-20 w-full rounded-xl" />
+                      <Skeleton className="h-20 w-full rounded-xl" />
+                      <Skeleton className="h-20 w-full rounded-xl" />
+                    </div>
+                  ) : (
+                    <TopPriorityList rows={topPriority} nameFor={nameFor} />
+                  )}
+                </div>
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-sm xl:col-span-2">
+                  <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Đánh giá quản lý
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Tổng {kpi.totalCount + okr.totalCount} KPI/OKR
+                    {monthSpan > 1 ? ' (gộp kỳ)' : ' trong kỳ'} — biểu đồ theo OK / NOT / chưa chấm
+                  </div>
+                  {isLoading ? (
+                    <Skeleton className="mt-4 h-[200px] w-full rounded-xl" />
+                  ) : (
+                    <EvalBreakdownDonut breakdown={evalBreakdown} className="mt-2" />
+                  )}
+                  <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-emerald-50 py-2 dark:bg-emerald-950/30">
+                      <div className="text-lg font-black tabular-nums text-emerald-700 dark:text-emerald-300">
+                        {evalBreakdown.ok}
+                      </div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                        OK
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-rose-50 py-2 dark:bg-rose-950/30">
+                      <div className="text-lg font-black tabular-nums text-rose-700 dark:text-rose-300">
+                        {evalBreakdown.not}
+                      </div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
+                        NOT
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 py-2 dark:bg-slate-900/40">
+                      <div className="text-lg font-black tabular-nums text-slate-700 dark:text-slate-200">
+                        {evalBreakdown.pending}
+                      </div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Chưa
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Theo nhân sự + xếp loại */}
+            <div
+              className={cn(
+                'rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8',
+                CARD_ENTRANCE_HOVER
+              )}
+              style={staggerStyle(5)}
+            >
+              <div className="mb-4 border-b border-border/70 pb-4">
+                <h3 className="text-lg font-bold text-foreground md:text-xl">
+                  {isMember ? 'Tổng hợp đạt / chưa đạt của bạn' : 'So sánh theo nhân sự'}
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground md:text-sm">
+                  {isMember
+                    ? monthSpan > 1
+                      ? 'Cộng dồn KPI và OKR qua các tháng trong kỳ.'
+                      : 'KPI và OKR đạt / chưa đạt trong tháng đã chọn.'
+                    : monthSpan > 1
+                      ? 'Cộng dồn đạt / chưa đạt qua các tháng trong kỳ.'
+                      : 'Đạt và chưa đạt theo từng thành viên.'}
+                </p>
+              </div>
+              {isLoading ? (
+                <Skeleton className="h-[300px] w-full rounded-xl" />
+              ) : (
+                <PerPersonBar rows={perPerson} />
+              )}
+              <div className="mt-8 grid grid-cols-1 gap-6 border-t border-border/60 pt-8 sm:grid-cols-2">
+                <GradeDonut dist={kpiGradeDist} title="Xếp loại KPI" />
+                <GradeDonut dist={okrGradeDist} title="Xếp loại OKR" />
+              </div>
+            </div>
+
+            {/* 6. Cá nhân — đặt cuối để không lẫn với KPI team */}
+            <div
+              className={cn(
+                'relative overflow-hidden rounded-3xl border border-dashed border-primary/25 bg-gradient-to-br from-card to-primary/[0.04] p-6 shadow-sm md:p-8',
+                CARD_ENTRANCE_HOVER
+              )}
+              style={staggerStyle(6)}
+            >
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Cá nhân bạn
+                </span>
+                <h3 className="text-lg font-bold text-foreground md:text-xl">
+                  Lộ trình học & thăng hạng
+                </h3>
+              </div>
+              <div
+                className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/[0.07]"
+                aria-hidden
+              />
+              <div className="relative max-w-2xl">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="inline-block rounded-full bg-primary/12 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
+                    Tiến tới cấp độ tiếp theo
+                  </span>
+                  <span className="shrink-0 text-xs font-bold tabular-nums text-primary">
+                    {starPct}%
+                  </span>
+                </div>
+                <div className="mb-1 h-2 overflow-hidden rounded-full bg-muted">
                   <div
-                    className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', row.dot)}
+                    className="h-full rounded-full bg-primary"
+                    style={{ width: `${starPct}%` }}
+                  />
+                </div>
+                <div className="mt-6 flex items-center gap-4 rounded-2xl border border-border bg-card/80 p-4">
+                  <Trophy
+                    className="h-10 w-10 shrink-0 text-primary"
+                    strokeWidth={1.75}
                     aria-hidden
                   />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{row.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{row.meta}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground">
+                      {maxStars === 0
+                        ? 'Cấp độ này chưa áp dụng hệ thống sao.'
+                        : starsToGo === 0
+                          ? `Đã đạt đủ ${maxStars}/${maxStars} sao — đủ điều kiện xét thăng hạng.`
+                          : `Còn ${starsToGo}/${maxStars} sao để thăng cấp`}
+                    </p>
+                    <p className="mt-0.5 text-[0.65rem] font-medium uppercase tracking-tighter text-muted-foreground">
+                      Hoàn thành KPI/OKR và khảo sát để tích sao
+                    </p>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              className="mt-8 h-auto w-full rounded-xl py-3 text-sm font-bold text-primary hover:bg-primary/5"
-            >
-              Xem tất cả thông báo
-            </Button>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   )
 }

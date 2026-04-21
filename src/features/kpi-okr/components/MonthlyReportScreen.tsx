@@ -84,9 +84,8 @@ export function MonthlyReportScreen() {
   const isLeader = role === 'LEADER'
   const isManager = role === 'MANAGER'
   const canSeeTeamWide = isLeader || isManager
-  const { year: currentYear, month: currentMonth } = nowYm()
-  const [year, setYear] = useState(currentYear)
-  const [month, setMonth] = useState(currentMonth)
+  const [year, setYear] = useState(() => nowYm().year)
+  const [month, setMonth] = useState(() => nowYm().month)
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
 
