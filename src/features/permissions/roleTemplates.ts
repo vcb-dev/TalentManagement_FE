@@ -66,6 +66,7 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
       'kpi.team_edit',
       'report.view',
       'hr.employees.view',
+      'hr.employees.create',
       'hr.employees.edit',
       'hr.dept.view',
       'hr.org.manage',
