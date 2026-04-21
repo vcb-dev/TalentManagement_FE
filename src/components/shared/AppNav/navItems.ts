@@ -50,13 +50,6 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     permissionId: 'learning.view',
   },
   {
-    to: '/learning-classes',
-    label: 'Lịch học',
-    icon: GraduationCap,
-    match: 'prefix',
-    permissionId: 'learning.view',
-  },
-  {
     to: '/exam',
     label: 'Kết quả & lịch thi',
     icon: Calendar,
@@ -136,13 +129,6 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
     icon: School,
     match: 'prefix',
     permissionId: 'manager.classes',
-  },
-  {
-    to: '/manager/review-submissions',
-    label: 'Duyệt bài làm',
-    icon: ShieldCheck,
-    match: 'prefix',
-    permissionId: 'manager.review_submissions',
   },
   {
     to: '/manager/exam-schedule',
@@ -335,7 +321,6 @@ export function groupedSidebarNavItems(canId: (permissionId: string) => boolean)
       label: 'Học tập & Thi cử',
       items: take([
         ...find(MEMBER_SELF_ITEMS, '/learning-path'),
-        ...find(MEMBER_SELF_ITEMS, '/learning-classes'),
         ...find(MEMBER_SELF_ITEMS, '/exam'),
         ...find(MANAGER_OPS_ITEMS, '/manager/exercises'),
       ]),
@@ -346,7 +331,6 @@ export function groupedSidebarNavItems(canId: (permissionId: string) => boolean)
       items: take([
         ...find(MANAGER_OPS_ITEMS, '/manager/classes'),
         ...find(TEACHER_HEADER_ITEMS, '/teacher/classes'),
-        ...find(MANAGER_OPS_ITEMS, '/manager/review-submissions'),
         ...find(MANAGER_OPS_ITEMS, '/manager/exam-schedule'),
         ...find(MANAGER_OPS_ITEMS, '/manager/class-exams'),
         ...find(MANAGER_OPS_ITEMS, '/manager/grading'),

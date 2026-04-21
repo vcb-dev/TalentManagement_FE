@@ -133,6 +133,14 @@ export function ManagerGradingScreen() {
                     const st = managerClassStatusUi(c.status)
                     const teacherName = c.teacher?.name || '—'
 
+                    let isExamEnded = false
+                    if (c.examDate) {
+                      const examTime = new Date(c.examDate).getTime()
+                      if (!Number.isNaN(examTime) && examTime < Date.now()) {
+                        isExamEnded = true
+                      }
+                    }
+
                     // Count submissions linked to this class
                     const classSubmissions = submissions.filter((s) => s.classId === c.id)
                     const pending = classSubmissions.filter((s) => s.status === 'pending').length
@@ -171,15 +179,21 @@ export function ManagerGradingScreen() {
                           )}
                         </td>
                         <td className="px-3 py-4 text-right">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="default"
-                            className="font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
-                            onClick={() => void navigate({ to: '/exam/grader' })}
-                          >
-                            Chấm thi
-                          </Button>
+                          {isExamEnded ? (
+                            <span className="text-sm font-semibold text-rose-600">
+                              Lịch thi đã kết thúc
+                            </span>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="default"
+                              className="font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
+                              onClick={() => void navigate({ to: '/exam/grader' })}
+                            >
+                              Chấm thi
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     )

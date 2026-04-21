@@ -139,6 +139,7 @@ export function ChecklistStarScreen({
   const fileRef = useRef<HTMLInputElement>(null)
   const evidenceForm = useForm<{ note: string }>({ defaultValues: { note: '' } })
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
+  const [selectedObjectiveId, setSelectedObjectiveId] = useState<string | null>(null)
 
   const levelName = LEVEL_VI[levelId] ?? levelId
   const probationStepCount =
@@ -212,13 +213,26 @@ export function ChecklistStarScreen({
 
   const activeTaskId = expandedTaskId ?? currentItem?.id ?? tasks[0]?.id ?? null
 
+  const selectedObjective = useMemo(() => {
+    if (!selectedObjectiveId) return null
+    for (const t of tasks) {
+      if (t.objectives) {
+        const obj = t.objectives.find((o) => o.id === selectedObjectiveId)
+        if (obj) return obj
+      }
+    }
+    return null
+  }, [tasks, selectedObjectiveId])
+
   const onPickFile = () => fileRef.current?.click()
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !currentItem) return
+    if (!file || (!currentItem && !selectedObjective)) return
+    const targetItemId = selectedObjective ? selectedObjective.id : currentItem?.id
+    if (!targetItemId) return
     submit.mutate(
-      { levelId, starId, itemId: currentItem.id, file },
+      { levelId, starId, itemId: targetItemId, file },
       {
         onSuccess: () => {
           evidenceForm.reset({ note: '' })
@@ -392,6 +406,8 @@ export function ChecklistStarScreen({
                                   : { label: 'Nộp bằng chứng', onClick: onPickFile }
                                 : undefined
                           }
+                          selectedObjectiveId={selectedObjectiveId}
+                          onSelectObjective={setSelectedObjectiveId}
                         />
                       )
                     })
@@ -401,7 +417,7 @@ export function ChecklistStarScreen({
 
               <div className="lg:col-span-5">
                 <div className="sticky top-24 flex flex-col gap-6">
-                  {!useProbationFlow ? (
+                  {!useProbationFlow && !selectedObjective ? (
                     <div
                       className={cn(
                         'rounded-[12px] bg-white p-6 shadow-lg ring-1 ring-gray-100',
@@ -471,14 +487,84 @@ export function ChecklistStarScreen({
 
                   <div
                     className={cn(
-                      'rounded-[12px] border border-primary-100/50 bg-primary-50/50 p-6 text-center',
+                      'rounded-[12px] border border-primary-100/50 bg-primary-50/50 p-6',
+                      selectedObjective
+                        ? 'text-left bg-white shadow-lg ring-1 ring-gray-100 border-none'
+                        : 'text-center',
                       CARD_ENTRANCE_HOVER
                     )}
                     style={staggerStyle(1)}
                   >
-                    <h4 className="mb-4 text-[11px] font-bold uppercase tracking-widest text-primary-600">
-                      Bài đã nộp gần nhất
+                    <h4
+                      className={cn(
+                        'mb-4 font-bold text-primary-600',
+                        selectedObjective
+                          ? 'text-base uppercase tracking-normal'
+                          : 'text-[11px] uppercase tracking-widest'
+                      )}
+                    >
+                      {selectedObjective ? selectedObjective.objective : 'Bài đã nộp gần nhất'}
                     </h4>
+
+                    {selectedObjective ? (
+                      <div className="mb-6">
+                        <Form {...evidenceForm}>
+                          <div className="space-y-4">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="group h-auto w-full cursor-pointer rounded-lg border-2 border-dashed border-primary-200 bg-primary-50/50 p-6 text-center font-normal normal-case tracking-normal transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              onClick={onPickFile}
+                              disabled={submit.isPending}
+                            >
+                              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110">
+                                <CloudUpload
+                                  className="h-5 w-5 text-primary-600"
+                                  strokeWidth={2}
+                                  aria-hidden
+                                />
+                              </div>
+                              <p className="text-sm font-bold text-primary-700">Tải tệp lên</p>
+                            </Button>
+                            <Input
+                              ref={fileRef}
+                              type="file"
+                              className="hidden"
+                              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4"
+                              onChange={onFileChange}
+                            />
+                            <TextareaController
+                              control={evidenceForm.control}
+                              name="note"
+                              label="Mô tả minh chứng"
+                              labelClassName="mb-1 block text-[11px] font-bold uppercase tracking-widest text-gray-500"
+                              id="evidence-note"
+                              rows={3}
+                              placeholder="Mô tả..."
+                              textareaClassName="w-full resize-y rounded-lg border border-gray-200 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="w-full rounded-lg border-0 bg-gradient-to-br from-primary-600 to-primary-700 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all hover:bg-transparent hover:shadow-primary-600/35 active:scale-[0.98] disabled:opacity-50"
+                              disabled={submit.isPending}
+                              onClick={onPickFile}
+                            >
+                              {submit.isPending ? 'Đang gửi…' : 'Nộp bài'}
+                            </Button>
+                          </div>
+                        </Form>
+                      </div>
+                    ) : null}
+
+                    {selectedObjective && (
+                      <div className="mt-6 border-t border-gray-100 pt-4">
+                        <h5 className="mb-3 text-[11px] font-bold uppercase tracking-widest text-gray-500">
+                          Lịch sử bài nộp
+                        </h5>
+                      </div>
+                    )}
+
                     {(submissions ?? []).length > 0 ? (
                       <ul className="divide-y divide-primary-100/60 text-left text-sm">
                         {(submissions ?? []).slice(0, 5).map((s) => (
@@ -498,32 +584,24 @@ export function ChecklistStarScreen({
                         ))}
                       </ul>
                     ) : (
-                      <div className="py-4">
-                        <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/60">
-                          <Clock className="h-8 w-8 text-gray-300" strokeWidth={1.5} aria-hidden />
-                        </div>
+                      <div className={cn('py-4', selectedObjective && 'text-center')}>
+                        {!selectedObjective && (
+                          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/60">
+                            <Clock
+                              className="h-8 w-8 text-gray-300"
+                              strokeWidth={1.5}
+                              aria-hidden
+                            />
+                          </div>
+                        )}
                         <p className="text-sm font-medium text-gray-600">Chưa có bài nộp</p>
-                        <p className="mt-1 text-[13px] text-gray-500">
-                          Các bài nộp của bạn sẽ xuất hiện tại đây sau khi được hệ thống ghi nhận.
-                        </p>
+                        {!selectedObjective && (
+                          <p className="mt-1 text-[13px] text-gray-500">
+                            Các bài nộp của bạn sẽ xuất hiện tại đây sau khi được hệ thống ghi nhận.
+                          </p>
+                        )}
                       </div>
                     )}
-                  </div>
-
-                  <div className="group relative overflow-hidden rounded-2xl bg-reward-bg p-6 shadow-[var(--shadow-card)]">
-                    <span className="inline-block rounded-full bg-warning/20 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-warning">
-                      Reward preview
-                    </span>
-                    <h4 className="mt-3 text-lg font-bold text-gray-900">Huy hiệu Sao {starId}</h4>
-                    <p className="mt-2 max-w-[18rem] text-sm text-gray-700">
-                      Hoàn thành {total || 5} nhiệm vụ để nhận huy hiệu mốc và +500 XP vào Skill
-                      Matrix của bạn.
-                    </p>
-                    <Trophy
-                      className="pointer-events-none absolute -bottom-2 -right-2 h-24 w-24 text-warning/20 transition-transform duration-500 group-hover:scale-110"
-                      strokeWidth={1.25}
-                      aria-hidden
-                    />
                   </div>
 
                   <Link
@@ -552,6 +630,8 @@ function ChecklistTaskCard({
   onToggle,
   subtitle,
   primaryAction,
+  selectedObjectiveId,
+  onSelectObjective,
 }: {
   id: string
   title: string
@@ -569,6 +649,8 @@ function ChecklistTaskCard({
   onToggle: () => void
   subtitle?: string
   primaryAction?: { label: string; onClick: () => void }
+  selectedObjectiveId?: string | null
+  onSelectObjective?: (id: string) => void
 }) {
   const parseMaterialRef = (value: string | null) => {
     if (!value)
@@ -623,60 +705,75 @@ function ChecklistTaskCard({
   const objectiveContent =
     objectiveList && objectiveList.length > 0 ? (
       <ul className="space-y-2">
-        {objectiveList.map((obj, index) => (
-          <li
-            key={obj.id}
-            className="rounded-lg border border-primary-100/70 bg-white p-3 shadow-sm"
-          >
-            <p className="text-sm font-medium text-gray-800">
-              {index + 1}. {obj.objective}
-            </p>
-            {(() => {
-              const material = parseMaterialRef(obj.materialRef)
-              const hasAnyMeta =
-                !!material.daoTao ||
-                !!material.slide ||
-                !!material.taiLieu ||
-                !!material.raw ||
-                !!obj.trainer ||
-                !!obj.assessment
-              if (!hasAnyMeta) return null
-              return (
-                <div className="mt-2 space-y-1 text-xs text-gray-600">
-                  {material.daoTao ? (
+        {objectiveList.map((obj, index) => {
+          const isSelected = selectedObjectiveId === obj.id
+          return (
+            <li
+              key={obj.id}
+              onClick={() => onSelectObjective?.(obj.id)}
+              className={cn(
+                'rounded-lg border p-3 shadow-sm transition-all',
+                onSelectObjective ? 'cursor-pointer hover:border-primary-400 hover:shadow-md' : '',
+                isSelected
+                  ? 'border-primary-600 bg-primary-50 ring-1 ring-primary-600'
+                  : 'border-primary-100/70 bg-white'
+              )}
+            >
+              <p
+                className={cn(
+                  'text-sm font-medium',
+                  isSelected ? 'text-primary-800' : 'text-gray-800'
+                )}
+              >
+                {index + 1}. {obj.objective}
+              </p>
+              {(() => {
+                const material = parseMaterialRef(obj.materialRef)
+                const hasAnyMeta =
+                  !!material.daoTao ||
+                  !!material.slide ||
+                  !!material.taiLieu ||
+                  !!material.raw ||
+                  !!obj.trainer ||
+                  !!obj.assessment
+                if (!hasAnyMeta) return null
+                return (
+                  <div className="mt-2 space-y-1 text-xs text-gray-600">
+                    {material.daoTao ? (
+                      <p className="leading-relaxed">
+                        <span className="font-semibold text-gray-500">Đào tạo:</span>{' '}
+                        {renderTextWithLinks(material.daoTao)}
+                      </p>
+                    ) : null}
+                    {material.slide ? (
+                      <p className="leading-relaxed">
+                        <span className="font-semibold text-gray-500">Slide:</span>{' '}
+                        {renderTextWithLinks(material.slide)}
+                      </p>
+                    ) : null}
+                    {material.taiLieu ? (
+                      <p className="leading-relaxed">
+                        <span className="font-semibold text-gray-500">Tài liệu:</span>{' '}
+                        {renderTextWithLinks(material.taiLieu)}
+                      </p>
+                    ) : null}
+                    {!material.daoTao && !material.slide && !material.taiLieu && material.raw ? (
+                      <p className="leading-relaxed">{renderTextWithLinks(material.raw)}</p>
+                    ) : null}
                     <p className="leading-relaxed">
-                      <span className="font-semibold text-gray-500">Đào tạo:</span>{' '}
-                      {renderTextWithLinks(material.daoTao)}
+                      <span className="font-semibold text-gray-500">Trainer:</span>{' '}
+                      {obj.trainer || '-'}
                     </p>
-                  ) : null}
-                  {material.slide ? (
                     <p className="leading-relaxed">
-                      <span className="font-semibold text-gray-500">Slide:</span>{' '}
-                      {renderTextWithLinks(material.slide)}
+                      <span className="font-semibold text-gray-500">Phương thức đánh giá:</span>{' '}
+                      {obj.assessment || '-'}
                     </p>
-                  ) : null}
-                  {material.taiLieu ? (
-                    <p className="leading-relaxed">
-                      <span className="font-semibold text-gray-500">Tài liệu:</span>{' '}
-                      {renderTextWithLinks(material.taiLieu)}
-                    </p>
-                  ) : null}
-                  {!material.daoTao && !material.slide && !material.taiLieu && material.raw ? (
-                    <p className="leading-relaxed">{renderTextWithLinks(material.raw)}</p>
-                  ) : null}
-                  <p className="leading-relaxed">
-                    <span className="font-semibold text-gray-500">Trainer:</span>{' '}
-                    {obj.trainer || '-'}
-                  </p>
-                  <p className="leading-relaxed">
-                    <span className="font-semibold text-gray-500">Phương thức đánh giá:</span>{' '}
-                    {obj.assessment || '-'}
-                  </p>
-                </div>
-              )
-            })()}
-          </li>
-        ))}
+                  </div>
+                )
+              })()}
+            </li>
+          )
+        })}
       </ul>
     ) : (
       <>{objective}</>

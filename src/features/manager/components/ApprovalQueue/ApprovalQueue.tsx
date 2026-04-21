@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   Award,
@@ -26,6 +27,13 @@ import { cn } from '@/lib/utils'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { ManagerScreenLayout } from '@/features/manager/components/ManagerHub/ManagerScreenLayout'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { ApprovalsPage } from '@/features/manager/types'
 
 const BADGE_TONE: Record<string, string> = {
@@ -58,10 +66,43 @@ export function ApprovalQueue({ page, isLoading, onApprove, onReject }: Approval
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const displayName = user?.name ?? 'Manager'
 
+  const [searchQuery, setSearchQuery] = React.useState('')
+  const [levelFilter, setLevelFilter] = React.useState<string>('all')
+  const [teamFilter, setTeamFilter] = React.useState<string>('all')
+
   const pendingCount = page?.pendingCount ?? 0
   const hasPromotions = !!page && page.promotions.length > 0
   const hasGrader = !!page && page.graderReviews.length > 0
-  const showQueueEmpty = !!page && !hasPromotions && !hasGrader
+
+  // Extract unique teams for filtering
+  const uniqueTeams = React.useMemo(() => {
+    if (!page) return []
+    const teams = new Set<string>()
+    page.promotions.forEach((p) => {
+      const match = p.description.match(/Team: (.*?) ·/)
+      if (match && match[1]) teams.add(match[1])
+    })
+    return Array.from(teams).sort()
+  }, [page])
+
+  // Apply filters locally
+  const filteredPromotions = React.useMemo(() => {
+    if (!page) return []
+    return page.promotions.filter((p) => {
+      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase())
+
+      const levelBadge = p.badges.find(
+        (b) => b.label === 'Tập sự' || b.label === 'Biết việc'
+      )?.label
+      const matchesLevel = levelFilter === 'all' || levelBadge === levelFilter
+
+      const matchesTeam = teamFilter === 'all' || p.description.includes(`Team: ${teamFilter}`)
+
+      return matchesSearch && matchesLevel && matchesTeam
+    })
+  }, [page, searchQuery, levelFilter, teamFilter])
+
+  const showQueueEmpty = !!page && filteredPromotions.length === 0 && !hasGrader
   const showNoPage = !page
 
   const onGraderConfirm = (id: string) => {
@@ -99,26 +140,77 @@ export function ApprovalQueue({ page, isLoading, onApprove, onReject }: Approval
             </h1>
             <p className={PAGE_HEADER_DESCRIPTION}>{pageSubtitle}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-card px-3 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-primary/10">
-              <LayoutList className="h-4 w-4 shrink-0 text-primary" strokeWidth={2} />
-              {pendingCount} chờ duyệt
-            </span>
-            <Button
-              type="button"
-              className="gap-2 rounded-xl px-5 py-2.5 text-sm font-bold shadow-md"
-              onClick={onQuickApprove}
-            >
-              <Zap className="h-4 w-4" strokeWidth={2} />
-              Duyệt nhanh
-            </Button>
-            <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-50/90 px-3 py-2.5 text-sm font-semibold text-emerald-950 shadow-sm ring-1 ring-emerald-500/10 dark:bg-emerald-950/30 dark:text-emerald-50">
-              <User
-                className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300"
-                strokeWidth={2}
-              />
-              {displayName} ({roleLabel})
-            </span>
+        </div>
+
+        {/* Redesigned Filter Bar (Compact) */}
+        <div className="flex flex-col gap-2 rounded-[16px] border border-border bg-card/40 p-1.5 shadow-sm sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Inbox className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary/40" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm nhân sự..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 w-full rounded-lg border-none bg-transparent pl-9 pr-3 text-[13px] font-medium focus:ring-0 placeholder:text-muted-foreground/40"
+            />
+          </div>
+
+          <div className="hidden h-5 w-px bg-border/60 sm:block" />
+
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+            <div className="relative">
+              <ShieldCheck className="absolute left-2.5 top-[50%] z-10 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
+              <Select value={levelFilter} onValueChange={setLevelFilter}>
+                <SelectTrigger className="h-auto min-h-[32px] w-full border-border bg-muted/20 pl-8 pr-2 py-1 text-xs font-semibold leading-tight sm:w-[120px]">
+                  <SelectValue placeholder="Cấp bậc" />
+                </SelectTrigger>
+                <SelectContent className="min-w-[120px]">
+                  <SelectItem className="py-1 text-xs" value="all">
+                    Tất cả cấp bậc
+                  </SelectItem>
+                  <SelectItem className="py-1 text-xs" value="Tập sự">
+                    Tập sự
+                  </SelectItem>
+                  <SelectItem className="py-1 text-xs" value="Biết việc">
+                    Biết việc
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="relative">
+              <LayoutList className="absolute left-2.5 top-[50%] z-10 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
+              <Select value={teamFilter} onValueChange={setTeamFilter}>
+                <SelectTrigger className="h-auto min-h-[32px] w-full border-border bg-muted/20 pl-8 pr-2 py-1 text-xs font-semibold leading-tight sm:w-[150px]">
+                  <SelectValue placeholder="Team" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64 min-w-[150px]">
+                  <SelectItem className="py-1 text-xs" value="all">
+                    Tất cả Team
+                  </SelectItem>
+                  {uniqueTeams.map((team) => (
+                    <SelectItem key={team} className="py-1 text-xs" value={team}>
+                      {team}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {(searchQuery || levelFilter !== 'all' || teamFilter !== 'all') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('')
+                  setLevelFilter('all')
+                  setTeamFilter('all')
+                }}
+                className="h-8 rounded-lg px-2 text-[11px] font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+              >
+                Xóa lọc
+              </Button>
+            )}
           </div>
         </div>
 
@@ -192,83 +284,118 @@ export function ApprovalQueue({ page, isLoading, onApprove, onReject }: Approval
             )}
 
             {hasPromotions && (
-              <div className="space-y-3">
-                {page!.promotions.map((p, pi) => (
-                  <div
-                    key={p.id}
-                    className={cn(
-                      'flex flex-wrap items-start gap-3 rounded-[9px] border p-4 shadow-[0_1px_3px_rgba(30,58,95,.04)]',
-                      CARD_ENTRANCE_HOVER,
-                      p.highlighted ? 'border-primary/30 bg-primary/10' : 'border-border bg-card',
-                      p.state === 'waiting' && 'opacity-70',
-                      p.state === 'done' && 'opacity-60'
-                    )}
-                    style={staggerStyle(pi, 55)}
-                  >
-                    <div
-                      className={cn(
-                        'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold',
-                        p.avatarClass ?? 'bg-primary/10 text-primary'
-                      )}
-                    >
-                      {p.initials ?? initialsFromName(p.name)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-foreground">{p.name}</div>
-                      <div className="mt-1 text-sm leading-snug text-muted-foreground">
-                        {p.description}
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {p.badges.map((b, i) => (
-                          <span
-                            key={i}
-                            className={cn(
-                              'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
-                              BADGE_TONE[b.tone] ?? BADGE_TONE.neutral
-                            )}
-                          >
-                            {b.label}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 flex-col gap-1 self-center">
-                      {p.state === 'actionable' && onApprove && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => onApprove(p.id)}
-                          className="whitespace-nowrap rounded-[9px] border-[#67E8F9] bg-[#CFFAFE] px-3 py-1.5 text-xs font-medium text-[#0E7490] hover:bg-[#B2E8E2]"
+              <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                <div className="border-b border-border bg-muted/30 px-6 py-4">
+                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    Danh sách nhân sự chờ duyệt thăng cấp / sao
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/20 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <th className="px-6 py-3">Nhân sự</th>
+                        <th className="px-6 py-3">Team & Phòng ban</th>
+                        <th className="px-6 py-3">Thông tin thăng cấp</th>
+                        <th className="px-6 py-3 text-right">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {filteredPromotions.map((p, pi) => (
+                        <tr
+                          key={p.id}
+                          className={cn(
+                            'group transition-colors hover:bg-muted/30',
+                            p.state === 'waiting' && 'opacity-70',
+                            p.state === 'done' && 'opacity-60'
+                          )}
+                          style={staggerStyle(pi, 30)}
                         >
-                          ✓ Duyệt thăng
-                        </Button>
-                      )}
-                      {p.state === 'actionable' && onReject && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => onReject(p.id)}
-                          className="whitespace-nowrap rounded-[9px] border-[#FCA5A5] bg-[#FEE2E2] px-3 py-1.5 text-xs font-medium text-[#991B1B] hover:bg-[#FECACA]"
-                        >
-                          ✗ Từ chối
-                        </Button>
-                      )}
-                      {p.state === 'waiting' && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled
-                          className="cursor-not-allowed whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground opacity-50"
-                        >
-                          {p.stateLabel ?? 'Chờ chấm xong'}
-                        </Button>
-                      )}
-                      {p.state === 'done' && (
-                        <span className="text-xs font-medium text-muted-foreground">Đã xử lý</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={cn(
+                                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-2 ring-background shadow-sm',
+                                  p.avatarClass ?? 'bg-primary/10 text-primary'
+                                )}
+                              >
+                                {p.initials ?? initialsFromName(p.name)}
+                              </div>
+                              <span className="text-sm font-bold text-foreground truncate max-w-[150px]">
+                                {p.name}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-xs font-medium text-muted-foreground leading-relaxed">
+                              {p.description}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-1.5">
+                              {p.badges.map((b, i) => (
+                                <span
+                                  key={i}
+                                  className={cn(
+                                    'inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset',
+                                    b.tone === 'info' &&
+                                      'bg-blue-50 text-blue-700 ring-blue-700/10',
+                                    b.tone === 'warning' &&
+                                      'bg-amber-50 text-amber-700 ring-amber-700/10',
+                                    b.tone === 'success' &&
+                                      'bg-emerald-50 text-emerald-700 ring-emerald-700/10',
+                                    b.tone === 'danger' &&
+                                      'bg-rose-50 text-rose-700 ring-rose-700/10',
+                                    (!b.tone || b.tone === 'neutral') &&
+                                      'bg-gray-50 text-gray-600 ring-gray-500/10'
+                                  )}
+                                >
+                                  {b.label}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex justify-end gap-2">
+                              {p.state === 'actionable' && onApprove && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => onApprove(p.id)}
+                                  className="h-8 rounded-lg bg-emerald-600 px-3 py-1 text-[10px] font-bold text-white hover:bg-emerald-700 shadow-sm"
+                                >
+                                  Duyệt
+                                </Button>
+                              )}
+                              {p.state === 'actionable' && onReject && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => onReject(p.id)}
+                                  className="h-8 rounded-lg border-rose-200 bg-rose-50 px-3 py-1 text-[10px] font-bold text-rose-700 hover:bg-rose-100 shadow-sm"
+                                >
+                                  Từ chối
+                                </Button>
+                              )}
+                              {p.state === 'waiting' && (
+                                <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                                  {p.stateLabel ?? 'Đang chờ'}
+                                </span>
+                              )}
+                              {p.state === 'done' && (
+                                <span className="text-[10px] font-bold text-muted-foreground italic">
+                                  Hoàn tất
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 

@@ -283,6 +283,14 @@ export function ManagerClassExamsScreen() {
                   const bank = questionBankByClass[c.id]
                   const hasQuestionBank = Boolean(bank)
 
+                  let isExamEnded = false
+                  if (c.examDate) {
+                    const examTime = new Date(c.examDate).getTime()
+                    if (!Number.isNaN(examTime) && examTime < Date.now()) {
+                      isExamEnded = true
+                    }
+                  }
+
                   return (
                     <tr
                       key={c.id}
@@ -310,15 +318,21 @@ export function ManagerClassExamsScreen() {
                         )}
                       </td>
                       <td className="px-3 py-4 text-right">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="font-bold"
-                          onClick={() => openAssignmentModal(c.id)}
-                        >
-                          {hasQuestionBank ? 'Sửa bài thi' : 'Tạo bài thi'}
-                        </Button>
+                        {isExamEnded ? (
+                          <span className="text-sm font-semibold text-rose-600">
+                            Lịch thi đã kết thúc
+                          </span>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="font-bold"
+                            onClick={() => openAssignmentModal(c.id)}
+                          >
+                            {hasQuestionBank ? 'Sửa bài thi' : 'Tạo bài thi'}
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   )

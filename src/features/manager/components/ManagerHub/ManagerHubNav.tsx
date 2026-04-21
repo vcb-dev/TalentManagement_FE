@@ -14,12 +14,6 @@ type NavDef = {
 const MANAGER_NAV: NavDef[] = [
   { to: '/hr-admin', label: 'Danh sách nhân sự', icon: Users, match: 'prefix' },
   { to: '/manager/classes', label: 'Chia lớp', icon: School, match: 'prefix' },
-  {
-    to: '/manager/review-submissions',
-    label: 'Duyệt bài làm',
-    icon: ClipboardCheck,
-    match: 'prefix',
-  },
   { to: '/manager/exam-schedule', label: 'Lịch thi', icon: CalendarClock, match: 'prefix' },
   { to: '/manager/approvals', label: 'Thăng cấp / sao', icon: LayoutList, match: 'prefix' },
   { to: '/manager/exercises', label: 'Bài tập lộ trình', icon: BookOpen, match: 'prefix' },
