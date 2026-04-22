@@ -27,6 +27,11 @@ export const examApi = {
     return safeParse(examSummaryApiSchema, res.data, `GET /exams/${examId}`)
   },
 
+  getSubmission: async (id: string) => {
+    const res = await apiClient.get<unknown>(`/exams/submissions/${id}`)
+    return safeParse(examSubmissionApiSchema, res.data, `GET /exams/submissions/${id}`)
+  },
+
   results: async (examId: string) => {
     const res = await apiClient.get<unknown>(`/exams/${examId}/results`)
     return safeParse(z.array(examResultApiSchema), res.data, 'GET /exams/results')

@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { managerClassApiSchema } from '@/features/manager/schemas'
-import { useManagerClasses } from '@/features/manager/hooks'
+import { useManagerClasses, useSaveExamQuestions } from '@/features/manager/hooks'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
@@ -117,11 +117,37 @@ function composeToQuestionItems(compose: ComposeQuestion[]): QuestionItem[] {
 }
 
 export function ManagerClassExamsScreen() {
-  const { data: classes = [] } = useManagerClasses()
+  const { data: classes = [], isLoading } = useManagerClasses()
+  const saveQuestionsMutation = useSaveExamQuestions()
 
   const [questionBankByClass, setQuestionBankByClass] = useState<
     Record<string, QuestionBankPayload>
   >({})
+
+  // Sync questionBankByClass from the API data
+  useEffect(() => {
+    if (classes.length > 0) {
+      const apiData: Record<string, QuestionBankPayload> = {}
+      classes.forEach((c) => {
+        if (c.examQuestions) {
+          apiData[c.id] = c.examQuestions as QuestionBankPayload
+        }
+      })
+      // Merge: API data takes priority, but keep local items that are not in API yet
+      setQuestionBankByClass((prev) => ({ ...prev, ...apiData }))
+    }
+  }, [classes])
+
+  useEffect(() => {
+    // Initial load from localStorage
+    try {
+      const raw = localStorage.getItem('manager_exam_question_bank_v1')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        setQuestionBankByClass((prev) => ({ ...parsed, ...prev }))
+      }
+    } catch {}
+  }, [])
   const [assignmentModalClassId, setAssignmentModalClassId] = useState<string | null>(null)
   const [questionDraft, setQuestionDraft] = useState<QuestionItem[]>([])
   const [composeQuestions, setComposeQuestions] = useState<ComposeQuestion[]>([
@@ -219,7 +245,7 @@ export function ManagerClassExamsScreen() {
     }))
   }
 
-  const saveQuestionBank = () => {
+  const saveQuestionBank = async () => {
     if (!assignmentModalClassId) return
     const finalQuestions =
       assignmentMode === 'compose' ? composeToQuestionItems(composeQuestions) : questionDraft
@@ -227,18 +253,25 @@ export function ManagerClassExamsScreen() {
       toast.error('Chưa có câu hỏi để lưu')
       return
     }
+    const payload: QuestionBankPayload = {
+      title: getAssignmentValues('title').trim() || 'Bộ câu hỏi',
+      duration: getAssignmentValues('duration') || 60,
+      questions: finalQuestions,
+      updatedAt: new Date().toISOString(),
+    }
+
+    await saveQuestionsMutation.mutateAsync({
+      classId: assignmentModalClassId,
+      questions: payload,
+    })
+
     const next: Record<string, QuestionBankPayload> = {
       ...questionBankByClass,
-      [assignmentModalClassId]: {
-        title: getAssignmentValues('title').trim() || 'Bộ câu hỏi',
-        duration: getAssignmentValues('duration') || 60,
-        questions: finalQuestions,
-        updatedAt: new Date().toISOString(),
-      },
+      [assignmentModalClassId]: payload,
     }
     setQuestionBankByClass(next)
+    // Optional: Keep localStorage for extra safety, but API is source of truth now
     localStorage.setItem('manager_exam_question_bank_v1', JSON.stringify(next))
-    toast.success('Đã lưu bộ câu hỏi cho lớp')
     closeAssignmentModal()
   }
 

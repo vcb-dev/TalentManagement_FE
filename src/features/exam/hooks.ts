@@ -26,6 +26,14 @@ export function useExam(examId: string) {
   })
 }
 
+export function useSubmission(id: string) {
+  return useQuery({
+    queryKey: ['exam_submission_detail', id],
+    queryFn: () => examApi.getSubmission(id),
+    enabled: id.length > 0,
+  })
+}
+
 export function useExamResults(examId: string) {
   return useQuery({
     queryKey: examKeys.results(examId),
@@ -81,6 +89,7 @@ export function useSubmitExam() {
     mutationFn: (data: SubmitExamInput) => examApi.submit(data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: examKeys.lists() })
+      void qc.invalidateQueries({ queryKey: ['my_exam_submissions'] })
     },
   })
 }

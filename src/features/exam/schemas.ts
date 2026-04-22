@@ -45,6 +45,7 @@ export const examSubmissionApiSchema = z.object({
   learningClass: z
     .object({
       name: z.string(),
+      examQuestions: z.any().nullable().optional(),
     })
     .nullable()
     .optional(),

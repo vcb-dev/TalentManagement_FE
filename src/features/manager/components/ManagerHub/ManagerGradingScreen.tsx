@@ -168,7 +168,12 @@ export function ManagerGradingScreen() {
                               size="sm"
                               variant="default"
                               className="font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
-                              onClick={() => void navigate({ to: '/exam/grader' })}
+                              onClick={() =>
+                                void navigate({
+                                  to: '/manager/grade-class/$classId',
+                                  params: { classId: c.id },
+                                })
+                              }
                             >
                               Chấm thi
                             </Button>

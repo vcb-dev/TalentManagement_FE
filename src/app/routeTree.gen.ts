@@ -45,6 +45,7 @@ import { Route as ProtectedTeacherClassesIndexRouteImport } from './routes/_prot
 import { Route as ProtectedLeaderTeamIndexRouteImport } from './routes/_protected/leader/team/index'
 import { Route as ProtectedTeacherClassesClassIdRouteImport } from './routes/_protected/teacher/classes/$classId'
 import { Route as ProtectedManagerTeamEmployeeIdRouteImport } from './routes/_protected/manager/team/$employeeId'
+import { Route as ProtectedManagerGradeClassClassIdRouteImport } from './routes/_protected/manager/grade-class/$classId'
 import { Route as ProtectedLearningPathLevelIdStarIdRouteImport } from './routes/_protected/learning-path/$levelId/$starId'
 import { Route as ProtectedLeaderTeamEmployeeIdRouteImport } from './routes/_protected/leader/team/$employeeId'
 import { Route as ProtectedExamSubmissionSubmissionIdRouteImport } from './routes/_protected/exam/submission/$submissionId'
@@ -248,6 +249,12 @@ const ProtectedManagerTeamEmployeeIdRoute =
     path: '/manager/team/$employeeId',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
+const ProtectedManagerGradeClassClassIdRoute =
+  ProtectedManagerGradeClassClassIdRouteImport.update({
+    id: '/manager/grade-class/$classId',
+    path: '/manager/grade-class/$classId',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedLearningPathLevelIdStarIdRoute =
   ProtectedLearningPathLevelIdStarIdRouteImport.update({
     id: '/learning-path/$levelId/$starId',
@@ -322,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/exam/submission/$submissionId': typeof ProtectedExamSubmissionSubmissionIdRoute
   '/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
+  '/manager/grade-class/$classId': typeof ProtectedManagerGradeClassClassIdRoute
   '/manager/team/$employeeId': typeof ProtectedManagerTeamEmployeeIdRoute
   '/teacher/classes/$classId': typeof ProtectedTeacherClassesClassIdRoute
   '/leader/team/': typeof ProtectedLeaderTeamIndexRoute
@@ -364,6 +372,7 @@ export interface FileRoutesByTo {
   '/exam/submission/$submissionId': typeof ProtectedExamSubmissionSubmissionIdRoute
   '/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
+  '/manager/grade-class/$classId': typeof ProtectedManagerGradeClassClassIdRoute
   '/manager/team/$employeeId': typeof ProtectedManagerTeamEmployeeIdRoute
   '/teacher/classes/$classId': typeof ProtectedTeacherClassesClassIdRoute
   '/leader/team': typeof ProtectedLeaderTeamIndexRoute
@@ -409,6 +418,7 @@ export interface FileRoutesById {
   '/_protected/exam/submission/$submissionId': typeof ProtectedExamSubmissionSubmissionIdRoute
   '/_protected/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/_protected/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
+  '/_protected/manager/grade-class/$classId': typeof ProtectedManagerGradeClassClassIdRoute
   '/_protected/manager/team/$employeeId': typeof ProtectedManagerTeamEmployeeIdRoute
   '/_protected/teacher/classes/$classId': typeof ProtectedTeacherClassesClassIdRoute
   '/_protected/leader/team/': typeof ProtectedLeaderTeamIndexRoute
@@ -453,6 +463,7 @@ export interface FileRouteTypes {
     | '/exam/submission/$submissionId'
     | '/leader/team/$employeeId'
     | '/learning-path/$levelId/$starId'
+    | '/manager/grade-class/$classId'
     | '/manager/team/$employeeId'
     | '/teacher/classes/$classId'
     | '/leader/team/'
@@ -495,6 +506,7 @@ export interface FileRouteTypes {
     | '/exam/submission/$submissionId'
     | '/leader/team/$employeeId'
     | '/learning-path/$levelId/$starId'
+    | '/manager/grade-class/$classId'
     | '/manager/team/$employeeId'
     | '/teacher/classes/$classId'
     | '/leader/team'
@@ -539,6 +551,7 @@ export interface FileRouteTypes {
     | '/_protected/exam/submission/$submissionId'
     | '/_protected/leader/team/$employeeId'
     | '/_protected/learning-path/$levelId/$starId'
+    | '/_protected/manager/grade-class/$classId'
     | '/_protected/manager/team/$employeeId'
     | '/_protected/teacher/classes/$classId'
     | '/_protected/leader/team/'
@@ -805,6 +818,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedManagerTeamEmployeeIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/manager/grade-class/$classId': {
+      id: '/_protected/manager/grade-class/$classId'
+      path: '/manager/grade-class/$classId'
+      fullPath: '/manager/grade-class/$classId'
+      preLoaderRoute: typeof ProtectedManagerGradeClassClassIdRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/learning-path/$levelId/$starId': {
       id: '/_protected/learning-path/$levelId/$starId'
       path: '/learning-path/$levelId/$starId'
@@ -897,6 +917,7 @@ interface ProtectedRouteRouteChildren {
   ProtectedExamSubmissionSubmissionIdRoute: typeof ProtectedExamSubmissionSubmissionIdRoute
   ProtectedLeaderTeamEmployeeIdRoute: typeof ProtectedLeaderTeamEmployeeIdRoute
   ProtectedLearningPathLevelIdStarIdRoute: typeof ProtectedLearningPathLevelIdStarIdRoute
+  ProtectedManagerGradeClassClassIdRoute: typeof ProtectedManagerGradeClassClassIdRoute
   ProtectedManagerTeamEmployeeIdRoute: typeof ProtectedManagerTeamEmployeeIdRoute
   ProtectedTeacherClassesClassIdRoute: typeof ProtectedTeacherClassesClassIdRoute
   ProtectedLeaderTeamIndexRoute: typeof ProtectedLeaderTeamIndexRoute
@@ -941,6 +962,8 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedLeaderTeamEmployeeIdRoute: ProtectedLeaderTeamEmployeeIdRoute,
   ProtectedLearningPathLevelIdStarIdRoute:
     ProtectedLearningPathLevelIdStarIdRoute,
+  ProtectedManagerGradeClassClassIdRoute:
+    ProtectedManagerGradeClassClassIdRoute,
   ProtectedManagerTeamEmployeeIdRoute: ProtectedManagerTeamEmployeeIdRoute,
   ProtectedTeacherClassesClassIdRoute: ProtectedTeacherClassesClassIdRoute,
   ProtectedLeaderTeamIndexRoute: ProtectedLeaderTeamIndexRoute,
