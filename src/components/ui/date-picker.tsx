@@ -63,7 +63,7 @@ export function DatePicker({
   const minDate = lockedFirstDay ?? parseDateString(min)
   const maxDate = lockedLastDay ?? parseDateString(max)
 
-  const dayDisabled = React.useCallback(
+  const isDayDisabled = React.useCallback(
     (date: Date) => {
       const d = startOfDay(date)
       if (minDate && d < startOfDay(minDate)) return true
@@ -114,7 +114,7 @@ export function DatePicker({
             onChange(date ? format(date, 'yyyy-MM-dd') : '')
             setOpen(false)
           }}
-          disabled={dayDisabled}
+          disabled={isDayDisabled}
         />
       </PopoverContent>
     </Popover>

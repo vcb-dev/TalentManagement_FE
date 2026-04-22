@@ -73,27 +73,6 @@ export function ManagerGradingScreen() {
           </div>
         </div>
 
-        {/* CTA to go grade */}
-        <div className="flex items-center gap-4 rounded-xl border border-primary/20 bg-primary/5 px-5 py-4">
-          <div className="flex-1">
-            <p className="text-sm font-bold text-foreground">
-              {totalPending > 0
-                ? `Có ${totalPending} bài thi đang chờ bạn chấm`
-                : 'Không có bài thi nào đang chờ chấm'}
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Bấm "Chấm bài thi" để xem danh sách đầy đủ và chấm từng bài.
-            </p>
-          </div>
-          <Button
-            type="button"
-            className="shrink-0 font-bold"
-            onClick={() => void navigate({ to: '/exam/grader' })}
-          >
-            Chấm bài thi
-          </Button>
-        </div>
-
         {/* Classes table – informational, shows submission count per class */}
         <div>
           <h3 className="mb-3 text-base font-bold tracking-tight text-foreground">Danh sách lớp</h3>
