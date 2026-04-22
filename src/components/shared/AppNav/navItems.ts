@@ -53,17 +53,6 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     permissionId: 'learning.view',
   },
   {
-    to: '/exam',
-    label: 'Kết quả & lịch thi',
-    icon: Calendar,
-    match: 'custom',
-    customMatch: (p) => {
-      if (p === '/exam/grader' || p.startsWith('/exam/grader')) return false
-      return p === '/exam' || (p.startsWith('/exam/') && !p.startsWith('/exam/grader'))
-    },
-    permissionId: 'exam.view',
-  },
-  {
     to: '/monthly-report',
     label: 'Báo cáo hàng tháng',
     icon: BarChart3,
@@ -160,13 +149,6 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
     icon: ShieldCheck,
     match: 'prefix',
     permissionId: 'manager.approvals',
-  },
-  {
-    to: '/manager/exercises',
-    label: 'Bài tập lộ trình',
-    icon: BookOpen,
-    match: 'prefix',
-    permissionId: 'manager.exercises',
   },
   {
     to: '/permissions',
@@ -331,11 +313,7 @@ export function groupedSidebarNavItems(
     {
       id: 'learning',
       label: 'Học tập & Thi cử',
-      items: take([
-        ...find(MEMBER_SELF_ITEMS, '/learning-path'),
-        ...find(MEMBER_SELF_ITEMS, '/exam'),
-        ...find(MANAGER_OPS_ITEMS, '/manager/exercises'),
-      ]),
+      items: take([...find(MEMBER_SELF_ITEMS, '/learning-path')]),
     },
     {
       id: 'manager',

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -19,6 +19,10 @@ import {
   ChevronRight,
   LayoutList,
   Link as LinkIcon,
+  Loader2,
+  Check,
+  Book,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -54,6 +58,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   useManagerRoadmapItems,
   useCreateManagerRoadmapItem,
@@ -164,6 +169,61 @@ export function RoadmapCrud() {
 
   function parseAndRenderMaterial(materialRef: string | null) {
     if (!materialRef) return <span className="text-gray-400 italic">Trống</span>
+
+    // Try parsing as JSON first (new format)
+    try {
+      if (materialRef.startsWith('[') && materialRef.endsWith(']')) {
+        const parsed = JSON.parse(materialRef)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return (
+            <div className="flex flex-col gap-1.5">
+              {parsed.map((m: any, idx: number) => {
+                if (!m.link && !m.name) return null
+                const isLink = m.link && (m.link.includes('.') || m.link.startsWith('http'))
+                return (
+                  <div
+                    key={m.id || idx}
+                    className="group inline-flex items-center gap-1.5 text-[11px] font-bold transition-all"
+                  >
+                    {isLink ? (
+                      <a
+                        href={m.link.startsWith('http') ? m.link : `https://${m.link}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex flex-col items-start gap-0.5 text-primary-600 hover:text-primary-800"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <LinkIcon className="h-3 w-3 opacity-60" />
+                          <span className="underline-offset-2 hover:underline font-bold break-all">
+                            {m.link}
+                          </span>
+                        </div>
+                        {m.name && m.name.toLowerCase() !== 'slide' && (
+                          <span className="text-[10px] opacity-80 leading-tight pl-4 font-normal italic">
+                            {m.name}
+                          </span>
+                        )}
+                      </a>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-muted-foreground/80">
+                        <Book className="h-3 w-3" />
+                        <span>
+                          {m.name} {m.link ? `(${m.link})` : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to parse materialRef as JSON', err)
+    }
+
+    // Fallback to existing logic for legacy string format
     if (materialRef.includes('http')) {
       const parts = materialRef.split(/(https?:\/\/[^\s]+)/)
       return (
@@ -212,7 +272,16 @@ export function RoadmapCrud() {
     { id: crypto.randomUUID(), text: '' },
   ])
   const [trainerSearch, setTrainerSearch] = useState('')
-  const { data: teacherOptions = [] } = useTeacherOptions(trainerSearch)
+  const [debouncedTrainerSearch, setDebouncedTrainerSearch] = useState('')
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedTrainerSearch(trainerSearch)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [trainerSearch])
+
+  const { data: teacherOptions = [] } = useTeacherOptions(debouncedTrainerSearch)
 
   const addMaterial = () => {
     setMaterials([...materials, { id: crypto.randomUUID(), name: '', link: '' }])
@@ -675,12 +744,12 @@ export function RoadmapCrud() {
                           <div className="space-y-1.5">
                             <div className="relative">
                               <Input
-                                placeholder="Đường dẫn (Link)..."
+                                placeholder="Link hoặc Ghi chú (Sách, slide...)"
                                 value={m.link}
                                 className="h-11 rounded-xl border-primary/5 bg-white pl-10 shadow-sm hover:border-primary/20 transition-all"
                                 onChange={(e) => updateMaterial(m.id, 'link', e.target.value)}
                               />
-                              <LinkIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+                              <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                             </div>
                           </div>
                           <Button
@@ -710,7 +779,7 @@ export function RoadmapCrud() {
                         control={form.control}
                         name="trainer"
                         render={({ field, fieldState }) => (
-                          <FormItem className="max-w-md">
+                          <FormItem className="search-dropdown-container relative max-w-md">
                             <FormLabel
                               className={safeCn(
                                 'text-[11px] font-bold uppercase transition-colors ml-1',
@@ -721,49 +790,85 @@ export function RoadmapCrud() {
                             >
                               Người đào tạo (Trainer) {fieldState.error && '(Bắt buộc)'}
                             </FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value || undefined}
-                              value={field.value || undefined}
-                            >
-                              <FormControl>
-                                <SelectTrigger
-                                  className={safeCn(
-                                    'h-12 rounded-2xl border-primary/10 bg-white shadow-sm transition-all hover:border-primary/30 focus:ring-2 focus:ring-primary/20',
-                                    fieldState.error && 'border-red-500 bg-red-50/30'
-                                  )}
-                                >
-                                  <SelectValue placeholder="Chọn người đào tạo" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent className="rounded-2xl border-primary/10 shadow-2xl">
-                                <div className="px-3 pt-3 pb-2 border-b border-primary/5">
-                                  <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                      placeholder="Tìm kiếm tên..."
-                                      className="h-9 rounded-xl pl-9 border-none bg-primary/5 focus:bg-primary/10 focus:ring-0"
-                                      onChange={(e) => setTrainerSearch(e.target.value)}
-                                    />
-                                  </div>
-                                </div>
-                                <SelectItem
-                                  value="Tự học"
-                                  className="rounded-xl my-1 mx-2 focus:bg-primary/10"
-                                >
-                                  Tự học
-                                </SelectItem>
-                                {teacherOptions.map((t: { userId: string; name: string }) => (
-                                  <SelectItem
-                                    key={t.userId}
-                                    value={t.name}
-                                    className="rounded-xl my-1 mx-2 focus:bg-primary/10"
+                            <FormControl>
+                              <div className="group relative">
+                                <Popover open={trainerSearch.trim().length > 0}>
+                                  <PopoverTrigger asChild>
+                                    <div className="relative">
+                                      <Input
+                                        placeholder="Gõ tên để tìm người đào tạo..."
+                                        className={safeCn(
+                                          'h-12 rounded-2xl border-primary/10 bg-white pl-11 shadow-sm transition-all hover:border-primary/30 focus:ring-2 focus:ring-primary/20',
+                                          fieldState.error && 'border-red-500 bg-red-50/30'
+                                        )}
+                                        value={trainerSearch || field.value || ''}
+                                        onChange={(e) => {
+                                          setTrainerSearch(e.target.value)
+                                          if (e.target.value === '') {
+                                            field.onChange('')
+                                          }
+                                        }}
+                                        onFocus={() => {
+                                          if (!trainerSearch && field.value) {
+                                            setTrainerSearch(field.value)
+                                          }
+                                        }}
+                                      />
+                                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                    </div>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    className="w-[var(--radix-popover-trigger-width)] rounded-2xl border-primary/10 bg-white p-2 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200"
+                                    align="start"
+                                    sideOffset={8}
+                                    onOpenAutoFocus={(e) => e.preventDefault()}
                                   >
-                                    {t.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                    <div className="max-h-[300px] overflow-y-auto">
+                                      {/* Default option: Tự học */}
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className="flex h-10 w-full items-center justify-between rounded-xl px-3 text-left text-sm font-medium hover:bg-primary/5 hover:text-primary"
+                                        onClick={() => {
+                                          field.onChange('Tự học')
+                                          setTrainerSearch('')
+                                        }}
+                                      >
+                                        <span>Tự học</span>
+                                        {field.value === 'Tự học' && <Check className="h-4 w-4" />}
+                                      </Button>
+
+                                      {/* API results */}
+                                      {teacherOptions.length > 0 ? (
+                                        teacherOptions.map(
+                                          (t: { userId: string; name: string }) => (
+                                            <Button
+                                              key={t.userId}
+                                              type="button"
+                                              variant="ghost"
+                                              className="flex h-10 w-full items-center justify-between rounded-xl px-3 text-left text-sm font-medium hover:bg-primary/5 hover:text-primary"
+                                              onClick={() => {
+                                                field.onChange(t.name)
+                                                setTrainerSearch('')
+                                              }}
+                                            >
+                                              <span>{t.name}</span>
+                                              {field.value === t.name && (
+                                                <Check className="h-4 w-4" />
+                                              )}
+                                            </Button>
+                                          )
+                                        )
+                                      ) : (
+                                        <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                                          Không tìm thấy giáo viên phù hợp
+                                        </div>
+                                      )}
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                            </FormControl>
                             <FormMessage className="text-[10px]" />
                           </FormItem>
                         )}

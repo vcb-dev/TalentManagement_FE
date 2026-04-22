@@ -16,7 +16,6 @@ const MANAGER_NAV: NavDef[] = [
   { to: '/manager/classes', label: 'Chia lớp', icon: School, match: 'prefix' },
   { to: '/manager/exam-schedule', label: 'Lịch thi', icon: CalendarClock, match: 'prefix' },
   { to: '/manager/approvals', label: 'Thăng cấp / sao', icon: LayoutList, match: 'prefix' },
-  { to: '/manager/exercises', label: 'Bài tập lộ trình', icon: BookOpen, match: 'prefix' },
 ]
 
 function normalizePath(p: string): string {

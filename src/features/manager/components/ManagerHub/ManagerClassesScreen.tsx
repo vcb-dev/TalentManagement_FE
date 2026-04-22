@@ -88,10 +88,23 @@ export function ManagerClassesScreen() {
   const [search, setSearch] = useState('')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createMemberQuery, setCreateMemberQuery] = useState('')
+  const [debouncedCreateMemberQuery, setDebouncedCreateMemberQuery] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedCreateMemberQuery(createMemberQuery), 500)
+    return () => clearTimeout(t)
+  }, [createMemberQuery])
+
   const [selectedCreateMembers, setSelectedCreateMembers] = useState<
     Array<{ userId: string; name: string; email: string }>
   >([])
+
   const [createTeacherQuery, setCreateTeacherQuery] = useState('')
+  const [debouncedCreateTeacherQuery, setDebouncedCreateTeacherQuery] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedCreateTeacherQuery(createTeacherQuery), 500)
+    return () => clearTimeout(t)
+  }, [createTeacherQuery])
+
   const [selectedCreateTeacher, setSelectedCreateTeacher] = useState<{
     userId: string
     name: string
@@ -100,7 +113,14 @@ export function ManagerClassesScreen() {
   const [memberQueries, setMemberQueries] = useState<Record<string, string>>({})
   const [activeClassForDropdown, setActiveClassForDropdown] = useState<string | null>(null)
   const [editClassId, setEditClassId] = useState<string | null>(null)
+
   const [editModalTeacherQuery, setEditModalTeacherQuery] = useState('')
+  const [debouncedEditModalTeacherQuery, setDebouncedEditModalTeacherQuery] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedEditModalTeacherQuery(editModalTeacherQuery), 500)
+    return () => clearTimeout(t)
+  }, [editModalTeacherQuery])
+
   const [selectedTeacher, setSelectedTeacher] = useState<{
     userId: string
     name: string
@@ -128,6 +148,12 @@ export function ManagerClassesScreen() {
   const updateClass = useUpdateManagerClass()
 
   const activeQuery = activeClassForDropdown ? (memberQueries[activeClassForDropdown] ?? '') : ''
+  const [debouncedActiveQuery, setDebouncedActiveQuery] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedActiveQuery(activeQuery), 500)
+    return () => clearTimeout(t)
+  }, [activeQuery])
+
   const memberOptionsExcludeTeacherId = useMemo(() => {
     if (!activeClassForDropdown) return undefined
     const cls = rows.find((r) => r.id === activeClassForDropdown)
@@ -135,16 +161,20 @@ export function ManagerClassesScreen() {
   }, [activeClassForDropdown, rows])
 
   const { data: memberOptions = [], isFetching: fetchingMemberOptions } = useClassMemberOptions(
-    activeQuery,
+    debouncedActiveQuery,
     undefined,
     memberOptionsExcludeTeacherId
   )
   const { data: createMemberOptions = [], isFetching: fetchingCreateOptions } =
-    useClassMemberOptions(createMemberQuery, createLevelFrom, selectedCreateTeacher?.userId)
+    useClassMemberOptions(
+      debouncedCreateMemberQuery,
+      createLevelFrom,
+      selectedCreateTeacher?.userId
+    )
   const { data: createTeacherOptions = [], isFetching: fetchingCreateTeacherOptions } =
-    useTeacherOptions(createTeacherQuery)
+    useTeacherOptions(debouncedCreateTeacherQuery)
   const { data: editModalTeacherOptions = [], isFetching: fetchingEditModalTeacherOptions } =
-    useTeacherOptions(editModalTeacherQuery)
+    useTeacherOptions(debouncedEditModalTeacherQuery)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

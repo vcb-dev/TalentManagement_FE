@@ -183,6 +183,11 @@ export function ManagerExamScheduleScreen() {
   const watchedExamHour = watchExam('examHour')
   const watchedExamMinute = watchExam('examMinute')
   const watchedExamTeacherQuery = watchExam('examTeacherQuery')
+  const [debouncedExamTeacherQuery, setDebouncedExamTeacherQuery] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedExamTeacherQuery(watchedExamTeacherQuery), 500)
+    return () => clearTimeout(t)
+  }, [watchedExamTeacherQuery])
 
   const [examTeacher, setExamTeacher] = useState<{
     userId: string
@@ -193,7 +198,7 @@ export function ManagerExamScheduleScreen() {
   const modalClass = classes.find((c) => c.id === examModalClassId) ?? null
   const isTapSuClass = modalClass?.levelFrom === 'tap_su' && modalClass?.levelTo === 'biet_viec'
   const { data: examTeacherOptions = [], isFetching: fetchingExamTeachers } =
-    useTeacherOptions(watchedExamTeacherQuery)
+    useTeacherOptions(debouncedExamTeacherQuery)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
