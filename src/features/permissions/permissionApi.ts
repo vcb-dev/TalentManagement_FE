@@ -26,8 +26,13 @@ export const permissionApi = {
       params: { scope: scopeKey },
     })
     const data = res.data
-    if (data === null || data === undefined) {
+    // 204 / body rỗng: axios thường để data là undefined hoặc ''
+    if (data === null || data === undefined || data === '') {
       return null
+    }
+    if (typeof data !== 'object' || Array.isArray(data)) {
+      console.error('[permissionApi.getAssignment] Response không phải object', data)
+      throw new Error('Invalid API response shape: GET /users/.../permissions')
     }
     return safeParse(permissionAssignmentRecordSchema, data, 'GET /users/.../permissions')
   },
