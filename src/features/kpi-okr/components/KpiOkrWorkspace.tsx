@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { CheckCircle2, Lock, Pencil, RefreshCw, Users, X } from 'lucide-react'
+import {
+  CheckCircle2,
+  FileUp,
+  ListPlus,
+  Lock,
+  Pencil,
+  RefreshCw,
+  Trash2,
+  Users,
+  X,
+} from 'lucide-react'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -19,6 +29,11 @@ import {
   type PerformanceQuestionnaire,
   type PerformanceSummaryRow,
 } from '@/features/kpi-okr/api'
+import {
+  clampKpiPeriod,
+  getMaxViewableYm,
+  isKpiPeriodSelectable,
+} from '@/features/kpi-okr/kpiPeriodLimits'
 import { organizationApi, type TeamMemberRow } from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { toast } from 'sonner'
@@ -105,6 +120,8 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   const [year, setYear] = useState(y0)
   const [month, setMonth] = useState(m0)
   const [selectedTeamId, setSelectedTeamId] = useState<string | ''>('')
+
+  const maxViewYm = getMaxViewableYm()
 
   const eff = useMemo(
     () => (user ? resolveEffectivePermissionSet(user) : new Set<string>()),
@@ -336,13 +353,24 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                 <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   Tháng
                 </Label>
-                <Select value={String(month)} onValueChange={(value) => setMonth(Number(value))}>
+                <Select
+                  value={String(month)}
+                  onValueChange={(value) => {
+                    const next = clampKpiPeriod(year, Number(value))
+                    setYear(next.year)
+                    setMonth(next.month)
+                  }}
+                >
                   <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                      <SelectItem key={m} value={String(m)}>
+                      <SelectItem
+                        key={m}
+                        value={String(m)}
+                        disabled={!isKpiPeriodSelectable(year, m)}
+                      >
                         Tháng {m}
                       </SelectItem>
                     ))}
@@ -357,9 +385,15 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                   type="number"
                   value={year}
                   min={2020}
-                  max={2035}
+                  max={maxViewYm.year}
                   className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-                  onChange={(e) => setYear(Number(e.target.value))}
+                  onChange={(e) => {
+                    const v = Number(e.target.value)
+                    if (!Number.isFinite(v)) return
+                    const next = clampKpiPeriod(v, month)
+                    setYear(next.year)
+                    setMonth(next.month)
+                  }}
                 />
               </div>
             </div>
@@ -1814,6 +1848,10 @@ function SummaryPanel({
   )
 }
 
+function newSurveyQuestionRow(): { id: string; prompt: string } {
+  return { id: `sq-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, prompt: '' }
+}
+
 export function FormPanel({
   teamId,
   year,
@@ -1845,7 +1883,12 @@ export function FormPanel({
 
   const data = q.data as PerformanceQuestionnaire | null
 
-  const [prompts, setPrompts] = useState('Câu 1?\nCâu 2?')
+  const [questionDrafts, setQuestionDrafts] = useState<{ id: string; prompt: string }[]>([
+    { id: 'init-a', prompt: 'Câu 1?' },
+    { id: 'init-b', prompt: 'Câu 2?' },
+  ])
+  const [leaderQMode, setLeaderQMode] = useState<'upload' | 'compose'>('compose')
+  const [rawBulk, setRawBulk] = useState('')
   const [answerDraft, setAnswerDraft] = useState<Record<string, string>>({})
   const [busySaveQuestions, setBusySaveQuestions] = useState(false)
   const [busySaveAnswers, setBusySaveAnswers] = useState(false)
@@ -1874,8 +1917,10 @@ export function FormPanel({
 
   useEffect(() => {
     if (!data?.questions?.length) return
-    const preset = data.questions.map((item) => item.prompt).join('\n')
-    const id = window.setTimeout(() => setPrompts(preset), 0)
+    const id = window.setTimeout(
+      () => setQuestionDrafts(data.questions.map((item) => ({ id: item.id, prompt: item.prompt }))),
+      0
+    )
     return () => window.clearTimeout(id)
   }, [data?.id, data?.questions])
 
@@ -1916,6 +1961,60 @@ export function FormPanel({
       a.respondentName.localeCompare(b.respondentName)
     )
   }, [data?.answers])
+
+  const validDraftCount = useMemo(
+    () => questionDrafts.filter((q) => q.prompt.trim().length > 0).length,
+    [questionDrafts]
+  )
+
+  const onUploadSurveyFile = (file: File) => {
+    void file.text().then((text) => {
+      const lines = text
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+      if (lines.length === 0) {
+        toast.error('File không có dòng câu hỏi nào.')
+        return
+      }
+      setQuestionDrafts(
+        lines.map((prompt, i) => ({
+          id: `u-${i}-${Date.now()}`,
+          prompt,
+        }))
+      )
+      toast.success(`Đã đọc ${lines.length} câu từ file.`)
+    })
+  }
+
+  const parseRawBulk = () => {
+    const lines = rawBulk
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+    if (lines.length === 0) {
+      toast.error('Nhập ít nhất một dòng câu hỏi.')
+      return
+    }
+    setQuestionDrafts(
+      lines.map((prompt, i) => ({
+        id: `b-${i}-${Date.now()}`,
+        prompt,
+      }))
+    )
+    toast.success(`Đã tách ${lines.length} câu hỏi.`)
+  }
+
+  const addQuestionDraft = () => {
+    setQuestionDrafts((prev) => [...prev, newSurveyQuestionRow()])
+  }
+
+  const removeQuestionDraft = (id: string) => {
+    setQuestionDrafts((prev) => {
+      const next = prev.filter((q) => q.id !== id)
+      return next.length > 0 ? next : [newSurveyQuestionRow()]
+    })
+  }
 
   if (!teamId) return null
   if (q.isLoading) {
@@ -2007,13 +2106,22 @@ export function FormPanel({
                     </div>
                   )}
                   {data.questions.map((qs, i) => (
-                    <div key={qs.id} className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                        {i + 1}. {qs.prompt}
-                      </label>
+                    <div
+                      key={qs.id}
+                      className="rounded-xl border border-border bg-background p-3 shadow-sm dark:border-slate-800"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <p className="text-sm font-bold text-foreground">Câu hỏi {i + 1}</p>
+                        <span className="text-[11px] font-medium text-muted-foreground">
+                          Trả lời văn bản
+                        </span>
+                      </div>
+                      <p className="mb-3 text-sm font-medium leading-relaxed text-foreground">
+                        {qs.prompt}
+                      </p>
                       <textarea
                         className={cn(
-                          'min-h-[100px] w-full rounded-xl border border-slate-200 bg-slate-50/30 p-4 text-sm transition-all focus:bg-white focus:ring-2 focus:ring-primary/10 outline-none dark:border-slate-800 dark:bg-slate-900/30 dark:focus:bg-slate-950',
+                          'min-h-[100px] w-full rounded-lg border border-slate-200 bg-slate-50/30 p-3 text-sm transition-all focus:bg-white focus:ring-2 focus:ring-primary/10 outline-none dark:border-slate-800 dark:bg-slate-900/30 dark:focus:bg-slate-950',
                           answerInputDisabled && 'cursor-not-allowed opacity-70'
                         )}
                         placeholder="Nhập câu trả lời của bạn..."
@@ -2136,30 +2244,170 @@ export function FormPanel({
         {shouldShowResponses && (
           <div className="space-y-6">
             {canEditTeam && !isMockApiEnabled() && (
-              <Card className="border-fuchsia-100 bg-fuchsia-50/20 dark:border-fuchsia-900/20 dark:bg-fuchsia-950/10">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-fuchsia-700">
+              <Card className="border-border shadow-sm dark:border-slate-800/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+                    <FileUp className="h-5 w-5 text-primary" strokeWidth={2} />
                     Cấu hình câu hỏi (Leader)
                   </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Kỳ T{month}/{year} · Soạn từng câu hoặc nhập nhiều dòng / file — nhân sự trả lời
+                    tự luận (cùng kiểu tự luận ngắn như màn Tạo bộ bài thi).
+                  </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <textarea
-                    className="min-h-[120px] w-full rounded-xl border border-fuchsia-200 bg-white p-4 text-sm outline-none transition-all focus:ring-2 focus:ring-fuchsia-500/20 dark:border-fuchsia-800 dark:bg-slate-950"
-                    placeholder="Nhập mỗi câu hỏi trên một dòng..."
-                    value={prompts}
-                    onChange={(e) => setPrompts(e.target.value)}
-                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant={leaderQMode === 'upload' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setLeaderQMode('upload')}
+                      className={cn(
+                        'rounded-lg border px-3 py-1.5 text-sm font-semibold',
+                        leaderQMode !== 'upload' && 'border-border bg-card hover:bg-muted'
+                      )}
+                    >
+                      Upload file
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={leaderQMode === 'compose' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setLeaderQMode('compose')}
+                      className={cn(
+                        'rounded-lg border px-3 py-1.5 text-sm font-semibold',
+                        leaderQMode !== 'compose' && 'border-border bg-card hover:bg-muted'
+                      )}
+                    >
+                      Tự soạn câu hỏi
+                    </Button>
+                  </div>
+
+                  {leaderQMode === 'upload' ? (
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                          Upload file (txt / md)
+                        </Label>
+                        <Input
+                          type="file"
+                          accept=".txt,.md,.csv,text/plain,text/markdown"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) onUploadSurveyFile(file)
+                            e.target.value = ''
+                          }}
+                          className="block w-full cursor-pointer rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-primary hover:file:bg-primary/20"
+                        />
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Mỗi dòng không rỗng = một câu hỏi (có thể dán nội dung thay vì file).
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                          Nhập nhiều câu (mỗi dòng một câu)
+                        </Label>
+                        <textarea
+                          className="min-h-[120px] w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+                          placeholder={'Câu 1?\nCâu 2?\nCâu 3?'}
+                          value={rawBulk}
+                          onChange={(e) => setRawBulk(e.target.value)}
+                        />
+                        <div className="mt-2 flex justify-end">
+                          <Button type="button" variant="outline" size="sm" onClick={parseRawBulk}>
+                            Tách câu hỏi
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 rounded-xl border border-border/70 bg-muted/10 p-3">
+                      {questionDrafts.map((row, qIdx) => (
+                        <div
+                          key={row.id}
+                          className="rounded-xl border border-border bg-background p-3 shadow-sm"
+                        >
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <p className="text-sm font-bold text-foreground">Câu hỏi {qIdx + 1}</p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-auto gap-1 rounded-md px-2 py-1 text-xs font-normal normal-case tracking-normal text-muted-foreground"
+                              onClick={() => removeQuestionDraft(row.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Xóa
+                            </Button>
+                          </div>
+                          <Input
+                            value={row.prompt}
+                            onChange={(e) =>
+                              setQuestionDrafts((prev) =>
+                                prev.map((x) =>
+                                  x.id === row.id ? { ...x, prompt: e.target.value } : x
+                                )
+                              )
+                            }
+                            placeholder="Câu hỏi chưa có tiêu đề"
+                            className="mb-2 w-full rounded-lg text-sm focus-visible:border-primary focus-visible:ring-primary/20"
+                          />
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <span className="font-semibold text-foreground/80">Tự luận ngắn</span>
+                            <span>·</span>
+                            <span>Bắt buộc trả lời khi gửi khảo sát</span>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="flex justify-end">
+                        <Button type="button" variant="outline" onClick={addQuestionDraft}>
+                          <ListPlus className="mr-2 h-4 w-4" />
+                          Thêm câu hỏi
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+                    <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                      Xem trước ({validDraftCount} câu)
+                    </p>
+                    <div className="max-h-56 space-y-2 overflow-auto pr-1">
+                      {validDraftCount === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          Chưa có câu hỏi hợp lệ. Vui lòng nhập tiêu đề cho từng câu hoặc dùng
+                          Upload / Tách câu hỏi.
+                        </p>
+                      ) : (
+                        questionDrafts
+                          .filter((q) => q.prompt.trim().length > 0)
+                          .map((q, idx) => (
+                            <div
+                              key={`${q.id}-prev`}
+                              className="rounded-lg border border-border bg-background px-3 py-2"
+                            >
+                              <p className="text-sm font-semibold text-foreground">
+                                Câu {idx + 1}: {q.prompt.trim()}
+                              </p>
+                            </div>
+                          ))
+                      )}
+                    </div>
+                  </div>
+
                   <Button
                     type="button"
                     disabled={busySaveQuestions}
-                    variant="outline"
-                    className="w-full border-fuchsia-300 font-bold text-fuchsia-700 hover:bg-fuchsia-50"
+                    className="w-full font-bold"
                     onClick={() => {
-                      const lines = prompts
-                        .split('\n')
-                        .map((s) => s.trim())
+                      const lines = questionDrafts
+                        .map((s) => s.prompt.trim())
                         .filter(Boolean)
-                        .map((prompt) => ({ prompt }))
+                        .map((prompt, i) => ({ prompt, sortOrder: i + 1 }))
+                      if (lines.length === 0) {
+                        toast.error('Cần ít nhất một câu hỏi có nội dung.')
+                        return
+                      }
                       setBusySaveQuestions(true)
                       void performanceApi
                         .upsertQuestionnaire(teamId, { year, month, questions: lines })
