@@ -346,4 +346,16 @@ export const managerApi = {
     const res = await apiClient.delete<unknown>(`/org/teams/${id}`)
     return safeParse(orgItemApiSchema, res.data, 'DELETE /org/teams/:id')
   },
+
+  saveExamQuestions: async (classId: string, questions: any) => {
+    const res = await apiClient.patch<unknown>(
+      `/manager/classes/${classId}/exam-questions`,
+      questions
+    )
+    return safeParse(
+      managerClassActionResponseSchema,
+      res.data,
+      'PATCH /manager/classes/:id/exam-questions'
+    )
+  },
 }

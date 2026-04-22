@@ -37,11 +37,13 @@ export interface ExamResultsScheduleProps {
   mySubmissions?: Array<{
     id: string
     examId?: string
+    classId?: string
     title?: string
     status: string
     totalScore?: number | null
     createdAt: string
   }>
+  enrolledClassHasQuestions?: boolean
 }
 
 function formatViWeekdayDate(iso: string): string {
@@ -79,6 +81,7 @@ export function ExamResultsSchedule({
   membersInClass,
   membersTitle,
   mySubmissions,
+  enrolledClassHasQuestions,
 }: ExamResultsScheduleProps) {
   const filterForm = useForm<{ yearFilter: string }>({ defaultValues: { yearFilter: 'all' } })
   const yearFilter = useWatch({ control: filterForm.control, name: 'yearFilter' }) ?? 'all'
@@ -95,17 +98,29 @@ export function ExamResultsSchedule({
       }
 
       const submitted = new Set<string>()
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        if (key && key.startsWith('member_exam_submission_v1:')) {
-          submitted.add(key.replace('member_exam_submission_v1:', ''))
+      // Priority 1: Use API data from props
+      if (mySubmissions) {
+        if (mySubmissions.length > 0) {
+          mySubmissions.forEach((sub) => {
+            if (sub.classId) submitted.add(sub.classId)
+            if (sub.examId) submitted.add(sub.examId)
+          })
+        }
+      }
+      // Priority 2: Fallback to localStorage (legacy/offline support)
+      else {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && key.startsWith('member_exam_submission_v1:')) {
+            submitted.add(key.replace('member_exam_submission_v1:', ''))
+          }
         }
       }
       setSubmittedExamIds(submitted)
     } catch {
       setQuestionBankClassIds(new Set())
     }
-  }, [])
+  }, [mySubmissions])
 
   const { upcoming, completed } = useMemo(() => {
     const u: ExamRow[] = []
@@ -190,6 +205,7 @@ export function ExamResultsSchedule({
             const isOptional = idx % 2 === 1
             const hasQuestionBank =
               questionBankClassIds.has(exam.id) ||
+              (myEnrolledClassId === exam.id && enrolledClassHasQuestions) ||
               (myEnrolledClassId ? questionBankClassIds.has(myEnrolledClassId) : false)
             const isSubmitted = submittedExamIds.has(exam.id)
             const canOpenExam = exam.status === 'COMPLETED' || hasQuestionBank || isSubmitted
@@ -478,9 +494,11 @@ export function ExamResultsSchedule({
                             </div>
                             <div className="min-w-0">
                               <p className="font-semibold text-foreground">
-                                {sub.title || 'Kỳ thi nội bộ'}
+                                {sub.title || (sub.classId ? `Bài thi lớp` : 'Kỳ thi nội bộ')}
                               </p>
-                              <p className="text-xs text-muted-foreground">Kỳ thi nội bộ</p>
+                              <p className="text-xs text-muted-foreground">
+                                {sub.classId ? 'Kỳ thi theo lớp' : 'Kỳ thi nội bộ'}
+                              </p>
                             </div>
                           </div>
                         </td>

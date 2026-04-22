@@ -373,11 +373,28 @@ export function ApprovalQueue({
                                   onClick={() => onApprove(p.id)}
                                   className="h-8 min-w-[100px] rounded-lg bg-emerald-600 px-3 py-1 text-[10px] font-bold text-white hover:bg-emerald-700 shadow-sm transition-all active:scale-95"
                                 >
-                                  {isApproving === p.id ? (
-                                    <RefreshCw className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    'Thăng cấp sao'
-                                  )}
+                                  {(() => {
+                                    if (isApproving === p.id) {
+                                      return <RefreshCw className="h-3 w-3 animate-spin" />
+                                    }
+                                    const starBadge = p.badges.find((b) => b.label.includes('sao'))
+                                    const stars = starBadge ? parseInt(starBadge.label, 10) : 0
+
+                                    if (stars >= 6) {
+                                      const levelBadge = p.badges.find((b) =>
+                                        ['Tập sự', 'Biết việc', 'Được việc'].includes(b.label)
+                                      )
+                                      const currentLevel = levelBadge?.label || ''
+                                      let nextLevelLabel = 'cấp mới'
+                                      if (currentLevel === 'Tập sự') nextLevelLabel = 'Biết việc'
+                                      else if (currentLevel === 'Biết việc')
+                                        nextLevelLabel = 'Được việc'
+
+                                      return `Duyệt lên ${nextLevelLabel}`
+                                    }
+
+                                    return 'Thăng cấp sao'
+                                  })()}
                                 </Button>
                               )}
                               {p.state === 'actionable' && onReject && (

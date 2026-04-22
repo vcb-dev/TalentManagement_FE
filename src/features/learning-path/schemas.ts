@@ -57,6 +57,7 @@ const enrolledClassSchema = z.object({
   status: z.enum(['open', 'full', 'closed']),
   examDate: z.string().datetime().nullable(),
   teacherName: z.string(),
+  examQuestions: z.any().nullable().optional(),
   schedules: z.array(scheduleSlotSchema),
   members: z.array(enrolledMemberSchema),
 })

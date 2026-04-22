@@ -112,6 +112,7 @@ export const managerClassApiSchema = z.object({
   updatedAt: z.string().datetime(),
   memberCount: z.number().int().nonnegative(),
   members: z.array(managerClassMemberApiSchema),
+  examQuestions: z.any().nullable(),
 })
 
 export const managerClassCreateResponseSchema = z.object({

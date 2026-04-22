@@ -148,6 +148,7 @@ function ExamIndexPage() {
         membersInClass={viewMode === 'managed' ? (managedDetail?.members ?? []) : undefined}
         membersTitle={viewMode === 'managed' ? 'Thành viên trong lớp' : undefined}
         mySubmissions={viewMode === 'mine' ? (mySubmissions ?? undefined) : undefined}
+        enrolledClassHasQuestions={!!myClassData?.enrolledClass?.examQuestions}
       />
     </>
   )

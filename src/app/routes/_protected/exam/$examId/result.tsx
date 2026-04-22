@@ -9,8 +9,9 @@ import { RadioGroupController } from '@/components/ui/form-controllers'
 import { Textarea } from '@/components/ui/textarea'
 import { ExamHistory } from '@/features/exam/components/ExamHistory'
 import { ClassifyResultContainer } from '@/features/exam/components/ClassifyResult'
-import { useExamResults, useSubmitExam } from '@/features/exam/hooks'
+import { useExamResults, useSubmitExam, useSubmission } from '@/features/exam/hooks'
 import { useMyEnrolledClass } from '@/features/learning-path/hooks'
+import { useAuthStore } from '@/stores/auth.store'
 
 const DEFAULT_DURATION_SECONDS = 60 * 60 // 1 tiếng mặc định
 
@@ -109,7 +110,10 @@ const ExamQuestionCard = memo(function ExamQuestionCard({
 function ExamResultPage() {
   const { examId } = Route.useParams()
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
+  const userId = user?.id || 'unknown'
   const { data, isLoading } = useExamResults(examId)
+  const { data: submissionData } = useSubmission(examId)
   const { data: myClassData } = useMyEnrolledClass()
   const { mutateAsync: submitExamApi, isPending: isSubmitting } = useSubmitExam()
   const employeeId = '00000000-0000-4000-8000-000000000001'
@@ -127,50 +131,80 @@ function ExamResultPage() {
 
   useEffect(() => {
     try {
-      const submissionKey = `member_exam_submission_v1:${examId}`
+      console.log('[TakeExam] Initializing for examId:', examId, 'userId:', userId)
+      const submissionKey = `member_exam_submission_v1:${userId}:${examId}`
       const existingSubmission = localStorage.getItem(submissionKey)
 
-      const raw = localStorage.getItem('manager_exam_question_bank_v1')
-      if (!raw) return
-      const parsed = JSON.parse(raw) as Record<
-        string,
-        {
-          title: string
-          duration: number
-          questions: Array<{ id: string; stem: string; options: string[] }>
-        }
-      >
-      const byClass = myClassId ? parsed[myClassId] : undefined
-      const byExamId = parsed[examId]
-      const bank = byClass ?? byExamId ?? null
-      queueMicrotask(() => setQuestionBank(bank))
+      let bank: any = null
 
-      if (bank) {
-        if (existingSubmission) {
-          queueMicrotask(() => setSubmitted(true))
-          try {
-            const parsedSub = JSON.parse(existingSubmission)
-            queueMicrotask(() => setAnswers(parsedSub.answers || {}))
-          } catch {
-            // ignore
+      // Priority 1: Data from a specific submission (if viewing history)
+      if (submissionData) {
+        // Double check if this submission belongs to the current user
+        if (submissionData.userId !== userId) {
+          console.log('[TakeExam] Submission data belongs to another user. Ignoring.')
+        } else {
+          console.log('[TakeExam] Loading data from existing submission API')
+          bank = submissionData.learningClass?.examQuestions || null
+          setSubmitted(true)
+          if (submissionData.answers) {
+            setAnswers(submissionData.answers as Record<string, string>)
           }
+          setQuestionBank(bank)
           return
         }
+      }
 
+      // Priority 2: Backend data from my currently enrolled class
+      if (myClassData?.enrolledClass) {
+        if (myClassData.enrolledClass.examQuestions) {
+          console.log('[TakeExam] Found question bank in DB')
+          bank = myClassData.enrolledClass.examQuestions
+        } else {
+          console.log('[TakeExam] DB has no question bank for this class')
+        }
+      }
+
+      // Priority 3: Fallback to localStorage ONLY if DB doesn't have it
+      if (!bank) {
+        const raw = localStorage.getItem('manager_exam_question_bank_v1')
+        if (raw) {
+          const parsed = JSON.parse(raw) as Record<string, any>
+          bank = (myClassId ? parsed[myClassId] : undefined) ?? parsed[examId] ?? null
+          if (bank) console.log('[TakeExam] Found question bank in localStorage')
+        }
+      }
+
+      setQuestionBank(bank)
+
+      // Check if already submitted via API results (data) or localStorage
+      const hasApiSubmission = data && data.length > 0
+      if (hasApiSubmission || existingSubmission) {
+        console.log('[TakeExam] Submission found. Status: Submitted')
+        setSubmitted(true)
+        if (existingSubmission) {
+          try {
+            const parsedSub = JSON.parse(existingSubmission)
+            setAnswers(parsedSub.answers || {})
+          } catch {}
+        }
+        return
+      }
+
+      if (bank) {
+        console.log('[TakeExam] Setting up new exam session')
         let initialAnswers: Record<string, string> = {}
-        const draftRaw = localStorage.getItem(`exam_draft_v1:${examId}`)
+        const draftKey = `exam_draft_v1:${userId}:${examId}`
+        const draftRaw = localStorage.getItem(draftKey)
         if (draftRaw) {
           try {
             initialAnswers = JSON.parse(draftRaw)
-          } catch {
-            // ignore
-          }
+          } catch {}
         } else {
           for (const q of bank.questions) initialAnswers[q.id] = ''
         }
-        queueMicrotask(() => setAnswers(initialAnswers))
+        setAnswers(initialAnswers)
 
-        const startKey = `exam_start_time_v1:${examId}`
+        const startKey = `exam_start_time_v1:${userId}:${examId}`
         let startTimeStr = localStorage.getItem(startKey)
         if (!startTimeStr) {
           startTimeStr = Date.now().toString()
@@ -182,18 +216,19 @@ function ExamResultPage() {
         const elapsedRaw = Math.floor((Date.now() - startTime) / 1000)
         const remaining = Math.max(0, durationSeconds - elapsedRaw)
 
-        queueMicrotask(() => setTimeLeft(remaining))
+        setTimeLeft(remaining)
       }
-    } catch {
-      queueMicrotask(() => setQuestionBank(null))
+    } catch (err) {
+      console.error('[TakeExam] Initialization error:', err)
+      setQuestionBank(null)
     }
-  }, [examId, myClassId])
+  }, [examId, myClassId, myClassData, data, submissionData])
 
   useEffect(() => {
     if (Object.keys(answers).length > 0 && !submitted) {
-      localStorage.setItem(`exam_draft_v1:${examId}`, JSON.stringify(answers))
+      localStorage.setItem(`exam_draft_v1:${userId}:${examId}`, JSON.stringify(answers))
     }
-  }, [answers, submitted, examId])
+  }, [answers, submitted, examId, userId])
 
   // Countdown logic — chạy mỗi giây
   useEffect(() => {
@@ -241,10 +276,11 @@ function ExamResultPage() {
       })
 
       // Also save locally just in case
-      localStorage.removeItem(`exam_draft_v1:${examId}`)
+      localStorage.removeItem(`exam_draft_v1:${userId}:${examId}`)
       localStorage.setItem(
-        `member_exam_submission_v1:${examId}`,
+        `member_exam_submission_v1:${userId}:${examId}`,
         JSON.stringify({
+          userId,
           examId,
           classId: myClassId ?? null,
           answers,

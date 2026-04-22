@@ -49,15 +49,36 @@ export function useApproveRequest() {
           ...previousData,
           promotions: previousData.promotions.map((p: any) => {
             if (p.id === id) {
-              const nextBadges = p.badges.map((b: any) => {
-                if (b.label.includes('sao')) {
-                  const current = parseInt(b.label) || 0
-                  const next = Math.min(6, current + 1)
-                  return { ...b, label: `${next} sao` }
-                }
-                return b
-              })
-              return { ...p, badges: nextBadges }
+              const starBadge = p.badges.find((b: any) => b.label.includes('sao'))
+              const stars = starBadge ? parseInt(starBadge.label) || 0 : 0
+
+              if (stars >= 6) {
+                // Optimistic level promote
+                const levelBadge = p.badges.find((b: any) =>
+                  ['Tập sự', 'Biết việc', 'Được việc'].includes(b.label)
+                )
+                const current = levelBadge?.label || ''
+                let next = 'Cấp mới'
+                if (current === 'Tập sự') next = 'Biết việc'
+                else if (current === 'Biết việc') next = 'Được việc'
+
+                const nextBadges = p.badges.map((b: any) => {
+                  if (b.label === current) return { ...b, label: next, tone: 'warning' }
+                  if (b.label.includes('sao')) return { ...b, label: '0 sao' }
+                  return b
+                })
+                return { ...p, badges: nextBadges }
+              } else {
+                // Optimistic star promote
+                const nextBadges = p.badges.map((b: any) => {
+                  if (b.label.includes('sao')) {
+                    const next = stars + 1
+                    return { ...b, label: `${next} sao` }
+                  }
+                  return b
+                })
+                return { ...p, badges: nextBadges }
+              }
             }
             return p
           }),
@@ -71,10 +92,14 @@ export function useApproveRequest() {
       if (context?.previousData) {
         qc.setQueryData(managerKeys.approvals(), context.previousData)
       }
-      toast.error('Thao tác thất bại')
+      toast.error(getApiErrorMessage(err) || 'Thao tác thất bại')
     },
-    onSuccess: () => {
-      toast.success('Đã thăng cấp sao')
+    onSuccess: (res: any) => {
+      if (res?.status === 'PROMOTED') {
+        toast.success('Đã thăng cấp thành công!')
+      } else {
+        toast.success('Đã thăng cấp sao')
+      }
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: managerKeys.approvals() })
@@ -330,6 +355,19 @@ export function useDeleteClassSchedule() {
     onSuccess: (_d, vars) => {
       void qc.invalidateQueries({ queryKey: managerKeys.classSchedules(vars.classId) })
       toast.success('Đã xóa lịch học')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
+export function useSaveExamQuestions() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ classId, questions }: { classId: string; questions: any }) =>
+      managerApi.saveExamQuestions(classId, questions),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
+      toast.success('Đã lưu đề thi lên hệ thống')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   })

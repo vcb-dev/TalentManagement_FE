@@ -1,0 +1,15 @@
+import { createFileRoute } from '@tanstack/react-router'
+import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
+import { GraderClassByQuestionScreen } from '@/features/exam/components/GraderClassByQuestionScreen'
+
+export const Route = createFileRoute('/_protected/manager/grade-class/$classId')({
+  beforeLoad: () => {
+    requireRoleOrPermissionPrefixes(['TEACHER', 'MANAGER'], ['teacher.', 'manager.'])
+  },
+  component: GraderClassByQuestionPage,
+})
+
+function GraderClassByQuestionPage() {
+  const { classId } = Route.useParams()
+  return <GraderClassByQuestionScreen classId={classId} />
+}
