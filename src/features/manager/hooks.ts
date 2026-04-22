@@ -34,26 +34,51 @@ export function useApproveRequest() {
   return useMutation({
     mutationFn: async (id: string) => {
       if (isMockApiEnabled()) {
-        return safeParse(
-          approvalItemApiSchema,
-          {
-            id,
-            type: 'PROMOTION',
-            requesterName: '—',
-            status: 'APPROVED',
-            createdAt: new Date().toISOString(),
-          },
-          'POST approve (mock)'
-        )
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        return { id, status: 'APPROVED' }
       }
       const res = await apiClient.post<unknown>(`/manager/approvals/${id}/approve`)
-      return safeParse(approvalItemApiSchema, res.data, 'POST approve')
+      return res.data
+    },
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: managerKeys.approvals() })
+      const previousData = qc.getQueryData<any>(managerKeys.approvals())
+
+      if (previousData) {
+        const nextData = {
+          ...previousData,
+          promotions: previousData.promotions.map((p: any) => {
+            if (p.id === id) {
+              const nextBadges = p.badges.map((b: any) => {
+                if (b.label.includes('sao')) {
+                  const current = parseInt(b.label) || 0
+                  const next = Math.min(6, current + 1)
+                  return { ...b, label: `${next} sao` }
+                }
+                return b
+              })
+              return { ...p, badges: nextBadges }
+            }
+            return p
+          }),
+        }
+        qc.setQueryData(managerKeys.approvals(), nextData)
+      }
+
+      return { previousData }
+    },
+    onError: (err, id, context: any) => {
+      if (context?.previousData) {
+        qc.setQueryData(managerKeys.approvals(), context.previousData)
+      }
+      toast.error('Thao tác thất bại')
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: managerKeys.approvals() })
-      toast.success('Đã duyệt thăng cấp')
+      toast.success('Đã thăng cấp sao')
     },
-    onError: () => toast.error('Duyệt thất bại'),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: managerKeys.approvals() })
+    },
   })
 }
 

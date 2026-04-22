@@ -57,11 +57,18 @@ function initialsFromName(name: string): string {
 export interface ApprovalQueueProps {
   page: ApprovalsPage | undefined
   isLoading: boolean
+  isApproving?: string | null
   onApprove?: (id: string) => void
   onReject?: (id: string) => void
 }
 
-export function ApprovalQueue({ page, isLoading, onApprove, onReject }: ApprovalQueueProps) {
+export function ApprovalQueue({
+  page,
+  isLoading,
+  isApproving,
+  onApprove,
+  onReject,
+}: ApprovalQueueProps) {
   const user = useAuthStore((s) => s.user)
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const displayName = user?.name ?? 'Manager'
@@ -362,10 +369,15 @@ export function ApprovalQueue({ page, isLoading, onApprove, onReject }: Approval
                                 <Button
                                   type="button"
                                   size="sm"
+                                  disabled={isApproving === p.id}
                                   onClick={() => onApprove(p.id)}
-                                  className="h-8 rounded-lg bg-emerald-600 px-3 py-1 text-[10px] font-bold text-white hover:bg-emerald-700 shadow-sm"
+                                  className="h-8 min-w-[100px] rounded-lg bg-emerald-600 px-3 py-1 text-[10px] font-bold text-white hover:bg-emerald-700 shadow-sm transition-all active:scale-95"
                                 >
-                                  Duyệt
+                                  {isApproving === p.id ? (
+                                    <RefreshCw className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    'Thăng cấp sao'
+                                  )}
                                 </Button>
                               )}
                               {p.state === 'actionable' && onReject && (

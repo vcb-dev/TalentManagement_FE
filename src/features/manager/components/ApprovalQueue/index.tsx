@@ -9,6 +9,7 @@ export function ApprovalQueueContainer() {
     <ApprovalQueue
       page={data}
       isLoading={isLoading}
+      isApproving={approve.isPending ? (approve.variables as string) : null}
       onApprove={(id) => approve.mutate(id)}
       onReject={(id) => reject.mutate(id)}
     />

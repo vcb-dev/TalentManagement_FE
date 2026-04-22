@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Award, Eye, EyeOff, KeyRound, Lock, Mail, Trophy } from 'lucide-react'
+import { Award, Eye, EyeOff, KeyRound, Loader2, Lock, Mail, Trophy } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -55,6 +55,7 @@ function LoginPage() {
   const search = Route.useSearch()
   const setSession = useAuthStore((s) => s.setSession)
   const [showPassword, setShowPassword] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginRequestSchema),
     defaultValues: { email: '', password: '' },
@@ -67,6 +68,7 @@ function LoginPage() {
   const appName = import.meta.env.VITE_APP_NAME ?? 'VCB HRM'
 
   const onAuthSuccess = useCallback(() => {
+    setIsRedirecting(true)
     if (search.redirect && isSafeInternalRedirect(search.redirect)) {
       void navigate({ href: search.redirect })
       return
@@ -90,6 +92,7 @@ function LoginPage() {
       return
     }
     if (search.oauth !== 'success') return
+    setIsRedirecting(true)
     void (async () => {
       try {
         const d = await authApi.me()
@@ -106,12 +109,13 @@ function LoginPage() {
   }, [search.oauth, search.msg, search.redirect, navigate, setSession, onAuthSuccess])
 
   return (
-    <div className="login-page-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-10 text-sm leading-relaxed text-foreground">
+    <div className="login-page-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-10 text-sm leading-relaxed text-foreground transition-all duration-500">
       <div className="relative z-0 flex w-full max-w-[420px] flex-col items-stretch">
         <div
           className={cn(
             'rounded-xl bg-card p-10 shadow-[var(--shadow-card)]',
-            'border border-border'
+            'border border-border',
+            'animate-in fade-in slide-in-from-bottom-4 duration-700'
           )}
         >
           <div className="mb-8 text-center">
@@ -130,6 +134,7 @@ function LoginPage() {
             <div className="mb-2 flex flex-col items-stretch gap-3">
               <a
                 href={googleOAuthHref}
+                onClick={() => setIsRedirecting(true)}
                 className={cn(
                   'group relative flex h-[52px] w-full items-center justify-center gap-3 overflow-hidden rounded-xl',
                   'border-2 border-border bg-card px-4 text-[15px] font-semibold tracking-tight text-foreground',
@@ -266,10 +271,14 @@ function LoginPage() {
 
                 <Button
                   type="submit"
-                  disabled={login.isPending}
-                  className="mt-5 h-12 w-full rounded-lg text-base shadow-sm transition-opacity hover:opacity-[0.96]"
+                  disabled={login.isPending || isRedirecting}
+                  className="mt-5 h-12 w-full rounded-lg text-base shadow-sm transition-all hover:opacity-[0.96] active:scale-[0.98]"
                 >
-                  {login.isPending ? 'Đang đăng nhập…' : 'Đăng nhập'}
+                  {login.isPending || isRedirecting ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    'Đăng nhập'
+                  )}
                 </Button>
               </form>
             </Form>

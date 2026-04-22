@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import {
   BarChart3,
   CalendarDays,
@@ -103,6 +103,13 @@ export function EmployeeLearningDashboard() {
   const showKpiZone = role === 'MEMBER' || role === 'LEADER' || role === 'MANAGER'
   const paths = kpiOkrPaths(role)
   const [tab, setTab] = useState<DashboardTab>('learning')
+  const [isPending, startTransition] = useTransition()
+
+  const handleTabChange = (t: DashboardTab) => {
+    startTransition(() => {
+      setTab(t)
+    })
+  }
   const { data: meDashboard, isLoading } = useMyDashboard({ enabled: Boolean(user) })
   const greetingName = user?.name?.trim() || 'bạn'
   const apiUser = meDashboard?.user
@@ -476,12 +483,13 @@ export function EmployeeLearningDashboard() {
                   aria-selected={tab === 'learning'}
                   aria-controls="dash-panel-learning"
                   tabIndex={tab === 'learning' ? 0 : -1}
-                  onClick={() => setTab('learning')}
+                  onClick={() => handleTabChange('learning')}
                   className={cn(
                     'inline-flex h-auto min-h-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-all duration-300',
                     tab === 'learning'
                       ? 'scale-[1.02] bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-[var(--shadow-game-float)] ring-2 ring-primary/25 ring-offset-2 ring-offset-background motion-reduce:scale-100 motion-reduce:ring-0 motion-reduce:ring-offset-0 hover:bg-primary hover:text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-background/80 hover:text-foreground hover:shadow-sm'
+                      : 'text-muted-foreground hover:bg-background/80 hover:text-foreground hover:shadow-sm',
+                    isPending && tab === 'learning' && 'opacity-70'
                   )}
                 >
                   <GraduationCap className="h-4 w-4 shrink-0" strokeWidth={2} />
@@ -495,12 +503,13 @@ export function EmployeeLearningDashboard() {
                   aria-selected={tab === 'kpi'}
                   aria-controls="dash-panel-kpi"
                   tabIndex={tab === 'kpi' ? 0 : -1}
-                  onClick={() => setTab('kpi')}
+                  onClick={() => handleTabChange('kpi')}
                   className={cn(
                     'inline-flex h-auto min-h-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-all duration-300',
                     tab === 'kpi'
                       ? 'scale-[1.02] bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-[var(--shadow-game-float)] ring-2 ring-primary/25 ring-offset-2 ring-offset-background motion-reduce:scale-100 motion-reduce:ring-0 motion-reduce:ring-offset-0 hover:bg-primary hover:text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-background/80 hover:text-foreground hover:shadow-sm'
+                      : 'text-muted-foreground hover:bg-background/80 hover:text-foreground hover:shadow-sm',
+                    isPending && tab === 'kpi' && 'opacity-70'
                   )}
                 >
                   <Target className="h-4 w-4 shrink-0" strokeWidth={2} />

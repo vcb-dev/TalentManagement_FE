@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
@@ -28,7 +28,7 @@ function navItemDedupeKey(item: NavItem): string {
   return item.to + (item.search !== undefined ? JSON.stringify(item.search) : '')
 }
 
-function NavLink({
+const NavLink = memo(function NavLink({
   item,
   active,
   collapsed,
@@ -57,7 +57,7 @@ function NavLink({
     return (
       <SidebarMenuItem>
         <SidebarMenuButton asChild collapsed={collapsed} active={active}>
-          <Link to={item.to} search={item.search} title={title}>
+          <Link to={item.to} search={item.search} preload="intent" title={title}>
             {inner}
           </Link>
         </SidebarMenuButton>
@@ -68,13 +68,13 @@ function NavLink({
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild collapsed={collapsed} active={active}>
-        <Link to={item.to} title={title}>
+        <Link to={item.to} preload="intent" title={title}>
           {inner}
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
   )
-}
+})
 
 export function Sidebar() {
   const user = useAuthStore((s) => s.user)

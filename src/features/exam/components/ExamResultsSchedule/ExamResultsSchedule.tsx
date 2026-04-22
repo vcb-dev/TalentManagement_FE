@@ -351,16 +351,6 @@ export function ExamResultsSchedule({
                     <span className="text-sm font-semibold text-foreground">
                       Điểm: {sub.totalScore != null ? `${sub.totalScore}%` : '—'}
                     </span>
-                    <div className="flex gap-1" aria-hidden>
-                      {Array.from({ length: 6 }, (_, s) => (
-                        <ProgressStar
-                          key={`${sub.id}-${s}`}
-                          filled={s < Math.round(((sub.totalScore || 0) / 100) * 6)}
-                          variant="primary"
-                          className="h-4.5 w-4.5"
-                        />
-                      ))}
-                    </div>
                   </div>
                   <Button
                     type="button"
@@ -436,9 +426,6 @@ export function ExamResultsSchedule({
                         Điểm số
                       </th>
                       <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
-                        Xếp hạng (6 Sao)
-                      </th>
-                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
                         Trạng thái
                       </th>
                       <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
@@ -470,7 +457,7 @@ export function ExamResultsSchedule({
                 ) : mySubmissions ? (
                   mySubmissions.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
+                      <td colSpan={5} className="px-6 py-10 text-center text-muted-foreground">
                         Không có kết quả thi nào.
                       </td>
                     </tr>
@@ -504,19 +491,6 @@ export function ExamResultsSchedule({
                           {sub.totalScore != null ? `${sub.totalScore}%` : '—'}
                         </td>
                         <td className="px-6 py-5">
-                          <div className="flex gap-1" aria-hidden>
-                            {Array.from({ length: 6 }, (_, s) => (
-                              <ProgressStar
-                                key={s}
-                                filled={s < Math.round(((sub.totalScore || 0) / 100) * 6)}
-                                variant="primary"
-                                className="h-5 w-5"
-                              />
-                            ))}
-                          </div>
-                          <span className="sr-only">Xếp hạng sao</span>
-                        </td>
-                        <td className="px-6 py-5">
                           <span
                             className={cn(
                               'rounded-full px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-wider',
@@ -543,7 +517,7 @@ export function ExamResultsSchedule({
                   )
                 ) : filteredCompleted.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
+                    <td colSpan={5} className="px-6 py-10 text-center text-muted-foreground">
                       Không có kỳ thi đã hoàn thành trong mục lọc này.
                     </td>
                   </tr>
@@ -574,19 +548,6 @@ export function ExamResultsSchedule({
                         {formatViDate(exam.scheduledAt)}
                       </td>
                       <td className="px-6 py-5 text-muted-foreground">—</td>
-                      <td className="px-6 py-5">
-                        <div className="flex gap-1" aria-hidden>
-                          {Array.from({ length: 6 }, (_, s) => (
-                            <ProgressStar
-                              key={s}
-                              filled={false}
-                              variant="primary"
-                              className="h-5 w-5"
-                            />
-                          ))}
-                        </div>
-                        <span className="sr-only">Chưa có dữ liệu xếp hạng sao</span>
-                      </td>
                       <td className="px-6 py-5">
                         <span className="rounded-full bg-success-muted px-3 py-1 text-[0.6875rem] font-bold text-success">
                           HOÀN THÀNH

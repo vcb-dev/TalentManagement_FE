@@ -65,10 +65,10 @@ import {
 const formSchema = z.object({
   id: z.string().optional(),
   levelLabel: z.string().optional(),
-  topic: z.string().min(1, 'Bắt buộc'),
-  objective: z.string().min(1, 'Bắt buộc'),
+  topic: z.string().min(1, 'Vui lòng nhập chủ đề bài học'),
+  objective: z.string().min(1, 'Vui lòng nhập ít nhất một mục tiêu'),
   materialRef: z.string().nullable().optional(),
-  trainer: z.string().nullable().optional(),
+  trainer: z.string().min(1, 'Vui lòng chọn người đào tạo'),
   assessment: z.string().nullable().optional(),
   rowOrder: z.coerce.number().optional(),
 })
@@ -239,7 +239,11 @@ export function RoadmapCrud() {
   }
 
   const updateObjective = (id: string, text: string) => {
-    setObjectives(objectives.map((o) => (o.id === id ? { ...o, text } : o)))
+    const newObjectives = objectives.map((o) => (o.id === id ? { ...o, text } : o))
+    setObjectives(newObjectives)
+    // Sync with form for validation
+    const firstValid = newObjectives.find((o) => o.text.trim() !== '')?.text || ''
+    form.setValue('objective', firstValid, { shouldValidate: true })
   }
 
   const updateMaterial = (id: string, field: 'name' | 'link', value: string) => {
@@ -592,14 +596,31 @@ export function RoadmapCrud() {
                             >
                               <div className="relative flex-1">
                                 <Textarea
-                                  className="min-h-[80px] rounded-xl border-primary/10 bg-white pt-8 px-4 shadow-sm hover:border-primary/20 transition-all"
+                                  className={safeCn(
+                                    'min-h-[80px] rounded-xl border-primary/10 bg-white pt-8 px-4 shadow-sm hover:border-primary/20 transition-all',
+                                    form.formState.errors.objective &&
+                                      obj.text.trim() === '' &&
+                                      'border-red-500 bg-red-50/30'
+                                  )}
                                   placeholder="Kiến thức hoặc kĩ năng cần đạt được..."
                                   value={obj.text}
                                   onChange={(e) => updateObjective(obj.id, e.target.value)}
                                 />
-                                <div className="absolute left-3.5 top-3 flex h-5 w-5 items-center justify-center rounded-lg bg-primary/5 text-primary">
+                                <div
+                                  className={safeCn(
+                                    'absolute left-3.5 top-3 flex h-5 w-5 items-center justify-center rounded-lg transition-colors',
+                                    form.formState.errors.objective && obj.text.trim() === ''
+                                      ? 'bg-red-100 text-red-500'
+                                      : 'bg-primary/5 text-primary'
+                                  )}
+                                >
                                   <Target className="h-3 w-3" />
                                 </div>
+                                {form.formState.errors.objective && obj.text.trim() === '' && (
+                                  <p className="mt-1.5 ml-1 text-[10px] font-bold text-red-500">
+                                    Vui lòng nhập mục tiêu này hoặc xóa nếu không cần thiết
+                                  </p>
+                                )}
                               </div>
                               <Button
                                 type="button"
@@ -688,17 +709,30 @@ export function RoadmapCrud() {
                       <FormField
                         control={form.control}
                         name="trainer"
-                        render={({ field }) => (
+                        render={({ field, fieldState }) => (
                           <FormItem className="max-w-md">
-                            <FormLabel className="text-[11px] font-bold uppercase text-muted-foreground ml-1">
-                              Người đào tạo (Trainer)
+                            <FormLabel
+                              className={safeCn(
+                                'text-[11px] font-bold uppercase transition-colors ml-1',
+                                fieldState.error
+                                  ? 'text-red-600 font-black'
+                                  : 'text-muted-foreground'
+                              )}
+                            >
+                              Người đào tạo (Trainer) {fieldState.error && '(Bắt buộc)'}
                             </FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               defaultValue={field.value || undefined}
+                              value={field.value || undefined}
                             >
                               <FormControl>
-                                <SelectTrigger className="h-12 rounded-2xl border-primary/10 bg-white shadow-sm focus:ring-2 focus:ring-primary/20">
+                                <SelectTrigger
+                                  className={safeCn(
+                                    'h-12 rounded-2xl border-primary/10 bg-white shadow-sm transition-all hover:border-primary/30 focus:ring-2 focus:ring-primary/20',
+                                    fieldState.error && 'border-red-500 bg-red-50/30'
+                                  )}
+                                >
                                   <SelectValue placeholder="Chọn người đào tạo" />
                                 </SelectTrigger>
                               </FormControl>
@@ -730,7 +764,7 @@ export function RoadmapCrud() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <FormMessage />
+                            <FormMessage className="text-[10px]" />
                           </FormItem>
                         )}
                       />

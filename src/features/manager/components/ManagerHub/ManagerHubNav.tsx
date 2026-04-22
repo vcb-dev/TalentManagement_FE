@@ -47,13 +47,13 @@ export function ManagerHubNav() {
               size="sm"
               variant={active ? 'default' : 'outline'}
               className={cn(
-                'h-auto min-h-0 gap-1.5 px-3 py-1.5 text-xs md:text-sm',
+                'h-auto min-h-0 gap-1.5 px-3 py-1.5 text-xs md:text-sm transition-all duration-200 active:scale-95',
                 active
                   ? 'shadow-[var(--shadow-game-float)]'
                   : 'border-border/80 bg-card text-muted-foreground hover:border-primary/25 hover:bg-primary/[0.06] hover:text-foreground'
               )}
             >
-              <Link to={item.to}>
+              <Link to={item.to} preload="intent">
                 <Icon className="h-3.5 w-3.5 shrink-0 md:h-4 md:w-4" strokeWidth={2} />
                 {item.label}
               </Link>

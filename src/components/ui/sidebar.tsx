@@ -79,7 +79,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  'flex w-full items-center gap-3 rounded-lg border-l-[3px] py-2.5 text-sm font-medium leading-snug tracking-tight transition-[background-color,color,border-color,box-shadow]',
+  'flex w-full items-center gap-3 rounded-lg border-l-[3px] py-2.5 text-sm font-medium leading-snug tracking-tight transition-all duration-200 active:scale-[0.97]',
   {
     variants: {
       collapsed: {
