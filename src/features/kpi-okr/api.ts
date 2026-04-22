@@ -51,7 +51,8 @@ export type PerformanceSummaryRow = {
 export type PerformanceQuestionnaire = {
   id: string
   questions: { id: string; prompt: string; sortOrder: number }[]
-  answers: {
+  /** BE có thể trả thiếu khi chưa có câu trả lời hoặc bản response cũ. */
+  answers?: {
     questionId: string
     respondentUserId: string
     answerText: string

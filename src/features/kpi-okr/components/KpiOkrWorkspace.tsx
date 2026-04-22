@@ -1855,7 +1855,7 @@ export function FormPanel({
   const shouldShowQuestionForm = showQuestionForm ?? true
   const windowOpen = useMemo(() => isAnswerWindowOpen(year, month), [year, month])
   const myAnswers = useMemo(
-    () => data?.answers.filter((a) => a.respondentUserId === currentUserId) ?? [],
+    () => data?.answers?.filter((a) => a.respondentUserId === currentUserId) ?? [],
     [data?.answers, currentUserId]
   )
   const hasExistingAnswer = myAnswers.length > 0
@@ -2203,7 +2203,7 @@ export function FormPanel({
                           </span>
                         </div>
                         <div className="space-y-3">
-                          {data?.questions.map((qs) => (
+                          {data?.questions?.map((qs) => (
                             <div
                               key={qs.id}
                               className="rounded-lg bg-slate-50/80 p-3 dark:bg-slate-800/40"

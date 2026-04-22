@@ -382,7 +382,12 @@ export function HrOrgStructure() {
       payload,
     }: {
       id: string
-      payload: { name?: string; code?: string; description?: string; isActive?: boolean }
+      payload: {
+        name?: string
+        code?: string
+        description?: string
+        isActive?: boolean
+      }
     }) => orgCrudApi.updateDivision(id, payload),
     onSuccess: () => {
       toast.success('Đã cập nhật phòng ban')

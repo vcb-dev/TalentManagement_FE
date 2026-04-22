@@ -46,7 +46,12 @@ export const orgCrudApi = {
   },
   updateDivision: async (
     id: string,
-    body: { name?: string; code?: string; description?: string; isActive?: boolean }
+    body: {
+      name?: string
+      code?: string
+      description?: string
+      isActive?: boolean
+    }
   ): Promise<DivisionEntity> => {
     assertOrgCrudNotMock('sửa phòng ban')
     const res = await apiClient.patch<DivisionEntity>(`/org/divisions/${id}`, body)
