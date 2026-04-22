@@ -42,9 +42,10 @@ export function Calendar({
           'text-muted-foreground h-10 w-10 p-0 text-center align-middle text-[0.8rem] font-normal',
         day: 'group/day relative h-10 w-10 p-0 text-center align-middle text-sm font-normal',
         day_button:
-          'rdp-day_button box-border inline-flex h-10 min-h-10 w-10 min-w-10 items-center justify-center align-middle rounded-lg border-2 border-transparent p-0 text-sm font-medium transition-[color,background-color,border-color,box-shadow] duration-150',
+          'rdp-day_button box-border inline-flex h-10 min-h-10 w-10 min-w-10 items-center justify-center align-middle rounded-lg border-2 border-transparent p-0 text-sm font-medium transition-[color,background-color,border-color,box-shadow] duration-150 disabled:opacity-20 disabled:grayscale disabled:cursor-not-allowed disabled:pointer-events-none',
         day_outside: 'text-muted-foreground opacity-50',
-        day_disabled: 'text-muted-foreground opacity-50',
+        day_disabled:
+          'text-muted-foreground opacity-20 cursor-not-allowed pointer-events-none grayscale',
         day_range_middle: 'aria-selected:bg-accent aria-selected:text-accent-foreground',
         day_hidden: 'invisible',
         ...classNames,

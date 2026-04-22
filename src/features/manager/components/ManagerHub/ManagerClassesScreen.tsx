@@ -19,9 +19,11 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Form } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { InputController, SelectController } from '@/components/ui/form-controllers'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
+import { SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import {
   useAddClassMember,
@@ -312,8 +314,8 @@ export function ManagerClassesScreen() {
       </div>
 
       {isCreateOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <div className="w-full max-w-2xl rounded-2xl border bg-card p-5 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-2xl border bg-card p-5 shadow-2xl my-8">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-foreground">Tạo lớp học mới</h3>
               <Button
@@ -335,194 +337,204 @@ export function ManagerClassesScreen() {
               </Button>
             </div>
 
-            <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={onCreate}>
-              <InputController
-                control={createControl}
-                name="name"
-                label="Tên lớp"
-                required
-                rules={{ required: true, minLength: 3 }}
-                className="md:col-span-2"
-                placeholder="Ví dụ: Tập sự — Đợt Q2/2026"
-              />
-
-              <SelectController
-                control={createControl}
-                name="levelFrom"
-                label="Cấp lớp"
-                required
-                rules={{ required: true }}
-              >
-                {LEVEL_FLOW_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </SelectController>
-
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                  Lộ trình
-                </label>
-                <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm font-medium text-foreground">
-                  {LEVEL_LABELS[createLevelFrom]} →{' '}
-                  {LEVEL_LABELS[NEXT_LEVEL_BY_FROM[createLevelFrom]]}
-                </div>
-              </div>
-
-              <div className="relative md:col-span-2">
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                  Giáo viên phụ trách lớp
-                </label>
-                <Input
-                  value={selectedCreateTeacher ? selectedCreateTeacher.name : createTeacherQuery}
-                  onChange={(e) => {
-                    setCreateTeacherQuery(e.target.value)
-                    if (selectedCreateTeacher) setSelectedCreateTeacher(null)
-                  }}
-                  placeholder="Gõ tên/email giáo viên..."
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+            <Form {...createForm}>
+              <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={onCreate}>
+                <InputController
+                  control={createControl}
+                  name="name"
+                  label="Tên lớp"
+                  required
+                  rules={{ required: true, minLength: 3 }}
+                  className="md:col-span-2"
+                  placeholder="Ví dụ: Tập sự — Đợt Q2/2026"
                 />
-                {!selectedCreateTeacher && createTeacherQuery.trim().length > 0 ? (
-                  <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
-                    {fetchingCreateTeacherOptions ? (
-                      <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Đang tìm...
-                      </div>
-                    ) : createTeacherOptions.length === 0 ? (
-                      <div className="px-2 py-2 text-xs text-muted-foreground">
-                        Không có kết quả phù hợp
-                      </div>
-                    ) : (
-                      createTeacherOptions.map((opt) => (
-                        <Button
-                          key={opt.userId}
-                          type="button"
-                          variant="ghost"
-                          className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
-                          onClick={() => {
-                            setSelectedCreateTeacher(opt)
-                            setCreateTeacherQuery('')
-                            setSelectedCreateMembers((prev) =>
-                              prev.filter((m) => m.userId !== opt.userId)
-                            )
-                          }}
-                        >
-                          <p className="font-semibold text-foreground">{opt.name}</p>
-                          <p className="text-muted-foreground">{opt.email}</p>
-                        </Button>
-                      ))
-                    )}
+
+                <SelectController
+                  control={createControl}
+                  name="levelFrom"
+                  label="Cấp lớp"
+                  required
+                  rules={{ required: true }}
+                >
+                  {LEVEL_FLOW_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectController>
+
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                    Lộ trình
+                  </label>
+                  <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm font-medium text-foreground">
+                    {LEVEL_LABELS[createLevelFrom]} →{' '}
+                    {LEVEL_LABELS[NEXT_LEVEL_BY_FROM[createLevelFrom]]}
                   </div>
-                ) : null}
-              </div>
+                </div>
 
-              <div className="relative md:col-span-2">
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                  Thêm nhân sự cho lớp (theo cấp đã chọn)
-                </label>
-                <Input
-                  value={createMemberQuery}
-                  onChange={(e) => setCreateMemberQuery(e.target.value)}
-                  placeholder="Gõ tên/email để tìm nhân sự..."
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
-                />
-                {createMemberQuery.trim().length > 0 ? (
-                  <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
-                    {fetchingCreateOptions ? (
-                      <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Đang tìm...
-                      </div>
-                    ) : createMemberOptions.filter(
-                        (opt) =>
-                          !selectedCreateMembers.some((m) => m.userId === opt.userId) &&
-                          opt.userId !== selectedCreateTeacher?.userId
-                      ).length === 0 ? (
-                      <div className="px-2 py-2 text-xs text-muted-foreground">
-                        Không có kết quả phù hợp
-                      </div>
-                    ) : (
-                      createMemberOptions
-                        .filter(
-                          (opt) =>
-                            !selectedCreateMembers.some((m) => m.userId === opt.userId) &&
-                            opt.userId !== selectedCreateTeacher?.userId
-                        )
-                        .map((opt) => (
+                <div className="relative md:col-span-2">
+                  <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                    Giáo viên phụ trách lớp
+                  </label>
+                  <Input
+                    value={selectedCreateTeacher ? selectedCreateTeacher.name : createTeacherQuery}
+                    onChange={(e) => {
+                      setCreateTeacherQuery(e.target.value)
+                      if (selectedCreateTeacher) setSelectedCreateTeacher(null)
+                    }}
+                    placeholder="Gõ tên/email giáo viên..."
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+                  />
+                  {!selectedCreateTeacher && createTeacherQuery.trim().length > 0 ? (
+                    <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                      {fetchingCreateTeacherOptions ? (
+                        <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Đang tìm...
+                        </div>
+                      ) : createTeacherOptions.length === 0 ? (
+                        <div className="px-2 py-2 text-xs text-muted-foreground">
+                          Không có kết quả phù hợp
+                        </div>
+                      ) : (
+                        createTeacherOptions.map((opt) => (
                           <Button
                             key={opt.userId}
                             type="button"
                             variant="ghost"
                             className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
                             onClick={() => {
-                              setSelectedCreateMembers((prev) => [...prev, opt])
-                              setCreateMemberQuery('')
+                              setSelectedCreateTeacher(opt)
+                              setCreateTeacherQuery('')
+                              setSelectedCreateMembers((prev) =>
+                                prev.filter((m) => m.userId !== opt.userId)
+                              )
                             }}
                           >
                             <p className="font-semibold text-foreground">{opt.name}</p>
                             <p className="text-muted-foreground">{opt.email}</p>
                           </Button>
                         ))
-                    )}
-                  </div>
-                ) : null}
-              </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
 
-              <div className="md:col-span-2">
-                <p className="mb-1 text-xs font-semibold text-muted-foreground">Nhân sự đã chọn</p>
-                {selectedCreateMembers.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Chưa chọn nhân sự nào.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {selectedCreateMembers.map((m) => (
-                      <span
-                        key={m.userId}
-                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs"
-                      >
-                        {m.name}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 min-h-0 shrink-0 rounded p-0.5 hover:bg-primary/20"
-                          onClick={() =>
-                            setSelectedCreateMembers((prev) =>
-                              prev.filter((x) => x.userId !== m.userId)
+                <div className="relative z-30 md:col-span-2">
+                  <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                    Thêm nhân sự cho lớp (theo cấp đã chọn)
+                  </label>
+                  <div className="relative">
+                    <Input
+                      value={createMemberQuery}
+                      onChange={(e) => setCreateMemberQuery(e.target.value)}
+                      placeholder="Gõ tên/email để tìm nhân sự..."
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+                    />
+                    {createMemberQuery.trim().length > 0 ? (
+                      <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                        {fetchingCreateOptions ? (
+                          <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Đang tìm...
+                          </div>
+                        ) : createMemberOptions.filter(
+                            (opt) =>
+                              !selectedCreateMembers.some((m) => m.userId === opt.userId) &&
+                              opt.userId !== selectedCreateTeacher?.userId
+                          ).length === 0 ? (
+                          <div className="px-2 py-2 text-xs text-muted-foreground">
+                            Không có kết quả phù hợp
+                          </div>
+                        ) : (
+                          createMemberOptions
+                            .filter(
+                              (opt) =>
+                                !selectedCreateMembers.some((m) => m.userId === opt.userId) &&
+                                opt.userId !== selectedCreateTeacher?.userId
                             )
-                          }
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </span>
-                    ))}
+                            .map((opt) => (
+                              <Button
+                                key={opt.userId}
+                                type="button"
+                                variant="ghost"
+                                className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
+                                onClick={() => {
+                                  setSelectedCreateMembers((prev) => [...prev, opt])
+                                  setCreateMemberQuery('')
+                                }}
+                              >
+                                <p className="font-semibold text-foreground">{opt.name}</p>
+                                <p className="text-muted-foreground">{opt.email}</p>
+                              </Button>
+                            ))
+                        )}
+                      </div>
+                    ) : null}
                   </div>
-                )}
-              </div>
+                </div>
 
-              <div className="mt-5 flex justify-end gap-2 md:col-span-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsCreateOpen(false)
-                    resetCreateForm({ name: '', levelFrom: 'tap_su' })
-                    setCreateMemberQuery('')
-                    setSelectedCreateMembers([])
-                    setCreateTeacherQuery('')
-                    setSelectedCreateTeacher(null)
-                  }}
-                  disabled={createClass.isPending}
-                >
-                  Hủy
-                </Button>
-                <Button type="submit" className="gap-2 font-bold" disabled={createClass.isPending}>
-                  <PlusCircle className="h-4 w-4" />
-                  {createClass.isPending ? 'Đang tạo…' : 'Tạo lớp'}
-                </Button>
-              </div>
-            </form>
+                <div className="md:col-span-2">
+                  <p className="mb-1 text-xs font-semibold text-muted-foreground">
+                    Nhân sự đã chọn
+                  </p>
+                  {selectedCreateMembers.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Chưa chọn nhân sự nào.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCreateMembers.map((m) => (
+                        <span
+                          key={m.userId}
+                          className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs"
+                        >
+                          {m.name}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 min-h-0 shrink-0 rounded p-0.5 hover:bg-primary/20"
+                            onClick={() =>
+                              setSelectedCreateMembers((prev) =>
+                                prev.filter((x) => x.userId !== m.userId)
+                              )
+                            }
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-5 flex justify-end gap-2 md:col-span-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setIsCreateOpen(false)
+                      resetCreateForm({ name: '', levelFrom: 'tap_su' })
+                      setCreateMemberQuery('')
+                      setSelectedCreateMembers([])
+                      setCreateTeacherQuery('')
+                      setSelectedCreateTeacher(null)
+                    }}
+                    disabled={createClass.isPending}
+                  >
+                    Hủy
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="gap-2 font-bold"
+                    disabled={createClass.isPending}
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    {createClass.isPending ? 'Đang tạo…' : 'Tạo lớp'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </div>
         </div>
       ) : null}
@@ -537,11 +549,17 @@ export function ManagerClassesScreen() {
             <div
               key={row.id}
               className={cn(
-                'overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[var(--shadow-card)] transition-shadow duration-300 hover:shadow-xl',
+                'rounded-2xl border border-border/80 bg-card shadow-[var(--shadow-card)] transition-shadow duration-300 hover:shadow-xl',
+                activeClassForDropdown === row.id ? 'relative z-30' : 'relative z-0',
                 CARD_ENTRANCE_HOVER
               )}
             >
-              <div className={cn('relative h-24 overflow-hidden bg-gradient-to-r p-6', header)}>
+              <div
+                className={cn(
+                  'relative h-24 overflow-hidden rounded-t-2xl bg-gradient-to-r p-6',
+                  header
+                )}
+              >
                 <div
                   className="pointer-events-none absolute inset-0 opacity-[0.12]"
                   style={{
@@ -716,72 +734,76 @@ export function ManagerClassesScreen() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <form className="space-y-4" onSubmit={saveEditClass}>
-              <InputController
-                control={editControl}
-                name="name"
-                label="Tên lớp"
-                required
-                rules={{ required: true, minLength: 3 }}
-                placeholder="Ví dụ: Tập sự – Đợt Q2/2026"
-              />
-              <div className="relative">
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                  Giáo viên phụ trách lớp
-                </label>
-                <Input
-                  value={selectedTeacher ? selectedTeacher.name : editModalTeacherQuery}
-                  onChange={(e) => {
-                    setEditModalTeacherQuery(e.target.value)
-                    if (selectedTeacher) setSelectedTeacher(null)
-                  }}
-                  placeholder="Gõ tên/email giáo viên..."
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+            <Form {...editForm}>
+              <form className="space-y-4" onSubmit={saveEditClass}>
+                <InputController
+                  control={editControl}
+                  name="name"
+                  label="Tên lớp"
+                  required
+                  rules={{ required: true, minLength: 3 }}
+                  placeholder="Ví dụ: Tập sự – Đợt Q2/2026"
                 />
-                {!selectedTeacher && editModalTeacherQuery.trim().length > 0 ? (
-                  <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
-                    {fetchingEditModalTeacherOptions ? (
-                      <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Đang tìm...
+                <div className="relative">
+                  <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                    Giáo viên phụ trách lớp
+                  </label>
+                  <div className="relative z-40">
+                    <Input
+                      value={selectedTeacher ? selectedTeacher.name : editModalTeacherQuery}
+                      onChange={(e) => {
+                        setEditModalTeacherQuery(e.target.value)
+                        if (selectedTeacher) setSelectedTeacher(null)
+                      }}
+                      placeholder="Gõ tên/email giáo viên..."
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+                    />
+                    {!selectedTeacher && editModalTeacherQuery.trim().length > 0 ? (
+                      <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                        {fetchingEditModalTeacherOptions ? (
+                          <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Đang tìm...
+                          </div>
+                        ) : editModalTeacherOptions.length === 0 ? (
+                          <div className="px-2 py-2 text-xs text-muted-foreground">
+                            Không có kết quả phù hợp
+                          </div>
+                        ) : (
+                          editModalTeacherOptions.map((opt) => (
+                            <Button
+                              key={opt.userId}
+                              type="button"
+                              variant="ghost"
+                              className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
+                              onClick={() => {
+                                setSelectedTeacher(opt)
+                                setEditModalTeacherQuery('')
+                              }}
+                            >
+                              <p className="font-semibold text-foreground">{opt.name}</p>
+                              <p className="text-muted-foreground">{opt.email}</p>
+                            </Button>
+                          ))
+                        )}
                       </div>
-                    ) : editModalTeacherOptions.length === 0 ? (
-                      <div className="px-2 py-2 text-xs text-muted-foreground">
-                        Không có kết quả phù hợp
-                      </div>
-                    ) : (
-                      editModalTeacherOptions.map((opt) => (
-                        <Button
-                          key={opt.userId}
-                          type="button"
-                          variant="ghost"
-                          className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
-                          onClick={() => {
-                            setSelectedTeacher(opt)
-                            setEditModalTeacherQuery('')
-                          }}
-                        >
-                          <p className="font-semibold text-foreground">{opt.name}</p>
-                          <p className="text-muted-foreground">{opt.email}</p>
-                        </Button>
-                      ))
-                    )}
+                    ) : null}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Lịch thi kỳ &amp; người chấm đặt tại mục Lịch thi &amp; chỉ định người chấm.
+                    </p>
                   </div>
-                ) : null}
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Lịch thi kỳ &amp; người chấm đặt tại mục Lịch thi &amp; chỉ định người chấm.
-                </p>
-              </div>
+                </div>
 
-              <div className="mt-5 flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={closeEditClassModal}>
-                  Hủy
-                </Button>
-                <Button type="submit" disabled={updateClass.isPending}>
-                  {updateClass.isPending ? 'Đang lưu...' : 'Lưu'}
-                </Button>
-              </div>
-            </form>
+                <div className="mt-5 flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={closeEditClassModal}>
+                    Hủy
+                  </Button>
+                  <Button type="submit" disabled={updateClass.isPending}>
+                    {updateClass.isPending ? 'Đang lưu...' : 'Lưu'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </div>
         </div>
       ) : null}

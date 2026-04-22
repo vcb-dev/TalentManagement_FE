@@ -11,6 +11,7 @@ import {
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Form } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { InputController, TextareaController } from '@/components/ui/form-controllers'
 import {
@@ -366,263 +367,270 @@ export function ManagerClassExamsScreen() {
               </Button>
             </div>
 
-            <div className="space-y-4">
-              <InputController
-                control={assignmentControl}
-                name="title"
-                label="Tên bộ đề"
-                required
-                rules={{ required: true }}
-                placeholder="Ví dụ: Bộ đề tập sự tháng 04/2026"
-              />
+            <Form {...assignmentForm}>
+              <div className="space-y-4">
+                <InputController
+                  control={assignmentControl}
+                  name="title"
+                  label="Tên bộ đề"
+                  required
+                  rules={{ required: true }}
+                  placeholder="Ví dụ: Bộ đề tập sự tháng 04/2026"
+                />
 
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={assignmentMode === 'upload' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setAssignmentValue('mode', 'upload')}
-                  className={cn(
-                    'rounded-lg border px-3 py-1.5 text-sm font-semibold',
-                    assignmentMode !== 'upload' && 'border-border bg-card hover:bg-muted'
-                  )}
-                >
-                  Upload file
-                </Button>
-                <Button
-                  type="button"
-                  variant={assignmentMode === 'compose' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setAssignmentValue('mode', 'compose')}
-                  className={cn(
-                    'rounded-lg border px-3 py-1.5 text-sm font-semibold',
-                    assignmentMode !== 'compose' && 'border-border bg-card hover:bg-muted'
-                  )}
-                >
-                  Tự soạn câu hỏi
-                </Button>
-              </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={assignmentMode === 'upload' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setAssignmentValue('mode', 'upload')}
+                    className={cn(
+                      'rounded-lg border px-3 py-1.5 text-sm font-semibold',
+                      assignmentMode !== 'upload' && 'border-border bg-card hover:bg-muted'
+                    )}
+                  >
+                    Upload file
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={assignmentMode === 'compose' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setAssignmentValue('mode', 'compose')}
+                    className={cn(
+                      'rounded-lg border px-3 py-1.5 text-sm font-semibold',
+                      assignmentMode !== 'compose' && 'border-border bg-card hover:bg-muted'
+                    )}
+                  >
+                    Tự soạn câu hỏi
+                  </Button>
+                </div>
 
-              {assignmentMode === 'upload' ? (
-                <>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                      Upload file câu hỏi
-                    </label>
-                    <Input
-                      type="file"
-                      accept=".txt,.md,.csv,text/plain,text/markdown"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) void onUploadQuestionFile(file)
-                      }}
-                      className="block w-full cursor-pointer rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-primary hover:file:bg-primary/20"
-                    />
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Hỗ trợ txt/md/csv. Mỗi câu nên bắt đầu bằng số thứ tự (vd: 1. / Câu 1:) để
-                      parse chuẩn hơn.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                      Nhập/chỉnh nội dung câu hỏi thô
-                    </label>
-                    <TextareaController
-                      control={assignmentControl}
-                      name="rawInput"
-                      label=""
-                      className="space-y-0"
-                      placeholder={
-                        '1. Câu hỏi số 1\nA. Đáp án A\nB. Đáp án B\n\n2. Câu hỏi số 2\nA. ...'
-                      }
-                      rows={8}
-                    />
-                    <div className="mt-2 flex justify-end">
-                      <Button type="button" variant="outline" size="sm" onClick={parseRawQuestions}>
-                        Format bộ câu hỏi
-                      </Button>
+                {assignmentMode === 'upload' ? (
+                  <>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                        Upload file câu hỏi
+                      </label>
+                      <Input
+                        type="file"
+                        accept=".txt,.md,.csv,text/plain,text/markdown"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) void onUploadQuestionFile(file)
+                        }}
+                        className="block w-full cursor-pointer rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-primary hover:file:bg-primary/20"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Hỗ trợ txt/md/csv. Mỗi câu nên bắt đầu bằng số thứ tự (vd: 1. / Câu 1:) để
+                        parse chuẩn hơn.
+                      </p>
                     </div>
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-3 rounded-xl border border-border/70 bg-muted/10 p-3">
-                  {composeQuestions.map((q, qIdx) => (
-                    <div key={q.id} className="rounded-xl border border-border bg-background p-3">
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-foreground">Câu hỏi {qIdx + 1}</p>
+
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                        Nhập/chỉnh nội dung câu hỏi thô
+                      </label>
+                      <TextareaController
+                        control={assignmentControl}
+                        name="rawInput"
+                        label=""
+                        className="space-y-0"
+                        placeholder={
+                          '1. Câu hỏi số 1\nA. Đáp án A\nB. Đáp án B\n\n2. Câu hỏi số 2\nA. ...'
+                        }
+                        rows={8}
+                      />
+                      <div className="mt-2 flex justify-end">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="h-auto gap-1 rounded-md px-2 py-1 text-xs font-normal normal-case tracking-normal text-muted-foreground"
-                          onClick={() => removeComposeQuestion(q.id)}
+                          onClick={parseRawQuestions}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Xóa
+                          Format bộ câu hỏi
                         </Button>
                       </div>
-                      <Input
-                        value={q.title}
-                        onChange={(e) =>
-                          updateComposeQuestion(q.id, (x) => ({ ...x, title: e.target.value }))
-                        }
-                        placeholder="Câu hỏi chưa có tiêu đề"
-                        className="mb-2 w-full rounded-lg text-sm focus-visible:border-primary focus-visible:ring-primary/20"
-                      />
-                      <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto] md:items-center">
-                        <Select
-                          value={q.type}
-                          onValueChange={(value) =>
-                            updateComposeQuestion(q.id, (x) => ({
-                              ...x,
-                              type: value as ComposeQuestionType,
-                              options:
-                                value === 'text'
-                                  ? []
-                                  : x.options.length > 0
-                                    ? x.options
-                                    : ['Lựa chọn 1', 'Lựa chọn 2'],
-                            }))
-                          }
-                        >
-                          <SelectTrigger className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="single">Trắc nghiệm (1 đáp án)</SelectItem>
-                            <SelectItem value="multiple">Trắc nghiệm (nhiều đáp án)</SelectItem>
-                            <SelectItem value="text">Tự luận ngắn</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-muted-foreground">
-                          <Checkbox
-                            checked={q.required}
-                            onCheckedChange={(v) =>
-                              updateComposeQuestion(q.id, (x) => ({
-                                ...x,
-                                required: v === true,
-                              }))
-                            }
-                          />
-                          Bắt buộc
-                        </label>
-                        <div className="text-xs text-muted-foreground">
-                          {q.type === 'text' ? 'Trả lời văn bản' : 'Dạng lựa chọn'}
-                        </div>
-                      </div>
-
-                      {q.type !== 'text' ? (
-                        <div className="mt-3 space-y-2">
-                          {q.options.map((opt, oi) => (
-                            <div key={`${q.id}-${oi}`} className="flex items-center gap-2">
-                              <span className="text-muted-foreground">
-                                {q.type === 'single' ? (
-                                  <Circle className="h-4 w-4" />
-                                ) : (
-                                  <CheckSquare className="h-4 w-4" />
-                                )}
-                              </span>
-                              <Input
-                                value={opt}
-                                onChange={(e) =>
-                                  updateComposeQuestion(q.id, (x) => ({
-                                    ...x,
-                                    options: x.options.map((v, i) =>
-                                      i === oi ? e.target.value : v
-                                    ),
-                                  }))
-                                }
-                                className="flex-1 rounded-lg text-sm focus-visible:border-primary focus-visible:ring-primary/20"
-                                placeholder={`Lựa chọn ${oi + 1}`}
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-auto rounded-md px-2 py-1 text-xs font-normal normal-case tracking-normal text-muted-foreground"
-                                onClick={() => removeOption(q.id, oi)}
-                              >
-                                Xóa
-                              </Button>
-                            </div>
-                          ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-3 rounded-xl border border-border/70 bg-muted/10 p-3">
+                    {composeQuestions.map((q, qIdx) => (
+                      <div key={q.id} className="rounded-xl border border-border bg-background p-3">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <p className="text-sm font-bold text-foreground">Câu hỏi {qIdx + 1}</p>
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-auto gap-1 rounded-md px-2.5 py-1.5 text-xs font-semibold normal-case tracking-normal text-primary hover:bg-primary/10"
-                            onClick={() => addOption(q.id)}
+                            className="h-auto gap-1 rounded-md px-2 py-1 text-xs font-normal normal-case tracking-normal text-muted-foreground"
+                            onClick={() => removeComposeQuestion(q.id)}
                           >
-                            <ListPlus className="h-3.5 w-3.5" />
-                            Thêm lựa chọn
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Xóa
                           </Button>
                         </div>
-                      ) : null}
-                    </div>
-                  ))}
-                  <div className="flex justify-end">
-                    <Button type="button" variant="outline" onClick={addComposeQuestion}>
-                      Thêm câu hỏi
-                    </Button>
-                  </div>
-                </div>
-              )}
+                        <Input
+                          value={q.title}
+                          onChange={(e) =>
+                            updateComposeQuestion(q.id, (x) => ({ ...x, title: e.target.value }))
+                          }
+                          placeholder="Câu hỏi chưa có tiêu đề"
+                          className="mb-2 w-full rounded-lg text-sm focus-visible:border-primary focus-visible:ring-primary/20"
+                        />
+                        <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto] md:items-center">
+                          <Select
+                            value={q.type}
+                            onValueChange={(value) =>
+                              updateComposeQuestion(q.id, (x) => ({
+                                ...x,
+                                type: value as ComposeQuestionType,
+                                options:
+                                  value === 'text'
+                                    ? []
+                                    : x.options.length > 0
+                                      ? x.options
+                                      : ['Lựa chọn 1', 'Lựa chọn 2'],
+                              }))
+                            }
+                          >
+                            <SelectTrigger className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="single">Trắc nghiệm (1 đáp án)</SelectItem>
+                              <SelectItem value="multiple">Trắc nghiệm (nhiều đáp án)</SelectItem>
+                              <SelectItem value="text">Tự luận ngắn</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-muted-foreground">
+                            <Checkbox
+                              checked={q.required}
+                              onCheckedChange={(v) =>
+                                updateComposeQuestion(q.id, (x) => ({
+                                  ...x,
+                                  required: v === true,
+                                }))
+                              }
+                            />
+                            Bắt buộc
+                          </label>
+                          <div className="text-xs text-muted-foreground">
+                            {q.type === 'text' ? 'Trả lời văn bản' : 'Dạng lựa chọn'}
+                          </div>
+                        </div>
 
-              <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
-                <p className="mb-2 text-xs font-semibold text-muted-foreground">
-                  Xem trước (
-                  {assignmentMode === 'compose'
-                    ? composeToQuestionItems(composeQuestions).length
-                    : questionDraft.length}{' '}
-                  câu)
-                </p>
-                <div className="max-h-56 space-y-2 overflow-auto pr-1">
-                  {(assignmentMode === 'compose'
-                    ? composeToQuestionItems(composeQuestions)
-                    : questionDraft
-                  ).length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      {assignmentMode === 'compose'
-                        ? 'Chưa có câu hỏi hợp lệ. Vui lòng nhập tiêu đề cho từng câu.'
-                        : 'Chưa có câu hỏi. Upload file hoặc nhập nội dung rồi bấm "Format bộ câu hỏi".'}
-                    </p>
-                  ) : (
-                    (assignmentMode === 'compose'
-                      ? composeToQuestionItems(composeQuestions)
-                      : questionDraft
-                    ).map((q, idx) => (
-                      <div
-                        key={q.id}
-                        className="rounded-lg border border-border bg-background px-3 py-2"
-                      >
-                        <p className="text-sm font-semibold text-foreground">
-                          Câu {idx + 1}: {q.stem}
-                        </p>
-                        {q.options.length > 0 ? (
-                          <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                        {q.type !== 'text' ? (
+                          <div className="mt-3 space-y-2">
                             {q.options.map((opt, oi) => (
-                              <p key={`${q.id}-${oi}`}>
-                                {String.fromCharCode(65 + oi)}. {opt}
-                              </p>
+                              <div key={`${q.id}-${oi}`} className="flex items-center gap-2">
+                                <span className="text-muted-foreground">
+                                  {q.type === 'single' ? (
+                                    <Circle className="h-4 w-4" />
+                                  ) : (
+                                    <CheckSquare className="h-4 w-4" />
+                                  )}
+                                </span>
+                                <Input
+                                  value={opt}
+                                  onChange={(e) =>
+                                    updateComposeQuestion(q.id, (x) => ({
+                                      ...x,
+                                      options: x.options.map((v, i) =>
+                                        i === oi ? e.target.value : v
+                                      ),
+                                    }))
+                                  }
+                                  className="flex-1 rounded-lg text-sm focus-visible:border-primary focus-visible:ring-primary/20"
+                                  placeholder={`Lựa chọn ${oi + 1}`}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-auto rounded-md px-2 py-1 text-xs font-normal normal-case tracking-normal text-muted-foreground"
+                                  onClick={() => removeOption(q.id, oi)}
+                                >
+                                  Xóa
+                                </Button>
+                              </div>
                             ))}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-auto gap-1 rounded-md px-2.5 py-1.5 text-xs font-semibold normal-case tracking-normal text-primary hover:bg-primary/10"
+                              onClick={() => addOption(q.id)}
+                            >
+                              <ListPlus className="h-3.5 w-3.5" />
+                              Thêm lựa chọn
+                            </Button>
                           </div>
                         ) : null}
                       </div>
-                    ))
-                  )}
+                    ))}
+                    <div className="flex justify-end">
+                      <Button type="button" variant="outline" onClick={addComposeQuestion}>
+                        Thêm câu hỏi
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+                  <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                    Xem trước (
+                    {assignmentMode === 'compose'
+                      ? composeToQuestionItems(composeQuestions).length
+                      : questionDraft.length}{' '}
+                    câu)
+                  </p>
+                  <div className="max-h-56 space-y-2 overflow-auto pr-1">
+                    {(assignmentMode === 'compose'
+                      ? composeToQuestionItems(composeQuestions)
+                      : questionDraft
+                    ).length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        {assignmentMode === 'compose'
+                          ? 'Chưa có câu hỏi hợp lệ. Vui lòng nhập tiêu đề cho từng câu.'
+                          : 'Chưa có câu hỏi. Upload file hoặc nhập nội dung rồi bấm "Format bộ câu hỏi".'}
+                      </p>
+                    ) : (
+                      (assignmentMode === 'compose'
+                        ? composeToQuestionItems(composeQuestions)
+                        : questionDraft
+                      ).map((q, idx) => (
+                        <div
+                          key={q.id}
+                          className="rounded-lg border border-border bg-background px-3 py-2"
+                        >
+                          <p className="text-sm font-semibold text-foreground">
+                            Câu {idx + 1}: {q.stem}
+                          </p>
+                          {q.options.length > 0 ? (
+                            <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                              {q.options.map((opt, oi) => (
+                                <p key={`${q.id}-${oi}`}>
+                                  {String.fromCharCode(65 + oi)}. {opt}
+                                </p>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-5 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={closeAssignmentModal}>
-                Hủy
-              </Button>
-              <Button type="button" className="font-bold" onClick={saveQuestionBank}>
-                Lưu bộ bài thi
-              </Button>
-            </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={closeAssignmentModal}>
+                  Hủy
+                </Button>
+                <Button type="button" className="font-bold" onClick={saveQuestionBank}>
+                  Lưu bộ bài thi
+                </Button>
+              </div>
+            </Form>
           </div>
         </div>
       ) : null}
