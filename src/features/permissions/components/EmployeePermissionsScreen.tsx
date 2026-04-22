@@ -79,8 +79,8 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
         setSelected(applyMandatoryViewRules(unionFromTemplates(tpl)))
       }
       setDirty(false)
-    } catch {
-      toast.error('Không tải được phân quyền')
+    } catch (e) {
+      toast.error(getApiErrorMessage(e) || 'Không tải được phân quyền')
     } finally {
       setLoading(false)
     }

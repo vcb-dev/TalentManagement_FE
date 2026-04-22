@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getApiErrorMessage } from '@/lib/axios'
 import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
 import { employeeApi, type CreateEmployeeMeta } from './api'
 import { employeeKeys } from './queryKeys'
@@ -31,8 +32,8 @@ export function useCreateEmployee() {
       void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
       toast.success('Đã tạo nhân viên')
     },
-    onError: () => {
-      toast.error('Không thể tạo nhân viên')
+    onError: (e) => {
+      toast.error(getApiErrorMessage(e) || 'Không thể tạo nhân viên')
     },
   })
 }
@@ -47,8 +48,8 @@ export function useUpdateEmployee() {
       void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
       toast.success('Đã cập nhật nhân viên')
     },
-    onError: () => {
-      toast.error('Không thể cập nhật nhân viên')
+    onError: (e) => {
+      toast.error(getApiErrorMessage(e) || 'Không thể cập nhật nhân viên')
     },
   })
 }
@@ -72,11 +73,11 @@ export function useDeactivateEmployee() {
       })
       return { snapshots }
     },
-    onError: (_err, _id, ctx) => {
+    onError: (err, _id, ctx) => {
       ctx?.snapshots?.forEach(([key, data]) => {
         qc.setQueryData(key, data)
       })
-      toast.error('Không thể vô hiệu hóa nhân viên')
+      toast.error(getApiErrorMessage(err) || 'Không thể vô hiệu hóa nhân viên')
     },
     onSuccess: (_data, id) => {
       void qc.invalidateQueries({ queryKey: employeeKeys.detail(id) })
