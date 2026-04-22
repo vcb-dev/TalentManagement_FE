@@ -362,7 +362,10 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
 
   const onPortraitFile = (file: File) => {
     uploadPortrait(file, {
-      onSuccess: () => toast.success('Đã cập nhật ảnh đại diện'),
+      onSuccess: (res) => {
+        toast.success('Đã cập nhật ảnh đại diện')
+        form.setValue('portraitRef', res.portraitRef)
+      },
       onError: () => toast.error('Không tải được ảnh. Thử lại sau.'),
     })
   }

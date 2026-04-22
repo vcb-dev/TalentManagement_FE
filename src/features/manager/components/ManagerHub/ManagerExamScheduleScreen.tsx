@@ -1,6 +1,6 @@
 import { useQueries } from '@tanstack/react-query'
 import { AlertCircle, Calendar, CheckCircle2, Loader2, Users, X } from 'lucide-react'
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type { z } from 'zod'
 import { toast } from 'sonner'
@@ -194,6 +194,19 @@ export function ManagerExamScheduleScreen() {
   const isTapSuClass = modalClass?.levelFrom === 'tap_su' && modalClass?.levelTo === 'biet_viec'
   const { data: examTeacherOptions = [], isFetching: fetchingExamTeachers } =
     useTeacherOptions(watchedExamTeacherQuery)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.search-dropdown-container')) {
+        // Reset query to current selection (or empty) to close dropdown
+        setExamValue('examTeacherQuery', examTeacher?.name || '')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [examTeacher, setExamValue])
+
   const updateClass = useUpdateManagerClass()
 
   const openExamModal = (classId?: string, editing?: boolean) => {
@@ -485,7 +498,7 @@ export function ManagerExamScheduleScreen() {
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">
                     3. Giám khảo chấm thi
                   </label>
-                  <div className="relative">
+                  <div className="search-dropdown-container relative">
                     {isTapSuClass ? (
                       <div className="h-12 w-full rounded-2xl bg-amber-50/50 border border-amber-200/50 px-4 flex items-center text-sm text-amber-700 italic">
                         Mặc định là giáo viên phụ trách lớp

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
   Calendar,
@@ -145,6 +145,23 @@ export function ManagerClassesScreen() {
     useTeacherOptions(createTeacherQuery)
   const { data: editModalTeacherOptions = [], isFetching: fetchingEditModalTeacherOptions } =
     useTeacherOptions(editModalTeacherQuery)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.search-dropdown-container')) {
+        // Reset all search dropdown states
+        setActiveClassForDropdown(null)
+        // Only reset query if we are not currently selecting something
+        // (actually better to just clear them to close dropdowns)
+        if (!selectedCreateTeacher) setCreateTeacherQuery('')
+        setCreateMemberQuery('')
+        if (!selectedTeacher) setEditModalTeacherQuery('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [selectedCreateTeacher, selectedTeacher])
 
   const totalMembers = rows.reduce((a, r) => a + r.memberCount, 0)
   const openCount = rows.filter((r) => r.status === 'open').length
@@ -373,7 +390,7 @@ export function ManagerClassesScreen() {
                   </div>
                 </div>
 
-                <div className="relative md:col-span-2">
+                <div className="search-dropdown-container relative md:col-span-2">
                   <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                     Giáo viên phụ trách lớp
                   </label>
@@ -387,7 +404,7 @@ export function ManagerClassesScreen() {
                     className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
                   />
                   {!selectedCreateTeacher && createTeacherQuery.trim().length > 0 ? (
-                    <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                    <div className="absolute z-50 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
                       {fetchingCreateTeacherOptions ? (
                         <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -421,7 +438,7 @@ export function ManagerClassesScreen() {
                   ) : null}
                 </div>
 
-                <div className="relative z-30 md:col-span-2">
+                <div className="search-dropdown-container relative md:col-span-2">
                   <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                     Thêm nhân sự cho lớp (theo cấp đã chọn)
                   </label>
@@ -433,7 +450,7 @@ export function ManagerClassesScreen() {
                       className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
                     />
                     {createMemberQuery.trim().length > 0 ? (
-                      <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                      <div className="absolute z-50 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
                         {fetchingCreateOptions ? (
                           <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -625,7 +642,7 @@ export function ManagerClassesScreen() {
                   ))}
                 </div>
 
-                <div className="relative mt-3">
+                <div className="search-dropdown-container relative mt-3">
                   <Input
                     value={memberQuery}
                     onFocus={() => setActiveClassForDropdown(row.id)}
@@ -637,7 +654,7 @@ export function ManagerClassesScreen() {
                     className="h-auto w-full rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
                   />
                   {showDropdown ? (
-                    <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                    <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
                       {fetchingMemberOptions ? (
                         <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -744,7 +761,7 @@ export function ManagerClassesScreen() {
                   rules={{ required: true, minLength: 3 }}
                   placeholder="Ví dụ: Tập sự – Đợt Q2/2026"
                 />
-                <div className="relative">
+                <div className="search-dropdown-container relative">
                   <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                     Giáo viên phụ trách lớp
                   </label>
@@ -759,7 +776,7 @@ export function ManagerClassesScreen() {
                       className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
                     />
                     {!selectedTeacher && editModalTeacherQuery.trim().length > 0 ? (
-                      <div className="absolute z-20 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                      <div className="absolute z-50 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
                         {fetchingEditModalTeacherOptions ? (
                           <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />

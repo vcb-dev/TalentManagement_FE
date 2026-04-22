@@ -35,6 +35,8 @@ type LabeledControllerProps<
   className?: string
   /** `FormLabel` bổ sung class (ví dụ uppercase, sr-only). */
   labelClassName?: string
+  /** Ghi đè toàn bộ nội dung label (ví dụ để thêm Icon, Styled text). */
+  customLabel?: ReactNode
 }
 
 export function InputController<
@@ -53,6 +55,7 @@ export function InputController<
   endSlot,
   wrapperClassName,
   valueMode = 'default',
+  customLabel,
   ...inputProps
 }: LabeledControllerProps<TFieldValues, TName> &
   InputHTMLAttributes<HTMLInputElement> & {
@@ -90,7 +93,11 @@ export function InputController<
         return (
           <FormItem className={className}>
             <FormLabel className={labelClassName}>
-              {label} {required ? <span className="text-destructive">*</span> : null}
+              {customLabel || (
+                <>
+                  {label} {required ? <span className="text-destructive">*</span> : null}
+                </>
+              )}
             </FormLabel>
             {!startSlot && !endSlot ? (
               <FormControl>
@@ -226,6 +233,7 @@ export function TextareaController<
   className,
   labelClassName,
   textareaClassName,
+  customLabel,
   ...textareaProps
 }: LabeledControllerProps<TFieldValues, TName> &
   TextareaHTMLAttributes<HTMLTextAreaElement> & { textareaClassName?: string }) {
@@ -240,7 +248,11 @@ export function TextareaController<
       render={({ field }) => (
         <FormItem className={className}>
           <FormLabel className={labelClassName}>
-            {label} {required ? <span className="text-destructive">*</span> : null}
+            {customLabel || (
+              <>
+                {label} {required ? <span className="text-destructive">*</span> : null}
+              </>
+            )}
           </FormLabel>
           <FormControl>
             <Textarea
@@ -271,6 +283,7 @@ export function SelectController<
   triggerClassName,
   children,
   placeholder,
+  customLabel,
   ...selectProps
 }: LabeledControllerProps<TFieldValues, TName> &
   Omit<ComponentProps<typeof Select>, 'onValueChange' | 'value' | 'defaultValue'> & {
@@ -287,7 +300,11 @@ export function SelectController<
       render={({ field }) => (
         <FormItem className={className}>
           <FormLabel className={labelClassName}>
-            {label} {required ? <span className="text-destructive">*</span> : null}
+            {customLabel || (
+              <>
+                {label} {required ? <span className="text-destructive">*</span> : null}
+              </>
+            )}
           </FormLabel>
           <FormControl>
             <Select
@@ -335,6 +352,7 @@ export function DateController<
   disabled,
   placeholder,
   lockToMonth,
+  customLabel,
 }: LabeledControllerProps<TFieldValues, TName> & {
   min?: string
   max?: string
@@ -351,7 +369,11 @@ export function DateController<
       render={({ field }) => (
         <FormItem className={className}>
           <FormLabel className={labelClassName}>
-            {label} {required ? <span className="text-destructive">*</span> : null}
+            {customLabel || (
+              <>
+                {label} {required ? <span className="text-destructive">*</span> : null}
+              </>
+            )}
           </FormLabel>
           <FormControl>
             <DatePicker
@@ -448,6 +470,7 @@ export function RadioGroupController<
   labelClassName,
   options,
   radioGroupClassName,
+  customLabel,
 }: LabeledControllerProps<TFieldValues, TName> & {
   options: RadioOption[]
   radioGroupClassName?: string
@@ -462,7 +485,11 @@ export function RadioGroupController<
         return (
           <FormItem className={className}>
             <FormLabel className={labelClassName}>
-              {label} {required ? <span className="text-destructive">*</span> : null}
+              {customLabel || (
+                <>
+                  {label} {required ? <span className="text-destructive">*</span> : null}
+                </>
+              )}
             </FormLabel>
             <FormControl>
               <RadioGroup
