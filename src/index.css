@@ -260,6 +260,20 @@ body {
     transform: scaleX(1);
   }
 }
+@keyframes page-entrance {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-page-entrance {
+  animation: page-entrance 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
 
 /* Gamification dashboard — avatar / thẻ quest (tôn màu primary + accent) */
 @keyframes dash-float-slow {

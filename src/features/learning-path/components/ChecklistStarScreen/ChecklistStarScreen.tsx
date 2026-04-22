@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState, useTransition } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
@@ -22,7 +22,7 @@ import { useChecklistItem } from '@/features/learning-path/components/ChecklistI
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton, SkeletonApprovalCardRow } from '@/components/ui/skeleton'
-import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
+import { CARD_ENTRANCE, CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { Form } from '@/components/ui/form'
 import { TextareaController } from '@/components/ui/form-controllers'
@@ -140,6 +140,19 @@ export function ChecklistStarScreen({
   const evidenceForm = useForm<{ note: string }>({ defaultValues: { note: '' } })
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const [selectedObjectiveId, setSelectedObjectiveId] = useState<string | null>(null)
+  const [isPendingTransition, startTransition] = useTransition()
+
+  const handleToggleTask = useCallback((id: string) => {
+    startTransition(() => {
+      setExpandedTaskId((prev) => (prev === id ? null : id))
+    })
+  }, [])
+
+  const handleSelectObjective = useCallback((id: string) => {
+    startTransition(() => {
+      setSelectedObjectiveId(id)
+    })
+  }, [])
 
   const levelName = LEVEL_VI[levelId] ?? levelId
   const probationStepCount =
@@ -370,45 +383,46 @@ export function ChecklistStarScreen({
                       lý hoặc đơn vị đào tạo.
                     </p>
                   ) : (
-                    tasks.map((it) => {
+                    tasks.map((it, idx) => {
                       const doneDate = it.completedAt
                         ? new Date(it.completedAt).toLocaleDateString('vi-VN')
                         : undefined
                       return (
-                        <ChecklistTaskCard
-                          key={it.id}
-                          id={it.id}
-                          title={it.title}
-                          kind={it.kind}
-                          expanded={activeTaskId === it.id}
-                          onToggle={() =>
-                            setExpandedTaskId((prev) => (prev === it.id ? null : it.id))
-                          }
-                          objective={it.description?.trim() || 'Chưa có objective cho đầu mục này.'}
-                          objectiveList={it.objectives}
-                          subtitle={
-                            it.kind === 'done'
-                              ? doneDate
-                                ? `Hoàn thành ${doneDate}`
-                                : 'Đã hoàn thành'
-                              : it.kind === 'current'
-                                ? 'Ấn vào để xem chi tiết'
-                                : 'Hoàn thành nhiệm vụ trước để mở'
-                          }
-                          primaryAction={
-                            it.kind === 'done'
-                              ? it.order === 2
-                                ? { label: 'Xem kết quả', onClick: () => {} }
-                                : { label: 'Xem bằng chứng', onClick: () => {} }
-                              : it.kind === 'current'
-                                ? useProbationFlow
-                                  ? undefined
-                                  : { label: 'Nộp bằng chứng', onClick: onPickFile }
-                                : undefined
-                          }
-                          selectedObjectiveId={selectedObjectiveId}
-                          onSelectObjective={setSelectedObjectiveId}
-                        />
+                        <div key={it.id} className={CARD_ENTRANCE} style={staggerStyle(idx, 60)}>
+                          <ChecklistTaskCard
+                            id={it.id}
+                            title={it.title}
+                            kind={it.kind}
+                            expanded={activeTaskId === it.id}
+                            onToggle={() => handleToggleTask(it.id)}
+                            objective={
+                              it.description?.trim() || 'Chưa có objective cho đầu mục này.'
+                            }
+                            objectiveList={it.objectives}
+                            subtitle={
+                              it.kind === 'done'
+                                ? doneDate
+                                  ? `Hoàn thành ${doneDate}`
+                                  : 'Đã hoàn thành'
+                                : it.kind === 'current'
+                                  ? 'Ấn vào để xem chi tiết'
+                                  : 'Hoàn thành nhiệm vụ trước để mở'
+                            }
+                            primaryAction={
+                              it.kind === 'done'
+                                ? it.order === 2
+                                  ? { label: 'Xem kết quả', onClick: () => {} }
+                                  : { label: 'Xem bằng chứng', onClick: () => {} }
+                                : it.kind === 'current'
+                                  ? useProbationFlow
+                                    ? undefined
+                                    : { label: 'Nộp bằng chứng', onClick: onPickFile }
+                                  : undefined
+                            }
+                            selectedObjectiveId={selectedObjectiveId}
+                            onSelectObjective={handleSelectObjective}
+                          />
+                        </div>
                       )
                     })
                   )}
@@ -478,7 +492,11 @@ export function ChecklistStarScreen({
                             disabled={!currentItem || submit.isPending}
                             onClick={onPickFile}
                           >
-                            {submit.isPending ? 'Đang gửi…' : 'Nộp bài'}
+                            {submit.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                            ) : (
+                              'Nộp bài'
+                            )}
                           </Button>
                         </div>
                       </Form>
@@ -550,7 +568,11 @@ export function ChecklistStarScreen({
                               disabled={submit.isPending}
                               onClick={onPickFile}
                             >
-                              {submit.isPending ? 'Đang gửi…' : 'Nộp bài'}
+                              {submit.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                              ) : (
+                                'Nộp bài'
+                              )}
                             </Button>
                           </div>
                         </Form>
@@ -620,7 +642,7 @@ export function ChecklistStarScreen({
   )
 }
 
-function ChecklistTaskCard({
+const ChecklistTaskCard = memo(function ChecklistTaskCard({
   id,
   title,
   kind,
@@ -652,7 +674,7 @@ function ChecklistTaskCard({
   selectedObjectiveId?: string | null
   onSelectObjective?: (id: string) => void
 }) {
-  const parseMaterialRef = (value: string | null) => {
+  const parseMaterialRef = useCallback((value: string | null) => {
     if (!value)
       return {
         daoTao: null as string | null,
@@ -675,32 +697,36 @@ function ChecklistTaskCard({
         ?.trim() ?? null
     const raw = text.replace(/^(?:Tài liệu|Tai lieu)\s*:?\s*/i, '').trim()
     return { daoTao, slide, taiLieu, raw: raw.length > 0 ? raw : null }
-  }
+  }, [])
 
-  const urlRegex = /(https?:\/\/[^\s]+)/gi
-  const renderTextWithLinks = (value: string) => {
-    const parts = value.split(urlRegex)
-    return (
-      <>
-        {parts.map((part, idx) => {
-          if (/^https?:\/\//i.test(part)) {
-            return (
-              <a
-                key={`${part}-${idx}`}
-                href={part}
-                target="_blank"
-                rel="noreferrer"
-                className="break-all font-medium text-primary-700 hover:text-primary-800"
-              >
-                {part}
-              </a>
-            )
-          }
-          return <span key={`${idx}-${part.slice(0, 8)}`}>{part}</span>
-        })}
-      </>
-    )
-  }
+  const urlRegex = useMemo(() => /(https?:\/\/[^\s]+)/gi, [])
+
+  const renderTextWithLinks = useCallback(
+    (value: string) => {
+      const parts = value.split(urlRegex)
+      return (
+        <>
+          {parts.map((part, idx) => {
+            if (/^https?:\/\//i.test(part)) {
+              return (
+                <a
+                  key={`${part}-${idx}`}
+                  href={part}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="break-all font-medium text-primary-700 hover:text-primary-800"
+                >
+                  {part}
+                </a>
+              )
+            }
+            return <span key={`${idx}-${part.slice(0, 8)}`}>{part}</span>
+          })}
+        </>
+      )
+    },
+    [urlRegex]
+  )
 
   const objectiveContent =
     objectiveList && objectiveList.length > 0 ? (
@@ -923,4 +949,4 @@ function ChecklistTaskCard({
       ) : null}
     </div>
   )
-}
+})

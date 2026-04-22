@@ -26,7 +26,8 @@ export function useLogin() {
     mutationFn: authApi.login,
     onSuccess: (data) => {
       setSession(data.user, data.accessToken ?? null)
-      void qc.invalidateQueries({ queryKey: authKeys.me() })
+      // Seed the query cache immediately with the login response
+      qc.setQueryData(authKeys.me(), data)
       toast.success('Đăng nhập thành công')
     },
     onError: (err: unknown) => {

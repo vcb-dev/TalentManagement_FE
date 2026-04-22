@@ -177,7 +177,12 @@ export function AppShell({ children, title }: AppShellProps) {
           )}
         </header>
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-5 md:p-6">
-          <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+          <div
+            key={window.location.pathname}
+            className="mx-auto w-full max-w-[1400px] animate-page-entrance"
+          >
+            {children}
+          </div>
         </main>
       </div>
     </div>

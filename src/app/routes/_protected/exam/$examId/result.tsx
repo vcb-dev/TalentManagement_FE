@@ -12,7 +12,7 @@ import { ClassifyResultContainer } from '@/features/exam/components/ClassifyResu
 import { useExamResults, useSubmitExam } from '@/features/exam/hooks'
 import { useMyEnrolledClass } from '@/features/learning-path/hooks'
 
-const EXAM_DURATION_SECONDS = 60 * 60 // 1 tiếng
+const DEFAULT_DURATION_SECONDS = 60 * 60 // 1 tiếng mặc định
 
 export const Route = createFileRoute('/_protected/exam/$examId/result')({
   component: ExamResultPage,
@@ -41,17 +41,28 @@ const ExamQuestionCard = memo(function ExamQuestionCard({
   submitted: boolean
   onAnswerChange: (questionId: string, value: string) => void
 }) {
+  // Local state for text answers to prevent cursor jumping
+  const [localText, setLocalText] = useState(answer)
+  const isText = q.options.length === 0
+
   const optionForm = useForm<{ choice: string }>({ defaultValues: { choice: answer } })
   const selectedChoice = useWatch({ control: optionForm.control, name: 'choice' }) ?? ''
 
+  // Sync local text when answer prop changes (e.g. initial load or reset)
   useEffect(() => {
-    optionForm.setValue('choice', answer, { shouldDirty: false, shouldTouch: false })
-  }, [answer, optionForm])
+    if (isText) {
+      setLocalText(answer)
+    } else {
+      optionForm.setValue('choice', answer, { shouldDirty: false, shouldTouch: false })
+    }
+  }, [answer, isText, optionForm])
 
+  // Sync choice change for RadioGroup
   useEffect(() => {
+    if (isText) return
     if (selectedChoice === answer) return
     onAnswerChange(q.id, selectedChoice)
-  }, [selectedChoice, answer, onAnswerChange, q.id])
+  }, [selectedChoice, answer, onAnswerChange, q.id, isText])
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -80,8 +91,12 @@ const ExamQuestionCard = memo(function ExamQuestionCard({
         </Form>
       ) : (
         <Textarea
-          value={answer}
-          onChange={(e) => onAnswerChange(q.id, e.target.value)}
+          value={localText}
+          onChange={(e) => {
+            const val = e.target.value
+            setLocalText(val)
+            onAnswerChange(q.id, val)
+          }}
           disabled={submitted}
           placeholder="Nhập câu trả lời của bạn..."
           className="mt-3 min-h-[92px] w-full rounded-lg text-sm focus-visible:border-primary focus-visible:ring-primary/20"
@@ -100,6 +115,7 @@ function ExamResultPage() {
   const employeeId = '00000000-0000-4000-8000-000000000001'
   const [questionBank, setQuestionBank] = useState<{
     title: string
+    duration?: number
     questions: Array<{ id: string; stem: string; options: string[] }>
   } | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
@@ -118,7 +134,11 @@ function ExamResultPage() {
       if (!raw) return
       const parsed = JSON.parse(raw) as Record<
         string,
-        { title: string; questions: Array<{ id: string; stem: string; options: string[] }> }
+        {
+          title: string
+          duration: number
+          questions: Array<{ id: string; stem: string; options: string[] }>
+        }
       >
       const byClass = myClassId ? parsed[myClassId] : undefined
       const byExamId = parsed[examId]
@@ -157,9 +177,10 @@ function ExamResultPage() {
           localStorage.setItem(startKey, startTimeStr)
         }
 
+        const durationSeconds = (bank.duration || 60) * 60
         const startTime = parseInt(startTimeStr, 10)
         const elapsedRaw = Math.floor((Date.now() - startTime) / 1000)
-        const remaining = Math.max(0, EXAM_DURATION_SECONDS - elapsedRaw)
+        const remaining = Math.max(0, durationSeconds - elapsedRaw)
 
         queueMicrotask(() => setTimeLeft(remaining))
       }

@@ -74,7 +74,7 @@ function buildHeaderGroups(items: AppNavItem[]): HeaderNavGroup[] {
 function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) {
   const Icon = item.icon
   const className = cn(
-    'flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-sm text-[#24292f] transition-colors hover:bg-slate-50',
+    'flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-sm text-[#24292f] transition-all duration-200 hover:bg-slate-50 active:scale-95',
     active && 'bg-slate-50 font-medium'
   )
 
@@ -93,14 +93,14 @@ function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) 
 
   if (item.search !== undefined) {
     return (
-      <Link to={item.to} search={item.search} className={className}>
+      <Link to={item.to} search={item.search} preload="intent" className={className}>
         {inner}
       </Link>
     )
   }
 
   return (
-    <Link to={item.to} className={className}>
+    <Link to={item.to} preload="intent" className={className}>
       {inner}
     </Link>
   )
@@ -133,8 +133,9 @@ export function MemberLeaderHeaderNav() {
                   <Link
                     to={singleItem.to}
                     search={singleItem.search}
+                    preload="intent"
                     className={cn(
-                      'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors border border-transparent bg-transparent text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white focus:text-white',
+                      'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 active:scale-95 border border-transparent bg-transparent text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white focus:text-white',
                       active && 'border-white/30 bg-white/15 text-white'
                     )}
                   >

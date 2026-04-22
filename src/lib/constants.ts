@@ -2,13 +2,7 @@ export const ROLES = ['MEMBER', 'LEADER', 'MANAGER', 'HR', 'TEACHER', 'BOD'] as 
 
 export type RoleConst = (typeof ROLES)[number]
 
-export const LEVELS = [
-  'tap_su',
-  'biet_viec',
-  'duoc_viec',
-  'dong_gop_ket_qua',
-  'tuong',
-] as const
+export const LEVELS = ['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong'] as const
 
 export type LevelCode = (typeof LEVELS)[number]
 
@@ -21,7 +15,7 @@ export const LEVEL_LABELS: Record<LevelCode, string> = {
 }
 
 export const STARS_PER_LEVEL: Record<LevelCode, number> = {
-  tap_su: 0,
+  tap_su: 6,
   biet_viec: 6,
   duoc_viec: 6,
   dong_gop_ket_qua: 6,
