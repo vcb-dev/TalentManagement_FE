@@ -62,7 +62,6 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
   const [selected, setSelected] = useState<Set<string>>(() =>
     applyMandatoryViewRules(unionFromTemplates(templateIdsForRole(employee.role)))
   )
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [dirty, setDirty] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -200,7 +199,8 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
           <Info className="size-5 shrink-0 text-primary" strokeWidth={2} aria-hidden />
           <p className="text-sm leading-relaxed text-muted-foreground">
             Quyền áp dụng cho toàn hệ thống. Chọn một hoặc nhiều vai trò mẫu (theo role VCB HRM),
-            sau đó tinh chỉnh cây quyền bên dưới.
+            sau đó chọn từng màn hình ở phần quyền chi tiết (mỗi màn = bật hết thao tác trên màn
+            đó).
           </p>
         </div>
 
@@ -255,8 +255,6 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
                 setSelected(next)
                 setDirty(true)
               }}
-              expanded={expanded}
-              onExpandedChange={setExpanded}
             />
           )}
         </section>

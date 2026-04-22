@@ -23,6 +23,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { performanceApi } from '@/features/kpi-okr/api'
+import {
+  clampKpiPeriod,
+  getMaxViewableYm,
+  isKpiPeriodSelectable,
+} from '@/features/kpi-okr/kpiPeriodLimits'
 import { FormPanel } from '@/features/kpi-okr/components/KpiOkrWorkspace'
 import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
 import { organizationApi } from '@/features/organization/api'
@@ -88,6 +93,8 @@ export function MonthlyReportScreen() {
   const [month, setMonth] = useState(() => nowYm().month)
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
+
+  const maxViewYm = getMaxViewableYm()
 
   const treeQ = useHrOrgTree()
   const departments = useMemo(() => treeQ.data?.departments ?? [], [treeQ.data])
@@ -244,13 +251,24 @@ export function MonthlyReportScreen() {
                 <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   Tháng
                 </Label>
-                <Select value={String(month)} onValueChange={(value) => setMonth(Number(value))}>
+                <Select
+                  value={String(month)}
+                  onValueChange={(value) => {
+                    const next = clampKpiPeriod(year, Number(value))
+                    setYear(next.year)
+                    setMonth(next.month)
+                  }}
+                >
                   <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                      <SelectItem key={m} value={String(m)}>
+                      <SelectItem
+                        key={m}
+                        value={String(m)}
+                        disabled={!isKpiPeriodSelectable(year, m)}
+                      >
                         Tháng {m}
                       </SelectItem>
                     ))}
@@ -265,9 +283,15 @@ export function MonthlyReportScreen() {
                   type="number"
                   value={year}
                   min={2020}
-                  max={2035}
+                  max={maxViewYm.year}
                   className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-                  onChange={(e) => setYear(Number(e.target.value))}
+                  onChange={(e) => {
+                    const v = Number(e.target.value)
+                    if (!Number.isFinite(v)) return
+                    const next = clampKpiPeriod(v, month)
+                    setYear(next.year)
+                    setMonth(next.month)
+                  }}
                 />
               </div>
             </div>

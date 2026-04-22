@@ -592,38 +592,36 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
               </div>
             </div>
 
-            {/* Theo nhân sự + xếp loại */}
-            <div
-              className={cn(
-                'rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8',
-                CARD_ENTRANCE_HOVER
-              )}
-              style={staggerStyle(5)}
-            >
-              <div className="mb-4 border-b border-border/70 pb-4">
-                <h3 className="text-lg font-bold text-foreground md:text-xl">
-                  {isMember ? 'Tổng hợp đạt / chưa đạt của bạn' : 'So sánh theo nhân sự'}
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground md:text-sm">
-                  {isMember
-                    ? monthSpan > 1
-                      ? 'Cộng dồn KPI và OKR qua các tháng trong kỳ.'
-                      : 'KPI và OKR đạt / chưa đạt trong tháng đã chọn.'
-                    : monthSpan > 1
+            {/* So sánh theo nhân sự + xếp loại — ẩn với role MEMBER */}
+            {!isMember && (
+              <div
+                className={cn(
+                  'rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8',
+                  CARD_ENTRANCE_HOVER
+                )}
+                style={staggerStyle(5)}
+              >
+                <div className="mb-4 border-b border-border/70 pb-4">
+                  <h3 className="text-lg font-bold text-foreground md:text-xl">
+                    So sánh theo nhân sự
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground md:text-sm">
+                    {monthSpan > 1
                       ? 'Cộng dồn đạt / chưa đạt qua các tháng trong kỳ.'
                       : 'Đạt và chưa đạt theo từng thành viên.'}
-                </p>
+                  </p>
+                </div>
+                {isLoading ? (
+                  <Skeleton className="h-[300px] w-full rounded-xl" />
+                ) : (
+                  <PerPersonBar rows={perPerson} />
+                )}
+                <div className="mt-8 grid grid-cols-1 gap-6 border-t border-border/60 pt-8 sm:grid-cols-2">
+                  <GradeDonut dist={kpiGradeDist} title="Xếp loại KPI" />
+                  <GradeDonut dist={okrGradeDist} title="Xếp loại OKR" />
+                </div>
               </div>
-              {isLoading ? (
-                <Skeleton className="h-[300px] w-full rounded-xl" />
-              ) : (
-                <PerPersonBar rows={perPerson} />
-              )}
-              <div className="mt-8 grid grid-cols-1 gap-6 border-t border-border/60 pt-8 sm:grid-cols-2">
-                <GradeDonut dist={kpiGradeDist} title="Xếp loại KPI" />
-                <GradeDonut dist={okrGradeDist} title="Xếp loại OKR" />
-              </div>
-            </div>
+            )}
 
             {/* 6. Cá nhân — đặt cuối để không lẫn với KPI team */}
             <div
@@ -631,7 +629,7 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
                 'relative overflow-hidden rounded-3xl border border-dashed border-primary/25 bg-gradient-to-br from-card to-primary/[0.04] p-6 shadow-sm md:p-8',
                 CARD_ENTRANCE_HOVER
               )}
-              style={staggerStyle(6)}
+              style={staggerStyle(isMember ? 5 : 6)}
             >
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">

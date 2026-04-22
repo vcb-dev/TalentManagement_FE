@@ -327,6 +327,73 @@ const nodes: PermissionNode[] = [
 
 export const PERMISSION_NODES: readonly PermissionNode[] = nodes
 
+/**
+ * Thứ tự màn hình ở UI phân quyền (bám thứ tự luồng dùng như menu/sidebar).
+ * Mỗi mục = một khối: tích = bật toàn bộ quyền con trong màn.
+ */
+export const PERMISSION_MODULE_IDS_UI_ORDER: readonly string[] = [
+  'mod.home',
+  'mod.dashboard',
+  'mod.learning',
+  'mod.exam',
+  'mod.kpi',
+  'mod.report',
+  'mod.hr',
+  'mod.manager',
+  'mod.bod',
+  'mod.teacher',
+  'mod.admin_rbac',
+] as const
+
+/**
+ * Các màn/đường dẫn hiển thị cho người cấp quyền (tiếng Việt, theo ứng dụng hiện tại).
+ * Dùng trên màn “Phân quyền” — không cần trùng 1-1 từng quyền hệ thống, mục tiêu là mô tả rõ khu vực người dùng sẽ thấy.
+ */
+export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly string[]>> = {
+  'mod.home': ['Trang chủ ứng dụng (/)'],
+  'mod.dashboard': ['Dashboard cá nhân (/dashboard)'],
+  'mod.learning': ['Lộ trình học & checklist theo cấp (/learning-path, …)'],
+  'mod.exam': [
+    'Kết quả & lịch thi, phòng thi, làm bài (/exam, /exam/…, trừ khu vực chấm thi dành cho giảng viên /exam/grader)',
+  ],
+  'mod.kpi': [
+    'KPI & OKR cá nhân (/kpi-okr)',
+    'KPI & OKR trong team — quản lý/leader (/leader/kpi-okr, khi được cấp quyền team)',
+  ],
+  'mod.report': [
+    'Báo cáo KPI/OKR hàng tháng (/monthly-report, …)',
+    'Kèm tùy chọn phạm vi dữ liệu: chỉ dữ liệu team/người phụ trách (khi bật cờ tương ứng trong khối này)',
+  ],
+  'mod.hr': [
+    'Danh sách & hồ sơ nhân viên (/hr-admin, /hr-admin/$mãNhânViên)',
+    'Cơ cấu phòng ban & team (/hr-admin/org)',
+  ],
+  'mod.manager': [
+    'Xem team & hồ sơ qua màn Nhân sự (/hr-admin) khi cần quyền xem team',
+    'Chia lớp (/manager/classes)',
+    'Duyệt bài nộp (/manager/review-submissions)',
+    'Lịch thi, bài thi theo lớp, màn chấm (/manager/exam-schedule, /manager/class-exams, /manager/grading, …)',
+    'Duyệt thăng cấp / sao (/manager/approvals)',
+    'Bài tập lộ trình cho team (/manager/exercises)',
+    'Phân loại bài thi, luồng thi theo cấp hình (trong ứng dụng thi, khi có quyền phân loại)',
+    'Tùy chọn phạm vi: giới hạn dữ liệu vận hành theo người phụ trách (ABAC, không phải một URL riêng)',
+  ],
+  'mod.bod': [
+    'Tổng quan nhân sự (/bod/dashboard)',
+    'Xếp hạng tập sự (/bod/trainee-ranking)',
+    'So sánh team (/bod/team-comparison)',
+  ],
+  'mod.teacher': [
+    'Lớp phụ trách (/teacher/classes)',
+    'Khu vực chấm bài, kỳ thi dành cho giảng viên (/exam/grader, …)',
+  ],
+  'mod.admin_rbac': ['Gán & chỉnh quyền nhân viên (/permissions, màn bạn đang dùng)'],
+}
+
+export function getModuleUiScreens(moduleId: string): readonly string[] {
+  return PERMISSION_MODULE_UI_SCREENS[moduleId] ?? []
+}
+
 const byId = new Map(nodes.map((n) => [n.id, n] as const))
 
 export function getPermissionNode(id: string): PermissionNode | undefined {
@@ -340,6 +407,19 @@ export function getChildNodeIds(parentId: string): string[] {
 /** Các node module (cấp 1) */
 export function getModuleRootIds(): string[] {
   return nodes.filter((n) => n.kind === 'module' && n.parentId === null).map((n) => n.id)
+}
+
+/** Module roots theo thứ tự UI; thêm ở cuối mọi id có trong catalog nhưng chưa có trong bảng thứ tự. */
+export function getModuleRootIdsInUiOrder(): string[] {
+  const roots = new Set(getModuleRootIds())
+  const ordered: string[] = []
+  for (const id of PERMISSION_MODULE_IDS_UI_ORDER) {
+    if (roots.has(id)) ordered.push(id)
+  }
+  for (const id of roots) {
+    if (!ordered.includes(id)) ordered.push(id)
+  }
+  return ordered
 }
 
 export function countFunctionsUnderModule(moduleId: string): { total: number; leaves: string[] } {

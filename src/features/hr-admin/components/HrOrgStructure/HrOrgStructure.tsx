@@ -1296,11 +1296,15 @@ function TeamMembersPanel({
     mutationFn: (userId: string) => organizationApi.addTeamMember(teamId, userId),
     onSuccess: (data) => {
       if (data.movedFromTeamId) {
-        toast.success('Đã chuyển nhân sự sang team này')
+        toast.success('Đã chuyển nhân sự sang team này (đã gỡ khỏi team cũ)')
+        void queryClient.invalidateQueries({
+          queryKey: teamMembersQueryKey(data.movedFromTeamId),
+        })
       } else {
         toast.success('Đã thêm thành viên vào team')
       }
       invalidateMembers()
+      void queryClient.invalidateQueries({ queryKey: ['organization', 'eligible-users'] })
     },
     onError: (e) => toast.error(readApiErrorMessage(e)),
   })

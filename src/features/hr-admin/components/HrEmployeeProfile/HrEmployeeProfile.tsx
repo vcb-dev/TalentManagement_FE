@@ -11,13 +11,11 @@ import {
   Calendar,
   CheckCircle2,
   ClipboardList,
-  Crown,
   FiveStarRank,
   GraduationCap,
   PROFILE_TAB_ICONS,
   ProfileStarTier,
   Settings,
-  Star,
   Target,
   UserCircle,
   Users,
@@ -36,7 +34,6 @@ import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { LEVEL_LABELS, LEVELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { CARD_ENTRANCE_HOVER, CARD_HOVER, staggerStyle } from '@/lib/cardMotion'
-import { demoGamificationFromSeed } from '@/lib/demoGamification'
 import type { EmployeeLevel } from '@/types/employee'
 import type { Role } from '@/types/auth'
 import type { PatchEmployeeInput } from '@/types/api'
@@ -60,6 +57,36 @@ function dedupeOptionsByValue(options: OptionItem[]): OptionItem[] {
     seen.add(value)
     return true
   })
+}
+
+/** Tên phòng/nhóm cho select: ưu tiên cây tổ chức, rồi tên từ API; không dùng id rút gọn. */
+function departmentSelectLabel(
+  departmentId: string,
+  fromTree: string | undefined,
+  employee: EmployeeEntity
+): string {
+  const tree = fromTree?.trim()
+  if (tree) return tree
+  if (departmentId && departmentId === employee.departmentId) {
+    const n = employee.departmentName?.trim()
+    if (n) return n
+  }
+  return ''
+}
+
+function teamSelectLabel(
+  teamId: string,
+  fromTree: string | undefined,
+  employee: EmployeeEntity,
+  teamIndex: 0 | 1
+): string {
+  const tree = fromTree?.trim()
+  if (tree) return tree
+  if (teamId && employee.teamIds?.[teamIndex] === teamId) {
+    const n = employee.teamNames?.[teamIndex]?.trim()
+    if (n) return n
+  }
+  return ''
 }
 
 const LEVEL_ORDER: EmployeeLevel[] = [
@@ -237,35 +264,30 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
   }
 
   const empCode = `VCB-${shortId(employee.id).toUpperCase()}`
-  const { points, rank } = useMemo(
-    () => demoGamificationFromSeed(employee.email ?? employee.id),
-    [employee.email, employee.id]
-  )
 
   const onDemoAction = (msg: string) => () => toast.info(msg)
   const orgSel = useHrOrgSelectOptions()
 
   const tabLabels = TABS
   const tabIcons = TAB_ICONS_HR
-  const profileScoreDisplay = (points / 1000).toFixed(1).replace('.', ',')
   const rankStarsFive = (xpPct / 100) * 5
   const levelStarVariants = starVariants(employee.currentStar, maxStars)
   const RoleBadgeIcon = ROLE_BADGE_ICONS[employee.role]
   const deptName = useMemo(() => {
     const fromApi = employee.departmentName?.trim()
     if (fromApi) return fromApi
-    const byId = orgSel.departments.find((d) => d.value === employee.departmentId)?.label
-    return byId ?? `Phòng ban (${shortId(employee.departmentId)})`
+    if (!employee.departmentId) return ''
+    return orgSel.departments.find((d) => d.value === employee.departmentId)?.label?.trim() ?? ''
   }, [employee.departmentName, employee.departmentId, orgSel.departments])
 
   const teamName = useMemo(() => {
-    const byApiNames = (employee.teamNames ?? []).map((t) => t.trim()).filter(Boolean)
-    if (byApiNames.length > 0) return byApiNames.join(', ')
+    const fromApi = (employee.teamNames ?? []).map((t) => t.trim()).filter(Boolean)
+    if (fromApi.length > 0) return fromApi.join(', ')
     if (!employee.teamIds?.length) return ''
     const teamNameById = new Map(orgSel.allTeams.map((t) => [t.value, t.label]))
     const mapped = employee.teamIds
-      .map((id) => teamNameById.get(id) ?? `Nhóm (${shortId(id)})`)
-      .filter(Boolean)
+      .map((id) => teamNameById.get(id)?.trim())
+      .filter((s): s is string => Boolean(s))
     return mapped.join(', ')
   }, [employee.teamNames, employee.teamIds, orgSel.allTeams])
 
@@ -403,20 +425,8 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                   {LEVEL_LABELS[employee.currentLevel as LevelCode]}
                 </p>
 
-                <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border/60 pt-4">
-                  <span className="text-3xl font-bold tabular-nums tracking-tight text-foreground">
-                    {profileScoreDisplay}
-                  </span>
+                <div className="mt-4 flex flex-wrap items-center border-t border-border/60 pt-4">
                   <FiveStarRank filled={rankStarsFive} />
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/12 px-2.5 py-1 font-semibold text-indigo-700 ring-1 ring-indigo-300/35">
-                      <Star className="h-3.5 w-3.5" variant="filled" />
-                      {points.toLocaleString('vi-VN')} pts
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/12 px-2.5 py-1 font-semibold text-cyan-900 ring-1 ring-cyan-400/30">
-                      <Crown className="h-3.5 w-3.5 text-cyan-700" strokeWidth={2} />#{rank}
-                    </span>
-                  </div>
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -581,9 +591,9 @@ function OverviewTab({
           <div className="space-y-0">
             {(
               [
-                { Icon: ClipboardList, label: 'Bài đã nộp (gần nhất)', value: '18' },
-                { Icon: CheckCircle2, label: 'Tỉ lệ đạt', value: '83%' },
-                { Icon: GraduationCap, label: 'Kỳ thi đã qua', value: '6' },
+                { Icon: ClipboardList, label: 'Bài đã nộp (gần nhất)', value: '—' },
+                { Icon: CheckCircle2, label: 'Tỉ lệ đạt', value: '—' },
+                { Icon: GraduationCap, label: 'Kỳ thi đã qua', value: '—' },
                 { Icon: Calendar, label: 'Thời gian làm việc', value: '—' },
                 { Icon: Users, label: 'Mentee (nếu có)', value: '—' },
               ] as const
@@ -606,30 +616,7 @@ function OverviewTab({
           </div>
         </PfCard>
         <PfCard title="Thành tích" entranceIndex={1}>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              ['⚡', 'Hoàn thành nhanh', 'Đạt lần 1'],
-              ['🎓', 'Mentor', 'Kèm mentee'],
-              ['🏆', 'Top Learner', 'Top 15%'],
-              ['👑', 'Tướng', 'Chưa mở'],
-            ].map(([icon, name, sub], i) => (
-              <div
-                key={name}
-                className={cn(
-                  'rounded-xl border p-2.5 text-center',
-                  CARD_ENTRANCE_HOVER,
-                  i < 3
-                    ? 'border-primary/30 bg-gradient-to-br from-app-canvas to-primary/10'
-                    : 'opacity-40 grayscale'
-                )}
-                style={staggerStyle(i + 2)}
-              >
-                <div className="text-[22px]">{icon}</div>
-                <div className="text-xs font-bold text-foreground md:text-sm">{name}</div>
-                <div className="mt-0.5 text-xs text-muted-foreground md:text-sm">{sub}</div>
-              </div>
-            ))}
-          </div>
+          <p className="text-sm text-muted-foreground">Chưa có dữ liệu từ hệ thống.</p>
         </PfCard>
       </div>
       <div className="space-y-4">
@@ -983,34 +970,33 @@ function EditTab({
   const departmentOptions = useMemo(() => {
     const base = [...orgSel.departments]
     if (editDepartmentId && !base.some((o) => o.value === editDepartmentId)) {
-      return dedupeOptionsByValue([
-        { value: editDepartmentId, label: `Phòng ban (${shortId(editDepartmentId)})` },
-        ...base,
-      ])
+      const label = departmentSelectLabel(editDepartmentId, undefined, employee)
+      return dedupeOptionsByValue([{ value: editDepartmentId, label }, ...base])
     }
     return dedupeOptionsByValue(base)
-  }, [orgSel.departments, editDepartmentId])
+  }, [orgSel.departments, editDepartmentId, employee])
 
   const teamOptions = useMemo(() => {
     const fromDept = orgSel.teamsByDept.get(editDepartmentId) ?? []
     const base = [...fromDept]
     if (editTeamId && !base.some((o) => o.value === editTeamId)) {
-      return dedupeOptionsByValue([
-        { value: editTeamId, label: `Nhóm (${shortId(editTeamId)})` },
-        ...base,
-      ])
+      const fromAll = orgSel.allTeams.find((o) => o.value === editTeamId)?.label
+      const label = teamSelectLabel(editTeamId, fromAll, employee, 0)
+      return dedupeOptionsByValue([{ value: editTeamId, label }, ...base])
     }
     return dedupeOptionsByValue(base)
-  }, [orgSel.teamsByDept, editDepartmentId, editTeamId])
+  }, [orgSel.teamsByDept, orgSel.allTeams, editDepartmentId, editTeamId, employee])
 
   const secondaryTeamOptions = useMemo(() => {
     const base = [...orgSel.allTeams]
     const v = (editSecondaryTeamId ?? '').trim()
     if (v && !base.some((o) => o.value === v)) {
-      return dedupeOptionsByValue([{ value: v, label: `Nhóm phụ (${shortId(v)})` }, ...base])
+      const fromAll = orgSel.allTeams.find((o) => o.value === v)?.label
+      const label = teamSelectLabel(v, fromAll, employee, 1)
+      return dedupeOptionsByValue([{ value: v, label }, ...base])
     }
     return dedupeOptionsByValue(base)
-  }, [orgSel.allTeams, editSecondaryTeamId])
+  }, [orgSel.allTeams, editSecondaryTeamId, employee])
 
   const roleSelectOptions = useMemo((): Role[] => {
     if (editRole === 'TEACHER') {
