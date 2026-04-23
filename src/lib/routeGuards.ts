@@ -6,21 +6,7 @@ import type { Role, UserSession } from '@/types/auth'
 /** Trang mặc định sau đăng nhập / khi không đủ quyền (bám luồng nghiệp vụ VCB HRM). */
 export function defaultPathForRole(role: Role | undefined): string {
   if (!role) return '/login'
-  switch (role) {
-    case 'HR':
-      return '/hr-admin'
-    case 'BOD':
-      return '/bod/dashboard'
-    case 'MANAGER':
-      return '/hr-admin'
-    case 'LEADER':
-      return '/dashboard'
-    case 'TEACHER':
-      return '/teacher/classes'
-    case 'MEMBER':
-    default:
-      return '/dashboard'
-  }
+  return '/dashboard'
 }
 
 /**
@@ -29,18 +15,7 @@ export function defaultPathForRole(role: Role | undefined): string {
  */
 export function defaultEntryPathFromSession(user: UserSession | null | undefined): string {
   if (!user) return '/login'
-  const eff = resolveEffectivePermissionSet(user)
-  const hasPrefix = (prefix: string) => [...eff].some((id) => id.startsWith(prefix))
-
-  if (hasPrefix('bod.')) return '/bod/dashboard'
-  if (eff.has('hr.employees.view') || eff.has('manager.team.view') || hasPrefix('hr.')) {
-    return '/hr-admin'
-  }
-  if (hasPrefix('kpi.team_')) return '/leader/kpi-okr'
-  if (hasPrefix('manager.')) return '/manager/classes'
-  // Chỉ vào portal giảng viên khi role chính là TEACHER (không ép MEMBER/LEADER đang thêm quyền lớp dạy)
-  if (user.role === 'TEACHER') return '/teacher/classes'
-  return defaultPathForRole(user.role)
+  return '/dashboard'
 }
 
 export function requireRole(...allowed: Role[]) {

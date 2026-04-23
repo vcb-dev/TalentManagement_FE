@@ -59,6 +59,20 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     match: 'prefix',
     permissionId: 'report.view',
   },
+  {
+    to: '/exam',
+    label: 'Kết quả & lịch thi',
+    icon: Calendar,
+    match: 'prefix',
+    permissionId: 'learning.view',
+  },
+  {
+    to: '/learning-classes',
+    label: 'Lớp học của tôi',
+    icon: School,
+    match: 'prefix',
+    permissionId: 'learning.view',
+  },
 ]
 
 const HR_ITEMS: AppNavItem[] = [
@@ -137,16 +151,16 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
     permissionId: 'manager.exam_schedule',
   },
   {
-    to: '/manager/grading',
-    label: 'Chấm bài thi',
-    icon: ClipboardList,
-    match: 'prefix',
-    permissionId: 'manager.exam_schedule',
-  },
-  {
     to: '/manager/approvals',
     label: 'Duyệt thăng cấp / sao',
     icon: ShieldCheck,
+    match: 'prefix',
+    permissionId: 'manager.approvals',
+  },
+  {
+    to: '/manager/learning-submissions',
+    label: 'Duyệt minh chứng lộ trình',
+    icon: ClipboardList,
     match: 'prefix',
     permissionId: 'manager.approvals',
   },
@@ -313,7 +327,11 @@ export function groupedSidebarNavItems(
     {
       id: 'learning',
       label: 'Học tập & Thi cử',
-      items: take([...find(MEMBER_SELF_ITEMS, '/learning-path')]),
+      items: take([
+        ...find(MEMBER_SELF_ITEMS, '/learning-path'),
+        ...find(MEMBER_SELF_ITEMS, '/learning-classes'),
+        ...find(MEMBER_SELF_ITEMS, '/exam'),
+      ]),
     },
     {
       id: 'manager',
@@ -323,9 +341,9 @@ export function groupedSidebarNavItems(
         ...find(TEACHER_HEADER_ITEMS, '/teacher/classes'),
         ...find(MANAGER_OPS_ITEMS, '/manager/exam-schedule'),
         ...find(MANAGER_OPS_ITEMS, '/manager/class-exams'),
-        ...find(MANAGER_OPS_ITEMS, '/manager/grading'),
         ...find(TEACHER_HEADER_ITEMS, '/exam/grader'),
         ...find(MANAGER_OPS_ITEMS, '/manager/approvals'),
+        ...find(MANAGER_OPS_ITEMS, '/manager/learning-submissions'),
       ]),
     },
     {

@@ -171,3 +171,15 @@ export const orgCreateResponseApiSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
 })
+
+export const managerSubmissionApiSchema = z.object({
+  id: z.string(),
+  userName: z.string(),
+  team: z.string().nullable(),
+  level: z.string().nullable(),
+  topic: z.string(),
+  objective: z.string(),
+  fileRef: z.string(),
+  status: z.enum(['PENDING', 'ACCEPTED', 'REJECTED']),
+  createdAt: z.string().datetime(),
+})

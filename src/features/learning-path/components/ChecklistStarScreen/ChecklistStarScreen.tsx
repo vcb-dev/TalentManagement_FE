@@ -1,5 +1,6 @@
-import { memo, useCallback, useMemo, useRef, useState, useTransition } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
   ChevronDown,
@@ -10,6 +11,7 @@ import {
   Lock,
   Paperclip,
   Trophy,
+  Loader2,
 } from 'lucide-react'
 import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
@@ -111,22 +113,23 @@ export function ChecklistStarScreen({
 }: ChecklistStarScreenProps) {
   const navigate = useNavigate()
   const { data: myPath } = useMyLearningPath()
-  const probationRoadmapTopics = useMemo(() => {
+  const roadmapTopicsByLevel = useMemo(() => {
     if (!embedInLearningPath || !myPath) return []
-    return [...(myPath.roadmapTopics ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
-  }, [embedInLearningPath, myPath])
+    return (myPath.roadmapTopics ?? [])
+      .filter((t: any) => t.levelId === levelId)
+      .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  }, [embedInLearningPath, myPath, levelId])
+
   const probationMilestones = useMemo(() => {
     if (!embedInLearningPath || !myPath) return []
     return myPath.milestones
-      .filter((m) => m.minCareerLevel === 'tap_su')
+      .filter((m) => m.minCareerLevel === levelId)
       .sort((a, b) => a.sortOrder - b.sortOrder)
-  }, [embedInLearningPath, myPath])
+  }, [embedInLearningPath, myPath, levelId])
 
-  /** Tập sự trên `/learning-path`: ưu tiên dữ liệu probation (milestone và/hoặc roadmap topic). Nếu chỉ có topic mà không có milestone, vẫn phải hiển thị checklist — tránh rơi về API sao rỗng. */
+  /** Nếu có roadmap topics cho level này, ưu tiên dùng. */
   const useProbationFlow =
-    embedInLearningPath &&
-    levelId === 'tap_su' &&
-    (probationMilestones.length > 0 || probationRoadmapTopics.length > 0)
+    embedInLearningPath && (roadmapTopicsByLevel.length > 0 || probationMilestones.length > 0)
   const { data, isLoading } = useLearningChecklist(levelId, starId, !useProbationFlow)
   const sortedItems = useMemo(() => {
     const arr = [...(data?.items ?? [])]
@@ -140,6 +143,7 @@ export function ChecklistStarScreen({
   const evidenceForm = useForm<{ note: string }>({ defaultValues: { note: '' } })
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const [selectedObjectiveId, setSelectedObjectiveId] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isPendingTransition, startTransition] = useTransition()
 
   const handleToggleTask = useCallback((id: string) => {
@@ -155,9 +159,9 @@ export function ChecklistStarScreen({
   }, [])
 
   const levelName = LEVEL_VI[levelId] ?? levelId
-  const probationStepCount =
-    probationRoadmapTopics.length > 0 ? probationRoadmapTopics.length : probationMilestones.length
-  const total = useProbationFlow ? probationStepCount : sortedItems.length
+  const total = useProbationFlow
+    ? roadmapTopicsByLevel.length || probationMilestones.length
+    : sortedItems.length
   const doneCount = useProbationFlow
     ? probationMilestones.filter((m) => m.status === 'done').length
     : sortedItems.filter((i) => checklist.isCompleted(i.id)).length
@@ -167,33 +171,25 @@ export function ChecklistStarScreen({
     : sortedItems.find((i) => checklist.isUnlocked(i.id) && !checklist.isCompleted(i.id))
 
   const tasks = useMemo(() => {
-    if (useProbationFlow && probationRoadmapTopics.length > 0) {
-      const doneMilestones = probationMilestones.filter((m) => m.status === 'done').length
+    if (useProbationFlow && roadmapTopicsByLevel.length > 0) {
       const currentMilestoneIndex = probationMilestones.findIndex((m) => m.status === 'in_progress')
-      const currentIndex =
-        currentMilestoneIndex >= 0
-          ? currentMilestoneIndex
-          : doneMilestones < probationRoadmapTopics.length
-            ? doneMilestones
-            : probationRoadmapTopics.length - 1
-      return probationRoadmapTopics.map((topic, idx) => ({
-        id: topic.id,
-        title: topic.topic,
-        order: topic.sortOrder,
-        description: topic.objectives.map((o) => o.objective).join('\n'),
-        completedAt:
-          idx < doneMilestones
-            ? (probationMilestones[Math.min(idx, probationMilestones.length - 1)]?.completedAt ??
-              null)
-            : null,
-        kind:
-          idx < doneMilestones
-            ? ('done' as const)
-            : idx === currentIndex
-              ? ('current' as const)
-              : ('locked' as const),
-        objectives: topic.objectives,
-      }))
+      const doneCount = probationMilestones.filter((m) => m.status === 'done').length
+
+      return roadmapTopicsByLevel.map((topic, idx) => {
+        const titleRaw = topic.topic.trim()
+        const isDone = idx < doneCount
+        const isCurrent = currentMilestoneIndex >= 0 ? idx === currentMilestoneIndex : idx === 0
+
+        return {
+          id: topic.id,
+          title: titleRaw,
+          order: topic.sortOrder,
+          description: topic.objectives.map((o) => o.objective).join('\n'),
+          completedAt: isDone ? (probationMilestones[idx]?.completedAt ?? null) : null,
+          kind: isDone ? ('done' as const) : isCurrent ? ('current' as const) : ('locked' as const),
+          objectives: topic.objectives,
+        }
+      })
     }
 
     if (useProbationFlow) {
@@ -222,9 +218,22 @@ export function ChecklistStarScreen({
       kind: rowKind(sortedItems, it.id, checklist),
       objectives: [],
     }))
-  }, [useProbationFlow, probationRoadmapTopics, probationMilestones, sortedItems, checklist])
+  }, [useProbationFlow, roadmapTopicsByLevel, probationMilestones, sortedItems, checklist])
 
   const activeTaskId = expandedTaskId ?? currentItem?.id ?? tasks[0]?.id ?? null
+
+  useEffect(() => {
+    if (activeTaskId) {
+      const task = tasks.find((t) => t.id === activeTaskId)
+      const currentSelectedBelongsToActive = task?.objectives?.some(
+        (o) => o.id === selectedObjectiveId
+      )
+      const firstObjectiveId = task?.objectives?.[0]?.id
+      if (firstObjectiveId && !currentSelectedBelongsToActive) {
+        setSelectedObjectiveId(firstObjectiveId)
+      }
+    }
+  }, [activeTaskId, tasks, selectedObjectiveId])
 
   const selectedObjective = useMemo(() => {
     if (!selectedObjectiveId) return null
@@ -239,17 +248,46 @@ export function ChecklistStarScreen({
 
   const onPickFile = () => fileRef.current?.click()
 
+  const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.mp4']
+  const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25MB
+
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || (!currentItem && !selectedObjective)) return
+    if (!file) return
+
+    // Validate extension
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase()
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      toast.error(
+        `Định dạng file ${ext} không được hỗ trợ. Vui lòng nộp: ${ALLOWED_EXTENSIONS.join(', ')}`
+      )
+      e.target.value = ''
+      return
+    }
+
+    // Validate size
     const targetItemId = selectedObjective ? selectedObjective.id : currentItem?.id
     if (!targetItemId) return
+
+    setSelectedFile(file)
+  }
+
+  const handleUpload = () => {
+    if (!selectedFile) {
+      toast.error('Vui lòng chọn file trước khi nộp')
+      return
+    }
+
+    const targetItemId = selectedObjective ? selectedObjective.id : currentItem?.id
+    if (!targetItemId) return
+
     submit.mutate(
-      { levelId, starId, itemId: targetItemId, file },
+      { levelId, starId, itemId: targetItemId, file: selectedFile },
       {
         onSuccess: () => {
           evidenceForm.reset({ note: '' })
-          e.target.value = ''
+          setSelectedFile(null)
+          if (fileRef.current) fileRef.current.value = ''
         },
       }
     )
@@ -463,9 +501,13 @@ export function ChecklistStarScreen({
                                 aria-hidden
                               />
                             </div>
-                            <p className="text-sm font-bold text-primary-700">Tải tệp lên</p>
+                            <p className="text-sm font-bold text-primary-700">
+                              {selectedFile ? `Đã chọn: ${selectedFile.name}` : 'Tải tệp lên'}
+                            </p>
                             <p className="mt-1 text-[13px] text-primary-600/80">
-                              Hoặc nhấn để chọn từ máy tính (Tối đa 25MB)
+                              {selectedFile
+                                ? 'Nhấn để chọn file khác'
+                                : 'Hoặc nhấn để chọn từ máy tính (Tối đa 25MB)'}
                             </p>
                           </Button>
                           <Input
@@ -489,8 +531,8 @@ export function ChecklistStarScreen({
                             type="button"
                             variant="ghost"
                             className="w-full rounded-lg border-0 bg-gradient-to-br from-primary-600 to-primary-700 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all hover:bg-transparent hover:shadow-primary-600/35 active:scale-[0.98] disabled:opacity-50"
-                            disabled={!currentItem || submit.isPending}
-                            onClick={onPickFile}
+                            disabled={!currentItem || submit.isPending || !selectedFile}
+                            onClick={handleUpload}
                           >
                             {submit.isPending ? (
                               <Loader2 className="h-4 w-4 animate-spin mx-auto" />
@@ -542,7 +584,9 @@ export function ChecklistStarScreen({
                                   aria-hidden
                                 />
                               </div>
-                              <p className="text-sm font-bold text-primary-700">Tải tệp lên</p>
+                              <p className="text-sm font-bold text-primary-700">
+                                {selectedFile ? `Đã chọn: ${selectedFile.name}` : 'Tải tệp lên'}
+                              </p>
                             </Button>
                             <Input
                               ref={fileRef}
@@ -565,8 +609,8 @@ export function ChecklistStarScreen({
                               type="button"
                               variant="ghost"
                               className="w-full rounded-lg border-0 bg-gradient-to-br from-primary-600 to-primary-700 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all hover:bg-transparent hover:shadow-primary-600/35 active:scale-[0.98] disabled:opacity-50"
-                              disabled={submit.isPending}
-                              onClick={onPickFile}
+                              disabled={submit.isPending || !selectedFile}
+                              onClick={handleUpload}
                             >
                               {submit.isPending ? (
                                 <Loader2 className="h-4 w-4 animate-spin mx-auto" />
@@ -682,6 +726,46 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
         taiLieu: null as string | null,
         raw: null as string | null,
       }
+
+    // Try parsing as JSON first (Lark array format)
+    try {
+      const parsed = JSON.parse(value)
+      if (Array.isArray(parsed)) {
+        let daoTao: string | null = null
+        let slide: string | null = null
+        let taiLieu: string | null = null
+        const otherLinks: string[] = []
+
+        parsed.forEach((item) => {
+          if (!item.name || !item.link) return
+          const n = String(item.name).toLowerCase()
+          if (n.includes('đào tạo') || n.includes('dao tao')) {
+            daoTao = item.link
+          } else if (n.includes('slide')) {
+            slide = item.link
+          } else if (
+            n.includes('tài liệu') ||
+            n.includes('tai lieu') ||
+            n.includes('sách') ||
+            n.includes('sach')
+          ) {
+            taiLieu = item.link
+          } else {
+            otherLinks.push(`${item.name}: ${item.link}`)
+          }
+        })
+
+        return {
+          daoTao,
+          slide,
+          taiLieu,
+          raw: otherLinks.length > 0 ? otherLinks.join(' | ') : null,
+        }
+      }
+    } catch (e) {
+      // Ignore error and fall back to regex
+    }
+
     const text = value.trim()
     const daoTao =
       text
@@ -730,97 +814,153 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
 
   const objectiveContent =
     objectiveList && objectiveList.length > 0 ? (
-      <ul className="space-y-2">
+      <div className="space-y-2">
         {objectiveList.map((obj, index) => {
           const isSelected = selectedObjectiveId === obj.id
+          const material = parseMaterialRef(obj.materialRef)
+          const hasMeta =
+            !!material.daoTao ||
+            !!material.slide ||
+            !!material.taiLieu ||
+            !!material.raw ||
+            !!obj.trainer ||
+            !!obj.assessment
+
           return (
-            <li
+            <div
               key={obj.id}
               onClick={() => onSelectObjective?.(obj.id)}
               className={cn(
-                'rounded-lg border p-3 shadow-sm transition-all',
-                onSelectObjective ? 'cursor-pointer hover:border-primary-400 hover:shadow-md' : '',
+                'group relative flex flex-col rounded-xl border p-3.5 transition-all duration-200',
+                onSelectObjective ? 'cursor-pointer hover:shadow-md' : '',
                 isSelected
-                  ? 'border-primary-600 bg-primary-50 ring-1 ring-primary-600'
-                  : 'border-primary-100/70 bg-white'
+                  ? 'border-primary-500 bg-white ring-1 ring-primary-500 shadow-sm'
+                  : 'border-gray-100 bg-white hover:border-gray-200'
               )}
             >
-              <p
-                className={cn(
-                  'text-sm font-medium',
-                  isSelected ? 'text-primary-800' : 'text-gray-800'
-                )}
-              >
-                {index + 1}. {obj.objective}
-              </p>
-              {(() => {
-                const material = parseMaterialRef(obj.materialRef)
-                const hasAnyMeta =
-                  !!material.daoTao ||
-                  !!material.slide ||
-                  !!material.taiLieu ||
-                  !!material.raw ||
-                  !!obj.trainer ||
-                  !!obj.assessment
-                if (!hasAnyMeta) return null
-                return (
-                  <div className="mt-2 space-y-1 text-xs text-gray-600">
-                    {material.daoTao ? (
-                      <p className="leading-relaxed">
-                        <span className="font-semibold text-gray-500">Đào tạo:</span>{' '}
-                        {renderTextWithLinks(material.daoTao)}
-                      </p>
-                    ) : null}
-                    {material.slide ? (
-                      <p className="leading-relaxed">
-                        <span className="font-semibold text-gray-500">Slide:</span>{' '}
-                        {renderTextWithLinks(material.slide)}
-                      </p>
-                    ) : null}
-                    {material.taiLieu ? (
-                      <p className="leading-relaxed">
-                        <span className="font-semibold text-gray-500">Tài liệu:</span>{' '}
-                        {renderTextWithLinks(material.taiLieu)}
-                      </p>
-                    ) : null}
-                    {!material.daoTao && !material.slide && !material.taiLieu && material.raw ? (
-                      <p className="leading-relaxed">{renderTextWithLinks(material.raw)}</p>
-                    ) : null}
-                    <p className="leading-relaxed">
-                      <span className="font-semibold text-gray-500">Trainer:</span>{' '}
-                      {obj.trainer || '-'}
-                    </p>
-                    <p className="leading-relaxed">
-                      <span className="font-semibold text-gray-500">Phương thức đánh giá:</span>{' '}
-                      {obj.assessment || '-'}
-                    </p>
-                  </div>
-                )
-              })()}
-            </li>
+              <div className="flex items-start gap-3">
+                <span
+                  className={cn(
+                    'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-colors',
+                    isSelected
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                  )}
+                >
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={cn(
+                      'text-[14px] mt-0.5 font-medium leading-relaxed transition-colors',
+                      isSelected ? 'text-primary-900' : 'text-gray-700 group-hover:text-gray-900'
+                    )}
+                  >
+                    {obj.objective}
+                  </p>
+
+                  {isSelected && hasMeta && (
+                    <div className="mt-3 grid grid-cols-1 gap-4 border-t border-gray-100 pt-3 text-[13px] text-gray-800 sm:grid-cols-2">
+                      {material.daoTao && (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                            Đào tạo
+                          </span>
+                          <span className="line-clamp-2">
+                            {renderTextWithLinks(material.daoTao)}
+                          </span>
+                        </div>
+                      )}
+                      {material.slide && (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                            Slide
+                          </span>
+                          <span className="line-clamp-2">
+                            {renderTextWithLinks(material.slide)}
+                          </span>
+                        </div>
+                      )}
+                      {material.taiLieu && (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                            Tài liệu
+                          </span>
+                          <span className="line-clamp-2">
+                            {renderTextWithLinks(material.taiLieu)}
+                          </span>
+                        </div>
+                      )}
+                      {material.raw && (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                            Link khác
+                          </span>
+                          <span className="line-clamp-2">{renderTextWithLinks(material.raw)}</span>
+                        </div>
+                      )}
+                      {obj.trainer && (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                            Trainer
+                          </span>
+                          <span className="line-clamp-2 font-medium text-primary-700">
+                            {obj.trainer}
+                          </span>
+                        </div>
+                      )}
+                      {obj.assessment && (
+                        <div className="col-span-full flex flex-col gap-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                            Đánh giá
+                          </span>
+                          <span className="line-clamp-3 italic text-gray-600">
+                            {obj.assessment}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           )
         })}
-      </ul>
+      </div>
     ) : (
-      <>{objective}</>
+      <div className="text-[13px] text-gray-500 italic px-2">{objective}</div>
     )
 
   if (kind === 'locked') {
     return (
-      <div className="rounded-xl bg-gray-50/80 p-5 opacity-90 ring-1 ring-gray-100/80 transition-opacity hover:opacity-100">
+      <div
+        className={cn(
+          'rounded-xl p-5 transition-all duration-300 ring-1 ring-gray-100/80 border-l-4',
+          expanded
+            ? 'bg-white border-primary-600 shadow-md ring-primary-100'
+            : 'bg-gray-50/80 opacity-90 border-transparent hover:opacity-100'
+        )}
+      >
         <Button
           type="button"
           variant="ghost"
-          className="h-auto w-full justify-start gap-4 p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
+          className="whitespace-normal h-auto w-full justify-start gap-4 p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
           onClick={onToggle}
           aria-expanded={expanded}
           aria-controls={`objective-${id}`}
         >
           <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-gray-300 bg-white" />
           <div className="min-w-0 flex-1">
-            <h4 className="text-base font-bold text-gray-600">{title}</h4>
+            <h4
+              className={cn(
+                'break-words text-base font-bold transition-colors',
+                expanded ? 'text-primary-600' : 'text-gray-600'
+              )}
+            >
+              {title}
+            </h4>
             {subtitle ? (
-              <p className="mt-1 text-sm leading-relaxed text-gray-400">{subtitle}</p>
+              <p className="mt-1 break-words text-sm leading-relaxed text-gray-400">{subtitle}</p>
             ) : null}
           </div>
           <Lock className="mt-0.5 h-5 w-5 shrink-0 text-gray-300" strokeWidth={2} aria-hidden />
@@ -828,7 +968,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
         {expanded ? (
           <div
             id={`objective-${id}`}
-            className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-sm text-gray-500"
+            className="mt-4 rounded-2xl bg-white/60 p-4 shadow-inner ring-1 ring-gray-100/50"
           >
             {objectiveContent}
           </div>
@@ -839,22 +979,43 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
 
   if (kind === 'done') {
     return (
-      <div className="rounded-xl border-l-4 border-success bg-success-muted/40 p-5 shadow-sm ring-1 ring-gray-100 transition-shadow hover:shadow-md">
+      <div
+        className={cn(
+          'rounded-xl p-5 shadow-sm ring-1 ring-gray-100 transition-all duration-300 hover:shadow-md border-l-4',
+          expanded
+            ? 'bg-white border-primary-600 ring-primary-100 shadow-md'
+            : 'border-success bg-success-muted/40'
+        )}
+      >
         <div className="flex flex-col gap-3">
           <Button
             type="button"
             variant="ghost"
-            className="h-auto min-w-0 flex-1 justify-start gap-4 p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
+            className="whitespace-normal h-auto min-w-0 flex-1 justify-start gap-4 p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
             onClick={onToggle}
             aria-expanded={expanded}
             aria-controls={`objective-${id}`}
           >
-            <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-success bg-success text-[11px] font-bold text-white">
+            <div
+              className={cn(
+                'mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 text-[11px] font-bold transition-colors',
+                expanded
+                  ? 'border-primary-600 bg-primary-600 text-white'
+                  : 'border-success bg-success text-white'
+              )}
+            >
               ✓
             </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h4 className="text-base font-bold text-gray-900">{title}</h4>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4
+                  className={cn(
+                    'break-words text-base font-bold transition-colors',
+                    expanded ? 'text-primary-600' : 'text-gray-900'
+                  )}
+                >
+                  {title}
+                </h4>
                 <ChevronDown
                   className={cn(
                     'h-4 w-4 text-gray-500 transition-transform',
@@ -864,14 +1025,14 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
                 />
               </div>
               {subtitle ? (
-                <p className="mt-1 text-sm leading-relaxed text-gray-600">{subtitle}</p>
+                <p className="mt-1 break-words text-sm leading-relaxed text-gray-600">{subtitle}</p>
               ) : null}
             </div>
           </Button>
           {expanded ? (
             <div
               id={`objective-${id}`}
-              className="rounded-lg bg-white/80 px-3 py-2 text-sm text-gray-700"
+              className="mt-4 rounded-2xl bg-white/60 p-4 shadow-inner ring-1 ring-gray-100/50"
             >
               {objectiveContent}
             </div>
@@ -892,16 +1053,26 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
   }
 
   return (
-    <div className="group relative rounded-xl border-l-4 border-primary-600 bg-white p-5 shadow-sm ring-1 ring-gray-100 transition-all duration-300 hover:shadow-md">
+    <div
+      className={cn(
+        'group relative rounded-xl border-l-4 p-5 shadow-sm ring-1 ring-gray-100 transition-all duration-300 hover:shadow-md',
+        expanded ? 'border-primary-600 bg-white' : 'border-transparent bg-white/50'
+      )}
+    >
       <Button
         type="button"
         variant="ghost"
-        className="h-auto w-full justify-start gap-4 p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
+        className="whitespace-normal h-auto w-full justify-start gap-4 p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
         onClick={onToggle}
         aria-expanded={expanded}
         aria-controls={`objective-${id}`}
       >
-        <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-primary-600 bg-white">
+        <div
+          className={cn(
+            'mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 bg-white transition-colors',
+            expanded ? 'border-primary-600' : 'border-gray-300'
+          )}
+        >
           <span
             className="h-2 w-2 rounded-sm bg-primary-600 opacity-0 transition-opacity group-hover:opacity-20"
             aria-hidden
@@ -909,8 +1080,25 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
+            <h4
+              className={cn(
+                'break-words text-base font-bold transition-colors',
+                expanded ? 'text-primary-600' : 'text-gray-700'
+              )}
+            >
+              {title}
+            </h4>
             <div className="flex items-center gap-2">
-              <h4 className="text-base font-bold text-primary-600">{title}</h4>
+              <span
+                className={cn(
+                  'shrink-0 rounded px-2 py-0.5 text-[10px] font-black uppercase tracking-wide transition-all',
+                  expanded
+                    ? 'bg-primary-100/80 text-primary-700 opacity-100'
+                    : 'bg-gray-100 text-gray-400 opacity-0 group-hover:opacity-100'
+                )}
+              >
+                {expanded ? 'Active' : 'Xem'}
+              </span>
               <ChevronDown
                 className={cn(
                   'h-4 w-4 text-primary-600 transition-transform',
@@ -919,9 +1107,6 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
                 aria-hidden
               />
             </div>
-            <span className="shrink-0 rounded bg-primary-100/80 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-primary-700">
-              Active
-            </span>
           </div>
           {subtitle ? (
             <p className="mt-1 text-sm leading-relaxed text-gray-500">{subtitle}</p>
@@ -931,16 +1116,16 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
       {expanded ? (
         <div
           id={`objective-${id}`}
-          className="mt-3 rounded-lg bg-primary-50/50 px-3 py-2 text-sm text-gray-700"
+          className="mt-4 rounded-2xl bg-slate-50/80 p-4 shadow-inner ring-1 ring-gray-100/50"
         >
           {objectiveContent}
         </div>
       ) : null}
-      {primaryAction ? (
+      {primaryAction && expanded ? (
         <div className="mt-4 flex justify-end">
           <Button
             type="button"
-            className="rounded-lg border-0 bg-primary-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-primary-700 active:scale-95"
+            className="rounded-lg border-0 bg-primary-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-primary-700 active:scale-[0.98] transition-all"
             onClick={primaryAction.onClick}
           >
             {primaryAction.label}

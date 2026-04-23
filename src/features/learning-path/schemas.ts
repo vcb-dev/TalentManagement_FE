@@ -40,6 +40,8 @@ const scheduleSlotSchema = z.object({
   endTime: z.string(),
   topic: z.string(),
   location: z.string().nullable(),
+  attendance: z.string().optional(),
+  isEvaluated: z.boolean().optional(),
 })
 
 const enrolledMemberSchema = z.object({
@@ -78,7 +80,8 @@ export const meLearningPathSchema = z.object({
       z.object({
         id: z.string(),
         topic: z.string(),
-        sortOrder: z.number().int().positive(),
+        levelId: levelCodeSchema,
+        sortOrder: z.number().int().optional(),
         objectives: z.array(
           z.object({
             id: z.string().uuid(),

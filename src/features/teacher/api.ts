@@ -87,4 +87,20 @@ export const teacherApi = {
       'DELETE /teacher/classes/:id/schedules/:scheduleId'
     )
   },
+
+  updateAttendance: async (
+    classId: string,
+    scheduleId: string,
+    input: { userId: string; attendance?: string; evaluation?: string; evalLink?: string }
+  ) => {
+    const res = await apiClient.post<unknown>(
+      `/teacher/classes/${classId}/schedules/${scheduleId}/attendance`,
+      input
+    )
+    return safeParse(
+      z.object({ ok: z.boolean() }),
+      res.data,
+      'POST /teacher/classes/:id/schedules/:scheduleId/attendance'
+    )
+  },
 }

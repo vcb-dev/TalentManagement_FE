@@ -1,17 +1,15 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { ChevronRight, ListChecks, Sparkles } from 'lucide-react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChecklistStarScreen } from '@/features/learning-path/components/ChecklistStarScreen'
-import { StarGrid } from '@/features/learning-path/components/StarGrid'
 import { useMyProfilePage } from '@/features/profile/hooks'
-import { resolveLearningPlacement } from '@/features/profile/resolveLearningPlacement'
 import { LEVEL_LABELS, LEVELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
-import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
+import { RoadmapCrud } from '@/features/manager/components/RoadmapCrud'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 const levelIdSchema = z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong'])
 
@@ -37,54 +35,63 @@ export const Route = createFileRoute('/_protected/learning-path/')({
   component: LearningPathIndex,
 })
 
-import { RoadmapCrud } from '@/features/manager/components/RoadmapCrud'
-
 function LearningPathIndex() {
-  const role = useAuthStore((s) => s.user?.role)
-  if (role === 'MEMBER') {
-    return <LearningPathMemberPage />
+  const user = useAuthStore((s) => s.user)
+  const role = user?.role
+
+  const isAdminOrManager = role === 'MANAGER' || role === 'HR' || role === 'BOD'
+
+  if (isAdminOrManager) {
+    return <RoadmapCrud />
   }
-  return <RoadmapCrud />
+
+  return <LearningPathMemberPage />
 }
 
 function LearningPathMemberPage() {
   const { data: profile, isLoading, isError } = useMyProfilePage()
+  const search = Route.useSearch()
+  const navigate = useNavigate()
 
   if (isLoading) {
     return (
-      <>
+      <div className="p-8">
         <PageHeader title="Lộ trình học" description="Đang tải thông tin lộ trình của bạn…" />
         <div className="space-y-4">
           <Skeleton className="h-24 w-full rounded-xl" />
           <Skeleton className="h-72 w-full rounded-xl" />
         </div>
-      </>
+      </div>
     )
   }
 
   if (isError || !profile) {
     return (
-      <>
+      <div className="p-8">
         <PageHeader title="Lộ trình học" />
         <Card>
           <CardContent className="py-6 text-sm text-muted-foreground">
             Không tải được hồ sơ. Vui lòng thử lại sau hoặc liên hệ bộ phận hỗ trợ.
           </CardContent>
         </Card>
-      </>
+      </div>
     )
   }
 
-  const { levelId, starId } = resolveLearningPlacement(profile)
-  const starStr = String(starId)
+  const currentLevelId = (search.levelId as LevelCode) || profile.placement?.levelId || 'tap_su'
+  const currentStarId = search.starId || profile.placement?.starId || 1
+  const starStr = String(currentStarId)
 
   return (
-    <>
+    <div className="p-8">
       <PageHeader
         title="Lộ trình học"
-        description={`${profile.currentLevel.progressLine} — Cấp và mốc do quản lý phân công; mọi điều chỉnh vị trí thực hiện qua quản lý. Phía dưới là checklist và nộp minh chứng trên cùng một trang.`}
+        description={`${profile.currentLevel.progressLine} — Cấp và mốc do quản lý phân công.`}
       />
-      <ChecklistStarScreen levelId={levelId} starId={starStr} embedInLearningPath />
-    </>
+
+      <div className="mt-8">
+        <ChecklistStarScreen levelId={currentLevelId} starId={starStr} embedInLearningPath />
+      </div>
+    </div>
   )
 }

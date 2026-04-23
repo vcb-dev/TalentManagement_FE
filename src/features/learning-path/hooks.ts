@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { apiClient } from '@/lib/axios'
+import { apiClient, getApiErrorMessage } from '@/lib/axios'
 import { safeParse } from '@/lib/utils'
 import { learningApi } from './api'
 import { evidenceSubmitResponseSchema } from './schemas'
@@ -32,7 +32,7 @@ export function useLearningChecklist(levelId: string, starId: string, enabled = 
   return useQuery({
     queryKey: learningKeys.checklist(levelId, starId),
     queryFn: () => learningApi.checklist(levelId, starId),
-    enabled: enabled && levelId.length > 0 && starId.length > 0,
+    enabled: enabled && !!levelId?.length && !!starId?.length,
   })
 }
 
@@ -40,7 +40,7 @@ export function useStarSubmissions(starId: string) {
   return useQuery({
     queryKey: learningKeys.submissions(starId),
     queryFn: () => learningApi.submissions(starId),
-    enabled: starId.length > 0,
+    enabled: !!starId?.length,
   })
 }
 
@@ -53,7 +53,8 @@ export function useSubmitEvidence() {
       form.append('file', input.file)
       const res = await apiClient.post<unknown>(
         `/learning/levels/${input.levelId}/stars/${input.starId}/evidence`,
-        form
+        form,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
       )
       return safeParse(evidenceSubmitResponseSchema, res.data, 'POST evidence')
     },
@@ -62,6 +63,9 @@ export function useSubmitEvidence() {
       void qc.invalidateQueries({ queryKey: learningKeys.submissions(vars.starId) })
       toast.success('Đã gửi minh chứng')
     },
-    onError: () => toast.error('Gửi minh chứng thất bại'),
+    onError: (err) => {
+      const msg = getApiErrorMessage(err)
+      toast.error(`Gửi minh chứng thất bại: ${msg}`)
+    },
   })
 }

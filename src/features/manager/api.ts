@@ -21,6 +21,7 @@ import {
   teamProgressSummaryApiSchema,
   orgItemApiSchema,
   orgCreateResponseApiSchema,
+  managerSubmissionApiSchema,
 } from './schemas'
 
 function computeSummaryFromMembers(
@@ -357,5 +358,17 @@ export const managerApi = {
       res.data,
       'PATCH /manager/classes/:id/exam-questions'
     )
+  },
+  allSubmissions: async () => {
+    const res = await apiClient.get<unknown>('/learning/admin/submissions')
+    return safeParse(
+      z.array(managerSubmissionApiSchema),
+      res.data,
+      'GET /learning/admin/submissions'
+    )
+  },
+  updateSubmissionStatus: async (id: string, status: 'ACCEPTED' | 'REJECTED') => {
+    const res = await apiClient.patch<unknown>(`/learning/admin/submissions/${id}`, { status })
+    return res.data
   },
 }

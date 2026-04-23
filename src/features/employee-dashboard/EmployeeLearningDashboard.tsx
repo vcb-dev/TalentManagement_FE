@@ -329,7 +329,7 @@ export function EmployeeLearningDashboard() {
                 ['Ngày sinh', birthDate],
                 ['Phòng ban', teamLine],
                 ['Vị trí chuyên môn', deptLine],
-                ['Chức vụ', roleLabel],
+                ['Chức vụ', apiUser?.jobTitle || roleLabel],
                 ['Cấp độ học tập', levelLabel],
               ].map(([label, value], idx) => (
                 <div
