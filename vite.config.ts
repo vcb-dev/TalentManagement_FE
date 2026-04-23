@@ -26,6 +26,19 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return
 
+          // React core (trước đây rơi vào vendor-misc — chiếm phần lớn dung lượng)
+          if (
+            id.includes('node_modules/react-dom') ||
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/scheduler')
+          ) {
+            return 'vendor-react'
+          }
+
+          if (id.includes('node_modules/xlsx')) {
+            return 'vendor-xlsx'
+          }
+
           if (id.includes('node_modules/@tanstack/')) {
             return 'vendor-tanstack'
           }
