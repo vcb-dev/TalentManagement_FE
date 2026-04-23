@@ -71,7 +71,9 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
   })()
 
   const answeredEntries = Object.entries(answersObj)
-  const grades = (submission.grades as Record<string, { criteria: string[]; score: number }>) || {}
+  const grades =
+    (submission.grades as Record<string, { criteria: string[]; score: number; note?: string }>) ||
+    {}
 
   const formattedDate = new Date(submission.createdAt).toLocaleString('vi-VN', {
     day: '2-digit',
@@ -179,6 +181,17 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
                                 Trình bày (10%)
                               </label>
                             </div>
+
+                            {questionGrade.note && (
+                              <div className="mt-4 border-t border-primary/10 pt-3">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-primary/60">
+                                  Góp ý từ người chấm
+                                </p>
+                                <p className="mt-1 text-sm font-bold leading-relaxed text-foreground">
+                                  {questionGrade.note}
+                                </p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -194,7 +207,7 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
                 <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-primary">
                   Nhận xét của người chấm
                 </h2>
-                <div className="min-h-[100px] w-full rounded-lg border border-border bg-muted/20 p-4 text-sm text-foreground">
+                <div className="min-h-[100px] w-full rounded-lg border border-border bg-muted/20 p-4 text-sm font-bold text-foreground">
                   {submission.graderNote || (
                     <span className="italic text-muted-foreground">
                       Không có nhận xét chi tiết.

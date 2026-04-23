@@ -13,6 +13,12 @@ import { useManagerSubmissions } from '@/features/exam/hooks'
 import { examSubmissionApiSchema } from '@/features/exam/schemas'
 import { z } from 'zod'
 
+import { useManagerClasses } from '@/features/manager/hooks'
+
+export interface GraderExamListScreenProps {
+  classId?: string
+}
+
 type SubmissionRow = z.infer<typeof examSubmissionApiSchema>
 
 function statusBadge(status: SubmissionRow['status']) {
@@ -47,18 +53,30 @@ function getInitials(name: string) {
   return name.substring(0, 2).toUpperCase()
 }
 
-export function GraderExamListScreen() {
+export function GraderExamListScreen({ classId }: GraderExamListScreenProps) {
   const navigate = useNavigate()
   const [onlyPending, setOnlyPending] = useState(false)
 
   const { data: submissions = [], isLoading } = useManagerSubmissions()
+  const { data: classes = [] } = useManagerClasses()
+
+  const currentClass = useMemo(
+    () => (classId ? classes.find((c) => c.id === classId) : null),
+    [classes, classId]
+  )
 
   const rows = useMemo<SubmissionRow[]>(() => {
-    if (onlyPending) return submissions.filter((r) => r.status === 'pending')
-    return submissions
-  }, [submissions, onlyPending])
+    let filtered = submissions
+    if (classId) {
+      filtered = filtered.filter((s) => s.classId === classId)
+    }
+    if (onlyPending) {
+      filtered = filtered.filter((r) => r.status === 'pending')
+    }
+    return filtered
+  }, [submissions, onlyPending, classId])
 
-  const pendingTotal = submissions.filter((r) => r.status === 'pending').length
+  const pendingTotal = rows.filter((r) => r.status === 'pending').length
 
   const goGrade = (row: SubmissionRow) => {
     // Navigate to grader detail. examId here = submission id
@@ -83,16 +101,36 @@ export function GraderExamListScreen() {
             >
               <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
                 <h1 className={PAGE_HEADER_TITLE}>
-                  <span className={PAGE_HEADER_GRADIENT}>Danh sách bài thi đã nộp</span>
+                  <span className={PAGE_HEADER_GRADIENT}>
+                    {currentClass
+                      ? `Bài thi lớp: ${currentClass.name}`
+                      : 'Danh sách bài thi đã nộp'}
+                  </span>
                 </h1>
                 <p className={PAGE_HEADER_DESCRIPTION}>
                   <span className="font-semibold text-foreground">{pendingTotal} bài chờ chấm</span>
                   {' · '}
-                  Tổng cộng {submissions.length} bài đã nộp. Bấm "Chấm thi" để xem chi tiết và nhập
-                  nhận xét.
+                  Tổng cộng {rows.length} bài đã nộp. Bấm "Chấm thi" để xem chi tiết và nhập nhận
+                  xét.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
+                {currentClass && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg border-primary/30 bg-primary/5 px-5 py-2.5 text-sm font-bold text-primary hover:bg-primary/10"
+                    onClick={() =>
+                      void navigate({
+                        to: '/manager/grade-class/$classId/by-question',
+                        params: { classId: currentClass.id },
+                      })
+                    }
+                  >
+                    Chấm theo câu hỏi
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant={onlyPending ? 'default' : 'outline'}
@@ -110,7 +148,11 @@ export function GraderExamListScreen() {
                   variant="outline"
                   size="sm"
                   className="rounded-lg border-border px-5 py-2.5 text-sm font-semibold"
-                  onClick={() => void navigate({ to: '/manager/grading' as any })}
+                  onClick={() =>
+                    void navigate({
+                      to: currentClass ? '/exam/grader' : '/dashboard',
+                    })
+                  }
                 >
                   ← Quay lại
                 </Button>

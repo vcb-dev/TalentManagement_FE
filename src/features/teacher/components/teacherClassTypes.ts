@@ -1,4 +1,4 @@
-export type TeacherClassTrack = 'tap_su' | 'biet_viec'
+export type TeacherClassTrack = 'tap_su' | 'biet_viec' | 'duoc_viec' | 'dong_gop_ket_qua' | 'tuong'
 
 export type TeacherClassRow = {
   id: string
@@ -6,7 +6,7 @@ export type TeacherClassRow = {
   periodBadge: string
   examLine: string
   memberCount: number
-  metaIcon: 'trending' | 'school'
-  accent: 'primary' | 'amber'
+  metaIcon: 'trending' | 'school' | 'star' | 'crown' | 'target'
+  accent: 'primary' | 'amber' | 'emerald' | 'violet' | 'rose'
   track: TeacherClassTrack
 }

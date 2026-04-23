@@ -1,6 +1,14 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import type { LucideIcon } from 'lucide-react'
-import { BookOpen, CalendarClock, ClipboardCheck, LayoutList, School, Users } from 'lucide-react'
+import {
+  BookOpen,
+  CalendarClock,
+  ClipboardCheck,
+  LayoutList,
+  School,
+  Users,
+  FileCheck,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +24,13 @@ const MANAGER_NAV: NavDef[] = [
   { to: '/manager/classes', label: 'Chia lớp', icon: School, match: 'prefix' },
   { to: '/manager/exam-schedule', label: 'Lịch thi', icon: CalendarClock, match: 'prefix' },
   { to: '/manager/approvals', label: 'Thăng cấp / sao', icon: LayoutList, match: 'prefix' },
+  {
+    to: '/manager/learning-submissions',
+    label: 'Duyệt minh chứng',
+    icon: FileCheck,
+    match: 'prefix',
+  },
+  { to: '/manager/exercises', label: 'Bài tập lộ trình', icon: BookOpen, match: 'prefix' },
 ]
 
 function normalizePath(p: string): string {

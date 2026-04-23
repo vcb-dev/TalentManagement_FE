@@ -9,7 +9,12 @@ import { RadioGroupController } from '@/components/ui/form-controllers'
 import { Textarea } from '@/components/ui/textarea'
 import { ExamHistory } from '@/features/exam/components/ExamHistory'
 import { ClassifyResultContainer } from '@/features/exam/components/ClassifyResult'
-import { useExamResults, useSubmitExam, useSubmission } from '@/features/exam/hooks'
+import {
+  useExamResults,
+  useSubmitExam,
+  useSubmission,
+  useMySubmissions,
+} from '@/features/exam/hooks'
 import { useMyEnrolledClass } from '@/features/learning-path/hooks'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -114,6 +119,7 @@ function ExamResultPage() {
   const userId = user?.id || 'unknown'
   const { data, isLoading } = useExamResults(examId)
   const { data: submissionData } = useSubmission(examId)
+  const { data: mySubmissions } = useMySubmissions()
   const { data: myClassData } = useMyEnrolledClass()
   const { mutateAsync: submitExamApi, isPending: isSubmitting } = useSubmitExam()
   const employeeId = '00000000-0000-4000-8000-000000000001'
@@ -176,9 +182,11 @@ function ExamResultPage() {
 
       setQuestionBank(bank)
 
-      // Check if already submitted via API results (data) or localStorage
-      const hasApiSubmission = data && data.length > 0
-      if (hasApiSubmission || existingSubmission) {
+      // Check if already submitted via API results, my submissions list, or localStorage
+      const hasApiResult = data && data.length > 0
+      const hasApiSubmission = mySubmissions?.some((s) => s.classId === examId || s.id === examId)
+
+      if (hasApiResult || hasApiSubmission || existingSubmission) {
         console.log('[TakeExam] Submission found. Status: Submitted')
         setSubmitted(true)
         if (existingSubmission) {
@@ -186,6 +194,12 @@ function ExamResultPage() {
             const parsedSub = JSON.parse(existingSubmission)
             setAnswers(parsedSub.answers || {})
           } catch {}
+        } else if (hasApiSubmission) {
+          // If we have a submission in API but not in local, try to use its answers if available
+          const sub = mySubmissions?.find((s) => s.classId === examId || s.id === examId)
+          if (sub?.answers) {
+            setAnswers(sub.answers as Record<string, string>)
+          }
         }
         return
       }
@@ -222,7 +236,7 @@ function ExamResultPage() {
       console.error('[TakeExam] Initialization error:', err)
       setQuestionBank(null)
     }
-  }, [examId, myClassId, myClassData, data, submissionData])
+  }, [examId, myClassId, myClassData, data, submissionData, mySubmissions, userId])
 
   useEffect(() => {
     if (Object.keys(answers).length > 0 && !submitted) {

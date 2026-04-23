@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Award, Presentation, School, TrendingUp, Users } from 'lucide-react'
+import { Award, Presentation, School, TrendingUp, Users, Star, Crown, Target } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -14,20 +14,55 @@ export interface TeacherClassCardProps {
   cardIndex?: number
 }
 
+const ACCENT_CLASSES: Record<TeacherClassRow['accent'], string> = {
+  primary: 'from-blue-600/20 to-indigo-600/10 text-blue-700 ring-blue-600/20 bg-blue-50/50',
+  amber: 'from-amber-600/20 to-orange-600/10 text-amber-700 ring-amber-600/20 bg-amber-50/50',
+  emerald:
+    'from-emerald-600/20 to-teal-600/10 text-emerald-700 ring-emerald-600/20 bg-emerald-50/50',
+  violet: 'from-violet-600/20 to-purple-600/10 text-violet-700 ring-violet-600/20 bg-violet-50/50',
+  rose: 'from-rose-600/20 to-pink-600/10 text-rose-700 ring-rose-600/20 bg-rose-50/50',
+}
+
+const BADGE_CLASSES: Record<TeacherClassRow['accent'], string> = {
+  primary: 'bg-blue-100 text-blue-700',
+  amber: 'bg-amber-100 text-amber-700',
+  emerald: 'bg-emerald-100 text-emerald-700',
+  violet: 'bg-violet-100 text-violet-700',
+  rose: 'bg-rose-100 text-rose-700',
+}
+
+const TRACK_LABELS: Record<string, string> = {
+  tap_su: 'Tập sự',
+  biet_viec: 'Biết việc',
+  duoc_viec: 'Được việc',
+  dong_gop_ket_qua: 'Đóng góp',
+  tuong: 'Tướng',
+}
+
 export function TeacherClassCard({
   classRow: c,
   selected,
   onSelect,
   cardIndex,
 }: TeacherClassCardProps) {
-  const IconMain = c.accent === 'primary' ? Presentation : Award
-  const MetaIcon = c.metaIcon === 'trending' ? TrendingUp : School
-  const iconWrap =
-    c.accent === 'primary'
-      ? 'bg-primary/15 text-primary ring-primary/20'
-      : 'bg-amber-100 text-amber-800 ring-amber-200/80'
-  const badgeWrap =
-    c.accent === 'primary' ? 'bg-primary/10 text-primary' : 'bg-amber-100 text-amber-900'
+  const IconMain = c.track === 'tap_su' ? Presentation : Award
+  const MetaIcon = (() => {
+    switch (c.metaIcon) {
+      case 'trending':
+        return TrendingUp
+      case 'school':
+        return School
+      case 'star':
+        return Star
+      case 'crown':
+        return Crown
+      case 'target':
+        return Target
+      default:
+        return School
+    }
+  })()
+
   const progressPct = Math.min(100, Math.round((c.memberCount / 24) * 100))
 
   return (
@@ -42,79 +77,83 @@ export function TeacherClassCard({
         }
       }}
       className={cn(
-        'group relative flex w-full cursor-pointer flex-col rounded-2xl p-5 text-left shadow-sm',
+        'group relative flex w-full cursor-pointer flex-col overflow-hidden rounded-[24px] border-border/50 bg-card p-5 text-left transition-all duration-300 hover:border-primary/30 hover:shadow-xl',
         cardIndex !== undefined && CARD_ENTRANCE,
-        selected ? 'border-2 border-primary shadow-md ring-1 ring-primary/15' : 'border-border'
+        selected ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'shadow-sm'
       )}
       style={cardIndex !== undefined ? staggerStyle(Math.min(cardIndex, 16)) : undefined}
     >
+      {/* Decorative background blur */}
+      <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/5 blur-2xl group-hover:bg-primary/10 transition-colors" />
+
       <div className="mb-5 flex items-start justify-between gap-3">
         <div
           className={cn(
-            'flex h-[5.25rem] w-[5.25rem] shrink-0 items-center justify-center rounded-2xl shadow-md ring-2 ring-background sm:h-[5.75rem] sm:w-[5.75rem]',
-            iconWrap
+            'flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br shadow-sm ring-1 transition-transform group-hover:scale-105',
+            ACCENT_CLASSES[c.accent] || ACCENT_CLASSES.primary
           )}
         >
-          <IconMain className="h-10 w-10 sm:h-11 sm:w-11" strokeWidth={2} aria-hidden />
+          <IconMain className="h-8 w-8" strokeWidth={2.5} aria-hidden />
         </div>
         <div className="flex min-w-0 flex-col items-end gap-1.5">
           <Badge
             className={cn(
-              'max-w-[10.5rem] truncate px-2 py-0.5 text-center text-[10px] font-bold tracking-tight sm:max-w-[11rem] sm:text-[11px]',
-              badgeWrap
+              'max-w-[10rem] truncate px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+              BADGE_CLASSES[c.accent] || BADGE_CLASSES.primary
             )}
             variant="muted"
           >
             {c.periodBadge}
           </Badge>
-          <Badge className="inline-flex items-center gap-1 bg-muted/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-            <Users className="size-3 shrink-0" strokeWidth={2} aria-hidden />
+          <Badge className="inline-flex items-center gap-1.5 border-border/50 bg-muted/40 px-2.5 py-1 text-[10px] font-bold text-muted-foreground backdrop-blur-sm">
+            <Users className="size-3" strokeWidth={2.5} aria-hidden />
             {c.memberCount} HV
           </Badge>
         </div>
       </div>
 
-      <div className="mb-5 min-w-0">
-        <h3 className="text-base font-bold leading-snug text-foreground">{c.title}</h3>
-        <p className="mt-0.5 text-xs text-muted-foreground">Lớp phụ trách</p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-          <Badge className="inline-flex items-center gap-0.5 rounded-full bg-muted/70 px-2 py-0.5 text-[10px] font-bold text-foreground/90">
-            <MetaIcon className="size-3 shrink-0" strokeWidth={2} aria-hidden />
-            {c.track === 'tap_su' ? 'Tập sự' : 'Biết việc'}
+      <div className="mb-5 flex-1 min-w-0">
+        <h3 className="line-clamp-1 text-[15px] font-bold leading-tight text-foreground group-hover:text-primary transition-colors">
+          {c.title}
+        </h3>
+        <p className="mt-1 text-[11px] font-medium text-muted-foreground/80 uppercase tracking-widest">
+          Lớp phụ trách
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Badge className="inline-flex h-6 items-center gap-1.5 rounded-lg border-primary/20 bg-primary/5 px-2 text-[10px] font-bold text-primary">
+            <MetaIcon className="size-3" strokeWidth={2.5} aria-hidden />
+            {TRACK_LABELS[c.track] || c.track}
           </Badge>
-          <span className="text-border">·</span>
-          <span className="line-clamp-2 text-foreground/80">{c.examLine}</span>
+          <span className="text-xs font-bold text-muted-foreground/30">/</span>
+          <span className="text-[11px] font-semibold text-muted-foreground line-clamp-1">
+            {c.examLine}
+          </span>
         </div>
       </div>
 
-      <div className="mb-5 flex items-center gap-2">
-        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+      <div className="mb-6 space-y-2">
+        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
+          <span className="text-muted-foreground">Sĩ số lớp</span>
+          <span className="text-primary">{progressPct}%</span>
+        </div>
+        <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
           <div
-            className="h-full rounded-full bg-primary transition-[width] duration-300"
+            className="h-full rounded-full bg-gradient-to-r from-primary to-teal-400 transition-[width] duration-1000 ease-out shadow-[0_0_8px_rgba(var(--primary-rgb),0.3)]"
             style={{ width: `${progressPct}%` }}
           />
         </div>
-        <span
-          className={cn(
-            'shrink-0 tabular-nums text-[10px] font-bold sm:text-xs',
-            progressPct > 0 ? 'text-primary' : 'text-muted-foreground'
-          )}
-        >
-          {progressPct}%
-        </span>
       </div>
 
       <Button
         asChild
         className={cn(
-          'mt-auto w-full rounded-xl text-sm font-bold shadow-sm transition-colors hover:opacity-90',
-          selected && 'ring-2 ring-primary/30 ring-offset-2 ring-offset-card'
+          'h-11 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-md transition-all hover:translate-y-[-2px] hover:shadow-lg active:scale-95'
         )}
       >
         <Link
           to="/teacher/classes/$classId"
           params={{ classId: c.id }}
-          aria-label={`Xem chi tiết lớp ${c.title}`}
           onClick={(e) => e.stopPropagation()}
         >
           Xem chi tiết

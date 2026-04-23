@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ExamResultsSchedule } from '@/features/exam/components/ExamResultsSchedule'
+import { ManagedClassesExamTable } from '@/features/exam/components/ManagedClassesExamTable'
 import { useExams, useMySubmissions } from '@/features/exam/hooks'
 import { useMyEnrolledClass } from '@/features/learning-path/hooks'
 import { useTeacherClassDetail, useTeacherClasses } from '@/features/teacher/hooks'
@@ -99,57 +100,29 @@ function ExamIndexPage() {
         </Button>
       </div>
       {viewMode === 'managed' ? (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-muted-foreground">Chọn lớp:</span>
-          <Select
-            value={managedClassId || '__none'}
-            onValueChange={(value) => setManagedClassId(value === '__none' ? '' : value)}
-            disabled={managedClasses.length === 0}
-          >
-            <SelectTrigger className="h-9 min-w-[260px] rounded-lg border border-border bg-background px-3 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {managedClasses.length === 0 ? (
-                <SelectItem value="__none">Không có lớp phụ trách</SelectItem>
-              ) : (
-                managedClasses.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name} ({c.memberCount} thành viên)
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <ManagedClassesExamTable classes={managedClasses} isLoading={isManagedLoading} />
         </div>
-      ) : null}
-      {viewMode === 'managed' && isManagedError ? (
-        <p className="mb-4 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
-          Bạn chưa có quyền hoặc chưa phụ trách lớp nào.
-        </p>
-      ) : null}
-      <ExamResultsSchedule
-        exams={viewMode === 'mine' ? (data?.data ?? []) : managedSelectedExam}
-        total={viewMode === 'mine' ? (data?.total ?? 0) : managedSelectedExam.length}
-        totalPages={viewMode === 'mine' ? (data?.totalPages ?? 1) : 1}
-        page={viewMode === 'mine' ? (data?.page ?? page) : page}
-        isLoading={viewMode === 'mine' ? isLoading : isManagedLoading}
-        onPageChange={setPage}
-        onOpenExam={(id, isSubmission) => {
-          if (isSubmission) {
-            void navigate({ to: '/exam/submission/$submissionId', params: { submissionId: id } })
-          } else {
-            void navigate({ to: '/exam/$examId/result', params: { examId: id } })
-          }
-        }}
-        myEnrolledClassId={
-          viewMode === 'mine' ? (myClassData?.enrolledClass?.id ?? undefined) : undefined
-        }
-        membersInClass={viewMode === 'managed' ? (managedDetail?.members ?? []) : undefined}
-        membersTitle={viewMode === 'managed' ? 'Thành viên trong lớp' : undefined}
-        mySubmissions={viewMode === 'mine' ? (mySubmissions ?? undefined) : undefined}
-        enrolledClassHasQuestions={!!myClassData?.enrolledClass?.examQuestions}
-      />
+      ) : (
+        <ExamResultsSchedule
+          exams={data?.data ?? []}
+          total={data?.total ?? 0}
+          totalPages={data?.totalPages ?? 1}
+          page={data?.page ?? page}
+          isLoading={isLoading}
+          onPageChange={setPage}
+          onOpenExam={(id, isSubmission) => {
+            if (isSubmission) {
+              void navigate({ to: '/exam/submission/$submissionId', params: { submissionId: id } })
+            } else {
+              void navigate({ to: '/exam/$examId/result', params: { examId: id } })
+            }
+          }}
+          myEnrolledClassId={myClassData?.enrolledClass?.id ?? undefined}
+          mySubmissions={mySubmissions ?? undefined}
+          enrolledClassHasQuestions={!!myClassData?.enrolledClass?.examQuestions}
+        />
+      )}
     </>
   )
 }

@@ -175,7 +175,7 @@ export function ManagerGradingScreen() {
                                 })
                               }
                             >
-                              Chấm thi
+                              {total > 0 && pending === 0 ? 'Sửa bài chấm' : 'Chấm thi'}
                             </Button>
                           )}
                         </td>

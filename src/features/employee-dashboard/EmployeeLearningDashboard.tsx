@@ -1,5 +1,13 @@
 import { useMemo, useState, useTransition } from 'react'
-import { CalendarDays, GraduationCap, Sparkles, Target } from 'lucide-react'
+import {
+  BarChart3,
+  CalendarDays,
+  GraduationCap,
+  Medal,
+  Sparkles,
+  Target,
+  Trophy,
+} from 'lucide-react'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { ProgressStar } from '@/components/shared/ProgressStar/ProgressStar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -63,6 +71,37 @@ function formatDateVi(raw: string | null | undefined): string {
   if (!Number.isNaN(asDate.getTime())) return asDate.toLocaleDateString('vi-VN')
   return text
 }
+
+const achievementCardStyles = [
+  {
+    icon: Trophy,
+    panel:
+      'border-amber-500/25 bg-gradient-to-br from-primary/12 via-card to-amber-50/90 shadow-[0_12px_40px_-12px_rgb(217_119_6/0.22)]',
+    iconWrap:
+      'bg-gradient-to-br from-amber-400 to-tier-gold text-white shadow-lg shadow-amber-500/35',
+  },
+  {
+    icon: Target,
+    panel:
+      'border-primary/30 bg-gradient-to-br from-primary/[0.14] via-card to-accent/15 shadow-[var(--shadow-game-float)]',
+    iconWrap:
+      'bg-gradient-to-br from-primary to-primary-600 text-primary-foreground shadow-lg shadow-primary/40',
+  },
+  {
+    icon: GraduationCap,
+    panel:
+      'border-accent/30 bg-gradient-to-br from-accent/12 via-card to-info-muted/50 shadow-[0_12px_36px_-14px_rgb(13_148_136/0.25)]',
+    iconWrap:
+      'bg-gradient-to-br from-accent to-[#0f766e] text-accent-foreground shadow-lg shadow-accent/30',
+  },
+  {
+    icon: BarChart3,
+    panel:
+      'border-emerald-500/25 bg-gradient-to-br from-emerald-500/[0.08] via-card to-primary/[0.06] shadow-[0_12px_36px_-12px_rgb(5_150_105/0.2)]',
+    iconWrap:
+      'bg-gradient-to-br from-emerald-500 to-[#047857] text-white shadow-lg shadow-emerald-600/30',
+  },
+] as const
 
 export function EmployeeLearningDashboard() {
   const user = useAuthStore((s) => s.user)
@@ -131,6 +170,7 @@ export function EmployeeLearningDashboard() {
   const fullName = apiUser?.fullNameLegal?.trim() || user?.name || '—'
   const birthDate = formatDateVi(apiUser?.birthDate)
   const promotionHistory = meDashboard?.promotionHistory ?? []
+  const highlightAchievements = meDashboard?.highlightAchievements ?? []
 
   const starPct = maxStars > 0 ? Math.round((filledStars / maxStars) * 100) : 0
 
@@ -348,7 +388,7 @@ export function EmployeeLearningDashboard() {
                   ['Ngày sinh', birthDate],
                   ['Phòng ban', teamLine],
                   ['Vị trí chuyên môn', deptLine],
-                  ['Chức vụ', roleLabel],
+                  ['Chức vụ', apiUser?.jobTitle || roleLabel],
                   ['Cấp độ học tập', levelLabel],
                 ].map(([label, value], idx) => (
                   <div
@@ -407,6 +447,84 @@ export function EmployeeLearningDashboard() {
                 ))}
               </ul>
             )}
+          </section>
+        ) : null}
+
+        {!isManagerLearningDash ? (
+          <section aria-labelledby="dash-highlight-achievements">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2
+                  id="dash-highlight-achievements"
+                  className="flex items-center gap-2 text-lg font-black tracking-tight text-foreground"
+                >
+                  <Medal className="h-6 w-6 text-amber-500 motion-safe:animate-[dash-float-slow_4s_ease-in-out_infinite] motion-reduce:animate-none" />
+                  Thành tựu nổi bật
+                </h2>
+                <p className="mt-1 text-xs font-medium text-muted-foreground">
+                  Phần thưởng KPI/OKR và mốc học tập — săn thêm điểm mỗi tháng.
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {highlightAchievements.length === 0 ? (
+                <div className="rounded-2xl border border-border/80 bg-card px-4 py-5 text-sm text-muted-foreground sm:col-span-2 xl:col-span-4">
+                  Chưa có thành tựu nổi bật.
+                </div>
+              ) : (
+                highlightAchievements.map((achievement, idx) => {
+                  const style =
+                    achievementCardStyles[idx % achievementCardStyles.length] ??
+                    achievementCardStyles[0]!
+                  const AchievementIcon = style.icon
+                  return (
+                    <div
+                      key={achievement.id}
+                      className={cn(
+                        'group relative overflow-hidden rounded-2xl border p-5',
+                        style.panel,
+                        quartOut,
+                        'motion-safe:animate-[profile-card-in_0.65s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none',
+                        'transition-all duration-300 hover:-translate-y-1 hover:shadow-xl motion-reduce:transition-none motion-reduce:hover:translate-y-0'
+                      )}
+                      style={staggerStyle(idx, 70)}
+                    >
+                      <div
+                        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100 motion-reduce:hidden"
+                        aria-hidden
+                      >
+                        <div className="absolute inset-y-0 -left-1/3 w-1/2 skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent motion-safe:animate-[dash-card-shimmer_1.4s_ease-in-out_infinite] motion-reduce:animate-none" />
+                      </div>
+                      <div className="relative mb-3 flex items-start justify-between gap-2">
+                        <div
+                          className={cn(
+                            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
+                            style.iconWrap,
+                            'motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-110 group-hover:rotate-3'
+                          )}
+                        >
+                          <AchievementIcon className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+                        </div>
+                        <span className="rounded-full bg-background/70 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-tight text-foreground shadow-sm backdrop-blur-sm">
+                          {achievement.badge?.trim() ||
+                            (achievement.score != null ? `+${achievement.score}` : 'Nổi bật')}
+                        </span>
+                      </div>
+                      <h3 className="relative text-[0.65rem] font-bold uppercase tracking-widest text-foreground/80">
+                        {achievement.title}
+                      </h3>
+                      <p className="relative mt-2 text-sm font-semibold leading-snug text-foreground">
+                        {achievement.description?.trim() || 'Đã ghi nhận một thành tựu nổi bật.'}
+                      </p>
+                      <div className="relative mt-4 flex items-center gap-1.5 text-xs font-bold text-primary">
+                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary motion-safe:animate-pulse motion-reduce:animate-none" />
+                        {achievement.levelScope?.trim() || 'Thành tựu cá nhân'}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
           </section>
         ) : null}
 

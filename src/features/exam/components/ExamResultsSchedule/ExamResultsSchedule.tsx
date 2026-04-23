@@ -258,23 +258,25 @@ export function ExamResultsSchedule({
                     <span>Theo lịch hệ thống VCB HRM</span>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    if (canOpenExam) {
-                      onOpenExam(exam.id)
-                    }
-                  }}
-                  disabled={!canOpenExam}
-                  className={cn(
-                    'flex w-full items-center justify-center gap-2 rounded-lg border-0 py-3 text-base font-bold text-white shadow-sm transition-all',
-                    'vcb-cta-exam-gradient hover:bg-transparent hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70'
-                  )}
-                >
-                  {actionLabel}
-                  <ArrowRight className="h-4 w-4" aria-hidden />
-                </Button>
+                {!membersInClass && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      if (canOpenExam) {
+                        onOpenExam(exam.id)
+                      }
+                    }}
+                    disabled={!canOpenExam}
+                    className={cn(
+                      'flex w-full items-center justify-center gap-2 rounded-lg border-0 py-3 text-base font-bold text-white shadow-sm transition-all',
+                      'vcb-cta-exam-gradient hover:bg-transparent hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70'
+                    )}
+                  >
+                    {actionLabel}
+                    <ArrowRight className="h-4 w-4" aria-hidden />
+                  </Button>
+                )}
               </div>
             )
           })}

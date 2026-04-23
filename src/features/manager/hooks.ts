@@ -360,15 +360,35 @@ export function useDeleteClassSchedule() {
   })
 }
 
-export function useSaveExamQuestions() {
+export const useSaveExamQuestions = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ classId, questions }: { classId: string; questions: any }) =>
-      managerApi.saveExamQuestions(classId, questions),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
-      toast.success('Đã lưu đề thi lên hệ thống')
+    mutationFn: (input: { classId: string; questions: any }) =>
+      managerApi.saveExamQuestions(input.classId, input.questions),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['manager', 'classes', variables.classId] })
+      toast.success('Lưu đề thi thành công')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
+export const useManagerSubmissions = () => {
+  return useQuery({
+    queryKey: ['manager', 'learning-submissions'],
+    queryFn: () => managerApi.allSubmissions(),
+  })
+}
+
+export const useUpdateSubmissionStatus = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { id: string; status: 'ACCEPTED' | 'REJECTED' }) =>
+      managerApi.updateSubmissionStatus(input.id, input.status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['manager', 'learning-submissions'] })
+      toast.success('Cập nhật trạng thái thành công')
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err)),
   })
 }

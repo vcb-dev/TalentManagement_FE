@@ -1,12 +1,34 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
-import { ArrowLeft, CalendarDays, Filter, Pencil, Search, Trash2, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  CalendarDays,
+  Filter,
+  Pencil,
+  Search,
+  Trash2,
+  X,
+  Star,
+  Edit3,
+  ClipboardCheck,
+  FileDown,
+  LayoutGrid,
+  Table as TableIcon,
+} from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Form } from '@/components/ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   DateController,
   InputController,
@@ -28,21 +50,20 @@ import {
   splitTimeToParts,
 } from '@/lib/time24h'
 import { cn } from '@/lib/utils'
+import { SessionEvaluationModal } from './SessionEvaluationModal'
+import { ViewEvaluationsModal } from './ViewEvaluationsModal'
 import {
   useTeacherClassDetail,
   useTeacherCreateSchedule,
   useTeacherDeleteSchedule,
   useTeacherSchedules,
+  useTeacherUpdateAttendance,
   useTeacherUpdateSchedule,
 } from '@/features/teacher/hooks'
 import { TeacherClassMemberCard } from './TeacherClassMemberCard'
 import type { ClassMemberRow } from './teacherClassMemberTypes'
 
-const FILTERS: { key: 'all' | 'has' | 'none'; label: string }[] = [
-  { key: 'all', label: 'Tất cả' },
-  { key: 'has', label: 'Đã có KQ thi' },
-  { key: 'none', label: 'Chưa có KQ' },
-]
+const FILTERS = [{ key: 'all', label: 'Tất cả học viên' }] as const
 
 /** YYYY-MM-DD — ngày hôm nay (local), dùng cho min của input date. */
 function getTodayIsoLocal(): string {
@@ -148,8 +169,28 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const deferredSearchDraft = useDeferredValue(searchDraft)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null)
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+
+  // Evaluation modal state
+  const [evalModalOpen, setEvalModalOpen] = useState(false)
+  const [evalTarget, setEvalTarget] = useState<{ userId: string; userName: string } | null>(null)
+  const [viewEvalModalOpen, setViewEvalModalOpen] = useState(false)
+
+  const updateAttendance = useTeacherUpdateAttendance(classId)
+
+  // Tự động chọn buổi học đầu tiên nếu có dữ liệu và chưa chọn buổi nào
+  useEffect(() => {
+    if (schedules && schedules.length > 0 && !activeScheduleId) {
+      setActiveScheduleId(schedules[0]?.id || null)
+    }
+  }, [schedules, activeScheduleId])
+
+  const selectedSchedule = useMemo(
+    () => schedules.find((s) => s.id === activeScheduleId),
+    [schedules, activeScheduleId]
+  )
   const scheduleForm = useForm({
     defaultValues: {
       dateIso: '',
@@ -244,19 +285,15 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   }
 
   const filtered = useMemo(() => {
-    const q = deferredSearchDraft.trim().toLowerCase()
-    return members.filter((m) => {
-      const hasResult = m.examResult != null && m.examResult.length > 0
-      if (filterKey === 'has' && !hasResult) return false
-      if (filterKey === 'none' && hasResult) return false
-      if (!q) return true
-      return (
-        m.name.toLowerCase().includes(q) ||
-        m.email.toLowerCase().includes(q) ||
-        (m.examResult?.toLowerCase().includes(q) ?? false)
+    let list = members
+    if (deferredSearchDraft) {
+      const s = deferredSearchDraft.toLowerCase()
+      list = list.filter(
+        (m) => m.name.toLowerCase().includes(s) || m.email.toLowerCase().includes(s)
       )
-    })
-  }, [members, filterKey, deferredSearchDraft])
+    }
+    return list
+  }, [members, deferredSearchDraft])
 
   const total = members.length
   const page = 1
@@ -294,372 +331,504 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   }, [scheduleModalOpen, resetScheduleValues])
 
   return (
-    <div className="-m-5 flex min-h-[calc(100vh-3.5rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="page-shell">
-          <div className="mb-8">
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div className={cn('min-w-0 flex-1 space-y-3', PAGE_HEADER_SURFACE)}>
-                <Link
-                  to="/teacher/classes"
-                  className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-                >
-                  <ArrowLeft className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
-                  Danh sách lớp
-                </Link>
-                <h1 className={PAGE_HEADER_TITLE}>
-                  <span className={PAGE_HEADER_GRADIENT}>{title}</span>
-                </h1>
-                <p className={PAGE_HEADER_DESCRIPTION}>
-                  Thành viên, chấm điểm và{' '}
-                  <strong className="font-semibold text-foreground">lịch học buổi</strong>{' '}
-                  (GET/POST/PATCH/DELETE{' '}
-                  <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
-                    /teacher/classes/:id/schedules
-                  </code>
-                  ).
-                </p>
+    <div className="-m-5 flex min-h-screen flex-col bg-[#f1f5f9] text-sm text-slate-900 md:-m-6 lg:-m-8">
+      <div className="flex-1 overflow-y-auto px-4 py-10 sm:px-10 lg:px-16">
+        <div className="mx-auto max-w-7xl">
+          {/* Version Indicator - To confirm update */}
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-slate-900/5 px-3 py-1 text-[10px] font-bold tracking-tighter text-slate-500 ring-1 ring-slate-900/10">
+            PREMIUM UI V2.0 — ACTIVE
+          </div>
+
+          <div className="mb-12 space-y-6">
+            <Link
+              to="/teacher/classes"
+              className="group inline-flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 transition-all hover:text-primary"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200 transition-all group-hover:bg-primary group-hover:text-white group-hover:ring-primary">
+                <ArrowLeft className="h-4 w-4" />
               </div>
+              Danh sách lớp phụ trách
+            </Link>
+
+            <div className="flex flex-col justify-between gap-8 md:flex-row md:items-end">
+              <div className="space-y-4">
+                <h1 className="text-5xl font-black tracking-tight text-slate-900 sm:text-6xl">
+                  {title}
+                </h1>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-1.5 text-[11px] font-black text-white shadow-lg shadow-emerald-500/20">
+                    <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                    ĐANG GIẢNG DẠY
+                  </div>
+                  <p className="text-sm font-semibold text-slate-500/80">
+                    Hệ thống quản lý học viên và điều phối lịch đào tạo chuyên nghiệp.
+                  </p>
+                </div>
+              </div>
+
               <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="inline-flex h-auto rounded-lg border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm hover:bg-muted"
-                  onClick={scrollToFilters}
-                >
-                  <Filter className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                  Bộ lọc
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={cn(
-                    'inline-flex h-auto rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors',
-                    viewMode === 'table'
-                      ? 'border-button bg-button text-button-foreground'
-                      : 'border-border bg-card text-foreground hover:bg-muted'
-                  )}
-                  onClick={() => setViewMode((v) => (v === 'cards' ? 'table' : 'cards'))}
-                >
-                  {viewMode === 'cards' ? 'Dạng bảng' : 'Dạng thẻ'}
-                </Button>
-                <Button
-                  type="button"
-                  className="h-auto rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90"
-                  onClick={() => toast.info('Xuất danh sách thành viên lớp sẽ nối API sau.')}
-                >
-                  Xuất dữ liệu
+                <div className="flex h-11 items-center rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      'h-full rounded-xl px-4 text-[11px] font-black uppercase tracking-widest transition-all',
+                      viewMode === 'cards'
+                        ? 'bg-primary text-white shadow-lg'
+                        : 'text-slate-400 hover:bg-slate-50'
+                    )}
+                    onClick={() => setViewMode('cards')}
+                  >
+                    Dạng thẻ
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      'h-full rounded-xl px-4 text-[11px] font-black uppercase tracking-widest transition-all',
+                      viewMode === 'table'
+                        ? 'bg-primary text-white shadow-lg'
+                        : 'text-slate-400 hover:bg-slate-50'
+                    )}
+                    onClick={() => setViewMode('table')}
+                  >
+                    Dạng bảng
+                  </Button>
+                </div>
+                <Button className="h-11 rounded-2xl bg-primary px-6 text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95">
+                  Xuất báo cáo
                 </Button>
               </div>
             </div>
           </div>
 
-          <div
-            id="teacher-class-detail-filters"
-            className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-stretch lg:gap-4"
-          >
-            <div className="scrollbar-hide flex min-w-0 w-full overflow-x-auto rounded-xl border border-border bg-card p-1 shadow-sm">
-              <div role="tablist" aria-label="Lọc kết quả thi" className="flex min-w-min gap-0.5">
-                {FILTERS.map(({ key, label }) => {
-                  const selected = filterKey === key
-                  return (
-                    <Button
-                      key={key}
-                      type="button"
-                      variant="ghost"
-                      role="tab"
-                      aria-selected={selected}
-                      className={cn(
-                        'inline-flex h-auto min-h-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-xs font-semibold transition-colors md:text-[13px]',
-                        selected
-                          ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground'
-                          : 'text-muted-foreground hover:bg-muted/70 hover:text-primary'
-                      )}
-                      onClick={() => filtersForm.setValue('filterKey', key)}
-                    >
-                      {label}
-                    </Button>
-                  )
-                })}
-              </div>
-            </div>
+          {/* Search & Filters */}
+          <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center">
             <Form {...filtersForm}>
-              <div className="relative flex min-h-[42px] w-full min-w-0 items-center rounded-xl border border-border bg-card px-3 shadow-sm ring-1 ring-border/60">
+              <div className="flex h-14 flex-1 items-center gap-4 rounded-3xl border border-slate-200 bg-white px-5 shadow-sm transition-all focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-primary/5">
+                <Search className="h-5 w-5 text-slate-400" />
                 <InputFieldController
                   control={filtersForm.control}
                   name="searchDraft"
-                  type="search"
-                  placeholder="Tìm theo tên, email, kết quả…"
-                  aria-label="Tìm thành viên"
-                  className="min-w-0 flex-1"
-                  wrapperClassName="min-w-0 flex-1"
-                  startSlot={<Search className="size-4 text-muted-foreground" aria-hidden />}
-                  inputClassName="h-auto min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm shadow-none focus-visible:ring-0"
+                  placeholder="Tìm kiếm học viên theo tên hoặc email..."
+                  className="flex-1"
+                  wrapperClassName="flex-1"
+                  inputClassName="h-full border-0 bg-transparent text-base font-medium shadow-none focus-visible:ring-0 placeholder:text-slate-300"
                 />
               </div>
             </Form>
-          </div>
-
-          <div
-            id="lich-hoc"
-            className={cn(
-              'mb-6 flex scroll-mt-24 flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.06] via-card to-teal-500/[0.05] px-4 py-3 shadow-[var(--shadow-card)] ring-1 ring-primary/10 sm:px-5',
-              CARD_ENTRANCE_HOVER
-            )}
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary shadow-sm ring-1 ring-primary/20">
-                <CalendarDays className="h-5 w-5" strokeWidth={2} aria-hidden />
+            {/* Filter buttons - already simplified to 1 item, so we can hide or keep as label */}
+            <div className="flex h-14 items-center rounded-3xl border border-slate-200 bg-white p-1.5 shadow-sm">
+              <div className="px-6 text-[11px] font-black uppercase tracking-widest text-slate-900">
+                Tất cả học viên
               </div>
-              <p className="min-w-0 text-sm font-semibold text-foreground">Lịch học buổi</p>
             </div>
-            <Button
-              type="button"
-              className="shrink-0 gap-2 font-bold shadow-sm"
-              onClick={() => {
-                resetScheduleForm()
-                setScheduleModalOpen(true)
-              }}
-            >
-              <CalendarDays className="h-4 w-4" strokeWidth={2} aria-hidden />
-              Thêm buổi học
-            </Button>
           </div>
 
-          {scheduleModalOpen ? (
-            <div
-              className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-              role="presentation"
-            >
+          {/* Schedule Management Card - LIGHT THEME */}
+          <div className="group relative mb-12 overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl shadow-slate-200/50 transition-all hover:shadow-primary/5">
+            <div className="flex flex-col justify-between gap-8 p-8 sm:flex-row sm:items-center sm:px-12">
+              <div className="flex items-center gap-6">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 transition-transform group-hover:scale-110">
+                  <CalendarDays className="h-8 w-8" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-2xl font-black tracking-tight text-slate-900">
+                    Lịch học & Điều phối
+                  </h3>
+                  <p className="text-sm font-semibold text-slate-400">
+                    Điều phối các buổi đào tạo và theo dõi điểm danh
+                  </p>
+                </div>
+              </div>
               <Button
-                type="button"
-                variant="ghost"
-                className="absolute inset-0 h-auto min-h-0 w-full rounded-none bg-black/50 p-0 hover:bg-black/50 focus-visible:ring-0"
-                aria-label="Đóng"
-                onClick={closeScheduleModal}
-              />
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="schedule-dialog-title"
-                className="relative z-10 flex max-h-[min(90vh,880px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
+                className="h-14 rounded-2xl bg-primary px-8 text-base font-black text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95"
+                onClick={() => {
+                  resetScheduleValues()
+                  setScheduleModalOpen(true)
+                }}
               >
-                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
-                  <div className="min-w-0">
-                    <h2
-                      id="schedule-dialog-title"
-                      className="text-base font-bold tracking-tight text-foreground"
-                    >
-                      Lịch học buổi
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      Xếp lịch cho lớp — đồng bộ qua API giáo viên.
-                    </p>
-                  </div>
+                <CalendarDays className="mr-2 h-5 w-5" />
+                THÊM BUỔI MỚI
+              </Button>
+            </div>
+
+            {/* Session Navigation inside the card */}
+            {schedules.length > 0 && (
+              <div className="border-t border-slate-50 bg-slate-50/50 p-4 sm:px-12">
+                <div className="flex flex-wrap gap-2">
                   <Button
-                    type="button"
                     variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    onClick={closeScheduleModal}
-                    aria-label="Đóng"
+                    className={cn(
+                      'h-11 rounded-xl px-6 text-[11px] font-black uppercase tracking-widest transition-all',
+                      !activeScheduleId
+                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                        : 'text-slate-400 hover:bg-slate-100'
+                    )}
+                    onClick={() => setActiveScheduleId(null)}
                   >
-                    <X className="h-5 w-5" strokeWidth={2} />
+                    TỔNG QUAN LỚP
                   </Button>
+                  {schedules.map((s, idx) => {
+                    const isActive = activeScheduleId === s.id
+                    return (
+                      <Button
+                        key={s.id}
+                        variant="ghost"
+                        className={cn(
+                          'h-11 rounded-xl px-6 text-[11px] font-black uppercase tracking-widest transition-all',
+                          isActive
+                            ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                            : 'text-slate-400 hover:bg-slate-100'
+                        )}
+                        onClick={() => setActiveScheduleId(s.id)}
+                      >
+                        BUỔI {idx + 1}
+                      </Button>
+                    )
+                  })}
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <DateController
-                      control={scheduleControl}
-                      name="dateIso"
-                      label="Ngày"
-                      min={getTodayIsoLocal()}
-                    />
-                    <InputController
-                      control={scheduleControl}
-                      name="topic"
-                      label="Nội dung buổi"
-                      placeholder="Ví dụ: Ôn tập Spring Boot — Buổi 3"
-                    />
-                    <TimeHmField
-                      label="Giờ bắt đầu"
-                      idPrefix="schedule-start"
-                      hour={startHour ?? '08'}
-                      minute={startMinute ?? '00'}
-                      onHourChange={(v) => scheduleForm.setValue('startHour', v)}
-                      onMinuteChange={(v) => scheduleForm.setValue('startMinute', v)}
-                      onHourBlur={() =>
-                        scheduleForm.setValue(
-                          'startHour',
-                          clampHourPart(getScheduleValues('startHour') ?? '00')
-                        )
-                      }
-                      onMinuteBlur={() =>
-                        scheduleForm.setValue(
-                          'startMinute',
-                          clampMinutePart(getScheduleValues('startMinute') ?? '00')
-                        )
-                      }
-                    />
-                    <TimeHmField
-                      label="Giờ kết thúc"
-                      idPrefix="schedule-end"
-                      hour={endHour ?? '10'}
-                      minute={endMinute ?? '00'}
-                      onHourChange={(v) => scheduleForm.setValue('endHour', v)}
-                      onMinuteChange={(v) => scheduleForm.setValue('endMinute', v)}
-                      onHourBlur={() =>
-                        scheduleForm.setValue(
-                          'endHour',
-                          clampHourPart(getScheduleValues('endHour') ?? '00')
-                        )
-                      }
-                      onMinuteBlur={() =>
-                        scheduleForm.setValue(
-                          'endMinute',
-                          clampMinutePart(getScheduleValues('endMinute') ?? '00')
-                        )
-                      }
-                    />
-                    <p
-                      id="schedule-time-hint"
-                      className="md:col-span-2 text-[11px] text-muted-foreground"
+              </div>
+            )}
+          </div>
+
+          {/* Management Modal */}
+          {scheduleModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+              <div className="absolute inset-0" onClick={() => setScheduleModalOpen(false)} />
+              <div className="relative w-full max-w-2xl overflow-hidden rounded-[32px] bg-white shadow-2xl animate-in zoom-in-95 duration-300">
+                <div className="bg-slate-900 px-8 py-6 text-white">
+                  <h2 className="text-2xl font-black tracking-tight">
+                    {editingScheduleId ? 'CẬP NHẬT BUỔI HỌC' : 'THÊM BUỔI HỌC MỚI'}
+                  </h2>
+                  <p className="text-xs font-medium text-slate-400 mt-1 uppercase tracking-widest">
+                    Thông tin chi tiết buổi đào tạo trực tiếp
+                  </p>
+                </div>
+
+                <div className="p-8">
+                  <Form {...scheduleForm}>
+                    <form
+                      className="space-y-6"
+                      onSubmit={scheduleForm.handleSubmit((vals) => {
+                        const payload = {
+                          dateIso: vals.dateIso,
+                          startTime: `${vals.startHour}:${vals.startMinute}`,
+                          endTime: `${vals.endHour}:${vals.endMinute}`,
+                          topic: vals.topic,
+                          location: vals.location,
+                        }
+                        if (editingScheduleId) {
+                          updateSchedule.mutate(
+                            { scheduleId: editingScheduleId, input: payload },
+                            {
+                              onSuccess: () => {
+                                setScheduleModalOpen(false)
+                                toast.success('Đã cập nhật buổi học')
+                              },
+                            }
+                          )
+                        } else {
+                          createSchedule.mutate(payload, {
+                            onSuccess: () => {
+                              setScheduleModalOpen(false)
+                              toast.success('Đã thêm buổi học mới')
+                            },
+                          })
+                        }
+                      })}
                     >
-                      Giờ theo định dạng 24h — nhập riêng giờ và phút; dấu{' '}
-                      <span className="font-mono">:</span> hiển thị sẵn, không cần gõ.
-                    </p>
-                    <InputController
-                      control={scheduleControl}
-                      name="location"
-                      label="Địa điểm (tuỳ chọn)"
-                      className="md:col-span-2"
-                      placeholder="Phòng họp A / MS Teams…"
-                    />
-                  </div>
-                  <div className="mt-4 flex flex-wrap justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={resetScheduleForm}>
-                      Làm mới
-                    </Button>
-                    <Button
-                      type="button"
-                      className="font-bold shadow-sm"
-                      onClick={onSubmitSchedule}
-                      disabled={createSchedule.isPending || updateSchedule.isPending}
-                    >
-                      {editingScheduleId ? 'Lưu chỉnh sửa' : 'Thêm buổi học'}
-                    </Button>
-                  </div>
-                  <div className="mt-5 overflow-x-auto rounded-xl border border-border/80 bg-card/80 shadow-inner">
-                    <table className="w-full min-w-[620px] border-collapse text-left text-sm">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-primary/10 via-teal-500/8 to-transparent">
-                          <th className="px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                            Ngày
-                          </th>
-                          <th className="px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                            Giờ
-                          </th>
-                          <th className="px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                            Nội dung
-                          </th>
-                          <th className="px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                            Địa điểm
-                          </th>
-                          <th className="px-3 py-2.5 text-right text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                            Thao tác
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {schedules.map((s) => (
-                          <tr key={s.id} className="border-t border-border/70">
-                            <td className="px-3 py-2">{s.dateIso}</td>
-                            <td className="px-3 py-2">
-                              {s.startTime} - {s.endTime}
-                            </td>
-                            <td className="px-3 py-2">{s.topic}</td>
-                            <td className="px-3 py-2">{s.location || '—'}</td>
-                            <td className="px-3 py-2 text-right">
-                              <div className="inline-flex gap-1">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => onEditSchedule(s.id)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive"
-                                  onClick={() => deleteSchedule.mutate(s.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                        {schedules.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="px-3 py-4 text-center text-muted-foreground">
-                              Chưa có buổi học nào.
-                            </td>
-                          </tr>
-                        ) : null}
-                      </tbody>
-                    </table>
-                  </div>
+                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <DateController
+                          control={scheduleForm.control}
+                          name="dateIso"
+                          label="Ngày học"
+                          required
+                          datePickerClassName="h-12 rounded-xl border-slate-200 focus:ring-slate-900/5"
+                        />
+                        <InputController
+                          control={scheduleForm.control}
+                          name="location"
+                          label="Địa điểm / Phòng"
+                          placeholder="VD: Phòng họp A, Zoom..."
+                          inputClassName="h-12 rounded-xl border-slate-200 focus:ring-slate-900/5"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <div className="space-y-3">
+                          <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                            Thời gian bắt đầu
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <InputController
+                              control={scheduleForm.control}
+                              name="startHour"
+                              label="Giờ"
+                              labelClassName="sr-only"
+                              type="number"
+                              className="w-20"
+                              inputClassName="h-12 text-center rounded-xl font-bold"
+                            />
+                            <span className="font-bold text-slate-300">:</span>
+                            <InputController
+                              control={scheduleForm.control}
+                              name="startMinute"
+                              label="Phút"
+                              labelClassName="sr-only"
+                              type="number"
+                              className="w-20"
+                              inputClassName="h-12 text-center rounded-xl font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                            Thời gian kết thúc
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <InputController
+                              control={scheduleForm.control}
+                              name="endHour"
+                              label="Giờ"
+                              labelClassName="sr-only"
+                              type="number"
+                              className="w-20"
+                              inputClassName="h-12 text-center rounded-xl font-bold"
+                            />
+                            <span className="font-bold text-slate-300">:</span>
+                            <InputController
+                              control={scheduleForm.control}
+                              name="endMinute"
+                              label="Phút"
+                              labelClassName="sr-only"
+                              type="number"
+                              className="w-20"
+                              inputClassName="h-12 text-center rounded-xl font-bold"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <InputController
+                        control={scheduleForm.control}
+                        name="topic"
+                        label="Nội dung đào tạo"
+                        required
+                        placeholder="VD: Kiến thức sản phẩm, Kỹ năng tư vấn..."
+                        inputClassName="h-12 rounded-xl border-slate-200 focus:ring-slate-900/5"
+                      />
+
+                      <div className="flex justify-end gap-3 pt-4">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-12 rounded-xl px-6 font-bold text-slate-400 hover:bg-slate-50"
+                          onClick={() => setScheduleModalOpen(false)}
+                        >
+                          HỦY BỎ
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="h-12 rounded-xl bg-primary px-10 font-bold text-white shadow-xl shadow-primary/20 hover:bg-primary/90"
+                          disabled={createSchedule.isPending || updateSchedule.isPending}
+                        >
+                          {editingScheduleId ? 'CẬP NHẬT' : 'LƯU BUỔI HỌC'}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
                 </div>
               </div>
             </div>
-          ) : null}
+          )}
 
           {viewMode === 'table' ? (
-            <div className="overflow-hidden rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10">
+            <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl shadow-slate-200/50 ring-1 ring-slate-200/60">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+                <table className="w-full min-w-[600px] border-collapse text-left text-sm">
                   <thead>
-                    <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">
-                      <th className="px-4 py-3 font-semibold">Nhân viên</th>
-                      <th className="px-4 py-3 font-semibold">Email</th>
-                      <th className="px-4 py-3 font-semibold">Kết quả thi (lớp)</th>
+                    <tr className="border-b border-slate-100 bg-slate-50/50">
+                      <th className="px-8 py-6 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400">
+                        Học viên
+                      </th>
+                      {!activeScheduleId ? (
+                        <>
+                          <th className="px-8 py-6 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400">
+                            Thông tin Email
+                          </th>
+                          <th className="px-8 py-6 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400">
+                            Kết quả cuối khóa
+                          </th>
+                        </>
+                      ) : (
+                        <>
+                          <th className="px-6 py-4 text-left">Ngày / Giờ</th>
+                          <th className="px-6 py-4 text-left">Nội dung</th>
+                          <th className="px-6 py-4 text-center">Điểm danh</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
-                  <tbody>
-                    {filtered.map((m) => (
-                      <tr
-                        key={m.id}
-                        className="border-t border-border/80 bg-card transition-colors hover:bg-muted/30"
-                      >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <EmployeeAvatar name={m.name} className="h-8 w-8 text-xs" />
-                            <span className="font-semibold text-foreground">{m.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">{m.email}</td>
-                        <td className="px-4 py-3">
-                          {m.examResult ? (
-                            <span className="inline-flex rounded-full border border-emerald-200/80 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-900">
-                              {m.examResult}
-                            </span>
+                  <tbody className="divide-y divide-border/40">
+                    {filtered.map((m) => {
+                      const currentSchedule = schedules.find((s) => s.id === activeScheduleId)
+                      const sessionData = currentSchedule?.attendanceData?.[m.id] || {}
+
+                      return (
+                        <tr
+                          key={m.id}
+                          className="group border-b border-border/40 transition-colors hover:bg-muted/20"
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <EmployeeAvatar
+                                name={m.name}
+                                className="h-10 w-10 rounded-2xl shadow-sm ring-2 ring-background transition-transform group-hover:scale-110"
+                              />
+                              <div>
+                                <p className="text-sm font-black text-primary transition-colors group-hover:text-primary-600">
+                                  {m.name}
+                                </p>
+                                <p className="text-[10px] font-medium text-muted-foreground/80">
+                                  {m.email}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          {!activeScheduleId ? (
+                            <>
+                              <td className="px-6 py-4 text-muted-foreground font-medium">
+                                {m.email}
+                              </td>
+                              <td className="px-6 py-4">
+                                {m.examResult ? (
+                                  <Badge className="rounded-lg bg-emerald-100/80 text-emerald-700 border-0 px-2.5 py-1 text-[11px] font-bold">
+                                    {m.examResult}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground/40 font-bold">—</span>
+                                )}
+                              </td>
+                            </>
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <>
+                              <td className="px-6 py-4">
+                                <div className="space-y-0.5">
+                                  <p className="text-[11px] font-black text-foreground">
+                                    {currentSchedule?.dateIso}
+                                  </p>
+                                  <p className="text-[10px] font-bold text-muted-foreground/60">
+                                    {currentSchedule?.startTime} - {currentSchedule?.endTime}
+                                  </p>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <p className="max-w-[200px] truncate text-[11px] font-bold text-muted-foreground">
+                                  {currentSchedule?.topic}
+                                </p>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex justify-center">
+                                  <Select
+                                    value={sessionData.attendance || 'NONE'}
+                                    onValueChange={(v) =>
+                                      updateAttendance.mutate({
+                                        scheduleId: activeScheduleId!,
+                                        input: { userId: m.id, attendance: v },
+                                      })
+                                    }
+                                  >
+                                    <SelectTrigger
+                                      className={cn(
+                                        'h-9 w-[135px] rounded-full border-0 font-black text-[10px] uppercase tracking-widest transition-all shadow-sm',
+                                        sessionData.attendance === 'PRESENT' &&
+                                          'bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20',
+                                        sessionData.attendance === 'ABSENT' &&
+                                          'bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20',
+                                        sessionData.attendance === 'LATE' &&
+                                          'bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20',
+                                        (!sessionData.attendance ||
+                                          sessionData.attendance === 'NONE') &&
+                                          'bg-slate-100 text-slate-500 ring-1 ring-slate-200'
+                                      )}
+                                    >
+                                      <SelectValue placeholder="Chưa chọn" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-2xl border-slate-200 p-1 shadow-2xl">
+                                      <SelectItem
+                                        value="NONE"
+                                        className="rounded-xl py-2 font-bold text-slate-500 focus:bg-slate-50"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                                          Chưa chọn
+                                        </div>
+                                      </SelectItem>
+                                      <SelectItem
+                                        value="PRESENT"
+                                        className="rounded-xl py-2 font-bold text-emerald-600 focus:bg-emerald-50"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                          Tham gia
+                                        </div>
+                                      </SelectItem>
+                                      <SelectItem
+                                        value="ABSENT"
+                                        className="rounded-xl py-2 font-bold text-rose-600 focus:bg-rose-50"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <div className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                          Vắng mặt
+                                        </div>
+                                      </SelectItem>
+                                      <SelectItem
+                                        value="LATE"
+                                        className="rounded-xl py-2 font-bold text-amber-600 focus:bg-amber-50"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                          Đến muộn
+                                        </div>
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </td>
+                            </>
                           )}
-                        </td>
-                      </tr>
-                    ))}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
               <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
-                <span>
-                  Trang {page} — {filtered.length} thành viên hiển thị
-                </span>
+                <div className="flex items-center gap-4">
+                  <span>
+                    Trang {page} — {filtered.length} thành viên hiển thị
+                  </span>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-9 rounded-xl bg-primary px-4 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-95"
+                    onClick={() => {
+                      if (activeScheduleId) {
+                        if (!selectedSchedule?.evaluatedUserIds?.length) {
+                          toast.info('Chưa có đánh giá nào cho buổi học này')
+                          return
+                        }
+                        setViewEvalModalOpen(true)
+                      } else {
+                        toast.error('Vui lòng chọn một buổi học để xem đánh giá')
+                      }
+                    }}
+                  >
+                    <Star className="mr-2 h-3.5 w-3.5 fill-current" /> Xem đánh giá buổi học
+                  </Button>
+                </div>
                 <PaginationPrevNext page={page} totalPages={totalPages} onPageChange={() => {}} />
               </div>
             </div>
@@ -701,6 +870,26 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
           ) : null}
         </div>
       </div>
+
+      {/* Evaluation Modal */}
+      {evalTarget && (
+        <SessionEvaluationModal
+          open={evalModalOpen}
+          onOpenChange={setEvalModalOpen}
+          classId={classId}
+          scheduleId={activeScheduleId!}
+          userId={evalTarget.userId}
+          userName={evalTarget.userName}
+        />
+      )}
+
+      {/* View All Evaluations Modal for Teachers */}
+      <ViewEvaluationsModal
+        open={viewEvalModalOpen}
+        onOpenChange={setViewEvalModalOpen}
+        scheduleId={activeScheduleId || ''}
+        sessionTitle={selectedSchedule?.topic || 'Buổi học'}
+      />
     </div>
   )
 }

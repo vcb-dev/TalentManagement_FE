@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, CheckCircle2, Loader2, Save, User } from 'lucide-react'
 import { toast } from 'sonner'
@@ -65,19 +65,18 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
   }, [currentClass, classId])
 
   // Initialize local state from submissions
-  useMemo(() => {
-    const newGrades: Record<string, Record<string, LocalGrade>> = {}
-    const newNotes: Record<string, string> = {}
-    classSubmissions.forEach((sub) => {
-      newGrades[sub.id] = (sub.grades as Record<string, LocalGrade>) || {}
-      newNotes[sub.id] = sub.graderNote || ''
-    })
-    // Only set if we don't have state yet to avoid overwriting during edits
-    if (Object.keys(localGrades).length === 0) {
+  useEffect(() => {
+    if (classSubmissions.length > 0 && Object.keys(localGrades).length === 0) {
+      const newGrades: Record<string, Record<string, LocalGrade>> = {}
+      const newNotes: Record<string, string> = {}
+      classSubmissions.forEach((sub) => {
+        newGrades[sub.id] = (sub.grades as Record<string, LocalGrade>) || {}
+        newNotes[sub.id] = sub.graderNote || ''
+      })
       setLocalGrades(newGrades)
       setSubmissionNotes(newNotes)
     }
-  }, [classSubmissions]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [classSubmissions, localGrades])
 
   const toggleCriteria = (submissionId: string, qId: string, criteriaId: string) => {
     setLocalGrades((prev) => {
@@ -94,6 +93,20 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
         [submissionId]: {
           ...subGrades,
           [qId]: { ...qGrade, criteria: newCriteria, score: newScore },
+        },
+      }
+    })
+  }
+
+  const handleNoteChange = (submissionId: string, qId: string, note: string) => {
+    setLocalGrades((prev) => {
+      const subGrades = prev[submissionId] || {}
+      const qGrade = subGrades[qId] || { criteria: [], score: 0, note: '' }
+      return {
+        ...prev,
+        [submissionId]: {
+          ...subGrades,
+          [qId]: { ...qGrade, note },
         },
       }
     })
@@ -144,7 +157,7 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
       toast.success(`Đã lưu kết quả cho ${successCount} học viên`)
       setTimeout(() => {
         void navigate({ to: '/manager/grading' })
-      }, 1000)
+      }, 500)
     }
     if (failCount > 0) {
       toast.error(`Lỗi khi lưu cho ${failCount} học viên`)
@@ -172,32 +185,43 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
   }
 
   return (
-    <div className="-m-5 flex min-h-[calc(100vh-3.5rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
-      {/* Top Header Bar */}
-      <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-4 border-b border-primary/10 bg-card/80 px-6 py-3 shadow-sm backdrop-blur-md">
-        <div className="flex items-center gap-3 min-w-0">
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-slate-50/50 text-sm text-foreground overflow-hidden">
+      {/* Top Header Bar - Fixed & Refined */}
+      <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white/90 px-8 py-4 shadow-sm z-20 backdrop-blur-md">
+        <div className="flex items-center gap-4 min-w-0">
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-full hover:bg-primary/10"
+            className="h-9 w-9 rounded-full hover:bg-slate-100 transition-colors"
             onClick={() => void navigate({ to: '/manager/grading' })}
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5 text-slate-600" />
           </Button>
           <div className="min-w-0">
-            <h1 className="text-base font-bold truncate">
+            <h1 className="text-lg font-extrabold text-slate-900 truncate tracking-tight">
               {currentClass?.name || 'Chấm thi theo lớp'}
             </h1>
-            <p className="text-[11px] text-muted-foreground uppercase font-black tracking-widest">
-              Chế độ: Chấm theo câu hỏi
-            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+                Chế độ: Chấm theo câu hỏi
+              </p>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:flex rounded-xl font-bold border-slate-200 hover:bg-slate-50"
+            onClick={() => void navigate({ to: '/manager/grading' })}
+          >
+            Hủy bỏ
+          </Button>
           <Button
             size="sm"
             disabled={gradeMutation.isPending}
-            className="rounded-lg px-4 font-bold shadow-lg shadow-primary/20"
+            className="rounded-xl px-5 font-bold shadow-md shadow-primary/20 bg-primary hover:bg-primary/90 transition-all active:scale-95"
             onClick={handleSaveAll}
           >
             {gradeMutation.isPending ? (
@@ -210,152 +234,192 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
         </div>
       </div>
 
-      <div className="p-6 space-y-10 max-w-5xl mx-auto w-full">
-        {questionBank.questions.map((q: any, qIdx: number) => {
-          return (
-            <section key={q.id} className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-white shadow-sm">
-                  {qIdx + 1}
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto scroll-smooth">
+        <div className="pt-10 pb-24 px-6 space-y-16 max-w-5xl mx-auto w-full">
+          {questionBank.questions.map((q: any, qIdx: number) => {
+            return (
+              <section key={q.id} className="relative">
+                <div className="flex items-start gap-4 mb-8">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary text-sm font-black shadow-inner">
+                    {qIdx + 1}
+                  </div>
+                  <div className="flex-1 pt-1.5">
+                    <h2 className="text-lg font-bold text-slate-900 leading-relaxed">{q.stem}</h2>
+                    {q.options && q.options.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {q.options.map((opt: string, oi: number) => (
+                          <span
+                            key={oi}
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 font-semibold shadow-sm"
+                          >
+                            <span className="text-primary mr-1">
+                              {String.fromCharCode(65 + oi)}.
+                            </span>{' '}
+                            {opt}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h2 className="text-base font-bold text-foreground leading-snug">{q.stem}</h2>
-                  {q.options && q.options.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {q.options.map((opt: string, oi: number) => (
-                        <span
-                          key={oi}
-                          className="rounded-md border border-border bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground font-medium"
-                        >
-                          {String.fromCharCode(65 + oi)}. {opt}
-                        </span>
-                      ))}
+
+                <div className="grid grid-cols-1 gap-6 ml-0 md:ml-12">
+                  {classSubmissions.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/50">
+                      <p className="text-sm font-medium text-slate-400">
+                        Chưa có học viên nào nộp bài.
+                      </p>
                     </div>
+                  ) : (
+                    classSubmissions.map((sub) => {
+                      const answer = (sub.answers as any)?.[q.id] || ''
+                      const grade = localGrades[sub.id]?.[q.id] || {
+                        criteria: [],
+                        score: 0,
+                        note: '',
+                      }
+
+                      return (
+                        <div
+                          key={sub.id}
+                          className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5"
+                        >
+                          <div className="mb-5 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                <User className="h-4 w-4" />
+                              </div>
+                              <span className="text-sm font-bold text-slate-800">
+                                {sub.fullName}
+                              </span>
+                            </div>
+                            <div className="flex items-center">
+                              <div
+                                className={cn(
+                                  'flex items-center gap-2 rounded-2xl px-4 py-1.5 transition-all',
+                                  grade.score >= 90
+                                    ? 'bg-emerald-50 text-emerald-600'
+                                    : grade.score >= 40
+                                      ? 'bg-blue-50 text-blue-600'
+                                      : 'bg-slate-50 text-slate-400'
+                                )}
+                              >
+                                <span className="text-xs font-black tracking-tighter">
+                                  {grade.score}%
+                                </span>
+                                {grade.score >= 90 && <CheckCircle2 className="h-3 w-3" />}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div
+                            className={cn(
+                              'mb-6 rounded-2xl border-2 p-4 text-[13px] leading-relaxed transition-colors',
+                              answer.trim()
+                                ? 'border-slate-50 bg-slate-50/50 text-slate-700'
+                                : 'border-dashed border-slate-100 text-slate-400 italic bg-transparent'
+                            )}
+                          >
+                            {answer.trim() || 'Học viên không trả lời câu này'}
+                          </div>
+
+                          {/* Criteria Selection - Matching individual view style */}
+                          <div className="rounded-xl border border-primary/10 bg-primary/5 p-4 mt-5">
+                            <div className="mb-3 flex items-center justify-between">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                Đánh giá câu trả lời
+                              </span>
+                              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-bold text-primary">
+                                {grade.score}%
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-6">
+                              {[
+                                { id: 'ly_thuyet', label: 'Đúng lý thuyết (40%)' },
+                                { id: 'thuc_te', label: 'Ví dụ thực tế (50%)' },
+                                { id: 'trinh_bay', label: 'Trình bày (10%)' },
+                              ].map((c) => (
+                                <label
+                                  key={c.id}
+                                  className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
+                                >
+                                  <Checkbox
+                                    className="h-5 w-5 rounded-md border-2 border-slate-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                    checked={grade.criteria.includes(c.id)}
+                                    onCheckedChange={() => toggleCriteria(sub.id, q.id, c.id)}
+                                  />
+                                  <span>{c.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Per-Question Feedback */}
+                          <div className="mt-5 space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                              Nhận xét chi tiết cho câu hỏi này
+                            </label>
+                            <Textarea
+                              placeholder="Nhập góp ý hoặc lý do trừ điểm cho câu trả lời này..."
+                              value={grade.note || ''}
+                              onChange={(e) => handleNoteChange(sub.id, q.id, e.target.value)}
+                              className="min-h-[80px] text-[13px] resize-none rounded-2xl border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-primary/20 transition-all"
+                            />
+                          </div>
+                        </div>
+                      )
+                    })
                   )}
                 </div>
-              </div>
+              </section>
+            )
+          })}
 
-              <div className="grid grid-cols-1 gap-4 ml-10">
-                {classSubmissions.length === 0 ? (
-                  <p className="text-xs italic text-muted-foreground bg-muted/20 p-4 rounded-lg border border-dashed border-border">
-                    Chưa có học viên nào nộp bài.
-                  </p>
-                ) : (
-                  classSubmissions.map((sub) => {
-                    const answer = (sub.answers as any)?.[q.id] || ''
-                    const grade = localGrades[sub.id]?.[q.id] || {
-                      criteria: [],
-                      score: 0,
-                      note: '',
+          {/* Global notes section */}
+          <section className="pt-16 border-t-2 border-slate-200 border-dashed">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="p-2 rounded-xl bg-emerald-100">
+                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+              </div>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                Nhận xét chung cho từng học viên
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {classSubmissions.map((sub) => (
+                <div
+                  key={sub.id}
+                  className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-2 w-2 rounded-full bg-primary" />
+                    <span className="font-extrabold text-slate-800">{sub.fullName}</span>
+                  </div>
+                  <Textarea
+                    placeholder={`Nhập đánh giá tổng quát cho ${sub.fullName}...`}
+                    value={submissionNotes[sub.id] || ''}
+                    onChange={(e) =>
+                      setSubmissionNotes((prev) => ({ ...prev, [sub.id]: e.target.value }))
                     }
-                    const isDone = sub.status === 'done'
-
-                    return (
-                      <div
-                        key={sub.id}
-                        className="group relative rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
-                      >
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground group-hover:bg-primary group-hover:text-white transition-colors">
-                              <User className="h-3 w-3" />
-                            </div>
-                            <span className="text-xs font-bold text-foreground">
-                              {sub.fullName}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                'rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tight',
-                                grade.score >= 90
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : grade.score >= 40
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : 'bg-muted text-muted-foreground'
-                              )}
-                            >
-                              {grade.score}%
-                            </span>
-                          </div>
-                        </div>
-
-                        <div
-                          className={cn(
-                            'mb-4 rounded-lg border p-3 text-sm transition-colors',
-                            answer.trim()
-                              ? 'border-border bg-muted/20 text-foreground'
-                              : 'border-dashed border-muted text-muted-foreground italic bg-transparent'
-                          )}
-                        >
-                          {answer.trim() || 'Học viên không trả lời câu này'}
-                        </div>
-
-                        {/* Criteria Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-border pt-4">
-                          {[
-                            { id: 'ly_thuyet', label: 'Lý thuyết', weight: 40 },
-                            { id: 'thuc_te', label: 'Thực tế', weight: 50 },
-                            { id: 'trinh_bay', label: 'Trình bày', weight: 10 },
-                          ].map((c) => (
-                            <label
-                              key={c.id}
-                              className="flex cursor-pointer items-center gap-2 text-[11px] font-bold text-muted-foreground uppercase tracking-widest hover:text-primary transition-colors"
-                            >
-                              <Checkbox
-                                className="h-4 w-4 rounded-sm border-2 border-primary/20 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                checked={grade.criteria.includes(c.id)}
-                                onCheckedChange={() => toggleCriteria(sub.id, q.id, c.id)}
-                              />
-                              {c.label} ({c.weight}%)
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-            </section>
-          )
-        })}
-
-        {/* Global notes per student section */}
-        <section className="pt-10 border-t-2 border-border border-dashed">
-          <div className="flex items-center gap-2 mb-6">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-            <h2 className="text-lg font-bold">Nhận xét chung cho từng học viên</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {classSubmissions.map((sub) => (
-              <div key={sub.id} className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-2 w-2 rounded-full bg-primary" />
-                  <span className="font-bold text-sm">{sub.fullName}</span>
+                    className="min-h-[120px] text-sm resize-none rounded-2xl border-slate-200 bg-slate-50/30 focus:bg-white focus:ring-primary/20 transition-all"
+                  />
                 </div>
-                <Textarea
-                  placeholder={`Nhập đánh giá tổng quát cho ${sub.fullName}...`}
-                  value={submissionNotes[sub.id] || ''}
-                  onChange={(e) =>
-                    setSubmissionNotes((prev) => ({ ...prev, [sub.id]: e.target.value }))
-                  }
-                  className="min-h-[100px] text-sm resize-none rounded-lg border-border focus:ring-primary/20"
-                />
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
 
-        <div className="py-10 flex justify-center">
-          <Button
-            size="lg"
-            className="h-12 px-10 rounded-xl font-bold shadow-2xl shadow-primary/30 text-base"
-            onClick={handleSaveAll}
-            disabled={gradeMutation.isPending}
-          >
-            {gradeMutation.isPending && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
-            Xác nhận & Hoàn tất chấm thi cho cả lớp
-          </Button>
+          <div className="py-16 flex justify-center">
+            <Button
+              size="lg"
+              className="h-14 px-12 rounded-2xl font-black shadow-xl shadow-primary/20 text-lg hover:scale-105 transition-transform active:scale-95"
+              onClick={handleSaveAll}
+              disabled={gradeMutation.isPending}
+            >
+              {gradeMutation.isPending && <Loader2 className="h-6 w-6 animate-spin mr-3" />}
+              Xác nhận & Hoàn tất chấm thi
+            </Button>
+          </div>
         </div>
       </div>
     </div>

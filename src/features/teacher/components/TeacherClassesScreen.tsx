@@ -22,7 +22,34 @@ const FILTERS: { key: 'all' | TeacherClassTrack; label: string }[] = [
   { key: 'all', label: 'Tất cả' },
   { key: 'tap_su', label: 'Tập sự' },
   { key: 'biet_viec', label: 'Biết việc' },
+  { key: 'duoc_viec', label: 'Được việc' },
+  { key: 'dong_gop_ket_qua', label: 'Đóng góp' },
+  { key: 'tuong', label: 'Tướng' },
 ]
+
+const ACCENT_MAP: Record<string, TeacherClassRow['accent']> = {
+  tap_su: 'primary',
+  biet_viec: 'amber',
+  duoc_viec: 'emerald',
+  dong_gop_ket_qua: 'violet',
+  tuong: 'rose',
+}
+
+const ICON_MAP: Record<string, TeacherClassRow['metaIcon']> = {
+  tap_su: 'trending',
+  biet_viec: 'school',
+  duoc_viec: 'target',
+  dong_gop_ket_qua: 'star',
+  tuong: 'crown',
+}
+
+const LEVEL_LABEL: Record<string, string> = {
+  tap_su: 'Tập sự',
+  biet_viec: 'Biết việc',
+  duoc_viec: 'Được việc',
+  dong_gop_ket_qua: 'Đóng góp',
+  tuong: 'Tướng',
+}
 
 export function TeacherClassesScreen() {
   const filtersForm = useForm<{ filterKey: (typeof FILTERS)[number]['key']; searchDraft: string }>({
@@ -37,20 +64,18 @@ export function TeacherClassesScreen() {
   const { data: teacherClassesRaw = [] } = useTeacherClasses()
   const rows: TeacherClassRow[] = useMemo(
     () =>
-      teacherClassesRaw
-        .filter((r) => r.levelFrom === 'tap_su' || r.levelFrom === 'biet_viec')
-        .map((r) => ({
-          id: r.id,
-          title: r.name,
-          periodBadge: r.examDate
-            ? `Thi: ${new Date(r.examDate).toLocaleDateString('vi-VN')}`
-            : 'Chưa có lịch thi',
-          examLine: `${r.levelFrom === 'tap_su' ? 'Tập sự' : 'Biết việc'} -> ${r.levelTo}`,
-          memberCount: r.memberCount,
-          metaIcon: r.levelFrom === 'tap_su' ? 'trending' : 'school',
-          accent: r.levelFrom === 'tap_su' ? 'primary' : 'amber',
-          track: r.levelFrom as TeacherClassTrack,
-        })),
+      teacherClassesRaw.map((r) => ({
+        id: r.id,
+        title: r.name,
+        periodBadge: r.examDate
+          ? `Thi: ${new Date(r.examDate).toLocaleDateString('vi-VN')}`
+          : 'Chưa có lịch thi',
+        examLine: `${LEVEL_LABEL[r.levelFrom] || r.levelFrom} -> ${LEVEL_LABEL[r.levelTo] || r.levelTo}`,
+        memberCount: r.memberCount,
+        metaIcon: ICON_MAP[r.levelFrom] || 'school',
+        accent: ACCENT_MAP[r.levelFrom] || 'primary',
+        track: r.levelFrom as TeacherClassTrack,
+      })),
     [teacherClassesRaw]
   )
 

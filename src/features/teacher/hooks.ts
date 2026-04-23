@@ -104,3 +104,21 @@ export function useTeacherDeleteSchedule(classId: string) {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   })
 }
+
+export function useTeacherUpdateAttendance(classId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      scheduleId,
+      input,
+    }: {
+      scheduleId: string
+      input: { userId: string; attendance?: string; evaluation?: string; evalLink?: string }
+    }) => teacherApi.updateAttendance(classId, scheduleId, input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: teacherKeys.schedules(classId) })
+      toast.success('Đã lưu thông tin buổi học')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
