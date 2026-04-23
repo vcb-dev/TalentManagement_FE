@@ -1,20 +1,96 @@
 import {
-  BarChart3,
+  BookOpen,
   CalendarDays,
   Check,
+  CheckCircle2,
+  CircleDashed,
   Clock,
   Flag,
   Hourglass,
+  ListChecks,
   Lock,
   Route,
-  Zap,
 } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
+import { useExams } from '@/features/exam/hooks'
+import type { ExamScheduleRow } from '@/features/exam/schemas'
+import { useMyEnrolledClass, useMyLearningPath } from '@/features/learning-path/hooks'
+import type { MeEnrolledClassSchedule } from '@/features/learning-path/schemas'
 import { LEVELS, LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const quartOut = '[transition-timing-function:cubic-bezier(0.25,1,0.48,1)]'
+
+function pickNextExam(rows: ExamScheduleRow[]): ExamScheduleRow | null {
+  if (!rows.length) return null
+  const upcoming = rows
+    .filter((e) => e.status === 'UPCOMING')
+    .map((e) => ({ e, t: new Date(e.scheduledAt).getTime() }))
+    .filter((x) => !Number.isNaN(x.t))
+    .sort((a, b) => a.t - b.t)
+  if (upcoming.length) return upcoming[0]!.e
+  const inProg = rows.filter((e) => e.status === 'IN_PROGRESS')
+  if (inProg.length) {
+    return [...inProg].sort(
+      (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+    )[0]!
+  }
+  return null
+}
+
+function formatExamDateTime(iso: string): { dateLine: string; timeLine: string } {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return { dateLine: '—', timeLine: '—' }
+  return {
+    dateLine: d.toLocaleDateString('vi-VN'),
+    timeLine: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+  }
+}
+
+function parseScheduleStartMs(s: MeEnrolledClassSchedule): number {
+  const base = new Date(s.dateIso)
+  if (Number.isNaN(base.getTime())) return NaN
+  const parts = s.startTime.split(':').map((x) => parseInt(x, 10))
+  const h = parts[0] ?? 0
+  const m = parts[1] ?? 0
+  base.setHours(h, m, 0, 0)
+  return base.getTime()
+}
+
+function pickNextStudySlot(slots: MeEnrolledClassSchedule[]): MeEnrolledClassSchedule | null {
+  const now = Date.now()
+  const withT = slots
+    .map((s) => ({ s, t: parseScheduleStartMs(s) }))
+    .filter((x) => !Number.isNaN(x.t))
+    .sort((a, b) => a.t - b.t)
+  const next = withT.find((x) => x.t >= now)
+  return next?.s ?? null
+}
+
+function formatSlotWhen(s: MeEnrolledClassSchedule): { dateLine: string; timeLine: string } {
+  const start = new Date(s.dateIso)
+  if (Number.isNaN(start.getTime())) return { dateLine: '—', timeLine: '—' }
+  const dline = start.toLocaleDateString('vi-VN')
+  const tline =
+    s.endTime?.trim() && s.startTime?.trim()
+      ? `${s.startTime.trim()} – ${s.endTime.trim()}`
+      : (s.startTime?.trim() ?? '—')
+  return { dateLine: dline, timeLine: tline }
+}
+
+function milestoneStatusLabel(status: 'locked' | 'in_progress' | 'done'): string {
+  switch (status) {
+    case 'done':
+      return 'Hoàn thành'
+    case 'in_progress':
+      return 'Đang làm'
+    default:
+      return 'Chưa mở'
+  }
+}
 
 export type DashboardLearningZoneProps = {
   /** Khi true, cột lộ trình hiển thị skeleton thay vì số liệu tạm. */
@@ -60,6 +136,24 @@ export function DashboardLearningZone({
   const maxStarsActive = STARS_PER_LEVEL[currentLevel]
   const progressPct =
     maxStarsActive > 0 ? Math.round(Math.min(100, (currentStars / maxStarsActive) * 100)) : null
+
+  const { data: examList, isLoading: examListLoading } = useExams({ page: 1, pageSize: 50 }, true)
+  const { data: enrolled, isLoading: classLoading } = useMyEnrolledClass()
+  const { data: learningPath, isLoading: pathLoading } = useMyLearningPath()
+
+  const nextExam = pickNextExam(examList?.data ?? [])
+  const nextExamFmt = nextExam ? formatExamDateTime(nextExam.scheduledAt) : null
+  const nextSlot = pickNextStudySlot(enrolled?.enrolledClass?.schedules ?? [])
+  const nextSlotFmt = nextSlot ? formatSlotWhen(nextSlot) : null
+
+  const milestones = learningPath?.milestones ?? []
+  const sortedMilestones = [...milestones].sort((a, b) => a.sortOrder - b.sortOrder)
+  const doneMs = sortedMilestones.filter((m) => m.status === 'done').length
+  const totalMs = sortedMilestones.length
+  const roadPct = totalMs > 0 ? Math.min(100, Math.round((doneMs / totalMs) * 100)) : 0
+  const topMilestones = sortedMilestones.slice(0, 5)
+
+  const blockLoading = examListLoading || classLoading || pathLoading
 
   return (
     <div className="space-y-8 text-sm text-foreground">
@@ -231,6 +325,7 @@ export function DashboardLearningZone({
                 'motion-safe:transition-all motion-safe:duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-[var(--shadow-game-float)] motion-reduce:transition-none motion-reduce:hover:translate-y-0'
               )}
               style={staggerStyle(1, 55)}
+              aria-busy={blockLoading}
             >
               <div
                 className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-primary/10 blur-2xl transition-opacity group-hover:opacity-100"
@@ -244,37 +339,81 @@ export function DashboardLearningZone({
                 />
                 Kỳ thi tiếp theo
               </h4>
-              <div className="relative mb-4 rounded-2xl border border-primary/10 bg-card/95 p-4 shadow-inner backdrop-blur-sm">
-                <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-tighter text-primary/90">
-                  Môn thi kiến thức
-                </p>
-                <p className="font-bold text-foreground">
-                  Kỹ năng quản lý tài chính doanh nghiệp II
-                </p>
-                <div className="mt-3 flex flex-wrap gap-4 border-t border-border/80 pt-3">
-                  <div className="flex items-center gap-1 text-xs font-bold text-foreground">
-                    <CalendarDays className="h-4 w-4 text-accent" strokeWidth={2} />
-                    24/04/2026
-                  </div>
-                  <div className="flex items-center gap-1 text-xs font-bold text-foreground">
-                    <Clock className="h-4 w-4 text-primary" strokeWidth={2} />
-                    09:00
+              {blockLoading ? (
+                <div className="relative mb-4 space-y-3 rounded-2xl border border-primary/10 bg-card/95 p-4">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-5 w-full max-w-[280px]" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              ) : nextExam && nextExamFmt ? (
+                <div className="relative mb-4 rounded-2xl border border-primary/10 bg-card/95 p-4 shadow-inner backdrop-blur-sm">
+                  <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-tighter text-primary/90">
+                    {nextExam.status === 'IN_PROGRESS' ? 'Kỳ thi / lịch' : 'Môn thi & lịch'}
+                  </p>
+                  <p className="font-bold text-foreground">{nextExam.title}</p>
+                  <div className="mt-3 flex flex-wrap gap-4 border-t border-border/80 pt-3">
+                    <div className="flex items-center gap-1 text-xs font-bold text-foreground">
+                      <CalendarDays className="h-4 w-4 text-accent" strokeWidth={2} />
+                      {nextExamFmt.dateLine}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs font-bold text-foreground">
+                      <Clock className="h-4 w-4 text-primary" strokeWidth={2} />
+                      {nextExamFmt.timeLine}
+                    </div>
+                    {nextExam.status === 'IN_PROGRESS' ? (
+                      <span className="text-[0.65rem] font-bold uppercase text-primary">
+                        Đang mở
+                      </span>
+                    ) : null}
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="relative mb-4 rounded-2xl border border-dashed border-border bg-card/80 p-4 text-sm font-semibold text-muted-foreground">
+                  Chưa có kỳ thi sắp tới trên hệ thống. Mở mục Thi và kết quả để cập nhật.
+                </div>
+              )}
+
+              {blockLoading ? (
+                <div className="relative mb-4 rounded-xl border border-border/60 bg-card/60 p-3">
+                  <Skeleton className="h-3 w-32" />
+                  <Skeleton className="mt-2 h-4 w-full" />
+                </div>
+              ) : nextSlot && nextSlotFmt ? (
+                <div className="relative mb-4 rounded-xl border border-accent/20 bg-gradient-to-r from-card/90 to-accent/[0.06] p-3 text-sm">
+                  <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-tight text-accent">
+                    Buổi học gần nhất
+                  </p>
+                  <p className="font-bold text-foreground">{nextSlot.topic}</p>
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs font-semibold text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 text-foreground">
+                      <CalendarDays className="h-3.5 w-3.5 text-primary" strokeWidth={2} />
+                      {nextSlotFmt.dateLine}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-foreground">
+                      <Clock className="h-3.5 w-3.5 text-accent" strokeWidth={2} />
+                      {nextSlotFmt.timeLine}
+                    </span>
+                  </div>
+                </div>
+              ) : !classLoading && enrolled?.enrolledClass ? (
+                <p className="relative mb-4 text-xs text-muted-foreground">
+                  Lớp {enrolled.enrolledClass.name}: chưa có buổi học tới trên lịch.
+                </p>
+              ) : null}
+
               <Button
-                type="button"
+                asChild
                 className={cn(
                   'relative h-auto w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary via-primary-600 to-accent py-3.5 text-sm font-black text-primary-foreground shadow-lg shadow-primary/30',
                   quartOut,
                   'transition-all hover:brightness-110 hover:shadow-xl active:scale-[0.98] motion-reduce:active:scale-100'
                 )}
               >
-                <span className="relative z-10">Đăng ký tham gia ngay</span>
-                <span
-                  className="pointer-events-none absolute inset-0 -translate-x-full skew-x-12 bg-gradient-to-r from-transparent via-white/30 to-transparent motion-safe:transition-transform motion-safe:duration-700 motion-safe:ease-out group-hover:translate-x-full motion-reduce:hidden"
-                  aria-hidden
-                />
+                <Link to="/exam" className="relative z-10 flex w-full items-center justify-center">
+                  {nextExam && nextExam.status === 'IN_PROGRESS'
+                    ? 'Vào mục thi và lịch'
+                    : 'Đăng ký tham gia ngay'}
+                </Link>
               </Button>
             </div>
 
@@ -285,44 +424,108 @@ export function DashboardLearningZone({
                 'motion-safe:transition-all motion-safe:duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-18px_hsl(var(--accent)/0.35)] motion-reduce:transition-none'
               )}
               style={staggerStyle(2, 55)}
+              aria-busy={blockLoading}
             >
               <div
                 className="pointer-events-none absolute -bottom-8 -right-8 opacity-[0.12] motion-safe:animate-[dash-float-slow_6s_ease-in-out_infinite] motion-reduce:animate-none"
                 aria-hidden
               >
-                <BarChart3 className="h-36 w-36 text-accent" strokeWidth={1} />
+                <BookOpen className="h-36 w-36 text-accent" strokeWidth={1} />
               </div>
               <h4 className="relative mb-4 flex items-center gap-2 text-lg font-black text-foreground">
-                <Zap
+                <ListChecks
                   className="h-5 w-5 text-accent motion-safe:animate-pulse motion-reduce:animate-none"
                   strokeWidth={2}
                   aria-hidden
                 />
-                Kỹ năng trọng yếu
+                Tiến độ mốc học
               </h4>
-              <div className="relative space-y-4">
-                {[
-                  { label: 'Giao tiếp khách hàng', pct: 80, score: '8/10' },
-                  { label: 'Xử lý nghiệp vụ', pct: 60, score: '6/10' },
-                  { label: 'Tư duy hệ thống', pct: 50, score: '5/10' },
-                ].map((row, j) => (
-                  <div key={row.label} style={staggerStyle(j, 40)}>
-                    <div className="mb-1 flex justify-between text-xs font-bold text-foreground">
-                      <span>{row.label}</span>
-                      <span className="tabular-nums text-accent">{row.score}</span>
+              {blockLoading ? (
+                <div className="relative space-y-4">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-2 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ) : totalMs === 0 ? (
+                <p className="relative text-sm font-medium text-muted-foreground">
+                  Chưa có mốc lộ trình từ hệ thống. Khi HR/L&D thiết lập, bạn sẽ thấy tiến độ tại
+                  đây.
+                </p>
+              ) : (
+                <>
+                  <div className="relative mb-4">
+                    <div className="mb-2 flex items-baseline justify-between gap-2">
+                      <span className="text-xs font-bold uppercase tracking-tight text-muted-foreground">
+                        Hoàn thành mốc
+                      </span>
+                      <span className="text-sm font-black tabular-nums text-primary">
+                        {doneMs}/{totalMs} ({roadPct}%)
+                      </span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-border/80 p-px shadow-inner">
+                    <div className="h-2.5 overflow-hidden rounded-full bg-border/80 p-px shadow-inner">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-primary via-accent to-primary-600 motion-safe:transition-[width] motion-safe:duration-[1.1s] motion-safe:ease-out"
-                        style={{ width: `${row.pct}%`, transitionDelay: `${j * 100}ms` }}
+                        className="h-full rounded-full bg-gradient-to-r from-primary via-accent to-primary-600 motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out"
+                        style={{ width: `${roadPct}%` }}
                       />
                     </div>
                   </div>
-                ))}
-              </div>
-              <div className="relative mt-6 rounded-xl border border-accent/25 bg-gradient-to-r from-card/95 to-accent/5 p-3 text-[0.6875rem] font-semibold leading-snug text-muted-foreground shadow-sm backdrop-blur-sm">
-                Gợi ý: Tham gia khóa &quot;Kỹ thuật đàm phán 4.0&quot; để tăng thêm 2 điểm kỹ năng
-                giao tiếp.
+                  <ul className="relative space-y-3">
+                    {topMilestones.map((m, j) => {
+                      const Icon =
+                        m.status === 'done'
+                          ? CheckCircle2
+                          : m.status === 'in_progress'
+                            ? CircleDashed
+                            : Lock
+                      return (
+                        <li key={m.id} className="flex gap-2 text-xs" style={staggerStyle(j, 40)}>
+                          <Icon
+                            className={cn(
+                              'mt-0.5 h-4 w-4 shrink-0',
+                              m.status === 'done' && 'text-emerald-600',
+                              m.status === 'in_progress' && 'text-primary',
+                              m.status === 'locked' && 'text-muted-foreground'
+                            )}
+                            strokeWidth={2}
+                            aria-hidden
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold leading-snug text-foreground">{m.title}</p>
+                            <p className="text-[0.65rem] font-semibold text-muted-foreground">
+                              {milestoneStatusLabel(m.status)}
+                            </p>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </>
+              )}
+              <div className="relative mt-6 flex flex-col gap-2 rounded-xl border border-accent/25 bg-gradient-to-r from-card/95 to-accent/5 p-3 text-[0.6875rem] font-semibold leading-snug text-muted-foreground shadow-sm backdrop-blur-sm">
+                <p>
+                  Cập nhật minh chứng, checklist sao theo từng cấp — toàn bộ nằm ở lộ trình học.
+                </p>
+                <Button
+                  asChild
+                  variant="secondary"
+                  size="sm"
+                  className="h-auto w-full rounded-lg border border-primary/20 py-2 text-xs font-bold"
+                >
+                  <Link
+                    to="/learning-path"
+                    search={{
+                      levelId: currentLevel,
+                      starId: Math.min(
+                        Math.max(1, currentStars),
+                        STARS_PER_LEVEL[currentLevel] || 6
+                      ),
+                    }}
+                    className="text-primary"
+                  >
+                    Mở lộ trình học
+                  </Link>
+                </Button>
               </div>
             </div>
           </div>

@@ -98,6 +98,62 @@ export const performanceApi = {
     return res.data
   },
 
+  /** Import nhiều dòng khác nhau (Excel/CSV) — một transaction phía BE. */
+  importAssignments: async (
+    teamId: string,
+    body: {
+      year: number
+      month: number
+      items: Array<{
+        assigneeUserId: string
+        kind: PerformanceKind
+        content: string
+        priority?: number
+        targetMetric?: string | null
+        kpiSetAt?: string | null
+        reviewerName?: string | null
+        managerEvalStatus?: string | null
+        managerReviewNote?: string | null
+        actualResult?: string | null
+        progressPercent?: number
+        status?: PerformanceAssignment['status']
+      }>
+    }
+  ) => {
+    if (isMockApiEnabled()) throw new Error('Mock: không tạo KPI qua API')
+    const res = await apiClient.post<PerformanceAssignment[]>(
+      `/performance/teams/${teamId}/assignments/import`,
+      body
+    )
+    return res.data
+  },
+
+  /** Tạo cùng nội dung KPI/OKR cho nhiều nhân sự (một request, transaction phía BE). */
+  createAssignmentsBatch: async (
+    teamId: string,
+    body: {
+      assigneeUserIds: string[]
+      year: number
+      month: number
+      kind: PerformanceKind
+      content: string
+      priority?: number
+      targetMetric?: string | null
+      kpiSetAt?: string | null
+      reviewerName?: string | null
+      actualResult?: string | null
+      managerEvalStatus?: string | null
+      managerReviewNote?: string | null
+    }
+  ) => {
+    if (isMockApiEnabled()) throw new Error('Mock: không tạo KPI qua API')
+    const res = await apiClient.post<PerformanceAssignment[]>(
+      `/performance/teams/${teamId}/assignments/batch`,
+      body
+    )
+    return res.data
+  },
+
   patchAssignment: async (
     id: string,
     body: Partial<

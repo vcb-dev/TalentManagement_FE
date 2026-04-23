@@ -2,13 +2,7 @@ import { z } from 'zod'
 import { apiClient } from '@/lib/axios'
 import { safeParse } from '@/lib/utils'
 
-const levelCodeSchema = z.enum([
-  'tap_su',
-  'biet_viec',
-  'duoc_viec',
-  'dong_gop_ket_qua',
-  'tuong',
-])
+const levelCodeSchema = z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong'])
 
 const dashboardUserSchema = z.object({
   id: z.string(),
@@ -72,9 +66,49 @@ export const myDashboardSchema = z.object({
 
 export type MyDashboardResponse = z.infer<typeof myDashboardSchema>
 
+const learningOpsExamRepeatFailUserSchema = z.object({
+  userId: z.string().uuid(),
+  /** Cặp cấp của kỳ thi (vd. tap_su -> biet_viec) — từ 2 lượt trượt trở lên trong kỳ. */
+  levelFrom: z.string(),
+  levelTo: z.string(),
+  fullName: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  employeeCode: z.string().nullable().optional(),
+  failCount: z.number().int().min(2),
+})
+
+export const learningOpsSummarySchema = z.object({
+  period: z.object({
+    year: z.number().int(),
+    startMonth: z.number().int().min(1).max(12),
+    endMonth: z.number().int().min(1).max(12),
+  }),
+  peopleByCareerLevel: z.record(z.string(), z.number().int().nonnegative()),
+  levelUpCount: z.number().int().nonnegative(),
+  examNotPassedCount: z.number().int().nonnegative(),
+  classesCreatedInPeriod: z.number().int().nonnegative(),
+  /** Trong kỳ: kết quả thi Chờ học lại / Chia tay — từ 2 lần trở lên. */
+  usersWithAtLeastTwoExamFails: z.array(learningOpsExamRepeatFailUserSchema).default([]),
+  /** Đang làm việc (không thuộc trạng thái nghỉ / inactive). */
+  totalHeadcount: z.number().int().nonnegative(),
+  /** Ngày vào làm (`startDateWork`) nằm trong kỳ lọc. */
+  newHiresInPeriod: z.number().int().nonnegative(),
+  /** Nghỉ / off: ưu tiên ngày trong dữ liệu Lark (`Ngày nghỉ việc`); không có thì fallback `updatedAt` khi đã inactive. */
+  offboardedInPeriod: z.number().int().nonnegative(),
+})
+
+export type LearningOpsSummaryResponse = z.infer<typeof learningOpsSummarySchema>
+
 export const dashboardApi = {
   me: async () => {
     const res = await apiClient.get<unknown>('/me/dashboard')
     return safeParse(myDashboardSchema, res.data, 'GET /me/dashboard')
+  },
+
+  learningOpsSummary: async (year: number, startMonth: number, endMonth: number) => {
+    const res = await apiClient.get<unknown>('/me/learning-ops-summary', {
+      params: { year, startMonth, endMonth },
+    })
+    return safeParse(learningOpsSummarySchema, res.data, 'GET /me/learning-ops-summary')
   },
 }

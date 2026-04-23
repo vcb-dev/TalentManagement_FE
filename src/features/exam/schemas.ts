@@ -7,6 +7,8 @@ export const examSummaryApiSchema = z.object({
   status: z.enum(['UPCOMING', 'IN_PROGRESS', 'COMPLETED']),
 })
 
+export type ExamScheduleRow = z.infer<typeof examSummaryApiSchema>
+
 export const examListApiSchema = z.object({
   data: z.array(examSummaryApiSchema),
   total: z.number(),

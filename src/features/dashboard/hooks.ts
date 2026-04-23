@@ -9,3 +9,16 @@ export function useMyDashboard(options?: { enabled?: boolean }) {
     enabled: options?.enabled ?? true,
   })
 }
+
+export function useLearningOpsSummary(
+  year: number,
+  startMonth: number,
+  endMonth: number,
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: dashboardKeys.learningOpsSummary(year, startMonth, endMonth),
+    queryFn: () => dashboardApi.learningOpsSummary(year, startMonth, endMonth),
+    enabled: options?.enabled ?? true,
+  })
+}

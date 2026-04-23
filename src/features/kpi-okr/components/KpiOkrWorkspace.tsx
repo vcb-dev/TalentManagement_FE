@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import {
+  AlignLeft,
   CheckCircle2,
+  ClipboardList,
+  Eye,
   FileUp,
+  ListOrdered,
   ListPlus,
   Lock,
   Pencil,
@@ -12,12 +16,6 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import {
-  PAGE_HEADER_DESCRIPTION,
-  PAGE_HEADER_GRADIENT,
-  PAGE_HEADER_SURFACE,
-  PAGE_HEADER_TITLE,
-} from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
 import { CARD_ENTRANCE, SECTION_FADE_UP } from '@/lib/cardMotion'
 import { useAuthStore } from '@/stores/auth.store'
@@ -34,10 +32,16 @@ import {
   getMaxViewableYm,
   isKpiPeriodSelectable,
 } from '@/features/kpi-okr/kpiPeriodLimits'
+import {
+  parseKpiOkrImportFile,
+  type ImportAssignmentItem,
+} from '@/features/kpi-okr/kpiOkrSheetImport'
+import { parseQuestionnaireImportFile } from '@/features/kpi-okr/questionnaireGridImport'
 import { organizationApi, type TeamMemberRow } from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -56,7 +60,14 @@ import {
   SelectController,
   TextareaController,
 } from '@/components/ui/form-controllers'
-import { Form } from '@/components/ui/form'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import {
   Dialog,
   DialogContent,
@@ -553,9 +564,6 @@ const XL_TEXTAREA = cn(
   'box-border min-h-[80px] w-full min-w-[200px] max-w-[420px] resize-y rounded-lg border border-slate-200 bg-white p-3 text-[13px] text-slate-700 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
   'placeholder:text-slate-400'
 )
-
-const XL_SAVE_BTN =
-  'rounded-lg bg-primary font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50'
 
 const ASSIGN_TABLE_HEAD = [
   'Kỳ',
@@ -1413,8 +1421,16 @@ function MiniCreateForm({
   onCreated: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const importFileRef = useRef<HTMLInputElement>(null)
+  const [importPreview, setImportPreview] = useState<null | {
+    fileLabel: string
+    items: ImportAssignmentItem[]
+    errors: { row: number; message: string }[]
+  }>(null)
+  const [importSubmitting, setImportSubmitting] = useState(false)
+
   type MiniCreateValues = {
-    assigneeUserId: string
+    assigneeUserIds: string[]
     content: string
     kind: 'KPI' | 'OKR'
     priority: number
@@ -1429,7 +1445,7 @@ function MiniCreateForm({
   }, [members, defaultAssigneeId])
   const form = useForm<MiniCreateValues>({
     defaultValues: {
-      assigneeUserId: fallbackAssigneeId,
+      assigneeUserIds: fallbackAssigneeId ? [fallbackAssigneeId] : [],
       content: '',
       kind: 'KPI',
       priority: 1,
@@ -1446,10 +1462,57 @@ function MiniCreateForm({
     reset,
     formState: { isSubmitting },
   } = form
+  const assigneeIdsWatched = useWatch({ control, name: 'assigneeUserIds' })
+  const selectedAssigneeCount = Array.isArray(assigneeIdsWatched) ? assigneeIdsWatched.length : 0
 
   useEffect(() => {
-    setValue('assigneeUserId', fallbackAssigneeId, { shouldValidate: true })
+    setValue('assigneeUserIds', fallbackAssigneeId ? [fallbackAssigneeId] : [], {
+      shouldValidate: true,
+    })
   }, [fallbackAssigneeId, setValue])
+
+  useEffect(() => {
+    if (!open) setImportPreview(null)
+  }, [open])
+
+  const onImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f || !members.length) return
+    try {
+      const { items, errors } = await parseKpiOkrImportFile(f, members)
+      setImportPreview({ fileLabel: f.name, items, errors })
+      if (items.length === 0 && errors.length > 0) {
+        toast.error('Không có dòng hợp lệ. Kiểm tra file và tên nhân sự trong team.')
+      } else if (errors.length > 0) {
+        toast.message(`Đã đọc ${items.length} dòng; bỏ qua ${errors.length} dòng lỗi.`)
+      } else if (items.length > 0) {
+        toast.success(`Đã đọc ${items.length} dòng từ file.`)
+      }
+    } catch {
+      toast.error('Không đọc được file. Chỉ hỗ trợ .xlsx, .xls, .csv.')
+    }
+  }
+
+  const submitImportFromFile = async () => {
+    if (!importPreview?.items.length || isMockApiEnabled()) return
+    setImportSubmitting(true)
+    try {
+      await performanceApi.importAssignments(teamId, {
+        year,
+        month,
+        items: importPreview.items,
+      })
+      toast.success(`Đã tạo ${importPreview.items.length} mục từ file.`)
+      setImportPreview(null)
+      setOpen(false)
+      onCreated()
+    } catch {
+      toast.error('Import thất bại (kiểm tra giới hạn KPI/OKR mỗi người hoặc quyền).')
+    } finally {
+      setImportSubmitting(false)
+    }
+  }
 
   const onSubmit = handleSubmit(async (values) => {
     if (values.kpiSetAt.trim()) {
@@ -1459,28 +1522,34 @@ function MiniCreateForm({
     const kpiIso = values.kpiSetAt.trim()
       ? new Date(`${values.kpiSetAt.trim()}T12:00:00`).toISOString()
       : null
-    await performanceApi.createAssignment(teamId, {
-      assigneeUserId: values.assigneeUserId.trim(),
-      year,
-      month,
-      kind: values.kind,
-      content: values.content.trim(),
-      priority: Number(values.priority),
-      targetMetric: values.targetMetric.trim() || null,
-      kpiSetAt: kpiIso,
-      reviewerName: values.reviewerName.trim() || null,
-    })
-    reset({
-      assigneeUserId: fallbackAssigneeId,
-      content: '',
-      kind: 'KPI',
-      priority: 1,
-      kpiSetAt: '',
-      targetMetric: '',
-      reviewerName: '',
-    })
-    setOpen(false)
-    onCreated()
+    const n = values.assigneeUserIds.length
+    try {
+      await performanceApi.createAssignmentsBatch(teamId, {
+        assigneeUserIds: values.assigneeUserIds,
+        year,
+        month,
+        kind: values.kind,
+        content: values.content.trim(),
+        priority: Number(values.priority),
+        targetMetric: values.targetMetric.trim() || null,
+        kpiSetAt: kpiIso,
+        reviewerName: values.reviewerName.trim() || null,
+      })
+      toast.success(n === 1 ? 'Đã tạo mục tiêu.' : `Đã tạo ${n} mục tiêu cho ${n} nhân sự.`)
+      reset({
+        assigneeUserIds: fallbackAssigneeId ? [fallbackAssigneeId] : [],
+        content: '',
+        kind: 'KPI',
+        priority: 1,
+        kpiSetAt: '',
+        targetMetric: '',
+        reviewerName: '',
+      })
+      setOpen(false)
+      onCreated()
+    } catch {
+      toast.error('Không tạo được mục tiêu. Vui lòng thử lại.')
+    }
   })
 
   return (
@@ -1499,9 +1568,106 @@ function MiniCreateForm({
             Tạo hạng mục KPI/OKR mới
           </DialogTitle>
           <DialogDescription className="text-[13px]">
-            Nhập nhanh mục tiêu công việc cho kỳ T{month}/{year}.
+            Nhập nhanh mục tiêu công việc cho kỳ T{month}/{year}. Có thể chọn nhiều nhân sự để tạo
+            cùng một nội dung cho tất cả.
           </DialogDescription>
         </DialogHeader>
+        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/40">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+              className="sr-only"
+              onChange={onImportFileChange}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 rounded-lg border-dashed text-[13px] font-semibold"
+              disabled={!members.length || isMockApiEnabled()}
+              onClick={() => importFileRef.current?.click()}
+            >
+              <FileUp className="h-4 w-4" />
+              Import Excel / CSV
+            </Button>
+            <span className="inline-flex flex-wrap items-center gap-2">
+              <a
+                href={`${import.meta.env.BASE_URL}templates/kpi-okr-import-mau.xlsx`}
+                download="kpi-okr-import-mau.xlsx"
+                className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-primary underline-offset-2 hover:underline dark:border-slate-600 dark:bg-slate-900"
+              >
+                Tải Excel mẫu
+              </a>
+              <a
+                href={`${import.meta.env.BASE_URL}templates/kpi-okr-import-mau.csv`}
+                download="kpi-okr-import-mau.csv"
+                className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 underline-offset-2 hover:underline dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+              >
+                Tải CSV mẫu
+              </a>
+            </span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              Hàng đầu: tiêu đề (Nhân sự, Hạng mục, Thứ tự ưu tiên, Nội dung KPI/OKRs, …). Mỗi dòng
+              một mục — gắn với kỳ{' '}
+              <strong className="font-semibold text-slate-700 dark:text-slate-200">
+                T{month}/{year}
+              </strong>{' '}
+              đang chọn.
+            </span>
+          </div>
+          {importPreview ? (
+            <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] dark:border-slate-600 dark:bg-slate-950">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-slate-700 dark:text-slate-200">
+                  <span className="font-semibold">{importPreview.fileLabel}</span>
+                  {' — '}
+                  <span className="tabular-nums text-primary">
+                    {importPreview.items.length}
+                  </span>{' '}
+                  dòng hợp lệ
+                  {importPreview.errors.length > 0 ? (
+                    <span className="text-amber-700 dark:text-amber-400">
+                      {' '}
+                      · {importPreview.errors.length} dòng bỏ qua
+                    </span>
+                  ) : null}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 rounded-lg font-bold"
+                  disabled={!importPreview.items.length || importSubmitting || isMockApiEnabled()}
+                  onClick={() => void submitImportFromFile()}
+                >
+                  {importSubmitting ? (
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : null}
+                  {importSubmitting
+                    ? 'Đang import…'
+                    : importPreview.items.length > 0
+                      ? `Tạo ${importPreview.items.length} mục từ file`
+                      : 'Không có dòng hợp lệ'}
+                </Button>
+              </div>
+              {importPreview.errors.length > 0 ? (
+                <ul className="max-h-28 overflow-y-auto rounded-md border border-amber-200/80 bg-amber-50/50 px-2 py-1.5 text-[11px] text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+                  {importPreview.errors.slice(0, 20).map((err) => (
+                    <li key={`${err.row}-${err.message.slice(0, 24)}`}>
+                      Dòng {err.row}: {err.message}
+                    </li>
+                  ))}
+                  {importPreview.errors.length > 20 ? (
+                    <li className="text-amber-800/80">
+                      … và {importPreview.errors.length - 20} lỗi khác
+                    </li>
+                  ) : null}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
         <Form {...form}>
           <form className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" onSubmit={onSubmit}>
             <SelectController
@@ -1518,21 +1684,6 @@ function MiniCreateForm({
             </SelectController>
             <SelectController
               control={control}
-              name="assigneeUserId"
-              label="Nhân sự nhận việc"
-              required
-              rules={{ required: true }}
-              className="space-y-1.5"
-              labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
-            >
-              {members.map((m) => (
-                <SelectItem key={m.userId} value={m.userId}>
-                  {(m.displayName ?? m.email ?? 'chưa có tên').slice(0, 48)}
-                </SelectItem>
-              ))}
-            </SelectController>
-            <SelectController
-              control={control}
               name="priority"
               label="Thứ tự ưu tiên"
               required
@@ -1545,6 +1696,80 @@ function MiniCreateForm({
               <SelectItem value="2">Ưu tiên 2 - Trung bình</SelectItem>
               <SelectItem value="3">Ưu tiên 3 - Thấp</SelectItem>
             </SelectController>
+            <FormField
+              control={control}
+              name="assigneeUserIds"
+              rules={{
+                validate: (v) =>
+                  (Array.isArray(v) && v.length > 0) || 'Chọn ít nhất một nhân sự nhận việc',
+              }}
+              render={({ field }) => (
+                <FormItem className="space-y-1.5 md:col-span-2 lg:col-span-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <FormLabel className="text-[11px] font-bold uppercase tracking-wider text-slate-500 !mt-0">
+                      Nhân sự nhận việc <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 rounded-lg px-2 text-[11px] font-semibold text-primary"
+                        onClick={() => field.onChange(members.map((m) => m.userId))}
+                      >
+                        Chọn tất cả
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 rounded-lg px-2 text-[11px] font-semibold text-slate-500"
+                        onClick={() => field.onChange([])}
+                      >
+                        Bỏ chọn
+                      </Button>
+                    </div>
+                  </div>
+                  <FormControl>
+                    <div
+                      className={cn(
+                        'box-border w-full min-w-0 max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 text-[13px] outline-none transition-all',
+                        'focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10',
+                        'dark:border-slate-700 dark:bg-slate-950 space-y-0.5'
+                      )}
+                    >
+                      {members.map((m) => {
+                        const checked = field.value.includes(m.userId)
+                        return (
+                          <label
+                            key={m.userId}
+                            className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/80"
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(c) => {
+                                const on = c === true
+                                if (on) {
+                                  if (!field.value.includes(m.userId)) {
+                                    field.onChange([...field.value, m.userId])
+                                  }
+                                } else {
+                                  field.onChange(field.value.filter((id) => id !== m.userId))
+                                }
+                              }}
+                            />
+                            <span className="text-sm text-slate-800 dark:text-slate-100">
+                              {(m.displayName ?? m.email ?? 'chưa có tên').slice(0, 48)}
+                            </span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <DateController
               control={control}
               name="kpiSetAt"
@@ -1601,7 +1826,11 @@ function MiniCreateForm({
                 className="rounded-xl bg-primary px-8 font-bold shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5"
               >
                 {isSubmitting ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isSubmitting ? 'Đang tạo...' : 'Tạo mục tiêu'}
+                {isSubmitting
+                  ? 'Đang tạo...'
+                  : selectedAssigneeCount > 1
+                    ? `Tạo ${selectedAssigneeCount} mục tiêu`
+                    : 'Tạo mục tiêu'}
               </Button>
             </div>
           </form>
@@ -1893,6 +2122,7 @@ export function FormPanel({
   const [busySaveQuestions, setBusySaveQuestions] = useState(false)
   const [busySaveAnswers, setBusySaveAnswers] = useState(false)
   const [isEditingAnswers, setIsEditingAnswers] = useState(false)
+  const surveyFileInputRef = useRef<HTMLInputElement>(null)
   const isManagerViewOnly = readOnly
   const shouldShowResponses = showResponses ?? (canEditTeam || isManagerViewOnly)
   const shouldShowQuestionForm = showQuestionForm ?? true
@@ -1968,23 +2198,26 @@ export function FormPanel({
   )
 
   const onUploadSurveyFile = (file: File) => {
-    void file.text().then((text) => {
-      const lines = text
-        .split(/\r?\n/)
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0)
-      if (lines.length === 0) {
-        toast.error('File không có dòng câu hỏi nào.')
-        return
+    void (async () => {
+      try {
+        const lines = await parseQuestionnaireImportFile(file)
+        if (lines.length === 0) {
+          toast.error(
+            'File không có câu hỏi hợp lệ. Với Excel dạng lưới, cần hàng tiêu đề có cột kiểu «TC1 - Câu hỏi 1: …»; hoặc dùng .txt/.md mỗi dòng một câu.'
+          )
+          return
+        }
+        setQuestionDrafts(
+          lines.map((prompt, i) => ({
+            id: `u-${i}-${Date.now()}`,
+            prompt,
+          }))
+        )
+        toast.success(`Đã đọc ${lines.length} câu từ file.`)
+      } catch {
+        toast.error('Không đọc được file. Thử định dạng .xlsx, .csv, .txt hoặc .md.')
       }
-      setQuestionDrafts(
-        lines.map((prompt, i) => ({
-          id: `u-${i}-${Date.now()}`,
-          prompt,
-        }))
-      )
-      toast.success(`Đã đọc ${lines.length} câu từ file.`)
-    })
+    })()
   }
 
   const parseRawBulk = () => {
@@ -2108,17 +2341,30 @@ export function FormPanel({
                   {data.questions.map((qs, i) => (
                     <div
                       key={qs.id}
-                      className="rounded-xl border border-border bg-background p-3 shadow-sm dark:border-slate-800"
+                      className="rounded-xl border border-border bg-background p-4 shadow-sm dark:border-slate-800"
                     >
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-foreground">Câu hỏi {i + 1}</p>
-                        <span className="text-[11px] font-medium text-muted-foreground">
-                          Trả lời văn bản
-                        </span>
+                      <div className="mb-3 flex gap-3">
+                        <div
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/12 text-xs font-bold text-primary"
+                          aria-hidden
+                        >
+                          {i + 1}
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-bold text-foreground">Câu {i + 1}</p>
+                            <Badge
+                              variant="outline"
+                              className="rounded-md px-2 py-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                            >
+                              Tự luận
+                            </Badge>
+                          </div>
+                          <p className="text-sm font-medium leading-relaxed text-foreground">
+                            {qs.prompt}
+                          </p>
+                        </div>
                       </div>
-                      <p className="mb-3 text-sm font-medium leading-relaxed text-foreground">
-                        {qs.prompt}
-                      </p>
                       <textarea
                         className={cn(
                           'min-h-[100px] w-full rounded-lg border border-slate-200 bg-slate-50/30 p-3 text-sm transition-all focus:bg-white focus:ring-2 focus:ring-primary/10 outline-none dark:border-slate-800 dark:bg-slate-900/30 dark:focus:bg-slate-950',
@@ -2244,139 +2490,245 @@ export function FormPanel({
         {shouldShowResponses && (
           <div className="space-y-6">
             {canEditTeam && !isMockApiEnabled() && (
-              <Card className="border-border shadow-sm dark:border-slate-800/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
-                    <FileUp className="h-5 w-5 text-primary" strokeWidth={2} />
-                    Cấu hình câu hỏi (Leader)
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Kỳ T{month}/{year} · Soạn từng câu hoặc nhập nhiều dòng / file — nhân sự trả lời
-                    tự luận (cùng kiểu tự luận ngắn như màn Tạo bộ bài thi).
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant={leaderQMode === 'upload' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setLeaderQMode('upload')}
-                      className={cn(
-                        'rounded-lg border px-3 py-1.5 text-sm font-semibold',
-                        leaderQMode !== 'upload' && 'border-border bg-card hover:bg-muted'
-                      )}
-                    >
-                      Upload file
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={leaderQMode === 'compose' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setLeaderQMode('compose')}
-                      className={cn(
-                        'rounded-lg border px-3 py-1.5 text-sm font-semibold',
-                        leaderQMode !== 'compose' && 'border-border bg-card hover:bg-muted'
-                      )}
-                    >
-                      Tự soạn câu hỏi
-                    </Button>
+              <Card className="overflow-hidden border-border shadow-md dark:border-slate-800/50">
+                <CardHeader className="space-y-4 border-b border-border/80 bg-gradient-to-br from-muted/40 via-background to-background pb-4 dark:from-slate-900/50">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-2">
+                      <CardTitle className="flex flex-wrap items-center gap-2 text-lg font-bold tracking-tight text-foreground">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
+                          <ClipboardList className="h-5 w-5 text-primary" strokeWidth={2} />
+                        </span>
+                        Soạn form khảo sát
+                        <Badge
+                          variant="outline"
+                          className="ml-0 rounded-md font-mono text-xs font-semibold sm:ml-1"
+                        >
+                          T{month}/{year}
+                        </Badge>
+                      </CardTitle>
+                      <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+                        Nhân sự sẽ trả lời tự luận giống bài thi ngắn. Chọn cách nhập bên dưới, kiểm
+                        tra phần <span className="font-medium text-foreground">Xem trước</span>, rồi
+                        lưu cho cả team.
+                      </p>
+                    </div>
+                    <ol className="flex shrink-0 gap-1 rounded-xl border border-border/80 bg-background/80 p-1 text-[11px] font-semibold text-muted-foreground shadow-sm dark:bg-slate-950/60">
+                      {(['Chọn nguồn', 'Xem trước', 'Lưu'] as const).map((label, i) => (
+                        <li
+                          key={label}
+                          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 sm:px-3"
+                        >
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] text-primary">
+                            {i + 1}
+                          </span>
+                          <span className="hidden sm:inline">{label}</span>
+                        </li>
+                      ))}
+                    </ol>
                   </div>
 
-                  {leaderQMode === 'upload' ? (
-                    <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setLeaderQMode('upload')}
+                      className={cn(
+                        'flex w-full gap-3 rounded-xl border-2 p-4 text-left transition-all',
+                        leaderQMode === 'upload'
+                          ? 'border-primary bg-primary/8 shadow-sm ring-2 ring-primary/15 dark:bg-primary/10'
+                          : 'border-border bg-card hover:border-primary/35 hover:bg-muted/30'
+                      )}
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/12">
+                        <FileUp className="h-5 w-5 text-primary" />
+                      </div>
                       <div>
-                        <Label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                          Upload file (txt / md)
-                        </Label>
-                        <Input
+                        <div className="font-bold text-foreground">Import từ file</div>
+                        <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
+                          Excel lưới (cột «TC… — Câu hỏi…»), CSV, TXT…
+                        </p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLeaderQMode('compose')}
+                      className={cn(
+                        'flex w-full gap-3 rounded-xl border-2 p-4 text-left transition-all',
+                        leaderQMode === 'compose'
+                          ? 'border-primary bg-primary/8 shadow-sm ring-2 ring-primary/15 dark:bg-primary/10'
+                          : 'border-border bg-card hover:border-primary/35 hover:bg-muted/30'
+                      )}
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/12">
+                        <ListOrdered className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-foreground">Soạn từng câu</div>
+                        <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
+                          Thêm, sửa, xóa từng ô — phù hợp ít câu hoặc chỉnh tay sau import.
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-5 pt-5">
+                  {leaderQMode === 'upload' ? (
+                    <div className="space-y-5">
+                      <div className="rounded-2xl border-2 border-dashed border-primary/25 bg-primary/5 p-5 dark:border-primary/30 dark:bg-primary/10">
+                        <p className="mb-3 text-sm font-bold text-foreground">
+                          Bước 1 — Chọn file hoặc dán danh sách
+                        </p>
+                        <input
+                          ref={surveyFileInputRef}
                           type="file"
-                          accept=".txt,.md,.csv,text/plain,text/markdown"
+                          accept=".txt,.md,.csv,.xlsx,.xls,text/plain,text/markdown,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                          className="sr-only"
                           onChange={(e) => {
                             const file = e.target.files?.[0]
                             if (file) onUploadSurveyFile(file)
                             e.target.value = ''
                           }}
-                          className="block w-full cursor-pointer rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-primary hover:file:bg-primary/20"
                         />
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Mỗi dòng không rỗng = một câu hỏi (có thể dán nội dung thay vì file).
-                        </p>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                          <Button
+                            type="button"
+                            variant="default"
+                            className="h-11 w-full shrink-0 rounded-xl font-bold sm:w-auto"
+                            onClick={() => surveyFileInputRef.current?.click()}
+                          >
+                            <FileUp className="mr-2 h-4 w-4" />
+                            Chọn file (.xlsx, .csv, .txt…)
+                          </Button>
+                          <ul className="flex-1 space-y-1 text-xs text-muted-foreground">
+                            <li className="flex gap-2">
+                              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                              <span>
+                                <strong className="text-foreground">Excel lưới:</strong> hàng đầu là
+                                tiêu đề cột; hệ thống lấy các cột dạng «TC1 — Câu hỏi 1: …».
+                              </span>
+                            </li>
+                            <li className="flex gap-2">
+                              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                              <span>
+                                <strong className="text-foreground">TXT / CSV dọc:</strong> mỗi dòng
+                                không trống = một câu hỏi.
+                              </span>
+                            </li>
+                          </ul>
+                        </div>
                       </div>
-                      <div>
-                        <Label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                          Nhập nhiều câu (mỗi dòng một câu)
+
+                      <div className="rounded-2xl border border-border bg-muted/20 p-4 dark:bg-slate-900/40">
+                        <Label
+                          htmlFor="survey-bulk-paste"
+                          className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground"
+                        >
+                          <AlignLeft className="h-4 w-4 text-muted-foreground" />
+                          Hoặc dán nhanh (mỗi dòng một câu)
                         </Label>
                         <textarea
-                          className="min-h-[120px] w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-                          placeholder={'Câu 1?\nCâu 2?\nCâu 3?'}
+                          id="survey-bulk-paste"
+                          className="min-h-[120px] w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/25"
+                          placeholder={'Dòng 1: nội dung câu hỏi\nDòng 2: câu tiếp theo\n…'}
                           value={rawBulk}
                           onChange={(e) => setRawBulk(e.target.value)}
                         />
-                        <div className="mt-2 flex justify-end">
-                          <Button type="button" variant="outline" size="sm" onClick={parseRawBulk}>
-                            Tách câu hỏi
+                        <div className="mt-3 flex justify-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="rounded-lg font-bold"
+                            onClick={parseRawBulk}
+                          >
+                            Áp dụng vào danh sách
                           </Button>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-3 rounded-xl border border-border/70 bg-muted/10 p-3">
-                      {questionDrafts.map((row, qIdx) => (
-                        <div
-                          key={row.id}
-                          className="rounded-xl border border-border bg-background p-3 shadow-sm"
-                        >
-                          <div className="mb-2 flex items-center justify-between gap-2">
-                            <p className="text-sm font-bold text-foreground">Câu hỏi {qIdx + 1}</p>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-auto gap-1 rounded-md px-2 py-1 text-xs font-normal normal-case tracking-normal text-muted-foreground"
-                              onClick={() => removeQuestionDraft(row.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              Xóa
-                            </Button>
-                          </div>
-                          <Input
-                            value={row.prompt}
-                            onChange={(e) =>
-                              setQuestionDrafts((prev) =>
-                                prev.map((x) =>
-                                  x.id === row.id ? { ...x, prompt: e.target.value } : x
+                    <div className="space-y-3">
+                      <p className="text-sm font-bold text-foreground">Danh sách câu hỏi</p>
+                      <div className="space-y-3 rounded-2xl border border-border/80 bg-muted/15 p-3 dark:bg-slate-900/35">
+                        {questionDrafts.map((row, qIdx) => (
+                          <div
+                            key={row.id}
+                            className="rounded-xl border border-border bg-background p-3 shadow-sm"
+                          >
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/12 text-xs font-bold text-primary">
+                                  {qIdx + 1}
+                                </span>
+                                <p className="text-sm font-bold text-foreground">Câu {qIdx + 1}</p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-auto gap-1 rounded-md px-2 py-1 text-xs font-normal normal-case tracking-normal text-muted-foreground"
+                                onClick={() => removeQuestionDraft(row.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Xóa
+                              </Button>
+                            </div>
+                            <Input
+                              value={row.prompt}
+                              onChange={(e) =>
+                                setQuestionDrafts((prev) =>
+                                  prev.map((x) =>
+                                    x.id === row.id ? { ...x, prompt: e.target.value } : x
+                                  )
                                 )
-                              )
-                            }
-                            placeholder="Câu hỏi chưa có tiêu đề"
-                            className="mb-2 w-full rounded-lg text-sm focus-visible:border-primary focus-visible:ring-primary/20"
-                          />
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                            <span className="font-semibold text-foreground/80">Tự luận ngắn</span>
-                            <span>·</span>
-                            <span>Bắt buộc trả lời khi gửi khảo sát</span>
+                              }
+                              placeholder="Nhập nội dung câu hỏi…"
+                              className="mb-2 w-full rounded-lg text-sm focus-visible:border-primary focus-visible:ring-primary/20"
+                            />
+                            <p className="text-[11px] text-muted-foreground">
+                              Trả lời dạng văn bản — bắt buộc khi nhân sự gửi khảo sát.
+                            </p>
                           </div>
+                        ))}
+                        <div className="flex justify-end pt-1">
+                          <Button type="button" variant="outline" onClick={addQuestionDraft}>
+                            <ListPlus className="mr-2 h-4 w-4" />
+                            Thêm câu hỏi
+                          </Button>
                         </div>
-                      ))}
-                      <div className="flex justify-end">
-                        <Button type="button" variant="outline" onClick={addQuestionDraft}>
-                          <ListPlus className="mr-2 h-4 w-4" />
-                          Thêm câu hỏi
-                        </Button>
                       </div>
                     </div>
                   )}
 
-                  <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
-                    <p className="mb-2 text-xs font-semibold text-muted-foreground">
-                      Xem trước ({validDraftCount} câu)
-                    </p>
-                    <div className="max-h-56 space-y-2 overflow-auto pr-1">
+                  <div
+                    className={cn(
+                      'rounded-2xl border-2 p-4 transition-colors',
+                      validDraftCount > 0
+                        ? 'border-emerald-200/90 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/25'
+                        : 'border-border bg-muted/15 dark:bg-slate-900/30'
+                    )}
+                  >
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-bold text-foreground">Xem trước</span>
+                        <Badge
+                          variant="outline"
+                          className="rounded-md font-mono text-xs tabular-nums font-bold"
+                        >
+                          {validDraftCount} câu
+                        </Badge>
+                      </div>
+                      {validDraftCount > 0 ? (
+                        <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
+                          Đúng thứ tự này sẽ hiện cho nhân sự
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="max-h-60 space-y-2 overflow-auto rounded-xl border border-border/60 bg-background/80 p-2 dark:bg-slate-950/50">
                       {validDraftCount === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                          Chưa có câu hỏi hợp lệ. Vui lòng nhập tiêu đề cho từng câu hoặc dùng
-                          Upload / Tách câu hỏi.
+                        <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+                          Chưa có câu hợp lệ. Hãy import file, dán danh sách, hoặc chuyển sang{' '}
+                          <strong className="text-foreground">Soạn từng câu</strong>.
                         </p>
                       ) : (
                         questionDrafts
@@ -2384,10 +2736,16 @@ export function FormPanel({
                           .map((q, idx) => (
                             <div
                               key={`${q.id}-prev`}
-                              className="rounded-lg border border-border bg-background px-3 py-2"
+                              className="rounded-lg border border-border/80 bg-card px-3 py-2.5"
                             >
-                              <p className="text-sm font-semibold text-foreground">
-                                Câu {idx + 1}: {q.prompt.trim()}
+                              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                                Câu {idx + 1}
+                              </p>
+                              <p
+                                className="mt-1 line-clamp-3 text-sm font-medium leading-snug text-foreground"
+                                title={q.prompt.trim()}
+                              >
+                                {q.prompt.trim()}
                               </p>
                             </div>
                           ))
@@ -2395,31 +2753,46 @@ export function FormPanel({
                     </div>
                   </div>
 
-                  <Button
-                    type="button"
-                    disabled={busySaveQuestions}
-                    className="w-full font-bold"
-                    onClick={() => {
-                      const lines = questionDrafts
-                        .map((s) => s.prompt.trim())
-                        .filter(Boolean)
-                        .map((prompt, i) => ({ prompt, sortOrder: i + 1 }))
-                      if (lines.length === 0) {
-                        toast.error('Cần ít nhất một câu hỏi có nội dung.')
-                        return
-                      }
-                      setBusySaveQuestions(true)
-                      void performanceApi
-                        .upsertQuestionnaire(teamId, { year, month, questions: lines })
-                        .then(() => {
-                          toast.success('Đã cập nhật bộ câu hỏi.')
-                          q.refetch()
-                        })
-                        .finally(() => setBusySaveQuestions(false))
-                    }}
-                  >
-                    {busySaveQuestions ? 'Đang lưu...' : 'Lưu bộ câu hỏi'}
-                  </Button>
+                  <div className="space-y-2">
+                    <Button
+                      type="button"
+                      disabled={busySaveQuestions}
+                      className="h-12 w-full rounded-xl text-base font-bold shadow-md shadow-primary/15"
+                      onClick={() => {
+                        const lines = questionDrafts
+                          .map((s) => s.prompt.trim())
+                          .filter(Boolean)
+                          .map((prompt, i) => ({ prompt, sortOrder: i + 1 }))
+                        if (lines.length === 0) {
+                          toast.error('Cần ít nhất một câu hỏi có nội dung.')
+                          return
+                        }
+                        setBusySaveQuestions(true)
+                        void performanceApi
+                          .upsertQuestionnaire(teamId, { year, month, questions: lines })
+                          .then(() => {
+                            toast.success('Đã cập nhật bộ câu hỏi.')
+                            q.refetch()
+                          })
+                          .finally(() => setBusySaveQuestions(false))
+                      }}
+                    >
+                      {busySaveQuestions ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          Đang lưu…
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          Lưu bộ câu hỏi cho kỳ T{month}/{year}
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-center text-[11px] text-muted-foreground">
+                      Sau khi lưu, nhân sự thấy form cập nhật ở cột «Trả lời khảo sát» bên trái.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             )}

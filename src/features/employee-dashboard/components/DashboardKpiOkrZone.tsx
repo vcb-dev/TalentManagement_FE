@@ -106,22 +106,43 @@ function SummaryCard({ title, percent, color, icon, footer, delay, loading }: Su
   )
 }
 
+/** Kỳ báo cáo do parent (dashboard quản lý) điều khiển — ẩn bộ lọc trùng trong khối KPI. */
+export type ManagerReportPeriodBridge = {
+  reportYear: number
+  rangeStartMonth: number
+  rangeEndMonth: number
+  setReportYear: (y: number) => void
+  setRangeStartMonth: (m: number) => void
+  setRangeEndMonth: (m: number) => void
+}
+
 export interface DashboardKpiOkrZoneProps {
   role: Extract<Role, 'LEADER' | 'MANAGER' | 'MEMBER'>
   paths: KpiOkrPaths
+  /** Manager: kỳ dùng chung với tab Học tập (bộ lọc ở ngoài). */
+  managerReportPeriodFromParent?: ManagerReportPeriodBridge | null
 }
 
 type TeamOption = { id: string; name: string; deptName?: string }
 
 /** Khối KPI · OKR · Báo cáo — LEADER/MANAGER: team; MEMBER: báo cáo cá nhân (cùng bộ lọc kỳ). */
-export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
+export function DashboardKpiOkrZone({
+  role,
+  paths,
+  managerReportPeriodFromParent = null,
+}: DashboardKpiOkrZoneProps) {
   const user = useAuthStore((s) => s.user)
   const isLeader = role === 'LEADER'
   const isManager = role === 'MANAGER'
   const isMember = role === 'MEMBER'
-  const [reportYear, setReportYear] = useState(() => new Date().getFullYear())
-  const [rangeStartMonth, setRangeStartMonth] = useState(() => new Date().getMonth() + 1)
-  const [rangeEndMonth, setRangeEndMonth] = useState(() => new Date().getMonth() + 1)
+  const [localReportYear, setLocalReportYear] = useState(() => new Date().getFullYear())
+  const [localRangeStartMonth, setLocalRangeStartMonth] = useState(() => new Date().getMonth() + 1)
+  const [localRangeEndMonth, setLocalRangeEndMonth] = useState(() => new Date().getMonth() + 1)
+
+  const reportYear = managerReportPeriodFromParent?.reportYear ?? localReportYear
+  const rangeStartMonth = managerReportPeriodFromParent?.rangeStartMonth ?? localRangeStartMonth
+  const rangeEndMonth = managerReportPeriodFromParent?.rangeEndMonth ?? localRangeEndMonth
+  const kpiFilterFromParent = Boolean(isManager && managerReportPeriodFromParent)
 
   const treeQ = useHrOrgTree()
   const teamOptions: TeamOption[] = useMemo(() => {
@@ -154,19 +175,31 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
 
   const setReportYearClamped = (y: number) => {
     if (!Number.isFinite(y)) return
-    setReportYear(Math.min(2035, Math.max(2020, y)))
+    const v = Math.min(2035, Math.max(2020, y))
+    if (managerReportPeriodFromParent) managerReportPeriodFromParent.setReportYear(v)
+    else setLocalReportYear(v)
   }
 
   const setFromMonth = (m: number) => {
     const mm = Math.min(12, Math.max(1, m))
-    setRangeStartMonth(mm)
-    setRangeEndMonth((prev) => (prev < mm ? mm : prev))
+    if (managerReportPeriodFromParent) {
+      managerReportPeriodFromParent.setRangeStartMonth(mm)
+      if (rangeEndMonth < mm) managerReportPeriodFromParent.setRangeEndMonth(mm)
+      return
+    }
+    setLocalRangeStartMonth(mm)
+    setLocalRangeEndMonth((prev) => (prev < mm ? mm : prev))
   }
 
   const setToMonth = (m: number) => {
     const mm = Math.min(12, Math.max(1, m))
-    setRangeEndMonth(mm)
-    setRangeStartMonth((prev) => (prev > mm ? mm : prev))
+    if (managerReportPeriodFromParent) {
+      managerReportPeriodFromParent.setRangeEndMonth(mm)
+      if (rangeStartMonth > mm) managerReportPeriodFromParent.setRangeStartMonth(mm)
+      return
+    }
+    setLocalRangeEndMonth(mm)
+    setLocalRangeStartMonth((prev) => (prev > mm ? mm : prev))
   }
 
   const {
@@ -275,7 +308,7 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
       >
         <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
           <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            Phạm vi và kỳ
+            {kpiFilterFromParent ? 'Phạm vi' : 'Phạm vi và kỳ'}
           </span>
           <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-semibold tabular-nums text-foreground">
             {periodSummary}
@@ -284,7 +317,12 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
 
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-8">
           {/* Team — đặt trước: người dùng chọn “đối tượng” trước khi lọc thời gian */}
-          <div className="min-w-0 flex-1 lg:max-w-md xl:max-w-lg">
+          <div
+            className={cn(
+              'min-w-0 flex-1',
+              kpiFilterFromParent ? 'max-w-none' : 'lg:max-w-md xl:max-w-lg'
+            )}
+          >
             <div className="mb-1.5 flex items-center gap-2">
               <Users className="h-3.5 w-3.5 text-primary" strokeWidth={2} aria-hidden />
               <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -323,72 +361,83 @@ export function DashboardKpiOkrZone({ role, paths }: DashboardKpiOkrZoneProps) {
             )}
           </div>
 
-          <div
-            className="hidden w-px shrink-0 self-stretch min-h-[4.5rem] bg-border lg:block"
-            aria-hidden
-          />
+          {!kpiFilterFromParent ? (
+            <>
+              <div
+                className="hidden w-px shrink-0 self-stretch min-h-[4.5rem] bg-border lg:block"
+                aria-hidden
+              />
 
-          {/* Kỳ báo cáo */}
-          <div className="w-full lg:flex-1 lg:max-w-xl">
-            <div className="mb-2 flex items-center gap-2">
-              <Calendar className="h-3.5 w-3.5 text-primary" strokeWidth={2} aria-hidden />
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Kỳ báo cáo (cùng năm)
-              </Label>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="space-y-1">
-                <span className="text-[10px] font-semibold text-muted-foreground">Năm</span>
-                <Input
-                  type="number"
-                  min={2020}
-                  max={2035}
-                  value={reportYear}
-                  className="h-10 rounded-xl border-border bg-background text-sm tabular-nums"
-                  onChange={(e) => {
-                    const v = Number(e.target.value)
-                    if (Number.isFinite(v)) setReportYearClamped(v)
-                  }}
-                />
+              {/* Kỳ báo cáo */}
+              <div className="w-full lg:flex-1 lg:max-w-xl">
+                <div className="mb-2 flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 text-primary" strokeWidth={2} aria-hidden />
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Kỳ báo cáo (cùng năm)
+                  </Label>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-semibold text-muted-foreground">Năm</span>
+                    <Input
+                      type="number"
+                      min={2020}
+                      max={2035}
+                      value={reportYear}
+                      className="h-10 rounded-xl border-border bg-background text-sm tabular-nums"
+                      onChange={(e) => {
+                        const v = Number(e.target.value)
+                        if (Number.isFinite(v)) setReportYearClamped(v)
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-semibold text-muted-foreground">
+                      Từ tháng
+                    </span>
+                    <Select
+                      value={String(rangeStartMonth)}
+                      onValueChange={(v) => setFromMonth(Number(v))}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl border-border bg-background text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                          <SelectItem key={m} value={String(m)}>
+                            Tháng {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-semibold text-muted-foreground">
+                      Đến tháng
+                    </span>
+                    <Select
+                      value={String(rangeEndMonth)}
+                      onValueChange={(v) => setToMonth(Number(v))}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl border-border bg-background text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                          <SelectItem key={m} value={String(m)}>
+                            Tháng {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+                  Số liệu dưới đây gộp chỉ tiêu và khảo sát trong toàn bộ tháng thuộc kỳ.
+                </p>
               </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-semibold text-muted-foreground">Từ tháng</span>
-                <Select
-                  value={String(rangeStartMonth)}
-                  onValueChange={(v) => setFromMonth(Number(v))}
-                >
-                  <SelectTrigger className="h-10 rounded-xl border-border bg-background text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                      <SelectItem key={m} value={String(m)}>
-                        Tháng {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-semibold text-muted-foreground">Đến tháng</span>
-                <Select value={String(rangeEndMonth)} onValueChange={(v) => setToMonth(Number(v))}>
-                  <SelectTrigger className="h-10 rounded-xl border-border bg-background text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                      <SelectItem key={m} value={String(m)}>
-                        Tháng {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
-              Số liệu dưới đây gộp chỉ tiêu và khảo sát trong toàn bộ tháng thuộc kỳ.
-            </p>
-          </div>
+            </>
+          ) : null}
         </div>
       </section>
 
