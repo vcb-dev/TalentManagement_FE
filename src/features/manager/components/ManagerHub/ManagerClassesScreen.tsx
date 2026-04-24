@@ -598,7 +598,7 @@ export function ManagerClassesScreen() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 items-start md:grid-cols-2 xl:grid-cols-3">
         {rows.map((row) => {
           const st = STATUS_LABEL[row.status]
           const header = HEADER_GRADIENT[row.status]
@@ -608,16 +608,16 @@ export function ManagerClassesScreen() {
             <div
               key={row.id}
               className={cn(
-                'rounded-2xl border border-border/80 bg-card shadow-[var(--shadow-card)] transition-shadow duration-300 hover:shadow-xl',
+                'rounded-2xl border border-border/80 bg-card shadow-[var(--shadow-card)] transition-all duration-300 hover:shadow-xl',
                 activeClassForDropdown === row.id ? 'relative z-30' : 'relative z-0',
                 CARD_ENTRANCE_HOVER
               )}
             >
               <div
                 className={cn(
-                  'relative overflow-hidden rounded-t-2xl bg-gradient-to-r transition-all duration-300 cursor-pointer select-none',
+                  'relative overflow-hidden bg-gradient-to-r transition-all duration-300 cursor-pointer select-none',
                   header,
-                  collapsedIds.has(row.id) ? 'h-14' : 'h-24'
+                  collapsedIds.has(row.id) ? 'h-14 rounded-2xl' : 'h-24 rounded-t-2xl'
                 )}
                 onClick={() => toggleCollapse(row.id)}
               >
