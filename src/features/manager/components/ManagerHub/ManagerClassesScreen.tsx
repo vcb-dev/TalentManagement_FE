@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
   Calendar,
+  ChevronDown,
+  ChevronUp,
   Loader2,
   Pencil,
   PlusCircle,
@@ -149,6 +151,16 @@ export function ManagerClassesScreen() {
 
   const activeQuery = activeClassForDropdown ? (memberQueries[activeClassForDropdown] ?? '') : ''
   const [debouncedActiveQuery, setDebouncedActiveQuery] = useState('')
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+  const toggleCollapse = (id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedActiveQuery(activeQuery), 500)
     return () => clearTimeout(t)
@@ -162,13 +174,13 @@ export function ManagerClassesScreen() {
 
   const { data: memberOptions = [], isFetching: fetchingMemberOptions } = useClassMemberOptions(
     debouncedActiveQuery,
-    undefined,
+    undefined, // Lấy từ bảng users, không lọc theo cấp
     memberOptionsExcludeTeacherId
   )
   const { data: createMemberOptions = [], isFetching: fetchingCreateOptions } =
     useClassMemberOptions(
       debouncedCreateMemberQuery,
-      createLevelFrom,
+      undefined, // Lấy từ bảng users, không lọc theo cấp
       selectedCreateTeacher?.userId
     )
   const { data: createTeacherOptions = [], isFetching: fetchingCreateTeacherOptions } =
@@ -622,126 +634,143 @@ export function ManagerClassesScreen() {
                 >
                   {st.label}
                 </span>
-                <h3 className="relative z-10 text-lg font-bold leading-tight text-white">
-                  {row.name}
-                </h3>
-              </div>
-              <div className="p-6">
-                <div className="mb-6 flex items-center gap-4">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {row.memberCount} thành viên
-                  </span>
+                <div className="flex items-center justify-between">
+                  <h3 className="relative z-10 text-lg font-bold leading-tight text-white">
+                    {row.name}
+                  </h3>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="relative z-20 h-8 w-8 text-white/80 hover:bg-white/20 hover:text-white"
+                    onClick={() => toggleCollapse(row.id)}
+                  >
+                    {collapsedIds.has(row.id) ? (
+                      <ChevronDown className="h-5 w-5" />
+                    ) : (
+                      <ChevronUp className="h-5 w-5" />
+                    )}
+                  </Button>
                 </div>
-
-                <div className="mb-4 rounded-lg border border-border/70 bg-muted/30 p-3">
-                  <p className="text-sm font-extrabold text-foreground">
-                    {LEVEL_LABELS[row.levelFrom]} → {LEVEL_LABELS[row.levelTo]}
-                  </p>
-                  <p className="mt-1 text-sm font-bold text-foreground">
-                    Kỳ thi dự kiến: {toViDate(row.examDate)}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Giáo viên:{' '}
-                    <span className="font-semibold text-foreground">
-                      {row.teacher?.name || 'Chưa gán'}
+              </div>
+              {!collapsedIds.has(row.id) && (
+                <div className="p-6 transition-all duration-300">
+                  <div className="mb-6 flex items-center gap-4">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {row.memberCount} thành viên
                     </span>
-                  </p>
-                </div>
+                  </div>
 
-                <div className="space-y-2">
-                  {(row.members ?? []).slice(0, 6).map((m) => (
-                    <div
-                      key={m.userId}
-                      className="flex items-center justify-between rounded-md border bg-white px-2 py-1.5 text-xs"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-foreground">{m.name}</p>
-                        <p className="truncate text-muted-foreground">{m.email}</p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                        onClick={() => removeMember.mutate({ classId: row.id, userId: m.userId })}
-                        title="Xóa khỏi lớp"
+                  <div className="mb-4 rounded-lg border border-border/70 bg-muted/30 p-3">
+                    <p className="text-sm font-extrabold text-foreground">
+                      {LEVEL_LABELS[row.levelFrom]} → {LEVEL_LABELS[row.levelTo]}
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-foreground">
+                      Kỳ thi dự kiến: {toViDate(row.examDate)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Giáo viên:{' '}
+                      <span className="font-semibold text-foreground">
+                        {row.teacher?.name || 'Chưa gán'}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {(row.members ?? []).slice(0, 6).map((m) => (
+                      <div
+                        key={m.userId}
+                        className="flex items-center justify-between rounded-md border bg-white px-2 py-1.5 text-xs"
                       >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="search-dropdown-container relative mt-3">
-                  <Input
-                    value={memberQuery}
-                    onFocus={() => setActiveClassForDropdown(row.id)}
-                    onChange={(e) => {
-                      setActiveClassForDropdown(row.id)
-                      setMemberQueries((prev) => ({ ...prev, [row.id]: e.target.value }))
-                    }}
-                    placeholder="Gõ tên/email để thêm nhân sự..."
-                    className="h-auto w-full rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
-                  />
-                  {showDropdown ? (
-                    <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
-                      {fetchingMemberOptions ? (
-                        <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Đang tìm...
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-foreground">{m.name}</p>
+                          <p className="truncate text-muted-foreground">{m.email}</p>
                         </div>
-                      ) : optionsByClass.length === 0 ? (
-                        <div className="px-2 py-2 text-xs text-muted-foreground">
-                          Không có kết quả phù hợp
-                        </div>
-                      ) : (
-                        optionsByClass.map((opt) => (
-                          <Button
-                            type="button"
-                            key={opt.userId}
-                            variant="ghost"
-                            className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
-                            onClick={() => {
-                              addMember.mutate({ classId: row.id, userId: opt.userId })
-                              setMemberQueries((prev) => ({ ...prev, [row.id]: '' }))
-                              setActiveClassForDropdown(null)
-                            }}
-                          >
-                            <p className="font-semibold text-foreground">{opt.name}</p>
-                            <p className="text-muted-foreground">{opt.email}</p>
-                          </Button>
-                        ))
-                      )}
-                    </div>
-                  ) : null}
-                </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          onClick={() => removeMember.mutate({ classId: row.id, userId: m.userId })}
+                          title="Xóa khỏi lớp"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-auto rounded-lg py-2.5 text-xs font-bold text-destructive"
-                    onClick={() => deleteClass.mutate(row.id)}
-                  >
-                    <Trash2 className="mr-1 h-3.5 w-3.5" />
-                    Xóa lớp
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-auto rounded-lg border-primary/25 bg-primary/5 py-2.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground"
-                    onClick={() => openEditClassModal(row)}
-                  >
-                    <Pencil className="mr-1 h-3.5 w-3.5" strokeWidth={2} />
-                    Chỉnh sửa
-                  </Button>
+                  <div className="search-dropdown-container relative mt-3">
+                    <Input
+                      value={memberQuery}
+                      onFocus={() => setActiveClassForDropdown(row.id)}
+                      onChange={(e) => {
+                        setActiveClassForDropdown(row.id)
+                        setMemberQueries((prev) => ({ ...prev, [row.id]: e.target.value }))
+                      }}
+                      placeholder="Gõ tên/email để thêm nhân sự..."
+                      className="h-auto w-full rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+                    />
+                    {showDropdown ? (
+                      <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                        {fetchingMemberOptions ? (
+                          <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Đang tìm...
+                          </div>
+                        ) : optionsByClass.length === 0 ? (
+                          <div className="px-2 py-2 text-xs text-muted-foreground">
+                            Không có kết quả phù hợp
+                          </div>
+                        ) : (
+                          optionsByClass.map((opt) => (
+                            <Button
+                              type="button"
+                              key={opt.userId}
+                              variant="ghost"
+                              className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
+                              onClick={() => {
+                                addMember.mutate({ classId: row.id, userId: opt.userId })
+                                setMemberQueries((prev) => ({ ...prev, [row.id]: '' }))
+                                setActiveClassForDropdown(null)
+                              }}
+                            >
+                              <p className="font-semibold text-foreground">{opt.name}</p>
+                              <p className="text-muted-foreground">{opt.email}</p>
+                            </Button>
+                          ))
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-auto rounded-lg py-2.5 text-xs font-bold text-destructive"
+                      onClick={() => deleteClass.mutate(row.id)}
+                    >
+                      <Trash2 className="mr-1 h-3.5 w-3.5" />
+                      Xóa lớp
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-auto rounded-lg border-primary/25 bg-primary/5 py-2.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground"
+                      onClick={() => openEditClassModal(row)}
+                    >
+                      <Pencil className="mr-1 h-3.5 w-3.5" strokeWidth={2} />
+                      Chỉnh sửa
+                    </Button>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Cập nhật {toViDate(row.updatedAt)}
+                    </p>
+                  </div>
                 </div>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Cập nhật {toViDate(row.updatedAt)}
-                </p>
-              </div>
+              )}
             </div>
           )
         })}
