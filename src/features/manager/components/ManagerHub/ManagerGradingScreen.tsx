@@ -178,11 +178,7 @@ export function ManagerGradingScreen() {
                             >
                               {total > 0 && pending === 0 ? 'Xem bài chấm thi' : 'Chấm thi'}
                             </Button>
-                          ) : isExamEnded ? (
-                            <span className="text-sm font-semibold text-rose-600">
-                              Lịch thi đã kết thúc
-                            </span>
-                          ) : (
+                          ) : isExamEnded ? null : (
                             <Button
                               type="button"
                               size="sm"
