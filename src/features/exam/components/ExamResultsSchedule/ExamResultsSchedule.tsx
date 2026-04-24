@@ -208,13 +208,18 @@ export function ExamResultsSchedule({
               (myEnrolledClassId === exam.id && enrolledClassHasQuestions) ||
               (myEnrolledClassId ? questionBankClassIds.has(myEnrolledClassId) : false)
             const isSubmitted = submittedExamIds.has(exam.id)
-            const canOpenExam = exam.status === 'COMPLETED' || hasQuestionBank || isSubmitted
+            const isStarted =
+              exam.status === 'IN_PROGRESS' || new Date() >= new Date(exam.scheduledAt)
+            const canOpenExam =
+              exam.status === 'COMPLETED' || isSubmitted || (hasQuestionBank && isStarted)
             const actionLabel =
               exam.status === 'COMPLETED' || isSubmitted
                 ? 'Xem bài làm'
                 : !hasQuestionBank
                   ? 'Chưa có bài thi'
-                  : 'Vào làm bài'
+                  : isStarted
+                    ? 'Vào làm bài'
+                    : 'Chưa đến giờ thi'
             return (
               <div
                 key={exam.id}

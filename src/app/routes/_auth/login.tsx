@@ -56,7 +56,7 @@ function LoginPage() {
   const search = Route.useSearch()
   const setSession = useAuthStore((s) => s.setSession)
   const [showPassword, setShowPassword] = useState(false)
-  const [isRedirecting, setIsRedirecting] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(search.oauth === 'success')
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginRequestSchema),
     defaultValues: { email: '', password: '' },
@@ -112,6 +112,19 @@ function LoginPage() {
       }
     })()
   }, [search.oauth, search.msg, search.redirect, navigate, setSession, onAuthSuccess])
+
+  if (isRedirecting) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-sm text-foreground">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" strokeWidth={2} />
+          <p className="font-medium text-muted-foreground animate-pulse">
+            Đang xác thực phiên đăng nhập...
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="login-page-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-10 text-sm leading-relaxed text-foreground transition-all duration-500">
