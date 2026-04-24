@@ -112,18 +112,18 @@ export function ManagerGradingScreen() {
                     const st = managerClassStatusUi(c.status)
                     const teacherName = c.teacher?.name || '—'
 
-                    let isExamEnded = false
-                    if (c.examDate) {
-                      const examTime = new Date(c.examDate).getTime()
-                      if (!Number.isNaN(examTime) && examTime < Date.now()) {
-                        isExamEnded = true
-                      }
-                    }
-
-                    // Count submissions linked to this class
                     const classSubmissions = submissions.filter((s) => s.classId === c.id)
                     const pending = classSubmissions.filter((s) => s.status === 'pending').length
                     const total = classSubmissions.length
+
+                    let isExamEnded = false
+                    if (c.examDate) {
+                      const examTime = new Date(c.examDate).getTime()
+                      // Add 60 minutes duration before considering it ended
+                      if (!Number.isNaN(examTime) && examTime + 60 * 60 * 1000 < Date.now()) {
+                        isExamEnded = true
+                      }
+                    }
 
                     return (
                       <tr
@@ -158,7 +158,27 @@ export function ManagerGradingScreen() {
                           )}
                         </td>
                         <td className="px-3 py-4 text-right">
-                          {isExamEnded ? (
+                          {total > 0 ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={total > 0 && pending === 0 ? 'outline' : 'default'}
+                              className={cn(
+                                'font-bold',
+                                total > 0 && pending === 0
+                                  ? 'border-primary text-primary hover:bg-primary/5'
+                                  : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                              )}
+                              onClick={() =>
+                                void navigate({
+                                  to: '/manager/grade-class/$classId',
+                                  params: { classId: c.id },
+                                })
+                              }
+                            >
+                              {total > 0 && pending === 0 ? 'Xem bài chấm thi' : 'Chấm thi'}
+                            </Button>
+                          ) : isExamEnded ? (
                             <span className="text-sm font-semibold text-rose-600">
                               Lịch thi đã kết thúc
                             </span>
@@ -175,7 +195,7 @@ export function ManagerGradingScreen() {
                                 })
                               }
                             >
-                              {total > 0 && pending === 0 ? 'Sửa bài chấm' : 'Chấm thi'}
+                              Chấm thi
                             </Button>
                           )}
                         </td>
