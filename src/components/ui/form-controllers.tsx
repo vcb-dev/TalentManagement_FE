@@ -474,6 +474,7 @@ export function RadioGroupController<
 }: LabeledControllerProps<TFieldValues, TName> & {
   options: RadioOption[]
   radioGroupClassName?: string
+  disabled?: boolean
 }) {
   return (
     <FormField
@@ -498,6 +499,7 @@ export function RadioGroupController<
                 onBlur={field.onBlur}
                 name={field.name}
                 className={radioGroupClassName}
+                disabled={disabled}
               >
                 {options.map((opt) => {
                   const itemId = `${field.name}-${opt.value}`
@@ -507,8 +509,12 @@ export function RadioGroupController<
                       key={opt.value}
                       htmlFor={itemId}
                       className={cn(
-                        'flex cursor-pointer items-start gap-3 rounded-xl border border-transparent p-3 transition-colors',
-                        active && 'border-primary/35 bg-primary/5',
+                        'flex items-start gap-3 rounded-xl border border-transparent p-3 transition-colors',
+                        disabled ? 'cursor-not-allowed opacity-80' : 'cursor-pointer',
+                        active &&
+                          (disabled
+                            ? 'bg-slate-100 border-slate-200'
+                            : 'border-primary/35 bg-primary/5'),
                         opt.optionClassName
                       )}
                     >

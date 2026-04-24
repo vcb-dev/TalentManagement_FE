@@ -84,6 +84,7 @@ const ExamQuestionCard = memo(function ExamQuestionCard({
             labelClassName="sr-only"
             className="mt-3 space-y-0"
             radioGroupClassName="space-y-2"
+            disabled={submitted}
             options={q.options.map((opt, oi) => ({
               value: opt,
               optionClassName: 'flex items-center gap-2 border-0 bg-transparent p-0',
