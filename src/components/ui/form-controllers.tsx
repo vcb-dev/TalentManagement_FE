@@ -471,6 +471,7 @@ export function RadioGroupController<
   options,
   radioGroupClassName,
   customLabel,
+  disabled,
 }: LabeledControllerProps<TFieldValues, TName> & {
   options: RadioOption[]
   radioGroupClassName?: string
