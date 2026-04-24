@@ -615,9 +615,11 @@ export function ManagerClassesScreen() {
             >
               <div
                 className={cn(
-                  'relative h-24 overflow-hidden rounded-t-2xl bg-gradient-to-r p-6',
-                  header
+                  'relative overflow-hidden rounded-t-2xl bg-gradient-to-r transition-all duration-300 cursor-pointer select-none',
+                  header,
+                  collapsedIds.has(row.id) ? 'h-14' : 'h-24'
                 )}
+                onClick={() => toggleCollapse(row.id)}
               >
                 <div
                   className="pointer-events-none absolute inset-0 opacity-[0.12]"
@@ -626,31 +628,65 @@ export function ManagerClassesScreen() {
                     backgroundSize: '20px 20px',
                   }}
                 />
-                <span
+                <div
                   className={cn(
-                    'relative z-10 mb-2 inline-block rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wider',
-                    st.className
+                    'relative z-10 flex items-center justify-between px-6',
+                    collapsedIds.has(row.id) ? 'h-full' : 'pt-6'
                   )}
                 >
-                  {st.label}
-                </span>
-                <div className="flex items-center justify-between">
-                  <h3 className="relative z-10 text-lg font-bold leading-tight text-white">
-                    {row.name}
-                  </h3>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="relative z-20 h-8 w-8 text-white/80 hover:bg-white/20 hover:text-white"
-                    onClick={() => toggleCollapse(row.id)}
-                  >
-                    {collapsedIds.has(row.id) ? (
-                      <ChevronDown className="h-5 w-5" />
-                    ) : (
-                      <ChevronUp className="h-5 w-5" />
+                  <div className="flex flex-col">
+                    {!collapsedIds.has(row.id) && (
+                      <span
+                        className={cn(
+                          'mb-1 inline-block w-fit rounded-full px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider',
+                          st.className
+                        )}
+                      >
+                        {st.label}
+                      </span>
                     )}
-                  </Button>
+                    <h3
+                      className={cn(
+                        'font-bold leading-tight text-white transition-all',
+                        collapsedIds.has(row.id) ? 'text-base' : 'text-lg'
+                      )}
+                    >
+                      {row.name}
+                      {collapsedIds.has(row.id) && (
+                        <span className="ml-3 text-[10px] opacity-80 font-normal">
+                          ({row.memberCount} thành viên)
+                        </span>
+                      )}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {collapsedIds.has(row.id) && (
+                      <span
+                        className={cn(
+                          'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
+                          st.className
+                        )}
+                      >
+                        {st.label}
+                      </span>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-white/80 hover:bg-white/20 hover:text-white"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleCollapse(row.id)
+                      }}
+                    >
+                      {collapsedIds.has(row.id) ? (
+                        <ChevronDown className="h-5 w-5" />
+                      ) : (
+                        <ChevronUp className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
               {!collapsedIds.has(row.id) && (
@@ -677,7 +713,7 @@ export function ManagerClassesScreen() {
                   </div>
 
                   <div className="space-y-2">
-                    {(row.members ?? []).slice(0, 6).map((m) => (
+                    {(row.members ?? []).map((m) => (
                       <div
                         key={m.userId}
                         className="flex items-center justify-between rounded-md border bg-white px-2 py-1.5 text-xs"
