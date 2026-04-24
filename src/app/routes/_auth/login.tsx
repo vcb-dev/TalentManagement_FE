@@ -22,6 +22,7 @@ import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 const loginSearchSchema = z.object({
   redirect: z.string().optional(),
   oauth: z.enum(['success', 'error']).optional(),
+  token: z.string().optional(),
   /** BE redirect kèm lý do (OAuth / JWT / cookie). */
   msg: z.string().optional(),
 })
@@ -95,8 +96,12 @@ function LoginPage() {
     setIsRedirecting(true)
     void (async () => {
       try {
+        if (search.token) {
+          // Gán token tạm thời để authApi.me() có thể sử dụng Authorization header
+          setSession(null as any, search.token)
+        }
         const d = await authApi.me()
-        setSession(d.user, d.accessToken ?? null)
+        setSession(d.user, d.accessToken ?? search.token ?? null)
         onAuthSuccess()
       } catch (err) {
         toast.error(
