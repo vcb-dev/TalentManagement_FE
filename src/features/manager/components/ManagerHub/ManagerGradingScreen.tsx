@@ -112,7 +112,9 @@ export function ManagerGradingScreen() {
                     const st = managerClassStatusUi(c.status)
                     const teacherName = c.teacher?.name || '—'
 
-                    const classSubmissions = submissions.filter((s) => s.classId === c.id)
+                    const classSubmissions = submissions.filter(
+                      (s) => s.classId?.toLowerCase() === c.id.toLowerCase()
+                    )
                     const pending = classSubmissions.filter((s) => s.status === 'pending').length
                     const total = classSubmissions.length
 

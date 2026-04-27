@@ -28,11 +28,11 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
   const gradeMutation = useGradeSubmission()
 
   const currentClass = useMemo(
-    () => allClasses.find((c) => c.id === classId),
+    () => allClasses.find((c) => c.id.toLowerCase() === classId?.toLowerCase()),
     [allClasses, classId]
   )
   const classSubmissions = useMemo(
-    () => allSubmissions.filter((s) => s.classId === classId),
+    () => allSubmissions.filter((s) => s.classId?.toLowerCase() === classId?.toLowerCase()),
     [allSubmissions, classId]
   )
 
@@ -41,9 +41,20 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
   const [localGrades, setLocalGrades] = useState<Record<string, Record<string, LocalGrade>>>({})
   const [submissionNotes, setSubmissionNotes] = useState<Record<string, string>>({})
 
+  useEffect(() => {
+    console.log('[Grader] classId from params:', classId)
+    console.log('[Grader] allSubmissions count:', allSubmissions.length)
+    console.log('[Grader] classSubmissions content:', JSON.stringify(classSubmissions))
+    if (allSubmissions.length > 0) {
+      console.log('[Grader] First submission classId:', allSubmissions[0]?.classId)
+    }
+  }, [classId, allSubmissions])
+
   // Question bank for this class
   const questionBank = useMemo(() => {
     console.log('[Grader] Finding question bank for class:', classId)
+    console.log('[Grader] Total submissions for this class:', classSubmissions.length)
+
     // Priority 1: Backend data from the current class object
     if (currentClass?.examQuestions) {
       console.log('[Grader] Found in backend class data')
@@ -55,13 +66,17 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
       (s) => s.schedule?.examQuestions || s.learningClass?.examQuestions
     )
     if (firstSubWithQuestions) {
-      console.log('[Grader] Found in submission data')
+      console.log(
+        '[Grader] Found in submission data. Schedule questions:',
+        !!firstSubWithQuestions.schedule?.examQuestions
+      )
       return (
         firstSubWithQuestions.schedule?.examQuestions ||
         firstSubWithQuestions.learningClass?.examQuestions
       )
     }
 
+    console.log('[Grader] No questions found in class or submissions')
     // Priority 3: Fallback to localStorage (legacy/transition)
     try {
       const raw = localStorage.getItem('manager_exam_question_bank_v1')
