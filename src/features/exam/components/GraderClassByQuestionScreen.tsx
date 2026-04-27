@@ -141,8 +141,32 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
   }
 
   const [showOutcomeModal, setShowOutcomeModal] = useState(false)
+  const [individualOutcomes, setIndividualOutcomes] = useState<
+    Record<string, 'DAT' | 'CHO_HOC_LAI'>
+  >({})
 
-  const handleSaveAllWithOutcome = async (outcome: 'DAT' | 'CHO_HOC_LAI') => {
+  // Initialize individual outcomes based on scores when opening modal
+  useEffect(() => {
+    if (showOutcomeModal && classSubmissions.length > 0) {
+      const initial: Record<string, 'DAT' | 'CHO_HOC_LAI'> = {}
+      classSubmissions.forEach((sub) => {
+        const grades = localGrades[sub.id] || {}
+        const answeredCount = Object.keys(sub.answers || {}).length
+        const totalScore =
+          answeredCount > 0
+            ? Math.round(
+                Object.values(grades).reduce((acc, g) => acc + (g.score || 0), 0) / answeredCount
+              )
+            : 0
+
+        // Default to DAT if score >= 80, else CHO_HOC_LAI
+        initial[sub.id] = totalScore >= 80 ? 'DAT' : 'CHO_HOC_LAI'
+      })
+      setIndividualOutcomes(initial)
+    }
+  }, [showOutcomeModal, classSubmissions, localGrades])
+
+  const handleFinalSubmit = async () => {
     const submissionsToSave = Object.keys(localGrades)
     if (submissionsToSave.length === 0) {
       toast.info('Không có dữ liệu để lưu')
@@ -158,6 +182,7 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
 
       const grades = localGrades[subId]
       const graderNote = submissionNotes[subId] || ''
+      const outcome = individualOutcomes[subId] || 'CHO_HOC_LAI'
 
       // Calculate total score for this student
       const answeredCount = Object.keys(sub.answers || {}).length
@@ -176,7 +201,7 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
           graderNote,
           status: 'done',
           totalScore,
-          outcome, // Manual outcome from modal
+          outcome,
         })
         successCount++
       } catch {
@@ -455,51 +480,103 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
         </div>
       </div>
 
-      {/* Manual Outcome Modal */}
       {showOutcomeModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md scale-in-center rounded-3xl bg-white p-8 shadow-2xl ring-1 ring-slate-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="my-auto w-full max-w-2xl scale-in-center rounded-3xl bg-white p-8 shadow-2xl ring-1 ring-slate-200">
             <div className="mb-6 flex flex-col items-center text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <CheckCircle2 className="h-8 w-8" />
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <CheckCircle2 className="h-7 w-7" />
               </div>
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                Xác nhận kết quả
+                Xác nhận kết quả lớp học
               </h3>
               <p className="mt-2 text-sm font-medium text-slate-500">
-                Vui lòng chọn kết quả chung cho các học viên vừa được chấm điểm.
+                Vui lòng kiểm tra lại kết quả của từng học viên trước khi hoàn tất.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Button
-                variant="outline"
-                className="h-24 flex-col gap-2 rounded-2xl border-2 border-emerald-100 bg-emerald-50/30 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-200 transition-all"
-                disabled={gradeMutation.isPending}
-                onClick={() => handleSaveAllWithOutcome('DAT')}
-              >
-                <CheckCircle2 className="h-6 w-6" />
-                <span className="font-bold text-base">Pass (Đạt)</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-24 flex-col gap-2 rounded-2xl border-2 border-rose-100 bg-rose-50/30 text-rose-700 hover:bg-rose-50 hover:border-rose-200 transition-all"
-                disabled={gradeMutation.isPending}
-                onClick={() => handleSaveAllWithOutcome('CHO_HOC_LAI')}
-              >
-                <ArrowLeft className="h-6 w-6 rotate-180" />
-                <span className="font-bold text-base">Thi lại</span>
-              </Button>
+            <div className="max-h-[400px] overflow-y-auto pr-2 mb-8 space-y-3 custom-scrollbar">
+              {classSubmissions.map((sub) => {
+                const outcome = individualOutcomes[sub.id] || 'CHO_HOC_LAI'
+                const grades = localGrades[sub.id] || {}
+                const answeredCount = Object.keys(sub.answers || {}).length
+                const totalScore =
+                  answeredCount > 0
+                    ? Math.round(
+                        Object.values(grades).reduce((acc, g) => acc + (g.score || 0), 0) /
+                          answeredCount
+                      )
+                    : 0
+
+                return (
+                  <div
+                    key={sub.id}
+                    className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/50"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-slate-800 truncate">{sub.fullName}</p>
+                      <p className="text-xs font-bold text-primary">Điểm: {totalScore}%</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant={outcome === 'DAT' ? 'default' : 'outline'}
+                        className={cn(
+                          'rounded-xl h-9 px-4 font-bold transition-all',
+                          outcome === 'DAT'
+                            ? 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600'
+                            : 'border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-200'
+                        )}
+                        onClick={() =>
+                          setIndividualOutcomes((prev) => ({ ...prev, [sub.id]: 'DAT' }))
+                        }
+                      >
+                        Đạt (Pass)
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={outcome === 'CHO_HOC_LAI' ? 'default' : 'outline'}
+                        className={cn(
+                          'rounded-xl h-9 px-4 font-bold transition-all',
+                          outcome === 'CHO_HOC_LAI'
+                            ? 'bg-rose-600 hover:bg-rose-700 border-rose-600 text-white'
+                            : 'border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200'
+                        )}
+                        onClick={() =>
+                          setIndividualOutcomes((prev) => ({ ...prev, [sub.id]: 'CHO_HOC_LAI' }))
+                        }
+                      >
+                        Thi lại
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
-            <Button
-              variant="ghost"
-              className="mt-6 w-full rounded-xl text-slate-400 font-bold hover:text-slate-600"
-              onClick={() => setShowOutcomeModal(false)}
-              disabled={gradeMutation.isPending}
-            >
-              Quay lại chỉnh sửa
-            </Button>
+            <div className="flex flex-col gap-3">
+              <Button
+                className="h-14 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 transition-all active:scale-95"
+                disabled={gradeMutation.isPending}
+                onClick={() => void handleFinalSubmit()}
+              >
+                {gradeMutation.isPending ? (
+                  <Loader2 className="h-6 w-6 animate-spin mr-3" />
+                ) : (
+                  <CheckCircle2 className="h-6 w-6 mr-3" />
+                )}
+                Xác nhận & Hoàn tất tất cả
+              </Button>
+              <Button
+                variant="ghost"
+                className="h-12 rounded-xl text-slate-400 font-bold hover:text-slate-600"
+                onClick={() => setShowOutcomeModal(false)}
+                disabled={gradeMutation.isPending}
+              >
+                Quay lại chỉnh sửa
+              </Button>
+            </div>
           </div>
         </div>
       )}
