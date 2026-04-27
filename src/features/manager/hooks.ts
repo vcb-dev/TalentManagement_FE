@@ -409,6 +409,20 @@ export const useSaveExamQuestions = () => {
   })
 }
 
+export const useSaveScheduleExamQuestions = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { classId: string; scheduleId: string; questions: any }) =>
+      managerApi.saveScheduleExamQuestions(input.classId, input.scheduleId, input.questions),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: managerKeys.classSchedules(variables.classId) })
+      qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
+      toast.success('Lưu đề thi buổi thi thành công')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
 export const useManagerSubmissions = () => {
   return useQuery({
     queryKey: ['manager', 'learning-submissions'],

@@ -42,6 +42,7 @@ const scheduleSlotSchema = z.object({
   location: z.string().nullable(),
   attendance: z.string().optional(),
   isEvaluated: z.boolean().optional(),
+  examQuestions: z.any().nullable().optional(),
 })
 
 const enrolledMemberSchema = z.object({

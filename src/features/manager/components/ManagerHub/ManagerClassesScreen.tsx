@@ -373,7 +373,7 @@ export function ManagerClassesScreen() {
       </div>
 
       {isCreateOpen ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 p-4 sm:pt-16">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/35 p-4">
           <div className="w-full max-w-2xl rounded-2xl border bg-card p-5 shadow-2xl transition-all animate-in fade-in zoom-in-95 duration-200">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-foreground">Tạo lớp học mới</h3>
@@ -832,7 +832,7 @@ export function ManagerClassesScreen() {
       </div>
 
       {editClassId ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 p-4 sm:pt-20">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/35 p-4">
           <div className="w-full max-w-xl rounded-2xl border bg-card p-5 shadow-2xl transition-all animate-in fade-in zoom-in-95 duration-200">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-foreground">Chỉnh sửa lớp</h3>

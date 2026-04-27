@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { CheckSquare, Circle, FileUp, ListPlus, Trash2, Users, X } from 'lucide-react'
+import { CheckSquare, Circle, FileUp, ListPlus, Loader2, Trash2, Users, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -24,7 +24,12 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { managerClassApiSchema } from '@/features/manager/schemas'
-import { useManagerClasses, useSaveExamQuestions } from '@/features/manager/hooks'
+import {
+  useClassSchedules,
+  useManagerClasses,
+  useSaveExamQuestions,
+  useSaveScheduleExamQuestions,
+} from '@/features/manager/hooks'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 import { ClassMembersScoresModal } from '@/features/manager/components/ClassMembersScoresModal'
 
@@ -118,10 +123,77 @@ function composeToQuestionItems(compose: ComposeQuestion[]): QuestionItem[] {
     .filter((q) => q.stem.length > 0)
 }
 
+function ClassSchedulesList({
+  classId,
+  onEditExam,
+  questionBank,
+}: {
+  classId: string
+  onEditExam: (sid: string) => void
+  questionBank: Record<string, QuestionBankPayload>
+}) {
+  const { data: schedules = [] } = useClassSchedules(classId)
+  const examSchedules = schedules.filter((s) => s.isExam)
+
+  if (examSchedules.length === 0) return null
+
+  return (
+    <div className="mt-3 w-full space-y-2">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-left px-1">
+        Các buổi thi đã lên lịch:
+      </p>
+      <div className="flex flex-col gap-1.5 w-full">
+        {examSchedules.map((s) => {
+          const bank = questionBank[s.id]
+          const hasQuestions = !!bank
+          return (
+            <div
+              key={s.id}
+              className="flex items-center justify-between gap-3 p-2 rounded-lg border border-primary/10 bg-primary/5 group"
+            >
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-foreground truncate">{s.topic}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {s.dateIso} · {s.startTime} - {s.endTime}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span
+                  className={cn(
+                    'text-[10px] font-bold px-1.5 py-0.5 rounded',
+                    hasQuestions ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                  )}
+                >
+                  {hasQuestions ? `${bank.questions.length} câu` : 'Chưa có đề'}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-[11px] font-bold bg-white border shadow-sm hover:bg-primary/5 hover:text-primary"
+                  onClick={() => onEditExam(s.id)}
+                >
+                  Sửa đề
+                </Button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function ManagerClassExamsScreen() {
   const [selectedClassIdForScores, setSelectedClassIdForScores] = useState<string | null>(null)
   const { data: classes = [], isLoading } = useManagerClasses()
   const saveQuestionsMutation = useSaveExamQuestions()
+  const saveScheduleQuestionsMutation = useSaveScheduleExamQuestions()
+
+  const [assignmentModalClassId, setAssignmentModalClassId] = useState<string | null>(null)
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null)
+
+  const { data: schedules = [] } = useClassSchedules(assignmentModalClassId || '')
+  const examSchedules = schedules.filter((s) => s.isExam)
 
   const [questionBankByClass, setQuestionBankByClass] = useState<
     Record<string, QuestionBankPayload>
@@ -136,10 +208,19 @@ export function ManagerClassExamsScreen() {
           apiData[c.id] = c.examQuestions as QuestionBankPayload
         }
       })
-      // Merge: API data takes priority, but keep local items that are not in API yet
+
+      // Also add schedule-specific questions if available in the current schedules list
+      if (assignmentModalClassId && examSchedules.length > 0) {
+        examSchedules.forEach((s) => {
+          if (s.examQuestions) {
+            apiData[s.id] = s.examQuestions as QuestionBankPayload
+          }
+        })
+      }
+
       setQuestionBankByClass((prev) => ({ ...prev, ...apiData }))
     }
-  }, [classes])
+  }, [classes, assignmentModalClassId, schedules])
 
   useEffect(() => {
     // Initial load from localStorage
@@ -151,7 +232,6 @@ export function ManagerClassExamsScreen() {
       }
     } catch {}
   }, [])
-  const [assignmentModalClassId, setAssignmentModalClassId] = useState<string | null>(null)
   const [questionDraft, setQuestionDraft] = useState<QuestionItem[]>([])
   const [composeQuestions, setComposeQuestions] = useState<ComposeQuestion[]>([
     newComposeQuestion(),
@@ -186,12 +266,20 @@ export function ManagerClassExamsScreen() {
     }
   }, [])
 
-  const openAssignmentModal = (classId: string) => {
+  const openAssignmentModal = (classId: string, scheduleId: string | null = null) => {
     setAssignmentModalClassId(classId)
-    const current = questionBankByClass[classId]
+    setSelectedScheduleId(scheduleId)
+
+    const key = scheduleId || classId
+    const current = questionBankByClass[key]
+
     resetAssignmentForm({
       title:
-        current?.title || `Đề thi lớp ${classes.find((c) => c.id === classId)?.name || ''}`.trim(),
+        current?.title ||
+        (scheduleId
+          ? `Đề thi: ${examSchedules.find((s) => s.id === scheduleId)?.topic || ''}`
+          : `Đề mẫu: ${classes.find((c) => c.id === classId)?.name || ''}`
+        ).trim(),
       duration: current?.duration || 60,
       mode: 'upload',
       rawInput: '',
@@ -202,6 +290,7 @@ export function ManagerClassExamsScreen() {
 
   const closeAssignmentModal = () => {
     setAssignmentModalClassId(null)
+    setSelectedScheduleId(null)
     resetAssignmentForm({ title: '', duration: 60, mode: 'upload', rawInput: '' })
   }
 
@@ -263,17 +352,25 @@ export function ManagerClassExamsScreen() {
       updatedAt: new Date().toISOString(),
     }
 
-    await saveQuestionsMutation.mutateAsync({
-      classId: assignmentModalClassId,
-      questions: payload,
-    })
+    if (selectedScheduleId) {
+      await saveScheduleQuestionsMutation.mutateAsync({
+        classId: assignmentModalClassId,
+        scheduleId: selectedScheduleId,
+        questions: payload,
+      })
+    } else {
+      await saveQuestionsMutation.mutateAsync({
+        classId: assignmentModalClassId,
+        questions: payload,
+      })
+    }
 
+    const key = selectedScheduleId || assignmentModalClassId
     const next: Record<string, QuestionBankPayload> = {
       ...questionBankByClass,
-      [assignmentModalClassId]: payload,
+      [key]: payload,
     }
     setQuestionBankByClass(next)
-    // Optional: Keep localStorage for extra safety, but API is source of truth now
     localStorage.setItem('manager_exam_question_bank_v1', JSON.stringify(next))
     closeAssignmentModal()
   }
@@ -312,7 +409,18 @@ export function ManagerClassExamsScreen() {
                 </tr>
               </thead>
               <tbody>
-                {classes.length === 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Đang tải danh sách lớp...
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : classes.length === 0 ? (
                   <tr>
                     <td
                       colSpan={5}
@@ -368,32 +476,35 @@ export function ManagerClassExamsScreen() {
                           )}
                         </td>
                         <td className="px-3 py-4 text-right">
-                          <div className="flex flex-wrap items-center justify-end gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="font-bold rounded-lg border-primary/20 text-primary hover:bg-primary/5 hover:text-primary-700"
-                              onClick={() => setSelectedClassIdForScores(c.id)}
-                            >
-                              <Users className="h-3.5 w-3.5 mr-1.5" />
-                              Thành viên & Điểm
-                            </Button>
-                            {isExamEnded ? (
-                              <span className="text-sm font-semibold text-rose-600">
-                                Lịch thi đã kết thúc
-                              </span>
-                            ) : (
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="font-bold rounded-lg border-primary/20 text-primary hover:bg-primary/5 hover:text-primary-700"
+                                onClick={() => setSelectedClassIdForScores(c.id)}
+                              >
+                                <Users className="h-3.5 w-3.5 mr-1.5" />
+                                Thành viên & Điểm
+                              </Button>
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                className="font-bold"
+                                className="font-bold border-amber-200 text-amber-700 bg-amber-50/30 hover:bg-amber-50"
                                 onClick={() => openAssignmentModal(c.id)}
                               >
-                                {hasQuestionBank ? 'Sửa bài thi' : 'Tạo bài thi'}
+                                Chỉnh sửa đề mẫu
                               </Button>
-                            )}
+                            </div>
+
+                            {/* List sessions for this class */}
+                            <ClassSchedulesList
+                              classId={c.id}
+                              onEditExam={(sid) => openAssignmentModal(c.id, sid)}
+                              questionBank={questionBankByClass}
+                            />
                           </div>
                         </td>
                       </tr>
@@ -410,16 +521,23 @@ export function ManagerClassExamsScreen() {
             <div className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-white/20 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden animate-page-entrance">
               <div className="shrink-0 px-5 pt-5 pb-4 border-b">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="flex items-center gap-2 text-lg font-bold text-foreground">
                       <FileUp className="h-5 w-5 text-primary" strokeWidth={2} />
-                      {questionBankByClass[assignmentClass.id]
-                        ? 'Sửa bộ bài thi'
-                        : 'Tạo bộ bài thi'}
+                      {selectedScheduleId
+                        ? 'Sửa bộ đề thi cho buổi thi'
+                        : 'Sửa bộ đề thi mẫu cho lớp'}
                     </h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Lớp: {assignmentClass.name}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      <span className="text-xs font-bold text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+                        Lớp: {assignmentClass.name}
+                      </span>
+                      {selectedScheduleId && (
+                        <span className="text-xs font-bold text-primary bg-primary/5 border border-primary/10 px-2 py-1 rounded-md">
+                          Buổi: {examSchedules.find((s) => s.id === selectedScheduleId)?.topic}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <Button
                     type="button"

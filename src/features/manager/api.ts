@@ -374,6 +374,17 @@ export const managerApi = {
       'PATCH /manager/classes/:id/exam-questions'
     )
   },
+  saveScheduleExamQuestions: async (classId: string, scheduleId: string, questions: any) => {
+    const res = await apiClient.patch<unknown>(
+      `/manager/classes/${classId}/schedules/${scheduleId}/exam-questions`,
+      questions
+    )
+    return safeParse(
+      managerClassActionResponseSchema,
+      res.data,
+      'PATCH /manager/classes/:id/schedules/:scheduleId/exam-questions'
+    )
+  },
   allSubmissions: async () => {
     const res = await apiClient.get<unknown>('/learning/admin/submissions')
     return safeParse(

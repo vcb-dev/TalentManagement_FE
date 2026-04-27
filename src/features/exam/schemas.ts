@@ -6,6 +6,7 @@ export const examSummaryApiSchema = z.object({
   title: z.string(),
   scheduledAt: z.string().datetime(),
   status: z.enum(['UPCOMING', 'IN_PROGRESS', 'COMPLETED']),
+  hasQuestions: z.boolean().optional(),
 })
 
 export type ExamScheduleRow = z.infer<typeof examSummaryApiSchema>

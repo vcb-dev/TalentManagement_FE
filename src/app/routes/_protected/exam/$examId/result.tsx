@@ -172,13 +172,21 @@ function ExamResultPage() {
         }
       }
 
-      // Priority 2: Backend data from my currently enrolled class
+      // Priority 2: Backend data from my currently enrolled class / specific schedule
       if (myClassData?.enrolledClass) {
-        if (myClassData.enrolledClass.examQuestions) {
-          console.log('[TakeExam] Found question bank in DB')
+        if (scheduleId) {
+          const matchedSchedule = myClassData.enrolledClass.schedules?.find(
+            (s) => s.id === scheduleId
+          )
+          if (matchedSchedule?.examQuestions) {
+            console.log('[TakeExam] Found session-specific questions in DB')
+            bank = matchedSchedule.examQuestions
+          }
+        }
+
+        if (!bank && myClassData.enrolledClass.examQuestions) {
+          console.log('[TakeExam] Found class-level question bank in DB')
           bank = myClassData.enrolledClass.examQuestions
-        } else {
-          console.log('[TakeExam] DB has no question bank for this class')
         }
       }
 
@@ -187,7 +195,11 @@ function ExamResultPage() {
         const raw = localStorage.getItem('manager_exam_question_bank_v1')
         if (raw) {
           const parsed = JSON.parse(raw) as Record<string, any>
-          bank = (myClassId ? parsed[myClassId] : undefined) ?? parsed[examId] ?? null
+          bank =
+            (scheduleId ? parsed[scheduleId] : undefined) ??
+            (myClassId ? parsed[myClassId] : undefined) ??
+            parsed[examId] ??
+            null
           if (bank) console.log('[TakeExam] Found question bank in localStorage')
         }
       }

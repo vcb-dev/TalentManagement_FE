@@ -205,6 +205,7 @@ export function ExamResultsSchedule({
             const Icon = idx % 2 === 0 ? Building2 : Shield
             const isOptional = idx % 2 === 1
             const hasQuestionBank =
+              exam.hasQuestions ||
               questionBankClassIds.has(exam.id) ||
               (myEnrolledClassId === exam.id && enrolledClassHasQuestions) ||
               (myEnrolledClassId ? questionBankClassIds.has(myEnrolledClassId) : false)
