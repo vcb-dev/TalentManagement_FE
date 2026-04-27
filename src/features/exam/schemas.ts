@@ -2,11 +2,15 @@ import { z } from 'zod'
 
 export const examSummaryApiSchema = z.object({
   id: z.string().uuid(),
+  classId: z.string().uuid().optional(),
   scheduleId: z.string().uuid().optional(),
   title: z.string(),
   scheduledAt: z.string().datetime({ offset: true }),
   status: z.enum(['UPCOMING', 'IN_PROGRESS', 'COMPLETED']),
   hasQuestions: z.boolean().optional(),
+  score: z.number().nullable().optional(),
+  outcome: z.string().nullable().optional(),
+  submissionId: z.string().uuid().optional(),
 })
 
 export type ExamScheduleRow = z.infer<typeof examSummaryApiSchema>
@@ -42,7 +46,7 @@ export const examSubmissionApiSchema = z.object({
   answers: z.any().optional(),
   grades: z.any().optional(),
   totalScore: z.number().nullable().optional(),
-  status: z.enum(['pending', 'grading', 'done']),
+  status: z.enum(['started', 'pending', 'grading', 'done']),
   outcome: z.enum(['DAT', 'BAO_LUU', 'CHO_HOC_LAI', 'CHIA_TAY']).nullable().optional(),
   graderNote: z.string().nullable().optional(),
   gradedAt: z.string().nullable().optional(),
@@ -58,8 +62,8 @@ export const examSubmissionApiSchema = z.object({
   schedule: z
     .object({
       topic: z.string(),
-      dateIso: z.string(),
-      startTime: z.string(),
+      dateIso: z.string().optional(),
+      startTime: z.string().optional(),
       examQuestions: z.any().nullable().optional(),
     })
     .nullable()

@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
-import { useMySubmissions } from '@/features/exam/hooks'
+import { useSubmission } from '@/features/exam/hooks'
 
 export interface MemberSubmissionResultScreenProps {
   submissionId: string
@@ -12,11 +12,7 @@ export interface MemberSubmissionResultScreenProps {
 
 export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionResultScreenProps) {
   const navigate = useNavigate()
-  const { data: submissions = [], isLoading } = useMySubmissions()
-  const submission = useMemo(
-    () => submissions.find((s) => s.id === submissionId),
-    [submissions, submissionId]
-  )
+  const { data: submission, isLoading } = useSubmission(submissionId)
 
   // Map question IDs to text from bank
   const questionMap = useMemo<Record<string, { stem: string; options: string[] }>>(() => {

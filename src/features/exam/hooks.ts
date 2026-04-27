@@ -15,6 +15,7 @@ export function useExams(filters: ExamFilters, enabled = true) {
     queryKey: examKeys.list(filters),
     queryFn: () => examApi.list(filters),
     enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }
 
@@ -87,6 +88,8 @@ export function useSubmitExam() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: SubmitExamInput) => examApi.submit(data),
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000), // 1s, 2s, 4s
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: examKeys.lists() })
       void qc.invalidateQueries({ queryKey: ['my_exam_submissions'] })
@@ -98,6 +101,7 @@ export function useManagerSubmissions() {
   return useQuery({
     queryKey: ['exam_submissions'],
     queryFn: () => examApi.getSubmissions(),
+    staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }
 
@@ -105,6 +109,7 @@ export function useMySubmissions() {
   return useQuery({
     queryKey: ['my_exam_submissions'],
     queryFn: () => examApi.getMySubmissions(),
+    staleTime: 60 * 1000, // 1 minute
   })
 }
 
@@ -115,5 +120,26 @@ export function useGradeSubmission() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['exam_submissions'] })
     },
+  })
+}
+
+export function useStartExam() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { classId?: string; scheduleId?: string }) => examApi.startExam(data),
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000), // 1s, 2s
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['my_exam_submissions'] })
+    },
+  })
+}
+
+export function useScheduleDetail(id: string) {
+  return useQuery({
+    queryKey: ['exam_schedule_detail', id],
+    queryFn: () => examApi.getScheduleDetail(id),
+    enabled: id.length > 0,
+    staleTime: 30 * 60 * 1000, // 30 minutes (questions rarely change during exam)
   })
 }

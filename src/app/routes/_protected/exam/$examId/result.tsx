@@ -14,6 +14,8 @@ import {
   useSubmitExam,
   useSubmission,
   useMySubmissions,
+  useScheduleDetail,
+  useStartExam,
 } from '@/features/exam/hooks'
 import { useMyEnrolledClass } from '@/features/learning-path/hooks'
 import { useAuthStore } from '@/stores/auth.store'
@@ -28,9 +30,10 @@ export const Route = createFileRoute('/_protected/exam/$examId/result')({
 })
 
 function formatTime(seconds: number): string {
+  if (isNaN(seconds) || seconds < 0) return '00:00:00'
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
-  const s = seconds % 60
+  const s = Math.floor(seconds % 60)
   return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':')
 }
 
@@ -126,8 +129,10 @@ function ExamResultPage() {
   const { data: submissionData } = useSubmission(examId)
   const { data: mySubmissions, isLoading: isSubsLoading } = useMySubmissions()
   const { data: myClassData, isLoading: isClassLoading } = useMyEnrolledClass()
-  const allLoading = isLoading || isSubsLoading || isClassLoading
+  const { data: scheduleDetail, isLoading: isScheduleLoading } = useScheduleDetail(scheduleId || '')
+  const allLoading = isLoading || isSubsLoading || isClassLoading || isScheduleLoading
   const { mutateAsync: submitExamApi, isPending: isSubmitting } = useSubmitExam()
+  const { mutate: startExamApi } = useStartExam()
   const employeeId = '00000000-0000-4000-8000-000000000001'
   const [questionBank, setQuestionBank] = useState<{
     title: string
@@ -139,6 +144,7 @@ function ExamResultPage() {
   const [timeExpired, setTimeExpired] = useState(false)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const answersRef = useRef<Record<string, string>>({})
 
   const myClassId = myClassData?.enrolledClass?.id
 
@@ -159,38 +165,16 @@ function ExamResultPage() {
       const submissionKey = `member_exam_submission_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
       const existingSubmission = localStorage.getItem(submissionKey)
 
-      let bank: any = null
-
-      // Priority 1: Data from a specific submission (if viewing history)
-      if (submissionData) {
-        if (submissionData.userId !== userId) {
-          console.log('[TakeExam] Submission data belongs to another user. Ignoring.')
-        } else {
-          bank = submissionData.learningClass?.examQuestions || null
-          setAnswers((submissionData.answers as Record<string, string>) || {})
-          setSubmitted(true)
-          setTimeLeft(null)
-          if (bank) {
-            setQuestionBank(bank)
-            return
-          }
-        }
-      }
-
       // Check if already submitted via API results or my submissions list
-      const hasApiResult = data && data.length > 0
-      const hasApiSubmission = mySubmissions?.some(
-        (s) => s.scheduleId === scheduleId || s.classId === examId || s.id === examId
-      )
+      const hasApiResult = data && data.length > 0 && data.some((r) => r.employeeId === userId)
+      const isActuallySubmitted = activeSubmission && activeSubmission.status !== 'started'
 
-      if (hasApiResult || hasApiSubmission || existingSubmission) {
+      if (hasApiResult || isActuallySubmitted || (existingSubmission && isActuallySubmitted)) {
         console.log('[TakeExam] Submission found. Status: Submitted')
         setSubmitted(true)
         setTimeLeft(null)
 
-        const sub = mySubmissions?.find(
-          (s) => s.scheduleId === scheduleId || s.classId === examId || s.id === examId
-        )
+        const sub = activeSubmission
 
         // Load answers from the best source
         if (existingSubmission) {
@@ -206,17 +190,15 @@ function ExamResultPage() {
         let foundBank = null
         if (sub) {
           // Priority 1: From submission data
-          foundBank = sub.learningClass?.examQuestions || sub.schedule?.examQuestions
+          foundBank = sub.schedule?.examQuestions || sub.learningClass?.examQuestions
         }
-        if (!foundBank && myClassData?.enrolledClass) {
-          // Priority 2: From enrolled class data
-          if (scheduleId) {
-            const matchedSchedule = myClassData.enrolledClass.schedules?.find(
-              (s) => s.id === scheduleId
-            )
-            if (matchedSchedule?.examQuestions) foundBank = matchedSchedule.examQuestions
+        if (!foundBank) {
+          // Priority 2: From schedule detail
+          if (scheduleId && scheduleDetail?.examQuestions) {
+            foundBank = scheduleDetail.examQuestions
           }
-          if (!foundBank && myClassData.enrolledClass.examQuestions) {
+          // Fallback to class questions
+          if (!foundBank && !scheduleId && myClassData?.enrolledClass?.id === examId) {
             foundBank = myClassData.enrolledClass.examQuestions
           }
         }
@@ -228,20 +210,16 @@ function ExamResultPage() {
       }
 
       // If not submitted, proceed with timer initialization
-      if (myClassData?.enrolledClass) {
-        if (scheduleId) {
-          const matchedSchedule = myClassData.enrolledClass.schedules?.find(
-            (s) => s.id === scheduleId
-          )
-          if (matchedSchedule?.examQuestions) bank = matchedSchedule.examQuestions
-        }
-        if (!bank && myClassData.enrolledClass.examQuestions) {
-          bank = myClassData.enrolledClass.examQuestions
-        }
+      let bank = null
+      if (scheduleId && scheduleDetail?.examQuestions) {
+        bank = scheduleDetail.examQuestions
+      } else if (!scheduleId && myClassData?.enrolledClass?.id === examId) {
+        bank = myClassData.enrolledClass.examQuestions
       }
 
       if (bank) {
         setQuestionBank(bank)
+
         let initialAnswers: Record<string, string> = {}
         const draftKey = `exam_draft_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
         const draftRaw = localStorage.getItem(draftKey)
@@ -255,27 +233,52 @@ function ExamResultPage() {
         setAnswers(initialAnswers)
 
         const durationSeconds = (bank.duration || 60) * 60
-        let startTimeMillis = Date.now()
 
-        if (scheduleId && myClassData?.enrolledClass?.schedules) {
-          const matched = myClassData.enrolledClass.schedules.find((s) => s.id === scheduleId)
-          if (matched) {
-            const officialIso = `${matched.dateIso}T${matched.startTime}:00+07:00`
-            const officialTime = new Date(officialIso).getTime()
-            if (!Number.isNaN(officialTime)) startTimeMillis = officialTime
-          }
+        // Logic: Countdown = Giờ kết thúc (lịch thi hoặc startTime + duration) - Thời gian hiện tại
+        let finalTimeLeft = durationSeconds
+
+        if (scheduleId && scheduleDetail?.dateIso && scheduleDetail?.startTime) {
+          try {
+            const startMs = new Date(
+              `${scheduleDetail.dateIso}T${scheduleDetail.startTime}:00+07:00`
+            ).getTime()
+            const durationMs = durationSeconds * 1000
+
+            // Logic: Luôn kết thúc tại (Giờ bắt đầu + Thời lượng bài thi)
+            const finalEndMs = startMs + durationMs
+
+            if (!isNaN(finalEndMs)) {
+              finalTimeLeft = Math.max(0, Math.floor((finalEndMs - Date.now()) / 1000))
+            }
+          } catch {}
         }
 
-        const elapsed = Math.floor((Date.now() - startTimeMillis) / 1000)
-        const remaining = Math.min(durationSeconds, Math.max(0, durationSeconds - elapsed))
-        setTimeLeft(remaining)
+        // Gọi startExam để ghi nhận vào DB (không ảnh hưởng timer)
+        if (!activeSubmission) {
+          startExamApi({ classId: !scheduleId ? examId : undefined, scheduleId })
+        }
+
+        setTimeLeft(finalTimeLeft)
       }
     } catch (err) {
       console.error('[TakeExam] Init error:', err)
     }
-  }, [allLoading, examId, scheduleId, submissionData, data, mySubmissions, myClassData, userId])
+  }, [
+    allLoading,
+    userId,
+    examId,
+    scheduleId,
+    data,
+    mySubmissions,
+    myClassData,
+    scheduleDetail,
+    activeSubmission,
+    startExamApi,
+  ])
 
+  // Luôn giữ answersRef đồng bộ với state mới nhất
   useEffect(() => {
+    answersRef.current = answers
     if (Object.keys(answers).length > 0 && !submitted) {
       localStorage.setItem(
         `exam_draft_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`,
@@ -322,9 +325,10 @@ function ExamResultPage() {
 
     if (timerRef.current) clearInterval(timerRef.current)
 
-    // Load final answers from state or draft if auto-submitting
-    let finalAnswers = answers
-    if (isAuto && Object.keys(finalAnswers).length === 0) {
+    // Lấy đáp án mới nhất từ ref (tránh stale closure)
+    let finalAnswers = answersRef.current
+    if (Object.keys(finalAnswers).length === 0) {
+      // Fallback: đọc từ localStorage draft
       const draftKey = `exam_draft_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
       const draftRaw = localStorage.getItem(draftKey)
       if (draftRaw) {
@@ -353,7 +357,7 @@ function ExamResultPage() {
           examId,
           scheduleId,
           classId: myClassId ?? null,
-          answers,
+          answers: finalAnswers,
           submittedAt: new Date().toISOString(),
           autoSubmitted: isAuto,
         })
@@ -379,9 +383,11 @@ function ExamResultPage() {
       return
     }
     setTimeExpired(true)
+    // Thêm jitter (độ trễ ngẫu nhiên 0-5s) để tránh 200 người cùng nộp bài 1 lúc gây sập server
+    const jitter = Math.floor(Math.random() * 5000)
     const timer = setTimeout(() => {
       void submitAction(true)
-    }, 0)
+    }, jitter)
     return () => clearTimeout(timer)
   }, [timeLeft]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -435,6 +441,56 @@ function ExamResultPage() {
           {!submitted && timeExpired && (
             <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
               ⏰ Đã hết thời gian làm bài. Bài thi của bạn đã được ghi nhận.
+            </div>
+          )}
+
+          {/* Grading Scale Info */}
+          {!submitted && !timeExpired && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
+              <div className="mb-4 flex items-center gap-2">
+                <div className="h-5 w-1 rounded-full bg-primary" />
+                <h3 className="text-sm font-bold uppercase tracking-wider text-primary">
+                  Thang điểm đánh giá bài thi
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                    Đúng lý thuyết
+                  </span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-foreground">40</span>
+                    <span className="text-sm font-bold text-primary">%</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    Trình bày chính xác, đầy đủ kiến thức chuyên môn liên quan.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1.5 border-primary/10 sm:border-l sm:pl-6">
+                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                    Ví dụ thực tế
+                  </span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-foreground">50</span>
+                    <span className="text-sm font-bold text-primary">%</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    Có ví dụ minh họa cụ thể, sát với thực tiễn công việc tại VCB.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1.5 border-primary/10 sm:border-l sm:pl-6">
+                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                    Trình bày
+                  </span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-foreground">10</span>
+                    <span className="text-sm font-bold text-primary">%</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    Cách trình bày mạch lạc, rõ ràng, dễ hiểu và chuyên nghiệp.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 

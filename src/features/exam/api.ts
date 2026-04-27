@@ -104,6 +104,24 @@ export const examApi = {
     return safeParse(z.array(examSubmissionApiSchema), res.data, 'GET /exams/my-submissions')
   },
 
+  getScheduleDetail: async (id: string) => {
+    const res = await apiClient.get<unknown>(`/me/exam-schedule/${id}`)
+    return res.data as {
+      id: string
+      classId: string
+      title: string
+      dateIso: string
+      startTime: string
+      endTime: string
+      examQuestions: any
+    }
+  },
+
+  startExam: async (body: { classId?: string; scheduleId?: string }) => {
+    const res = await apiClient.post<unknown>('/exams/start-exam', body)
+    return res.data
+  },
+
   gradeSubmission: async (body: GradeSubmissionInput) => {
     if (isMockApiEnabled()) {
       return { id: body.submissionId, status: body.status || 'done' } as any

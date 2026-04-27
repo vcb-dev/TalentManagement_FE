@@ -14,9 +14,10 @@ import { formatViDate } from '@/lib/date'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import type { z } from 'zod'
-import { type examSummaryApiSchema } from '@/features/exam/schemas'
+import { type examSummaryApiSchema, type examSubmissionApiSchema } from '@/features/exam/schemas'
 
 type ExamRow = z.infer<typeof examSummaryApiSchema>
+type ExamSubmission = z.infer<typeof examSubmissionApiSchema>
 
 export interface ExamResultsScheduleProps {
   exams: ExamRow[]
@@ -34,18 +35,7 @@ export interface ExamResultsScheduleProps {
     latestResult?: { outcome: string } | null
   }>
   membersTitle?: string
-  mySubmissions?: Array<{
-    id: string
-    examId?: string | null
-    classId?: string | null
-    scheduleId?: string | null
-    title?: string | null
-    schedule?: { topic?: string | null } | null
-    status: string
-    outcome?: string | null
-    totalScore?: number | null
-    createdAt: string
-  }>
+  mySubmissions?: ExamSubmission[]
   enrolledClassHasQuestions?: boolean
 }
 
@@ -106,7 +96,6 @@ export function ExamResultsSchedule({
         if (mySubmissions.length > 0) {
           mySubmissions.forEach((sub) => {
             if (sub.classId) submittedMap.set(sub.classId, sub.id)
-            if (sub.examId) submittedMap.set(sub.examId, sub.id)
             if (sub.scheduleId) submittedMap.set(sub.scheduleId, sub.id)
           })
         }
@@ -153,11 +142,24 @@ export function ExamResultsSchedule({
 
   // MERGE EVERYTHING: ALL submissions + any completed exams from schedule that don't have submissions
   const combinedResults = useMemo(() => {
-    const results = [...(mySubmissions || [])].map((s) => ({
+    type MergedResult = {
+      id: string
+      classId?: string | null
+      scheduleId?: string | null
+      title: string
+      date: string
+      status: string
+      outcome?: string | null
+      score?: number | null
+      isSubmission: boolean
+    }
+
+    // 1. Start with all submissions
+    const results: MergedResult[] = [...(mySubmissions || [])].map((s) => ({
       id: s.id, // This is submissionId
-      classId: s.classId || s.examId,
+      classId: s.classId,
       scheduleId: s.scheduleId,
-      title: s.title || s.schedule?.topic || 'Kỳ thi nội bộ',
+      title: s.schedule?.topic || s.learningClass?.name || 'Kỳ thi nội bộ',
       date: s.createdAt,
       status: s.status,
       outcome: s.outcome,
@@ -165,29 +167,57 @@ export function ExamResultsSchedule({
       isSubmission: true,
     }))
 
-    // Add completed exams that don't have a submission yet
+    // 2. Map scheduled exams and merge into results
     filteredCompleted.forEach((exam) => {
-      const alreadyIn = results.find(
+      // Find a match: same scheduleId OR (matching classId and either side has no scheduleId)
+      const examClassId = exam.classId || exam.id
+      const match = results.find(
         (r) =>
           (exam.scheduleId && r.scheduleId === exam.scheduleId) ||
-          (exam.id && r.classId === exam.id)
+          (examClassId && r.classId === examClassId && (!r.scheduleId || !exam.scheduleId))
       )
-      if (!alreadyIn) {
+
+      if (match) {
+        // Enhance the existing submission record with info from the schedule
+        if ((!match.title || match.title === 'Kỳ thi nội bộ') && exam.title) {
+          match.title = exam.title
+        }
+        if (!match.scheduleId && exam.scheduleId) {
+          match.scheduleId = exam.scheduleId
+        }
+        // Ensure classId is synced if missing
+        if (!match.classId && examClassId) {
+          match.classId = examClassId
+        }
+        // Sync score and outcome from ExamAttempt if missing in submission
+        if (match.score === null && exam.score !== undefined) {
+          match.score = exam.score
+        }
+        if (!match.outcome && exam.outcome) {
+          match.outcome = exam.outcome
+        }
+        // IMPORTANT: Prioritize the submissionId from the schedule if the submission match doesn't have it correct
+        if (exam.submissionId) {
+          match.id = exam.submissionId
+          match.isSubmission = true
+        }
+      } else {
+        // No submission found for this exam, add as a "Not Taken" or "Historical" row
         results.push({
-          id: exam.id, // This is classId
-          classId: exam.id,
+          id: exam.submissionId || exam.id, // Use submissionId if backend found one
+          classId: examClassId,
           scheduleId: exam.scheduleId,
           title: exam.title,
           date: exam.scheduledAt,
-          status: 'NOT_TAKEN',
-          outcome: null,
-          score: null,
-          isSubmission: false,
+          status: exam.status === 'COMPLETED' ? 'done' : 'NOT_TAKEN',
+          outcome: exam.outcome ?? null,
+          score: exam.score ?? null,
+          isSubmission: !!exam.submissionId, // If backend gave us an ID, treat as submission
         })
       }
     })
 
-    // Sort by date descending
+    // 3. Sort by date descending
     return results.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   }, [mySubmissions, filteredCompleted])
 
@@ -253,9 +283,7 @@ export function ExamResultsSchedule({
               questionBankClassIds.has(exam.id) ||
               (myEnrolledClassId === exam.id && enrolledClassHasQuestions) ||
               (myEnrolledClassId ? questionBankClassIds.has(myEnrolledClassId) : false)
-            const submissionId =
-              (exam.scheduleId ? submittedExamMap.get(exam.scheduleId) : undefined) ||
-              submittedExamMap.get(exam.id)
+            const submissionId = exam.submissionId
             const isSubmitted = !!submissionId
             const isStarted =
               exam.status === 'IN_PROGRESS' || new Date() >= new Date(exam.scheduledAt)
@@ -318,8 +346,11 @@ export function ExamResultsSchedule({
                     variant="ghost"
                     onClick={() => {
                       if (canOpenExam) {
-                        // Always use the exam view (result.tsx) which handles both taking the exam and viewing submitted answers with the success banner
-                        onOpenExam(exam.id, false, exam.scheduleId ?? undefined)
+                        onOpenExam(
+                          isSubmitted ? submissionId! : exam.id,
+                          isSubmitted,
+                          exam.scheduleId ?? undefined
+                        )
                       }
                     }}
                     disabled={!canOpenExam}
@@ -439,7 +470,7 @@ export function ExamResultsSchedule({
                     variant="ghost"
                     onClick={() =>
                       onOpenExam(
-                        res.classId || res.id,
+                        res.isSubmission ? res.id : res.classId || res.id,
                         res.isSubmission,
                         res.scheduleId ?? undefined
                       )
@@ -602,7 +633,7 @@ export function ExamResultsSchedule({
                             variant="ghost"
                             onClick={() =>
                               onOpenExam(
-                                res.classId || res.id,
+                                res.isSubmission ? res.id : res.classId || res.id,
                                 res.isSubmission,
                                 res.scheduleId ?? undefined
                               )
