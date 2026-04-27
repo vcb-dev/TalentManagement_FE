@@ -227,6 +227,7 @@ export function ManagerClassExamsScreen() {
         const next = { ...prev }
 
         rawClasses.forEach((c: any) => {
+          // Sync class template questions
           if (c.examQuestions) {
             if (JSON.stringify(next[c.id]) !== JSON.stringify(c.examQuestions)) {
               next[c.id] = c.examQuestions as QuestionBankPayload
@@ -236,11 +237,10 @@ export function ManagerClassExamsScreen() {
             delete next[c.id]
             changed = true
           }
-        })
 
-        // Also handle schedule-specific questions
-        if (assignmentModalClassId && examSchedules.length > 0) {
-          examSchedules.forEach((s) => {
+          // Sync all schedule-specific questions from this class
+          const schedules = (c.schedules ?? []).filter((s: any) => s.isExam)
+          schedules.forEach((s: any) => {
             if (s.examQuestions) {
               if (JSON.stringify(next[s.id]) !== JSON.stringify(s.examQuestions)) {
                 next[s.id] = s.examQuestions as QuestionBankPayload
@@ -251,12 +251,12 @@ export function ManagerClassExamsScreen() {
               changed = true
             }
           })
-        }
+        })
 
         return changed ? next : prev
       })
     }
-  }, [rawClasses, assignmentModalClassId, examSchedules.length])
+  }, [rawClasses])
 
   useEffect(() => {
     // Initial load from localStorage
