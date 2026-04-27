@@ -219,17 +219,22 @@ export function ManagerClassExamsScreen() {
     Record<string, QuestionBankPayload>
   >({})
 
-  // Sync questionBankByClass from the API data
   useEffect(() => {
+    // Sync questionBankByClass from the API data
     if (rawClasses.length > 0) {
       setQuestionBankByClass((prev) => {
+        let changed = false
         const next = { ...prev }
+
         rawClasses.forEach((c: any) => {
           if (c.examQuestions) {
-            next[c.id] = c.examQuestions as QuestionBankPayload
-          } else {
-            // If server says null, we must remove it from local state to avoid stale localStorage data
+            if (JSON.stringify(next[c.id]) !== JSON.stringify(c.examQuestions)) {
+              next[c.id] = c.examQuestions as QuestionBankPayload
+              changed = true
+            }
+          } else if (next[c.id]) {
             delete next[c.id]
+            changed = true
           }
         })
 
@@ -237,16 +242,21 @@ export function ManagerClassExamsScreen() {
         if (assignmentModalClassId && examSchedules.length > 0) {
           examSchedules.forEach((s) => {
             if (s.examQuestions) {
-              next[s.id] = s.examQuestions as QuestionBankPayload
-            } else {
+              if (JSON.stringify(next[s.id]) !== JSON.stringify(s.examQuestions)) {
+                next[s.id] = s.examQuestions as QuestionBankPayload
+                changed = true
+              }
+            } else if (next[s.id]) {
               delete next[s.id]
+              changed = true
             }
           })
         }
-        return next
+
+        return changed ? next : prev
       })
     }
-  }, [rawClasses, assignmentModalClassId, schedules])
+  }, [rawClasses, assignmentModalClassId, examSchedules.length])
 
   useEffect(() => {
     // Initial load from localStorage
@@ -280,17 +290,6 @@ export function ManagerClassExamsScreen() {
   const assignmentMode = watchAssignment('mode')
 
   const assignmentClass = (rawClasses as any[]).find((c) => c.id === assignmentModalClassId) ?? null
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('manager_exam_question_bank_v1')
-      if (!raw) return
-      const parsed = JSON.parse(raw) as Record<string, QuestionBankPayload>
-      setQuestionBankByClass(parsed)
-    } catch {
-      // ignore invalid local cache
-    }
-  }, [])
 
   const openAssignmentModal = (classId: string, scheduleId: string | null = null) => {
     setAssignmentModalClassId(classId)
@@ -569,16 +568,6 @@ export function ManagerClassExamsScreen() {
                           >
                             <Users className="h-3 w-3 mr-1" />
                             Điểm
-                          </Button>
-
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="font-bold h-8 border-slate-200 text-slate-600 hover:bg-slate-50"
-                            onClick={() => openAssignmentModal(item.classId)}
-                          >
-                            {classBank ? 'Sửa đề mẫu' : 'Tạo đề mẫu'}
                           </Button>
 
                           <Button
