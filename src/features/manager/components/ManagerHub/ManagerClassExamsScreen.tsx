@@ -202,23 +202,29 @@ export function ManagerClassExamsScreen() {
   // Sync questionBankByClass from the API data
   useEffect(() => {
     if (classes.length > 0) {
-      const apiData: Record<string, QuestionBankPayload> = {}
-      classes.forEach((c) => {
-        if (c.examQuestions) {
-          apiData[c.id] = c.examQuestions as QuestionBankPayload
-        }
-      })
-
-      // Also add schedule-specific questions if available in the current schedules list
-      if (assignmentModalClassId && examSchedules.length > 0) {
-        examSchedules.forEach((s) => {
-          if (s.examQuestions) {
-            apiData[s.id] = s.examQuestions as QuestionBankPayload
+      setQuestionBankByClass((prev) => {
+        const next = { ...prev }
+        classes.forEach((c) => {
+          if (c.examQuestions) {
+            next[c.id] = c.examQuestions as QuestionBankPayload
+          } else {
+            // If server says null, we must remove it from local state to avoid stale localStorage data
+            delete next[c.id]
           }
         })
-      }
 
-      setQuestionBankByClass((prev) => ({ ...prev, ...apiData }))
+        // Also handle schedule-specific questions
+        if (assignmentModalClassId && examSchedules.length > 0) {
+          examSchedules.forEach((s) => {
+            if (s.examQuestions) {
+              next[s.id] = s.examQuestions as QuestionBankPayload
+            } else {
+              delete next[s.id]
+            }
+          })
+        }
+        return next
+      })
     }
   }, [classes, assignmentModalClassId, schedules])
 
