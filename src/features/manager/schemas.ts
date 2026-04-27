@@ -103,6 +103,7 @@ export const managerClassScheduleApiSchema = z.object({
   location: z.string().nullable(),
   isExam: z.boolean().optional(),
   examTeacherUserId: z.string().uuid().nullable().optional(),
+  examTeacherName: z.string().nullable().optional(),
   examStatus: z.string().nullable().optional(),
   examQuestions: z.any().nullable().optional(),
   createdAt: z.string().datetime(),

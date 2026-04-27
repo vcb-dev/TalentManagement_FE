@@ -382,8 +382,7 @@ export function ManagerExamScheduleScreen() {
                       </td>
                       <td className="px-5 py-5">
                         <p className="font-bold text-foreground text-xs">
-                          {/* We might need to fetch teacher name if not in schedule object */}
-                          {e.examTeacherUserId ? 'Đã gán' : 'Chưa gán'}
+                          {e.examTeacherName || (e.examTeacherUserId ? 'Đã gán' : 'Chưa gán')}
                         </p>
                       </td>
                       <td className="px-5 py-5 text-right">
