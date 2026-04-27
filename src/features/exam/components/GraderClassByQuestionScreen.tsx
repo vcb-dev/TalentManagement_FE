@@ -11,6 +11,7 @@ import { useManagerClasses } from '@/features/manager/hooks'
 
 export interface GraderClassByQuestionScreenProps {
   classId: string
+  scheduleId?: string
 }
 
 const CRITERIA_WEIGHTS: Record<string, number> = {
@@ -21,7 +22,10 @@ const CRITERIA_WEIGHTS: Record<string, number> = {
 
 type LocalGrade = { criteria: string[]; score: number; note: string }
 
-export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionScreenProps) {
+export function GraderClassByQuestionScreen({
+  classId,
+  scheduleId,
+}: GraderClassByQuestionScreenProps) {
   const navigate = useNavigate()
   const { data: allSubmissions = [], isLoading: isLoadingSubs } = useManagerSubmissions()
   const { data: allClasses = [], isLoading: isLoadingClasses } = useManagerClasses()
@@ -31,10 +35,13 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
     () => allClasses.find((c) => c.id.toLowerCase() === classId?.toLowerCase()),
     [allClasses, classId]
   )
-  const classSubmissions = useMemo(
-    () => allSubmissions.filter((s) => s.classId?.toLowerCase() === classId?.toLowerCase()),
-    [allSubmissions, classId]
-  )
+  const classSubmissions = useMemo(() => {
+    let filtered = allSubmissions.filter((s) => s.classId?.toLowerCase() === classId?.toLowerCase())
+    if (scheduleId) {
+      filtered = filtered.filter((s) => s.scheduleId?.toLowerCase() === scheduleId.toLowerCase())
+    }
+    return filtered
+  }, [allSubmissions, classId, scheduleId])
 
   // Local state for all grades: Record<submissionId, Record<questionId, LocalGrade>>
   // Plus global notes for each submission: Record<submissionId, string>
@@ -52,22 +59,33 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
 
   // Question bank for this class
   const questionBank = useMemo(() => {
-    console.log('[Grader] Finding question bank for class:', classId)
-    console.log('[Grader] Total submissions for this class:', classSubmissions.length)
+    console.log('[Grader] Finding question bank for class:', classId, 'schedule:', scheduleId)
+    console.log('[Grader] Total submissions for this filter:', classSubmissions.length)
 
-    // Priority 1: Backend data from the current class object
+    // Priority 1: If we have a scheduleId, try to find questions from a submission that has that scheduleId
+    if (scheduleId) {
+      const subWithScheduleQuestions = classSubmissions.find(
+        (s) => s.scheduleId?.toLowerCase() === scheduleId.toLowerCase() && s.schedule?.examQuestions
+      )
+      if (subWithScheduleQuestions?.schedule?.examQuestions) {
+        console.log('[Grader] Found questions in the specific schedule data')
+        return subWithScheduleQuestions.schedule.examQuestions as any
+      }
+    }
+
+    // Priority 2: Backend data from the current class object
     if (currentClass?.examQuestions) {
       console.log('[Grader] Found in backend class data')
       return currentClass.examQuestions as any
     }
 
-    // Priority 2: Look into the first submission found (might have questions from schedule)
+    // Priority 3: Look into any submission found (might have questions from its schedule)
     const firstSubWithQuestions = classSubmissions.find(
       (s) => s.schedule?.examQuestions || s.learningClass?.examQuestions
     )
     if (firstSubWithQuestions) {
       console.log(
-        '[Grader] Found in submission data. Schedule questions:',
+        '[Grader] Found in any submission data. Schedule questions:',
         !!firstSubWithQuestions.schedule?.examQuestions
       )
       return (

@@ -40,6 +40,7 @@ export interface ExamResultsScheduleProps {
     classId?: string | null
     scheduleId?: string | null
     title?: string | null
+    schedule?: { topic?: string | null } | null
     status: string
     outcome?: string | null
     totalScore?: number | null
@@ -150,6 +151,46 @@ export function ExamResultsSchedule({
     return completed.filter((e) => new Date(e.scheduledAt).getFullYear() === y)
   }, [completed, deferredYearFilter])
 
+  // MERGE EVERYTHING: ALL submissions + any completed exams from schedule that don't have submissions
+  const combinedResults = useMemo(() => {
+    const results = [...(mySubmissions || [])].map((s) => ({
+      id: s.id, // This is submissionId
+      classId: s.classId || s.examId,
+      scheduleId: s.scheduleId,
+      title: s.title || s.schedule?.topic || 'Kỳ thi nội bộ',
+      date: s.createdAt,
+      status: s.status,
+      outcome: s.outcome,
+      score: s.totalScore,
+      isSubmission: true,
+    }))
+
+    // Add completed exams that don't have a submission yet
+    filteredCompleted.forEach((exam) => {
+      const alreadyIn = results.find(
+        (r) =>
+          (exam.scheduleId && r.scheduleId === exam.scheduleId) ||
+          (exam.id && r.classId === exam.id)
+      )
+      if (!alreadyIn) {
+        results.push({
+          id: exam.id, // This is classId
+          classId: exam.id,
+          scheduleId: exam.scheduleId,
+          title: exam.title,
+          date: exam.scheduledAt,
+          status: 'NOT_TAKEN',
+          outcome: null,
+          score: null,
+          isSubmission: false,
+        })
+      }
+    })
+
+    // Sort by date descending
+    return results.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  }, [mySubmissions, filteredCompleted])
+
   const upcomingShow = upcoming
 
   if (isLoading) {
@@ -212,7 +253,9 @@ export function ExamResultsSchedule({
               questionBankClassIds.has(exam.id) ||
               (myEnrolledClassId === exam.id && enrolledClassHasQuestions) ||
               (myEnrolledClassId ? questionBankClassIds.has(myEnrolledClassId) : false)
-            const submissionId = submittedExamMap.get(exam.id)
+            const submissionId =
+              (exam.scheduleId ? submittedExamMap.get(exam.scheduleId) : undefined) ||
+              submittedExamMap.get(exam.id)
             const isSubmitted = !!submissionId
             const isStarted =
               exam.status === 'IN_PROGRESS' || new Date() >= new Date(exam.scheduledAt)
@@ -275,11 +318,8 @@ export function ExamResultsSchedule({
                     variant="ghost"
                     onClick={() => {
                       if (canOpenExam) {
-                        if (isSubmitted && submissionId) {
-                          onOpenExam(submissionId, true, exam.scheduleId ?? undefined)
-                        } else {
-                          onOpenExam(exam.id, false, exam.scheduleId ?? undefined)
-                        }
+                        // Always use the exam view (result.tsx) which handles both taking the exam and viewing submitted answers with the success banner
+                        onOpenExam(exam.id, false, exam.scheduleId ?? undefined)
                       }
                     }}
                     disabled={!canOpenExam}
@@ -351,90 +391,66 @@ export function ExamResultsSchedule({
                 </article>
               ))
             )
-          ) : mySubmissions ? (
-            mySubmissions.length === 0 ? (
-              <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-                Không có kết quả thi nào.
-              </div>
-            ) : (
-              mySubmissions.map((sub) => (
+          ) : combinedResults.length === 0 ? (
+            <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+              Không có kết quả thi nào.
+            </div>
+          ) : (
+            combinedResults.map((res) => {
+              const isDone = res.status === 'done'
+              const score = res.score
+              const outcome = res.outcome
+
+              return (
                 <article
-                  key={sub.id}
+                  key={res.id}
                   className="rounded-xl border border-border bg-card p-4 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm font-semibold text-foreground">
-                      {sub.title || 'Kỳ thi nội bộ'}
+                      {cleanExamTitle(res.title)}
                     </p>
-                    <span
-                      className={cn(
-                        'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
-                        sub.status === 'done'
-                          ? 'bg-success-muted text-success'
-                          : 'bg-warning-muted text-warning'
-                      )}
-                    >
-                      {sub.status === 'done' ? 'Đã chấm' : 'Chờ chấm'}
-                    </span>
+                    {res.isSubmission ? (
+                      <span
+                        className={cn(
+                          'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                          isDone ? 'bg-success-muted text-success' : 'bg-warning-muted text-warning'
+                        )}
+                      >
+                        {isDone ? 'Đã chấm' : 'Chờ chấm'}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-success-muted px-2 py-0.5 text-[10px] font-bold text-success uppercase">
+                        HOÀN THÀNH
+                      </span>
+                    )}
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {formatViDate(sub.createdAt)}
-                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatViDate(res.date)}</p>
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <span className="text-sm font-semibold text-foreground">
-                      Điểm: {sub.totalScore != null ? `${sub.totalScore}%` : '—'}
+                      Điểm: {score != null ? `${score}%` : isDone ? '0%' : '—'}
                     </span>
                     <span className="text-sm font-bold text-primary">
-                      KQ:{' '}
-                      {sub.outcome === 'DAT'
-                        ? 'Pass'
-                        : sub.outcome === 'CHO_HOC_LAI'
-                          ? 'Thi lại'
-                          : '—'}
+                      KQ: {outcome === 'DAT' ? 'Đạt' : outcome === 'CHO_HOC_LAI' ? 'Thi lại' : '—'}
                     </span>
                   </div>
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => onOpenExam(sub.id, true, sub.scheduleId ?? undefined)}
+                    onClick={() =>
+                      onOpenExam(
+                        res.classId || res.id,
+                        res.isSubmission,
+                        res.scheduleId ?? undefined
+                      )
+                    }
                     className="mt-3 h-auto justify-start p-0 text-sm font-semibold normal-case tracking-normal text-primary underline-offset-4 hover:bg-transparent hover:underline"
                   >
                     Xem kết quả
                   </Button>
                 </article>
-              ))
-            )
-          ) : filteredCompleted.length === 0 ? (
-            <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-              Không có kỳ thi đã hoàn thành trong mục lọc này.
-            </div>
-          ) : (
-            filteredCompleted.map((exam) => (
-              <article
-                key={exam.id}
-                className="rounded-xl border border-border bg-card p-4 shadow-sm"
-              >
-                <p className="text-sm font-semibold text-foreground">
-                  {cleanExamTitle(exam.title)}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {formatViDate(exam.scheduledAt)}
-                </p>
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="rounded-full bg-success-muted px-2 py-0.5 text-[10px] font-bold text-success">
-                    HOÀN THÀNH
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => onOpenExam(exam.id, false, exam.scheduleId ?? undefined)}
-                    className="h-auto p-0 text-sm font-semibold normal-case tracking-normal text-primary underline-offset-4 hover:bg-transparent hover:underline"
-                  >
-                    Xem kết quả
-                  </Button>
-                </div>
-              </article>
-            ))
+              )
+            })
           )}
         </div>
 
@@ -498,16 +514,20 @@ export function ExamResultsSchedule({
                       </tr>
                     ))
                   )
-                ) : mySubmissions ? (
-                  mySubmissions.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-10 text-center text-muted-foreground">
-                        Không có kết quả thi nào.
-                      </td>
-                    </tr>
-                  ) : (
-                    mySubmissions.map((sub, rowIdx) => (
-                      <tr key={sub.id} className="transition-colors hover:bg-muted/40">
+                ) : combinedResults.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
+                      Không có kết quả thi nào.
+                    </td>
+                  </tr>
+                ) : (
+                  combinedResults.map((res, rowIdx) => {
+                    const isDone = res.status === 'done'
+                    const score = res.score
+                    const outcome = res.outcome
+
+                    return (
+                      <tr key={res.id} className="transition-colors hover:bg-muted/40">
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
                             <div
@@ -522,46 +542,56 @@ export function ExamResultsSchedule({
                             </div>
                             <div className="min-w-0">
                               <p className="font-semibold text-foreground">
-                                {sub.title || (sub.classId ? `Bài thi lớp` : 'Kỳ thi nội bộ')}
+                                {cleanExamTitle(res.title)}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {sub.classId ? 'Kỳ thi theo lớp' : 'Kỳ thi nội bộ'}
+                                {res.isSubmission
+                                  ? res.classId
+                                    ? 'Kỳ thi theo lớp'
+                                    : 'Kỳ thi nội bộ'
+                                  : 'Lịch thi đã kết thúc'}
                               </p>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-5 text-sm text-muted-foreground">
-                          {formatViDate(sub.createdAt)}
+                          {formatViDate(res.date)}
                         </td>
                         <td className="px-6 py-5 font-bold text-foreground">
-                          {sub.totalScore != null ? `${sub.totalScore}%` : '—'}
+                          {score != null ? `${score}%` : isDone ? '0%' : '—'}
                         </td>
                         <td className="px-6 py-5">
-                          <span
-                            className={cn(
-                              'rounded-full px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-wider',
-                              sub.status === 'done'
-                                ? 'bg-success-muted text-success'
-                                : 'bg-warning-muted text-warning'
-                            )}
-                          >
-                            {sub.status === 'done' ? 'Đã chấm' : 'Chờ chấm'}
-                          </span>
+                          {res.isSubmission ? (
+                            <span
+                              className={cn(
+                                'rounded-full px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-wider',
+                                isDone
+                                  ? 'bg-success-muted text-success'
+                                  : 'bg-warning-muted text-warning'
+                              )}
+                            >
+                              {isDone ? 'Đã chấm' : 'Chờ chấm'}
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-success-muted px-3 py-1 text-[0.6875rem] font-bold text-success">
+                              HOÀN THÀNH
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-5">
                           <span
                             className={cn(
                               'font-bold',
-                              sub.outcome === 'DAT'
+                              outcome === 'DAT'
                                 ? 'text-emerald-600'
-                                : sub.outcome === 'CHO_HOC_LAI'
+                                : outcome === 'CHO_HOC_LAI'
                                   ? 'text-rose-600'
                                   : 'text-muted-foreground'
                             )}
                           >
-                            {sub.outcome === 'DAT'
-                              ? 'Pass'
-                              : sub.outcome === 'CHO_HOC_LAI'
+                            {outcome === 'DAT'
+                              ? 'Đạt'
+                              : outcome === 'CHO_HOC_LAI'
                                 ? 'Thi lại'
                                 : '—'}
                           </span>
@@ -570,65 +600,21 @@ export function ExamResultsSchedule({
                           <Button
                             type="button"
                             variant="ghost"
-                            onClick={() => onOpenExam(sub.id, true, sub.scheduleId ?? undefined)}
+                            onClick={() =>
+                              onOpenExam(
+                                res.classId || res.id,
+                                res.isSubmission,
+                                res.scheduleId ?? undefined
+                              )
+                            }
                             className="h-auto p-0 text-xs font-bold normal-case tracking-normal text-primary underline-offset-4 hover:bg-transparent hover:underline"
                           >
                             Xem kết quả
                           </Button>
                         </td>
                       </tr>
-                    ))
-                  )
-                ) : filteredCompleted.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-muted-foreground">
-                      Không có kỳ thi đã hoàn thành trong mục lọc này.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredCompleted.map((exam, rowIdx) => (
-                    <tr key={exam.id} className="transition-colors hover:bg-muted/40">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={cn(
-                              'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
-                              rowIdx % 3 === 0 && 'bg-warning-muted text-warning',
-                              rowIdx % 3 === 1 && 'bg-primary-100 text-primary-700',
-                              rowIdx % 3 === 2 && 'bg-danger-muted text-danger'
-                            )}
-                          >
-                            <Link2 className="h-5 w-5" aria-hidden />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-foreground">
-                              {cleanExamTitle(exam.title)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Kỳ thi nội bộ</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-sm text-muted-foreground">
-                        {formatViDate(exam.scheduledAt)}
-                      </td>
-                      <td className="px-6 py-5 text-muted-foreground">—</td>
-                      <td className="px-6 py-5">
-                        <span className="rounded-full bg-success-muted px-3 py-1 text-[0.6875rem] font-bold text-success">
-                          HOÀN THÀNH
-                        </span>
-                      </td>
-                      <td className="px-6 py-5">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          onClick={() => onOpenExam(exam.id, false, exam.scheduleId ?? undefined)}
-                          className="h-auto p-0 text-xs font-bold normal-case tracking-normal text-primary underline-offset-4 hover:bg-transparent hover:underline"
-                        >
-                          Xem kết quả
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
+                    )
+                  })
                 )}
               </tbody>
             </table>

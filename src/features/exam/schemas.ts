@@ -4,7 +4,7 @@ export const examSummaryApiSchema = z.object({
   id: z.string().uuid(),
   scheduleId: z.string().uuid().optional(),
   title: z.string(),
-  scheduledAt: z.string().datetime(),
+  scheduledAt: z.string().datetime({ offset: true }),
   status: z.enum(['UPCOMING', 'IN_PROGRESS', 'COMPLETED']),
   hasQuestions: z.boolean().optional(),
 })
@@ -24,7 +24,7 @@ export const examResultApiSchema = z.object({
   examId: z.string().uuid(),
   employeeId: z.string().uuid(),
   result: z.enum(['DAT', 'BAO_LUU', 'CHO_HOC_LAI', 'CHIA_TAY']),
-  classifiedAt: z.string().datetime(),
+  classifiedAt: z.string().datetime({ offset: true }),
 })
 
 export const gradeFormSchema = z.object({

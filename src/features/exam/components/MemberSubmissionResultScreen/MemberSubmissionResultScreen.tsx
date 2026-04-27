@@ -19,25 +19,33 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
   )
 
   // Map question IDs to text from bank
-  const questionMap = useMemo<Record<string, string>>(() => {
-    try {
-      const raw = localStorage.getItem('manager_exam_question_bank_v1')
-      if (!raw) return {}
-      const parsed = JSON.parse(raw) as Record<
-        string,
-        { title: string; questions: Array<{ id: string; stem: string }> }
-      >
-      const map: Record<string, string> = {}
-      Object.values(parsed).forEach((bank) => {
-        bank.questions?.forEach((q) => {
-          map[q.id] = q.stem
-        })
+  const questionMap = useMemo<Record<string, { stem: string; options: string[] }>>(() => {
+    const map: Record<string, { stem: string; options: string[] }> = {}
+
+    // 1. Try from submission's learningClass
+    const bank = submission?.learningClass?.examQuestions || submission?.schedule?.examQuestions
+    if (bank?.questions) {
+      bank.questions.forEach((q: any) => {
+        map[q.id] = { stem: q.stem, options: q.options || [] }
       })
       return map
-    } catch {
-      return {}
     }
-  }, [])
+
+    // 2. Fallback to localStorage
+    try {
+      const raw = localStorage.getItem('manager_exam_question_bank_v1')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        Object.values(parsed).forEach((b: any) => {
+          b.questions?.forEach((q: any) => {
+            if (!map[q.id]) map[q.id] = { stem: q.stem, options: q.options || [] }
+          })
+        })
+      }
+    } catch {}
+
+    return map
+  }, [submission])
 
   if (isLoading) {
     return (
@@ -109,6 +117,27 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
 
       <div className="page-shell">
         <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* Success Message Alert */}
+          <div className="lg:col-span-12">
+            <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-900 shadow-sm ring-1 ring-emerald-200/50">
+              <div className="flex items-center gap-3">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={3}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span>Bạn đã nộp bài thành công. Hệ thống đã ghi nhận câu trả lời của bạn.</span>
+              </div>
+            </div>
+          </div>
+
           {/* Left: Answers & Feedback */}
           <div className="flex flex-col gap-6 lg:col-span-8">
             <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
@@ -122,7 +151,8 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
               ) : (
                 <div className="space-y-5">
                   {answeredEntries.map(([qId, answer], idx) => {
-                    const questionText = questionMap[qId] || `Câu hỏi ${idx + 1}`
+                    const questionData = questionMap[qId]
+                    const questionText = questionData?.stem || `Câu hỏi ${idx + 1}`
                     const questionGrade = grades[qId] || { criteria: [], score: 0 }
 
                     return (

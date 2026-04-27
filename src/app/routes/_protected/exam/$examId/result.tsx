@@ -124,8 +124,9 @@ function ExamResultPage() {
   const userId = user?.id || 'unknown'
   const { data, isLoading } = useExamResults(examId)
   const { data: submissionData } = useSubmission(examId)
-  const { data: mySubmissions } = useMySubmissions()
-  const { data: myClassData } = useMyEnrolledClass()
+  const { data: mySubmissions, isLoading: isSubsLoading } = useMySubmissions()
+  const { data: myClassData, isLoading: isClassLoading } = useMyEnrolledClass()
+  const allLoading = isLoading || isSubsLoading || isClassLoading
   const { mutateAsync: submitExamApi, isPending: isSubmitting } = useSubmitExam()
   const employeeId = '00000000-0000-4000-8000-000000000001'
   const [questionBank, setQuestionBank] = useState<{
@@ -135,21 +136,26 @@ function ExamResultPage() {
   } | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
+  const [timeExpired, setTimeExpired] = useState(false)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const myClassId = myClassData?.enrolledClass?.id
 
+  const activeSubmission = useMemo(() => {
+    if (!mySubmissions) return null
+    return mySubmissions.find(
+      (s) =>
+        (scheduleId && s.scheduleId === scheduleId) ||
+        (!scheduleId && (s.classId === examId || s.id === examId))
+    )
+  }, [mySubmissions, scheduleId, examId])
+
+  // 1. Chặn logic khởi tạo nếu đang tải dữ liệu — phải đợi TẤT CẢ sources
   useEffect(() => {
+    if (allLoading) return
+
     try {
-      console.log(
-        '[TakeExam] Initializing for examId:',
-        examId,
-        'scheduleId:',
-        scheduleId,
-        'userId:',
-        userId
-      )
       const submissionKey = `member_exam_submission_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
       const existingSubmission = localStorage.getItem(submissionKey)
 
@@ -157,86 +163,85 @@ function ExamResultPage() {
 
       // Priority 1: Data from a specific submission (if viewing history)
       if (submissionData) {
-        // Double check if this submission belongs to the current user
         if (submissionData.userId !== userId) {
           console.log('[TakeExam] Submission data belongs to another user. Ignoring.')
         } else {
-          console.log('[TakeExam] Loading data from existing submission API')
           bank = submissionData.learningClass?.examQuestions || null
+          setAnswers((submissionData.answers as Record<string, string>) || {})
           setSubmitted(true)
-          if (submissionData.answers) {
-            setAnswers(submissionData.answers as Record<string, string>)
-          }
-          setQuestionBank(bank)
-          return
-        }
-      }
-
-      // Priority 2: Backend data from my currently enrolled class / specific schedule
-      if (myClassData?.enrolledClass) {
-        if (scheduleId) {
-          const matchedSchedule = myClassData.enrolledClass.schedules?.find(
-            (s) => s.id === scheduleId
-          )
-          if (matchedSchedule?.examQuestions) {
-            console.log('[TakeExam] Found session-specific questions in DB')
-            bank = matchedSchedule.examQuestions
+          setTimeLeft(null)
+          if (bank) {
+            setQuestionBank(bank)
+            return
           }
         }
-
-        if (!bank && myClassData.enrolledClass.examQuestions) {
-          console.log('[TakeExam] Found class-level question bank in DB')
-          bank = myClassData.enrolledClass.examQuestions
-        }
       }
 
-      // Priority 3: Fallback to localStorage ONLY if DB doesn't have it
-      if (!bank) {
-        const raw = localStorage.getItem('manager_exam_question_bank_v1')
-        if (raw) {
-          const parsed = JSON.parse(raw) as Record<string, any>
-          bank =
-            (scheduleId ? parsed[scheduleId] : undefined) ??
-            (myClassId ? parsed[myClassId] : undefined) ??
-            parsed[examId] ??
-            null
-          if (bank) console.log('[TakeExam] Found question bank in localStorage')
-        }
-      }
-
-      setQuestionBank(bank)
-
-      // Check if already submitted via API results, my submissions list, or localStorage
+      // Check if already submitted via API results or my submissions list
       const hasApiResult = data && data.length > 0
       const hasApiSubmission = mySubmissions?.some(
-        (s) =>
-          (s.classId === examId || s.id === examId) && (!scheduleId || s.scheduleId === scheduleId)
+        (s) => s.scheduleId === scheduleId || s.classId === examId || s.id === examId
       )
 
       if (hasApiResult || hasApiSubmission || existingSubmission) {
         console.log('[TakeExam] Submission found. Status: Submitted')
         setSubmitted(true)
+        setTimeLeft(null)
+
+        const sub = mySubmissions?.find(
+          (s) => s.scheduleId === scheduleId || s.classId === examId || s.id === examId
+        )
+
+        // Load answers from the best source
         if (existingSubmission) {
           try {
-            const parsedSub = JSON.parse(existingSubmission)
-            setAnswers(parsedSub.answers || {})
+            const parsed = JSON.parse(existingSubmission)
+            setAnswers(parsed.answers || {})
           } catch {}
-        } else if (hasApiSubmission) {
-          // If we have a submission in API but not in local, try to use its answers if available
-          const sub = mySubmissions?.find(
-            (s) =>
-              (s.classId === examId || s.id === examId) &&
-              (!scheduleId || s.scheduleId === scheduleId)
-          )
-          if (sub?.answers) {
-            setAnswers(sub.answers as Record<string, string>)
+        } else {
+          if (sub?.answers) setAnswers(sub.answers as Record<string, string>)
+        }
+
+        // Load bank robustly
+        let foundBank = null
+        if (sub) {
+          // Priority 1: From submission data
+          foundBank = sub.learningClass?.examQuestions || sub.schedule?.examQuestions
+        }
+        if (!foundBank && myClassData?.enrolledClass) {
+          // Priority 2: From enrolled class data
+          if (scheduleId) {
+            const matchedSchedule = myClassData.enrolledClass.schedules?.find(
+              (s) => s.id === scheduleId
+            )
+            if (matchedSchedule?.examQuestions) foundBank = matchedSchedule.examQuestions
           }
+          if (!foundBank && myClassData.enrolledClass.examQuestions) {
+            foundBank = myClassData.enrolledClass.examQuestions
+          }
+        }
+
+        if (foundBank) {
+          setQuestionBank(foundBank)
         }
         return
       }
 
+      // If not submitted, proceed with timer initialization
+      if (myClassData?.enrolledClass) {
+        if (scheduleId) {
+          const matchedSchedule = myClassData.enrolledClass.schedules?.find(
+            (s) => s.id === scheduleId
+          )
+          if (matchedSchedule?.examQuestions) bank = matchedSchedule.examQuestions
+        }
+        if (!bank && myClassData.enrolledClass.examQuestions) {
+          bank = myClassData.enrolledClass.examQuestions
+        }
+      }
+
       if (bank) {
-        console.log('[TakeExam] Setting up new exam session')
+        setQuestionBank(bank)
         let initialAnswers: Record<string, string> = {}
         const draftKey = `exam_draft_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
         const draftRaw = localStorage.getItem(draftKey)
@@ -250,51 +255,25 @@ function ExamResultPage() {
         setAnswers(initialAnswers)
 
         const durationSeconds = (bank.duration || 60) * 60
-
         let startTimeMillis = Date.now()
 
-        // Priority: Use official schedule start time if available
         if (scheduleId && myClassData?.enrolledClass?.schedules) {
           const matched = myClassData.enrolledClass.schedules.find((s) => s.id === scheduleId)
           if (matched) {
             const officialIso = `${matched.dateIso}T${matched.startTime}:00+07:00`
             const officialTime = new Date(officialIso).getTime()
-            if (!Number.isNaN(officialTime)) {
-              console.log('[TakeExam] Using official schedule start time:', officialIso)
-              startTimeMillis = officialTime
-            }
+            if (!Number.isNaN(officialTime)) startTimeMillis = officialTime
           }
         }
 
-        // If not using official time, fallback to first-entry time from localStorage
-        const startKey = `exam_start_time_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
-        if (startTimeMillis === Date.now()) {
-          let startTimeStr = localStorage.getItem(startKey)
-          if (!startTimeStr) {
-            startTimeStr = Date.now().toString()
-            localStorage.setItem(startKey, startTimeStr)
-          }
-          startTimeMillis = parseInt(startTimeStr, 10)
-        }
-
-        const elapsedRaw = Math.floor((Date.now() - startTimeMillis) / 1000)
-        // If entering late, elapsedRaw > 0, so remaining < duration
-        // If entering early, elapsedRaw < 0, we cap at duration
-        const remaining = Math.min(durationSeconds, Math.max(0, durationSeconds - elapsedRaw))
-
-        console.log('[TakeExam] Time calculation:', {
-          durationSeconds,
-          elapsedRaw,
-          remaining,
-          startTime: new Date(startTimeMillis).toISOString(),
-        })
+        const elapsed = Math.floor((Date.now() - startTimeMillis) / 1000)
+        const remaining = Math.min(durationSeconds, Math.max(0, durationSeconds - elapsed))
         setTimeLeft(remaining)
       }
     } catch (err) {
-      console.error('[TakeExam] Initialization error:', err)
-      setQuestionBank(null)
+      console.error('[TakeExam] Init error:', err)
     }
-  }, [examId, scheduleId, myClassId, myClassData, data, submissionData, mySubmissions, userId])
+  }, [allLoading, examId, scheduleId, submissionData, data, mySubmissions, myClassData, userId])
 
   useEffect(() => {
     if (Object.keys(answers).length > 0 && !submitted) {
@@ -305,9 +284,9 @@ function ExamResultPage() {
     }
   }, [answers, submitted, examId, scheduleId, userId])
 
-  // Countdown logic — chạy mỗi giây
+  // Countdown logic
   useEffect(() => {
-    if (timeLeft === null || submitted || timeLeft <= 0) return
+    if (timeLeft === null || submitted || timeLeft <= 0 || allLoading) return
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev === null || prev <= 1) return 0
@@ -343,12 +322,24 @@ function ExamResultPage() {
 
     if (timerRef.current) clearInterval(timerRef.current)
 
+    // Load final answers from state or draft if auto-submitting
+    let finalAnswers = answers
+    if (isAuto && Object.keys(finalAnswers).length === 0) {
+      const draftKey = `exam_draft_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
+      const draftRaw = localStorage.getItem(draftKey)
+      if (draftRaw) {
+        try {
+          finalAnswers = JSON.parse(draftRaw)
+        } catch {}
+      }
+    }
+
     // Call backend API
     try {
       await submitExamApi({
         classId: myClassId ?? undefined,
         scheduleId,
-        answers,
+        answers: finalAnswers,
       })
 
       // Also save locally just in case
@@ -373,19 +364,21 @@ function ExamResultPage() {
       } else {
         toast.success('Nộp bài thành công')
       }
-
-      setTimeout(() => {
-        navigate({ to: '/exam' })
-      }, 1500)
     } catch (err: unknown) {
       const maybeMessage = (err as ApiErrorShape)?.response?.data?.message
       toast.error(maybeMessage || 'Có lỗi xảy ra khi nộp bài')
     }
   }
 
-  // Tự động nộp khi hết giờ
+  // Tự động nộp khi hết giờ — CHỈ nộp khi có bộ câu hỏi, tránh tạo bài nộp trắng
   useEffect(() => {
     if (timeLeft !== 0 || submitted || isSubmitting) return
+    if (!questionBank) {
+      // Không có bộ câu hỏi = đang xem lại sau khi hết giờ, không nộp lại
+      setTimeExpired(true)
+      return
+    }
+    setTimeExpired(true)
     const timer = setTimeout(() => {
       void submitAction(true)
     }, 0)
@@ -406,11 +399,11 @@ function ExamResultPage() {
         {/* Header row: tiêu đề bên trái, đồng hồ bên phải — đối xứng */}
         <div className="flex items-center justify-between">
           <PageHeader
-            title="Làm bài thi"
+            title={submitted || timeExpired ? 'Bài làm của bạn' : 'Làm bài thi'}
             description={questionBank.title}
             onBack={() => navigate({ to: '/exam' })}
           />
-          {timeLeft !== null && !submitted && (
+          {timeLeft !== null && !submitted && !timeExpired && (
             <div
               className={`flex items-center gap-3 rounded-2xl px-5 py-3 shadow-lg ring-1 ring-black/5 backdrop-blur-sm transition-all duration-300 ${timerColor}`}
             >
@@ -434,26 +427,80 @@ function ExamResultPage() {
         </div>
 
         <div className="mx-auto max-w-4xl space-y-4">
-          {submitted ? (
-            <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-              Bạn đã nộp bài thành công. Hệ thống đã ghi nhận câu trả lời của bạn.
+          {submitted && (
+            <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">
+              ✅ Bạn đã nộp bài thành công. Hệ thống đã ghi nhận câu trả lời của bạn.
             </div>
-          ) : null}
+          )}
+          {!submitted && timeExpired && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+              ⏰ Đã hết thời gian làm bài. Bài thi của bạn đã được ghi nhận.
+            </div>
+          )}
+
+          {/* HIỂN THỊ ĐIỂM SỐ VÀ KẾT QUẢ KHI ĐÃ CHẤM XONG */}
+          {activeSubmission?.status === 'done' && (
+            <div className="overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-xl transition-all duration-500 hover:shadow-2xl">
+              <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-6 py-4">
+                <h3 className="text-lg font-bold tracking-tight text-foreground">
+                  Kết quả bài thi của bạn
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-3">
+                <div className="flex flex-col items-center justify-center rounded-xl bg-muted/30 p-4 ring-1 ring-black/5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Điểm số
+                  </p>
+                  <p className="mt-2 text-4xl font-black text-primary">
+                    {activeSubmission.totalScore != null ? `${activeSubmission.totalScore}%` : '—'}
+                  </p>
+                </div>
+                <div className="flex flex-col items-center justify-center rounded-xl bg-muted/30 p-4 ring-1 ring-black/5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Kết quả
+                  </p>
+                  <div className="mt-2">
+                    {activeSubmission.outcome === 'DAT' ? (
+                      <span className="inline-flex rounded-full bg-emerald-100 px-4 py-1 text-sm font-bold text-emerald-700 ring-1 ring-emerald-200">
+                        ĐẠT
+                      </span>
+                    ) : activeSubmission.outcome === 'CHO_HOC_LAI' ? (
+                      <span className="inline-flex rounded-full bg-rose-100 px-4 py-1 text-sm font-bold text-rose-700 ring-1 ring-rose-200">
+                        THI LẠI
+                      </span>
+                    ) : (
+                      <span className="text-sm font-medium text-muted-foreground">—</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col justify-center rounded-xl bg-muted/30 p-4 ring-1 ring-black/5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Nhận xét của giáo viên
+                  </p>
+                  <p className="mt-2 text-sm italic text-foreground/80">
+                    {activeSubmission.graderNote || 'Không có nhận xét cụ thể.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {questionBank.questions.map((q, idx) => (
             <ExamQuestionCard
               key={q.id}
               q={q}
               idx={idx}
               answer={answers[q.id] ?? ''}
-              submitted={submitted}
+              submitted={submitted || timeExpired}
               onAnswerChange={handleAnswerChange}
             />
           ))}
           <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
             <p className="text-sm text-muted-foreground">
-              {submitted ? 'Đã nộp bài.' : `Còn ${unansweredCount} câu chưa trả lời.`}
+              {submitted || timeExpired
+                ? 'Đã nộp bài.'
+                : `Còn ${unansweredCount} câu chưa trả lời.`}
             </p>
-            {!submitted && (
+            {!submitted && !timeExpired && (
               <Button
                 type="button"
                 className="font-bold"
@@ -466,6 +513,14 @@ function ExamResultPage() {
           </div>
         </div>
       </>
+    )
+  }
+
+  if (!questionBank && allLoading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center text-muted-foreground">
+        Đang tải dữ liệu bài thi...
+      </div>
     )
   }
 

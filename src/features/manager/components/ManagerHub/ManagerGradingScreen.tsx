@@ -108,59 +108,164 @@ export function ManagerGradingScreen() {
                     </td>
                   </tr>
                 ) : (
-                  classes.map((c) => {
+                  classes.flatMap((c) => {
                     const st = managerClassStatusUi(c.status)
                     const teacherName = c.teacher?.name || '—'
 
-                    const classSubmissions = submissions.filter(
-                      (s) => s.classId?.toLowerCase() === c.id.toLowerCase()
-                    )
-                    const pending = classSubmissions.filter((s) => s.status === 'pending').length
-                    const total = classSubmissions.length
+                    // Find all exam schedules
+                    const examSchedules = c.schedules?.filter((s) => s.isExam) || []
 
-                    let isExamEnded = false
-                    if (c.examDate) {
-                      const examTime = new Date(c.examDate).getTime()
-                      // Add 60 minutes duration before considering it ended
-                      if (!Number.isNaN(examTime) && examTime + 60 * 60 * 1000 < Date.now()) {
-                        isExamEnded = true
+                    // If no specific exam schedules found, but the class itself is treated as an exam (legacy/fallback)
+                    if (examSchedules.length === 0) {
+                      const classSubmissions = submissions.filter(
+                        (s) => s.classId?.toLowerCase() === c.id.toLowerCase()
+                      )
+                      const pending = classSubmissions.filter((s) => s.status === 'pending').length
+                      const total = classSubmissions.length
+
+                      let isExamEnded = false
+                      if (c.examDate) {
+                        const examTime = new Date(c.examDate).getTime()
+                        if (!Number.isNaN(examTime) && examTime + 60 * 60 * 1000 < Date.now()) {
+                          isExamEnded = true
+                        }
                       }
+
+                      return [
+                        <tr
+                          key={c.id}
+                          className="border-t border-border/80 bg-card transition-colors hover:bg-muted/25"
+                        >
+                          <td className="px-3 py-4 font-semibold text-foreground">
+                            {c.name}
+                            <div className="text-[10px] font-normal text-muted-foreground">
+                              (Chưa gắn lịch thi cụ thể)
+                            </div>
+                          </td>
+                          <td className="px-3 py-4 text-foreground">{teacherName}</td>
+                          <td className="px-3 py-4">
+                            <span
+                              className={cn(
+                                'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold',
+                                st.badgeClass
+                              )}
+                            >
+                              {st.label}
+                            </span>
+                          </td>
+                          <td className="px-3 py-4">
+                            {total > 0 ? (
+                              <span className="text-foreground font-medium">
+                                {total} bài ({' '}
+                                {pending > 0 ? (
+                                  <span className="font-bold text-rose-600">
+                                    {pending} chờ chấm
+                                  </span>
+                                ) : (
+                                  <span className="text-emerald-600 font-bold">Đã chấm hết</span>
+                                )}{' '}
+                                )
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">Chưa có bài nộp</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-4 text-right">
+                            {total > 0 ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={total > 0 && pending === 0 ? 'outline' : 'default'}
+                                className={cn(
+                                  'font-bold',
+                                  total > 0 && pending === 0
+                                    ? 'border-primary text-primary hover:bg-primary/5'
+                                    : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                                )}
+                                onClick={() =>
+                                  void navigate({
+                                    to: '/manager/grade-class/$classId',
+                                    params: { classId: c.id },
+                                    search: { scheduleId: undefined },
+                                  } as any)
+                                }
+                              >
+                                {total > 0 && pending === 0 ? 'Xem bài chấm thi' : 'Chấm thi'}
+                              </Button>
+                            ) : isExamEnded ? null : (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="default"
+                                className="font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
+                                onClick={() =>
+                                  void navigate({
+                                    to: '/manager/grade-class/$classId',
+                                    params: { classId: c.id },
+                                    search: { scheduleId: undefined },
+                                  } as any)
+                                }
+                              >
+                                Chấm thi
+                              </Button>
+                            )}
+                          </td>
+                        </tr>,
+                      ]
                     }
 
-                    return (
-                      <tr
-                        key={c.id}
-                        className="border-t border-border/80 bg-card transition-colors hover:bg-muted/25"
-                      >
-                        <td className="px-3 py-4 font-semibold text-foreground">{c.name}</td>
-                        <td className="px-3 py-4 text-foreground">{teacherName}</td>
-                        <td className="px-3 py-4">
-                          <span
-                            className={cn(
-                              'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold',
-                              st.badgeClass
-                            )}
-                          >
-                            {st.label}
-                          </span>
-                        </td>
-                        <td className="px-3 py-4">
-                          {total > 0 ? (
-                            <span className="text-foreground font-medium">
-                              {total} bài ({' '}
-                              {pending > 0 ? (
-                                <span className="font-bold text-rose-600">{pending} chờ chấm</span>
-                              ) : (
-                                <span className="text-emerald-600 font-bold">Đã chấm hết</span>
-                              )}{' '}
-                              )
+                    // Otherwise, render a row for each exam schedule
+                    return examSchedules.map((s) => {
+                      const scheduleSubmissions = submissions.filter(
+                        (sub) => sub.scheduleId?.toLowerCase() === s.id.toLowerCase()
+                      )
+                      const pending = scheduleSubmissions.filter(
+                        (sub) => sub.status === 'pending'
+                      ).length
+                      const total = scheduleSubmissions.length
+
+                      return (
+                        <tr
+                          key={s.id}
+                          className="border-t border-border/80 bg-card transition-colors hover:bg-muted/25"
+                        >
+                          <td className="px-3 py-4 font-semibold text-foreground">
+                            {c.name}
+                            <div className="text-[10px] font-normal text-muted-foreground uppercase">
+                              Kỳ thi: {s.topic}
+                            </div>
+                          </td>
+                          <td className="px-3 py-4 text-foreground">
+                            {s.examTeacherName || teacherName}
+                          </td>
+                          <td className="px-3 py-4">
+                            <span
+                              className={cn(
+                                'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold',
+                                st.badgeClass
+                              )}
+                            >
+                              {st.label}
                             </span>
-                          ) : (
-                            <span className="text-muted-foreground">Chưa có bài nộp</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-4 text-right">
-                          {total > 0 ? (
+                          </td>
+                          <td className="px-3 py-4">
+                            {total > 0 ? (
+                              <span className="text-foreground font-medium">
+                                {total} bài ({' '}
+                                {pending > 0 ? (
+                                  <span className="font-bold text-rose-600">
+                                    {pending} chờ chấm
+                                  </span>
+                                ) : (
+                                  <span className="text-emerald-600 font-bold">Đã chấm hết</span>
+                                )}{' '}
+                                )
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">Chưa có bài nộp</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-4 text-right">
                             <Button
                               type="button"
                               size="sm"
@@ -175,30 +280,16 @@ export function ManagerGradingScreen() {
                                 void navigate({
                                   to: '/manager/grade-class/$classId',
                                   params: { classId: c.id },
+                                  search: { scheduleId: s.id } as any,
                                 })
                               }
                             >
                               {total > 0 && pending === 0 ? 'Xem bài chấm thi' : 'Chấm thi'}
                             </Button>
-                          ) : isExamEnded ? null : (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="default"
-                              className="font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
-                              onClick={() =>
-                                void navigate({
-                                  to: '/manager/grade-class/$classId',
-                                  params: { classId: c.id },
-                                })
-                              }
-                            >
-                              Chấm thi
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    )
+                          </td>
+                        </tr>
+                      )
+                    })
                   })
                 )}
               </tbody>
