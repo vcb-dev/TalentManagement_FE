@@ -150,7 +150,7 @@ export function ExamResultsSchedule({
     return completed.filter((e) => new Date(e.scheduledAt).getFullYear() === y)
   }, [completed, deferredYearFilter])
 
-  const upcomingShow = upcoming.slice(0, 2)
+  const upcomingShow = upcoming
 
   if (isLoading) {
     return (
@@ -204,7 +204,7 @@ export function ExamResultsSchedule({
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {upcomingShow.map((exam, idx) => {
+          {exams.map((exam, idx) => {
             const Icon = idx % 2 === 0 ? Building2 : Shield
             const isOptional = idx % 2 === 1
             const hasQuestionBank =
