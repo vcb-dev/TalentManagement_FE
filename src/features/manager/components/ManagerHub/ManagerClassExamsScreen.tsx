@@ -172,7 +172,7 @@ function ClassSchedulesList({
                   className="h-7 px-2 text-[11px] font-bold bg-white border shadow-sm hover:bg-primary/5 hover:text-primary"
                   onClick={() => onEditExam(s.id)}
                 >
-                  Sửa đề
+                  {hasQuestions ? 'Sửa đề' : 'Tạo đề'}
                 </Button>
               </div>
             </div>
@@ -495,7 +495,7 @@ export function ManagerClassExamsScreen() {
                                 className="font-bold border-amber-200 text-amber-700 bg-amber-50/30 hover:bg-amber-50"
                                 onClick={() => openAssignmentModal(c.id)}
                               >
-                                Chỉnh sửa đề mẫu
+                                {hasQuestionBank ? 'Chỉnh sửa đề mẫu' : 'Tạo đề mẫu'}
                               </Button>
                             </div>
 
@@ -525,8 +525,12 @@ export function ManagerClassExamsScreen() {
                     <h3 className="flex items-center gap-2 text-lg font-bold text-foreground">
                       <FileUp className="h-5 w-5 text-primary" strokeWidth={2} />
                       {selectedScheduleId
-                        ? 'Sửa bộ đề thi cho buổi thi'
-                        : 'Sửa bộ đề thi mẫu cho lớp'}
+                        ? questionBankByClass[selectedScheduleId]
+                          ? 'Sửa bộ đề thi cho buổi thi'
+                          : 'Tạo bộ đề thi cho buổi thi'
+                        : questionBankByClass[assignmentModalClassId]
+                          ? 'Sửa bộ đề thi mẫu cho lớp'
+                          : 'Tạo bộ đề thi mẫu cho lớp'}
                     </h3>
                     <div className="mt-2 flex flex-wrap items-center gap-3">
                       <span className="text-xs font-bold text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
