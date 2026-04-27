@@ -149,12 +149,6 @@ export function MemberLeaderHeaderNav() {
           return (
             <NavigationMenuItem key={group.id}>
               <NavigationMenuTrigger
-                onPointerDown={(event) => {
-                  event.preventDefault()
-                }}
-                onClick={(event) => {
-                  event.preventDefault()
-                }}
                 className={cn(
                   'border-transparent bg-transparent text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white focus:text-white data-[state=open]:border-white/30 data-[state=open]:bg-white/15 data-[state=open]:text-white',
                   active && 'border-white/30 bg-white/15 text-white'
