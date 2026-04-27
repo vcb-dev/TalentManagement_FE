@@ -249,18 +249,45 @@ function ExamResultPage() {
         }
         setAnswers(initialAnswers)
 
-        const startKey = `exam_start_time_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
-        let startTimeStr = localStorage.getItem(startKey)
-        if (!startTimeStr) {
-          startTimeStr = Date.now().toString()
-          localStorage.setItem(startKey, startTimeStr)
+        const durationSeconds = (bank.duration || 60) * 60
+
+        let startTimeMillis = Date.now()
+
+        // Priority: Use official schedule start time if available
+        if (scheduleId && myClassData?.enrolledClass?.schedules) {
+          const matched = myClassData.enrolledClass.schedules.find((s) => s.id === scheduleId)
+          if (matched) {
+            const officialIso = `${matched.dateIso}T${matched.startTime}:00+07:00`
+            const officialTime = new Date(officialIso).getTime()
+            if (!Number.isNaN(officialTime)) {
+              console.log('[TakeExam] Using official schedule start time:', officialIso)
+              startTimeMillis = officialTime
+            }
+          }
         }
 
-        const durationSeconds = (bank.duration || 60) * 60
-        const startTime = parseInt(startTimeStr, 10)
-        const elapsedRaw = Math.floor((Date.now() - startTime) / 1000)
-        const remaining = Math.max(0, durationSeconds - elapsedRaw)
+        // If not using official time, fallback to first-entry time from localStorage
+        const startKey = `exam_start_time_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
+        if (startTimeMillis === Date.now()) {
+          let startTimeStr = localStorage.getItem(startKey)
+          if (!startTimeStr) {
+            startTimeStr = Date.now().toString()
+            localStorage.setItem(startKey, startTimeStr)
+          }
+          startTimeMillis = parseInt(startTimeStr, 10)
+        }
 
+        const elapsedRaw = Math.floor((Date.now() - startTimeMillis) / 1000)
+        // If entering late, elapsedRaw > 0, so remaining < duration
+        // If entering early, elapsedRaw < 0, we cap at duration
+        const remaining = Math.min(durationSeconds, Math.max(0, durationSeconds - elapsedRaw))
+
+        console.log('[TakeExam] Time calculation:', {
+          durationSeconds,
+          elapsedRaw,
+          remaining,
+          startTime: new Date(startTimeMillis).toISOString(),
+        })
         setTimeLeft(remaining)
       }
     } catch (err) {

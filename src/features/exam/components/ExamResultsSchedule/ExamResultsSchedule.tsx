@@ -89,7 +89,7 @@ export function ExamResultsSchedule({
   const yearFilter = useWatch({ control: filterForm.control, name: 'yearFilter' }) ?? 'all'
   const deferredYearFilter = useDeferredValue(yearFilter)
   const [questionBankClassIds, setQuestionBankClassIds] = useState<Set<string>>(new Set())
-  const [submittedExamIds, setSubmittedExamIds] = useState<Set<string>>(new Set())
+  const [submittedExamMap, setSubmittedExamMap] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
     try {
@@ -99,13 +99,14 @@ export function ExamResultsSchedule({
         setQuestionBankClassIds(new Set(Object.keys(parsed)))
       }
 
-      const submitted = new Set<string>()
+      const submittedMap = new Map<string, string>()
       // Priority 1: Use API data from props
       if (mySubmissions) {
         if (mySubmissions.length > 0) {
           mySubmissions.forEach((sub) => {
-            if (sub.classId) submitted.add(sub.classId)
-            if (sub.examId) submitted.add(sub.examId)
+            if (sub.classId) submittedMap.set(sub.classId, sub.id)
+            if (sub.examId) submittedMap.set(sub.examId, sub.id)
+            if (sub.scheduleId) submittedMap.set(sub.scheduleId, sub.id)
           })
         }
       }
@@ -114,11 +115,12 @@ export function ExamResultsSchedule({
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i)
           if (key && key.startsWith('member_exam_submission_v1:')) {
-            submitted.add(key.replace('member_exam_submission_v1:', ''))
+            const id = key.replace('member_exam_submission_v1:', '')
+            submittedMap.set(id, id)
           }
         }
       }
-      setSubmittedExamIds(submitted)
+      setSubmittedExamMap(submittedMap)
     } catch {
       setQuestionBankClassIds(new Set())
     }
@@ -210,7 +212,8 @@ export function ExamResultsSchedule({
               questionBankClassIds.has(exam.id) ||
               (myEnrolledClassId === exam.id && enrolledClassHasQuestions) ||
               (myEnrolledClassId ? questionBankClassIds.has(myEnrolledClassId) : false)
-            const isSubmitted = submittedExamIds.has(exam.id)
+            const submissionId = submittedExamMap.get(exam.id)
+            const isSubmitted = !!submissionId
             const isStarted =
               exam.status === 'IN_PROGRESS' || new Date() >= new Date(exam.scheduledAt)
             const canOpenExam =
@@ -272,7 +275,11 @@ export function ExamResultsSchedule({
                     variant="ghost"
                     onClick={() => {
                       if (canOpenExam) {
-                        onOpenExam(exam.id, false, exam.scheduleId ?? undefined)
+                        if (isSubmitted && submissionId) {
+                          onOpenExam(submissionId, true, exam.scheduleId ?? undefined)
+                        } else {
+                          onOpenExam(exam.id, false, exam.scheduleId ?? undefined)
+                        }
                       }
                     }}
                     disabled={!canOpenExam}

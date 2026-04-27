@@ -152,8 +152,19 @@ export function ManagerClassesScreen() {
   const activeQuery = activeClassForDropdown ? (memberQueries[activeClassForDropdown] ?? '') : ''
   const [debouncedActiveQuery, setDebouncedActiveQuery] = useState('')
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+  const [expandedMemberListIds, setExpandedMemberListIds] = useState<Set<string>>(new Set())
+
   const toggleCollapse = (id: string) => {
     setCollapsedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleMembersExpand = (id: string) => {
+    setExpandedMemberListIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -713,27 +724,52 @@ export function ManagerClassesScreen() {
                   </div>
 
                   <div className="space-y-2">
-                    {(row.members ?? []).map((m) => (
-                      <div
-                        key={m.userId}
-                        className="flex items-center justify-between rounded-md border bg-white px-2 py-1.5 text-xs"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-foreground">{m.name}</p>
-                          <p className="truncate text-muted-foreground">{m.email}</p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          onClick={() => removeMember.mutate({ classId: row.id, userId: m.userId })}
-                          title="Xóa khỏi lớp"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ))}
+                    {(() => {
+                      const allMembers = row.members ?? []
+                      const isExpanded = expandedMemberListIds.has(row.id)
+                      const displayMembers = isExpanded ? allMembers : allMembers.slice(0, 5)
+
+                      return (
+                        <>
+                          {displayMembers.map((m) => (
+                            <div
+                              key={m.userId}
+                              className="flex items-center justify-between rounded-md border bg-white px-2 py-1.5 text-xs"
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate font-semibold text-foreground">{m.name}</p>
+                                <p className="truncate text-muted-foreground">{m.email}</p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                onClick={() =>
+                                  removeMember.mutate({ classId: row.id, userId: m.userId })
+                                }
+                                title="Xóa khỏi lớp"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                          {allMembers.length > 5 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto w-full py-1 text-[10px] font-bold text-primary hover:bg-primary/5"
+                              onClick={() => toggleMembersExpand(row.id)}
+                            >
+                              {isExpanded
+                                ? 'Thu gọn'
+                                : `Xem thêm ${allMembers.length - 5} học viên...`}
+                            </Button>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
 
                   <div className="search-dropdown-container relative mt-3">
