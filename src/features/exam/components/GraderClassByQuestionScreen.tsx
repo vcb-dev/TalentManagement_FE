@@ -46,10 +46,23 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
     console.log('[Grader] Finding question bank for class:', classId)
     // Priority 1: Backend data from the current class object
     if (currentClass?.examQuestions) {
-      console.log('[Grader] Found in backend data')
+      console.log('[Grader] Found in backend class data')
       return currentClass.examQuestions as any
     }
-    // Priority 2: Fallback to localStorage (legacy/transition)
+
+    // Priority 2: Look into the first submission found (might have questions from schedule)
+    const firstSubWithQuestions = classSubmissions.find(
+      (s) => s.schedule?.examQuestions || s.learningClass?.examQuestions
+    )
+    if (firstSubWithQuestions) {
+      console.log('[Grader] Found in submission data')
+      return (
+        firstSubWithQuestions.schedule?.examQuestions ||
+        firstSubWithQuestions.learningClass?.examQuestions
+      )
+    }
+
+    // Priority 3: Fallback to localStorage (legacy/transition)
     try {
       const raw = localStorage.getItem('manager_exam_question_bank_v1')
       console.log('[Grader] localStorage content:', raw ? 'exists' : 'empty')
@@ -62,7 +75,7 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
       console.error('[Grader] Error reading localStorage:', err)
       return null
     }
-  }, [currentClass, classId])
+  }, [currentClass, classId, classSubmissions])
 
   // Initialize local state from submissions
   useEffect(() => {
@@ -112,7 +125,9 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
     })
   }
 
-  const handleSaveAll = async () => {
+  const [showOutcomeModal, setShowOutcomeModal] = useState(false)
+
+  const handleSaveAllWithOutcome = async (outcome: 'DAT' | 'CHO_HOC_LAI') => {
     const submissionsToSave = Object.keys(localGrades)
     if (submissionsToSave.length === 0) {
       toast.info('Không có dữ liệu để lưu')
@@ -144,8 +159,9 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
           submissionId: subId,
           grades,
           graderNote,
-          status: 'done', // Auto mark as done when saving in this view
+          status: 'done',
           totalScore,
+          outcome, // Manual outcome from modal
         })
         successCount++
       } catch {
@@ -162,6 +178,7 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
     if (failCount > 0) {
       toast.error(`Lỗi khi lưu cho ${failCount} học viên`)
     }
+    setShowOutcomeModal(false)
   }
 
   if (isLoadingSubs || isLoadingClasses) {
@@ -222,7 +239,7 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
             size="sm"
             disabled={gradeMutation.isPending}
             className="rounded-xl px-5 font-bold shadow-md shadow-primary/20 bg-primary hover:bg-primary/90 transition-all active:scale-95"
-            onClick={handleSaveAll}
+            onClick={() => setShowOutcomeModal(true)}
           >
             {gradeMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -413,7 +430,7 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
             <Button
               size="lg"
               className="h-14 px-12 rounded-2xl font-black shadow-xl shadow-primary/20 text-lg hover:scale-105 transition-transform active:scale-95"
-              onClick={handleSaveAll}
+              onClick={() => setShowOutcomeModal(true)}
               disabled={gradeMutation.isPending}
             >
               {gradeMutation.isPending && <Loader2 className="h-6 w-6 animate-spin mr-3" />}
@@ -422,6 +439,55 @@ export function GraderClassByQuestionScreen({ classId }: GraderClassByQuestionSc
           </div>
         </div>
       </div>
+
+      {/* Manual Outcome Modal */}
+      {showOutcomeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md scale-in-center rounded-3xl bg-white p-8 shadow-2xl ring-1 ring-slate-200">
+            <div className="mb-6 flex flex-col items-center text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <CheckCircle2 className="h-8 w-8" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                Xác nhận kết quả
+              </h3>
+              <p className="mt-2 text-sm font-medium text-slate-500">
+                Vui lòng chọn kết quả chung cho các học viên vừa được chấm điểm.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                variant="outline"
+                className="h-24 flex-col gap-2 rounded-2xl border-2 border-emerald-100 bg-emerald-50/30 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-200 transition-all"
+                disabled={gradeMutation.isPending}
+                onClick={() => handleSaveAllWithOutcome('DAT')}
+              >
+                <CheckCircle2 className="h-6 w-6" />
+                <span className="font-bold text-base">Pass (Đạt)</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-24 flex-col gap-2 rounded-2xl border-2 border-rose-100 bg-rose-50/30 text-rose-700 hover:bg-rose-50 hover:border-rose-200 transition-all"
+                disabled={gradeMutation.isPending}
+                onClick={() => handleSaveAllWithOutcome('CHO_HOC_LAI')}
+              >
+                <ArrowLeft className="h-6 w-6 rotate-180" />
+                <span className="font-bold text-base">Thi lại</span>
+              </Button>
+            </div>
+
+            <Button
+              variant="ghost"
+              className="mt-6 w-full rounded-xl text-slate-400 font-bold hover:text-slate-600"
+              onClick={() => setShowOutcomeModal(false)}
+              disabled={gradeMutation.isPending}
+            >
+              Quay lại chỉnh sửa
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

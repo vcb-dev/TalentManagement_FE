@@ -65,6 +65,7 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     icon: Calendar,
     match: 'prefix',
     permissionId: 'learning.view',
+    hiddenForRoles: ['MANAGER'],
   },
   {
     to: '/learning-classes',

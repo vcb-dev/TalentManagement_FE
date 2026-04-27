@@ -41,6 +41,7 @@ export interface ExamResultsScheduleProps {
     scheduleId?: string | null
     title?: string | null
     status: string
+    outcome?: string | null
     totalScore?: number | null
     createdAt: string
   }>
@@ -376,6 +377,14 @@ export function ExamResultsSchedule({
                     <span className="text-sm font-semibold text-foreground">
                       Điểm: {sub.totalScore != null ? `${sub.totalScore}%` : '—'}
                     </span>
+                    <span className="text-sm font-bold text-primary">
+                      KQ:{' '}
+                      {sub.outcome === 'DAT'
+                        ? 'Pass'
+                        : sub.outcome === 'CHO_HOC_LAI'
+                          ? 'Thi lại'
+                          : '—'}
+                    </span>
                   </div>
                   <Button
                     type="button"
@@ -454,6 +463,9 @@ export function ExamResultsSchedule({
                         Trạng thái
                       </th>
                       <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                        Kết quả
+                      </th>
+                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
                         Thao tác
                       </th>
                     </>
@@ -527,6 +539,24 @@ export function ExamResultsSchedule({
                             )}
                           >
                             {sub.status === 'done' ? 'Đã chấm' : 'Chờ chấm'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span
+                            className={cn(
+                              'font-bold',
+                              sub.outcome === 'DAT'
+                                ? 'text-emerald-600'
+                                : sub.outcome === 'CHO_HOC_LAI'
+                                  ? 'text-rose-600'
+                                  : 'text-muted-foreground'
+                            )}
+                          >
+                            {sub.outcome === 'DAT'
+                              ? 'Pass'
+                              : sub.outcome === 'CHO_HOC_LAI'
+                                ? 'Thi lại'
+                                : '—'}
                           </span>
                         </td>
                         <td className="px-6 py-5">

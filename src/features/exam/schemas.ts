@@ -43,6 +43,7 @@ export const examSubmissionApiSchema = z.object({
   grades: z.any().optional(),
   totalScore: z.number().nullable().optional(),
   status: z.enum(['pending', 'grading', 'done']),
+  outcome: z.enum(['DAT', 'BAO_LUU', 'CHO_HOC_LAI', 'CHIA_TAY']).nullable().optional(),
   graderNote: z.string().nullable().optional(),
   gradedAt: z.string().nullable().optional(),
   createdAt: z.string(),
@@ -59,6 +60,7 @@ export const examSubmissionApiSchema = z.object({
       topic: z.string(),
       dateIso: z.string(),
       startTime: z.string(),
+      examQuestions: z.any().nullable().optional(),
     })
     .nullable()
     .optional(),
