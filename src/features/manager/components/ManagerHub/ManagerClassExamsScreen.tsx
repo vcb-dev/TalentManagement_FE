@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { CheckSquare, Circle, FileUp, ListPlus, Loader2, Trash2, Users, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -185,7 +185,11 @@ function ClassSchedulesList({
 
 export function ManagerClassExamsScreen() {
   const [selectedClassIdForScores, setSelectedClassIdForScores] = useState<string | null>(null)
-  const { data: classes = [], isLoading } = useManagerClasses()
+  const { data: rawClasses = [], isLoading } = useManagerClasses()
+  const classes = useMemo(() => {
+    return (rawClasses as any[]).filter((c) => (c.schedules ?? []).some((s: any) => s.isExam))
+  }, [rawClasses])
+
   const saveQuestionsMutation = useSaveExamQuestions()
   const saveScheduleQuestionsMutation = useSaveScheduleExamQuestions()
 
@@ -432,7 +436,8 @@ export function ManagerClassExamsScreen() {
                       colSpan={5}
                       className="px-4 py-10 text-center text-sm text-muted-foreground"
                     >
-                      Chưa có lớp nào.
+                      Chưa có kỳ thi nào được lên lịch. Hãy tạo lịch thi tại mục "Lịch thi" để bắt
+                      đầu gán đề.
                     </td>
                   </tr>
                 ) : (
