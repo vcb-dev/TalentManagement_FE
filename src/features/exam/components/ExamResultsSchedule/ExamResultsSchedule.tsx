@@ -25,7 +25,7 @@ export interface ExamResultsScheduleProps {
   page: number
   isLoading: boolean
   onPageChange: (page: number) => void
-  onOpenExam: (id: string, isSubmission?: boolean) => void
+  onOpenExam: (id: string, isSubmission?: boolean, scheduleId?: string) => void
   myEnrolledClassId?: string
   membersInClass?: Array<{
     userId: string
@@ -36,9 +36,10 @@ export interface ExamResultsScheduleProps {
   membersTitle?: string
   mySubmissions?: Array<{
     id: string
-    examId?: string
-    classId?: string
-    title?: string
+    examId?: string | null
+    classId?: string | null
+    scheduleId?: string | null
+    title?: string | null
     status: string
     totalScore?: number | null
     createdAt: string
@@ -269,7 +270,7 @@ export function ExamResultsSchedule({
                     variant="ghost"
                     onClick={() => {
                       if (canOpenExam) {
-                        onOpenExam(exam.id)
+                        onOpenExam(exam.id, false, exam.scheduleId ?? undefined)
                       }
                     }}
                     disabled={!canOpenExam}
@@ -378,7 +379,7 @@ export function ExamResultsSchedule({
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => onOpenExam(sub.id, true)}
+                    onClick={() => onOpenExam(sub.id, true, sub.scheduleId ?? undefined)}
                     className="mt-3 h-auto justify-start p-0 text-sm font-semibold normal-case tracking-normal text-primary underline-offset-4 hover:bg-transparent hover:underline"
                   >
                     Xem kết quả
@@ -409,7 +410,7 @@ export function ExamResultsSchedule({
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => onOpenExam(exam.id, false)}
+                    onClick={() => onOpenExam(exam.id, false, exam.scheduleId ?? undefined)}
                     className="h-auto p-0 text-sm font-semibold normal-case tracking-normal text-primary underline-offset-4 hover:bg-transparent hover:underline"
                   >
                     Xem kết quả
@@ -531,7 +532,7 @@ export function ExamResultsSchedule({
                           <Button
                             type="button"
                             variant="ghost"
-                            onClick={() => onOpenExam(sub.id, true)}
+                            onClick={() => onOpenExam(sub.id, true, sub.scheduleId ?? undefined)}
                             className="h-auto p-0 text-xs font-bold normal-case tracking-normal text-primary underline-offset-4 hover:bg-transparent hover:underline"
                           >
                             Xem kết quả
@@ -582,7 +583,7 @@ export function ExamResultsSchedule({
                         <Button
                           type="button"
                           variant="ghost"
-                          onClick={() => onOpenExam(exam.id, false)}
+                          onClick={() => onOpenExam(exam.id, false, exam.scheduleId ?? undefined)}
                           className="h-auto p-0 text-xs font-bold normal-case tracking-normal text-primary underline-offset-4 hover:bg-transparent hover:underline"
                         >
                           Xem kết quả

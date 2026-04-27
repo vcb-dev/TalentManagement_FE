@@ -22,6 +22,9 @@ const DEFAULT_DURATION_SECONDS = 60 * 60 // 1 tiếng mặc định
 
 export const Route = createFileRoute('/_protected/exam/$examId/result')({
   component: ExamResultPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    scheduleId: (search.scheduleId as string) || undefined,
+  }),
 })
 
 function formatTime(seconds: number): string {
@@ -114,6 +117,7 @@ const ExamQuestionCard = memo(function ExamQuestionCard({
 })
 
 function ExamResultPage() {
+  const { scheduleId } = Route.useSearch()
   const { examId } = Route.useParams()
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
@@ -138,8 +142,15 @@ function ExamResultPage() {
 
   useEffect(() => {
     try {
-      console.log('[TakeExam] Initializing for examId:', examId, 'userId:', userId)
-      const submissionKey = `member_exam_submission_v1:${userId}:${examId}`
+      console.log(
+        '[TakeExam] Initializing for examId:',
+        examId,
+        'scheduleId:',
+        scheduleId,
+        'userId:',
+        userId
+      )
+      const submissionKey = `member_exam_submission_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
       const existingSubmission = localStorage.getItem(submissionKey)
 
       let bank: any = null
@@ -185,7 +196,10 @@ function ExamResultPage() {
 
       // Check if already submitted via API results, my submissions list, or localStorage
       const hasApiResult = data && data.length > 0
-      const hasApiSubmission = mySubmissions?.some((s) => s.classId === examId || s.id === examId)
+      const hasApiSubmission = mySubmissions?.some(
+        (s) =>
+          (s.classId === examId || s.id === examId) && (!scheduleId || s.scheduleId === scheduleId)
+      )
 
       if (hasApiResult || hasApiSubmission || existingSubmission) {
         console.log('[TakeExam] Submission found. Status: Submitted')
@@ -197,7 +211,11 @@ function ExamResultPage() {
           } catch {}
         } else if (hasApiSubmission) {
           // If we have a submission in API but not in local, try to use its answers if available
-          const sub = mySubmissions?.find((s) => s.classId === examId || s.id === examId)
+          const sub = mySubmissions?.find(
+            (s) =>
+              (s.classId === examId || s.id === examId) &&
+              (!scheduleId || s.scheduleId === scheduleId)
+          )
           if (sub?.answers) {
             setAnswers(sub.answers as Record<string, string>)
           }
@@ -208,7 +226,7 @@ function ExamResultPage() {
       if (bank) {
         console.log('[TakeExam] Setting up new exam session')
         let initialAnswers: Record<string, string> = {}
-        const draftKey = `exam_draft_v1:${userId}:${examId}`
+        const draftKey = `exam_draft_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
         const draftRaw = localStorage.getItem(draftKey)
         if (draftRaw) {
           try {
@@ -219,7 +237,7 @@ function ExamResultPage() {
         }
         setAnswers(initialAnswers)
 
-        const startKey = `exam_start_time_v1:${userId}:${examId}`
+        const startKey = `exam_start_time_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
         let startTimeStr = localStorage.getItem(startKey)
         if (!startTimeStr) {
           startTimeStr = Date.now().toString()
@@ -237,13 +255,16 @@ function ExamResultPage() {
       console.error('[TakeExam] Initialization error:', err)
       setQuestionBank(null)
     }
-  }, [examId, myClassId, myClassData, data, submissionData, mySubmissions, userId])
+  }, [examId, scheduleId, myClassId, myClassData, data, submissionData, mySubmissions, userId])
 
   useEffect(() => {
     if (Object.keys(answers).length > 0 && !submitted) {
-      localStorage.setItem(`exam_draft_v1:${userId}:${examId}`, JSON.stringify(answers))
+      localStorage.setItem(
+        `exam_draft_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`,
+        JSON.stringify(answers)
+      )
     }
-  }, [answers, submitted, examId, userId])
+  }, [answers, submitted, examId, scheduleId, userId])
 
   // Countdown logic — chạy mỗi giây
   useEffect(() => {
@@ -287,23 +308,26 @@ function ExamResultPage() {
     try {
       await submitExamApi({
         classId: myClassId ?? undefined,
+        scheduleId,
         answers,
       })
 
       // Also save locally just in case
-      localStorage.removeItem(`exam_draft_v1:${userId}:${examId}`)
+      localStorage.removeItem(
+        `exam_draft_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
+      )
       localStorage.setItem(
-        `member_exam_submission_v1:${userId}:${examId}`,
+        `member_exam_submission_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`,
         JSON.stringify({
           userId,
           examId,
+          scheduleId,
           classId: myClassId ?? null,
           answers,
           submittedAt: new Date().toISOString(),
           autoSubmitted: isAuto,
         })
       )
-
       setSubmitted(true)
       if (isAuto) {
         toast.warning('Hết giờ! Bài thi đã được nộp tự động.')

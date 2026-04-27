@@ -338,6 +338,14 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                       )}
                     </p>
                   </div>
+                  {submission.schedule && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Kỳ thi (Session)</p>
+                      <p className="font-bold text-primary">
+                        {submission.schedule.topic} ({submission.schedule.startTime})
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-xs text-muted-foreground">Ngày nộp</p>
                     <p className="font-semibold text-foreground">{formattedDate}</p>

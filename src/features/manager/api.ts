@@ -129,6 +129,15 @@ export const managerApi = {
     return safeParse(kpiMonthlyApiSchema, res.data, 'GET kpi')
   },
 
+  allExams: async () => {
+    const res = await apiClient.get<unknown>('/manager/classes/all-exams')
+    return safeParse(
+      z.array(managerClassScheduleApiSchema.extend({ className: z.string() })),
+      res.data,
+      'GET /manager/classes/all-exams'
+    )
+  },
+
   classes: async (params?: { search?: string; levelFrom?: string; status?: string }) => {
     const res = await apiClient.get<unknown>('/manager/classes', { params })
     return safeParse(z.array(managerClassApiSchema), res.data, 'GET /manager/classes')
@@ -271,6 +280,9 @@ export const managerApi = {
       endTime: string
       topic: string
       location?: string | null
+      isExam?: boolean
+      examTeacherUserId?: string | null
+      examStatus?: string | null
     }
   ) => {
     const res = await apiClient.post<unknown>(`/manager/classes/${classId}/schedules`, input)
@@ -290,6 +302,9 @@ export const managerApi = {
       endTime?: string
       topic?: string
       location?: string | null
+      isExam?: boolean
+      examTeacherUserId?: string | null
+      examStatus?: string | null
     }
   ) => {
     const res = await apiClient.patch<unknown>(

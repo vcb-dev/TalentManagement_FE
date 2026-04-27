@@ -17,7 +17,16 @@ type ManagerClassRow = z.infer<typeof managerClassApiSchema>
 type ScheduleRow = z.infer<typeof managerClassScheduleApiSchema>
 
 interface ManagedClassesExamTableProps {
-  classes: ManagerClassRow[]
+  classes: Array<{
+    id: string
+    name: string
+    teacher?: { name: string; userId: string; email: string } | null
+    status: 'open' | 'full' | 'closed'
+    levelFrom: string
+    levelTo: string
+    examDate?: string | null
+    [key: string]: any
+  }>
   isLoading: boolean
 }
 

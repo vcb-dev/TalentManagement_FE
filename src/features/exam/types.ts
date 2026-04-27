@@ -21,6 +21,7 @@ export interface ClassifyExamInput {
 
 export interface SubmitExamInput {
   classId?: string
+  scheduleId?: string
   answers: any
 }
 

@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 export const examSummaryApiSchema = z.object({
   id: z.string().uuid(),
+  scheduleId: z.string().uuid().optional(),
   title: z.string(),
   scheduledAt: z.string().datetime(),
   status: z.enum(['UPCOMING', 'IN_PROGRESS', 'COMPLETED']),
@@ -36,6 +37,7 @@ export const examSubmissionApiSchema = z.object({
   fullName: z.string(),
   teamGroup: z.string().nullable().optional(),
   classId: z.string().nullable().optional(),
+  scheduleId: z.string().nullable().optional(),
   answers: z.any().optional(),
   grades: z.any().optional(),
   totalScore: z.number().nullable().optional(),
@@ -48,6 +50,14 @@ export const examSubmissionApiSchema = z.object({
     .object({
       name: z.string(),
       examQuestions: z.any().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
+  schedule: z
+    .object({
+      topic: z.string(),
+      dateIso: z.string(),
+      startTime: z.string(),
     })
     .nullable()
     .optional(),
