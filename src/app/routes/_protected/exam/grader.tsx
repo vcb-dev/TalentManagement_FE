@@ -4,7 +4,10 @@ import { ManagerGradingScreen } from '@/features/manager/components/ManagerHub/M
 
 export const Route = createFileRoute('/_protected/exam/grader')({
   beforeLoad: () => {
-    requireRoleOrPermissionPrefixes(['TEACHER', 'MANAGER'], ['teacher.', 'manager.'])
+    requireRoleOrPermissionPrefixes(
+      ['TEACHER', 'MANAGER', 'LEADER'],
+      ['teacher.', 'manager.', 'leader.']
+    )
   },
   component: ManagerGradingScreen,
 })

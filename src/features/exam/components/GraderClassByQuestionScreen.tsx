@@ -74,6 +74,16 @@ export function GraderClassByQuestionScreen({
     }
 
     // Priority 2: Backend data from the current class object
+    if (scheduleId && currentClass?.schedules) {
+      const schedule = (currentClass.schedules as any[]).find(
+        (s) => s.id.toLowerCase() === scheduleId.toLowerCase()
+      )
+      if (schedule?.examQuestions) {
+        console.log('[Grader] Found questions in the current class schedule list')
+        return schedule.examQuestions
+      }
+    }
+
     if (currentClass?.examQuestions) {
       console.log('[Grader] Found in backend class data')
       return currentClass.examQuestions as any

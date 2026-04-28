@@ -65,7 +65,6 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     icon: Calendar,
     match: 'prefix',
     permissionId: 'learning.view',
-    hiddenForRoles: ['MANAGER'],
   },
   {
     to: '/learning-classes',
@@ -130,6 +129,13 @@ const BOD_ITEMS: AppNavItem[] = [
 ]
 
 const MANAGER_OPS_ITEMS: AppNavItem[] = [
+  {
+    to: '/manager/grading',
+    label: 'Chấm bài thi',
+    icon: ClipboardList,
+    match: 'prefix',
+    permissionId: 'teacher.grade',
+  },
   {
     to: '/manager/classes',
     label: 'Chia lớp',

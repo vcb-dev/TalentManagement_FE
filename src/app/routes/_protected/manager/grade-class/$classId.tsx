@@ -4,7 +4,10 @@ import { GraderClassByQuestionScreen } from '@/features/exam/components/GraderCl
 
 export const Route = createFileRoute('/_protected/manager/grade-class/$classId')({
   beforeLoad: () => {
-    requireRoleOrPermissionPrefixes(['TEACHER', 'MANAGER'], ['teacher.', 'manager.'])
+    requireRoleOrPermissionPrefixes(
+      ['TEACHER', 'MANAGER', 'LEADER'],
+      ['teacher.', 'manager.', 'leader.']
+    )
   },
   validateSearch: (search: Record<string, unknown>) => ({
     scheduleId: (search.scheduleId as string) || undefined,
