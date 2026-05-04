@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -18,6 +18,14 @@ import {
   PieChart,
 } from 'recharts'
 import { cn } from '@/lib/utils'
+import {
+  CHART_GRID_LINE,
+  CHART_AXIS_TICK,
+  CHART_LEGEND,
+  ChartGradients,
+  renderActiveDot,
+  renderDot,
+} from './chartStyles'
 import type {
   AssignmentStatusKey,
   GradeDistribution,
@@ -57,8 +65,9 @@ export function KpiGauge({
 }) {
   const clamped = Math.min(100, Math.max(0, Math.round(percent)))
   const data = [{ name: label ?? 'value', value: clamped, fill: color }]
+  const isFull = clamped >= 100
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div className="group relative" style={{ width: size, height: size }}>
       <ResponsiveContainer width="100%" height="100%">
         <RadialBarChart
           cx="50%"
@@ -78,9 +87,25 @@ export function KpiGauge({
           />
         </RadialBarChart>
       </ResponsiveContainer>
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-black tabular-nums text-foreground">{clamped}%</span>
-        {label ? (
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center transition-transform duration-300 group-hover:scale-105">
+        {isFull ? (
+          <span className="text-lg" role="img" aria-label="check">
+            ✅
+          </span>
+        ) : null}
+        <span
+          className={cn(
+            'text-2xl font-black tabular-nums text-foreground',
+            isFull && 'text-emerald-600 dark:text-emerald-400'
+          )}
+        >
+          {isFull ? '100' : clamped}%
+        </span>
+        {isFull ? (
+          <span className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            Hoàn thành
+          </span>
+        ) : label ? (
           <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             {label}
           </span>
@@ -94,6 +119,37 @@ export function KpiGauge({
  *  Donut — trạng thái tổng thể KPI+OKR
  * ==================================================================== */
 
+/* ──────────── Custom tooltip dùng chung ──────────── */
+
+function ChartTooltip({
+  active,
+  payload,
+  label,
+  suffix = '',
+}: {
+  active?: boolean
+  payload?: { color: string; name: string; value: number }[]
+  label?: string
+  suffix?: string
+}) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="rounded-xl border border-border bg-card/97 px-3 py-2 text-xs shadow-xl backdrop-blur-sm">
+      <p className="mb-1 font-bold text-foreground">{label}</p>
+      {payload.map((entry) => (
+        <div key={entry.name} className="flex items-center gap-2">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: entry.color }} />
+          <span className="text-muted-foreground">{entry.name}:</span>
+          <span className="font-bold tabular-nums text-foreground">
+            {entry.value}
+            {suffix}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function StatusDonut({
   breakdown,
   className,
@@ -101,6 +157,7 @@ export function StatusDonut({
   breakdown: Record<AssignmentStatusKey, number>
   className?: string
 }) {
+  const [hoverKey, setHoverKey] = useState<string | null>(null)
   const data = useMemo(
     () =>
       (Object.keys(breakdown) as AssignmentStatusKey[])
@@ -132,21 +189,8 @@ export function StatusDonut({
     <div className={cn('h-[220px] w-full', className)}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Tooltip
-            contentStyle={{
-              borderRadius: 12,
-              border: '1px solid rgb(226 232 240)',
-              fontSize: 12,
-            }}
-            formatter={(value, name) => [`${Number(value)} chỉ tiêu`, String(name)]}
-          />
-          <Legend
-            verticalAlign="bottom"
-            height={40}
-            iconType="circle"
-            iconSize={8}
-            wrapperStyle={{ fontSize: 11 }}
-          />
+          <Tooltip content={<ChartTooltip suffix=" chỉ tiêu" />} />
+          <Legend {...CHART_LEGEND} />
           <Pie
             data={data}
             dataKey="value"
@@ -157,9 +201,18 @@ export function StatusDonut({
             outerRadius={78}
             paddingAngle={2}
             stroke="none"
+            onMouseEnter={(_, idx) => setHoverKey(data[idx]?.key ?? null)}
+            onMouseLeave={() => setHoverKey(null)}
           >
             {data.map((entry) => (
-              <Cell key={entry.key} fill={entry.color} />
+              <Cell
+                key={entry.key}
+                fill={entry.color}
+                opacity={hoverKey && hoverKey !== entry.key ? 0.4 : 1}
+                stroke={hoverKey === entry.key ? entry.color : 'none'}
+                strokeWidth={hoverKey === entry.key ? 3 : 0}
+                style={{ transition: 'opacity 0.2s, stroke-width 0.2s' }}
+              />
             ))}
           </Pie>
         </PieChart>
@@ -176,6 +229,7 @@ export function EvalBreakdownDonut({
   breakdown: { ok: number; not: number; pending: number }
   className?: string
 }) {
+  const [hoverKey, setHoverKey] = useState<string | null>(null)
   const data = useMemo(
     () =>
       (
@@ -206,21 +260,8 @@ export function EvalBreakdownDonut({
     <div className={cn('h-[220px] w-full', className)}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Tooltip
-            contentStyle={{
-              borderRadius: 12,
-              border: '1px solid rgb(226 232 240)',
-              fontSize: 12,
-            }}
-            formatter={(value, name) => [`${Number(value)} chỉ tiêu`, String(name)]}
-          />
-          <Legend
-            verticalAlign="bottom"
-            height={40}
-            iconType="circle"
-            iconSize={8}
-            wrapperStyle={{ fontSize: 11 }}
-          />
+          <Tooltip content={<ChartTooltip suffix=" chỉ tiêu" />} />
+          <Legend {...CHART_LEGEND} />
           <Pie
             data={data}
             dataKey="value"
@@ -231,9 +272,18 @@ export function EvalBreakdownDonut({
             outerRadius={78}
             paddingAngle={2}
             stroke="none"
+            onMouseEnter={(_, idx) => setHoverKey(data[idx]?.key ?? null)}
+            onMouseLeave={() => setHoverKey(null)}
           >
             {data.map((entry) => (
-              <Cell key={entry.key} fill={entry.color} />
+              <Cell
+                key={entry.key}
+                fill={entry.color}
+                opacity={hoverKey && hoverKey !== entry.key ? 0.4 : 1}
+                stroke={hoverKey === entry.key ? entry.color : 'none'}
+                strokeWidth={hoverKey === entry.key ? 3 : 0}
+                style={{ transition: 'opacity 0.2s, stroke-width 0.2s' }}
+              />
             ))}
           </Pie>
         </PieChart>
@@ -261,6 +311,7 @@ const GRADE_LABEL: Record<keyof GradeDistribution, string> = {
 }
 
 export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: string }) {
+  const [hoverKey, setHoverKey] = useState<string | null>(null)
   const data = useMemo(
     () =>
       (['A', 'B', 'C', 'none'] as const)
@@ -277,8 +328,15 @@ export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: st
 
   return (
     <div className="flex flex-col">
-      <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-        {title}
+      <div className="mb-2 flex items-center gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </span>
+        {total > 0 ? (
+          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-foreground">
+            {total}
+          </span>
+        ) : null}
       </div>
       {total === 0 ? (
         <div className="flex h-[180px] items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">
@@ -288,21 +346,8 @@ export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: st
         <div className="h-[180px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Tooltip
-                contentStyle={{
-                  borderRadius: 12,
-                  border: '1px solid rgb(226 232 240)',
-                  fontSize: 12,
-                }}
-                formatter={(value, name) => [`${Number(value)} nhân sự`, String(name)]}
-              />
-              <Legend
-                verticalAlign="bottom"
-                height={32}
-                iconType="circle"
-                iconSize={8}
-                wrapperStyle={{ fontSize: 11 }}
-              />
+              <Tooltip content={<ChartTooltip suffix=" nhân sự" />} />
+              <Legend {...CHART_LEGEND} wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
               <Pie
                 data={data}
                 dataKey="value"
@@ -313,9 +358,18 @@ export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: st
                 outerRadius={64}
                 paddingAngle={2}
                 stroke="none"
+                onMouseEnter={(_, idx) => setHoverKey(data[idx]?.key ?? null)}
+                onMouseLeave={() => setHoverKey(null)}
               >
                 {data.map((entry) => (
-                  <Cell key={entry.key} fill={entry.color} />
+                  <Cell
+                    key={entry.key}
+                    fill={entry.color}
+                    opacity={hoverKey && hoverKey !== entry.key ? 0.4 : 1}
+                    stroke={hoverKey === entry.key ? entry.color : 'none'}
+                    strokeWidth={hoverKey === entry.key ? 3 : 0}
+                    style={{ transition: 'opacity 0.2s, stroke-width 0.2s' }}
+                  />
                 ))}
               </Pie>
             </PieChart>
@@ -331,6 +385,7 @@ export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: st
  * ==================================================================== */
 
 export function PerPersonBar({ rows }: { rows: PerPersonBarRow[] }) {
+  const [hoverBar, setHoverBar] = useState<string | null>(null)
   if (!rows.length) {
     return (
       <div className="flex h-[260px] items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">
@@ -342,48 +397,60 @@ export function PerPersonBar({ rows }: { rows: PerPersonBarRow[] }) {
   return (
     <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 10, right: 16, left: 0, bottom: 8 }} barGap={2}>
-          <CartesianGrid stroke="rgb(226 232 240 / 0.5)" strokeDasharray="4 4" vertical={false} />
+        <BarChart
+          data={data}
+          margin={{ top: 10, right: 16, left: 0, bottom: 8 }}
+          barGap={2}
+          onMouseMove={(state) => {
+            if (state?.activeTooltipIndex != null) {
+              setHoverBar(data[state.activeTooltipIndex]?.userId ?? null)
+            }
+          }}
+          onMouseLeave={() => setHoverBar(null)}
+        >
+          <CartesianGrid {...CHART_GRID_LINE} />
           <XAxis
             dataKey="name"
-            tick={{ fontSize: 11, fill: 'rgb(100 116 139)' }}
+            tick={CHART_AXIS_TICK}
             tickLine={false}
-            axisLine={{ stroke: 'rgb(226 232 240)' }}
+            axisLine={{ stroke: 'hsl(var(--border))' }}
             interval={0}
             angle={-20}
             textAnchor="end"
             height={56}
           />
-          <YAxis
-            allowDecimals={false}
-            tick={{ fontSize: 11, fill: 'rgb(100 116 139)' }}
-            tickLine={false}
-            axisLine={false}
+          <YAxis allowDecimals={false} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
+          <Tooltip content={<ChartTooltip />} />
+          <Legend {...CHART_LEGEND} />
+          <Bar
+            dataKey="kpiOk"
+            name="KPI đạt"
+            stackId="kpi"
+            fill="url(#gradKpi)"
+            radius={[0, 0, 0, 0]}
           />
-          <Tooltip
-            contentStyle={{
-              borderRadius: 12,
-              border: '1px solid rgb(226 232 240)',
-              fontSize: 12,
-            }}
-          />
-          <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-          <Bar dataKey="kpiOk" name="KPI đạt" stackId="kpi" fill="#6366f1" radius={[0, 0, 0, 0]} />
           <Bar
             dataKey="kpiNot"
             name="KPI chưa"
             stackId="kpi"
-            fill="#c7d2fe"
+            fill="url(#gradKpiSoft)"
             radius={[4, 4, 0, 0]}
           />
-          <Bar dataKey="okrOk" name="OKR đạt" stackId="okr" fill="#10b981" radius={[0, 0, 0, 0]} />
+          <Bar
+            dataKey="okrOk"
+            name="OKR đạt"
+            stackId="okr"
+            fill="url(#gradOkr)"
+            radius={[0, 0, 0, 0]}
+          />
           <Bar
             dataKey="okrNot"
             name="OKR chưa"
             stackId="okr"
-            fill="#a7f3d0"
+            fill="url(#gradOkrSoft)"
             radius={[4, 4, 0, 0]}
           />
+          <ChartGradients />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -407,46 +474,49 @@ export function TrendLine({ points }: { points: TrendPoint[] }) {
     <div className="h-[220px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={points} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
-          <CartesianGrid stroke="rgb(226 232 240 / 0.6)" strokeDasharray="4 4" vertical={false} />
+          <CartesianGrid {...CHART_GRID_LINE} />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 11, fill: 'rgb(100 116 139)' }}
+            tick={CHART_AXIS_TICK}
             tickLine={false}
-            axisLine={{ stroke: 'rgb(226 232 240)' }}
+            axisLine={{ stroke: 'hsl(var(--border))' }}
           />
           <YAxis
             domain={[0, 100]}
-            tick={{ fontSize: 11, fill: 'rgb(100 116 139)' }}
+            tick={CHART_AXIS_TICK}
             tickLine={false}
             axisLine={false}
             unit="%"
           />
-          <Tooltip
-            contentStyle={{
-              borderRadius: 12,
-              border: '1px solid rgb(226 232 240)',
-              fontSize: 12,
-            }}
-            formatter={(value) => `${Number(value)}%`}
-          />
-          <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+          <Tooltip content={<ChartTooltip suffix="%" />} />
+          <Legend {...CHART_LEGEND} />
+          <defs>
+            <linearGradient id="kpiLineGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.8" />
+            </linearGradient>
+            <linearGradient id="okrLineGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0.8" />
+            </linearGradient>
+          </defs>
           <Line
             type="monotone"
             dataKey="kpiRate"
             name="Tiến độ KPI"
             stroke="#6366f1"
-            strokeWidth={2}
-            dot={{ r: 4, fill: '#6366f1' }}
-            activeDot={{ r: 6 }}
+            strokeWidth={2.5}
+            dot={renderDot}
+            activeDot={renderActiveDot}
           />
           <Line
             type="monotone"
             dataKey="okrRate"
             name="Tiến độ OKR"
             stroke="#10b981"
-            strokeWidth={2}
-            dot={{ r: 4, fill: '#10b981' }}
-            activeDot={{ r: 6 }}
+            strokeWidth={2.5}
+            dot={renderDot}
+            activeDot={renderActiveDot}
           />
         </LineChart>
       </ResponsiveContainer>
@@ -481,22 +551,22 @@ export function TopPriorityList({
     )
   }
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-2.5">
       {rows.map((row) => {
         const prio = priorityLabel(row.priority)
         const pct = Math.min(100, Math.max(0, row.progressPercent ?? 0))
         const barColor =
           row.evalStatus === 'OK'
-            ? 'bg-emerald-500'
+            ? 'bg-gradient-to-r from-emerald-400 to-emerald-600'
             : row.evalStatus === 'NOT'
-              ? 'bg-rose-500'
-              : STATUS_COLOR[row.status] === '#3b82f6'
-                ? 'bg-primary'
-                : 'bg-slate-400'
+              ? 'bg-gradient-to-r from-rose-400 to-rose-600'
+              : row.status === 'in_progress'
+                ? 'bg-gradient-to-r from-primary/70 to-primary'
+                : 'bg-gradient-to-r from-slate-300 to-slate-400'
         return (
           <li
             key={row.id}
-            className="rounded-xl border border-border bg-card p-3 shadow-sm transition-colors hover:border-primary/30"
+            className="group rounded-xl border border-border bg-card p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
           >
             <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -504,8 +574,8 @@ export function TopPriorityList({
                   className={cn(
                     'inline-flex h-5 items-center rounded-md px-1.5 text-[10px] font-black uppercase tracking-wider',
                     row.kind === 'KPI'
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'bg-emerald-50 text-emerald-700'
+                      ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
+                      : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
                   )}
                 >
                   {row.kind}
@@ -519,8 +589,8 @@ export function TopPriorityList({
                     className={cn(
                       'rounded-md px-1.5 py-0.5 text-[10px] font-bold',
                       row.evalStatus === 'OK'
-                        ? 'bg-emerald-50 text-emerald-700'
-                        : 'bg-rose-50 text-rose-700'
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                        : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
                     )}
                   >
                     {row.evalStatus}
@@ -533,9 +603,12 @@ export function TopPriorityList({
             </div>
             <p className="mb-2 line-clamp-2 text-sm font-semibold text-foreground">{row.content}</p>
             <div className="flex items-center gap-3">
-              <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+              <div className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted shadow-inner">
                 <div
-                  className={cn('h-full rounded-full transition-[width]', barColor)}
+                  className={cn(
+                    'h-full rounded-full transition-all duration-700 group-hover:scale-y-110',
+                    barColor
+                  )}
                   style={{ width: `${pct}%` }}
                 />
               </div>

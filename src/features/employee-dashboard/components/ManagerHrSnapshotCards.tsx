@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -69,6 +69,7 @@ export function ManagerHrSnapshotCards({
     [data?.totalHeadcount, data?.offboardedInPeriod, data?.newHiresInPeriod, offLabel, newLabel]
   )
 
+  const [hoverKey, setHoverKey] = useState<string | null>(null)
   const maxVal = Math.max(1, ...barData.map((d) => d.value))
 
   return (
@@ -114,6 +115,11 @@ export function ManagerHrSnapshotCards({
                 data={barData}
                 margin={{ top: 4, right: 8, left: 4, bottom: 4 }}
                 barCategoryGap="22%"
+                onMouseMove={(s) => {
+                  if (s?.activeTooltipIndex != null)
+                    setHoverKey(barData[s.activeTooltipIndex]?.key ?? null)
+                }}
+                onMouseLeave={() => setHoverKey(null)}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -147,14 +153,14 @@ export function ManagerHrSnapshotCards({
                   }}
                   formatter={(v) => [String(v), 'Số lượng']}
                 />
-                <Bar
-                  dataKey="value"
-                  radius={[0, 6, 6, 0]}
-                  maxBarSize={28}
-                  isAnimationActive={false}
-                >
+                <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={28}>
                   {barData.map((row) => (
-                    <Cell key={row.key} fill={row.fill} />
+                    <Cell
+                      key={row.key}
+                      fill={row.fill}
+                      opacity={hoverKey && hoverKey !== row.key ? 0.3 : 1}
+                      style={{ transition: 'opacity 0.2s' }}
+                    />
                   ))}
                 </Bar>
               </BarChart>

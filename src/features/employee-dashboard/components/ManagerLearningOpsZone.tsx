@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -37,6 +37,136 @@ const LEVELS_HINT = 'Số người theo cấp bậc nghề nghiệp hiện lưu 
 
 const FAIL_TABLE_HINT =
   'Trong kỳ đã chọn: từ 2 lượt trượt trở lên cho cùng một cặp cấp (ví dụ Tập sự → Biết việc). Tính theo lớp thi / mô tả kỳ thi (Chờ học lại / Chia tay).'
+
+/* ──────────── Ops bar chart với hover highlight ──────────── */
+function OpsBarChart({
+  opsBar,
+}: {
+  opsBar: { key: string; name: string; value: number; fill: string }[]
+}) {
+  const [hoverKey, setHoverKey] = useState<string | null>(null)
+  return (
+    <div className="h-48 w-full min-w-0 sm:h-52">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={opsBar}
+          margin={{ top: 8, right: 4, left: 0, bottom: 0 }}
+          barCategoryGap="24%"
+          onMouseMove={(s) => {
+            if (s?.activeTooltipIndex != null)
+              setHoverKey(opsBar[s.activeTooltipIndex]?.key ?? null)
+          }}
+          onMouseLeave={() => setHoverKey(null)}
+        >
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" vertical={false} />
+          <XAxis
+            dataKey="name"
+            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            allowDecimals={false}
+            domain={[0, Math.max(1, ...opsBar.map((d) => d.value))]}
+            tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+            axisLine={false}
+            tickLine={false}
+            width={32}
+          />
+          <RTooltip
+            cursor={{ fill: 'hsl(var(--primary) / 0.08)' }}
+            contentStyle={{
+              borderRadius: '12px',
+              border: '1px solid hsl(var(--border))',
+              background: 'hsl(var(--card))',
+              fontSize: '12px',
+            }}
+            formatter={(v) => [String(v), 'Số lượng']}
+          />
+          <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={52}>
+            {opsBar.map((row) => (
+              <Cell
+                key={row.key}
+                fill={row.fill}
+                opacity={hoverKey && hoverKey !== row.key ? 0.4 : 1}
+                style={{ transition: 'opacity 0.2s' }}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+/* ──────────── Level pie chart với hover highlight ──────────── */
+function LevelPieChart({
+  pieData,
+  colors,
+}: {
+  pieData: { code: string; name: string; value: number }[]
+  colors: Record<string, string>
+}) {
+  const [hoverKey, setHoverKey] = useState<string | null>(null)
+  return (
+    <div className="h-64 w-full min-w-0 sm:h-72">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+          <Pie
+            data={pieData}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="46%"
+            innerRadius="52%"
+            outerRadius="78%"
+            paddingAngle={2}
+            stroke="hsl(var(--card))"
+            strokeWidth={2}
+            onMouseEnter={(_, idx) => setHoverKey(pieData[idx]?.code ?? null)}
+            onMouseLeave={() => setHoverKey(null)}
+          >
+            {pieData.map((entry) => (
+              <Cell
+                key={entry.code}
+                fill={colors[entry.code] ?? 'hsl(var(--primary))'}
+                opacity={hoverKey && hoverKey !== entry.code ? 0.4 : 1}
+                stroke={
+                  hoverKey === entry.code
+                    ? (colors[entry.code] ?? 'hsl(var(--primary))')
+                    : 'hsl(var(--card))'
+                }
+                strokeWidth={hoverKey === entry.code ? 4 : 2}
+                style={{ transition: 'opacity 0.2s, stroke-width 0.2s' }}
+              />
+            ))}
+          </Pie>
+          <RTooltip
+            contentStyle={{
+              borderRadius: '12px',
+              border: '1px solid hsl(var(--border))',
+              background: 'hsl(var(--card))',
+              fontSize: '12px',
+            }}
+            formatter={(value) => {
+              const v = Number(value ?? 0)
+              const total = pieData.reduce((s, d) => s + d.value, 0)
+              const pct = total > 0 ? Math.round((v / total) * 100) : 0
+              return [`${v} · ${pct}%`, 'Số người']
+            }}
+          />
+          <Legend
+            verticalAlign="bottom"
+            align="center"
+            layout="horizontal"
+            wrapperStyle={{ fontSize: '11px', paddingTop: 8 }}
+            iconType="circle"
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
 
 function monthRangeLabelVi(year: number, startMonth: number, endMonth: number): string {
   if (startMonth === endMonth) return `T${startMonth} · ${year}`
@@ -167,55 +297,7 @@ export function ManagerLearningOpsZone({
           {isLoading && !data ? (
             <Skeleton className="h-48 w-full rounded-xl" />
           ) : (
-            <div className="h-48 w-full min-w-0 sm:h-52">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={opsBar}
-                  margin={{ top: 8, right: 4, left: 0, bottom: 0 }}
-                  barCategoryGap="24%"
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    className="stroke-border/60"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    domain={[0, Math.max(1, ...opsBar.map((d) => d.value))]}
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={32}
-                  />
-                  <RTooltip
-                    cursor={{ fill: 'hsl(var(--primary) / 0.08)' }}
-                    contentStyle={{
-                      borderRadius: '12px',
-                      border: '1px solid hsl(var(--border))',
-                      background: 'hsl(var(--card))',
-                      fontSize: '12px',
-                    }}
-                    formatter={(v) => [String(v), 'Số lượng']}
-                  />
-                  <Bar
-                    dataKey="value"
-                    radius={[8, 8, 0, 0]}
-                    maxBarSize={52}
-                    isAnimationActive={false}
-                  >
-                    {opsBar.map((row) => (
-                      <Cell key={row.key} fill={row.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <OpsBarChart opsBar={opsBar} />
           )}
         </div>
 
@@ -246,53 +328,7 @@ export function ManagerLearningOpsZone({
               Chưa có dữ liệu cấp độ trong kỳ này.
             </p>
           ) : (
-            <div className="h-64 w-full min-w-0 sm:h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-                  <Pie
-                    data={pieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="46%"
-                    innerRadius="52%"
-                    outerRadius="78%"
-                    paddingAngle={2}
-                    stroke="hsl(var(--card))"
-                    strokeWidth={2}
-                    isAnimationActive={false}
-                  >
-                    {pieData.map((entry) => (
-                      <Cell
-                        key={entry.code}
-                        fill={LEVEL_PIE_COLORS[entry.code as LevelCode] ?? 'hsl(var(--primary))'}
-                      />
-                    ))}
-                  </Pie>
-                  <RTooltip
-                    contentStyle={{
-                      borderRadius: '12px',
-                      border: '1px solid hsl(var(--border))',
-                      background: 'hsl(var(--card))',
-                      fontSize: '12px',
-                    }}
-                    formatter={(value) => {
-                      const v = Number(value ?? 0)
-                      const total = pieData.reduce((s, d) => s + d.value, 0)
-                      const pct = total > 0 ? Math.round((v / total) * 100) : 0
-                      return [`${v} · ${pct}%`, 'Số người']
-                    }}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    align="center"
-                    layout="horizontal"
-                    wrapperStyle={{ fontSize: '11px', paddingTop: 8 }}
-                    iconType="circle"
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            <LevelPieChart pieData={pieData} colors={LEVEL_PIE_COLORS} />
           )}
         </div>
       </div>
