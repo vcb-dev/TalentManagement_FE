@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
+import { useSearch } from '@tanstack/react-router'
 import {
   Plus,
   MapPin,
@@ -11,12 +12,15 @@ import {
   Info,
   Volume2,
   LogOut,
+  Loader2,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
 import {
   getBookings,
   getAvailability,
   createBooking,
+  updateBooking,
+  deleteBooking,
   approveBooking,
   rejectBooking,
   type MeetingBooking,
@@ -38,7 +42,7 @@ const ROOMS = [
   },
 ]
 
-const PAGE_SIZE = 8
+const PAGE_SIZE = 6
 
 function getVnNow() {
   const now = new Date()
@@ -76,7 +80,142 @@ function showNotification(title: string, body: string) {
   }
 }
 
+const BookingRow = memo(
+  ({
+    b,
+    user,
+    isPrivileged,
+    processingId,
+    handleApprove,
+    setRejectId,
+    handleEdit,
+    handleDelete,
+  }: {
+    b: MeetingBooking
+    user: any
+    isPrivileged: boolean
+    processingId: string | null
+    handleApprove: (id: string) => void
+    setRejectId: (id: string) => void
+    handleEdit: (b: MeetingBooking) => void
+    handleDelete: (id: string) => void
+  }) => {
+    const statusBadge = () => {
+      const td = new Date().toISOString().split('T')[0]
+      const ct = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+      const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
+
+      if (b.status === 'pending' && isPast)
+        return (
+          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-slate-500 border border-slate-200">
+            Quá hạn
+          </span>
+        )
+
+      const map = {
+        approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        rejected: 'bg-rose-50 text-rose-700 border-rose-200',
+        pending: 'bg-amber-50 text-amber-700 border-amber-200',
+      }
+      const label = {
+        approved: 'Đã duyệt',
+        rejected: b.isOverridden ? 'Bị ghi đè' : 'Từ chối',
+        pending: 'Chờ duyệt',
+      }
+      const isModified =
+        b.status === 'pending' &&
+        b.updatedAt &&
+        new Date(b.updatedAt).getTime() > new Date(b.createdAt).getTime() + 5000
+
+      return (
+        <div className="flex flex-col gap-1">
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight border ${map[b.status]}`}
+          >
+            {label[b.status]}
+          </span>
+          {isModified && (
+            <span className="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 border-indigo-200 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-tighter border">
+              Yêu cầu đổi lịch
+            </span>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      <tr className="group hover:bg-primary/[0.02]">
+        <td className="px-6 py-5 font-black">{b.room}</td>
+        <td className="px-6 py-5">
+          <div className="flex flex-col">
+            <span className="uppercase font-bold text-[11px]">{b.userName}</span>
+            <span className="text-[9px] font-medium text-muted-foreground uppercase">{b.team}</span>
+          </div>
+        </td>
+        <td className="px-6 py-5 text-muted-foreground">{b.date}</td>
+        <td className="px-6 py-5 font-bold text-primary">
+          {b.timeFrom} – {b.timeTo}
+        </td>
+        <td className="px-6 py-5 max-w-[200px] truncate">{b.reason}</td>
+        <td className="px-6 py-5">{statusBadge()}</td>
+        <td className="px-6 py-5 text-right">
+          <div className="flex items-center justify-end gap-2">
+            {isPrivileged && b.status === 'pending' && (
+              <>
+                <button
+                  onClick={() => handleApprove(b.id)}
+                  disabled={!!processingId}
+                  className="group relative flex items-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 hover:shadow-emerald-500/40 active:scale-95 disabled:opacity-50"
+                >
+                  {processingId === b.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-3 w-3" />
+                  )}
+                  <span>DUYỆT</span>
+                </button>
+                <button
+                  onClick={() => setRejectId(b.id)}
+                  disabled={!!processingId}
+                  className="group flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600 border-2 border-rose-100 hover:bg-rose-50 hover:border-rose-200 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  <X className="h-3 w-3" />
+                  <span>TỪ CHỐI</span>
+                </button>
+              </>
+            )}
+            {b.userId === user?.id && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleEdit(b)}
+                  disabled={!!processingId}
+                  className="flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white transition-all active:scale-95 disabled:opacity-50"
+                >
+                  <span>ĐỔI LỊCH</span>
+                </button>
+                <button
+                  onClick={() => handleDelete(b.id)}
+                  disabled={!!processingId}
+                  className="flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-600 hover:text-white transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {processingId === b.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <X className="h-3 w-3" />
+                  )}
+                  <span>HỦY</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </td>
+      </tr>
+    )
+  }
+)
+
 export default function RoomBookingPage() {
+  const search = useSearch({ from: '/_protected/room-booking' }) as any
   const user = useAuthStore((s) => s.user)
   const isPrivileged = user?.role === 'HR' || user?.role === 'MANAGER' || user?.role === 'BOD'
 
@@ -86,24 +225,42 @@ export default function RoomBookingPage() {
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
 
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [room, setRoom] = useState('Tầng 5')
   const [date, setDate] = useState(() => getVnNow().date)
-  const [timeFrom, setTimeFrom] = useState('08:00')
-  const [timeTo, setTimeTo] = useState('09:00')
+  const [timeFrom, setTimeFrom] = useState('')
+  const [timeTo, setTimeTo] = useState('')
   const [reason, setReason] = useState('')
+  const [note, setNote] = useState('')
   const [isEmergency, setIsEmergency] = useState(false)
   const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([])
 
-  const [filter, setFilter] = useState<'all' | 'today' | 'mine'>('all')
+  const [filter, setFilter] = useState<'all' | 'today' | 'mine' | 'requests'>(
+    search.tab === 'requests' ? 'requests' : 'all'
+  )
   const [page, setPage] = useState(1)
+  const [processingId, setProcessingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (search.tab === 'requests') {
+      setFilter('requests')
+    } else {
+      setFilter('all')
+    }
+    setPage(1)
+  }, [search.tab])
 
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
 
   const load = useCallback(async () => {
+    setLoading(true)
     try {
       setBookings(await getBookings())
-    } catch {}
+    } catch {
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -123,6 +280,7 @@ export default function RoomBookingPage() {
   const filtered = useMemo(() => {
     const today = getVnNow().date
     return bookings.filter((b) => {
+      if (filter === ('requests' as any)) return b.status === 'pending'
       if (filter === 'mine') return b.userId === user?.id
       if (filter === 'today') return b.date === today
       return true
@@ -135,34 +293,87 @@ export default function RoomBookingPage() {
     [filtered, page]
   )
 
+  function resetForm() {
+    setEditingId(null)
+    setRoom('Tầng 5')
+    setDate(getVnNow().date)
+    setTimeFrom('')
+    setTimeTo('')
+    setReason('')
+    setNote('')
+    setIsEmergency(false)
+    setError('')
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
     setError('')
+
+    // Validate Frontend
+    if (!reason.trim()) {
+      const m = 'Vui lòng nhập lý do đặt phòng'
+      setError(m)
+      speak(m)
+      return
+    }
+    if (timeFrom >= timeTo) {
+      const m = 'Giờ kết thúc phải sau giờ bắt đầu'
+      setError(m)
+      speak(m)
+      return
+    }
+    const { date: vnDate, time: vnTime } = getVnNow()
+    if (date < vnDate) {
+      const m = 'Không thể đặt lịch trong quá khứ'
+      setError(m)
+      speak(m)
+      return
+    }
+    if (date === vnDate && timeFrom < vnTime) {
+      const m = 'Thời gian bắt đầu không thể ở quá khứ'
+      setError(m)
+      speak(m)
+      return
+    }
+
+    setLoading(true)
     try {
-      await createBooking({ room, date, timeFrom, timeTo, reason, isEmergency })
-      const msg = isEmergency
-        ? 'Đặt phòng khẩn cấp thành công'
-        : 'Đặt phòng thành công, vui lòng chờ duyệt'
-      setSuccess(msg)
-      speak(msg)
+      const payload = { room, date, timeFrom, timeTo, reason, note, isEmergency }
+      if (editingId) {
+        await updateBooking(editingId, payload)
+        setSuccess('Cập nhật lịch họp thành công')
+        speak('Đã cập nhật lịch họp')
+      } else {
+        await createBooking(payload)
+        const msg = isEmergency
+          ? 'Đặt phòng khẩn cấp thành công'
+          : 'Đặt phòng thành công, vui lòng chờ duyệt'
+        setSuccess(msg)
+        speak(msg)
+      }
       setShowModal(false)
+      resetForm()
       load()
       setTimeout(() => setSuccess(''), 4000)
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Lỗi hệ thống')
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
+      setError(msg)
+      speak(`Lỗi: ${msg}`)
     } finally {
       setLoading(false)
     }
   }
 
   async function handleApprove(id: string) {
+    setProcessingId(id)
     try {
       await approveBooking(id)
       speak('Đã duyệt lịch họp thành công')
       load()
     } catch {
       speak('Lỗi khi duyệt')
+    } finally {
+      setProcessingId(null)
     }
   }
 
@@ -171,6 +382,7 @@ export default function RoomBookingPage() {
       alert('Vui lòng nhập lý do')
       return
     }
+    setProcessingId(rejectId)
     try {
       await rejectBooking(rejectId, rejectReason)
       setRejectId(null)
@@ -178,35 +390,35 @@ export default function RoomBookingPage() {
       load()
     } catch {
       speak('Lỗi khi từ chối')
+    } finally {
+      setProcessingId(null)
     }
   }
 
-  const statusBadge = (b: MeetingBooking) => {
-    const { date: td, time: ct } = getVnNow()
-    const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
-    if (b.status === 'pending' && isPast)
-      return (
-        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-slate-500 border border-slate-200">
-          Quá hạn
-        </span>
-      )
-    const map = {
-      approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      rejected: 'bg-rose-50 text-rose-700 border-rose-200',
-      pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  async function handleDelete(id: string) {
+    if (!confirm('Bạn có chắc chắn muốn hủy lịch họp này?')) return
+    setProcessingId(id)
+    try {
+      await deleteBooking(id)
+      speak('Đã hủy lịch họp')
+      load()
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Lỗi khi hủy lịch')
+    } finally {
+      setProcessingId(null)
     }
-    const label = {
-      approved: 'Đã duyệt',
-      rejected: b.isOverridden ? 'Bị ghi đè' : 'Từ chối',
-      pending: 'Chờ duyệt',
-    }
-    return (
-      <span
-        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight border ${map[b.status]}`}
-      >
-        {label[b.status]}
-      </span>
-    )
+  }
+
+  function handleEdit(b: MeetingBooking) {
+    setEditingId(b.id)
+    setRoom(b.room)
+    setDate(b.date)
+    setTimeFrom(b.timeFrom)
+    setTimeTo(b.timeTo)
+    setReason(b.reason)
+    setNote(b.note || '')
+    setIsEmergency(b.isEmergency)
+    setShowModal(true)
   }
 
   return (
@@ -236,7 +448,7 @@ export default function RoomBookingPage() {
             </button>
             <button
               onClick={() => {
-                setError('')
+                resetForm()
                 setShowModal(true)
               }}
               className="group relative flex items-center gap-3 overflow-hidden rounded-2xl bg-primary px-8 py-4 text-sm font-bold text-primary-foreground shadow-2xl shadow-primary/30 transition-all hover:scale-105 active:scale-95"
@@ -260,20 +472,29 @@ export default function RoomBookingPage() {
         {/* Bảng lịch họp */}
         <div className="rounded-[2.5rem] border border-border bg-card/50 shadow-sm backdrop-blur-xl overflow-hidden">
           <div className="flex flex-col gap-4 border-b border-border/50 p-6 sm:flex-row sm:items-center sm:justify-between bg-muted/20">
-            <div className="flex items-center gap-2 p-1 rounded-2xl bg-background/50 border border-border/40 w-fit">
-              {(['all', 'today', 'mine'] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => {
-                    setFilter(f)
-                    setPage(1)
-                  }}
-                  className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${filter === f ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:bg-secondary'}`}
-                >
-                  {f === 'all' ? 'Toàn bộ' : f === 'today' ? 'Hôm nay' : 'Của tôi'}
-                </button>
-              ))}
-            </div>
+            {search.tab === 'requests' ? (
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-1 bg-rose-500 rounded-full" />
+                <h2 className="text-sm font-black uppercase tracking-wider text-rose-600">
+                  Duyệt yêu cầu đổi lịch
+                </h2>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 p-1 rounded-2xl bg-background/50 border border-border/40 w-fit">
+                {(['all', 'today', 'mine'] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => {
+                      setFilter(f)
+                      setPage(1)
+                    }}
+                    className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${filter === f ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:bg-secondary'}`}
+                  >
+                    {f === 'all' ? 'Toàn bộ' : f === 'today' ? 'Hôm nay' : 'Của tôi'}
+                  </button>
+                ))}
+              </div>
+            )}
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               Tổng: {filtered.length} bản ghi
             </span>
@@ -283,77 +504,128 @@ export default function RoomBookingPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-muted/30">
                 <tr>
-                  {[
-                    'Phòng',
-                    'Người đặt',
-                    'Ngày',
-                    'Giờ',
-                    'Lý do',
-                    'Trạng thái',
-                    ...(isPrivileged ? [''] : []),
-                  ].map((h) => (
-                    <th
-                      key={h}
-                      className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground"
-                    >
-                      {h}
-                    </th>
-                  ))}
+                  {['Phòng', 'Người đặt / Team', 'Ngày', 'Giờ', 'Lý do', 'Trạng thái', ''].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground"
+                      >
+                        {h}
+                      </th>
+                    )
+                  )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/40">
-                {pageData.length === 0 ? (
+              <tbody className="divide-y divide-border/50 bg-white/30">
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td className="px-6 py-5">
+                        <div className="h-4 w-20 bg-muted rounded" />
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="h-4 w-32 bg-muted rounded" />
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="h-4 w-24 bg-muted rounded" />
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="h-4 w-16 bg-muted rounded" />
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="h-4 w-40 bg-muted rounded" />
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="h-6 w-20 bg-muted rounded-full" />
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="h-8 w-24 bg-muted rounded-xl ml-auto" />
+                      </td>
+                    </tr>
+                  ))
+                ) : pageData.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-20 text-center text-muted-foreground">
-                      Chưa có lịch họp nào.
+                    <td colSpan={7} className="px-6 py-20 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="rounded-full bg-muted p-4">
+                          <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Không tìm thấy lịch đặt nào
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   pageData.map((b) => (
-                    <tr key={b.id} className="group hover:bg-primary/[0.02]">
-                      <td className="px-6 py-5 font-black">{b.room}</td>
-                      <td className="px-6 py-5 uppercase font-bold text-[11px]">{b.userName}</td>
-                      <td className="px-6 py-5 text-muted-foreground">{b.date}</td>
-                      <td className="px-6 py-5 font-bold text-primary">
-                        {b.timeFrom} – {b.timeTo}
-                      </td>
-                      <td className="px-6 py-5 max-w-[200px] truncate">{b.reason}</td>
-                      <td className="px-6 py-5">{statusBadge(b)}</td>
-                      {isPrivileged && b.status === 'pending' && (
-                        <td className="px-6 py-5 text-right space-x-2">
-                          <button
-                            onClick={() => handleApprove(b.id)}
-                            className="bg-emerald-500 text-white px-3 py-1 rounded-lg text-[10px] font-bold"
-                          >
-                            DUYỆT
-                          </button>
-                          <button
-                            onClick={() => {
-                              setRejectId(b.id)
-                              setRejectReason('')
-                            }}
-                            className="bg-rose-500 text-white px-3 py-1 rounded-lg text-[10px] font-bold"
-                          >
-                            HỦY
-                          </button>
-                        </td>
-                      )}
-                    </tr>
+                    <BookingRow
+                      key={b.id}
+                      b={b}
+                      user={user}
+                      isPrivileged={isPrivileged}
+                      processingId={processingId}
+                      handleApprove={handleApprove}
+                      setRejectId={setRejectId}
+                      handleEdit={handleEdit}
+                      handleDelete={handleDelete}
+                    />
                   ))
                 )}
               </tbody>
             </table>
           </div>
+
+          {/* Phân trang */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-border/50 bg-muted/10 px-6 py-4">
+              <div className="text-xs font-medium text-muted-foreground">
+                Trang {page} / {totalPages}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background transition-all hover:bg-secondary disabled:opacity-30"
+                >
+                  <Clock className="h-4 w-4 rotate-180" />
+                </button>
+                {Array.from({ length: totalPages }).map((_, i) => {
+                  const p = i + 1
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-all ${
+                        page === p
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'border border-border bg-background hover:bg-secondary'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )
+                })}
+                <button
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background transition-all hover:bg-secondary disabled:opacity-30"
+                >
+                  <Clock className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* MODAL CẢNH BÁO ĐỎ - ĐÚNG CHẤT DỰ ÁN CŨ */}
 
       {/* Form Đặt phòng */}
       {showModal && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          onClick={() => setShowModal(false)}
+          onClick={() => {
+            setShowModal(false)
+            resetForm()
+          }}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
           <div
@@ -363,15 +635,28 @@ export default function RoomBookingPage() {
             <div className="h-2 w-full bg-primary" />
             <div className="p-8 sm:p-10">
               <div className="mb-8 flex justify-between items-center">
-                <h2 className="text-3xl font-black uppercase">Đặt phòng họp</h2>
+                <h2 className="text-3xl font-black uppercase">
+                  {editingId ? 'Đổi lịch họp' : 'Đặt phòng họp'}
+                </h2>
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false)
+                    resetForm()
+                  }}
                   className="p-2 hover:bg-secondary rounded-xl"
                 >
                   <X />
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                  <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-600 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <AlertCircle className="h-5 w-5 shrink-0" />
+                    <span className="text-[11px] font-black uppercase tracking-tight leading-tight">
+                      {error}
+                    </span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase ml-1">Chọn phòng</label>
@@ -394,26 +679,144 @@ export default function RoomBookingPage() {
                     />
                   </div>
                 </div>
+                {/* Hiển thị khung giờ khả dụng */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[12px] font-black uppercase ml-1 flex items-center gap-2 text-primary">
+                      <Clock className="h-4 w-4" />
+                      Khung giờ trống còn lại
+                    </label>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                      Click để chọn nhanh
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-3 py-2 min-h-[40px]">
+                    {(() => {
+                      const { date: today, time: nowTime } = getVnNow()
+                      let startSearch = '08:00'
+                      if (date === today) {
+                        startSearch = nowTime > '08:00' ? nowTime : '08:00'
+                      }
+
+                      // Tạo danh sách các khoảng trống
+                      const sorted = [...bookedSlots].sort((a, b) =>
+                        a.timeFrom.localeCompare(b.timeFrom)
+                      )
+                      const gaps: string[] = []
+                      let lastEnd = startSearch
+
+                      for (const slot of sorted) {
+                        if (slot.timeFrom > lastEnd) {
+                          gaps.push(`${lastEnd} – ${slot.timeFrom}`)
+                        }
+                        if (slot.timeTo > lastEnd) {
+                          lastEnd = slot.timeTo
+                        }
+                      }
+                      if (lastEnd < '22:00') {
+                        gaps.push(`${lastEnd} – 22:00`)
+                      }
+
+                      if (gaps.length === 0)
+                        return (
+                          <div className="m-auto flex flex-col items-center gap-2">
+                            <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                            <span className="text-xs font-black text-muted-foreground uppercase">
+                              Hết lịch trống hôm nay
+                            </span>
+                          </div>
+                        )
+
+                      return gaps.map((g, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            const [f, t] = g.split(' – ')
+                            setTimeFrom(f)
+                            setTimeTo(t)
+                          }}
+                          className="px-5 py-3 bg-white border-2 border-primary/20 rounded-2xl text-sm font-black text-primary hover:bg-primary hover:text-white hover:border-primary transition-all shadow-md hover:shadow-primary/20 active:scale-95"
+                        >
+                          {g.replace(/:/g, 'h')}
+                        </button>
+                      ))
+                    })()}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase ml-1">Từ</label>
-                    <input
-                      type="time"
-                      value={timeFrom}
-                      onChange={(e) => setTimeFrom(e.target.value)}
-                      required
-                      className="w-full p-4 bg-muted/40 rounded-2xl border border-border font-bold outline-none"
-                    />
+                    <label className="text-[10px] font-bold uppercase ml-1">Từ (Giờ:Phút)</label>
+                    <div className="flex items-center justify-center w-full p-3.5 bg-muted/40 rounded-2xl border border-border focus-within:border-primary focus-within:bg-white transition-all shadow-sm">
+                      <input
+                        type="text"
+                        placeholder="hh"
+                        value={timeFrom ? timeFrom.split(':')[0] : ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                          if (parseInt(v) > 23) v = '23'
+                          const m = timeFrom ? timeFrom.split(':')[1] || '' : ''
+                          if (!v && !m) setTimeFrom('')
+                          else setTimeFrom(`${v}:${m}`)
+                          if (v.length === 2) {
+                            document.getElementById('min-input-from')?.focus()
+                          }
+                        }}
+                        className="w-12 text-right bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
+                      />
+                      <span className="font-black text-foreground mx-1 pb-1 text-xl">:</span>
+                      <input
+                        id="min-input-from"
+                        type="text"
+                        placeholder="mm"
+                        value={timeFrom ? timeFrom.split(':')[1] || '' : ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                          if (parseInt(v) > 59) v = '59'
+                          const h = timeFrom ? timeFrom.split(':')[0] || '00' : '00'
+                          if (!h && !v) setTimeFrom('')
+                          else setTimeFrom(`${h}:${v}`)
+                        }}
+                        className="w-12 text-left bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase ml-1">Đến</label>
-                    <input
-                      type="time"
-                      value={timeTo}
-                      onChange={(e) => setTimeTo(e.target.value)}
-                      required
-                      className="w-full p-4 bg-muted/40 rounded-2xl border border-border font-bold outline-none"
-                    />
+                    <label className="text-[10px] font-bold uppercase ml-1">Đến (Giờ:Phút)</label>
+                    <div className="flex items-center justify-center w-full p-3.5 bg-muted/40 rounded-2xl border border-border focus-within:border-primary focus-within:bg-white transition-all shadow-sm">
+                      <input
+                        type="text"
+                        placeholder="hh"
+                        value={timeTo ? timeTo.split(':')[0] : ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                          if (parseInt(v) > 23) v = '23'
+                          const m = timeTo ? timeTo.split(':')[1] || '' : ''
+                          if (!v && !m) setTimeTo('')
+                          else setTimeTo(`${v}:${m}`)
+                          if (v.length === 2) {
+                            document.getElementById('min-input-to')?.focus()
+                          }
+                        }}
+                        className="w-12 text-right bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
+                      />
+                      <span className="font-black text-foreground mx-1 pb-1 text-xl">:</span>
+                      <input
+                        id="min-input-to"
+                        type="text"
+                        placeholder="mm"
+                        value={timeTo ? timeTo.split(':')[1] || '' : ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                          if (parseInt(v) > 59) v = '59'
+                          const h = timeTo ? timeTo.split(':')[0] || '00' : '00'
+                          if (!h && !v) setTimeTo('')
+                          else setTimeTo(`${h}:${v}`)
+                        }}
+                        className="w-12 text-left bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -423,11 +826,11 @@ export default function RoomBookingPage() {
                     onChange={(e) => setReason(e.target.value)}
                     required
                     rows={2}
-                    className="w-full p-4 bg-muted/40 rounded-2xl border border-border font-medium outline-none resize-none"
+                    className="w-full p-4 bg-muted/40 rounded-2xl border border-border font-medium outline-none resize-none focus:border-primary transition-all"
                   />
                 </div>
                 {(user?.role === 'MANAGER' || user?.role === 'BOD') && (
-                  <label className="flex items-center gap-4 bg-amber-50 p-4 rounded-2xl cursor-pointer">
+                  <label className="flex items-center gap-4 bg-amber-50 p-4 rounded-2xl cursor-pointer ring-1 ring-amber-100 hover:bg-amber-100 transition-all">
                     <input
                       type="checkbox"
                       checked={isEmergency}
@@ -435,24 +838,33 @@ export default function RoomBookingPage() {
                       className="accent-amber-600 w-5 h-5"
                     />
                     <span className="text-[11px] font-black text-amber-700 uppercase">
-                      🚨 Đặt khẩn cấp (Ghi đè)
+                      🚨 Đặt khẩn cấp (Ghi đè lịch trùng)
                     </span>
                   </label>
                 )}
                 <div className="flex gap-4 pt-4">
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
-                    className="flex-1 py-4 font-bold uppercase text-muted-foreground"
+                    onClick={() => {
+                      setShowModal(false)
+                      resetForm()
+                    }}
+                    className="flex-1 py-4 font-bold uppercase text-muted-foreground hover:text-foreground transition-all"
                   >
-                    Hủy
+                    Đóng
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 py-4 bg-primary text-white font-bold rounded-2xl uppercase tracking-widest"
+                    className="flex-1 py-4 bg-primary text-white font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                   >
-                    {loading ? '...' : 'Xác nhận'}
+                    {loading ? (
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                    ) : editingId ? (
+                      'Cập nhật'
+                    ) : (
+                      'Xác nhận'
+                    )}
                   </button>
                 </div>
               </form>

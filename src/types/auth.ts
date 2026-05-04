@@ -38,4 +38,5 @@ export interface UserSession {
   departmentId: string
   teamIds: string[]
   staffLevel: StaffLevel
+  jobTitle?: string
 }

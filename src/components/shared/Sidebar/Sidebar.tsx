@@ -21,6 +21,12 @@ import { cn } from '@/lib/utils'
 import { usePermission } from '@/hooks/usePermission'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 type NavItem = AppNavItem
 
@@ -37,7 +43,12 @@ const NavLink = memo(function NavLink({
   active: boolean
   collapsed: boolean
 }) {
+  const [isOpen, setIsOpen] = useState(false)
   const Icon = item.icon
+  const routerState = useRouterState()
+  const pathname = routerState.location.pathname
+  const currentSearch = routerState.location.search as Record<string, any>
+
   const inner = (
     <>
       <Icon
@@ -47,11 +58,70 @@ const NavLink = memo(function NavLink({
         )}
         strokeWidth={2}
       />
-      {!collapsed ? <span>{item.label}</span> : null}
+      {!collapsed ? <span className="flex-1 truncate">{item.label}</span> : null}
+      {item.children && !collapsed && (
+        <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', isOpen && 'rotate-90')} />
+      )}
     </>
   )
 
   const title = collapsed ? item.label : undefined
+
+  // Nếu có mục con
+  if (item.children) {
+    return (
+      <SidebarMenuItem>
+        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              collapsed={collapsed}
+              active={active}
+              onMouseEnter={() => setIsOpen(true)}
+              onMouseLeave={() => setIsOpen(false)}
+              className="w-full"
+            >
+              <div className="flex w-full items-center gap-2">{inner}</div>
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="right"
+            align="start"
+            sideOffset={12}
+            onMouseEnter={() => setIsOpen(true)}
+            onMouseLeave={() => setIsOpen(false)}
+            className="w-56 p-1 bg-white/95 backdrop-blur-sm border-indigo-100 shadow-xl rounded-xl z-[100]"
+          >
+            <div className="px-3 py-2 text-[10px] font-black uppercase text-indigo-500/70 tracking-widest border-b border-indigo-50/50 mb-1">
+              {item.label}
+            </div>
+            {item.children.map((child) => {
+              const childActive = isNavItemActive(pathname, child, currentSearch)
+              return (
+                <DropdownMenuItem key={navItemDedupeKey(child)} asChild>
+                  <Link
+                    to={child.to}
+                    search={child.search}
+                    preload="intent"
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer',
+                      childActive
+                        ? 'bg-indigo-50 text-indigo-700'
+                        : 'text-muted-foreground hover:bg-slate-50 hover:text-foreground'
+                    )}
+                  >
+                    <child.icon
+                      className={cn('h-4 w-4', childActive ? 'text-indigo-600' : 'text-slate-400')}
+                    />
+                    {child.label}
+                  </Link>
+                </DropdownMenuItem>
+              )
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    )
+  }
 
   if (item.search !== undefined) {
     return (
@@ -83,14 +153,17 @@ export function Sidebar() {
 }
 
 function SidebarInner() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const routerState = useRouterState()
+  const pathname = routerState.location.pathname
+  const currentSearch = routerState.location.search as Record<string, any>
+
   const sidebarOpen = useUiStore((s) => s.sidebarOpen)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
   const user = useAuthStore((s) => s.user)
   const { canId } = usePermission()
   const collapsed = !sidebarOpen
 
-  const groups = useMemo(() => groupedSidebarNavItems(canId, user?.role), [canId, user?.role])
+  const groups = useMemo(() => groupedSidebarNavItems(canId, user), [canId, user])
 
   /**
    * Trạng thái mở/đóng từng nhóm — chỉ lưu các nhóm user đã đóng tay.
@@ -163,7 +236,9 @@ function SidebarInner() {
           <SidebarGroupContent className="h-full overflow-y-auto">
             <nav aria-label="Menu \u0111i\u1ec1u h\u01b0\u1edbng" className="flex flex-col gap-2">
               {groups.map((group, idx) => {
-                const groupHasActive = group.items.some((it) => isNavItemActive(pathname, it))
+                const groupHasActive = group.items.some((it) =>
+                  isNavItemActive(pathname, it, currentSearch)
+                )
                 const isOpen = isGroupOpen(group.id, groupHasActive)
                 return (
                   <div key={group.id} className="flex flex-col">
@@ -203,7 +278,7 @@ function SidebarInner() {
                           <NavLink
                             key={navItemDedupeKey(item) + item.label}
                             item={item}
-                            active={isNavItemActive(pathname, item)}
+                            active={isNavItemActive(pathname, item, currentSearch)}
                             collapsed={collapsed}
                           />
                         ))}

@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import type { Role } from '@/types/auth'
+import type { Role, UserSession } from '@/types/auth'
 import {
   BarChart3,
   BookOpen,
@@ -18,6 +18,7 @@ import {
   Target,
   Users,
   Building2,
+  Settings,
 } from 'lucide-react'
 
 export type NavMatchMode = 'exact' | 'prefix' | 'custom'
@@ -35,6 +36,8 @@ export type AppNavItem = {
   permissionIdsAny?: string[]
   /** Nếu có — ẩn mục khỏi nav nếu user đang ở một trong các role này (ưu tiên cao hơn mọi check quyền). */
   hiddenForRoles?: Role[]
+  /** Các mục con hiển thị dưới dạng dropdown/hover */
+  children?: AppNavItem[]
 }
 
 /** Member: dashboard, lộ trình, thi, KPI, báo cáo — quyền bám route + catalog (tránh link tới màn không vào được). */
@@ -73,6 +76,7 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     icon: School,
     match: 'prefix',
     permissionId: 'learning.view',
+    hiddenForRoles: ['MANAGER', 'BOD', 'HR'],
   },
 ]
 
@@ -83,6 +87,14 @@ export const ROOM_BOOKING_ITEMS: AppNavItem[] = [
     label: 'Duyệt lịch phòng họp',
     icon: DoorOpen,
     match: 'prefix',
+    permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+  },
+  {
+    to: '/room-booking',
+    label: 'Duyệt yêu cầu đổi lịch',
+    icon: ClipboardList,
+    match: 'prefix',
+    search: { tab: 'requests' },
     permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
   },
   {
@@ -323,8 +335,9 @@ export type AppNavGroup = {
  */
 export function groupedSidebarNavItems(
   canId: (permissionId: string) => boolean,
-  role?: Role
+  user?: UserSession | null
 ): AppNavGroup[] {
+  const role = user?.role
   const seen = new Set<string>()
   const take = (items: AppNavItem[]): AppNavItem[] => {
     const out: AppNavItem[] = []
@@ -371,31 +384,21 @@ export function groupedSidebarNavItems(
       items: take([
         ...find(MANAGER_OPS_ITEMS, '/manager/classes'),
         ...find(TEACHER_HEADER_ITEMS, '/teacher/classes'),
-        ...find(MANAGER_OPS_ITEMS, '/manager/exam-schedule'),
-        ...find(MANAGER_OPS_ITEMS, '/manager/class-exams'),
         ...find(TEACHER_HEADER_ITEMS, '/exam/grader'),
         ...find(MANAGER_OPS_ITEMS, '/manager/approvals'),
-        ...find(MANAGER_OPS_ITEMS, '/manager/learning-submissions'),
       ]),
     },
     {
       id: 'hr',
-      label: 'Nhân sự & Tổ chức',
+      label: 'Quản trị Hành chính',
       items: take([
         ...find(HR_ITEMS, '/hr-admin'),
         ...find(HR_ITEMS, '/hr-admin/org'),
-        ...find(MANAGER_OPS_ITEMS, '/hr-admin/org'),
+        ...ROOM_BOOKING_ITEMS.filter(
+          (i) => i.search?.tab === 'requests' || i.search?.tab === 'approvals'
+        ),
         ...find(MANAGER_OPS_ITEMS, '/permissions'),
         ...find(BOD_ITEMS, '/permissions'),
-      ]),
-    },
-    {
-      id: 'bod',
-      label: 'Ban lãnh đạo',
-      items: take([
-        ...find(BOD_ITEMS, '/bod/dashboard'),
-        ...find(BOD_ITEMS, '/bod/trainee-ranking'),
-        ...find(BOD_ITEMS, '/bod/team-comparison'),
       ]),
     },
   ]
@@ -431,11 +434,37 @@ export function mergeCompactHeaderNavItems(
   return out
 }
 
-export function isNavItemActive(pathname: string, item: AppNavItem): boolean {
+export function isNavItemActive(
+  pathname: string,
+  item: AppNavItem,
+  currentSearch?: Record<string, any>
+): boolean {
   const p = normalizePath(pathname)
-  if (item.match === 'custom' && item.customMatch) return item.customMatch(p)
-  const t = normalizePath(item.to)
-  if (item.match === 'exact') return p === t
-  if (item.match === 'prefix') return p === t || p.startsWith(`${t}/`)
-  return p === t || p.startsWith(`${t}/`)
+
+  // 1. Kiểm tra khớp path
+  let pathMatches = false
+  if (item.match === 'custom' && item.customMatch) {
+    pathMatches = item.customMatch(p)
+  } else {
+    const t = normalizePath(item.to)
+    if (item.match === 'exact') pathMatches = p === t
+    else pathMatches = p === t || p.startsWith(`${t}/`)
+  }
+
+  if (!pathMatches) return false
+
+  // 2. Nếu path đã khớp, kiểm tra thêm search params để phân biệt (nếu item có định nghĩa search)
+  if (item.search) {
+    if (!currentSearch) return false
+    // So sánh các key có trong item.search
+    return Object.entries(item.search).every(([key, value]) => currentSearch[key] === value)
+  }
+
+  // 3. Nếu item không có search param nhưng URL hiện tại có (ví dụ đang ở tab requests),
+  // thì mục mặc định (không search) không được highlight.
+  if (!item.search && currentSearch && Object.keys(currentSearch).length > 0) {
+    return false
+  }
+
+  return true
 }

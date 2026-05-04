@@ -81,3 +81,11 @@ export async function deleteBooking(id: string): Promise<{ success: boolean }> {
   const { data } = await apiClient.delete<{ success: boolean }>(`/room-booking/${id}`)
   return data
 }
+
+export async function updateBooking(
+  id: string,
+  payload: Partial<CreateBookingPayload>
+): Promise<MeetingBooking> {
+  const { data } = await apiClient.patch<MeetingBooking>(`/room-booking/${id}`, payload)
+  return data
+}
