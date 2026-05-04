@@ -53,8 +53,8 @@ function OpsBarChart({
           margin={{ top: 8, right: 4, left: 0, bottom: 0 }}
           barCategoryGap="24%"
           onMouseMove={(s) => {
-            if (s?.activeTooltipIndex != null)
-              setHoverKey(opsBar[s.activeTooltipIndex]?.key ?? null)
+            const idx = s?.activeTooltipIndex
+            if (typeof idx === 'number' && idx >= 0) setHoverKey(opsBar[idx]?.key ?? null)
           }}
           onMouseLeave={() => setHoverKey(null)}
         >
