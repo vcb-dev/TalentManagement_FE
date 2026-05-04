@@ -217,9 +217,9 @@ export function EmployeeLearningDashboard() {
             <p className={PAGE_HEADER_DESCRIPTION}>
               {isManagerLearningDash ? (
                 <>
-                  Tổng quan vận hành{' '}
-                  <span className="font-semibold text-primary">học tập &amp; thi cử</span> — cấp độ
-                  nhân sự, thăng cấp, kết quả thi và lớp trong tháng.
+                  Tổng quan{' '}
+                  <span className="font-semibold text-primary">học tập, thi &amp; nhân sự</span>{' '}
+                  theo kỳ báo cáo.
                 </>
               ) : (
                 <>

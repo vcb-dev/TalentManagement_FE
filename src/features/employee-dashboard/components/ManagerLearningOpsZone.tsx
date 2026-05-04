@@ -1,7 +1,20 @@
 import { useMemo } from 'react'
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { AlertTriangle, GraduationCap, School, TrendingDown, TrendingUp } from 'lucide-react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip as RTooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import { AlertTriangle, GraduationCap, LineChart } from 'lucide-react'
 import { useLearningOpsSummary } from '@/features/dashboard/hooks'
+import { InfoHint } from '@/components/shared/InfoHint'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { LEVEL_LABELS, LEVELS, type LevelCode } from '@/lib/constants'
 import { cn } from '@/lib/utils'
@@ -9,8 +22,24 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 const quartOut = '[transition-timing-function:cubic-bezier(0.25,1,0.48,1)]'
 
+const LEVEL_PIE_COLORS: Record<LevelCode, string> = {
+  tap_su: 'hsl(262 83% 55%)',
+  biet_viec: 'hsl(199 85% 50%)',
+  duoc_viec: 'hsl(160 55% 42%)',
+  dong_gop_ket_qua: 'hsl(32 90% 52%)',
+  tuong: 'hsl(350 70% 52%)',
+}
+
+const OPS_HINT =
+  'Lớp: theo thời điểm tạo lớp trên hệ thống. Lên cấp: số người (không trùng) thăng cấp. Rớt thi: số người (không trùng) có kết quả Chờ học lại hoặc Chia tay.'
+
+const LEVELS_HINT = 'Số người theo cấp bậc nghề nghiệp hiện lưu trên hồ sơ (snapshot).'
+
+const FAIL_TABLE_HINT =
+  'Trong kỳ đã chọn: từ 2 lượt trượt trở lên cho cùng một cặp cấp (ví dụ Tập sự → Biết việc). Tính theo lớp thi / mô tả kỳ thi (Chờ học lại / Chia tay).'
+
 function monthRangeLabelVi(year: number, startMonth: number, endMonth: number): string {
-  if (startMonth === endMonth) return `Tháng ${startMonth} · ${year}`
+  if (startMonth === endMonth) return `T${startMonth} · ${year}`
   return `T${startMonth} – T${endMonth} · ${year}`
 }
 
@@ -20,9 +49,6 @@ export type ManagerLearningOpsProps = {
   rangeEndMonth: number
 }
 
-/**
- * Tổng quan vận hành — kỳ (năm, từ/đến tháng) do parent truyền (cùng với bộ lọc KPI).
- */
 export function ManagerLearningOpsZone({
   reportYear,
   rangeStartMonth,
@@ -37,9 +63,8 @@ export function ManagerLearningOpsZone({
 
   const inSingleMonth = rangeStartMonth === rangeEndMonth
   const rangeLabel = monthRangeLabelVi(reportYear, rangeStartMonth, rangeEndMonth)
-  const periodText = inSingleMonth ? 'trong tháng' : 'trong kỳ'
 
-  const chartData = useMemo(() => {
+  const levelChart = useMemo(() => {
     const src = data?.peopleByCareerLevel ?? {}
     return LEVELS.map((code) => ({
       code,
@@ -48,23 +73,56 @@ export function ManagerLearningOpsZone({
     }))
   }, [data?.peopleByCareerLevel])
 
-  const maxCount = Math.max(1, ...chartData.map((d) => d.value))
+  const pieData = useMemo(() => levelChart.filter((d) => d.value > 0), [levelChart])
+
+  const hasAnyLevel = pieData.length > 0
+
+  const opsBar = useMemo(
+    () => [
+      {
+        key: 'classes',
+        name: inSingleMonth ? 'Lớp' : 'Lớp mới',
+        value: data?.classesCreatedInPeriod ?? 0,
+        fill: 'hsl(199 90% 48%)',
+      },
+      {
+        key: 'up',
+        name: inSingleMonth ? 'Lên cấp' : 'Lên cấp',
+        value: data?.levelUpCount ?? 0,
+        fill: 'hsl(160 55% 40%)',
+      },
+      {
+        key: 'fail',
+        name: 'Rớt thi',
+        value: data?.examNotPassedCount ?? 0,
+        fill: 'hsl(32 90% 50%)',
+      },
+    ],
+    [data?.classesCreatedInPeriod, data?.examNotPassedCount, data?.levelUpCount, inSingleMonth]
+  )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div
         className={cn(
+          'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between',
           'motion-safe:animate-[dash-fade-up_0.55s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none'
         )}
       >
-        <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-widest text-primary">
-          Vận hành học tập &amp; thi
-        </p>
-        <h2 className="text-lg font-black tracking-tight text-foreground">Tổng quan theo kỳ</h2>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {rangeLabel} — phân bổ cấp độ hiện tại, thăng cấp, thi cần học lại, và lớp mới tạo{' '}
-          {periodText}.
-        </p>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <h2 className="text-base font-bold tracking-tight text-foreground">
+            Vận hành &amp; phân bổ
+          </h2>
+          <span
+            className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold tabular-nums text-primary"
+            title="Kỳ đang lọc"
+          >
+            {rangeLabel}
+          </span>
+        </div>
+        {isFetching && !isLoading ? (
+          <span className="text-[10px] font-medium text-muted-foreground">Đang tải…</span>
+        ) : null}
       </div>
 
       {isError ? (
@@ -79,183 +137,182 @@ export function ManagerLearningOpsZone({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {[
-          {
-            key: 'classes',
-            label: inSingleMonth ? 'Lớp tạo trong tháng' : 'Lớp tạo trong kỳ',
-            icon: School,
-            value: data?.classesCreatedInPeriod,
-            sub: 'Theo thời điểm tạo lớp trên hệ thống',
-            accent: 'from-sky-500/90 to-cyan-600/90',
-          },
-          {
-            key: 'up',
-            label: inSingleMonth ? 'Lên cấp trong tháng' : 'Lên cấp trong kỳ',
-            icon: TrendingUp,
-            value: data?.levelUpCount,
-            sub: 'Số người (không trùng) có thăng cấp lên cấp cao hơn',
-            accent: 'from-emerald-500/90 to-teal-600/90',
-          },
-          {
-            key: 'fail',
-            label: inSingleMonth
-              ? 'Rớt / không đạt (thi) — theo tháng'
-              : 'Rớt / không đạt (thi) — theo kỳ',
-            icon: TrendingDown,
-            value: data?.examNotPassedCount,
-            sub: 'Số người (không trùng) có kết quả Chờ học lại hoặc Chia tay',
-            accent: 'from-amber-500/90 to-rose-600/80',
-          },
-        ].map((card, idx) => (
-          <div
-            key={card.key}
-            className={cn(
-              'relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-card via-card to-primary/[0.06] p-5 shadow-[var(--shadow-game-float)]',
-              quartOut,
-              CARD_ENTRANCE_HOVER,
-              'transition-all duration-300 hover:border-primary/25'
-            )}
-            style={staggerStyle(idx, 60)}
-          >
-            <div
-              className={cn(
-                'pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br opacity-30 blur-2xl',
-                card.accent
-              )}
-              aria-hidden
-            />
-            <div className="relative flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                  {card.label}
-                </p>
-                {isLoading || isFetching ? (
-                  <Skeleton className="mt-3 h-10 w-16 rounded-md" />
-                ) : (
-                  <p className="mt-2 text-3xl font-black tabular-nums tracking-tight text-foreground">
-                    {card.value ?? 0}
-                  </p>
-                )}
-                <p className="mt-2 text-xs font-medium text-muted-foreground">{card.sub}</p>
-              </div>
-              <div
-                className={cn(
-                  'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-lg',
-                  'bg-gradient-to-br',
-                  card.accent
-                )}
-              >
-                <card.icon className="h-6 w-6" strokeWidth={2} aria-hidden />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
       <div
         className={cn(
-          'overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-5 shadow-[var(--shadow-card)]',
+          'grid grid-cols-1 gap-4 lg:grid-cols-2',
           'motion-safe:animate-[dash-fade-up_0.6s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none'
         )}
-        style={{ animationDelay: '80ms' }}
+        style={{ animationDelay: '40ms' }}
       >
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/10 text-primary">
-              <GraduationCap className="h-5 w-5" strokeWidth={2} aria-hidden />
+        <div
+          className={cn(
+            'overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-4 shadow-[var(--shadow-card)] sm:p-5',
+            quartOut,
+            CARD_ENTRANCE_HOVER,
+            'transition-all duration-300 hover:border-primary/20'
+          )}
+          style={staggerStyle(0, 50)}
+        >
+          <div className="mb-3 flex items-start gap-2">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-700 dark:text-sky-400">
+              <LineChart className="h-4 w-4" strokeWidth={2} aria-hidden />
             </div>
-            <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-primary">
-                Số người theo cấp độ hiện tại
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Phân bổ nhân sự theo cấp độ nghề nghiệp đang lưu trên hệ thống.
+            <div className="min-w-0 flex-1">
+              <p className="text-[0.7rem] font-bold uppercase tracking-wider text-primary">
+                Chỉ số theo kỳ
               </p>
             </div>
+            <InfoHint text={OPS_HINT} label="Cách tính chỉ số lớp, lên cấp, rớt thi" />
           </div>
+          {isLoading && !data ? (
+            <Skeleton className="h-48 w-full rounded-xl" />
+          ) : (
+            <div className="h-48 w-full min-w-0 sm:h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={opsBar}
+                  margin={{ top: 8, right: 4, left: 0, bottom: 0 }}
+                  barCategoryGap="24%"
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-border/60"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    domain={[0, Math.max(1, ...opsBar.map((d) => d.value))]}
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={32}
+                  />
+                  <RTooltip
+                    cursor={{ fill: 'hsl(var(--primary) / 0.08)' }}
+                    contentStyle={{
+                      borderRadius: '12px',
+                      border: '1px solid hsl(var(--border))',
+                      background: 'hsl(var(--card))',
+                      fontSize: '12px',
+                    }}
+                    formatter={(v) => [String(v), 'Số lượng']}
+                  />
+                  <Bar
+                    dataKey="value"
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={52}
+                    isAnimationActive={false}
+                  >
+                    {opsBar.map((row) => (
+                      <Cell key={row.key} fill={row.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
-        {isLoading && !data ? (
-          <Skeleton className="h-64 w-full rounded-xl" />
-        ) : (
-          <div className="h-64 w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-                barCategoryGap="18%"
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  className="stroke-border/60"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  domain={[0, maxCount]}
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={36}
-                />
-                <Tooltip
-                  cursor={{ fill: 'hsl(var(--primary) / 0.08)' }}
-                  contentStyle={{
-                    borderRadius: '12px',
-                    border: '1px solid hsl(var(--border))',
-                    background: 'hsl(var(--card))',
-                    fontSize: '12px',
-                  }}
-                  formatter={(value) => [`${Number(value ?? 0)} người`, 'Số lượng']}
-                  labelFormatter={(_l, payload) => {
-                    const p = payload?.[0]?.payload as
-                      | { name?: string; code?: LevelCode }
-                      | undefined
-                    return p?.name ?? ''
-                  }}
-                />
-                <Bar
-                  dataKey="value"
-                  name="Số người"
-                  fill="hsl(var(--primary))"
-                  radius={[8, 8, 0, 0]}
-                  maxBarSize={48}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+        <div
+          className={cn(
+            'overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-4 shadow-[var(--shadow-card)] sm:p-5',
+            quartOut,
+            CARD_ENTRANCE_HOVER,
+            'transition-all duration-300 hover:border-primary/20'
+          )}
+          style={staggerStyle(1, 50)}
+        >
+          <div className="mb-2 flex items-start gap-2">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/10 text-primary">
+              <GraduationCap className="h-4 w-4" strokeWidth={2} aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[0.7rem] font-bold uppercase tracking-wider text-primary">
+                Phân bổ cấp độ
+              </p>
+            </div>
+            <InfoHint text={LEVELS_HINT} label="Cách tính phân bổ cấp độ" />
           </div>
-        )}
+          {isLoading && !data ? (
+            <Skeleton className="h-64 w-full rounded-xl" />
+          ) : !hasAnyLevel ? (
+            <p className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-border/80 bg-muted/25 px-4 text-center text-sm text-muted-foreground">
+              Chưa có dữ liệu cấp độ trong kỳ này.
+            </p>
+          ) : (
+            <div className="h-64 w-full min-w-0 sm:h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+                  <Pie
+                    data={pieData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="46%"
+                    innerRadius="52%"
+                    outerRadius="78%"
+                    paddingAngle={2}
+                    stroke="hsl(var(--card))"
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                  >
+                    {pieData.map((entry) => (
+                      <Cell
+                        key={entry.code}
+                        fill={LEVEL_PIE_COLORS[entry.code as LevelCode] ?? 'hsl(var(--primary))'}
+                      />
+                    ))}
+                  </Pie>
+                  <RTooltip
+                    contentStyle={{
+                      borderRadius: '12px',
+                      border: '1px solid hsl(var(--border))',
+                      background: 'hsl(var(--card))',
+                      fontSize: '12px',
+                    }}
+                    formatter={(value) => {
+                      const v = Number(value ?? 0)
+                      const total = pieData.reduce((s, d) => s + d.value, 0)
+                      const pct = total > 0 ? Math.round((v / total) * 100) : 0
+                      return [`${v} · ${pct}%`, 'Số người']
+                    }}
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    align="center"
+                    layout="horizontal"
+                    wrapperStyle={{ fontSize: '11px', paddingTop: 8 }}
+                    iconType="circle"
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
       </div>
 
       <section
         className={cn(
-          'overflow-hidden rounded-2xl border border-amber-500/20 bg-card/95 p-5 shadow-[var(--shadow-card)]',
+          'overflow-hidden rounded-2xl border border-amber-500/20 bg-card/95 p-4 shadow-[var(--shadow-card)] sm:p-5',
           'motion-safe:animate-[dash-fade-up_0.5s_ease-out_both] motion-reduce:animate-none'
         )}
         style={{ animationDelay: '100ms' }}
-        aria-label="Nhân sự trượt thi từ hai lần trở lên trong kỳ"
+        aria-label="Nhân sự trượt thi từ hai lần trở lên"
       >
-        <div className="mb-4 flex flex-wrap items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-400">
-            <AlertTriangle className="h-5 w-5" strokeWidth={2} aria-hidden />
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-400">
+            <AlertTriangle className="h-4 w-4" strokeWidth={2} aria-hidden />
           </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
-              Trượt từ 2 lần trở lên (cùng cặp cấp)
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Trong kỳ đã chọn: từ <span className="font-semibold">2 lượt trượt trở lên</span> cho{' '}
-              <span className="font-semibold">cùng một cặp cấp</span> (vd. Tập sự → Biết việc). Kết
-              quả tính theo lớp thi hoặc mô tả kỳ thi (Chờ học lại / Chia tay).
-            </p>
-          </div>
+          <h3 className="min-w-0 flex-1 text-sm font-bold tracking-tight text-foreground">
+            Trượt từ 2 lần (cùng cặp cấp)
+          </h3>
+          <InfoHint text={FAIL_TABLE_HINT} label="Cách tính trượt 2 lần cùng cặp cấp" />
         </div>
 
         {isLoading && !data ? (
@@ -266,7 +323,7 @@ export function ManagerLearningOpsZone({
           </div>
         ) : (data?.usersWithAtLeastTwoExamFails?.length ?? 0) === 0 ? (
           <p className="rounded-xl border border-dashed border-border/80 bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
-            Không có nhân sự nào trượt từ 2 lần trở lên cho cùng một cặp cấp trong kỳ này.
+            Không có bản ghi nào trong kỳ này.
           </p>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-border/60">
@@ -280,7 +337,7 @@ export function ManagerLearningOpsZone({
                   <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Mã NV</th>
                   <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Email</th>
                   <th className="w-28 px-3 py-2.5 text-right font-bold text-foreground sm:px-4">
-                    Trượt (cùng cấp)
+                    Lần trượt
                   </th>
                 </tr>
               </thead>

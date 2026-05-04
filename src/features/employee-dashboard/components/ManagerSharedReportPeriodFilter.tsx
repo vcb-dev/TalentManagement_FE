@@ -1,6 +1,4 @@
-import { Calendar } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -70,12 +68,6 @@ export function ManagerSharedReportPeriodFilter({ value, onChange, className }: 
             : `Từ tháng ${rangeStartMonth} đến tháng ${rangeEndMonth}/${reportYear}`}
         </span>
       </div>
-      <div className="mb-2 flex items-center gap-2">
-        <Calendar className="h-3.5 w-3.5 text-primary" strokeWidth={2} aria-hidden />
-        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          Năm · Từ tháng · Đến tháng
-        </Label>
-      </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="space-y-1">
           <span className="text-[10px] font-semibold text-muted-foreground">Năm</span>
@@ -122,9 +114,6 @@ export function ManagerSharedReportPeriodFilter({ value, onChange, className }: 
           </Select>
         </div>
       </div>
-      <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
-        Số liệu học tập &amp; thi, và KPI/OKR bên dưới, đều theo cùng kỳ bạn chọn ở đây.
-      </p>
     </section>
   )
 }

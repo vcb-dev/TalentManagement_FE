@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { router } from './app/router'
 import './index.css'
 import { queryClient } from './lib/queryClient'
+import { TooltipProvider } from './components/ui/tooltip'
 
 const el = document.getElementById('root')
 if (!el) throw new Error('Root element #root not found')
@@ -12,7 +13,9 @@ if (!el) throw new Error('Root element #root not found')
 createRoot(el).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <TooltipProvider delayDuration={280}>
+        <RouterProvider router={router} />
+      </TooltipProvider>
     </QueryClientProvider>
   </StrictMode>
 )
