@@ -374,6 +374,19 @@ body {
   }
 }
 
+/* About Us landing — mũi tên cuộn xuống ở cuối hero */
+@keyframes about-scroll-bounce {
+  0%,
+  100% {
+    transform: translate(-50%, 0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(-50%, 6px);
+    opacity: 1;
+  }
+}
+
 /* Skeleton SaaS HRM (shimmer trên thẻ — kiểu Tiimi / queue) */
 @keyframes skeleton-shimmer {
   0% {

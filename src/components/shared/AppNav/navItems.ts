@@ -7,6 +7,7 @@ import {
   ClipboardList,
   FileUp,
   GraduationCap,
+  Home,
   KeyRound,
   LayoutGrid,
   LineChart,
@@ -34,6 +35,14 @@ export type AppNavItem = {
   permissionIdsAny?: string[]
   /** Nếu có — ẩn mục khỏi nav nếu user đang ở một trong các role này (ưu tiên cao hơn mọi check quyền). */
   hiddenForRoles?: Role[]
+}
+
+/** Trang landing giới thiệu Viễn Chí Bảo (`/`). */
+export const COMPANY_LANDING_NAV_ITEM: AppNavItem = {
+  to: '/',
+  label: 'Viễn Chí Bảo',
+  icon: Home,
+  match: 'exact',
 }
 
 /** Member: dashboard, lộ trình, thi, KPI, báo cáo — quyền bám route + catalog (tránh link tới màn không vào được). */
@@ -314,6 +323,11 @@ export function groupedSidebarNavItems(
 
   const groups: AppNavGroup[] = [
     {
+      id: 'company',
+      label: 'Công ty',
+      items: take([COMPANY_LANDING_NAV_ITEM]),
+    },
+    {
       id: 'overview',
       label: 'Tổng quan',
       items: take([
@@ -373,7 +387,7 @@ export function groupedSidebarNavItems(
 
 /**
  * Compact header nav: merge by catalog permissions (not a single role).
- * Order: member self, BOD, HR, leader KPI, manager ops, teacher.
+ * Order: landing Viễn Chí Bảo (`/`), member self, BOD, HR, leader KPI, manager ops, teacher.
  */
 export function mergeCompactHeaderNavItems(
   canId: (permissionId: string) => boolean,
@@ -389,6 +403,7 @@ export function mergeCompactHeaderNavItems(
       out.push(item)
     }
   }
+  push([COMPANY_LANDING_NAV_ITEM])
   push(MEMBER_SELF_ITEMS)
   push(BOD_ITEMS)
   push(HR_ITEMS)

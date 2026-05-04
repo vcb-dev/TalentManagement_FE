@@ -23,6 +23,7 @@ type HeaderNavGroup = {
 }
 
 function routeGroup(item: AppNavItem): string {
+  if (item.to === '/') return 'company'
   if (item.to.startsWith('/manager')) return 'manager'
   if (item.to.startsWith('/hr-admin') || item.to.startsWith('/permissions')) return 'hr'
   if (item.to.startsWith('/teacher') || item.to.startsWith('/exam/grader')) return 'teacher'
@@ -47,6 +48,7 @@ function routeGroup(item: AppNavItem): string {
 
 function buildHeaderGroups(items: AppNavItem[]): HeaderNavGroup[] {
   const labels: Record<string, string> = {
+    company: 'Công ty',
     dashboard: 'Tổng quan',
     learning: 'Học tập',
     kpi: 'KPI / Báo cáo',
@@ -56,7 +58,17 @@ function buildHeaderGroups(items: AppNavItem[]): HeaderNavGroup[] {
     bod: 'BOD',
     other: 'Khác',
   }
-  const order = ['dashboard', 'learning', 'kpi', 'manager', 'hr', 'teacher', 'bod', 'other']
+  const order = [
+    'company',
+    'dashboard',
+    'learning',
+    'kpi',
+    'manager',
+    'hr',
+    'teacher',
+    'bod',
+    'other',
+  ]
 
   const bucket = new Map<string, AppNavItem[]>()
   for (const item of items) {
