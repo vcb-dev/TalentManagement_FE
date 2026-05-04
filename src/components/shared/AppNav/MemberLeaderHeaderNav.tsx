@@ -23,7 +23,7 @@ type HeaderNavGroup = {
 }
 
 function routeGroup(item: AppNavItem): string {
-  if (item.to.startsWith('/manager')) return 'manager'
+  if (item.to.startsWith('/room-booking')) return 'room-booking'
   if (item.to.startsWith('/hr-admin') || item.to.startsWith('/permissions')) return 'hr'
   if (item.to.startsWith('/teacher') || item.to.startsWith('/exam/grader')) return 'teacher'
   if (item.to.startsWith('/bod')) return 'bod'
@@ -45,18 +45,8 @@ function routeGroup(item: AppNavItem): string {
   return 'other'
 }
 
-function buildHeaderGroups(items: AppNavItem[]): HeaderNavGroup[] {
-  const labels: Record<string, string> = {
-    dashboard: 'Tổng quan',
-    learning: 'Học tập',
-    kpi: 'KPI / Báo cáo',
-    manager: 'Quản lý lớp',
-    hr: 'Nhân sự',
-    teacher: 'Giảng viên',
-    bod: 'BOD',
-    other: 'Khác',
-  }
-  const order = ['dashboard', 'learning', 'kpi', 'manager', 'hr', 'teacher', 'bod', 'other']
+function buildHeaderGroups(items: AppNavItem[], labels: Record<string, string>): HeaderNavGroup[] {
+  const order = ['dashboard', 'learning', 'room-booking', 'kpi', 'hr', 'teacher', 'bod']
 
   const bucket = new Map<string, AppNavItem[]>()
   for (const item of items) {
@@ -112,7 +102,19 @@ export function MemberLeaderHeaderNav() {
   const { canId } = usePermission()
   const role = useAuthStore((s) => s.user?.role)
   const items = mergeCompactHeaderNavItems(canId, role)
-  const groups = buildHeaderGroups(items)
+
+  const isPrivileged = role === 'HR' || role === 'MANAGER' || role === 'BOD'
+  const labels: Record<string, string> = {
+    dashboard: 'Tổng quan',
+    learning: 'Học tập',
+    'room-booking': isPrivileged ? 'Duyệt lịch phòng họp' : 'Đặt phòng họp',
+    kpi: 'KPI / Báo cáo',
+    hr: 'Nhân sự',
+    teacher: 'Giảng viên',
+    bod: 'BOD',
+  }
+
+  const groups = buildHeaderGroups(items, labels)
 
   return (
     <NavigationMenu

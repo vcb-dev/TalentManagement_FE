@@ -71,6 +71,7 @@ type FlatRow = {
   endTime?: string
   total: number
   pending: number
+  drafts: number
 }
 
 export function ManagerGradingScreen() {
@@ -128,6 +129,7 @@ export function ManagerGradingScreen() {
           endTime: endStr,
           total: classSubmissions.length,
           pending: classSubmissions.filter((s) => s.status === 'pending').length,
+          drafts: classSubmissions.filter((s) => s.status === 'grading').length,
         })
       } else {
         for (const s of examSchedules) {
@@ -162,6 +164,7 @@ export function ManagerGradingScreen() {
             endTime: endStr,
             total: scheduleSubmissions.length,
             pending: scheduleSubmissions.filter((sub) => sub.status === 'pending').length,
+            drafts: scheduleSubmissions.filter((sub) => sub.status === 'grading').length,
           })
         }
       }
@@ -389,6 +392,8 @@ export function ManagerGradingScreen() {
                                 <span className="font-bold text-rose-600">
                                   {row.pending} chờ chấm
                                 </span>
+                              ) : row.drafts > 0 ? (
+                                <span className="text-amber-600 font-bold">Đã lưu bản nháp</span>
                               ) : (
                                 <span className="text-emerald-600 font-bold">Đã chấm hết</span>
                               )}{' '}
@@ -402,10 +407,14 @@ export function ManagerGradingScreen() {
                           <Button
                             type="button"
                             size="sm"
-                            variant={row.total > 0 && row.pending === 0 ? 'outline' : 'default'}
+                            variant={
+                              row.total > 0 && row.pending === 0 && row.drafts === 0
+                                ? 'outline'
+                                : 'default'
+                            }
                             className={cn(
                               'font-bold whitespace-nowrap',
-                              row.total > 0 && row.pending === 0
+                              row.total > 0 && row.pending === 0 && row.drafts === 0
                                 ? 'border-primary text-primary hover:bg-primary/5'
                                 : 'bg-primary hover:bg-primary/90 text-primary-foreground'
                             )}
@@ -419,7 +428,9 @@ export function ManagerGradingScreen() {
                               })
                             }
                           >
-                            {row.total > 0 && row.pending === 0 ? 'Xem bài chấm thi' : 'Chấm thi'}
+                            {row.total > 0 && row.pending === 0 && row.drafts === 0
+                              ? 'Xem bài chấm thi'
+                              : 'Chấm thi'}
                           </Button>
                         </td>
                       </tr>

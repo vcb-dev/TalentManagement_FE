@@ -5,6 +5,7 @@ import {
   BookOpen,
   Calendar,
   ClipboardList,
+  DoorOpen,
   FileUp,
   GraduationCap,
   KeyRound,
@@ -72,6 +73,24 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     icon: School,
     match: 'prefix',
     permissionId: 'learning.view',
+  },
+]
+
+/** Phòng họp — phân loại nhãn theo quyền hạn */
+export const ROOM_BOOKING_ITEMS: AppNavItem[] = [
+  {
+    to: '/room-booking',
+    label: 'Duyệt lịch phòng họp',
+    icon: DoorOpen,
+    match: 'prefix',
+    permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+  },
+  {
+    to: '/room-booking',
+    label: 'Đặt phòng họp',
+    icon: DoorOpen,
+    match: 'prefix',
+    hiddenForRoles: ['MANAGER', 'HR', 'BOD'],
   },
 ]
 
@@ -272,6 +291,7 @@ export function flatSidebarNavItems(
   const sources = [
     LEADER_KPI_ITEMS,
     MEMBER_SELF_ITEMS,
+    ROOM_BOOKING_ITEMS,
     MANAGER_OPS_ITEMS,
     HR_ITEMS,
     BOD_ITEMS,
@@ -341,6 +361,11 @@ export function groupedSidebarNavItems(
       ]),
     },
     {
+      id: 'room-booking',
+      label: 'Phòng họp',
+      items: take([...find(ROOM_BOOKING_ITEMS, '/room-booking')]),
+    },
+    {
       id: 'manager',
       label: 'Quản lý lớp & Thi',
       items: take([
@@ -397,6 +422,7 @@ export function mergeCompactHeaderNavItems(
     }
   }
   push(MEMBER_SELF_ITEMS)
+  push(ROOM_BOOKING_ITEMS)
   push(BOD_ITEMS)
   push(HR_ITEMS)
   push(LEADER_KPI_ITEMS)

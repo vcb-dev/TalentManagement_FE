@@ -162,13 +162,15 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
                         </p>
                         <div
                           className={cn(
-                            'mb-4 min-h-[44px] rounded-lg border border-border p-3 text-sm',
+                            'mb-4 min-h-[44px] whitespace-pre-wrap rounded-lg border border-border p-3 text-sm',
                             answer?.trim()
                               ? 'bg-muted/30 text-foreground'
                               : 'bg-muted/10 italic text-muted-foreground'
                           )}
                         >
-                          {answer?.trim() || 'Bạn không trả lời câu này'}
+                          {answer?.trim()
+                            ? answer.replace(/([^\n])\s*(\+)/g, '$1\n$2')
+                            : 'Thí sinh không trả lời câu này'}
                         </div>
 
                         {submission.status === 'done' && (
@@ -213,7 +215,7 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-primary/60">
                                   Góp ý từ người chấm
                                 </p>
-                                <p className="mt-1 text-sm font-bold leading-relaxed text-foreground">
+                                <p className="mt-1 whitespace-pre-wrap text-sm font-bold leading-relaxed text-foreground">
                                   {questionGrade.note}
                                 </p>
                               </div>
@@ -233,7 +235,7 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
                 <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-primary">
                   Nhận xét của người chấm
                 </h2>
-                <div className="min-h-[100px] w-full rounded-lg border border-border bg-muted/20 p-4 text-sm font-bold text-foreground">
+                <div className="min-h-[100px] w-full whitespace-pre-wrap rounded-lg border border-border bg-muted/20 p-4 text-sm font-bold text-foreground">
                   {submission.graderNote || (
                     <span className="italic text-muted-foreground">
                       Không có nhận xét chi tiết.

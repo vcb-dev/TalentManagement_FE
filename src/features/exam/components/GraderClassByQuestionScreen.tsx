@@ -20,7 +20,7 @@ const CRITERIA_WEIGHTS: Record<string, number> = {
   trinh_bay: 10,
 }
 
-type LocalGrade = { criteria: string[]; score: number; note: string }
+type LocalGrade = { criteria: string[]; score: number; note: string; isGraded?: boolean }
 
 export function GraderClassByQuestionScreen({
   classId,
@@ -126,7 +126,13 @@ export function GraderClassByQuestionScreen({
       const newGrades: Record<string, Record<string, LocalGrade>> = {}
       const newNotes: Record<string, string> = {}
       classSubmissions.forEach((sub) => {
-        newGrades[sub.id] = (sub.grades as Record<string, LocalGrade>) || {}
+        const rawGrades = (sub.grades as Record<string, LocalGrade>) || {}
+        // Map existing grades to include isGraded flag
+        const mappedGrades: Record<string, LocalGrade> = {}
+        Object.entries(rawGrades).forEach(([qId, g]) => {
+          mappedGrades[qId] = { ...g, isGraded: true }
+        })
+        newGrades[sub.id] = mappedGrades
         newNotes[sub.id] = sub.graderNote || ''
       })
       setLocalGrades(newGrades)
@@ -137,7 +143,7 @@ export function GraderClassByQuestionScreen({
   const toggleCriteria = (submissionId: string, qId: string, criteriaId: string) => {
     setLocalGrades((prev) => {
       const subGrades = prev[submissionId] || {}
-      const qGrade = subGrades[qId] || { criteria: [], score: 0, note: '' }
+      const qGrade = subGrades[qId] || { criteria: [], score: 0, note: '', isGraded: false }
       const isSelected = qGrade.criteria.includes(criteriaId)
       const newCriteria = isSelected
         ? qGrade.criteria.filter((c) => c !== criteriaId)
@@ -148,7 +154,20 @@ export function GraderClassByQuestionScreen({
         ...prev,
         [submissionId]: {
           ...subGrades,
-          [qId]: { ...qGrade, criteria: newCriteria, score: newScore },
+          [qId]: { ...qGrade, criteria: newCriteria, score: newScore, isGraded: true },
+        },
+      }
+    })
+  }
+
+  const markAsZero = (submissionId: string, qId: string) => {
+    setLocalGrades((prev) => {
+      const subGrades = prev[submissionId] || {}
+      return {
+        ...prev,
+        [submissionId]: {
+          ...subGrades,
+          [qId]: { criteria: [], score: 0, note: subGrades[qId]?.note || '', isGraded: true },
         },
       }
     })
@@ -157,42 +176,97 @@ export function GraderClassByQuestionScreen({
   const handleNoteChange = (submissionId: string, qId: string, note: string) => {
     setLocalGrades((prev) => {
       const subGrades = prev[submissionId] || {}
-      const qGrade = subGrades[qId] || { criteria: [], score: 0, note: '' }
+      const qGrade = subGrades[qId] || { criteria: [], score: 0, note: '', isGraded: false }
       return {
         ...prev,
         [submissionId]: {
           ...subGrades,
-          [qId]: { ...qGrade, note },
+          [qId]: { ...qGrade, note, isGraded: true },
         },
       }
     })
   }
 
   const [showOutcomeModal, setShowOutcomeModal] = useState(false)
-  const [individualOutcomes, setIndividualOutcomes] = useState<
-    Record<string, 'DAT' | 'CHO_HOC_LAI'>
-  >({})
 
-  // Initialize individual outcomes based on scores when opening modal
-  useEffect(() => {
-    if (showOutcomeModal && classSubmissions.length > 0) {
-      const initial: Record<string, 'DAT' | 'CHO_HOC_LAI'> = {}
-      classSubmissions.forEach((sub) => {
-        const grades = localGrades[sub.id] || {}
-        const answeredCount = Object.keys(sub.answers || {}).length
-        const totalScore =
-          answeredCount > 0
-            ? Math.round(
-                Object.values(grades).reduce((acc, g) => acc + (g.score || 0), 0) / answeredCount
-              )
-            : 0
+  const handleOpenOutcomeModal = () => {
+    // Validation: Ensure ALL questions for ALL students are graded (even empty ones)
+    for (const sub of classSubmissions) {
+      const subGrades = localGrades[sub.id] || {}
+      const questions = questionBank?.questions || []
 
-        // Default to DAT if score >= 80, else CHO_HOC_LAI
-        initial[sub.id] = totalScore >= 80 ? 'DAT' : 'CHO_HOC_LAI'
-      })
-      setIndividualOutcomes(initial)
+      for (const q of questions) {
+        const g = subGrades[q.id]
+        if (!g || !g.isGraded) {
+          toast.error(`Bạn chưa chấm điểm cho học viên ${sub.fullName}`)
+
+          // Find and scroll to the ungraded item
+          const element = document.getElementById(`sub-${sub.id}-q-${q.id}`)
+          if (element) {
+            // Use a bit of delay to ensure smooth scrolling
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+            // Add a strong visual highlight
+            element.classList.add('ring-8', 'ring-red-500', 'ring-offset-4', 'duration-500')
+            setTimeout(() => {
+              element.classList.remove('ring-8', 'ring-red-500', 'ring-offset-4')
+            }, 3000)
+          }
+          return
+        }
+      }
     }
-  }, [showOutcomeModal, classSubmissions, localGrades])
+
+    setShowOutcomeModal(true)
+  }
+
+  const handleSaveDraft = async () => {
+    const submissionsToSave = Object.keys(localGrades)
+    if (submissionsToSave.length === 0) {
+      toast.info('Không có dữ liệu để lưu')
+      return
+    }
+
+    let successCount = 0
+    let failCount = 0
+
+    for (const subId of submissionsToSave) {
+      const sub = classSubmissions.find((s) => s.id === subId)
+      if (!sub) continue
+
+      const grades = localGrades[subId]
+      const graderNote = submissionNotes[subId] || ''
+
+      const totalQuestionCount = questionBank?.questions?.length || 0
+      const totalScore =
+        totalQuestionCount > 0
+          ? Math.round(
+              Object.values(grades || {}).reduce((acc, g) => acc + (g.score || 0), 0) /
+                totalQuestionCount
+            )
+          : 0
+
+      try {
+        await gradeMutation.mutateAsync({
+          submissionId: subId,
+          grades,
+          graderNote,
+          status: 'grading',
+          totalScore,
+        })
+        successCount++
+      } catch {
+        failCount++
+      }
+    }
+
+    if (successCount > 0) {
+      toast.success(`Đã lưu bản nháp cho ${successCount} học viên`)
+    }
+    if (failCount > 0) {
+      toast.error(`Lỗi khi lưu nháp cho ${failCount} học viên`)
+    }
+  }
 
   const handleFinalSubmit = async () => {
     const submissionsToSave = Object.keys(localGrades)
@@ -210,17 +284,18 @@ export function GraderClassByQuestionScreen({
 
       const grades = localGrades[subId]
       const graderNote = submissionNotes[subId] || ''
-      const outcome = individualOutcomes[subId] || 'CHO_HOC_LAI'
 
-      // Calculate total score for this student
-      const answeredCount = Object.keys(sub.answers || {}).length
+      // Calculate total score based on TOTAL questions in the bank (Your original formula logic)
+      const totalQuestionCount = questionBank?.questions?.length || 0
       const totalScore =
-        answeredCount > 0
+        totalQuestionCount > 0
           ? Math.round(
               Object.values(grades || {}).reduce((acc, g) => acc + (g.score || 0), 0) /
-                answeredCount
+                totalQuestionCount
             )
           : 0
+
+      const outcome = totalScore >= 80 ? 'DAT' : 'CHO_HOC_LAI'
 
       try {
         await gradeMutation.mutateAsync({
@@ -296,25 +371,17 @@ export function GraderClassByQuestionScreen({
         </div>
         <div className="flex items-center gap-3">
           <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:flex rounded-xl font-bold border-slate-200 hover:bg-slate-50"
-            onClick={() => void navigate({ to: '/manager/grading' })}
-          >
-            Hủy bỏ
-          </Button>
-          <Button
             size="sm"
             disabled={gradeMutation.isPending}
             className="rounded-xl px-5 font-bold shadow-md shadow-primary/20 bg-primary hover:bg-primary/90 transition-all active:scale-95"
-            onClick={() => setShowOutcomeModal(true)}
+            onClick={handleSaveDraft}
           >
             {gradeMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}
-            Lưu tất cả bài chấm
+            Lưu bản nháp
           </Button>
         </div>
       </div>
@@ -368,58 +435,97 @@ export function GraderClassByQuestionScreen({
                       return (
                         <div
                           key={sub.id}
-                          className="group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5"
+                          id={`sub-${sub.id}-q-${q.id}`}
+                          className={cn(
+                            'group relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5',
+                            !grade.isGraded && 'border-red-300 bg-red-50/20'
+                          )}
                         >
                           <div className="mb-5 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
                               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                 <User className="h-4 w-4" />
                               </div>
-                              <span className="text-sm font-bold text-slate-800">
-                                {sub.fullName}
-                              </span>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-bold text-slate-800">
+                                  {sub.fullName}
+                                </span>
+                                {!grade.isGraded && (
+                                  <span className="text-[10px] font-black text-red-600 animate-pulse uppercase tracking-wider">
+                                    ⚠️ Chưa chấm bài này
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <div className="flex items-center">
                               <div
                                 className={cn(
                                   'flex items-center gap-2 rounded-2xl px-4 py-1.5 transition-all',
-                                  grade.score >= 90
-                                    ? 'bg-emerald-50 text-emerald-600'
-                                    : grade.score >= 40
-                                      ? 'bg-blue-50 text-blue-600'
-                                      : 'bg-slate-50 text-slate-400'
+                                  !grade.isGraded
+                                    ? 'bg-slate-100 text-slate-400'
+                                    : grade.score >= 90
+                                      ? 'bg-emerald-50 text-emerald-600'
+                                      : grade.score >= 40
+                                        ? 'bg-blue-50 text-blue-600'
+                                        : 'bg-rose-50 text-rose-600'
                                 )}
                               >
                                 <span className="text-xs font-black tracking-tighter">
-                                  {grade.score}%
+                                  {grade.isGraded ? `${grade.score}%` : '??%'}
                                 </span>
-                                {grade.score >= 90 && <CheckCircle2 className="h-3 w-3" />}
+                                {grade.isGraded && grade.score >= 90 && (
+                                  <CheckCircle2 className="h-3 w-3" />
+                                )}
                               </div>
                             </div>
                           </div>
 
                           <div
                             className={cn(
-                              'mb-6 rounded-2xl border-2 p-4 text-[13px] leading-relaxed transition-colors',
+                              'mb-6 whitespace-pre-wrap rounded-2xl border-2 p-4 text-[13px] leading-relaxed transition-colors',
                               answer.trim()
                                 ? 'border-slate-50 bg-slate-50/50 text-slate-700'
                                 : 'border-dashed border-slate-100 text-slate-400 italic bg-transparent'
                             )}
                           >
-                            {answer.trim() || 'Học viên không trả lời câu này'}
+                            {answer.trim()
+                              ? answer.replace(/([^\n])\s*(\+)/g, '$1\n$2')
+                              : 'Học viên không trả lời câu này'}
                           </div>
 
                           {/* Criteria Selection - Matching individual view style */}
-                          <div className="rounded-xl border border-primary/10 bg-primary/5 p-4 mt-5">
+                          <div
+                            className={cn(
+                              'rounded-xl border p-4 mt-5 transition-colors',
+                              grade.isGraded
+                                ? 'border-primary/10 bg-primary/5'
+                                : 'border-red-200 bg-red-50/30'
+                            )}
+                          >
                             <div className="mb-3 flex items-center justify-between">
                               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                                 Đánh giá câu trả lời
                               </span>
-                              <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-bold text-primary">
-                                {grade.score}%
-                              </span>
+                              {grade.isGraded && (
+                                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-bold text-primary">
+                                  {grade.score}%
+                                </span>
+                              )}
                             </div>
-                            <div className="flex flex-wrap gap-6">
+                            <div className="flex flex-wrap gap-x-6 gap-y-3">
+                              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-rose-600 hover:opacity-80 transition-all">
+                                <Checkbox
+                                  className="h-5 w-5 rounded-full border-2 border-rose-300 data-[state=checked]:bg-rose-600 data-[state=checked]:border-rose-600"
+                                  checked={
+                                    grade.isGraded &&
+                                    grade.score === 0 &&
+                                    grade.criteria.length === 0
+                                  }
+                                  onCheckedChange={() => markAsZero(sub.id, q.id)}
+                                />
+                                <span>Không đạt / 0%</span>
+                              </label>
+
                               {[
                                 { id: 'ly_thuyet', label: 'Đúng lý thuyết (40%)' },
                                 { id: 'thuc_te', label: 'Ví dụ thực tế (50%)' },
@@ -430,7 +536,7 @@ export function GraderClassByQuestionScreen({
                                   className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
                                 >
                                   <Checkbox
-                                    className="h-5 w-5 rounded-md border-2 border-slate-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                    className="h-5 w-5 rounded-full border-2 border-slate-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                     checked={grade.criteria.includes(c.id)}
                                     onCheckedChange={() => toggleCriteria(sub.id, q.id, c.id)}
                                   />
@@ -498,7 +604,7 @@ export function GraderClassByQuestionScreen({
             <Button
               size="lg"
               className="h-14 px-12 rounded-2xl font-black shadow-xl shadow-primary/20 text-lg hover:scale-105 transition-transform active:scale-95"
-              onClick={() => setShowOutcomeModal(true)}
+              onClick={handleOpenOutcomeModal}
               disabled={gradeMutation.isPending}
             >
               {gradeMutation.isPending && <Loader2 className="h-6 w-6 animate-spin mr-3" />}
@@ -525,14 +631,13 @@ export function GraderClassByQuestionScreen({
 
             <div className="max-h-[400px] overflow-y-auto pr-2 mb-8 space-y-3 custom-scrollbar">
               {classSubmissions.map((sub) => {
-                const outcome = individualOutcomes[sub.id] || 'CHO_HOC_LAI'
                 const grades = localGrades[sub.id] || {}
-                const answeredCount = Object.keys(sub.answers || {}).length
+                const totalQuestionCount = questionBank?.questions?.length || 0
                 const totalScore =
-                  answeredCount > 0
+                  totalQuestionCount > 0
                     ? Math.round(
                         Object.values(grades).reduce((acc, g) => acc + (g.score || 0), 0) /
-                          answeredCount
+                          totalQuestionCount
                       )
                     : 0
 
@@ -546,37 +651,31 @@ export function GraderClassByQuestionScreen({
                       <p className="text-xs font-bold text-primary">Điểm: {totalScore}%</p>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant={outcome === 'DAT' ? 'default' : 'outline'}
+                    <div className="flex items-center">
+                      <span
                         className={cn(
-                          'rounded-xl h-9 px-4 font-bold transition-all',
-                          outcome === 'DAT'
-                            ? 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600'
-                            : 'border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-200'
+                          'rounded-full px-4 py-1.5 text-xs font-black tracking-tight flex items-center gap-2 border',
+                          totalScore === 100
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : totalScore >= 80
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-rose-50 text-rose-700 border-rose-200'
                         )}
-                        onClick={() =>
-                          setIndividualOutcomes((prev) => ({ ...prev, [sub.id]: 'DAT' }))
-                        }
                       >
-                        Đạt (Pass)
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={outcome === 'CHO_HOC_LAI' ? 'default' : 'outline'}
-                        className={cn(
-                          'rounded-xl h-9 px-4 font-bold transition-all',
-                          outcome === 'CHO_HOC_LAI'
-                            ? 'bg-rose-600 hover:bg-rose-700 border-rose-600 text-white'
-                            : 'border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200'
+                        {totalScore === 100 ? (
+                          <>
+                            <span>🟢</span> 100% - ĐẠT
+                          </>
+                        ) : totalScore >= 80 ? (
+                          <>
+                            <span>🟡</span> {totalScore}% - ĐẠT
+                          </>
+                        ) : (
+                          <>
+                            <span>🔴</span> {totalScore}% - THI LẠI
+                          </>
                         )}
-                        onClick={() =>
-                          setIndividualOutcomes((prev) => ({ ...prev, [sub.id]: 'CHO_HOC_LAI' }))
-                        }
-                      >
-                        Thi lại
-                      </Button>
+                      </span>
                     </div>
                   </div>
                 )
