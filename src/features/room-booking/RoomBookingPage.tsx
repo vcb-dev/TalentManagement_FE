@@ -282,10 +282,10 @@ export default function RoomBookingPage() {
     return bookings.filter((b) => {
       if (filter === ('requests' as any)) return b.status === 'pending'
       if (filter === 'mine') return b.userId === user?.id
-      if (filter === 'today') return b.date === today
+      if (filter === 'today') return b.team === user?.team
       return true
     })
-  }, [bookings, filter, user?.id])
+  }, [bookings, filter, user?.id, user?.team])
 
   const totalPages = useMemo(() => Math.ceil(filtered.length / PAGE_SIZE), [filtered.length])
   const pageData = useMemo(
@@ -490,7 +490,7 @@ export default function RoomBookingPage() {
                     }}
                     className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${filter === f ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:bg-secondary'}`}
                   >
-                    {f === 'all' ? 'Toàn bộ' : f === 'today' ? 'Hôm nay' : 'Của tôi'}
+                    {f === 'all' ? 'Toàn bộ' : f === 'today' ? 'Team mình' : 'Của tôi'}
                   </button>
                 ))}
               </div>
