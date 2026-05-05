@@ -101,7 +101,7 @@ const BookingRow = memo(
     handleDelete: (id: string) => void
   }) => {
     const statusBadge = () => {
-      const td = new Date().toISOString().split('T')[0]
+      const td = new Date().toISOString().split('T')[0] || ''
       const ct = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
       const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
 
@@ -669,14 +669,21 @@ export default function RoomBookingPage() {
                       <option value="Tầng 6">Tầng 6</option>
                     </select>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase ml-1">Ngày</label>
-                    <input
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="w-full p-4 bg-muted/40 rounded-2xl border border-border font-bold outline-none"
-                    />
+                  <div className="space-y-2 relative">
+                    <label className="text-[10px] font-bold uppercase ml-1 flex items-center gap-1">
+                      Ngày
+                    </label>
+                    <div className="relative group cursor-pointer">
+                      <input
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="w-full p-4 bg-muted/40 rounded-2xl border border-border font-black outline-none focus:border-primary transition-all text-center tracking-widest cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      />
+                      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-primary group-focus-within:text-primary/100 text-opacity-50 transition-all">
+                        <Calendar className="w-5 h-5 opacity-60" />
+                      </div>
+                    </div>
                   </div>
                 </div>
                 {/* Hiển thị khung giờ khả dụng */}
@@ -698,12 +705,24 @@ export default function RoomBookingPage() {
                         startSearch = nowTime > '08:00' ? nowTime : '08:00'
                       }
 
+                      // Hàm chuẩn hóa thời gian về dạng 2 chữ số (VD: 9:30 -> 09:30) để so sánh chuỗi
+                      const padTime = (t: string) => {
+                        if (!t) return '00:00'
+                        const [h, m] = t.split(':')
+                        return `${(h || '0').padStart(2, '0')}:${(m || '0').padStart(2, '0')}`
+                      }
+
                       // Tạo danh sách các khoảng trống
-                      const sorted = [...bookedSlots].sort((a, b) =>
-                        a.timeFrom.localeCompare(b.timeFrom)
-                      )
+                      const sorted = [...bookedSlots]
+                        .map((s) => ({
+                          ...s,
+                          timeFrom: padTime(s.timeFrom),
+                          timeTo: padTime(s.timeTo),
+                        }))
+                        .sort((a, b) => a.timeFrom.localeCompare(b.timeFrom))
+
                       const gaps: string[] = []
-                      let lastEnd = startSearch
+                      let lastEnd = padTime(startSearch)
 
                       for (const slot of sorted) {
                         if (slot.timeFrom > lastEnd) {
@@ -732,7 +751,9 @@ export default function RoomBookingPage() {
                           key={i}
                           type="button"
                           onClick={() => {
-                            const [f, t] = g.split(' – ')
+                            const parts = g.split(' – ')
+                            const f = parts[0] || ''
+                            const t = parts[1] || ''
                             setTimeFrom(f)
                             setTimeTo(t)
                           }}
@@ -747,7 +768,9 @@ export default function RoomBookingPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase ml-1">Từ (Giờ:Phút)</label>
+                    <label className="text-[10px] font-bold uppercase ml-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Từ
+                    </label>
                     <div className="flex items-center justify-center w-full p-3.5 bg-muted/40 rounded-2xl border border-border focus-within:border-primary focus-within:bg-white transition-all shadow-sm">
                       <input
                         type="text"
@@ -762,6 +785,13 @@ export default function RoomBookingPage() {
                           if (v.length === 2) {
                             document.getElementById('min-input-from')?.focus()
                           }
+                        }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                          if (v && v.length === 1) v = '0' + v
+                          const m = timeFrom ? timeFrom.split(':')[1] || '' : ''
+                          if (!v && !m) setTimeFrom('')
+                          else setTimeFrom(`${v}:${m}`)
                         }}
                         className="w-12 text-right bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
                       />
@@ -778,12 +808,21 @@ export default function RoomBookingPage() {
                           if (!h && !v) setTimeFrom('')
                           else setTimeFrom(`${h}:${v}`)
                         }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                          if (v && v.length === 1) v = '0' + v
+                          const h = timeFrom ? timeFrom.split(':')[0] || '00' : '00'
+                          if (!h && !v) setTimeFrom('')
+                          else setTimeFrom(`${h}:${v}`)
+                        }}
                         className="w-12 text-left bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase ml-1">Đến (Giờ:Phút)</label>
+                    <label className="text-[10px] font-bold uppercase ml-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Đến
+                    </label>
                     <div className="flex items-center justify-center w-full p-3.5 bg-muted/40 rounded-2xl border border-border focus-within:border-primary focus-within:bg-white transition-all shadow-sm">
                       <input
                         type="text"
@@ -799,6 +838,13 @@ export default function RoomBookingPage() {
                             document.getElementById('min-input-to')?.focus()
                           }
                         }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                          if (v && v.length === 1) v = '0' + v
+                          const m = timeTo ? timeTo.split(':')[1] || '' : ''
+                          if (!v && !m) setTimeTo('')
+                          else setTimeTo(`${v}:${m}`)
+                        }}
                         className="w-12 text-right bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
                       />
                       <span className="font-black text-foreground mx-1 pb-1 text-xl">:</span>
@@ -810,6 +856,13 @@ export default function RoomBookingPage() {
                         onChange={(e) => {
                           let v = e.target.value.replace(/\D/g, '').slice(0, 2)
                           if (parseInt(v) > 59) v = '59'
+                          const h = timeTo ? timeTo.split(':')[0] || '00' : '00'
+                          if (!h && !v) setTimeTo('')
+                          else setTimeTo(`${h}:${v}`)
+                        }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                          if (v && v.length === 1) v = '0' + v
                           const h = timeTo ? timeTo.split(':')[0] || '00' : '00'
                           if (!h && !v) setTimeTo('')
                           else setTimeTo(`${h}:${v}`)
