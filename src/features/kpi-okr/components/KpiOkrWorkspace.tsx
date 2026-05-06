@@ -31,6 +31,7 @@ import {
   clampKpiPeriod,
   getMaxViewableYm,
   isKpiPeriodSelectable,
+  isAssignmentWindowOpen,
 } from '@/features/kpi-okr/kpiPeriodLimits'
 import {
   parseKpiOkrImportFile,
@@ -2127,6 +2128,9 @@ export function FormPanel({
   const shouldShowResponses = showResponses ?? (canEditTeam || isManagerViewOnly)
   const shouldShowQuestionForm = showQuestionForm ?? true
   const windowOpen = useMemo(() => isAnswerWindowOpen(year, month), [year, month])
+
+  // Sprint 2: Assignment window
+  const assignmentWindowOpen = useMemo(() => isAssignmentWindowOpen(year, month), [year, month])
   const myAnswers = useMemo(
     () => data?.answers?.filter((a) => a.respondentUserId === currentUserId) ?? [],
     [data?.answers, currentUserId]

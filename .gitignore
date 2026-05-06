@@ -5,3 +5,10 @@ dist
 .env.local
 coverage
 *.log
+
+# GitNexus (local only — do not commit or push)
+.gitnexus/
+.gitnexusignore
+AGENTS.md
+CLAUDE.md
+.claude/skills/gitnexus/

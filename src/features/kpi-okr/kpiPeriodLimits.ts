@@ -35,3 +35,20 @@ export function clampKpiPeriod(
   }
   return { year: y, month: Math.min(mBounded, cap.month) }
 }
+
+/**
+ * Cửa sổ giao mục tiêu KPI/OKR: mặc định mở 00:00 ngày 01 → 23:59 ngày 02.
+ * Đồng bộ với BE `assertAssignmentWindowOpen`.
+ */
+export function isAssignmentWindowOpen(
+  year: number,
+  month: number,
+  cfg: { startDay?: number; endDay?: number } = {},
+  now: Date = new Date()
+): boolean {
+  const startDay = cfg.startDay ?? 1
+  const endDay = cfg.endDay ?? 2
+  const start = new Date(year, month - 1, startDay, 0, 0, 0, 0)
+  const end = new Date(year, month - 1, endDay, 23, 59, 59, 999)
+  return now >= start && now <= end
+}

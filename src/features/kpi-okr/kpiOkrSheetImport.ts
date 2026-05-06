@@ -14,6 +14,12 @@ export type ImportAssignmentItem = {
   reviewerName?: string | null
   managerEvalStatus?: string | null
   managerReviewNote?: string | null
+  // Epic 1: Evidence + Số liệu + Tự đánh giá
+  evidence?: string | null
+  numericValue?: number | null
+  numericUnit?: string | null
+  selfEvalStatus?: string | null
+  selfReviewNote?: string | null
 }
 
 export type ParsedImportError = { row: number; message: string }
@@ -191,6 +197,12 @@ export function matrixToImportItems(
   const ixReviewer = findColIndex(headerRow, ['Người đánh giá', 'nguoi danh gia', 'reviewer'])
   const ixQlEval = findColIndex(headerRow, ['QL ĐÁNH GIÁ', 'ql danh gia', 'danh gia ql'])
   const ixQlNote = findColIndex(headerRow, ['QL NHẬN XÉT', 'ql nhan xet', 'nhan xet ql'])
+  // Epic 1: New columns
+  const ixEvidence = findColIndex(headerRow, ['Evidence', 'evidence', 'bang chung'])
+  const ixNumericValue = findColIndex(headerRow, ['Số liệu', 'so lieu', 'numeric'])
+  const ixNumericUnit = findColIndex(headerRow, ['Đơn vị', 'don vi', 'unit'])
+  const ixSelfEval = findColIndex(headerRow, ['Tự đánh giá', 'tu danh gia', 'self eval'])
+  const ixSelfNote = findColIndex(headerRow, ['Tự nhận xét', 'tu nhan xet', 'self note'])
 
   if (ixAssignee < 0 || ixKind < 0 || ixContent < 0) {
     errors.push({
@@ -247,6 +259,20 @@ export function matrixToImportItems(
     const managerEvalStatus = ixQlEval >= 0 ? parseManagerEval(getCell(row, ixQlEval)) : null
     const managerReviewNote =
       ixQlNote >= 0 ? String(getCell(row, ixQlNote) ?? '').trim() || null : null
+    // Epic 1: Parse new columns
+    const evidence = ixEvidence >= 0 ? String(getCell(row, ixEvidence) ?? '').trim() || null : null
+    const numericVal = ixNumericValue >= 0 ? Number(getCell(row, ixNumericValue)) : undefined
+    const numericValue =
+      numericVal !== undefined && Number.isFinite(numericVal) ? numericVal : undefined
+    const numericUnit =
+      ixNumericUnit >= 0
+        ? String(getCell(row, ixNumericUnit) ?? '')
+            .trim()
+            .toUpperCase() || null
+        : null
+    const selfEvalStatus = ixSelfEval >= 0 ? parseManagerEval(getCell(row, ixSelfEval)) : null
+    const selfReviewNote =
+      ixSelfNote >= 0 ? String(getCell(row, ixSelfNote) ?? '').trim() || null : null
 
     const item: ImportAssignmentItem = {
       assigneeUserId,
@@ -258,6 +284,12 @@ export function matrixToImportItems(
       reviewerName,
       managerEvalStatus: managerEvalStatus ?? undefined,
       managerReviewNote,
+      // Epic 1: New fields
+      evidence,
+      numericValue,
+      numericUnit,
+      selfEvalStatus: selfEvalStatus ?? undefined,
+      selfReviewNote,
     }
     items.push(item)
   }
