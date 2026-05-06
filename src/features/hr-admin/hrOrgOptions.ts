@@ -169,6 +169,12 @@ export const HR_TEAM_OPTIONS: readonly HrTeamOption[] = [
     label: 'KINH DOANH GLOBAL',
     departmentId: D.khoiKinhDoanh,
   },
+  // Phòng Vận đơn
+  {
+    value: '02d0d0d0-0001-4001-8001-000000000309',
+    label: 'VẬN ĐƠN',
+    departmentId: D.teamLogistics,
+  },
 ]
 
 export const DEFAULT_DEPARTMENT_ID = HR_DEPARTMENT_IDS.khoiMarketingTraffic

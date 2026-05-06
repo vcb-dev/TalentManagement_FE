@@ -32,7 +32,15 @@ import {
   getMaxViewableYm,
   isKpiPeriodSelectable,
   isAssignmentWindowOpen,
+  getAssignmentWindowPhase,
+  resolveAssignmentWindowForTeam,
 } from '@/features/kpi-okr/kpiPeriodLimits'
+import { AutoSeedModal } from '@/features/kpi-okr/components/AutoSeedModal'
+import {
+  EvidenceImagePreviews,
+  KpiEvidenceInput,
+} from '@/features/kpi-okr/components/KpiEvidenceInput'
+import { isCatalogEnabledDepartment } from '@/features/kpi-okr/catalogHelpers'
 import {
   parseKpiOkrImportFile,
   type ImportAssignmentItem,
@@ -73,6 +81,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -265,6 +274,61 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     if (!selfId) return []
     return rows.filter((row) => row.assigneeUserId === selfId)
   }, [assignmentsPrevQ.data, isMemberView, user?.id])
+
+  const windowConfigsQ = useQuery({
+    queryKey: ['performance', 'window-configs'],
+    queryFn: () => performanceApi.listWindowConfigs(),
+    staleTime: 60_000,
+    enabled: !isMockApiEnabled(),
+  })
+
+  const assignmentWindowBounds = useMemo(
+    () =>
+      selectedTeamId
+        ? resolveAssignmentWindowForTeam(selectedTeamId, year, month, windowConfigsQ.data ?? [])
+        : { startDay: 1, endDay: 2 },
+    [selectedTeamId, year, month, windowConfigsQ.data]
+  )
+
+  const assignmentWindowPhase = useMemo(() => {
+    if (!selectedTeamId) return null
+    return getAssignmentWindowPhase(year, month, {
+      startDay: assignmentWindowBounds.startDay,
+      endDay: assignmentWindowBounds.endDay,
+    })
+  }, [selectedTeamId, year, month, assignmentWindowBounds])
+
+  const assignmentWindowOpen = useMemo(
+    () =>
+      Boolean(selectedTeamId) &&
+      isAssignmentWindowOpen(year, month, {
+        startDay: assignmentWindowBounds.startDay,
+        endDay: assignmentWindowBounds.endDay,
+      }),
+    [selectedTeamId, year, month, assignmentWindowBounds]
+  )
+
+  // Epic 4 — PATCH .../me; áp dụng mục tiêu tháng này và kết quả tháng trước
+  const canMemberEditSelfResults = useMemo(
+    () => Boolean(user?.id) && eff.has('kpi.edit_own') && !isMockApiEnabled(),
+    [user?.id, eff]
+  )
+
+  const showAutoSeed =
+    variant === 'leader' &&
+    canEditTeam &&
+    eff.has('kpi.auto_seed') &&
+    Boolean(selectedDept && isCatalogEnabledDepartment(selectedDept)) &&
+    !isMockApiEnabled()
+
+  const selectedTeamForSeed = useMemo(() => {
+    if (!selectedTeamId) return null
+    for (const d of departments) {
+      const t = d.teams.find((x) => x.id === selectedTeamId)
+      if (t) return { id: t.id, name: t.name }
+    }
+    return null
+  }, [departments, selectedTeamId])
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: assignKey })
@@ -475,6 +539,42 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         </p>
       )}
 
+      {canEditTeam && selectedTeamId && !assignmentWindowOpen && !mockHint && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-100">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-semibold">
+              {assignmentWindowPhase === 'before'
+                ? 'Cửa sổ giao mục tiêu chưa mở'
+                : 'Cửa sổ giao mục tiêu đã đóng'}
+            </p>
+            <p className="mt-1 text-[13px] opacity-90">
+              {assignmentWindowPhase === 'before' ? (
+                <>
+                  Kỳ{' '}
+                  <strong>
+                    T{month}/{year}
+                  </strong>{' '}
+                  cho phép giao KPI/OKR từ ngày {assignmentWindowBounds.startDay} đến ngày{' '}
+                  {assignmentWindowBounds.endDay}. Hiện chưa đến khoảng thời gian này. HR có thể
+                  điều chỉnh qua cấu hình cửa sổ trên backend.
+                </>
+              ) : (
+                <>
+                  Kỳ{' '}
+                  <strong>
+                    T{month}/{year}
+                  </strong>{' '}
+                  chỉ cho phép giao KPI/OKR từ ngày {assignmentWindowBounds.startDay} đến ngày{' '}
+                  {assignmentWindowBounds.endDay}. Khoảng thời gian đã kết thúc. HR có thể điều
+                  chỉnh qua cấu hình cửa sổ trên backend.
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6">
         <WorkReportPanel
           assignmentsThisMonth={visibleAssignmentsThisMonth}
@@ -492,6 +592,11 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           prevMonth={prevMonth}
           currentUserId={user?.id}
           onRefresh={refresh}
+          assignmentWindowOpen={assignmentWindowOpen}
+          assignmentWindowBounds={assignmentWindowBounds}
+          canMemberEditSelfResults={canMemberEditSelfResults}
+          showAutoSeed={showAutoSeed}
+          selectedTeamName={selectedTeamForSeed?.name ?? ''}
         />
         <SummaryPanel
           rows={summariesQ.data ?? []}
@@ -537,11 +642,9 @@ function nameForMember(members: TeamMemberRow[], userId: string): string {
 
 function memberMetaForDisplay(members: TeamMemberRow[], userId: string): string {
   const m = members.find((x) => x.userId === userId)
-  const employee = m?.employeeCodePrimary?.trim()
-  if (employee) return employee
   const email = m?.email?.trim()
   if (email) return email
-  return 'chưa có email'
+  return ''
 }
 
 /** Bảng KPI/OKR — viền & nền theo style doanh nghiệp tinh gọn. */
@@ -573,7 +676,11 @@ const ASSIGN_TABLE_HEAD = [
   'Ưu tiên',
   'Nội dung',
   'Chỉ tiêu',
-  'Kết quả',
+  'Số liệu',
+  'Đ.vị',
+  'Evidence',
+  'Tự ĐG',
+  'Đánh giá QL',
   'Thao tác',
 ] as const
 
@@ -650,6 +757,184 @@ function PriorityBadge({ priority }: { priority: number }) {
   )
 }
 
+/** Evidence / số liệu / tự đánh giá — read-only (leader / viewer). */
+function AssignmentEpic4ReadCells({ row, td }: { row: PerformanceAssignment; td: string }) {
+  const num =
+    row.numericValue !== undefined && row.numericValue !== null ? String(row.numericValue) : '—'
+  const ev = row.evidence?.trim()
+  return (
+    <>
+      <TableCell className={cn(td, 'max-w-[88px] tabular-nums text-[13px]')}>{num}</TableCell>
+      <TableCell className={cn(td, 'max-w-[72px] text-xs uppercase')}>
+        {row.numericUnit ?? '—'}
+      </TableCell>
+      <TableCell className={cn(td, 'max-w-[160px] min-w-[120px] text-xs')} title={ev ?? ''}>
+        <span className="line-clamp-3 whitespace-pre-wrap break-all">{ev ? ev : '—'}</span>
+        <EvidenceImagePreviews evidence={row.evidence} maxHeightClass="h-12 max-w-[72px]" />
+      </TableCell>
+      <TableCell className={td}>
+        <EvalStatusBadge status={row.selfEvalStatus ?? null} />
+      </TableCell>
+    </>
+  )
+}
+
+function MemberSelfAssignmentRow({
+  row,
+  rowStripe,
+  onSaved,
+}: {
+  row: PerformanceAssignment
+  rowStripe: boolean
+  onSaved: () => void
+}) {
+  const [evidence, setEvidence] = useState(row.evidence ?? '')
+  const [numericRaw, setNumericRaw] = useState(
+    row.numericValue != null ? String(row.numericValue) : ''
+  )
+  const [numericUnit, setNumericUnit] = useState(row.numericUnit ?? '')
+  const [selfEvalStatus, setSelfEvalStatus] = useState(row.selfEvalStatus ?? '')
+  const [selfReviewNote, setSelfReviewNote] = useState(row.selfReviewNote ?? '')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setEvidence(row.evidence ?? '')
+    setNumericRaw(row.numericValue != null ? String(row.numericValue) : '')
+    setNumericUnit(row.numericUnit ?? '')
+    setSelfEvalStatus(row.selfEvalStatus ?? '')
+    setSelfReviewNote(row.selfReviewNote ?? '')
+  }, [
+    row.id,
+    row.evidence,
+    row.numericValue,
+    row.numericUnit,
+    row.selfEvalStatus,
+    row.selfReviewNote,
+  ])
+
+  const td = xlTd(rowStripe)
+
+  const save = async () => {
+    const nTrim = numericRaw.trim()
+    let numericValue: number | null = null
+    if (nTrim.length > 0) {
+      const n = Number(nTrim.replace(',', '.'))
+      if (!Number.isFinite(n)) {
+        toast.error('Số liệu không hợp lệ.')
+        return
+      }
+      numericValue = n
+    }
+    if (row.status === 'done' && !evidence.trim()) {
+      toast.warning('Trạng thái Hoàn thành nhưng Evidence đang trống.')
+    }
+    setSaving(true)
+    try {
+      await performanceApi.patchAssignmentSelf(row.id, {
+        evidence: evidence.trim() ? evidence.trim() : null,
+        numericValue,
+        numericUnit: numericUnit.trim() ? numericUnit.trim().toUpperCase() : null,
+        selfEvalStatus: selfEvalStatus.trim() ? selfEvalStatus.trim() : null,
+        selfReviewNote: selfReviewNote.trim() ? selfReviewNote.trim() : null,
+      })
+      toast.success('Đã lưu.')
+      onSaved()
+    } catch {
+      toast.error('Không lưu được. Kiểm tra quyền hoặc thử lại.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <TableRow className="group transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-slate-500 font-medium')}>
+        {periodLabel(row)}
+      </TableCell>
+      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-slate-500')}>
+        {formatKpiSetAt(row.kpiSetAt)}
+      </TableCell>
+      <TableCell className={td}>
+        <KindBadge kind={row.kind} />
+      </TableCell>
+      <TableCell className={td}>
+        <PriorityBadge priority={row.priority} />
+      </TableCell>
+      <TableCell
+        className={cn(td, 'min-w-[240px] max-w-xl font-medium text-slate-900 dark:text-slate-100')}
+      >
+        {row.content}
+      </TableCell>
+      <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
+        {row.targetMetric || '—'}
+      </TableCell>
+      <TableCell className={cn(td, 'p-2 align-middle')}>
+        <Input
+          value={numericRaw}
+          onChange={(e) => setNumericRaw(e.target.value)}
+          className={XL_INPUT}
+          placeholder="—"
+        />
+      </TableCell>
+      <TableCell className={cn(td, 'p-2 align-middle')}>
+        <Input
+          value={numericUnit}
+          onChange={(e) => setNumericUnit(e.target.value)}
+          className={XL_INPUT}
+          placeholder="VND"
+        />
+      </TableCell>
+      <TableCell className={cn(td, 'min-w-[220px] max-w-[320px] p-2 align-top')}>
+        <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={saving} />
+      </TableCell>
+      <TableCell className={cn(td, 'p-2 align-middle')}>
+        <select
+          value={selfEvalStatus}
+          onChange={(e) => setSelfEvalStatus(e.target.value)}
+          className={XL_INPUT}
+        >
+          <option value="">—</option>
+          <option value="OK">OK</option>
+          <option value="NOT">NOT</option>
+        </select>
+        <textarea
+          value={selfReviewNote}
+          onChange={(e) => setSelfReviewNote(e.target.value)}
+          rows={2}
+          className={cn(XL_TEXTAREA, 'mt-1 min-h-[52px]')}
+          placeholder="Nhận xét"
+        />
+      </TableCell>
+      <TableCell className={td}>
+        <div className="flex flex-col gap-1">
+          <EvalStatusBadge status={row.managerEvalStatus} />
+          {row.managerReviewNote && (
+            <div
+              className="text-[10px] text-slate-500 italic max-w-[150px] truncate"
+              title={row.managerReviewNote}
+            >
+              {row.managerReviewNote}
+            </div>
+          )}
+        </div>
+      </TableCell>
+      <TableCell className={cn(td, 'whitespace-nowrap text-right')}>
+        {!isMockApiEnabled() ? (
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-lg font-semibold"
+            disabled={saving}
+            onClick={() => void save()}
+          >
+            {saving ? 'Đang lưu…' : 'Lưu'}
+          </Button>
+        ) : null}
+      </TableCell>
+    </TableRow>
+  )
+}
+
 function ReadOnlyAssignmentRow({
   row,
   rowStripe,
@@ -680,6 +965,7 @@ function ReadOnlyAssignmentRow({
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
         {row.targetMetric || '—'}
       </TableCell>
+      <AssignmentEpic4ReadCells row={row} td={td} />
       <TableCell className={td}>
         <div className="flex flex-col gap-1">
           <EvalStatusBadge status={row.managerEvalStatus} />
@@ -721,6 +1007,8 @@ function LeaderAssignmentRow({
   canEditTeam: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const form = useForm<LeaderEditFormValues>({
     defaultValues: {
@@ -804,6 +1092,21 @@ function LeaderAssignmentRow({
     }
   })
 
+  const handleDeleteAssignment = async () => {
+    setDeleting(true)
+    try {
+      await performanceApi.deleteAssignment(row.id)
+      toast.success('Đã xóa mục tiêu.')
+      setDeleteConfirmOpen(false)
+      setOpen(false)
+      onSaved()
+    } catch {
+      toast.error('Không xóa được. Kiểm tra quyền hoặc thử lại.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const td = xlTd(rowStripe)
   const editable = canEditTeam && !isMockApiEnabled()
 
@@ -835,6 +1138,7 @@ function LeaderAssignmentRow({
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
         {row.targetMetric || '—'}
       </TableCell>
+      <AssignmentEpic4ReadCells row={row} td={td} />
       <TableCell className={td}>
         <div className="flex flex-col gap-1">
           <EvalStatusBadge status={row.managerEvalStatus} />
@@ -850,129 +1154,181 @@ function LeaderAssignmentRow({
       </TableCell>
       <TableCell className={cn(td, 'whitespace-nowrap text-right')}>
         {editable ? (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
+          <>
+            <div className="flex items-center justify-end gap-0.5">
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={deleting}
+                    className="h-8 w-8 rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-800"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    <span className="sr-only">Sửa</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {mode === 'planning' ? 'Sửa mục tiêu KPI/OKR' : 'Sửa đánh giá KPI/OKR'}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {mode === 'planning'
+                        ? 'Cập nhật nội dung/ưu tiên/chỉ tiêu và ngày xét cho kỳ đang chọn.'
+                        : 'Chỉ cập nhật QL đánh giá (OK/NOT) và QL nhận xét — các trường khác giữ nguyên.'}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <Form {...form}>
+                    <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
+                      {mode === 'planning' ? (
+                        <DateController
+                          control={control}
+                          name="kpiSetAt"
+                          label="Ngày xét KPI/OKR"
+                          className="md:col-span-2 space-y-1 text-xs font-medium"
+                          datePickerClassName="h-9 rounded-lg border-slate-200"
+                          lockToMonth={{ year: row.year, month: row.month }}
+                        />
+                      ) : null}
+
+                      {mode === 'planning' ? (
+                        <>
+                          <SelectController
+                            control={control}
+                            name="priority"
+                            label="Ưu tiên"
+                            required
+                            rules={{ required: true, min: 0, max: 99 }}
+                            className="space-y-1 text-xs font-medium"
+                          >
+                            <SelectItem value="0">Không xếp (0)</SelectItem>
+                            <SelectItem value="1">Ưu tiên 1</SelectItem>
+                            <SelectItem value="2">Ưu tiên 2</SelectItem>
+                            <SelectItem value="3">Ưu tiên 3</SelectItem>
+                          </SelectController>
+
+                          <InputController
+                            control={control}
+                            name="targetMetric"
+                            label="Chỉ tiêu"
+                            className="space-y-1 text-xs font-medium"
+                            placeholder="VD: 60"
+                            inputClassName="h-9 rounded-lg border-slate-200"
+                          />
+
+                          <label className="md:col-span-2 flex flex-col gap-1 text-xs font-medium">
+                            <TextareaController
+                              control={control}
+                              name="content"
+                              label="Nội dung KPI/OKR"
+                              required
+                              rules={{ required: true, maxLength: 500 }}
+                              className="space-y-1 text-xs font-medium"
+                              maxLength={500}
+                              textareaClassName="min-h-[96px] rounded-lg border-slate-200"
+                              placeholder="Mô tả chỉ tiêu…"
+                            />
+                          </label>
+                        </>
+                      ) : (
+                        <>
+                          <SelectController
+                            control={control}
+                            name="managerEvalStatus"
+                            label="QL đánh giá"
+                            className="space-y-1 text-xs font-medium"
+                          >
+                            <SelectItem value="__none">—</SelectItem>
+                            <SelectItem value="OK">OK</SelectItem>
+                            <SelectItem value="NOT">NOT</SelectItem>
+                          </SelectController>
+
+                          <label className="md:col-span-2 flex flex-col gap-1 text-xs font-medium">
+                            <TextareaController
+                              control={control}
+                              name="managerReviewNote"
+                              label="QL nhận xét"
+                              className="space-y-1 text-xs font-medium"
+                              textareaClassName="min-h-[96px] rounded-lg border-slate-200"
+                              placeholder="Nhận xét…"
+                            />
+                          </label>
+                        </>
+                      )}
+
+                      <div className="flex items-end justify-end gap-2 md:col-span-2 pt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setOpen(false)}
+                          className="rounded-lg"
+                        >
+                          Hủy
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={isSubmitting || deleting}
+                          className="rounded-lg bg-primary px-6 font-semibold"
+                        >
+                          {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-800"
+                disabled={deleting || isSubmitting}
+                className="h-8 w-8 rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+                title="Xóa mục tiêu"
+                onClick={() => setDeleteConfirmOpen(true)}
               >
-                <Pencil className="h-4 w-4" />
-                <span className="sr-only">Sửa</span>
+                <Trash2 className="h-4 w-4" />
+                <span className="sr-only">Xóa</span>
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>
-                  {mode === 'planning' ? 'Sửa mục tiêu KPI/OKR' : 'Sửa đánh giá KPI/OKR'}
-                </DialogTitle>
-                <DialogDescription>
-                  {mode === 'planning'
-                    ? 'Cập nhật nội dung/ưu tiên/chỉ tiêu và ngày xét cho kỳ đang chọn.'
-                    : 'Chỉ cập nhật QL đánh giá (OK/NOT) và QL nhận xét — các trường khác giữ nguyên.'}
-                </DialogDescription>
-              </DialogHeader>
-
-              <Form {...form}>
-                <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
-                  {mode === 'planning' ? (
-                    <DateController
-                      control={control}
-                      name="kpiSetAt"
-                      label="Ngày xét KPI/OKR"
-                      className="md:col-span-2 space-y-1 text-xs font-medium"
-                      datePickerClassName="h-9 rounded-lg border-slate-200"
-                      lockToMonth={{ year: row.year, month: row.month }}
-                    />
-                  ) : null}
-
-                  {mode === 'planning' ? (
-                    <>
-                      <SelectController
-                        control={control}
-                        name="priority"
-                        label="Ưu tiên"
-                        required
-                        rules={{ required: true, min: 0, max: 99 }}
-                        className="space-y-1 text-xs font-medium"
-                      >
-                        <SelectItem value="0">Không xếp (0)</SelectItem>
-                        <SelectItem value="1">Ưu tiên 1</SelectItem>
-                        <SelectItem value="2">Ưu tiên 2</SelectItem>
-                        <SelectItem value="3">Ưu tiên 3</SelectItem>
-                      </SelectController>
-
-                      <InputController
-                        control={control}
-                        name="targetMetric"
-                        label="Chỉ tiêu"
-                        className="space-y-1 text-xs font-medium"
-                        placeholder="VD: 60"
-                        inputClassName="h-9 rounded-lg border-slate-200"
-                      />
-
-                      <label className="md:col-span-2 flex flex-col gap-1 text-xs font-medium">
-                        <TextareaController
-                          control={control}
-                          name="content"
-                          label="Nội dung KPI/OKR"
-                          required
-                          rules={{ required: true, maxLength: 500 }}
-                          className="space-y-1 text-xs font-medium"
-                          maxLength={500}
-                          textareaClassName="min-h-[96px] rounded-lg border-slate-200"
-                          placeholder="Mô tả chỉ tiêu…"
-                        />
-                      </label>
-                    </>
-                  ) : (
-                    <>
-                      <SelectController
-                        control={control}
-                        name="managerEvalStatus"
-                        label="QL đánh giá"
-                        className="space-y-1 text-xs font-medium"
-                      >
-                        <SelectItem value="__none">—</SelectItem>
-                        <SelectItem value="OK">OK</SelectItem>
-                        <SelectItem value="NOT">NOT</SelectItem>
-                      </SelectController>
-
-                      <label className="md:col-span-2 flex flex-col gap-1 text-xs font-medium">
-                        <TextareaController
-                          control={control}
-                          name="managerReviewNote"
-                          label="QL nhận xét"
-                          className="space-y-1 text-xs font-medium"
-                          textareaClassName="min-h-[96px] rounded-lg border-slate-200"
-                          placeholder="Nhận xét…"
-                        />
-                      </label>
-                    </>
-                  )}
-
-                  <div className="flex items-end justify-end gap-2 md:col-span-2 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setOpen(false)}
-                      className="rounded-lg"
-                    >
-                      Hủy
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="rounded-lg bg-primary px-6 font-semibold"
-                    >
-                      {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+            </div>
+            <Dialog
+              open={deleteConfirmOpen}
+              onOpenChange={(next) => {
+                if (next) return
+                if (deleting) return
+                setDeleteConfirmOpen(false)
+              }}
+            >
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Xóa mục tiêu KPI/OKR?</DialogTitle>
+                  <DialogDescription>
+                    Dữ liệu evidence và đánh giá liên quan sẽ mất. Thao tác không hoàn tác.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={deleting}
+                    onClick={() => setDeleteConfirmOpen(false)}
+                  >
+                    Hủy
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={deleting}
+                    onClick={() => void handleDeleteAssignment()}
+                  >
+                    {deleting ? 'Đang xóa…' : 'Xóa'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
         ) : null}
       </TableCell>
     </TableRow>
@@ -1012,6 +1368,8 @@ function AssignmentTableSingleUser({
   canEditTeam,
   onRefresh,
   leaderMode,
+  memberSelfEditableResults,
+  prioritizeUserId,
 }: {
   userId: string
   rows: PerformanceAssignment[]
@@ -1019,8 +1377,14 @@ function AssignmentTableSingleUser({
   canEditTeam: boolean
   onRefresh: () => void
   leaderMode: 'planning' | 'results'
+  memberSelfEditableResults: boolean
+  prioritizeUserId?: string
 }) {
   const isPlanning = leaderMode === 'planning'
+  /** Epic 4: member chỉnh Evidence / số liệu / tự đánh giá cho đúng user của mình — cả tháng này (planning) lẫn tháng trước (results). */
+  const allowSelfEdit =
+    memberSelfEditableResults && Boolean(prioritizeUserId && userId === prioritizeUserId)
+  const memberMetaLine = memberMetaForDisplay(members, userId)
 
   return (
     <div
@@ -1051,12 +1415,12 @@ function AssignmentTableSingleUser({
             <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
               {nameForMember(members, userId)}
             </div>
-            <div className="text-xs text-slate-500">{memberMetaForDisplay(members, userId)}</div>
+            {memberMetaLine ? <div className="text-xs text-slate-500">{memberMetaLine}</div> : null}
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Badge
-            variant="secondary"
+            variant="muted"
             className={cn(
               'h-6 rounded-md shadow-none border-none',
               isPlanning ? 'bg-blue-100/50 text-blue-700' : 'bg-emerald-100/50 text-emerald-700'
@@ -1067,7 +1431,7 @@ function AssignmentTableSingleUser({
         </div>
       </div>
       <div className="max-h-[calc(100vh-400px)] overflow-auto">
-        <Table className="w-full min-w-[900px]">
+        <Table className="w-full min-w-[1180px]">
           <TableHeader>
             <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
               {ASSIGN_TABLE_HEAD.map((h) => (
@@ -1098,6 +1462,13 @@ function AssignmentTableSingleUser({
                     rowStripe={idx % 2 === 1}
                     canEditTeam={canEditTeam}
                   />
+                ) : allowSelfEdit ? (
+                  <MemberSelfAssignmentRow
+                    key={r.id}
+                    row={r}
+                    rowStripe={idx % 2 === 1}
+                    onSaved={onRefresh}
+                  />
                 ) : (
                   <ReadOnlyAssignmentRow key={r.id} row={r} rowStripe={idx % 2 === 1} />
                 )
@@ -1119,6 +1490,7 @@ function UserAssignmentWorkbench({
   emptyText,
   prioritizeUserId,
   showUserList = true,
+  memberSelfEditableResults,
 }: {
   byUser: Map<string, PerformanceAssignment[]>
   members: TeamMemberRow[]
@@ -1129,6 +1501,7 @@ function UserAssignmentWorkbench({
   /** User hiển thị mặc định & xếp đầu danh sách (thường là user đang đăng nhập). */
   prioritizeUserId?: string
   showUserList?: boolean
+  memberSelfEditableResults: boolean
 }) {
   const userEntries = useMemo(
     () => orderUserEntriesFirst(Array.from(byUser.entries()), prioritizeUserId),
@@ -1158,72 +1531,89 @@ function UserAssignmentWorkbench({
         canEditTeam={canEditTeam}
         onRefresh={onRefresh}
         leaderMode={leaderMode}
+        memberSelfEditableResults={memberSelfEditableResults}
+        prioritizeUserId={prioritizeUserId}
       />
     )
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-      <div className="space-y-4">
+    <div className="flex flex-col gap-4">
+      <div className="space-y-3">
         <div className="flex items-center gap-2 px-1 text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
           <Users
             className={cn(
-              'h-4 w-4',
+              'h-4 w-4 shrink-0',
               leaderMode === 'planning' ? 'text-blue-500' : 'text-emerald-500'
             )}
           />
           Danh sách nhân sự
         </div>
-        <div className="space-y-2 overflow-y-auto pr-1 max-h-[calc(100vh-400px)]">
+        <div
+          role="tablist"
+          aria-label="Chọn nhân sự"
+          className={cn(
+            'flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:thin]',
+            '[&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full',
+            leaderMode === 'planning'
+              ? '[&::-webkit-scrollbar-thumb]:bg-blue-200 dark:[&::-webkit-scrollbar-thumb]:bg-blue-900/60'
+              : '[&::-webkit-scrollbar-thumb]:bg-emerald-200 dark:[&::-webkit-scrollbar-thumb]:bg-emerald-900/60'
+          )}
+        >
           {userEntries.map(([uid, rows]) => {
             const active = uid === activeUserId
             const isPlanning = leaderMode === 'planning'
+            const tabMeta = memberMetaForDisplay(members, uid)
             return (
               <button
                 key={uid}
                 type="button"
+                role="tab"
+                aria-selected={active}
+                id={`kpi-tab-${leaderMode}-${uid}`}
                 onClick={() => setSelectedUserId(uid)}
                 className={cn(
-                  'group flex w-full flex-col gap-1 rounded-2xl px-4 py-3 text-left transition-all duration-300 relative overflow-hidden',
+                  'flex min-w-[160px] max-w-[240px] shrink-0 snap-start flex-col gap-1 rounded-xl px-4 py-2.5 text-left transition-all duration-200',
                   active
                     ? isPlanning
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 ring-1 ring-blue-600 dark:shadow-none'
-                      : 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 ring-1 ring-emerald-600 dark:shadow-none'
-                    : 'bg-white hover:bg-slate-50 border border-slate-100 dark:bg-slate-900 dark:border-slate-800'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-200 ring-1 ring-blue-600 dark:shadow-none'
+                      : 'bg-emerald-600 text-white shadow-md shadow-emerald-200 ring-1 ring-emerald-600 dark:shadow-none'
+                    : 'border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900'
                 )}
               >
-                {active && (
-                  <div className="absolute right-0 top-0 h-full w-24 bg-white/10 [mask-image:linear-gradient(to_left,white,transparent)]" />
-                )}
-                <div className="flex items-center justify-between relative z-10">
-                  <span
-                    className={cn(
-                      'truncate text-sm font-bold',
-                      active
-                        ? 'text-white'
-                        : 'text-slate-700 dark:text-slate-300 group-hover:text-slate-900'
-                    )}
-                  >
-                    {nameForMember(members, uid)}
-                  </span>
-                </div>
-                <div
+                <span
                   className={cn(
-                    'truncate text-[11px] relative z-10',
-                    active ? 'text-blue-100/80' : 'text-slate-500'
+                    'truncate text-sm font-bold',
+                    active ? 'text-white' : 'text-slate-800 dark:text-slate-100'
                   )}
+                  title={nameForMember(members, uid)}
                 >
-                  {memberMetaForDisplay(members, uid)}
-                </div>
-                <div className="mt-2 flex items-center gap-2 relative z-10">
+                  {nameForMember(members, uid)}
+                </span>
+                {tabMeta ? (
                   <span
                     className={cn(
-                      'inline-flex h-5 items-center rounded-lg px-2 text-[10px] font-bold uppercase tracking-wider transition-colors',
+                      'truncate text-[11px]',
+                      active
+                        ? isPlanning
+                          ? 'text-blue-100/90'
+                          : 'text-emerald-100/90'
+                        : 'text-slate-500 dark:text-slate-400'
+                    )}
+                    title={tabMeta}
+                  >
+                    {tabMeta}
+                  </span>
+                ) : null}
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <span
+                    className={cn(
+                      'inline-flex h-5 items-center rounded-md px-2 text-[10px] font-bold uppercase tracking-wide',
                       active
                         ? 'bg-white/20 text-white'
                         : isPlanning
-                          ? 'bg-blue-50 text-blue-600'
-                          : 'bg-emerald-50 text-emerald-600'
+                          ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'
+                          : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
                     )}
                   >
                     {rows.length} hạng mục
@@ -1231,8 +1621,10 @@ function UserAssignmentWorkbench({
                   {prioritizeUserId && uid === prioritizeUserId ? (
                     <span
                       className={cn(
-                        'inline-flex h-5 items-center rounded-lg px-2 text-[10px] font-bold uppercase tracking-wider',
-                        active ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-600'
+                        'inline-flex h-5 items-center rounded-md px-2 text-[10px] font-bold uppercase tracking-wide',
+                        active
+                          ? 'bg-white/20 text-white'
+                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
                       )}
                     >
                       Bạn
@@ -1244,14 +1636,23 @@ function UserAssignmentWorkbench({
           })}
         </div>
       </div>
-      <AssignmentTableSingleUser
-        userId={activeUserId}
-        rows={activeRows}
-        members={members}
-        canEditTeam={canEditTeam}
-        onRefresh={onRefresh}
-        leaderMode={leaderMode}
-      />
+      <div
+        role="tabpanel"
+        id={`kpi-user-panel-${leaderMode}-${activeUserId}`}
+        aria-labelledby={`kpi-tab-${leaderMode}-${activeUserId}`}
+        className="min-w-0"
+      >
+        <AssignmentTableSingleUser
+          userId={activeUserId}
+          rows={activeRows}
+          members={members}
+          canEditTeam={canEditTeam}
+          onRefresh={onRefresh}
+          leaderMode={leaderMode}
+          memberSelfEditableResults={memberSelfEditableResults}
+          prioritizeUserId={prioritizeUserId}
+        />
+      </div>
     </div>
   )
 }
@@ -1272,6 +1673,11 @@ function WorkReportPanel({
   prevMonth,
   currentUserId,
   onRefresh,
+  assignmentWindowOpen,
+  assignmentWindowBounds,
+  canMemberEditSelfResults,
+  showAutoSeed,
+  selectedTeamName,
 }: {
   assignmentsThisMonth: PerformanceAssignment[]
   assignmentsPrevMonth: PerformanceAssignment[]
@@ -1288,6 +1694,11 @@ function WorkReportPanel({
   prevMonth: number
   currentUserId: string | undefined
   onRefresh: () => void
+  assignmentWindowOpen: boolean
+  assignmentWindowBounds: { startDay: number; endDay: number }
+  canMemberEditSelfResults: boolean
+  showAutoSeed: boolean
+  selectedTeamName: string
 }) {
   const byUserThis = useMemo(
     () => groupAssignmentsByUser(assignmentsThisMonth),
@@ -1334,7 +1745,8 @@ function WorkReportPanel({
               </h2>
             </div>
             <p className="text-[13px] text-slate-500">
-              Lập mục tiêu công việc cho từng nhân sự trong team.
+              Lập mục tiêu cho team; nhân viên có thể cập nhật Evidence, số liệu và tự đánh giá các
+              chỉ tiêu của chính mình trong kỳ này (Epic 4).
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -1353,7 +1765,7 @@ function WorkReportPanel({
                 </div>
               )}
             </div>
-            {canEditTeam && selectedTeamId && !isMockApiEnabled() && (
+            {canEditTeam && selectedTeamId && !isMockApiEnabled() && assignmentWindowOpen && (
               <MiniCreateForm
                 teamId={selectedTeamId}
                 year={year}
@@ -1363,6 +1775,19 @@ function WorkReportPanel({
                 onCreated={onRefresh}
               />
             )}
+            {showAutoSeed && selectedTeamName ? (
+              <AutoSeedModal
+                teamId={selectedTeamId}
+                year={year}
+                month={month}
+                members={members}
+                teamName={selectedTeamName}
+                assignmentWindowOpen={assignmentWindowOpen}
+                assignStartDay={assignmentWindowBounds.startDay}
+                assignEndDay={assignmentWindowBounds.endDay}
+                onSeeded={onRefresh}
+              />
+            ) : null}
           </div>
         </div>
         <UserAssignmentWorkbench
@@ -1374,6 +1799,7 @@ function WorkReportPanel({
           emptyText="Chưa có mục tiêu cho tháng này."
           prioritizeUserId={currentUserId}
           showUserList={!isMemberView}
+          memberSelfEditableResults={canMemberEditSelfResults}
         />
       </section>
 
@@ -1387,7 +1813,7 @@ function WorkReportPanel({
               </h2>
             </div>
             <p className="text-[13px] text-slate-500">
-              Cập nhật tiến độ và nhận xét đánh giá cho kỳ trước.
+              Evidence / số liệu / tự đánh giá của nhân viên và đánh giá QL cho kỳ trước (Epic 4).
             </p>
           </div>
         </div>
@@ -1400,6 +1826,7 @@ function WorkReportPanel({
           emptyText={`Chưa có dữ liệu KPI/OKR cho tháng ${prevMonth}/${prevYear}.`}
           prioritizeUserId={currentUserId}
           showUserList={!isMemberView}
+          memberSelfEditableResults={canMemberEditSelfResults}
         />
       </section>
     </div>
@@ -2129,8 +2556,6 @@ export function FormPanel({
   const shouldShowQuestionForm = showQuestionForm ?? true
   const windowOpen = useMemo(() => isAnswerWindowOpen(year, month), [year, month])
 
-  // Sprint 2: Assignment window
-  const assignmentWindowOpen = useMemo(() => isAssignmentWindowOpen(year, month), [year, month])
   const myAnswers = useMemo(
     () => data?.answers?.filter((a) => a.respondentUserId === currentUserId) ?? [],
     [data?.answers, currentUserId]

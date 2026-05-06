@@ -78,6 +78,7 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
       'manager.exercises',
       'manager.exam.classify',
       'admin.permissions.assign',
+      'kpi.window_override',
     ],
   },
   {
@@ -98,6 +99,7 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
       'hr.employees.deactivate',
       'hr.dept.view',
       'hr.org.manage',
+      'kpi.window_override',
     ],
   },
   {

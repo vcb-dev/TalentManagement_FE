@@ -66,8 +66,11 @@ function parsePriorityCell(v: unknown): number {
   const s = foldVi(raw)
   const m = s.match(/uu\s*tien\s*(\d+)/) ?? s.match(/priority\s*(\d+)/)
   if (m) {
-    const n = Number.parseInt(m[1], 10)
-    if (Number.isInteger(n)) return Math.min(99, Math.max(0, n))
+    const cap = m[1]
+    if (cap != null) {
+      const n = Number.parseInt(cap, 10)
+      if (Number.isInteger(n)) return Math.min(99, Math.max(0, n))
+    }
   }
   const n = Number(raw.replace(',', '.'))
   if (Number.isInteger(n) && n >= 0 && n <= 99) return n
@@ -101,8 +104,13 @@ export function cellToKpiIso(val: unknown): string | null {
   }
   const m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/)
   if (m) {
-    const dt = new Date(`${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}T12:00:00`)
-    return Number.isNaN(dt.getTime()) ? null : dt.toISOString()
+    const day = m[1]
+    const mo = m[2]
+    const y = m[3]
+    if (day != null && mo != null && y != null) {
+      const dt = new Date(`${y}-${mo.padStart(2, '0')}-${day.padStart(2, '0')}T12:00:00`)
+      return Number.isNaN(dt.getTime()) ? null : dt.toISOString()
+    }
   }
   return null
 }
@@ -149,6 +157,7 @@ export function parseXlsxFirstSheetToMatrix(buf: ArrayBuffer): unknown[][] {
   const sn = wb.SheetNames[0]
   if (!sn) return []
   const sh = wb.Sheets[sn]
+  if (!sh) return []
   const data = XLSX.utils.sheet_to_json<unknown[]>(sh, {
     header: 1,
     defval: '',
@@ -177,7 +186,12 @@ export function matrixToImportItems(
     return { items, errors }
   }
 
-  const headerRow = matrix[0].map((c) => String(c ?? ''))
+  const headerRaw = matrix[0]
+  if (!headerRaw || !Array.isArray(headerRaw)) {
+    errors.push({ row: 1, message: 'File không có hàng tiêu đề hợp lệ.' })
+    return { items, errors }
+  }
+  const headerRow = headerRaw.map((c) => String(c ?? ''))
   const ixAssignee = findColIndex(headerRow, ['Nhân sự', 'nhan su', 'Họ tên', 'assignee'])
   const ixKind = findColIndex(headerRow, ['Hạng mục', 'hang muc', 'kind', 'loại'])
   const ixPriority = findColIndex(headerRow, ['Thứ tự ưu tiên', 'uu tien', 'priority'])

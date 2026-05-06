@@ -4,9 +4,9 @@ import {
   BarChart3,
   BookOpen,
   Calendar,
+  CalendarRange,
   ClipboardList,
   FileUp,
-  GraduationCap,
   Home,
   KeyRound,
   LayoutGrid,
@@ -92,6 +92,8 @@ const HR_ITEMS: AppNavItem[] = [
     match: 'custom',
     customMatch: (p) => {
       if (p === '/hr-admin/org' || p.startsWith('/hr-admin/org/')) return false
+      if (p.startsWith('/hr-admin/kpi-catalog')) return false
+      if (p.startsWith('/hr-admin/settings/kpi-windows')) return false
       return p === '/hr-admin' || p.startsWith('/hr-admin/')
     },
     search: { page: 1 },
@@ -103,6 +105,20 @@ const HR_ITEMS: AppNavItem[] = [
     icon: Network,
     match: 'prefix',
     permissionId: 'hr.org.manage',
+  },
+  {
+    to: '/hr-admin/kpi-catalog/SALES_NV',
+    label: 'Catalog KPI/OKR',
+    icon: BookOpen,
+    match: 'prefix',
+    permissionId: 'kpi.catalog_edit',
+  },
+  {
+    to: '/hr-admin/settings/kpi-windows',
+    label: 'Cửa sổ KPI/OKR',
+    icon: CalendarRange,
+    match: 'prefix',
+    permissionId: 'kpi.window_override',
   },
 ]
 
@@ -186,6 +202,20 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
     icon: Building2,
     match: 'prefix',
     permissionId: 'hr.org.manage',
+  },
+  {
+    to: '/manager/kpi-okr/leader-review',
+    label: 'Đánh giá Leader',
+    icon: ShieldCheck,
+    match: 'prefix',
+    permissionId: 'kpi.leader_review',
+  },
+  {
+    to: '/hr-admin/settings/kpi-windows',
+    label: 'Cửa sổ KPI/OKR',
+    icon: CalendarRange,
+    match: 'prefix',
+    permissionId: 'kpi.window_override',
   },
 ]
 
@@ -358,6 +388,8 @@ export function groupedSidebarNavItems(
         ...find(TEACHER_HEADER_ITEMS, '/exam/grader'),
         ...find(MANAGER_OPS_ITEMS, '/manager/approvals'),
         ...find(MANAGER_OPS_ITEMS, '/manager/learning-submissions'),
+        ...find(MANAGER_OPS_ITEMS, '/manager/kpi-okr/leader-review'),
+        ...find(MANAGER_OPS_ITEMS, '/hr-admin/settings/kpi-windows'),
       ]),
     },
     {

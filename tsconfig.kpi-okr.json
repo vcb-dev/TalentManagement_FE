@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/features/kpi-okr/**/*.ts", "src/features/kpi-okr/**/*.tsx"]
+}

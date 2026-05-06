@@ -112,6 +112,13 @@ const nodes: PermissionNode[] = [
     kind: 'function',
     scope: 'global',
   },
+  {
+    id: 'kpi.window_override',
+    parentId: 'mod.kpi',
+    label: 'HR cấu hình cửa sổ giao mục tiêu',
+    kind: 'function',
+    scope: 'global',
+  },
 
   {
     id: 'mod.report',
@@ -359,6 +366,7 @@ export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly stri
   'mod.kpi': [
     'KPI & OKR cá nhân (/kpi-okr)',
     'KPI & OKR trong team — quản lý/leader (/leader/kpi-okr, khi được cấp quyền team)',
+    'Cửa sổ giao KPI/OKR theo tháng (/hr-admin/settings/kpi-windows, quyền HR)',
   ],
   'mod.report': [
     'Báo cáo KPI/OKR hàng tháng (/monthly-report, …)',

@@ -116,8 +116,10 @@ export function ManagerHrSnapshotCards({
                 margin={{ top: 4, right: 8, left: 4, bottom: 4 }}
                 barCategoryGap="22%"
                 onMouseMove={(s) => {
-                  if (s?.activeTooltipIndex != null)
-                    setHoverKey(barData[s.activeTooltipIndex]?.key ?? null)
+                  const idx = s?.activeTooltipIndex
+                  if (typeof idx === 'number' && idx >= 0 && idx < barData.length) {
+                    setHoverKey(barData[idx]?.key ?? null)
+                  }
                 }}
                 onMouseLeave={() => setHoverKey(null)}
               >

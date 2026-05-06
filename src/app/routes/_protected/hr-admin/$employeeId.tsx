@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 import { HrEmployeeProfile } from '@/features/hr-admin/components/HrEmployeeProfile'
 import { useEmployee } from '@/features/hr-admin/hooks'
@@ -10,8 +10,11 @@ const employeeSearchSchema = z.object({
 
 export const Route = createFileRoute('/_protected/hr-admin/$employeeId')({
   validateSearch: (raw) => employeeSearchSchema.parse(raw),
-  beforeLoad: () => {
+  beforeLoad: ({ params }) => {
     requireEmployeeDirectoryAccess()
+    /** Tránh coi các đường dẫn dự kiến (vd. /hr-admin/settings/…) là UUID và gọi GET /employees/:id */
+    const parsed = z.string().uuid().safeParse(params.employeeId)
+    if (!parsed.success) throw redirect({ to: '/hr-admin', replace: true })
   },
   component: EmployeeDetailPage,
 })

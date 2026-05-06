@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart3, Calendar, RefreshCw, UserRound } from 'lucide-react'
+import { BarChart3, Calendar, Download, RefreshCw, UserRound } from 'lucide-react'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -22,7 +22,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
-import { performanceApi } from '@/features/kpi-okr/api'
+import { getApiErrorMessage } from '@/lib/axios'
+import { performanceApi, type PerformanceAssignment } from '@/features/kpi-okr/api'
 import {
   clampKpiPeriod,
   getMaxViewableYm,
@@ -33,6 +34,13 @@ import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
 import { organizationApi } from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { useAuthStore } from '@/stores/auth.store'
+import { resolveEffectivePermissionSet } from '@/features/permissions/resolveEffective'
+import { toast } from 'sonner'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  EvidenceImagePreviews,
+  KpiEvidenceInput,
+} from '@/features/kpi-okr/components/KpiEvidenceInput'
 import {
   Table,
   TableBody,
@@ -77,6 +85,215 @@ function EvalBadge({ status }: { status: string | null | undefined }) {
     >
       {v}
     </Badge>
+  )
+}
+
+function MonthlyReportEpic4ReadCells({ item }: { item: PerformanceAssignment }) {
+  const num =
+    item.numericValue !== undefined && item.numericValue !== null ? String(item.numericValue) : '—'
+  const ev = item.evidence?.trim()
+  return (
+    <>
+      <TableCell className="whitespace-nowrap tabular-nums text-[13px]">{num}</TableCell>
+      <TableCell className="text-[11px] uppercase text-slate-600">
+        {item.numericUnit ?? '—'}
+      </TableCell>
+      <TableCell className="max-w-[180px] text-[12px]" title={ev ?? ''}>
+        {ev ? (
+          <span className="line-clamp-3 whitespace-pre-wrap break-all">{ev}</span>
+        ) : (
+          <span className="text-slate-400">—</span>
+        )}
+        <EvidenceImagePreviews evidence={item.evidence} maxHeightClass="h-12 max-w-[88px]" />
+      </TableCell>
+      <TableCell>
+        <EvalBadge status={item.selfEvalStatus} />
+      </TableCell>
+      <TableCell className="max-w-[200px] text-[12px] text-slate-600">
+        {item.selfReviewNote?.trim() ? (
+          <span className="line-clamp-2 italic">{item.selfReviewNote.trim()}</span>
+        ) : (
+          <span className="text-slate-400">—</span>
+        )}
+      </TableCell>
+    </>
+  )
+}
+
+/** Epic 4 — ô nhập (member); nút Lưu đặt sau cột QL (parent render). */
+function MonthlyReportEpic4EditableCells({
+  evidence,
+  setEvidence,
+  numericRaw,
+  setNumericRaw,
+  numericUnit,
+  setNumericUnit,
+  selfEvalStatus,
+  setSelfEvalStatus,
+  selfReviewNote,
+  setSelfReviewNote,
+  disabled,
+}: {
+  evidence: string
+  setEvidence: (v: string) => void
+  numericRaw: string
+  setNumericRaw: (v: string) => void
+  numericUnit: string
+  setNumericUnit: (v: string) => void
+  selfEvalStatus: string
+  setSelfEvalStatus: (v: string) => void
+  selfReviewNote: string
+  setSelfReviewNote: (v: string) => void
+  disabled?: boolean
+}) {
+  const inputCls =
+    'h-8 min-w-[72px] rounded-md border border-slate-200 bg-white px-2 text-[12px] dark:border-slate-700 dark:bg-slate-950'
+
+  return (
+    <>
+      <TableCell className="align-top p-2">
+        <Input
+          value={numericRaw}
+          onChange={(e) => setNumericRaw(e.target.value)}
+          className={inputCls}
+          placeholder="—"
+          disabled={disabled}
+        />
+      </TableCell>
+      <TableCell className="align-top p-2">
+        <Input
+          value={numericUnit}
+          onChange={(e) => setNumericUnit(e.target.value)}
+          className={inputCls}
+          placeholder="Đơn vị"
+          disabled={disabled}
+        />
+      </TableCell>
+      <TableCell className="max-w-[220px] align-top p-2">
+        <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={disabled} />
+      </TableCell>
+      <TableCell className="align-top p-2">
+        <select
+          value={selfEvalStatus}
+          onChange={(e) => setSelfEvalStatus(e.target.value)}
+          className={cn(inputCls, 'w-full min-w-[76px]')}
+          disabled={disabled}
+        >
+          <option value="">—</option>
+          <option value="OK">OK</option>
+          <option value="NOT">NOT</option>
+        </select>
+      </TableCell>
+      <TableCell className="max-w-[200px] align-top p-2">
+        <Textarea
+          value={selfReviewNote}
+          onChange={(e) => setSelfReviewNote(e.target.value)}
+          rows={2}
+          disabled={disabled}
+          className="min-h-[52px] resize-y rounded-md border border-slate-200 bg-white p-2 text-[12px] dark:border-slate-700 dark:bg-slate-950"
+          placeholder="Tự nhận xét"
+        />
+      </TableCell>
+    </>
+  )
+}
+
+function MonthlyReportMemberEditableRow({
+  item,
+  onSaved,
+}: {
+  item: PerformanceAssignment
+  onSaved: () => void
+}) {
+  const [evidence, setEvidence] = useState(item.evidence ?? '')
+  const [numericRaw, setNumericRaw] = useState(
+    item.numericValue != null ? String(item.numericValue) : ''
+  )
+  const [numericUnit, setNumericUnit] = useState(item.numericUnit ?? '')
+  const [selfEvalStatus, setSelfEvalStatus] = useState(item.selfEvalStatus ?? '')
+  const [selfReviewNote, setSelfReviewNote] = useState(item.selfReviewNote ?? '')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setEvidence(item.evidence ?? '')
+    setNumericRaw(item.numericValue != null ? String(item.numericValue) : '')
+    setNumericUnit(item.numericUnit ?? '')
+    setSelfEvalStatus(item.selfEvalStatus ?? '')
+    setSelfReviewNote(item.selfReviewNote ?? '')
+  }, [
+    item.id,
+    item.evidence,
+    item.numericValue,
+    item.numericUnit,
+    item.selfEvalStatus,
+    item.selfReviewNote,
+  ])
+
+  const save = async () => {
+    const nTrim = numericRaw.trim()
+    let numericValue: number | null = null
+    if (nTrim.length > 0) {
+      const n = Number(nTrim.replace(',', '.'))
+      if (!Number.isFinite(n)) {
+        toast.error('Số liệu không hợp lệ.')
+        return
+      }
+      numericValue = n
+    }
+    if (item.status === 'done' && !evidence.trim()) {
+      toast.warning('Trạng thái Hoàn thành nhưng Evidence đang trống.')
+    }
+    setSaving(true)
+    try {
+      await performanceApi.patchAssignmentSelf(item.id, {
+        evidence: evidence.trim() ? evidence.trim() : null,
+        numericValue,
+        numericUnit: numericUnit.trim() ? numericUnit.trim().toUpperCase() : null,
+        selfEvalStatus: selfEvalStatus.trim() ? selfEvalStatus.trim() : null,
+        selfReviewNote: selfReviewNote.trim() ? selfReviewNote.trim() : null,
+      })
+      toast.success('Đã lưu.')
+      onSaved()
+    } catch (e) {
+      toast.error(getApiErrorMessage(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <>
+      <MonthlyReportEpic4EditableCells
+        evidence={evidence}
+        setEvidence={setEvidence}
+        numericRaw={numericRaw}
+        setNumericRaw={setNumericRaw}
+        numericUnit={numericUnit}
+        setNumericUnit={setNumericUnit}
+        selfEvalStatus={selfEvalStatus}
+        setSelfEvalStatus={setSelfEvalStatus}
+        selfReviewNote={selfReviewNote}
+        setSelfReviewNote={setSelfReviewNote}
+        disabled={saving}
+      />
+      <TableCell>
+        <EvalBadge status={item.managerEvalStatus} />
+      </TableCell>
+      <TableCell className="max-w-[280px] text-[12px] italic text-slate-500">
+        {item.managerReviewNote?.trim() || '—'}
+      </TableCell>
+      <TableCell className="align-top whitespace-nowrap p-2">
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 text-xs"
+          disabled={saving}
+          onClick={() => void save()}
+        >
+          {saving ? '…' : 'Lưu'}
+        </Button>
+      </TableCell>
+    </>
   )
 }
 
@@ -130,6 +347,14 @@ export function MonthlyReportScreen() {
     enabled: Boolean(selectedTeamId) && !isMockApiEnabled(),
   })
   const assignmentsData = assignmentsQ.data ?? []
+
+  const monthlyReportQ = useQuery({
+    queryKey: ['monthly-report', selectedDept?.id, year, month],
+    queryFn: () => performanceApi.getMonthlyReport(selectedDept?.id ?? '', year, month),
+    enabled: Boolean(selectedDept?.id) && canSeeTeamWide && !isMockApiEnabled(),
+  })
+  const hrCounters = monthlyReportQ.data?.hrCounters
+
   const summariesData = summariesQ.data ?? []
 
   const summaryRows =
@@ -152,6 +377,48 @@ export function MonthlyReportScreen() {
   })()
 
   const detailRows = selectedDetailUserId ? (assignmentsByUser.get(selectedDetailUserId) ?? []) : []
+
+  const eff = useMemo(() => resolveEffectivePermissionSet(user), [user])
+  const allowEpic4SelfEdit =
+    Boolean(userId) &&
+    !canSeeTeamWide &&
+    selectedDetailUserId === userId &&
+    eff.has('kpi.edit_own') &&
+    !isMockApiEnabled()
+
+  const invalidateMonthlyAssignments = useCallback(() => {
+    void qc.invalidateQueries({
+      queryKey: ['monthly-report-assignments', selectedTeamId, year, month],
+    })
+  }, [qc, selectedTeamId, year, month])
+
+  const handleExportExcel = () => {
+    import('xlsx')
+      .then((XLSX) => {
+        const wsData = [
+          ['Nhân sự', 'KPI đạt', 'KPI chưa đạt', 'Loại KPI', 'OKR đạt', 'OKR chưa đạt', 'Loại OKR'],
+          ...summaryRows.map(function (row) {
+            return [
+              row.assigneeDisplayName || row.assigneeEmail || 'Thành viên',
+              row.kpiOkCount,
+              row.kpiNotCount,
+              row.kpiGrade ?? '',
+              row.okrOkCount,
+              row.okrNotCount,
+              row.okrGrade ?? '',
+            ]
+          }),
+        ]
+        const ws = XLSX.utils.aoa_to_sheet(wsData)
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, 'KPI-OKR')
+        const deptName = selectedDept?.name || 'tat-ca'
+        XLSX.writeFile(wb, `bao-cao-T${month}-${year}-${deptName}.xlsx`)
+      })
+      .catch(() => {
+        alert('Không tải được thư viện xuất Excel. Kiểm tra kết nối và thử lại.')
+      })
+  }
 
   const okCount = assignmentsData.filter(
     (x) => (x.managerEvalStatus ?? '').trim().toUpperCase() === 'OK'
@@ -337,6 +604,46 @@ export function MonthlyReportScreen() {
         </CardContent>
       </Card>
 
+      {/* HR Counters */}
+      {canSeeTeamWide && selectedDept?.id && hrCounters && (
+        <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Card className="border-emerald-200 bg-emerald-50/50">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-emerald-600">{hrCounters.promoted}</div>
+              <div className="text-xs text-emerald-500">Len cap</div>
+            </CardContent>
+          </Card>
+          <Card className="border-amber-200 bg-amber-50/50">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-amber-600">{hrCounters.notLearned}</div>
+              <div className="text-xs text-amber-500">Chua hoan thanh hoc</div>
+            </CardContent>
+          </Card>
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-blue-600">{hrCounters.newJoiners}</div>
+              <div className="text-xs text-blue-500">Moi vao</div>
+            </CardContent>
+          </Card>
+          <Card className="border-rose-200 bg-rose-50/50">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-rose-600">{hrCounters.leavers}</div>
+              <div className="text-xs text-rose-500">Nghi viec</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Export button */}
+      {canSeeTeamWide && summaryRows.length > 0 && (
+        <div className="mb-4 flex justify-end">
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportExcel}>
+            <Download className="h-4 w-4" />
+            Xuat Excel
+          </Button>
+        </div>
+      )}
+
       {isMockApiEnabled() ? (
         <div className="mb-4 flex items-center gap-2 text-game-soft-foreground">
           <BarChart3 className="h-4 w-4 text-amber-700" strokeWidth={2} />
@@ -475,54 +782,82 @@ export function MonthlyReportScreen() {
                   Không có mục tiêu KPI/OKR trong kỳ này.
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-blue-500/10">
-                      <TableHead className="whitespace-nowrap">Ngày xét</TableHead>
-                      <TableHead>Hạng mục</TableHead>
-                      <TableHead className="whitespace-nowrap">Ưu tiên</TableHead>
-                      <TableHead>Nội dung</TableHead>
-                      <TableHead>Chỉ tiêu</TableHead>
-                      <TableHead className="whitespace-nowrap">QL đánh giá</TableHead>
-                      <TableHead>QL nhận xét</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {detailRows.map((item) => (
-                      <TableRow key={item.id} className="transition-colors hover:bg-blue-500/5">
-                        <TableCell className="whitespace-nowrap tabular-nums text-slate-500">
-                          {formatKpiSetAt(item.kpiSetAt)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={
-                              item.kind === 'KPI'
-                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                                : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
-                            }
-                          >
-                            {item.kind}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          <PriorityText priority={item.priority} />
-                        </TableCell>
-                        <TableCell className="max-w-[520px] whitespace-pre-wrap">
-                          {item.content}
-                        </TableCell>
-                        <TableCell className="tabular-nums font-semibold text-primary">
-                          {item.targetMetric?.trim() || '—'}
-                        </TableCell>
-                        <TableCell>
-                          <EvalBadge status={item.managerEvalStatus} />
-                        </TableCell>
-                        <TableCell className="max-w-[280px] text-[12px] italic text-slate-500">
-                          {item.managerReviewNote?.trim() || '—'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <>
+                  <p className="mb-3 text-[13px] text-muted-foreground">
+                    {allowEpic4SelfEdit
+                      ? 'Cập nhật số liệu, Evidence và tự đánh giá (Epic 4); bấm Lưu từng dòng. Đánh giá QL do Leader cập nhật.'
+                      : canSeeTeamWide
+                        ? 'Theo dõi Evidence / số liệu / tự đánh giá của nhân sự (read-only).'
+                        : 'Bạn xem Evidence và tự đánh giá ở đây (read-only). Để chỉnh sửa cần quyền kpi.edit_own — có thể cập nhật thêm tại mục KPI & OKR trong workspace.'}
+                  </p>
+                  <div className="overflow-x-auto rounded-lg border border-blue-100/50 dark:border-blue-900/30">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-blue-500/10">
+                          <TableHead className="whitespace-nowrap">Ngày xét</TableHead>
+                          <TableHead>Hạng mục</TableHead>
+                          <TableHead className="whitespace-nowrap">Ưu tiên</TableHead>
+                          <TableHead>Nội dung</TableHead>
+                          <TableHead>Chỉ tiêu</TableHead>
+                          <TableHead className="whitespace-nowrap">Số liệu</TableHead>
+                          <TableHead className="whitespace-nowrap">Đ.vị</TableHead>
+                          <TableHead className="min-w-[140px]">Evidence</TableHead>
+                          <TableHead className="whitespace-nowrap">Tự đánh giá</TableHead>
+                          <TableHead className="min-w-[120px]">Tự nhận xét</TableHead>
+                          <TableHead className="whitespace-nowrap">QL đánh giá</TableHead>
+                          <TableHead>QL nhận xét</TableHead>
+                          <TableHead className="whitespace-nowrap text-right">Thao tác</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {detailRows.map((item) => (
+                          <TableRow key={item.id} className="transition-colors hover:bg-blue-500/5">
+                            <TableCell className="whitespace-nowrap tabular-nums text-slate-500">
+                              {formatKpiSetAt(item.kpiSetAt)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                className={
+                                  item.kind === 'KPI'
+                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                                    : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
+                                }
+                              >
+                                {item.kind}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              <PriorityText priority={item.priority} />
+                            </TableCell>
+                            <TableCell className="max-w-[520px] whitespace-pre-wrap">
+                              {item.content}
+                            </TableCell>
+                            <TableCell className="tabular-nums font-semibold text-primary">
+                              {item.targetMetric?.trim() || '—'}
+                            </TableCell>
+                            {allowEpic4SelfEdit ? (
+                              <MonthlyReportMemberEditableRow
+                                item={item}
+                                onSaved={invalidateMonthlyAssignments}
+                              />
+                            ) : (
+                              <>
+                                <MonthlyReportEpic4ReadCells item={item} />
+                                <TableCell>
+                                  <EvalBadge status={item.managerEvalStatus} />
+                                </TableCell>
+                                <TableCell className="max-w-[280px] text-[12px] italic text-slate-500">
+                                  {item.managerReviewNote?.trim() || '—'}
+                                </TableCell>
+                                <TableCell className="text-center text-slate-400">—</TableCell>
+                              </>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

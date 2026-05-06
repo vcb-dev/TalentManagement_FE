@@ -40,15 +40,50 @@ export function clampKpiPeriod(
  * Cửa sổ giao mục tiêu KPI/OKR: mặc định mở 00:00 ngày 01 → 23:59 ngày 02.
  * Đồng bộ với BE `assertAssignmentWindowOpen`.
  */
+export type AssignmentWindowPhase = 'before' | 'open' | 'after'
+
+export function getAssignmentWindowPhase(
+  year: number,
+  month: number,
+  cfg: { startDay?: number; endDay?: number } = {},
+  now: Date = new Date()
+): AssignmentWindowPhase {
+  const startDay = cfg.startDay ?? 1
+  const endDay = cfg.endDay ?? 2
+  const start = new Date(year, month - 1, startDay, 0, 0, 0, 0)
+  const end = new Date(year, month - 1, endDay, 23, 59, 59, 999)
+  if (now < start) return 'before'
+  if (now > end) return 'after'
+  return 'open'
+}
+
 export function isAssignmentWindowOpen(
   year: number,
   month: number,
   cfg: { startDay?: number; endDay?: number } = {},
   now: Date = new Date()
 ): boolean {
-  const startDay = cfg.startDay ?? 1
-  const endDay = cfg.endDay ?? 2
-  const start = new Date(year, month - 1, startDay, 0, 0, 0, 0)
-  const end = new Date(year, month - 1, endDay, 23, 59, 59, 999)
-  return now >= start && now <= end
+  return getAssignmentWindowPhase(year, month, cfg, now) === 'open'
+}
+
+/** Khớp BE `resolveWindowConfig`: ưu tiên config theo team → global (teamId null) → mặc định 1–2. */
+export type AssignmentWindowConfigSlice = {
+  teamId: string | null
+  year: number
+  month: number
+  assignStartDay: number
+  assignEndDay: number
+}
+
+export function resolveAssignmentWindowForTeam(
+  teamId: string,
+  year: number,
+  month: number,
+  configs: AssignmentWindowConfigSlice[]
+): { startDay: number; endDay: number } {
+  const specific = configs.find((c) => c.teamId === teamId && c.year === year && c.month === month)
+  if (specific) return { startDay: specific.assignStartDay, endDay: specific.assignEndDay }
+  const globalCfg = configs.find((c) => c.teamId == null && c.year === year && c.month === month)
+  if (globalCfg) return { startDay: globalCfg.assignStartDay, endDay: globalCfg.assignEndDay }
+  return { startDay: 1, endDay: 2 }
 }

@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/axios'
 import { isMockApiEnabled } from '@/lib/mockEnv'
+import { useAuthStore } from '@/stores/auth.store'
 
 export type PerformanceKind = 'KPI' | 'OKR'
 export type PerformanceStatus = 'not_started' | 'in_progress' | 'done' | 'blocked'
@@ -251,6 +252,29 @@ export const performanceApi = {
       body
     )
     return res.data
+  },
+
+  /** Upload ảnh minh chứng KPI → `{ url }` dạng `/uploads/kpi-evidence/...` (ghép vào Evidence). */
+  uploadKpiEvidenceImage: async (file: File): Promise<{ url: string }> => {
+    if (isMockApiEnabled()) {
+      await new Promise((r) => setTimeout(r, 300))
+      return { url: '/uploads/kpi-evidence/mock.jpg' }
+    }
+    const base = import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? ''
+    const token = useAuthStore.getState().accessToken
+    const body = new FormData()
+    body.append('file', file)
+    const res = await fetch(`${base}/performance/assignments/evidence-image`, {
+      method: 'POST',
+      body,
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || 'Không tải được ảnh minh chứng')
+    }
+    return res.json() as Promise<{ url: string }>
   },
 
   deleteAssignment: async (id: string) => {

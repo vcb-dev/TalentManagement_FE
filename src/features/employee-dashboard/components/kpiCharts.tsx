@@ -385,7 +385,6 @@ export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: st
  * ==================================================================== */
 
 export function PerPersonBar({ rows }: { rows: PerPersonBarRow[] }) {
-  const [hoverBar, setHoverBar] = useState<string | null>(null)
   if (!rows.length) {
     return (
       <div className="flex h-[260px] items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">
@@ -397,17 +396,7 @@ export function PerPersonBar({ rows }: { rows: PerPersonBarRow[] }) {
   return (
     <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={data}
-          margin={{ top: 10, right: 16, left: 0, bottom: 8 }}
-          barGap={2}
-          onMouseMove={(state) => {
-            if (state?.activeTooltipIndex != null) {
-              setHoverBar(data[state.activeTooltipIndex]?.userId ?? null)
-            }
-          }}
-          onMouseLeave={() => setHoverBar(null)}
-        >
+        <BarChart data={data} margin={{ top: 10, right: 16, left: 0, bottom: 8 }} barGap={2}>
           <CartesianGrid {...CHART_GRID_LINE} />
           <XAxis
             dataKey="name"
