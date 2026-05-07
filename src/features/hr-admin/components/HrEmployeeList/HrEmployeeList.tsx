@@ -74,6 +74,11 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   const searchDraft = useWatch({ control, name: 'searchDraft' })
   /** Bo qua lan debounce dau (giu page tu URL khi vao truc tiep ?page=2). */
   const skipInitialSearchDebounce = useRef(true)
+  /** Tránh đưa `setFilters` vào deps: nó đổi mỗi khi URL đổi `page` → effect chạy lại và sau debounce reset page về 1. */
+  const setFiltersRef = useRef(setFilters)
+  const navigateForSearchRef = useRef(navigate)
+  setFiltersRef.current = setFilters
+  navigateForSearchRef.current = navigate
 
   useEffect(() => {
     if (filters.pageSize === HR_EMPLOYEE_PAGE_SIZE) return
@@ -92,17 +97,17 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
       skipInitialSearchDebounce.current = false
       return
     }
+    const draft = searchDraft
     const t = window.setTimeout(() => {
-      setFilters((f) => ({ ...f, search: searchDraft || undefined, page: 1 }))
+      setFiltersRef.current((f) => ({ ...f, search: draft || undefined, page: 1 }))
       setSelectedId(null)
-      void navigate({
+      void navigateForSearchRef.current({
         to: '/hr-admin',
         search: (s) => ({ ...s, page: 1, pageSize: HR_EMPLOYEE_PAGE_SIZE }),
       })
     }, 320)
     return () => window.clearTimeout(t)
-    // Chi phu thuoc searchDraft.
-  }, [navigate, searchDraft, setFilters])
+  }, [searchDraft])
 
   const selected = useMemo(
     () => employees.find((e) => e.id === selectedId) ?? null,
@@ -352,6 +357,21 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
           </div>
         </div>
 
+        {viewMode === 'cards' && (employees.length > 0 || pagination.total > 0) ? (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/50 px-3 py-3 shadow-sm ring-1 ring-border/50 backdrop-blur-sm sm:px-4">
+            <span className="text-xs font-medium text-muted-foreground">
+              {pagination.total === 0
+                ? 'Không có nhân viên phù hợp'
+                : `Hiển thị ${rangeFrom}–${rangeTo} trong ${pagination.total} nhân viên`}
+            </span>
+            <PaginationCardStepper
+              page={pagination.page}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
+          </div>
+        ) : null}
+
         {viewMode === 'table' ? (
           <EmployeeTable
             employees={employees}
@@ -413,21 +433,6 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
             ) : null}
           </>
         )}
-
-        {viewMode === 'cards' && (employees.length > 0 || pagination.total > 0) ? (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <span className="text-xs font-medium text-muted-foreground">
-              {pagination.total === 0
-                ? 'Không có nhân viên phù hợp'
-                : `Hiển thị ${rangeFrom}–${rangeTo} trong ${pagination.total} nhân viên`}
-            </span>
-            <PaginationCardStepper
-              page={pagination.page}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
-          </div>
-        ) : null}
       </div>
 
       <EmployeeDetailSheet
