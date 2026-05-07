@@ -93,6 +93,23 @@ export const managerClassMemberApiSchema = z.object({
   joinedAt: z.string().datetime(),
 })
 
+export const managerClassScheduleApiSchema = z.object({
+  id: z.string().uuid(),
+  classId: z.string().uuid(),
+  dateIso: z.string(),
+  startTime: z.string(),
+  endTime: z.string(),
+  topic: z.string(),
+  location: z.string().nullable(),
+  isExam: z.boolean().optional(),
+  examTeacherUserId: z.string().uuid().nullable().optional(),
+  examTeacherName: z.string().nullable().optional(),
+  examStatus: z.string().nullable().optional(),
+  examQuestions: z.any().nullable().optional(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+})
+
 export const managerClassApiSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -113,6 +130,7 @@ export const managerClassApiSchema = z.object({
   memberCount: z.number().int().nonnegative(),
   members: z.array(managerClassMemberApiSchema),
   examQuestions: z.any().nullable(),
+  schedules: z.array(managerClassScheduleApiSchema).optional(),
 })
 
 export const managerClassCreateResponseSchema = z.object({
@@ -146,18 +164,6 @@ export const managerRoadmapItemApiSchema = z.object({
 
 export const managerRoadmapItemCreateResponseSchema = z.object({
   id: z.string().uuid(),
-})
-
-export const managerClassScheduleApiSchema = z.object({
-  id: z.string().uuid(),
-  classId: z.string().uuid(),
-  dateIso: z.string(),
-  startTime: z.string(),
-  endTime: z.string(),
-  topic: z.string(),
-  location: z.string().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
 })
 
 export const orgItemApiSchema = z.object({

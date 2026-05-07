@@ -111,11 +111,18 @@ function ExamIndexPage() {
           page={data?.page ?? page}
           isLoading={isLoading}
           onPageChange={setPage}
-          onOpenExam={(id, isSubmission) => {
+          onOpenExam={(id, isSubmission, scheduleId) => {
             if (isSubmission) {
-              void navigate({ to: '/exam/submission/$submissionId', params: { submissionId: id } })
+              void navigate({
+                to: '/exam/submission/$submissionId',
+                params: { submissionId: id },
+              } as any)
             } else {
-              void navigate({ to: '/exam/$examId/result', params: { examId: id } })
+              void navigate({
+                to: '/exam/$examId/result',
+                params: { examId: id },
+                search: { scheduleId } as any,
+              } as any)
             }
           }}
           myEnrolledClassId={myClassData?.enrolledClass?.id ?? undefined}

@@ -24,6 +24,7 @@ type HeaderNavGroup = {
 
 function routeGroup(item: AppNavItem): string {
   if (item.to === '/') return 'company'
+  if (item.to.startsWith('/room-booking')) return 'room-booking'
   if (item.to.startsWith('/manager')) return 'manager'
   if (item.to.startsWith('/hr-admin') || item.to.startsWith('/permissions')) return 'hr'
   if (item.to.startsWith('/teacher') || item.to.startsWith('/exam/grader')) return 'teacher'
@@ -46,22 +47,12 @@ function routeGroup(item: AppNavItem): string {
   return 'other'
 }
 
-function buildHeaderGroups(items: AppNavItem[]): HeaderNavGroup[] {
-  const labels: Record<string, string> = {
-    company: 'Công ty',
-    dashboard: 'Tổng quan',
-    learning: 'Học tập',
-    kpi: 'KPI / Báo cáo',
-    manager: 'Quản lý lớp',
-    hr: 'Nhân sự',
-    teacher: 'Giảng viên',
-    bod: 'BOD',
-    other: 'Khác',
-  }
+function buildHeaderGroups(items: AppNavItem[], labels: Record<string, string>): HeaderNavGroup[] {
   const order = [
     'company',
     'dashboard',
     'learning',
+    'room-booking',
     'kpi',
     'manager',
     'hr',
@@ -124,7 +115,22 @@ export function MemberLeaderHeaderNav() {
   const { canId } = usePermission()
   const role = useAuthStore((s) => s.user?.role)
   const items = mergeCompactHeaderNavItems(canId, role)
-  const groups = buildHeaderGroups(items)
+
+  const isPrivileged = role === 'HR' || role === 'MANAGER' || role === 'BOD'
+  const labels: Record<string, string> = {
+    company: 'Công ty',
+    dashboard: 'Tổng quan',
+    learning: 'Học tập',
+    'room-booking': isPrivileged ? 'Duyệt lịch phòng họp' : 'Đặt phòng họp',
+    kpi: 'KPI / Báo cáo',
+    manager: 'Quản lý lớp',
+    hr: 'Nhân sự',
+    teacher: 'Giảng viên',
+    bod: 'BOD',
+    other: 'Khác',
+  }
+
+  const groups = buildHeaderGroups(items, labels)
 
   return (
     <NavigationMenu
@@ -161,12 +167,6 @@ export function MemberLeaderHeaderNav() {
           return (
             <NavigationMenuItem key={group.id}>
               <NavigationMenuTrigger
-                onPointerDown={(event) => {
-                  event.preventDefault()
-                }}
-                onClick={(event) => {
-                  event.preventDefault()
-                }}
                 className={cn(
                   'border-transparent bg-transparent text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white focus:text-white data-[state=open]:border-white/30 data-[state=open]:bg-white/15 data-[state=open]:text-white',
                   active && 'border-white/30 bg-white/15 text-white'

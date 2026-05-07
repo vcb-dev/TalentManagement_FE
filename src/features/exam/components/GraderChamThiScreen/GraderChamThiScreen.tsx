@@ -26,7 +26,7 @@ export interface GraderChamThiScreenProps {
 
 type GradeFormValues = {
   graderNote: string
-  grades: Record<string, { criteria: string[]; score: number }>
+  grades: Record<string, { criteria: string[]; score: number; isGraded?: boolean }>
 }
 
 const CRITERIA_WEIGHTS: Record<string, number> = {
@@ -54,7 +54,11 @@ function GraderQuestionItem({
   setValue: UseFormSetValue<GradeFormValues>
   disabled: boolean
 }) {
-  const questionGrade = useWatch({ control, name: `grades.${qId}` }) ?? { criteria: [], score: 0 }
+  const questionGrade = useWatch({ control, name: `grades.${qId}` }) ?? {
+    criteria: [],
+    score: 0,
+    isGraded: false,
+  }
 
   const toggleCriteria = (criteriaId: string) => {
     const current = getValues('grades') ?? {}
@@ -66,64 +70,98 @@ function GraderQuestionItem({
     const newScore = newCriteria.reduce((sum, c) => sum + (CRITERIA_WEIGHTS[c] || 0), 0)
     setValue('grades', {
       ...current,
-      [qId]: { criteria: newCriteria, score: newScore },
+      [qId]: { criteria: newCriteria, score: newScore, isGraded: true },
     })
   }
 
+  const markAsZero = () => {
+    const current = getValues('grades') ?? {}
+    setValue('grades', {
+      ...current,
+      [qId]: { criteria: [], score: 0, isGraded: true },
+    })
+  }
+
+  const isGraded = (questionGrade as any).isGraded
+
   return (
-    <div className="border-b border-border/50 pb-6 last:border-0 last:pb-0">
-      <p className="mb-2 text-sm font-semibold text-foreground">
-        <span className="mr-1 font-bold text-primary">Câu {idx + 1}:</span>
-        {questionText}
-      </p>
+    <div
+      id={`q-${qId}`}
+      className={cn(
+        'border-b border-border/50 pb-6 last:border-0 last:pb-0 transition-all p-3 rounded-xl',
+        !isGraded && answer?.trim() && 'bg-red-50/20 border border-red-200'
+      )}
+    >
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <p className="text-sm font-semibold text-foreground">
+          <span className="mr-1 font-bold text-primary">Câu {idx + 1}:</span>
+          {questionText}
+        </p>
+        {!isGraded && answer?.trim() && (
+          <span className="text-[10px] font-black text-red-600 animate-pulse uppercase tracking-wider shrink-0">
+            ⚠️ Chưa chấm
+          </span>
+        )}
+      </div>
+
       <div
         className={cn(
-          'mb-4 min-h-[44px] rounded-lg border border-border p-3 text-sm',
+          'mb-4 min-h-[44px] whitespace-pre-wrap rounded-lg border border-border p-3 text-[13px] leading-relaxed',
           answer?.trim()
             ? 'bg-muted/30 text-foreground'
             : 'bg-muted/10 italic text-muted-foreground'
         )}
       >
-        {answer?.trim() || 'Thí sinh không trả lời câu này'}
+        {answer?.trim()
+          ? answer.replace(/([^\n])\s*(\+)/g, '$1\n$2')
+          : 'Thí sinh không trả lời câu này'}
       </div>
 
-      <div className="rounded-lg border border-primary/10 bg-primary/5 p-4">
+      <div
+        className={cn(
+          'rounded-lg border p-4 transition-colors',
+          isGraded ? 'border-primary/10 bg-primary/5' : 'border-red-200 bg-red-50/30'
+        )}
+      >
         <div className="mb-3 flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Đánh giá câu trả lời
           </span>
-          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-bold text-primary">
-            {questionGrade.score}%
-          </span>
+          {isGraded && (
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-bold text-primary">
+              {questionGrade.score}%
+            </span>
+          )}
         </div>
-        <div className="flex flex-wrap gap-4">
-          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary">
+        <div className="flex flex-wrap gap-x-6 gap-y-3">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-rose-600 hover:opacity-80 transition-all">
             <Checkbox
-              className="shrink-0"
-              checked={questionGrade.criteria.includes('ly_thuyet')}
+              className="h-5 w-5 rounded-full border-2 border-rose-300 data-[state=checked]:bg-rose-600 data-[state=checked]:border-rose-600"
+              checked={isGraded && questionGrade.score === 0 && questionGrade.criteria.length === 0}
               disabled={disabled}
-              onCheckedChange={() => toggleCriteria('ly_thuyet')}
+              onCheckedChange={markAsZero}
             />
-            Đúng lý thuyết (40%)
+            Không đạt / 0%
           </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary">
-            <Checkbox
-              className="shrink-0"
-              checked={questionGrade.criteria.includes('thuc_te')}
-              disabled={disabled}
-              onCheckedChange={() => toggleCriteria('thuc_te')}
-            />
-            Ví dụ thực tế (50%)
-          </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary">
-            <Checkbox
-              className="shrink-0"
-              checked={questionGrade.criteria.includes('trinh_bay')}
-              disabled={disabled}
-              onCheckedChange={() => toggleCriteria('trinh_bay')}
-            />
-            Trình bày (10%)
-          </label>
+
+          {[
+            { id: 'ly_thuyet', label: 'Đúng lý thuyết (40%)' },
+            { id: 'thuc_te', label: 'Ví dụ thực tế (50%)' },
+            { id: 'trinh_bay', label: 'Trình bày (10%)' },
+          ].map((c) => (
+            <label
+              key={c.id}
+              className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
+            >
+              <Checkbox
+                className="h-5 w-5 rounded-full border-2 border-slate-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                checked={questionGrade.criteria.includes(c.id)}
+                disabled={disabled}
+                onCheckedChange={() => toggleCriteria(c.id)}
+              />
+              {c.label}
+            </label>
+          ))}
         </div>
       </div>
     </div>
@@ -142,7 +180,20 @@ function LiveTotalScore({
     answeredCount > 0
       ? Math.round(Object.values(grades).reduce((acc, g) => acc + g.score, 0) / answeredCount)
       : 0
-  return <span className="text-lg font-bold text-primary">{totalScore}%</span>
+  return (
+    <span
+      className={cn(
+        'text-lg font-black flex items-center gap-2',
+        totalScore === 100
+          ? 'text-emerald-600'
+          : totalScore >= 80
+            ? 'text-amber-600'
+            : 'text-rose-600'
+      )}
+    >
+      {totalScore === 100 ? '🟢' : totalScore >= 80 ? '🟡' : '🔴'} {totalScore}%
+    </span>
+  )
 }
 
 export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
@@ -180,9 +231,17 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
 
   useEffect(() => {
     if (!submission) return
+    const rawGrades =
+      (submission.grades as Record<string, { criteria: string[]; score: number }>) || {}
+    const mappedGrades: Record<string, { criteria: string[]; score: number; isGraded: boolean }> =
+      {}
+    Object.entries(rawGrades).forEach(([qId, g]) => {
+      mappedGrades[qId] = { ...g, isGraded: true }
+    })
+
     gradeForm.reset({
       graderNote: submission.graderNote ?? '',
-      grades: (submission.grades as Record<string, { criteria: string[]; score: number }>) || {},
+      grades: mappedGrades,
     })
   }, [submission, gradeForm])
 
@@ -197,18 +256,52 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
 
   const answeredEntries = Object.entries(answersObj)
 
+  const totalQuestionsInExam = useMemo(() => {
+    if (!submission) return 0
+    const questions =
+      (submission.schedule as any)?.examQuestions ||
+      (submission.learningClass as any)?.examQuestions
+    if (questions && Array.isArray(questions)) {
+      return questions.length
+    }
+    return answeredEntries.length
+  }, [submission, answeredEntries.length])
+
   const handleComplete = (status: 'grading' | 'done') => {
     const graderNote = gradeForm.getValues('graderNote') ?? ''
     if (status === 'done' && !graderNote.trim()) {
       toast.error('Vui lòng nhập nhận xét trước khi hoàn thành chấm')
       return
     }
+
     const currentGrades = gradeForm.getValues('grades') ?? {}
+
+    // Validation for 'done' status
+    if (status === 'done') {
+      let index = 0
+      for (const [qId] of answeredEntries) {
+        const g = currentGrades[qId] as any
+        if (!g || !g.isGraded) {
+          toast.error(`Bạn chưa chấm điểm cho câu hỏi thứ ${index + 1}`)
+          const element = document.getElementById(`q-${qId}`)
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            element.classList.add('ring-8', 'ring-red-500', 'ring-offset-4', 'duration-500')
+            setTimeout(() => {
+              element.classList.remove('ring-8', 'ring-red-500', 'ring-offset-4')
+            }, 3000)
+          }
+          return
+        }
+        index++
+      }
+    }
+
     const totalScore =
-      answeredEntries.length > 0
+      totalQuestionsInExam > 0
         ? Math.round(
-            Object.values(currentGrades).reduce((acc, g) => acc + g.score, 0) /
-              answeredEntries.length
+            Object.values(currentGrades).reduce((acc, g) => acc + (g as any).score, 0) /
+              totalQuestionsInExam
           )
         : 0
     gradeMutation.mutate(
@@ -338,6 +431,14 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                       )}
                     </p>
                   </div>
+                  {submission.schedule && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Kỳ thi (Session)</p>
+                      <p className="font-bold text-primary">
+                        {submission.schedule.topic} ({submission.schedule.startTime})
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-xs text-muted-foreground">Ngày nộp</p>
                     <p className="font-semibold text-foreground">{formattedDate}</p>
@@ -422,7 +523,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                     <span className="font-medium text-foreground">Tổng điểm trung bình</span>
                     <LiveTotalScore
                       control={gradeForm.control}
-                      answeredCount={answeredEntries.length}
+                      answeredCount={totalQuestionsInExam}
                     />
                   </div>
                   <div className="my-2 h-px w-full bg-border" />

@@ -243,11 +243,16 @@ export function GraderExamListScreen({ classId }: GraderExamListScreenProps) {
                               </div>
                             </td>
                             <td className="px-6 py-4 align-middle">
-                              <div className="text-sm text-foreground font-medium">
+                              <div className="text-sm font-bold text-foreground">
                                 {row.learningClass?.name || (
                                   <span className="italic text-muted-foreground">Chưa gắn lớp</span>
                                 )}
                               </div>
+                              {row.schedule && (
+                                <div className="mt-1 text-[11px] font-medium text-primary">
+                                  Kỳ thi: {row.schedule.topic} ({row.schedule.startTime})
+                                </div>
+                              )}
                             </td>
                             <td className="px-6 py-4 align-middle text-center text-muted-foreground">
                               {formattedDate}

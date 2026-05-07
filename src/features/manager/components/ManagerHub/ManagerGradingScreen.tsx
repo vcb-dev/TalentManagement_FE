@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
   PAGE_HEADER_DESCRIPTION,
@@ -15,24 +16,212 @@ import { z } from 'zod'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
 
-function managerClassStatusUi(status: ManagerClassRow['status']): {
-  label: string
-  badgeClass: string
-} {
-  if (status === 'closed')
-    return { label: 'Đã ngừng', badgeClass: 'bg-muted text-muted-foreground' }
-  if (status === 'full') return { label: 'Đủ chỗ', badgeClass: 'bg-amber-100 text-amber-900' }
-  return { label: 'Đang hoạt động', badgeClass: 'bg-emerald-100 text-emerald-900' }
+const PAGE_SIZE = 6
+
+type TemporalStatus = 'UPCOMING' | 'IN_PROGRESS' | 'COMPLETED'
+
+function getTemporalStatus(
+  dateIso?: string,
+  startTime?: string,
+  endTime?: string
+): { label: string; badgeClass: string; status: TemporalStatus } {
+  if (!dateIso || !startTime || !endTime) {
+    return {
+      label: 'Không xác định',
+      badgeClass: 'bg-muted text-muted-foreground',
+      status: 'UPCOMING',
+    }
+  }
+
+  const now = new Date().getTime()
+  const start = new Date(`${dateIso}T${startTime}:00+07:00`).getTime()
+  const end = new Date(`${dateIso}T${endTime}:00+07:00`).getTime()
+
+  if (now < start) {
+    return {
+      label: 'Sắp diễn ra',
+      badgeClass: 'bg-blue-100 text-blue-700 ring-1 ring-blue-200',
+      status: 'UPCOMING',
+    }
+  }
+  if (now <= end) {
+    return {
+      label: 'Đang diễn ra',
+      badgeClass: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200 animate-pulse',
+      status: 'IN_PROGRESS',
+    }
+  }
+  return {
+    label: 'Đã kết thúc',
+    badgeClass: 'bg-gray-100 text-gray-600 ring-1 ring-gray-200',
+    status: 'COMPLETED',
+  }
+}
+
+type FlatRow = {
+  key: string
+  topic: string
+  className: string
+  classId: string
+  scheduleId?: string
+  teacherName: string
+  status: ManagerClassRow['status']
+  dateIso?: string
+  startTime?: string
+  endTime?: string
+  total: number
+  pending: number
+  drafts: number
 }
 
 export function ManagerGradingScreen() {
   const navigate = useNavigate()
   const { data: classes = [], isLoading } = useManagerClasses()
   const { data: submissions = [], isLoading: isLoadingSubmissions } = useManagerSubmissions()
+  const [page, setPage] = useState(1)
+  const [filterClass, setFilterClass] = useState<string>('all')
+  const [filterGrading, setFilterGrading] = useState<string>('all')
 
-  // Total pending across all submissions (regardless of classId)
+  // Total pending across all submissions
   const totalPending = submissions.filter((s) => s.status === 'pending').length
   const totalDone = submissions.filter((s) => s.status === 'done').length
+
+  // Flatten classes + schedules into rows
+  const allRows: FlatRow[] = useMemo(() => {
+    const result: FlatRow[] = []
+
+    for (const c of classes) {
+      const teacherName = c.teacher?.name || '—'
+      const examSchedules = c.schedules?.filter((s) => s.isExam) || []
+      const classDurationMin = (c.examQuestions as any)?.duration || 60
+
+      if (examSchedules.length === 0) {
+        const classSubmissions = submissions.filter(
+          (s) => s.classId?.toLowerCase() === c.id.toLowerCase()
+        )
+        const dateStr = c.examDate ? c.examDate.split('T')[0] : undefined
+        const startStr = c.examDate
+          ? new Date(c.examDate).toLocaleTimeString('vi-VN', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            })
+          : '08:00'
+
+        // Tính endTime thực tế dựa trên duration
+        const startTimeObj = c.examDate ? new Date(c.examDate) : new Date()
+        const endTimeObj = new Date(startTimeObj.getTime() + classDurationMin * 60 * 1000)
+        const endStr = endTimeObj.toLocaleTimeString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        })
+
+        result.push({
+          key: c.id,
+          topic: 'Kỳ thi (Mặc định lớp)',
+          className: c.name,
+          classId: c.id,
+          teacherName,
+          status: c.status,
+          dateIso: dateStr,
+          startTime: startStr,
+          endTime: endStr,
+          total: classSubmissions.length,
+          pending: classSubmissions.filter((s) => s.status === 'pending').length,
+          drafts: classSubmissions.filter((s) => s.status === 'grading').length,
+        })
+      } else {
+        for (const s of examSchedules) {
+          const scheduleSubmissions = submissions.filter(
+            (sub) => sub.scheduleId?.toLowerCase() === s.id.toLowerCase()
+          )
+
+          // Ưu tiên duration từ scheduleQuestions, nếu không có lấy từ classQuestions
+          const durationMin = (s.examQuestions as any)?.duration || classDurationMin
+
+          // Tính endTime thực tế: startTime + duration
+          const startParts = s.startTime.split(':')
+          const startTimeObj = new Date(`${s.dateIso}T${s.startTime}:00+07:00`)
+          const endTimeObj = new Date(startTimeObj.getTime() + durationMin * 60 * 1000)
+          const endStr = endTimeObj.toLocaleTimeString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+            timeZone: 'Asia/Ho_Chi_Minh',
+          })
+
+          result.push({
+            key: s.id,
+            topic: s.topic,
+            className: c.name,
+            classId: c.id,
+            scheduleId: s.id,
+            teacherName: s.examTeacherName || teacherName,
+            status: c.status,
+            dateIso: s.dateIso,
+            startTime: s.startTime,
+            endTime: endStr,
+            total: scheduleSubmissions.length,
+            pending: scheduleSubmissions.filter((sub) => sub.status === 'pending').length,
+            drafts: scheduleSubmissions.filter((sub) => sub.status === 'grading').length,
+          })
+        }
+      }
+    }
+
+    // Sắp xếp: ngày muộn nhất lên trước, rồi theo giờ bắt đầu muộn nhất
+    result.sort((a, b) => {
+      const da = a.dateIso || '0000-00-00'
+      const db = b.dateIso || '0000-00-00'
+      if (da !== db) return db.localeCompare(da)
+      const ta = a.startTime || '00:00'
+      const tb = b.startTime || '00:00'
+      return tb.localeCompare(ta)
+    })
+
+    return result
+  }, [classes, submissions])
+
+  // Danh sách tên lớp (cho filter)
+  const classNames = useMemo(() => {
+    const names = [...new Set(allRows.map((r) => r.className))].sort()
+    return names
+  }, [allRows])
+
+  // Apply filters
+  const filteredRows = useMemo(() => {
+    let rows = allRows
+
+    if (filterClass !== 'all') {
+      rows = rows.filter((r) => r.className === filterClass)
+    }
+
+    if (filterGrading === 'pending') {
+      rows = rows.filter((r) => r.pending > 0)
+    } else if (filterGrading === 'done') {
+      rows = rows.filter((r) => r.total > 0 && r.pending === 0)
+    } else if (filterGrading === 'no_submission') {
+      rows = rows.filter((r) => r.total === 0)
+    }
+
+    return rows
+  }, [allRows, filterClass, filterGrading])
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const paginatedRows = filteredRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
+  // Reset page when filter changes
+  const handleFilterClass = (val: string) => {
+    setFilterClass(val)
+    setPage(1)
+  }
+  const handleFilterGrading = (val: string) => {
+    setFilterGrading(val)
+    setPage(1)
+  }
 
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
@@ -42,8 +231,8 @@ export function ManagerGradingScreen() {
             <span className={PAGE_HEADER_GRADIENT}>Chấm bài thi</span>
           </h1>
           <p className={PAGE_HEADER_DESCRIPTION}>
-            Quản lý và chấm điểm bài thi đã nộp của các thành viên. Bấm "Xem tất cả bài nộp" để bắt
-            đầu chấm bài.
+            Quản lý và chấm điểm bài thi đã nộp của các thành viên. Bấm &quot;Xem tất cả bài
+            nộp&quot; để bắt đầu chấm bài.
           </p>
         </div>
 
@@ -73,20 +262,59 @@ export function ManagerGradingScreen() {
           </div>
         </div>
 
-        {/* Classes table – informational, shows submission count per class */}
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Lớp:
+            </label>
+            <select
+              value={filterClass}
+              onChange={(e) => handleFilterClass(e.target.value)}
+              className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="all">Tất cả lớp</option>
+              {classNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Trạng thái chấm:
+            </label>
+            <select
+              value={filterGrading}
+              onChange={(e) => handleFilterGrading(e.target.value)}
+              className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="all">Tất cả</option>
+              <option value="pending">Chờ chấm</option>
+              <option value="done">Đã chấm hết</option>
+              <option value="no_submission">Chưa có bài nộp</option>
+            </select>
+          </div>
+          <span className="text-xs text-muted-foreground">{filteredRows.length} lịch thi</span>
+        </div>
+
+        {/* Table */}
         <div>
-          <h3 className="mb-3 text-base font-bold tracking-tight text-foreground">Danh sách lớp</h3>
           <div
             className={cn(
               'overflow-x-auto rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10'
             )}
           >
-            <table className="w-full min-w-[700px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[900px] border-collapse text-left text-sm">
               <thead>
                 <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">
-                  <th className="px-3 py-3 font-semibold">Tên lớp</th>
-                  <th className="px-3 py-3 font-semibold">Giáo viên</th>
-                  <th className="px-3 py-3 font-semibold">Trạng thái</th>
+                  <th className="px-3 py-3 font-semibold text-primary">Kỳ thi / Lớp</th>
+                  <th className="px-3 py-3 font-semibold">Giáo viên chấm</th>
+                  <th className="px-3 py-3 font-semibold text-center">Thời gian thi</th>
+                  <th className="px-3 py-3 font-semibold text-center whitespace-nowrap">
+                    Trạng thái thi
+                  </th>
                   <th className="px-3 py-3 font-semibold">Bài thi đã nộp</th>
                   <th className="px-3 py-3 text-right font-semibold">Thao tác</th>
                 </tr>
@@ -94,60 +322,78 @@ export function ManagerGradingScreen() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                      Đang tải danh sách lớp...
+                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                      Đang tải danh sách bài thi...
                     </td>
                   </tr>
-                ) : classes.length === 0 ? (
+                ) : paginatedRows.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-4 py-10 text-center text-sm text-muted-foreground"
                     >
-                      Chưa có lớp nào.
+                      {filteredRows.length === 0 && allRows.length > 0
+                        ? 'Không có lịch thi nào phù hợp với bộ lọc.'
+                        : 'Chưa có bài thi nào cần chấm.'}
                     </td>
                   </tr>
                 ) : (
-                  classes.map((c) => {
-                    const st = managerClassStatusUi(c.status)
-                    const teacherName = c.teacher?.name || '—'
-
-                    let isExamEnded = false
-                    if (c.examDate) {
-                      const examTime = new Date(c.examDate).getTime()
-                      if (!Number.isNaN(examTime) && examTime < Date.now()) {
-                        isExamEnded = true
-                      }
-                    }
-
-                    // Count submissions linked to this class
-                    const classSubmissions = submissions.filter((s) => s.classId === c.id)
-                    const pending = classSubmissions.filter((s) => s.status === 'pending').length
-                    const total = classSubmissions.length
-
+                  paginatedRows.map((row) => {
+                    const temp = getTemporalStatus(row.dateIso, row.startTime, row.endTime)
                     return (
                       <tr
-                        key={c.id}
+                        key={row.key}
                         className="border-t border-border/80 bg-card transition-colors hover:bg-muted/25"
                       >
-                        <td className="px-3 py-4 font-semibold text-foreground">{c.name}</td>
-                        <td className="px-3 py-4 text-foreground">{teacherName}</td>
                         <td className="px-3 py-4">
+                          <div className="font-bold text-foreground text-base uppercase">
+                            {row.topic}
+                          </div>
+                          <div className="text-xs font-medium text-primary">
+                            Lớp: {row.className}
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 text-foreground">{row.teacherName}</td>
+                        <td className="px-3 py-4 text-center">
+                          {row.dateIso ? (
+                            <div className="flex flex-col items-center gap-0.5 whitespace-nowrap">
+                              <span className="text-xs font-bold text-foreground">
+                                {new Date(row.dateIso + 'T00:00:00').toLocaleDateString('vi-VN', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                })}
+                              </span>
+                              {row.startTime && row.endTime ? (
+                                <span className="text-[11px] font-medium text-muted-foreground">
+                                  {row.startTime} — {row.endTime}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-4 text-center">
                           <span
                             className={cn(
-                              'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold',
-                              st.badgeClass
+                              'inline-flex rounded-full px-3 py-1 text-[11px] font-bold whitespace-nowrap',
+                              temp.badgeClass
                             )}
                           >
-                            {st.label}
+                            {temp.label}
                           </span>
                         </td>
                         <td className="px-3 py-4">
-                          {total > 0 ? (
-                            <span className="text-foreground font-medium">
-                              {total} bài ({' '}
-                              {pending > 0 ? (
-                                <span className="font-bold text-rose-600">{pending} chờ chấm</span>
+                          {row.total > 0 ? (
+                            <span className="text-foreground font-medium whitespace-nowrap">
+                              {row.total} bài ({' '}
+                              {row.pending > 0 ? (
+                                <span className="font-bold text-rose-600">
+                                  {row.pending} chờ chấm
+                                </span>
+                              ) : row.drafts > 0 ? (
+                                <span className="text-amber-600 font-bold">Đã lưu bản nháp</span>
                               ) : (
                                 <span className="text-emerald-600 font-bold">Đã chấm hết</span>
                               )}{' '}
@@ -158,26 +404,34 @@ export function ManagerGradingScreen() {
                           )}
                         </td>
                         <td className="px-3 py-4 text-right">
-                          {isExamEnded ? (
-                            <span className="text-sm font-semibold text-rose-600">
-                              Lịch thi đã kết thúc
-                            </span>
-                          ) : (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="default"
-                              className="font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
-                              onClick={() =>
-                                void navigate({
-                                  to: '/manager/grade-class/$classId',
-                                  params: { classId: c.id },
-                                })
-                              }
-                            >
-                              {total > 0 && pending === 0 ? 'Sửa bài chấm' : 'Chấm thi'}
-                            </Button>
-                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={
+                              row.total > 0 && row.pending === 0 && row.drafts === 0
+                                ? 'outline'
+                                : 'default'
+                            }
+                            className={cn(
+                              'font-bold whitespace-nowrap',
+                              row.total > 0 && row.pending === 0 && row.drafts === 0
+                                ? 'border-primary text-primary hover:bg-primary/5'
+                                : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                            )}
+                            onClick={() =>
+                              void navigate({
+                                to: '/manager/grade-class/$classId',
+                                params: { classId: row.classId },
+                                search: row.scheduleId
+                                  ? ({ scheduleId: row.scheduleId } as any)
+                                  : {},
+                              })
+                            }
+                          >
+                            {row.total > 0 && row.pending === 0 && row.drafts === 0
+                              ? 'Xem bài chấm thi'
+                              : 'Chấm thi'}
+                          </Button>
                         </td>
                       </tr>
                     )
@@ -186,6 +440,53 @@ export function ManagerGradingScreen() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Trang {safePage} / {totalPages} — Hiển thị {(safePage - 1) * PAGE_SIZE + 1}–
+                {Math.min(safePage * PAGE_SIZE, filteredRows.length)} / {filteredRows.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={safePage <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="px-3"
+                >
+                  ←
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <Button
+                    key={p}
+                    type="button"
+                    size="sm"
+                    variant={p === safePage ? 'default' : 'ghost'}
+                    className={cn(
+                      'min-w-[32px] px-2',
+                      p === safePage && 'bg-primary text-primary-foreground pointer-events-none'
+                    )}
+                    onClick={() => setPage(p)}
+                  >
+                    {p}
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-3"
+                >
+                  →
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Show unlinked submissions if any */}
           {(() => {

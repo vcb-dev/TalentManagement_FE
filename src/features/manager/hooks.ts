@@ -135,6 +135,13 @@ export function useRejectRequest() {
   })
 }
 
+export function useAllExams() {
+  return useQuery({
+    queryKey: [...managerKeys.all, 'all-exams'],
+    queryFn: () => managerApi.allExams(),
+  })
+}
+
 export function useManagerClasses(params?: {
   search?: string
   levelFrom?: string
@@ -186,11 +193,31 @@ export function useDeleteManagerClass() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (classId: string) => managerApi.deleteClass(classId),
+    onMutate: async (classId: string) => {
+      await qc.cancelQueries({ queryKey: [...managerKeys.all, 'classes'] })
+      const previousClasses = qc.getQueryData<any[]>([...managerKeys.all, 'classes'])
+
+      if (previousClasses) {
+        qc.setQueryData(
+          [...managerKeys.all, 'classes'],
+          previousClasses.filter((c) => c.id !== classId)
+        )
+      }
+
+      return { previousClasses }
+    },
+    onError: (error, _classId, context) => {
+      if (context?.previousClasses) {
+        qc.setQueryData([...managerKeys.all, 'classes'], context.previousClasses)
+      }
+      toast.error(getApiErrorMessage(error))
+    },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
       toast.success('Đã xóa lớp')
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
+    },
   })
 }
 
@@ -311,10 +338,15 @@ export function useCreateClassSchedule() {
         endTime: string
         topic: string
         location?: string | null
+        isExam?: boolean
+        examTeacherUserId?: string | null
+        examStatus?: string | null
       }
     }) => managerApi.createClassSchedule(classId, input),
     onSuccess: (_d, vars) => {
       void qc.invalidateQueries({ queryKey: managerKeys.classSchedules(vars.classId) })
+      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
+      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
       toast.success('Đã thêm lịch học')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -337,10 +369,15 @@ export function useUpdateClassSchedule() {
         endTime?: string
         topic?: string
         location?: string | null
+        isExam?: boolean
+        examTeacherUserId?: string | null
+        examStatus?: string | null
       }
     }) => managerApi.updateClassSchedule(classId, scheduleId, input),
     onSuccess: (_d, vars) => {
       void qc.invalidateQueries({ queryKey: managerKeys.classSchedules(vars.classId) })
+      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
+      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
       toast.success('Đã cập nhật lịch học')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -354,6 +391,8 @@ export function useDeleteClassSchedule() {
       managerApi.deleteClassSchedule(classId, scheduleId),
     onSuccess: (_d, vars) => {
       void qc.invalidateQueries({ queryKey: managerKeys.classSchedules(vars.classId) })
+      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
+      void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
       toast.success('Đã xóa lịch học')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -368,6 +407,20 @@ export const useSaveExamQuestions = () => {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['manager', 'classes', variables.classId] })
       toast.success('Lưu đề thi thành công')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
+export const useSaveScheduleExamQuestions = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { classId: string; scheduleId: string; questions: any }) =>
+      managerApi.saveScheduleExamQuestions(input.classId, input.scheduleId, input.questions),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: managerKeys.classSchedules(variables.classId) })
+      qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
+      toast.success('Lưu đề thi buổi thi thành công')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   })

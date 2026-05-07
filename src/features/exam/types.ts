@@ -21,6 +21,7 @@ export interface ClassifyExamInput {
 
 export interface SubmitExamInput {
   classId?: string
+  scheduleId?: string
   answers: any
 }
 
@@ -30,4 +31,5 @@ export interface GradeSubmissionInput {
   status?: 'grading' | 'done'
   grades?: Record<string, { criteria: string[]; score: number }>
   totalScore?: number
+  outcome?: 'DAT' | 'BAO_LUU' | 'CHO_HOC_LAI' | 'CHIA_TAY'
 }

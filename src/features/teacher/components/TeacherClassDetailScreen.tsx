@@ -674,7 +674,30 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                   <tbody className="divide-y divide-border/40">
                     {filtered.map((m) => {
                       const currentSchedule = schedules.find((s) => s.id === activeScheduleId)
-                      const sessionData = currentSchedule?.attendanceData?.[m.id] || {}
+                      const rawAttendance =
+                        currentSchedule?.attendanceData?.[m.id]?.attendance || 'NONE'
+
+                      // Nếu buổi học đã qua mà vẫn 'NONE', hiển thị là 'ABSENT'
+                      let displayAttendance = rawAttendance
+                      if (currentSchedule && (rawAttendance === 'NONE' || !rawAttendance)) {
+                        const now = new Date()
+                        const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000)
+                        const vnDate = vnNow.toISOString().split('T')[0]
+                        const vnTime = vnNow.toISOString().split('T')[1].substring(0, 5)
+
+                        const isPassed =
+                          currentSchedule.dateIso < vnDate ||
+                          (currentSchedule.dateIso === vnDate && currentSchedule.endTime < vnTime)
+
+                        if (isPassed) {
+                          displayAttendance = 'ABSENT'
+                        }
+                      }
+
+                      const sessionData = {
+                        ...(currentSchedule?.attendanceData?.[m.id] || {}),
+                        attendance: displayAttendance,
+                      }
 
                       return (
                         <tr

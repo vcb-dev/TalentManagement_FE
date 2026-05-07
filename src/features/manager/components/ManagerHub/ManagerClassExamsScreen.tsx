@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
-import { CheckSquare, Circle, FileUp, ListPlus, Trash2, Users, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { CheckSquare, Circle, FileUp, ListPlus, Loader2, Trash2, Users, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -24,7 +24,12 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { managerClassApiSchema } from '@/features/manager/schemas'
-import { useManagerClasses, useSaveExamQuestions } from '@/features/manager/hooks'
+import {
+  useClassSchedules,
+  useManagerClasses,
+  useSaveExamQuestions,
+  useSaveScheduleExamQuestions,
+} from '@/features/manager/hooks'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 import { ClassMembersScoresModal } from '@/features/manager/components/ClassMembersScoresModal'
 
@@ -118,28 +123,140 @@ function composeToQuestionItems(compose: ComposeQuestion[]): QuestionItem[] {
     .filter((q) => q.stem.length > 0)
 }
 
+function ClassSchedulesList({
+  classId,
+  onEditExam,
+  questionBank,
+}: {
+  classId: string
+  onEditExam: (sid: string) => void
+  questionBank: Record<string, QuestionBankPayload>
+}) {
+  const { data: schedules = [] } = useClassSchedules(classId)
+  const examSchedules = schedules.filter((s) => s.isExam)
+
+  if (examSchedules.length === 0) return null
+
+  return (
+    <div className="mt-3 w-full space-y-2">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-left px-1">
+        Các buổi thi đã lên lịch:
+      </p>
+      <div className="flex flex-col gap-1.5 w-full">
+        {examSchedules.map((s) => {
+          const bank = questionBank[s.id]
+          const hasQuestions = !!bank
+          return (
+            <div
+              key={s.id}
+              className="flex items-center justify-between gap-3 p-2 rounded-lg border border-primary/10 bg-primary/5 group"
+            >
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-foreground truncate">{s.topic}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {s.dateIso} · {s.startTime} - {s.endTime}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span
+                  className={cn(
+                    'text-[10px] font-bold px-1.5 py-0.5 rounded',
+                    hasQuestions ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                  )}
+                >
+                  {hasQuestions ? `${bank.questions.length} câu` : 'Chưa có đề'}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-[11px] font-bold bg-white border shadow-sm hover:bg-primary/5 hover:text-primary"
+                  onClick={() => onEditExam(s.id)}
+                >
+                  {hasQuestions ? 'Sửa đề' : 'Tạo đề'}
+                </Button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function ManagerClassExamsScreen() {
   const [selectedClassIdForScores, setSelectedClassIdForScores] = useState<string | null>(null)
-  const { data: classes = [], isLoading } = useManagerClasses()
+  const { data: rawClasses = [], isLoading } = useManagerClasses()
+  const examItems = useMemo(() => {
+    const flat: any[] = []
+    rawClasses.forEach((c: any) => {
+      const schedules = (c.schedules ?? []).filter((s: any) => s.isExam)
+      schedules.forEach((s: any) => {
+        flat.push({
+          ...s,
+          className: c.name,
+          classTeacher: c.teacher,
+          classStatus: c.status,
+          classExamQuestions: c.examQuestions,
+          classId: c.id,
+        })
+      })
+    })
+    return flat.sort(
+      (a, b) => b.dateIso.localeCompare(a.dateIso) || b.startTime.localeCompare(a.startTime)
+    )
+  }, [rawClasses])
+
   const saveQuestionsMutation = useSaveExamQuestions()
+  const saveScheduleQuestionsMutation = useSaveScheduleExamQuestions()
+
+  const [assignmentModalClassId, setAssignmentModalClassId] = useState<string | null>(null)
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null)
+
+  const { data: schedules = [] } = useClassSchedules(assignmentModalClassId || '')
+  const examSchedules = schedules.filter((s) => s.isExam)
 
   const [questionBankByClass, setQuestionBankByClass] = useState<
     Record<string, QuestionBankPayload>
   >({})
 
-  // Sync questionBankByClass from the API data
   useEffect(() => {
-    if (classes.length > 0) {
-      const apiData: Record<string, QuestionBankPayload> = {}
-      classes.forEach((c) => {
-        if (c.examQuestions) {
-          apiData[c.id] = c.examQuestions as QuestionBankPayload
-        }
+    // Sync questionBankByClass from the API data
+    if (rawClasses.length > 0) {
+      setQuestionBankByClass((prev) => {
+        let changed = false
+        const next = { ...prev }
+
+        rawClasses.forEach((c: any) => {
+          // Sync class template questions
+          if (c.examQuestions) {
+            if (JSON.stringify(next[c.id]) !== JSON.stringify(c.examQuestions)) {
+              next[c.id] = c.examQuestions as QuestionBankPayload
+              changed = true
+            }
+          } else if (next[c.id]) {
+            delete next[c.id]
+            changed = true
+          }
+
+          // Sync all schedule-specific questions from this class
+          const schedules = (c.schedules ?? []).filter((s: any) => s.isExam)
+          schedules.forEach((s: any) => {
+            if (s.examQuestions) {
+              if (JSON.stringify(next[s.id]) !== JSON.stringify(s.examQuestions)) {
+                next[s.id] = s.examQuestions as QuestionBankPayload
+                changed = true
+              }
+            } else if (next[s.id]) {
+              delete next[s.id]
+              changed = true
+            }
+          })
+        })
+
+        return changed ? next : prev
       })
-      // Merge: API data takes priority, but keep local items that are not in API yet
-      setQuestionBankByClass((prev) => ({ ...prev, ...apiData }))
     }
-  }, [classes])
+  }, [rawClasses])
 
   useEffect(() => {
     // Initial load from localStorage
@@ -151,7 +268,6 @@ export function ManagerClassExamsScreen() {
       }
     } catch {}
   }, [])
-  const [assignmentModalClassId, setAssignmentModalClassId] = useState<string | null>(null)
   const [questionDraft, setQuestionDraft] = useState<QuestionItem[]>([])
   const [composeQuestions, setComposeQuestions] = useState<ComposeQuestion[]>([
     newComposeQuestion(),
@@ -173,25 +289,22 @@ export function ManagerClassExamsScreen() {
   } = assignmentForm
   const assignmentMode = watchAssignment('mode')
 
-  const assignmentClass = classes.find((c) => c.id === assignmentModalClassId) ?? null
+  const assignmentClass = (rawClasses as any[]).find((c) => c.id === assignmentModalClassId) ?? null
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('manager_exam_question_bank_v1')
-      if (!raw) return
-      const parsed = JSON.parse(raw) as Record<string, QuestionBankPayload>
-      setQuestionBankByClass(parsed)
-    } catch {
-      // ignore invalid local cache
-    }
-  }, [])
-
-  const openAssignmentModal = (classId: string) => {
+  const openAssignmentModal = (classId: string, scheduleId: string | null = null) => {
     setAssignmentModalClassId(classId)
-    const current = questionBankByClass[classId]
+    setSelectedScheduleId(scheduleId)
+
+    const key = scheduleId || classId
+    const current = questionBankByClass[key]
+
     resetAssignmentForm({
       title:
-        current?.title || `Đề thi lớp ${classes.find((c) => c.id === classId)?.name || ''}`.trim(),
+        current?.title ||
+        (scheduleId
+          ? `Đề thi: ${examSchedules.find((s) => s.id === scheduleId)?.topic || ''}`
+          : `Đề mẫu: ${(rawClasses as any[]).find((c) => c.id === classId)?.name || ''}`
+        ).trim(),
       duration: current?.duration || 60,
       mode: 'upload',
       rawInput: '',
@@ -202,6 +315,7 @@ export function ManagerClassExamsScreen() {
 
   const closeAssignmentModal = () => {
     setAssignmentModalClassId(null)
+    setSelectedScheduleId(null)
     resetAssignmentForm({ title: '', duration: 60, mode: 'upload', rawInput: '' })
   }
 
@@ -263,17 +377,25 @@ export function ManagerClassExamsScreen() {
       updatedAt: new Date().toISOString(),
     }
 
-    await saveQuestionsMutation.mutateAsync({
-      classId: assignmentModalClassId,
-      questions: payload,
-    })
+    if (selectedScheduleId) {
+      await saveScheduleQuestionsMutation.mutateAsync({
+        classId: assignmentModalClassId,
+        scheduleId: selectedScheduleId,
+        questions: payload,
+      })
+    } else {
+      await saveQuestionsMutation.mutateAsync({
+        classId: assignmentModalClassId,
+        questions: payload,
+      })
+    }
 
+    const key = selectedScheduleId || assignmentModalClassId
     const next: Record<string, QuestionBankPayload> = {
       ...questionBankByClass,
-      [assignmentModalClassId]: payload,
+      [key]: payload,
     }
     setQuestionBankByClass(next)
-    // Optional: Keep localStorage for extra safety, but API is source of truth now
     localStorage.setItem('manager_exam_question_bank_v1', JSON.stringify(next))
     closeAssignmentModal()
   }
@@ -281,8 +403,8 @@ export function ManagerClassExamsScreen() {
   return (
     <>
       <ManagerScreenLayout hideHubNav hideToolbar>
-        <div className="mb-8 flex flex-col gap-8">
-          <div className={cn('min-w-0', PAGE_HEADER_SURFACE)}>
+        <div className="mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
             <h1 className={PAGE_HEADER_TITLE}>
               <span className={PAGE_HEADER_GRADIENT}>Bài thi của lớp</span>
             </h1>
@@ -291,118 +413,185 @@ export function ManagerClassExamsScreen() {
               đề cho từng lớp.
             </p>
           </div>
-
-          <div>
-            <h3 className="text-base font-bold tracking-tight text-foreground">Danh sách lớp</h3>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link to="/manager/exam-schedule">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 gap-2 rounded-xl px-5 text-xs font-bold border-primary/20 text-primary hover:bg-primary/5"
+              >
+                <ListPlus className="h-4 w-4" />
+                Quản lý lịch thi
+              </Button>
+            </Link>
+            <Button
+              type="button"
+              className="h-10 gap-2 rounded-xl px-5 text-xs font-bold shadow-md shadow-primary/20"
+              onClick={() => {
+                // If there are classes, just scroll to the list or show a guide
+                // If there are exam items, just scroll to the list or show a guide
+                if (examItems.length > 0) {
+                  toast.info('Hãy chọn một buổi thi trong danh sách bên dưới để bắt đầu gán đề.')
+                } else {
+                  toast.error('Chưa có kỳ thi nào được lên lịch. Vui lòng tạo lịch thi trước.')
+                }
+              }}
+            >
+              <CheckSquare className="h-4 w-4" />
+              Tạo bài thi
+            </Button>
           </div>
+        </div>
 
-          <div
-            className={cn(
-              'overflow-x-auto rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10 transition-opacity'
-            )}
-          >
-            <table className="w-full min-w-[700px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">
-                  <th className="px-3 py-3 font-semibold">Tên lớp</th>
-                  <th className="px-3 py-3 font-semibold">Giáo viên</th>
-                  <th className="px-3 py-3 font-semibold">Trạng thái</th>
-                  <th className="px-3 py-3 font-semibold">Tình trạng đề thi</th>
-                  <th className="px-3 py-3 text-right font-semibold">Thao tác</th>
+        <div>
+          <h3 className="text-base font-bold tracking-tight text-foreground">Danh sách lớp</h3>
+        </div>
+
+        <div
+          className={cn(
+            'overflow-x-auto rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10 transition-opacity'
+          )}
+        >
+          <table className="w-full min-w-[700px] border-collapse text-left text-sm">
+            <thead>
+              <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">
+                <th className="px-3 py-3 font-semibold">Lớp & Buổi thi</th>
+                <th className="px-3 py-3 font-semibold">Ngày thi</th>
+                <th className="px-3 py-3 font-semibold">Giáo viên</th>
+                <th className="px-3 py-3 font-semibold">Trạng thái lớp</th>
+                <th className="px-3 py-3 font-semibold">Tình trạng đề thi</th>
+                <th className="px-3 py-3 text-right font-semibold">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Đang tải danh sách buổi thi...
+                      </p>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {classes.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="px-4 py-10 text-center text-sm text-muted-foreground"
+              ) : examItems.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                    <div className="flex flex-col items-center gap-4">
+                      <p>
+                        Chưa có kỳ thi nào được lên lịch. Hãy tạo lịch thi tại mục "Lịch thi" để bắt
+                        đầu gán đề.
+                      </p>
+                      <Link to="/manager/exam-schedule">
+                        <Button
+                          size="sm"
+                          className="h-9 rounded-xl gap-2 text-xs font-bold shadow-sm"
+                        >
+                          <ListPlus className="h-4 w-4" />
+                          Đến trang Lịch thi
+                        </Button>
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                examItems.map((item) => {
+                  const classUi = managerClassStatusUi(item.classStatus)
+                  const teacherName = item.classTeacher?.name || '—'
+
+                  const sessionBank = questionBankByClass[item.id]
+                  const classBank = questionBankByClass[item.classId]
+                  const hasSessionBank = Boolean(sessionBank)
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className="border-t border-border/80 bg-card transition-colors hover:bg-muted/25"
                     >
-                      Chưa có lớp nào.
-                    </td>
-                  </tr>
-                ) : (
-                  classes.map((c) => {
-                    const st = managerClassStatusUi(c.status)
-                    const teacherName = c.teacher?.name || '—'
-                    const bank = questionBankByClass[c.id]
-                    const hasQuestionBank = Boolean(bank)
-
-                    let isExamEnded = false
-                    if (c.examDate) {
-                      const examTime = new Date(c.examDate).getTime()
-                      if (!Number.isNaN(examTime) && examTime < Date.now()) {
-                        isExamEnded = true
-                      }
-                    }
-
-                    return (
-                      <tr
-                        key={c.id}
-                        className="border-t border-border/80 bg-card transition-colors hover:bg-muted/25"
-                      >
-                        <td className="px-3 py-4 font-semibold text-foreground">{c.name}</td>
-                        <td className="px-3 py-4 text-foreground">{teacherName}</td>
-                        <td className="px-3 py-4">
-                          <span
-                            className={cn(
-                              'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold',
-                              st.badgeClass
-                            )}
-                          >
-                            {st.label}
+                      <td className="px-3 py-4">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-bold text-foreground">{item.className}</span>
+                          <span className="text-[11px] text-primary font-bold uppercase tracking-wider">
+                            {item.topic}
                           </span>
-                        </td>
-                        <td className="px-3 py-4">
-                          {hasQuestionBank ? (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-emerald-600 font-semibold">
-                                {bank?.questions.length ?? 0} câu hỏi
-                              </span>
-                              <span className="text-[11px] text-muted-foreground font-medium">
-                                Thời gian: {bank?.duration || 60} phút
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground italic">Chưa có đề thi</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-4">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-semibold text-foreground">{item.dateIso}</span>
+                          <span className="text-[11px] text-muted-foreground">
+                            {item.startTime} - {item.endTime}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-4 text-foreground">{teacherName}</td>
+                      <td className="px-3 py-4">
+                        <span
+                          className={cn(
+                            'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold',
+                            classUi.badgeClass
                           )}
-                        </td>
-                        <td className="px-3 py-4 text-right">
-                          <div className="flex flex-wrap items-center justify-end gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="font-bold rounded-lg border-primary/20 text-primary hover:bg-primary/5 hover:text-primary-700"
-                              onClick={() => setSelectedClassIdForScores(c.id)}
-                            >
-                              <Users className="h-3.5 w-3.5 mr-1.5" />
-                              Thành viên & Điểm
-                            </Button>
-                            {isExamEnded ? (
-                              <span className="text-sm font-semibold text-rose-600">
-                                Lịch thi đã kết thúc
+                        >
+                          {classUi.label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-4">
+                        {hasSessionBank ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-emerald-600 font-semibold">
+                              {sessionBank?.questions.length ?? 0} câu hỏi
+                            </span>
+                            <span className="text-[11px] text-muted-foreground font-medium">
+                              Thời gian: {sessionBank?.duration || 60} phút
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground italic">Chưa có đề riêng</span>
+                            {classBank && (
+                              <span className="text-[10px] text-amber-600 font-medium">
+                                (Đã có đề mẫu lớp)
                               </span>
-                            ) : (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="font-bold"
-                                onClick={() => openAssignmentModal(c.id)}
-                              >
-                                {hasQuestionBank ? 'Sửa bài thi' : 'Tạo bài thi'}
-                              </Button>
                             )}
                           </div>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-4 text-right">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="font-bold h-8 rounded-lg border-primary/20 text-primary hover:bg-primary/5"
+                            onClick={() => setSelectedClassIdForScores(item.classId)}
+                          >
+                            <Users className="h-3 w-3 mr-1" />
+                            Điểm
+                          </Button>
+
+                          <Button
+                            type="button"
+                            size="sm"
+                            className={cn(
+                              'font-bold h-8',
+                              hasSessionBank
+                                ? 'border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100'
+                                : 'shadow-sm shadow-primary/10'
+                            )}
+                            variant={hasSessionBank ? 'outline' : 'default'}
+                            onClick={() => openAssignmentModal(item.classId, item.id)}
+                          >
+                            {hasSessionBank ? 'Sửa đề thi' : 'Tạo đề thi'}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
         </div>
 
         {assignmentModalClassId && assignmentClass ? (
@@ -410,16 +599,27 @@ export function ManagerClassExamsScreen() {
             <div className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-white/20 bg-card shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden animate-page-entrance">
               <div className="shrink-0 px-5 pt-5 pb-4 border-b">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="flex items-center gap-2 text-lg font-bold text-foreground">
                       <FileUp className="h-5 w-5 text-primary" strokeWidth={2} />
-                      {questionBankByClass[assignmentClass.id]
-                        ? 'Sửa bộ bài thi'
-                        : 'Tạo bộ bài thi'}
+                      {selectedScheduleId
+                        ? questionBankByClass[selectedScheduleId]
+                          ? 'Sửa bộ đề thi cho buổi thi'
+                          : 'Tạo bộ đề thi cho buổi thi'
+                        : questionBankByClass[assignmentModalClassId]
+                          ? 'Sửa bộ đề thi mẫu cho lớp'
+                          : 'Tạo bộ đề thi mẫu cho lớp'}
                     </h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Lớp: {assignmentClass.name}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      <span className="text-xs font-bold text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+                        Lớp: {assignmentClass.name}
+                      </span>
+                      {selectedScheduleId && (
+                        <span className="text-xs font-bold text-primary bg-primary/5 border border-primary/10 px-2 py-1 rounded-md">
+                          Buổi: {examSchedules.find((s) => s.id === selectedScheduleId)?.topic}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <Button
                     type="button"

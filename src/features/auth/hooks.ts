@@ -42,13 +42,14 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: async () => {
-      try {
-        await authApi.logout()
-      } catch {
-        /* vẫn xóa session phía client */
-      }
+      // Xóa session ở client ngay lập tức để chuyển hướng tức thì
       logout()
-      qc.removeQueries({ queryKey: authKeys.all })
+      qc.clear() // Xóa toàn bộ cache để đảm bảo an toàn bảo mật
+
+      // Gọi API logout chạy ngầm, không cần await để tránh làm chậm UI
+      authApi.logout().catch(() => {
+        /* Bỏ qua lỗi vì client đã logout xong */
+      })
     },
     onSuccess: () => toast.success('Đã đăng xuất'),
     onError: () => toast.error('Đăng xuất lỗi'),

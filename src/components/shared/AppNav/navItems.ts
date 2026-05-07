@@ -1,11 +1,12 @@
 import type { LucideIcon } from 'lucide-react'
-import type { Role } from '@/types/auth'
+import type { Role, UserSession } from '@/types/auth'
 import {
   BarChart3,
   BookOpen,
   Calendar,
   CalendarRange,
   ClipboardList,
+  DoorOpen,
   FileUp,
   Home,
   KeyRound,
@@ -35,6 +36,8 @@ export type AppNavItem = {
   permissionIdsAny?: string[]
   /** Nếu có — ẩn mục khỏi nav nếu user đang ở một trong các role này (ưu tiên cao hơn mọi check quyền). */
   hiddenForRoles?: Role[]
+  /** Các mục con hiển thị dưới dạng dropdown/hover */
+  children?: AppNavItem[]
 }
 
 /** Trang landing giới thiệu Viễn Chí Bảo (`/`). */
@@ -81,6 +84,33 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     icon: School,
     match: 'prefix',
     permissionId: 'learning.view',
+    hiddenForRoles: ['MANAGER', 'BOD', 'HR'],
+  },
+]
+
+/** Phòng họp — phân loại nhãn theo quyền hạn */
+export const ROOM_BOOKING_ITEMS: AppNavItem[] = [
+  {
+    to: '/room-booking',
+    label: 'Duyệt lịch phòng họp',
+    icon: DoorOpen,
+    match: 'prefix',
+    permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+  },
+  {
+    to: '/room-booking',
+    label: 'Duyệt yêu cầu đổi lịch',
+    icon: ClipboardList,
+    match: 'prefix',
+    search: { tab: 'requests' },
+    permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+  },
+  {
+    to: '/room-booking',
+    label: 'Đặt phòng họp',
+    icon: DoorOpen,
+    match: 'prefix',
+    hiddenForRoles: ['MANAGER', 'HR', 'BOD'],
   },
 ]
 
@@ -154,6 +184,13 @@ const BOD_ITEMS: AppNavItem[] = [
 ]
 
 const MANAGER_OPS_ITEMS: AppNavItem[] = [
+  {
+    to: '/manager/grading',
+    label: 'Chấm bài thi',
+    icon: ClipboardList,
+    match: 'prefix',
+    permissionId: 'teacher.grade',
+  },
   {
     to: '/manager/classes',
     label: 'Chia lớp',
@@ -304,6 +341,7 @@ export function flatSidebarNavItems(
   const sources = [
     LEADER_KPI_ITEMS,
     MEMBER_SELF_ITEMS,
+    ROOM_BOOKING_ITEMS,
     MANAGER_OPS_ITEMS,
     HR_ITEMS,
     BOD_ITEMS,
@@ -335,8 +373,9 @@ export type AppNavGroup = {
  */
 export function groupedSidebarNavItems(
   canId: (permissionId: string) => boolean,
-  role?: Role
+  user?: UserSession | null
 ): AppNavGroup[] {
+  const role = user?.role
   const seen = new Set<string>()
   const take = (items: AppNavItem[]): AppNavItem[] => {
     const out: AppNavItem[] = []
@@ -378,6 +417,11 @@ export function groupedSidebarNavItems(
       ]),
     },
     {
+      id: 'room-booking',
+      label: 'Phòng họp',
+      items: take([...find(ROOM_BOOKING_ITEMS, '/room-booking')]),
+    },
+    {
       id: 'manager',
       label: 'Quản lý lớp & Thi',
       items: take([
@@ -394,22 +438,15 @@ export function groupedSidebarNavItems(
     },
     {
       id: 'hr',
-      label: 'Nhân sự & Tổ chức',
+      label: 'Quản trị Hành chính',
       items: take([
         ...find(HR_ITEMS, '/hr-admin'),
         ...find(HR_ITEMS, '/hr-admin/org'),
-        ...find(MANAGER_OPS_ITEMS, '/hr-admin/org'),
+        ...ROOM_BOOKING_ITEMS.filter(
+          (i) => i.search?.tab === 'requests' || i.search?.tab === 'approvals'
+        ),
         ...find(MANAGER_OPS_ITEMS, '/permissions'),
         ...find(BOD_ITEMS, '/permissions'),
-      ]),
-    },
-    {
-      id: 'bod',
-      label: 'Ban lãnh đạo',
-      items: take([
-        ...find(BOD_ITEMS, '/bod/dashboard'),
-        ...find(BOD_ITEMS, '/bod/trainee-ranking'),
-        ...find(BOD_ITEMS, '/bod/team-comparison'),
       ]),
     },
   ]
@@ -437,6 +474,7 @@ export function mergeCompactHeaderNavItems(
   }
   push([COMPANY_LANDING_NAV_ITEM])
   push(MEMBER_SELF_ITEMS)
+  push(ROOM_BOOKING_ITEMS)
   push(BOD_ITEMS)
   push(HR_ITEMS)
   push(LEADER_KPI_ITEMS)
@@ -445,11 +483,37 @@ export function mergeCompactHeaderNavItems(
   return out
 }
 
-export function isNavItemActive(pathname: string, item: AppNavItem): boolean {
+export function isNavItemActive(
+  pathname: string,
+  item: AppNavItem,
+  currentSearch?: Record<string, any>
+): boolean {
   const p = normalizePath(pathname)
-  if (item.match === 'custom' && item.customMatch) return item.customMatch(p)
-  const t = normalizePath(item.to)
-  if (item.match === 'exact') return p === t
-  if (item.match === 'prefix') return p === t || p.startsWith(`${t}/`)
-  return p === t || p.startsWith(`${t}/`)
+
+  // 1. Kiểm tra khớp path
+  let pathMatches = false
+  if (item.match === 'custom' && item.customMatch) {
+    pathMatches = item.customMatch(p)
+  } else {
+    const t = normalizePath(item.to)
+    if (item.match === 'exact') pathMatches = p === t
+    else pathMatches = p === t || p.startsWith(`${t}/`)
+  }
+
+  if (!pathMatches) return false
+
+  // 2. Nếu path đã khớp, kiểm tra thêm search params để phân biệt (nếu item có định nghĩa search)
+  if (item.search) {
+    if (!currentSearch) return false
+    // So sánh các key có trong item.search
+    return Object.entries(item.search).every(([key, value]) => currentSearch[key] === value)
+  }
+
+  // 3. Nếu item không có search param nhưng URL hiện tại có (ví dụ đang ở tab requests),
+  // thì mục mặc định (không search) không được highlight.
+  if (!item.search && currentSearch && Object.keys(currentSearch).length > 0) {
+    return false
+  }
+
+  return true
 }

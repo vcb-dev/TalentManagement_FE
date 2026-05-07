@@ -107,13 +107,10 @@ export function AppShell({ children, title }: AppShellProps) {
           <DropdownMenuItem
             disabled={logoutPending}
             className="cursor-pointer gap-2"
-            onClick={() =>
-              logout(undefined, {
-                onSuccess: () => {
-                  void navigate({ to: '/login' })
-                },
-              })
-            }
+            onClick={() => {
+              logout(undefined)
+              void navigate({ to: '/login' })
+            }}
           >
             <LogOut className="h-4 w-4 shrink-0" strokeWidth={2} />
             Đăng xuất

@@ -2,9 +2,15 @@ import { z } from 'zod'
 
 export const examSummaryApiSchema = z.object({
   id: z.string().uuid(),
+  classId: z.string().uuid().optional(),
+  scheduleId: z.string().uuid().optional(),
   title: z.string(),
-  scheduledAt: z.string().datetime(),
+  scheduledAt: z.string().datetime({ offset: true }),
   status: z.enum(['UPCOMING', 'IN_PROGRESS', 'COMPLETED']),
+  hasQuestions: z.boolean().optional(),
+  score: z.number().nullable().optional(),
+  outcome: z.string().nullable().optional(),
+  submissionId: z.string().uuid().optional(),
 })
 
 export type ExamScheduleRow = z.infer<typeof examSummaryApiSchema>
@@ -22,7 +28,7 @@ export const examResultApiSchema = z.object({
   examId: z.string().uuid(),
   employeeId: z.string().uuid(),
   result: z.enum(['DAT', 'BAO_LUU', 'CHO_HOC_LAI', 'CHIA_TAY']),
-  classifiedAt: z.string().datetime(),
+  classifiedAt: z.string().datetime({ offset: true }),
 })
 
 export const gradeFormSchema = z.object({
@@ -36,10 +42,12 @@ export const examSubmissionApiSchema = z.object({
   fullName: z.string(),
   teamGroup: z.string().nullable().optional(),
   classId: z.string().nullable().optional(),
+  scheduleId: z.string().nullable().optional(),
   answers: z.any().optional(),
   grades: z.any().optional(),
   totalScore: z.number().nullable().optional(),
-  status: z.enum(['pending', 'grading', 'done']),
+  status: z.enum(['started', 'pending', 'grading', 'done']),
+  outcome: z.enum(['DAT', 'BAO_LUU', 'CHO_HOC_LAI', 'CHIA_TAY']).nullable().optional(),
   graderNote: z.string().nullable().optional(),
   gradedAt: z.string().nullable().optional(),
   createdAt: z.string(),
@@ -47,6 +55,15 @@ export const examSubmissionApiSchema = z.object({
   learningClass: z
     .object({
       name: z.string(),
+      examQuestions: z.any().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
+  schedule: z
+    .object({
+      topic: z.string(),
+      dateIso: z.string().optional(),
+      startTime: z.string().optional(),
       examQuestions: z.any().nullable().optional(),
     })
     .nullable()
