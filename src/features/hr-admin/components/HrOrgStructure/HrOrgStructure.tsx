@@ -1455,6 +1455,7 @@ function TeamMembersPanel({
                           <div className="max-w-[220px] truncate">{memberRowDisplayName(m)}</div>
                           {m.employeeCodePrimary ? (
                             <div className="truncate text-xs font-normal text-muted-foreground">
+                              <span className="font-medium text-muted-foreground/90">Mã NV:</span>{' '}
                               {m.employeeCodePrimary}
                             </div>
                           ) : null}
