@@ -560,23 +560,6 @@ export const performanceApi = {
     const res = await apiClient.patch(`/performance/revenue-tiers/${id}`, body)
     return res.data
   },
-
-  // ─── Sprint 5 / Epic 8: Reward ──────────────────────────────────────
-
-  createRewardFromAssignment: async (
-    assignmentId: string,
-    body: { kind: 'REWARD' | 'PENALTY'; title: string; amount?: number; note?: string }
-  ) => {
-    if (isMockApiEnabled()) throw new Error('Mock')
-    const res = await apiClient.post(`/reward/from-assignment/${assignmentId}`, body)
-    return res.data
-  },
-
-  listRewardsByUser: async (userId: string) => {
-    if (isMockApiEnabled()) return [] as RewardRecord[]
-    const res = await apiClient.get<RewardRecord[]>(`/reward/users/${userId}`)
-    return res.data
-  },
 }
 
 export type PerformanceWindowConfig = {
@@ -675,7 +658,6 @@ export type UserSnapshotResponse = {
     okrGrade: string | null
   } | null
   teamHistory: Array<{ year: number; month: number; departmentName: string | null }>
-  rewardsPenalties: unknown[]
 }
 
 export type CatalogItem = {
@@ -707,17 +689,4 @@ export type CatalogItem = {
     bonusPercent: number | null
     bonusAmount: number | null
   }>
-}
-
-export type RewardRecord = {
-  id: string
-  userId: string
-  kind: 'REWARD' | 'PENALTY'
-  title: string
-  amount: number | null
-  note: string | null
-  sourceType: 'KPI' | 'MANUAL'
-  sourceAssignmentId: string | null
-  createdByUserId: string
-  createdAt: string
 }

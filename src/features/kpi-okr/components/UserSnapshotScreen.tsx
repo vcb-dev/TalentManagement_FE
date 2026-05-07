@@ -6,16 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { performanceApi } from '@/features/kpi-okr/api'
-import {
-  Target,
-  Star,
-  TrendingUp,
-  Gift,
-  Clock,
-  ChevronLeft,
-  Building2,
-  Briefcase,
-} from 'lucide-react'
+import { Target, Star, TrendingUp, Clock, ChevronLeft, Building2, Briefcase } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 
@@ -58,7 +49,7 @@ export function UserSnapshotScreen() {
     )
   }
 
-  const { profile, latestOkr, topKpiP1, summary, teamHistory, rewardsPenalties } = data
+  const { profile, latestOkr, topKpiP1, summary, teamHistory } = data
 
   return (
     <div className="space-y-6 p-6">
@@ -95,8 +86,7 @@ export function UserSnapshotScreen() {
         </Button>
       </div>
 
-      {/* Grid 4 cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* OKR moi nhat */}
         <Card>
           <CardHeader className="pb-2">
@@ -196,40 +186,6 @@ export function UserSnapshotScreen() {
               </div>
             ) : (
               <p className="text-sm text-slate-400">Chưa có dữ liệu tháng</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Rewards/Penalties */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-              <Gift className="h-3.5 w-3.5" />
-              Khen thưởng / Phạt
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {rewardsPenalties && rewardsPenalties.length > 0 ? (
-              <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                {rewardsPenalties.slice(0, 5).map((r) => (
-                  <div key={r.id} className="flex items-center justify-between text-xs">
-                    <span className="truncate text-slate-700 dark:text-slate-300">{r.title}</span>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        'h-4 text-[9px] font-bold px-1',
-                        r.kind === 'REWARD'
-                          ? 'border-emerald-200 text-emerald-600'
-                          : 'border-rose-200 text-rose-600'
-                      )}
-                    >
-                      {r.kind === 'REWARD' ? 'Thưởng' : 'Phạt'}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400">Chưa có</p>
             )}
           </CardContent>
         </Card>
