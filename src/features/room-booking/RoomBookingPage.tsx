@@ -101,9 +101,15 @@ const BookingRow = memo(
     handleDelete: (id: string) => void
   }) => {
     const statusBadge = () => {
-      const td = new Date().toISOString().split('T')[0] || ''
-      const ct = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+      const { date: td, time: ct } = getVnNow()
       const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
+
+      if (b.status === 'approved' && isPast)
+        return (
+          <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700 border border-blue-200">
+            ✓ Đã họp xong
+          </span>
+        )
 
       if (b.status === 'pending' && isPast)
         return (
@@ -278,11 +284,28 @@ export default function RoomBookingPage() {
   }, [showModal, room, date])
 
   const filtered = useMemo(() => {
-    const today = getVnNow().date
+    const { date: todayDate, time: nowTime } = getVnNow()
+    const isBookingCompleted = (b: MeetingBooking) =>
+      b.status === 'approved' &&
+      (b.date < todayDate || (b.date === todayDate && b.timeTo <= nowTime))
+
     return bookings.filter((b) => {
       if (filter === ('requests' as any)) return b.status === 'pending'
       if (filter === 'mine') return b.userId === user?.id
-      if (filter === 'today') return b.team === user?.team
+      if (filter === 'today') {
+        if (b.userId === user?.id) return true
+        const userTeam = (user?.team ?? '').trim().toLowerCase()
+        const bookingTeam = (b.team ?? '').trim().toLowerCase()
+        return (
+          !!bookingTeam &&
+          !!userTeam &&
+          (bookingTeam === userTeam ||
+            bookingTeam.includes(userTeam) ||
+            userTeam.includes(bookingTeam))
+        )
+      }
+      // Tab 'all' (Toàn bộ): ẩn các booking đã họp xong
+      if (isBookingCompleted(b)) return false
       return true
     })
   }, [bookings, filter, user?.id, user?.team])

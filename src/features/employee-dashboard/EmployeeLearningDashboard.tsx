@@ -162,12 +162,16 @@ export function EmployeeLearningDashboard() {
   const maxStars = STARS_PER_LEVEL[levelKey]
   const filledStars = apiCareer?.currentStars ?? meDashboard?.levelSource?.starCount ?? 0
 
-  const teamLine = apiUser?.teamGroup?.trim() || 'Khác'
-  const deptLine =
-    apiUser?.departmentName?.trim() || (user ? formatDepartment(user.departmentId) : '—')
+  const avatarName = apiUser?.fullNameLegal?.trim() || user?.name || 'User'
+  const teamLine = isLoading ? 'Loading...' : apiUser?.teamGroup?.trim() || 'Khác'
+  const deptLine = isLoading
+    ? 'Loading...'
+    : apiUser?.departmentName?.trim() || (user ? formatDepartment(user.departmentId) : '—')
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
-  const fullName = apiUser?.fullNameLegal?.trim() || user?.name || '—'
-  const birthDate = formatDateVi(apiUser?.birthDate)
+  const fullName = isLoading ? 'Loading...' : apiUser?.fullNameLegal?.trim() || user?.name || '—'
+  const birthDate = isLoading ? 'Loading...' : formatDateVi(apiUser?.birthDate)
+  const jobTitleValue = isLoading ? 'Loading...' : apiUser?.jobTitle || roleLabel
+  const levelLabelValue = isLoading ? 'Loading...' : levelLabel
   const promotionHistory = meDashboard?.promotionHistory ?? []
   const highlightAchievements = meDashboard?.highlightAchievements ?? []
 
@@ -244,7 +248,7 @@ export function EmployeeLearningDashboard() {
                       aria-hidden
                     />
                     <EmployeeAvatar
-                      name={fullName}
+                      name={avatarName}
                       className="relative z-10 h-24 w-24 text-xl ring-[3px] ring-white/90 shadow-[0_12px_40px_-12px_hsl(var(--primary)/0.45)] ring-offset-[3px] ring-offset-[hsl(var(--accent)/0.08)]"
                     />
                     <span className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/40 bg-gradient-to-r from-primary to-accent px-3 py-0.5 text-[0.55rem] font-black uppercase tracking-wide text-primary-foreground shadow-[0_6px_20px_hsl(var(--primary)/0.4)]">
@@ -321,8 +325,8 @@ export function EmployeeLearningDashboard() {
                   ['Ngày sinh', birthDate],
                   ['Phòng ban', teamLine],
                   ['Vị trí', deptLine],
-                  ['Chức vụ', apiUser?.jobTitle || roleLabel],
-                  ['Cấp độ', levelLabel],
+                  ['Chức vụ', jobTitleValue],
+                  ['Cấp độ', levelLabelValue],
                 ].map(([label, value], idx) => (
                   <div
                     key={label}
