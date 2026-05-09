@@ -36,6 +36,8 @@ export const userSessionSchema = z.object({
   teamIds: z.array(z.string().uuid()),
   /** BE có thể bỏ qua hoặc null khi chưa có phân loại staff — chuẩn hóa UNKNOWN */
   staffLevel: staffLevelSchema.nullish().transform((v): StaffLevel => (v == null ? 'UNKNOWN' : v)),
+  jobTitle: z.string().optional(),
+  team: z.string().optional(),
 })
 
 export const meResponseSchema = z.object({
