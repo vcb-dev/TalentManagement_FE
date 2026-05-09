@@ -21,6 +21,7 @@ import {
   Target,
   Users,
   Building2,
+  Award,
 } from 'lucide-react'
 
 export type NavMatchMode = 'exact' | 'prefix' | 'custom'
@@ -87,6 +88,12 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     match: 'prefix',
     permissionId: 'learning.view',
     hiddenForRoles: ['MANAGER', 'BOD', 'HR'],
+  },
+  {
+    to: '/rewards',
+    label: 'Khen thưởng/Phạt',
+    icon: Award,
+    match: 'prefix',
   },
 ]
 
@@ -414,6 +421,7 @@ export function groupedSidebarNavItems(
         ...find(LEADER_KPI_ITEMS, '/dashboard'),
         ...find(MEMBER_SELF_ITEMS, '/dashboard'),
         ...find(LEADER_KPI_ITEMS, '/leader/kpi-okr'),
+        ...find(MEMBER_SELF_ITEMS, '/rewards'),
         ...find(LEADER_KPI_ITEMS, '/monthly-report'),
         ...find(MEMBER_SELF_ITEMS, '/monthly-report'),
       ]),
