@@ -90,7 +90,7 @@ export function PerformanceWindowConfigScreen() {
     e.preventDefault()
     if (mock) return
     if (scope === 'team' && !teamId.trim()) {
-      toast.error('Chọn team khi phạm vi là một team.')
+      toast.error('Chọn nhóm khi phạm vi là một nhóm.')
       return
     }
     const as = clampDay(assignStartDay)
@@ -122,18 +122,6 @@ export function PerformanceWindowConfigScreen() {
           <h1 className="text-xl font-bold tracking-tight text-foreground">
             Cửa sổ giao KPI/OKR & khảo sát
           </h1>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Đường dẫn trang:{' '}
-            <code className="rounded bg-muted px-1 py-0.5 text-xs">
-              /hr-admin/settings/kpi-windows
-            </code>
-            . API{' '}
-            <code className="rounded bg-muted px-1 py-0.5 text-xs">
-              PUT /performance/window-configs
-            </code>
-            . Ưu tiên: cấu hình theo team → cấu hình toàn hệ thống (team trống) → mặc định giao ngày
-            1–2, khảo sát 1–5.
-          </p>
         </div>
       </div>
 
@@ -141,7 +129,7 @@ export function PerformanceWindowConfigScreen() {
         <Card className="border-dashed border-amber-500/40 bg-amber-500/5">
           <CardContent className="flex gap-2 pt-6 text-sm text-amber-900 dark:text-amber-100">
             <Info className="mt-0.5 h-4 w-4 shrink-0" />
-            Đang bật mock API — tắt mock để chỉnh cửa sổ thật trên server.
+            Đang bật chế độ giả lập — tắt giả lập để chỉnh cửa sổ thật trên máy chủ.
           </CardContent>
         </Card>
       ) : null}
@@ -165,22 +153,22 @@ export function PerformanceWindowConfigScreen() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="global">
-                      Toàn hệ thống (mọi team chưa có cấu hình riêng)
+                      Toàn hệ thống (mọi nhóm chưa có cấu hình riêng)
                     </SelectItem>
-                    <SelectItem value="team">Một team</SelectItem>
+                    <SelectItem value="team">Một nhóm</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               {scope === 'team' ? (
                 <div className="space-y-2">
-                  <Label>Team</Label>
+                  <Label>Nhóm</Label>
                   <Select
                     value={teamId}
                     onValueChange={setTeamId}
                     disabled={mock || upsertM.isPending || teamsLoading}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={teamsLoading ? 'Đang tải…' : 'Chọn team'} />
+                      <SelectValue placeholder={teamsLoading ? 'Đang tải…' : 'Chọn nhóm'} />
                     </SelectTrigger>
                     <SelectContent className="max-h-72">
                       {allTeams.map((t) => (
@@ -225,7 +213,7 @@ export function PerformanceWindowConfigScreen() {
 
             <div className="rounded-xl border border-border/80 bg-muted/30 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Giao mục tiêu KPI/OKR (leader)
+                Giao mục tiêu KPI/OKR (trưởng nhóm)
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">

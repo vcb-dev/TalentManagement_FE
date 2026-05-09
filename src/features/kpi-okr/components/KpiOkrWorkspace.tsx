@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useForm, useWatch } from 'react-hook-form'
+import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import {
   AlignLeft,
   CheckCircle2,
@@ -11,6 +11,7 @@ import {
   ListPlus,
   Lock,
   Pencil,
+  Plus,
   RefreshCw,
   Trash2,
   Users,
@@ -36,10 +37,19 @@ import {
   resolveAssignmentWindowForTeam,
 } from '@/features/kpi-okr/kpiPeriodLimits'
 import { AutoSeedModal } from '@/features/kpi-okr/components/AutoSeedModal'
+import { KpiEvidenceInput } from '@/features/kpi-okr/components/KpiEvidenceInput'
 import {
-  EvidenceImagePreviews,
-  KpiEvidenceInput,
-} from '@/features/kpi-okr/components/KpiEvidenceInput'
+  ASSIGN_TABLE_HEAD,
+  AssignmentEpic4ReadCells,
+  EvalStatusBadge,
+  KindBadge,
+  PriorityBadge,
+  XL_TH,
+  XL_BORDER,
+  formatKpiSetAt,
+  periodLabel,
+  xlTd,
+} from '@/features/kpi-okr/components/kpiAssignmentTableShared'
 import { isCatalogEnabledDepartment } from '@/features/kpi-okr/catalogHelpers'
 import {
   parseKpiOkrImportFile,
@@ -282,6 +292,13 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     enabled: !isMockApiEnabled(),
   })
 
+  const catalogAllowlistQ = useQuery({
+    queryKey: ['performance', 'catalog-division-allowlist'],
+    queryFn: () => performanceApi.getCatalogDivisionAllowlist(),
+    staleTime: 60_000,
+    enabled: !isMockApiEnabled(),
+  })
+
   const assignmentWindowBounds = useMemo(
     () =>
       selectedTeamId
@@ -318,7 +335,10 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     variant === 'leader' &&
     canEditTeam &&
     eff.has('kpi.auto_seed') &&
-    Boolean(selectedDept && isCatalogEnabledDepartment(selectedDept)) &&
+    Boolean(
+      selectedDept &&
+      isCatalogEnabledDepartment(selectedDept, catalogAllowlistQ.data?.mergedDivisionIds ?? null)
+    ) &&
     !isMockApiEnabled()
 
   const selectedTeamForSeed = useMemo(() => {
@@ -402,7 +422,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
               )}
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Team / Đội nhóm
+                  Nhóm
                 </Label>
                 <Select
                   value={selectedTeamId || '__none'}
@@ -410,10 +430,10 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                   onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
                 >
                   <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                    <SelectValue placeholder="Chọn team" />
+                    <SelectValue placeholder="Chọn nhóm" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none">— Chọn team —</SelectItem>
+                    <SelectItem value="__none">— Chọn nhóm —</SelectItem>
                     {(isManagerReadOnly ? allTeamsFlat : teamsInDept).map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name}
@@ -535,7 +555,8 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
 
       {mockHint && (
         <p className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
-          Đang bật mock API — dữ liệu KPI từ server không tải được. Tắt mock để dùng đầy đủ.
+          Đang bật chế độ giả lập — không tải được dữ liệu KPI từ máy chủ. Tắt giả lập để dùng đầy
+          đủ.
         </p>
       )}
 
@@ -622,17 +643,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   )
 }
 
-function formatKpiSetAt(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString('vi-VN')
-}
-
-function periodLabel(row: PerformanceAssignment): string {
-  return `T${row.month} - ${row.year}`
-}
-
 function nameForMember(members: TeamMemberRow[], userId: string): string {
   const m = members.find((x) => x.userId === userId)
   const name = m?.displayName?.trim()
@@ -647,19 +657,6 @@ function memberMetaForDisplay(members: TeamMemberRow[], userId: string): string 
   return ''
 }
 
-/** Bảng KPI/OKR — viền & nền theo style doanh nghiệp tinh gọn. */
-const XL_BORDER = 'border border-slate-200/60 dark:border-slate-800/50'
-const XL_TH = cn(
-  XL_BORDER,
-  'sticky top-0 z-10 whitespace-nowrap bg-slate-50/80 px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 shadow-sm backdrop-blur-md dark:bg-slate-900/90 dark:text-slate-400'
-)
-const xlTd = (stripe: boolean) =>
-  cn(
-    XL_BORDER,
-    'px-4 py-3 align-middle text-[13px] leading-relaxed',
-    stripe ? 'bg-slate-50/30 dark:bg-slate-900/20' : 'bg-transparent'
-  )
-
 const XL_INPUT = cn(
   'box-border h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-[13px] text-slate-700 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
   'placeholder:text-slate-400'
@@ -668,116 +665,6 @@ const XL_TEXTAREA = cn(
   'box-border min-h-[80px] w-full min-w-[200px] max-w-[420px] resize-y rounded-lg border border-slate-200 bg-white p-3 text-[13px] text-slate-700 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
   'placeholder:text-slate-400'
 )
-
-const ASSIGN_TABLE_HEAD = [
-  'Kỳ',
-  'Ngày xét',
-  'Hạng mục',
-  'Ưu tiên',
-  'Nội dung',
-  'Chỉ tiêu',
-  'Số liệu',
-  'Đ.vị',
-  'Evidence',
-  'Tự ĐG',
-  'Đánh giá QL',
-  'Thao tác',
-] as const
-
-function EvalStatusBadge({ status }: { status: string | null | undefined }) {
-  if (!status || status === '__none') return <span className="text-slate-400">—</span>
-
-  const isOk = status === 'OK'
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        'h-5 px-1.5 text-[10px] font-bold shadow-none rounded-md',
-        isOk
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
-          : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300'
-      )}
-    >
-      {status}
-    </Badge>
-  )
-}
-
-function KindBadge({ kind }: { kind: PerformanceAssignment['kind'] }) {
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        'h-5 px-1.5 text-[10px] font-black uppercase tracking-widest shadow-none rounded-md',
-        kind === 'KPI'
-          ? 'border-indigo-400/30 bg-indigo-500/10 text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300'
-          : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-600 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
-      )}
-    >
-      {kind}
-    </Badge>
-  )
-}
-
-function PriorityBadge({ priority }: { priority: number }) {
-  const configs: Record<number, { label: string; className: string }> = {
-    1: {
-      label: 'P1 - Cao',
-      className:
-        'border-rose-400/30 bg-rose-500/10 text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300',
-    },
-    2: {
-      label: 'P2 - Trung bình',
-      className:
-        'border-amber-400/30 bg-amber-500/10 text-amber-600 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300',
-    },
-    3: {
-      label: 'P3 - Thấp',
-      className:
-        'border-slate-400/30 bg-slate-500/10 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400',
-    },
-  }
-
-  const config = configs[priority] || {
-    label: priority === 0 ? 'Chưa xếp' : `P${priority}`,
-    className:
-      'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400',
-  }
-
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        'h-5 px-1.5 text-[10px] font-black shadow-none whitespace-nowrap rounded-md uppercase tracking-wider',
-        config.className
-      )}
-    >
-      {config.label}
-    </Badge>
-  )
-}
-
-/** Evidence / số liệu / tự đánh giá — read-only (leader / viewer). */
-function AssignmentEpic4ReadCells({ row, td }: { row: PerformanceAssignment; td: string }) {
-  const num =
-    row.numericValue !== undefined && row.numericValue !== null ? String(row.numericValue) : '—'
-  const ev = row.evidence?.trim()
-  return (
-    <>
-      <TableCell className={cn(td, 'max-w-[88px] tabular-nums text-[13px]')}>{num}</TableCell>
-      <TableCell className={cn(td, 'max-w-[72px] text-xs uppercase')}>
-        {row.numericUnit ?? '—'}
-      </TableCell>
-      <TableCell className={cn(td, 'max-w-[160px] min-w-[120px] text-xs')} title={ev ?? ''}>
-        <span className="line-clamp-3 whitespace-pre-wrap break-all">{ev ? ev : '—'}</span>
-        <EvidenceImagePreviews evidence={row.evidence} maxHeightClass="h-12 max-w-[72px]" />
-      </TableCell>
-      <TableCell className={td}>
-        <EvalStatusBadge status={row.selfEvalStatus ?? null} />
-      </TableCell>
-    </>
-  )
-}
 
 function MemberSelfAssignmentRow({
   row,
@@ -1172,12 +1059,14 @@ function LeaderAssignmentRow({
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>
-                      {mode === 'planning' ? 'Sửa mục tiêu KPI/OKR' : 'Sửa đánh giá KPI/OKR'}
+                      {mode === 'planning'
+                        ? 'Sửa mục tiêu KPI/OKR'
+                        : 'Chấm điểm thành viên (OK/NOT)'}
                     </DialogTitle>
                     <DialogDescription>
                       {mode === 'planning'
                         ? 'Cập nhật nội dung/ưu tiên/chỉ tiêu và ngày xét cho kỳ đang chọn.'
-                        : 'Chỉ cập nhật QL đánh giá (OK/NOT) và QL nhận xét — các trường khác giữ nguyên.'}
+                        : 'Chấm OK/NOT và nhận xét cho thành viên (đánh giá của trưởng nhóm). Quản lý chấm trưởng nhóm tại màn Đánh giá trưởng nhóm.'}
                     </DialogDescription>
                   </DialogHeader>
 
@@ -1238,7 +1127,7 @@ function LeaderAssignmentRow({
                           <SelectController
                             control={control}
                             name="managerEvalStatus"
-                            label="QL đánh giá"
+                            label="Đánh giá thành viên (OK/NOT)"
                             className="space-y-1 text-xs font-medium"
                           >
                             <SelectItem value="__none">—</SelectItem>
@@ -1250,7 +1139,7 @@ function LeaderAssignmentRow({
                             <TextareaController
                               control={control}
                               name="managerReviewNote"
-                              label="QL nhận xét"
+                              label="Nhận xét"
                               className="space-y-1 text-xs font-medium"
                               textareaClassName="min-h-[96px] rounded-lg border-slate-200"
                               placeholder="Nhận xét…"
@@ -1452,27 +1341,41 @@ function AssignmentTableSingleUser({
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((r, idx) =>
-                canEditTeam ? (
-                  <LeaderAssignmentRow
-                    key={r.id}
-                    row={r}
-                    mode={leaderMode}
-                    onSaved={onRefresh}
-                    rowStripe={idx % 2 === 1}
-                    canEditTeam={canEditTeam}
-                  />
-                ) : allowSelfEdit ? (
-                  <MemberSelfAssignmentRow
-                    key={r.id}
-                    row={r}
-                    rowStripe={idx % 2 === 1}
-                    onSaved={onRefresh}
-                  />
-                ) : (
-                  <ReadOnlyAssignmentRow key={r.id} row={r} rowStripe={idx % 2 === 1} />
-                )
-              )
+              rows.map((r, idx) => {
+                if (allowSelfEdit && leaderMode === 'results') {
+                  return (
+                    <MemberSelfAssignmentRow
+                      key={r.id}
+                      row={r}
+                      rowStripe={idx % 2 === 1}
+                      onSaved={onRefresh}
+                    />
+                  )
+                }
+                if (canEditTeam) {
+                  return (
+                    <LeaderAssignmentRow
+                      key={r.id}
+                      row={r}
+                      mode={leaderMode}
+                      onSaved={onRefresh}
+                      rowStripe={idx % 2 === 1}
+                      canEditTeam={canEditTeam}
+                    />
+                  )
+                }
+                if (allowSelfEdit) {
+                  return (
+                    <MemberSelfAssignmentRow
+                      key={r.id}
+                      row={r}
+                      rowStripe={idx % 2 === 1}
+                      onSaved={onRefresh}
+                    />
+                  )
+                }
+                return <ReadOnlyAssignmentRow key={r.id} row={r} rowStripe={idx % 2 === 1} />
+              })
             )}
           </TableBody>
         </Table>
@@ -1713,7 +1616,7 @@ function WorkReportPanel({
     return (
       <Card className="border-dashed border-primary/25 bg-muted/20">
         <CardContent className="pt-6 text-sm text-muted-foreground">
-          Chọn team để xem báo cáo công việc.
+          Chọn nhóm để xem báo cáo công việc.
         </CardContent>
       </Card>
     )
@@ -1833,6 +1736,23 @@ function WorkReportPanel({
   )
 }
 
+/** Leader KPI/OKR của team — khớp `role === LEADER` từ `GET .../teams/:id/members`. */
+function reviewerDefaultFromTeamLeader(members: TeamMemberRow[]): string {
+  const leader = members.find((m) => m.role === 'LEADER')
+  if (!leader) return ''
+  return leader.displayName?.trim() || leader.email?.trim() || ''
+}
+
+function miniCreateEmptyLine(): {
+  kind: 'KPI' | 'OKR'
+  priority: number
+  content: string
+  kpiSetAt: string
+  targetMetric: string
+} {
+  return { kind: 'KPI', priority: 1, content: '', kpiSetAt: '', targetMetric: '' }
+}
+
 function MiniCreateForm({
   teamId,
   year,
@@ -1859,12 +1779,14 @@ function MiniCreateForm({
 
   type MiniCreateValues = {
     assigneeUserIds: string[]
-    content: string
-    kind: 'KPI' | 'OKR'
-    priority: number
-    kpiSetAt: string
-    targetMetric: string
     reviewerName: string
+    lines: Array<{
+      kind: 'KPI' | 'OKR'
+      priority: number
+      content: string
+      kpiSetAt: string
+      targetMetric: string
+    }>
   }
   const fallbackAssigneeId = useMemo(() => {
     if (defaultAssigneeId && members.some((m) => m.userId === defaultAssigneeId))
@@ -1874,12 +1796,8 @@ function MiniCreateForm({
   const form = useForm<MiniCreateValues>({
     defaultValues: {
       assigneeUserIds: fallbackAssigneeId ? [fallbackAssigneeId] : [],
-      content: '',
-      kind: 'KPI',
-      priority: 1,
-      kpiSetAt: '',
-      targetMetric: '',
       reviewerName: '',
+      lines: [miniCreateEmptyLine()],
     },
     mode: 'onChange',
   })
@@ -1887,11 +1805,22 @@ function MiniCreateForm({
     control,
     handleSubmit,
     setValue,
+    getValues,
     reset,
     formState: { isSubmitting },
   } = form
+  const { fields, append, remove } = useFieldArray({ control, name: 'lines' })
   const assigneeIdsWatched = useWatch({ control, name: 'assigneeUserIds' })
   const selectedAssigneeCount = Array.isArray(assigneeIdsWatched) ? assigneeIdsWatched.length : 0
+  const lineCount = fields.length
+  const totalCreates = lineCount * selectedAssigneeCount
+
+  useEffect(() => {
+    if (!open) return
+    const label = reviewerDefaultFromTeamLeader(members)
+    if (!label || getValues('reviewerName').trim()) return
+    setValue('reviewerName', label, { shouldValidate: false, shouldDirty: false })
+  }, [open, members, getValues, setValue])
 
   useEffect(() => {
     setValue('assigneeUserIds', fallbackAssigneeId ? [fallbackAssigneeId] : [], {
@@ -1943,35 +1872,62 @@ function MiniCreateForm({
   }
 
   const onSubmit = handleSubmit(async (values) => {
-    if (values.kpiSetAt.trim()) {
-      const dt = new Date(`${values.kpiSetAt.trim()}T12:00:00`)
-      if (Number.isNaN(dt.getTime())) return
+    if (!values.lines.length) {
+      toast.error('Thêm ít nhất một dòng mục tiêu.')
+      return
     }
-    const kpiIso = values.kpiSetAt.trim()
-      ? new Date(`${values.kpiSetAt.trim()}T12:00:00`).toISOString()
-      : null
-    const n = values.assigneeUserIds.length
+    for (let i = 0; i < values.lines.length; i++) {
+      const line = values.lines[i]!
+      if (!line.content.trim()) {
+        toast.error(`Dòng ${i + 1}: Nội dung KPI/OKR không được trống.`)
+        return
+      }
+      if (line.content.trim().length > 500) {
+        toast.error(`Dòng ${i + 1}: Nội dung tối đa 500 ký tự.`)
+        return
+      }
+      if (line.kpiSetAt.trim()) {
+        const dt = new Date(`${line.kpiSetAt.trim()}T12:00:00`)
+        if (Number.isNaN(dt.getTime())) {
+          toast.error(`Dòng ${i + 1}: Ngày xét không hợp lệ.`)
+          return
+        }
+      }
+    }
+
+    const nAssign = values.assigneeUserIds.length
+    const nLines = values.lines.length
+    if (nLines * nAssign > 300) {
+      toast.error('Tối đa 300 bản ghi mỗi lần (số dòng × số nhân sự).')
+      return
+    }
+
+    const linesPayload = values.lines.map((line) => ({
+      kind: line.kind,
+      priority: Number(line.priority),
+      content: line.content.trim(),
+      targetMetric: line.targetMetric.trim() ? line.targetMetric.trim() : null,
+      kpiSetAt: line.kpiSetAt.trim()
+        ? new Date(`${line.kpiSetAt.trim()}T12:00:00`).toISOString()
+        : null,
+    }))
+
     try {
-      await performanceApi.createAssignmentsBatch(teamId, {
+      const created = await performanceApi.createAssignmentsBatchMulti(teamId, {
         assigneeUserIds: values.assigneeUserIds,
         year,
         month,
-        kind: values.kind,
-        content: values.content.trim(),
-        priority: Number(values.priority),
-        targetMetric: values.targetMetric.trim() || null,
-        kpiSetAt: kpiIso,
         reviewerName: values.reviewerName.trim() || null,
+        lines: linesPayload,
       })
-      toast.success(n === 1 ? 'Đã tạo mục tiêu.' : `Đã tạo ${n} mục tiêu cho ${n} nhân sự.`)
+      const n = created.length
+      toast.success(
+        n === 1 ? 'Đã tạo mục tiêu.' : `Đã tạo ${n} mục tiêu (${nLines} dòng × ${nAssign} nhân sự).`
+      )
       reset({
         assigneeUserIds: fallbackAssigneeId ? [fallbackAssigneeId] : [],
-        content: '',
-        kind: 'KPI',
-        priority: 1,
-        kpiSetAt: '',
-        targetMetric: '',
         reviewerName: '',
+        lines: [miniCreateEmptyLine()],
       })
       setOpen(false)
       onCreated()
@@ -1990,279 +1946,332 @@ function MiniCreateForm({
           Thêm mục tiêu KPI/OKR
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl rounded-2xl">
-        <DialogHeader className="pb-4">
-          <DialogTitle className="text-xl font-bold tracking-tight">
-            Tạo hạng mục KPI/OKR mới
-          </DialogTitle>
-          <DialogDescription className="text-[13px]">
-            Nhập nhanh mục tiêu công việc cho kỳ T{month}/{year}. Có thể chọn nhiều nhân sự để tạo
-            cùng một nội dung cho tất cả.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/40">
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              ref={importFileRef}
-              type="file"
-              accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-              className="sr-only"
-              onChange={onImportFileChange}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 gap-1.5 rounded-lg border-dashed text-[13px] font-semibold"
-              disabled={!members.length || isMockApiEnabled()}
-              onClick={() => importFileRef.current?.click()}
-            >
-              <FileUp className="h-4 w-4" />
-              Import Excel / CSV
-            </Button>
-            <span className="inline-flex flex-wrap items-center gap-2">
-              <a
-                href={`${import.meta.env.BASE_URL}templates/kpi-okr-import-mau.xlsx`}
-                download="kpi-okr-import-mau.xlsx"
-                className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-primary underline-offset-2 hover:underline dark:border-slate-600 dark:bg-slate-900"
-              >
-                Tải Excel mẫu
-              </a>
-              <a
-                href={`${import.meta.env.BASE_URL}templates/kpi-okr-import-mau.csv`}
-                download="kpi-okr-import-mau.csv"
-                className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 underline-offset-2 hover:underline dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
-              >
-                Tải CSV mẫu
-              </a>
-            </span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">
-              Hàng đầu: tiêu đề (Nhân sự, Hạng mục, Thứ tự ưu tiên, Nội dung KPI/OKRs, …). Mỗi dòng
-              một mục — gắn với kỳ{' '}
-              <strong className="font-semibold text-slate-700 dark:text-slate-200">
-                T{month}/{year}
-              </strong>{' '}
-              đang chọn.
-            </span>
-          </div>
-          {importPreview ? (
-            <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] dark:border-slate-600 dark:bg-slate-950">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-slate-700 dark:text-slate-200">
-                  <span className="font-semibold">{importPreview.fileLabel}</span>
-                  {' — '}
-                  <span className="tabular-nums text-primary">
-                    {importPreview.items.length}
-                  </span>{' '}
-                  dòng hợp lệ
-                  {importPreview.errors.length > 0 ? (
-                    <span className="text-amber-700 dark:text-amber-400">
-                      {' '}
-                      · {importPreview.errors.length} dòng bỏ qua
-                    </span>
-                  ) : null}
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-8 rounded-lg font-bold"
-                  disabled={!importPreview.items.length || importSubmitting || isMockApiEnabled()}
-                  onClick={() => void submitImportFromFile()}
-                >
-                  {importSubmitting ? (
-                    <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  ) : null}
-                  {importSubmitting
-                    ? 'Đang import…'
-                    : importPreview.items.length > 0
-                      ? `Tạo ${importPreview.items.length} mục từ file`
-                      : 'Không có dòng hợp lệ'}
-                </Button>
-              </div>
-              {importPreview.errors.length > 0 ? (
-                <ul className="max-h-28 overflow-y-auto rounded-md border border-amber-200/80 bg-amber-50/50 px-2 py-1.5 text-[11px] text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
-                  {importPreview.errors.slice(0, 20).map((err) => (
-                    <li key={`${err.row}-${err.message.slice(0, 24)}`}>
-                      Dòng {err.row}: {err.message}
-                    </li>
-                  ))}
-                  {importPreview.errors.length > 20 ? (
-                    <li className="text-amber-800/80">
-                      … và {importPreview.errors.length - 20} lỗi khác
-                    </li>
-                  ) : null}
-                </ul>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <Form {...form}>
-          <form className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" onSubmit={onSubmit}>
-            <SelectController
-              control={control}
-              name="kind"
-              label="Hạng mục"
-              required
-              rules={{ required: true }}
-              className="space-y-1.5"
-              labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
-            >
-              <SelectItem value="KPI">KPI</SelectItem>
-              <SelectItem value="OKR">OKR</SelectItem>
-            </SelectController>
-            <SelectController
-              control={control}
-              name="priority"
-              label="Thứ tự ưu tiên"
-              required
-              rules={{ required: true, min: 0, max: 99 }}
-              className="space-y-1.5"
-              labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
-            >
-              <SelectItem value="0">Không xếp (0)</SelectItem>
-              <SelectItem value="1">Ưu tiên 1 - Cao</SelectItem>
-              <SelectItem value="2">Ưu tiên 2 - Trung bình</SelectItem>
-              <SelectItem value="3">Ưu tiên 3 - Thấp</SelectItem>
-            </SelectController>
-            <FormField
-              control={control}
-              name="assigneeUserIds"
-              rules={{
-                validate: (v) =>
-                  (Array.isArray(v) && v.length > 0) || 'Chọn ít nhất một nhân sự nhận việc',
-              }}
-              render={({ field }) => (
-                <FormItem className="space-y-1.5 md:col-span-2 lg:col-span-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <FormLabel className="text-[11px] font-bold uppercase tracking-wider text-slate-500 !mt-0">
-                      Nhân sự nhận việc <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 rounded-lg px-2 text-[11px] font-semibold text-primary"
-                        onClick={() => field.onChange(members.map((m) => m.userId))}
-                      >
-                        Chọn tất cả
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 rounded-lg px-2 text-[11px] font-semibold text-slate-500"
-                        onClick={() => field.onChange([])}
-                      >
-                        Bỏ chọn
-                      </Button>
-                    </div>
-                  </div>
-                  <FormControl>
-                    <div
-                      className={cn(
-                        'box-border w-full min-w-0 max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 text-[13px] outline-none transition-all',
-                        'focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10',
-                        'dark:border-slate-700 dark:bg-slate-950 space-y-0.5'
-                      )}
-                    >
-                      {members.map((m) => {
-                        const checked = field.value.includes(m.userId)
-                        return (
-                          <label
-                            key={m.userId}
-                            className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/80"
-                          >
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={(c) => {
-                                const on = c === true
-                                if (on) {
-                                  if (!field.value.includes(m.userId)) {
-                                    field.onChange([...field.value, m.userId])
-                                  }
-                                } else {
-                                  field.onChange(field.value.filter((id) => id !== m.userId))
-                                }
-                              }}
-                            />
-                            <span className="text-sm text-slate-800 dark:text-slate-100">
-                              {(m.displayName ?? m.email ?? 'chưa có tên').slice(0, 48)}
-                            </span>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DateController
-              control={control}
-              name="kpiSetAt"
-              label="Ngày xét KPI/OKR"
-              className="space-y-1.5"
-              labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
-              datePickerClassName={cn(XL_INPUT, 'h-10 rounded-xl')}
-              lockToMonth={{ year, month }}
-            />
-            <InputController
-              control={control}
-              name="targetMetric"
-              label="Chỉ số mục tiêu"
-              className="space-y-1.5"
-              labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
-              inputClassName={cn(XL_INPUT, 'h-10 rounded-xl tabular-nums')}
-              placeholder="VD: 60"
-            />
-            <InputController
-              control={control}
-              name="reviewerName"
-              label="Người đánh giá (tùy chọn)"
-              className="space-y-1.5"
-              labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
-              inputClassName={cn(XL_INPUT, 'h-10 rounded-xl')}
-              placeholder="Họ tên QL / Leader"
-            />
-            <div className="md:col-span-2 lg:col-span-3 space-y-1.5">
-              <TextareaController
-                control={control}
-                name="content"
-                label="Nội dung KPI/OKR"
-                required
-                rules={{ required: true, maxLength: 500 }}
-                className="space-y-1.5"
-                labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
-                maxLength={500}
-                textareaClassName={cn(XL_TEXTAREA, 'max-w-none min-h-[100px] rounded-xl')}
-                placeholder="Mô tả cụ thể mục tiêu cần đạt được..."
+      <DialogContent className="flex max-h-[90vh] max-w-[min(1200px,95vw)] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-[min(1200px,95vw)]">
+        <div className="max-h-[90vh] overflow-y-auto px-6 pb-4 pt-6">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="text-xl font-bold tracking-tight">
+              Tạo hạng mục KPI/OKR mới
+            </DialogTitle>
+            <DialogDescription className="text-[13px]">
+              Kỳ T{month}/{year}: thêm nhiều dòng mục tiêu; mỗi dòng áp dụng cho tất cả nhân sự đã
+              chọn (tối đa 300 bản ghi mỗi lần).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/40">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                className="sr-only"
+                onChange={onImportFileChange}
               />
-            </div>
-            <div className="flex items-center justify-end gap-3 pt-2 md:col-span-2 lg:col-span-3">
               <Button
                 type="button"
-                variant="ghost"
-                onClick={() => setOpen(false)}
-                className="rounded-xl px-6 font-bold text-slate-500 hover:bg-slate-100"
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 rounded-lg border-dashed text-[13px] font-semibold"
+                disabled={!members.length || isMockApiEnabled()}
+                onClick={() => importFileRef.current?.click()}
               >
-                Hủy bỏ
+                <FileUp className="h-4 w-4" />
+                Import Excel / CSV
               </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting || !members.length}
-                className="rounded-xl bg-primary px-8 font-bold shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5"
-              >
-                {isSubmitting ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isSubmitting
-                  ? 'Đang tạo...'
-                  : selectedAssigneeCount > 1
-                    ? `Tạo ${selectedAssigneeCount} mục tiêu`
-                    : 'Tạo mục tiêu'}
-              </Button>
+              <span className="inline-flex flex-wrap items-center gap-2">
+                <a
+                  href={`${import.meta.env.BASE_URL}templates/kpi-okr-import-mau.xlsx`}
+                  download="kpi-okr-import-mau.xlsx"
+                  className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-primary underline-offset-2 hover:underline dark:border-slate-600 dark:bg-slate-900"
+                >
+                  Tải Excel mẫu
+                </a>
+                <a
+                  href={`${import.meta.env.BASE_URL}templates/kpi-okr-import-mau.csv`}
+                  download="kpi-okr-import-mau.csv"
+                  className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 underline-offset-2 hover:underline dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  Tải CSV mẫu
+                </a>
+              </span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                Hàng đầu: tiêu đề (Nhân sự, Hạng mục, Thứ tự ưu tiên, Nội dung KPI/OKRs, …). Mỗi
+                dòng một mục — gắn với kỳ{' '}
+                <strong className="font-semibold text-slate-700 dark:text-slate-200">
+                  T{month}/{year}
+                </strong>{' '}
+                đang chọn.
+              </span>
             </div>
-          </form>
-        </Form>
+            {importPreview ? (
+              <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] dark:border-slate-600 dark:bg-slate-950">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-slate-700 dark:text-slate-200">
+                    <span className="font-semibold">{importPreview.fileLabel}</span>
+                    {' — '}
+                    <span className="tabular-nums text-primary">
+                      {importPreview.items.length}
+                    </span>{' '}
+                    dòng hợp lệ
+                    {importPreview.errors.length > 0 ? (
+                      <span className="text-amber-700 dark:text-amber-400">
+                        {' '}
+                        · {importPreview.errors.length} dòng bỏ qua
+                      </span>
+                    ) : null}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 rounded-lg font-bold"
+                    disabled={!importPreview.items.length || importSubmitting || isMockApiEnabled()}
+                    onClick={() => void submitImportFromFile()}
+                  >
+                    {importSubmitting ? (
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : null}
+                    {importSubmitting
+                      ? 'Đang import…'
+                      : importPreview.items.length > 0
+                        ? `Tạo ${importPreview.items.length} mục từ file`
+                        : 'Không có dòng hợp lệ'}
+                  </Button>
+                </div>
+                {importPreview.errors.length > 0 ? (
+                  <ul className="max-h-28 overflow-y-auto rounded-md border border-amber-200/80 bg-amber-50/50 px-2 py-1.5 text-[11px] text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+                    {importPreview.errors.slice(0, 20).map((err) => (
+                      <li key={`${err.row}-${err.message.slice(0, 24)}`}>
+                        Dòng {err.row}: {err.message}
+                      </li>
+                    ))}
+                    {importPreview.errors.length > 20 ? (
+                      <li className="text-amber-800/80">
+                        … và {importPreview.errors.length - 20} lỗi khác
+                      </li>
+                    ) : null}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+          <Form {...form}>
+            <form className="flex flex-col gap-4 pt-4" onSubmit={onSubmit}>
+              <FormField
+                control={control}
+                name="assigneeUserIds"
+                rules={{
+                  validate: (v) =>
+                    (Array.isArray(v) && v.length > 0) || 'Chọn ít nhất một nhân sự nhận việc',
+                }}
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <FormLabel className="text-[11px] font-bold uppercase tracking-wider text-slate-500 !mt-0">
+                        Nhân sự nhận việc <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 rounded-lg px-2 text-[11px] font-semibold text-primary"
+                          onClick={() => field.onChange(members.map((m) => m.userId))}
+                        >
+                          Chọn tất cả
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 rounded-lg px-2 text-[11px] font-semibold text-slate-500"
+                          onClick={() => field.onChange([])}
+                        >
+                          Bỏ chọn
+                        </Button>
+                      </div>
+                    </div>
+                    <FormControl>
+                      <div
+                        className={cn(
+                          'box-border w-full min-w-0 max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 text-[13px] outline-none transition-all',
+                          'focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10',
+                          'dark:border-slate-700 dark:bg-slate-950 space-y-0.5'
+                        )}
+                      >
+                        {members.map((m) => {
+                          const checked = field.value.includes(m.userId)
+                          return (
+                            <label
+                              key={m.userId}
+                              className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/80"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(c) => {
+                                  const on = c === true
+                                  if (on) {
+                                    if (!field.value.includes(m.userId)) {
+                                      field.onChange([...field.value, m.userId])
+                                    }
+                                  } else {
+                                    field.onChange(field.value.filter((id) => id !== m.userId))
+                                  }
+                                }}
+                              />
+                              <span className="text-sm text-slate-800 dark:text-slate-100">
+                                {(m.displayName ?? m.email ?? 'chưa có tên').slice(0, 48)}
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <InputController
+                control={control}
+                name="reviewerName"
+                label="Người đánh giá (tùy chọn)"
+                className="max-w-xl space-y-1.5"
+                labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                inputClassName={cn(XL_INPUT, 'h-10 rounded-xl')}
+                placeholder="Họ tên trưởng nhóm"
+              />
+
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Danh sách mục tiêu
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 rounded-lg text-[13px] font-semibold"
+                    onClick={() => append(miniCreateEmptyLine())}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Thêm dòng
+                  </Button>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  {fields.map((fieldRow, index) => (
+                    <div
+                      key={fieldRow.id}
+                      className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 dark:border-slate-700 dark:bg-slate-900/30"
+                    >
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Mục {index + 1}
+                        </span>
+                        {fields.length > 1 ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 gap-1 text-destructive hover:text-destructive"
+                            onClick={() => remove(index)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Xóa dòng
+                          </Button>
+                        ) : null}
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <SelectController
+                          control={control}
+                          name={`lines.${index}.kind`}
+                          label="Hạng mục"
+                          required
+                          rules={{ required: true }}
+                          className="space-y-1.5"
+                          labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                        >
+                          <SelectItem value="KPI">KPI</SelectItem>
+                          <SelectItem value="OKR">OKR</SelectItem>
+                        </SelectController>
+                        <SelectController
+                          control={control}
+                          name={`lines.${index}.priority`}
+                          label="Thứ tự ưu tiên"
+                          required
+                          rules={{ required: true, min: 0, max: 99 }}
+                          className="space-y-1.5"
+                          labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                        >
+                          <SelectItem value="0">Không xếp (0)</SelectItem>
+                          <SelectItem value="1">Ưu tiên 1 - Cao</SelectItem>
+                          <SelectItem value="2">Ưu tiên 2 - Trung bình</SelectItem>
+                          <SelectItem value="3">Ưu tiên 3 - Thấp</SelectItem>
+                        </SelectController>
+                        <DateController
+                          control={control}
+                          name={`lines.${index}.kpiSetAt`}
+                          label="Ngày xét KPI/OKR"
+                          className="space-y-1.5"
+                          labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                          datePickerClassName={cn(XL_INPUT, 'h-10 rounded-xl')}
+                          lockToMonth={{ year, month }}
+                        />
+                        <InputController
+                          control={control}
+                          name={`lines.${index}.targetMetric`}
+                          label="Chỉ số mục tiêu"
+                          className="space-y-1.5 md:col-span-1"
+                          labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                          inputClassName={cn(XL_INPUT, 'h-10 rounded-xl tabular-nums')}
+                          placeholder="VD: 60"
+                        />
+                        <div className="md:col-span-2 lg:col-span-3">
+                          <TextareaController
+                            control={control}
+                            name={`lines.${index}.content`}
+                            label="Nội dung KPI/OKR"
+                            required
+                            rules={{ required: true, maxLength: 500 }}
+                            className="space-y-1.5"
+                            labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                            maxLength={500}
+                            textareaClassName={cn(
+                              XL_TEXTAREA,
+                              'max-w-none min-h-[88px] rounded-xl'
+                            )}
+                            placeholder="Mô tả cụ thể mục tiêu cần đạt được..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setOpen(false)}
+                  className="rounded-xl px-6 font-bold text-slate-500 hover:bg-slate-100"
+                >
+                  Hủy bỏ
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || !members.length}
+                  className="rounded-xl bg-primary px-8 font-bold shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5"
+                >
+                  {isSubmitting ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isSubmitting
+                    ? 'Đang tạo...'
+                    : totalCreates > 1
+                      ? `Tạo ${totalCreates} mục tiêu`
+                      : 'Tạo mục tiêu'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
       </DialogContent>
     </Dialog>
   )

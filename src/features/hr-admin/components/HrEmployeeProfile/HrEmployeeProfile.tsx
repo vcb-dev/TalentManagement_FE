@@ -344,7 +344,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                           {teamName}
                         </span>
                         <span className="shrink-0 rounded-md bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-800">
-                          Team
+                          Nhóm
                         </span>
                       </div>
                     </div>
@@ -459,22 +459,6 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                     />
                     {statusLabelVi(employee.status)}
                   </span>
-                </div>
-
-                <div className="mt-5 flex flex-wrap items-center gap-2">
-                  <Button type="button" className="gap-2" onClick={() => setTab(4)}>
-                    Chỉnh sửa hồ sơ
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="shrink-0"
-                    onClick={() => toast.info('Cài đặt nhân viên (demo)')}
-                    aria-label="Cài đặt"
-                  >
-                    <Settings className="h-5 w-5" strokeWidth={2} />
-                  </Button>
                 </div>
               </div>
 
@@ -1017,7 +1001,7 @@ function EditTab({
           <SelectController
             control={control}
             name="role"
-            label="Role"
+            label="Vai trò"
             className="mb-3"
             disabled={orgDisabled}
           >
@@ -1043,7 +1027,7 @@ function EditTab({
           <SelectController
             control={control}
             name="teamId"
-            label="Team chính"
+            label="Nhóm chính"
             className="mb-3"
             disabled={orgDisabled}
           >
@@ -1056,7 +1040,7 @@ function EditTab({
           <SelectController
             control={control}
             name="secondaryTeamId"
-            label="Team phụ (tùy chọn)"
+            label="Nhóm phụ (tùy chọn)"
             className="mb-3"
             disabled={orgDisabled}
           >
@@ -1076,7 +1060,7 @@ function EditTab({
           <SelectController
             control={control}
             name="currentLevel"
-            label="Cấp năng lực (career)"
+            label="Cấp năng lực (lộ trình)"
             disabled={orgDisabled}
           >
             {levelSelectOptions.map((o) => (
@@ -1124,7 +1108,7 @@ function EditTab({
           <InputController
             control={control}
             name="email"
-            label="Email"
+            label="Địa chỉ email"
             type="email"
             disabled={orgDisabled}
           />

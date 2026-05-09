@@ -3,11 +3,11 @@ import type { Role } from '@/types/auth'
 /** Nhãn hiển thị vai trò (sidebar, profile). */
 export const ROLE_LABEL_VI: Record<Role, string> = {
   MEMBER: 'Nhân viên',
-  LEADER: 'Leader',
+  LEADER: 'Trưởng nhóm',
   MANAGER: 'Quản lý',
-  HR: 'HR',
+  HR: 'Nhân sự',
   TEACHER: 'Giảng viên',
-  BOD: 'BOD',
+  BOD: 'Ban lãnh đạo',
 }
 
 /** Chuỗi vai trò khi có thêm quyền giảng viên (MEMBER + TEACHER, …). */

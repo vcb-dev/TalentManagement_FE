@@ -1,155 +1,36 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import {
   Award,
   BarChart3,
-  Briefcase,
   ChevronDown,
   ChevronRight,
-  Cpu,
-  Globe2,
-  GraduationCap,
   Images,
   LayoutDashboard,
   LogIn,
   Quote,
-  Repeat,
-  Share2,
   Sparkles,
-  Target,
-  TrendingUp,
-  Video,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { defaultEntryPathFromSession } from '@/lib/routeGuards'
 import { useAuthStore } from '@/stores/auth.store'
+import { usePermission } from '@/hooks/usePermission'
+import { fetchCompanyLandingPublic } from '@/features/landing/companyLandingApi'
+import { DEFAULT_COMPANY_LANDING_CONTENT } from '@/features/landing/landingContent.defaults'
+import { landingLucide } from '@/features/landing/landingContent.icons'
+import { mergeCompanyLandingContent } from '@/features/landing/landingContent.merge'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 
 const appName = import.meta.env.VITE_APP_NAME ?? 'VCB HRM'
 
-/* ────────────────────────────────────────────────────────────────────────
- *  Dữ liệu theo 6 ảnh Canva (giữ nguyên câu chữ gốc)
- * ────────────────────────────────────────────────────────────────────── */
-
-const VISION = {
-  icon: Target,
-  title: 'TẦM NHÌN',
-  lead: 'Trở thành doanh nghiệp tiên phong ứng dụng AI, công nghệ số và hệ sinh thái truyền thông internet để phát triển thương mại điện tử cho sản phẩm thủ công cao cấp.',
-  subHeading: 'Trong 5 năm tới:',
-  points: [
-    'Phát triển các thương hiệu sản phẩm thủ công như trang sức, đồ da thủ công và các sản phẩm handmade tinh xảo ra toàn cầu',
-    'Mở rộng hệ thống bán hàng tới 20+ quốc gia',
-    'Trở thành nền tảng kết nối nghệ nhân Việt Nam với thị trường thế giới',
-  ],
+/** Ảnh landing: `/uploads/...` qua API, còn `/Image_VCB/...` giữ nguyên host FE. */
+function landingPublicImgSrc(ref: string): string {
+  const t = ref.trim()
+  if (!t) return ref
+  return resolvePublicAssetUrl(t) ?? ref
 }
-
-const MISSION = {
-  icon: Sparkles,
-  title: 'SỨ MỆNH',
-  points: [
-    'Kết nối giá trị thủ công truyền thống với thị trường toàn cầu thông qua công nghệ và thương mại điện tử',
-    'Hỗ trợ nghệ nhân và nhà sản xuất phát triển thương hiệu và kênh phân phối quốc tế',
-    'Mang đến cho khách hàng những sản phẩm có giá trị thẩm mỹ, văn hoá và tinh thần, không chỉ là sản phẩm tiêu dùng mà còn là những tác phẩm thủ công mang câu chuyện và bản sắc riêng',
-  ],
-  closing:
-    'Viễn Chí Bảo tin rằng mỗi sản phẩm thủ công đều chứa đựng tinh thần của người làm ra nó, và nhiệm vụ của doanh nghiệp là giúp những giá trị đó được lan toả rộng rãi hơn.',
-}
-
-const ECOSYSTEM = [
-  { label: 'NGHỆ NHÂN', desc: 'Những bàn tay tài hoa thổi hồn vào từng sản phẩm.' },
-  { label: 'NHÀ SẢN XUẤT', desc: 'Hợp tác chiến lược để đảm bảo chất lượng & sản lượng.' },
-  { label: 'XƯỞNG THỦ CÔNG', desc: 'Không gian chế tác chuyên nghiệp, chuẩn quốc tế.' },
-] as const
-
-/** Hai ảnh collage trong thẻ «NGHỆ NHÂN» — `public/Image_VCB/` */
-const ARTISAN_BANNER = {
-  precision: '/Image_VCB/artisan_banner_precision.png',
-  leather: '/Image_VCB/artisan_banner_leather.png',
-} as const
-
-/** Trụ «THỦ CÔNG TRUYỀN THỐNG» — section Định vị chiến lược */
-const STRATEGY_IMAGE_TRADITIONAL = '/Image_VCB/strategic_traditional_craft.png'
-
-const STRATEGIC_PILLARS = [
-  {
-    label: 'THỦ CÔNG TRUYỀN THỐNG',
-    desc: 'Tinh hoa nghề thủ công Việt Nam – trang sức, đồ da, mỹ nghệ.',
-  },
-  {
-    label: 'CÔNG NGHỆ SỐ',
-    desc: 'AI, dữ liệu thị trường và hệ thống sản xuất nội dung số tốc độ cao.',
-  },
-  {
-    label: 'THỊ TRƯỜNG TOÀN CẦU',
-    desc: 'Thương mại điện tử xuyên biên giới, hiện diện trên đa nền tảng.',
-  },
-] as const
-
-const LEADERS = [
-  {
-    name: 'Bùi Đức Thiện',
-    role: 'Chief Executive Officer',
-    photo: '/Image_VCB/leader_01.png',
-    bullets: [
-      'Tốt nghiệp Thạc sĩ Tài chính – Đại học Nam Kinh.',
-      'Định hướng chiến lược, phân bổ nguồn lực và điều hành tổng thể hoạt động doanh nghiệp.',
-    ],
-  },
-  {
-    name: 'Bùi Văn Huy',
-    role: 'Product Director',
-    photo: '/Image_VCB/leader_02.png',
-    bullets: [
-      'Nghệ nhân kim hoàn với hơn 10 năm kinh nghiệm.',
-      'Phát triển sản phẩm, xây dựng thương hiệu và hệ thống nội dung trang sức của Viễn Chí Bảo.',
-    ],
-  },
-  {
-    name: 'Bùi Duy Cương',
-    role: 'Technology Director',
-    photo: '/Image_VCB/leader_03.png',
-    bullets: [
-      'Xây dựng hơn 300 kênh social media và ứng dụng AI trong quảng cáo và vận hành.',
-      'Phụ trách công nghệ, marketing và hệ thống tự động hoá.',
-    ],
-  },
-  {
-    name: 'Phạm Ngọc Pha',
-    role: 'Supply Chain Director',
-    photo: '/Image_VCB/leader_04.png',
-    bullets: [
-      'Phát triển đội ngũ vận hành từ giai đoạn khởi đầu, phụ trách các hoạt động kinh doanh, livestream, thu mua, logistics và quản lý xưởng sản xuất.',
-      'Chịu trách nhiệm vận hành kinh doanh và chuỗi cung ứng.',
-    ],
-  },
-  {
-    name: 'Nguyễn Nhật Linh',
-    role: 'Integration Director',
-    photo: '/Image_VCB/leader_05.png',
-    bullets: [
-      'Xây dựng hệ thống thương mại điện tử, traffic global và quy trình vận hành nội bộ.',
-      'Phụ trách tăng trưởng tổng thể, SEO, hệ thống vận hành traffic global và văn hoá tổ chức.',
-    ],
-  },
-] as const
-
-/** Banner 6 màn hình kênh social — section Tổng quan công ty */
-const OVERVIEW_SOCIAL_BANNER = '/Image_VCB/overview_social_collage.png'
-
-const BRAND_PILLARS = [
-  {
-    icon: GraduationCap,
-    text: 'Công nghệ AI và dữ liệu thị trường để phân tích xu hướng và tối ưu chiến lược phát triển sản phẩm',
-  },
-  {
-    icon: Share2,
-    text: 'Hệ sinh thái truyền thông đa nền tảng với hàng trăm kênh nội dung và tài khoản mạng xã hội',
-  },
-  {
-    icon: Repeat,
-    text: 'Mô hình xây dựng IP nhân hiệu và thương hiệu sản phẩm trên quy mô lớn',
-  },
-] as const
 
 /* ────────────────────────────────────────────────────────────────────────
  *  Motion helpers
@@ -278,6 +159,18 @@ export function AboutUsPage() {
   const accessToken = useAuthStore((s) => s.accessToken)
   const isAuthed = Boolean(user || accessToken)
   const dashboardPath = defaultEntryPathFromSession(user ?? undefined)
+  const { canId } = usePermission()
+  const canEditLanding = canId('company.landing.edit')
+
+  const { data: landingPatch } = useQuery({
+    queryKey: ['company-landing', 'public'],
+    queryFn: fetchCompanyLandingPublic,
+    staleTime: 5 * 60_000,
+  })
+  const c = useMemo(
+    () => mergeCompanyLandingContent(DEFAULT_COMPANY_LANDING_CONTENT, landingPatch ?? undefined),
+    [landingPatch]
+  )
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -320,26 +213,39 @@ export function AboutUsPage() {
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
               <Award className="h-5 w-5" aria-hidden />
             </span>
-            <span className="text-lg sm:text-[1.125rem]">Viễn Chí Bảo</span>
+            <span className="text-lg sm:text-[1.125rem]">{c.header.brandName}</span>
           </Link>
           <nav className="hidden items-center gap-5 text-sm font-medium text-slate-600 md:flex">
             <a href="#vision-mission" className="transition-colors hover:text-primary">
-              Tầm nhìn &amp; Sứ mệnh
+              {c.header.navVisionMission}
             </a>
             <a href="#ecosystem" className="transition-colors hover:text-primary">
-              Hệ sinh thái
+              {c.header.navEcosystem}
             </a>
             <a href="#introduction" className="transition-colors hover:text-primary">
-              Giới thiệu
+              {c.header.navIntroduction}
             </a>
             <a href="#strategy" className="transition-colors hover:text-primary">
-              Định vị
+              {c.header.navStrategy}
             </a>
             <a href="#leadership" className="transition-colors hover:text-primary">
-              Ban điều hành
+              {c.header.navLeadership}
             </a>
           </nav>
           <div className="flex shrink-0 items-center gap-3">
+            {isAuthed && canEditLanding ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-slate-200 bg-white/90 shadow-sm"
+                asChild
+              >
+                <Link to="/hr-admin/settings/company-landing">
+                  <Sparkles className="h-4 w-4" aria-hidden />
+                  Sửa trang giới thiệu
+                </Link>
+              </Button>
+            ) : null}
             {isAuthed ? (
               <Button size="sm" className="shadow-sm" asChild>
                 <Link
@@ -379,27 +285,27 @@ export function AboutUsPage() {
             >
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-800 shadow-sm">
                 <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                Hồ sơ công ty Viễn Chí Bảo
+                {c.hero.badge}
               </span>
               <h1 className="mt-5 flex flex-col items-center gap-2 text-balance text-center text-4xl font-extrabold tracking-tight text-slate-900 sm:gap-3 sm:text-6xl lg:text-7xl">
                 <span className="block max-w-[22ch] leading-[1.22] sm:leading-[1.18]">
-                  Kết nối tinh hoa <span className="text-primary">thủ công Việt</span>
+                  {c.hero.titleLine1Before}
+                  <span className="text-primary">{c.hero.titleLine1Highlight}</span>
                 </span>
                 <span className="block max-w-[20ch] leading-[1.22] sm:leading-[1.18]">
-                  với thị trường{' '}
+                  {c.hero.titleLine2Before}
                   <span className="inline-block rounded-md bg-amber-200/75 px-2 py-0.5 text-orange-600 shadow-none">
-                    toàn cầu
+                    {c.hero.titleLine2Highlight}
                   </span>
                 </span>
               </h1>
               <p className="mt-6 max-w-2xl text-pretty text-base leading-relaxed text-slate-600 sm:text-lg lg:text-xl">
-                10+ năm phát triển thương hiệu thủ công trên thị trường toàn cầu – kết hợp công nghệ
-                tiên tiến nhất với những ngành nghề thủ công truyền thống nhất.
+                {c.hero.subtitle}
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                 <Button size="lg" className="shadow-md" asChild>
                   <a href="#vision-mission">
-                    Khám phá câu chuyện
+                    {c.hero.exploreCta}
                     <ChevronDown className="h-4 w-4" aria-hidden />
                   </a>
                 </Button>
@@ -444,8 +350,8 @@ export function AboutUsPage() {
                   aria-hidden
                 />
                 <img
-                  src="/Image_VCB/team_building.png"
-                  alt="Đội ngũ Viễn Chí Bảo — Sơ kết và team building"
+                  src={landingPublicImgSrc(c.hero.teamImageSrc)}
+                  alt={c.hero.teamImageAlt}
                   className="relative z-0 mx-auto block h-auto w-full max-w-full rounded-3xl shadow-xl ring-1 ring-slate-200"
                   loading="lazy"
                   decoding="async"
@@ -480,15 +386,17 @@ export function AboutUsPage() {
             <Reveal reduced={reduced}>
               <div className="mx-auto max-w-2xl text-center">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
-                  <Target className="h-3.5 w-3.5" aria-hidden />
-                  Định hướng phát triển
+                  {(() => {
+                    const KickerIcon = landingLucide(c.visionMissionSection.kickerIcon)
+                    return <KickerIcon className="h-3.5 w-3.5" aria-hidden />
+                  })()}
+                  {c.visionMissionSection.kicker}
                 </span>
                 <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-                  Tầm nhìn &amp; Sứ mệnh
+                  {c.visionMissionSection.title}
                 </h2>
                 <p className="mt-4 text-pretty text-base leading-relaxed text-slate-600 sm:text-lg">
-                  Hai trụ cột định hình mọi quyết định và sản phẩm của Viễn Chí Bảo trên hành trình
-                  vươn ra thế giới.
+                  {c.visionMissionSection.subtitle}
                 </p>
               </div>
             </Reveal>
@@ -498,19 +406,22 @@ export function AboutUsPage() {
                 <article className="relative h-full overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl sm:p-10">
                   <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-primary via-primary/80 to-primary/20" />
                   <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary ring-1 ring-primary/20">
-                    <VISION.icon className="h-8 w-8" aria-hidden />
+                    {(() => {
+                      const VisionIcon = landingLucide(c.vision.icon)
+                      return <VisionIcon className="h-8 w-8" aria-hidden />
+                    })()}
                   </div>
                   <h3 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-                    {VISION.title}
+                    {c.vision.title}
                   </h3>
                   <p className="mt-5 text-base leading-relaxed text-slate-700 sm:text-lg">
-                    {VISION.lead}
+                    {c.vision.lead}
                   </p>
                   <p className="mt-6 text-sm font-semibold uppercase tracking-wider text-primary">
-                    {VISION.subHeading}
+                    {c.vision.subHeading}
                   </p>
                   <ul className="mt-3 space-y-3">
-                    {VISION.points.map((p) => (
+                    {c.vision.points.map((p) => (
                       <li
                         key={p}
                         className="flex items-start gap-3 text-[15px] leading-relaxed text-slate-700"
@@ -530,13 +441,16 @@ export function AboutUsPage() {
                 <article className="relative h-full overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl sm:p-10">
                   <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-300/40" />
                   <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/15 to-amber-500/5 text-amber-600 ring-1 ring-amber-500/20">
-                    <MISSION.icon className="h-8 w-8" aria-hidden />
+                    {(() => {
+                      const MissionIcon = landingLucide(c.mission.icon)
+                      return <MissionIcon className="h-8 w-8" aria-hidden />
+                    })()}
                   </div>
                   <h3 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-                    {MISSION.title}
+                    {c.mission.title}
                   </h3>
                   <ul className="mt-5 space-y-3">
-                    {MISSION.points.map((p) => (
+                    {c.mission.points.map((p) => (
                       <li
                         key={p}
                         className="flex items-start gap-3 text-[15px] leading-relaxed text-slate-700"
@@ -551,7 +465,7 @@ export function AboutUsPage() {
                   </ul>
                   <div className="mt-6 rounded-2xl border-l-4 border-amber-400 bg-amber-50/60 px-5 py-4">
                     <p className="text-[15px] italic leading-relaxed text-slate-700">
-                      {MISSION.closing}
+                      {c.mission.closing}
                     </p>
                   </div>
                 </article>
@@ -573,29 +487,29 @@ export function AboutUsPage() {
               <Reveal reduced={reduced}>
                 <div className="text-center">
                   <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-                    HỆ SINH THÁI NGHỆ NHÂN
+                    {c.ecosystem.sectionTitle}
                   </h2>
                   <div className="mx-auto mt-3 h-1 w-20 rounded-full bg-primary" />
                 </div>
               </Reveal>
 
               <ul className="mt-14 grid items-start gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
-                {ECOSYSTEM.map((item, i) => (
+                {c.ecosystem.items.map((item, i) => (
                   <Reveal key={item.label} reduced={reduced} delayMs={i * 120}>
                     <li className="group mx-auto flex w-full max-w-[320px] flex-col items-center">
-                      {item.label === 'NGHỆ NHÂN' ? (
+                      {i === 0 ? (
                         <div className="aspect-[3/4] w-full overflow-hidden rounded-2xl bg-slate-100 shadow-lg ring-4 ring-white transition-transform duration-500 group-hover:-translate-y-1">
                           <div className="grid h-full w-full grid-rows-2 gap-px bg-white/90">
                             <img
-                              src={ARTISAN_BANNER.precision}
-                              alt="Nghệ nhân Viễn Chí Bảo — kim hoàn và độ chính xác"
+                              src={landingPublicImgSrc(c.ecosystem.artisanBanner.precision)}
+                              alt={c.ecosystem.artisanAltPrecision}
                               className="h-full w-full object-cover object-center"
                               loading="lazy"
                               decoding="async"
                             />
                             <img
-                              src={ARTISAN_BANNER.leather}
-                              alt="Nghệ nhân Viễn Chí Bảo — đồ da và thủ công"
+                              src={landingPublicImgSrc(c.ecosystem.artisanBanner.leather)}
+                              alt={c.ecosystem.artisanAltLeather}
                               className="h-full w-full object-cover object-center"
                               loading="lazy"
                               decoding="async"
@@ -652,88 +566,15 @@ export function AboutUsPage() {
                 <div className="relative">
                   <div className="text-center">
                     <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-                      GIỚI THIỆU VIỄN CHÍ BẢO
+                      {c.introduction.sectionTitle}
                     </h2>
                     <div className="mx-auto mt-3 h-1 w-20 rounded-full bg-primary" />
                   </div>
 
                   <div className="mx-auto mt-8 max-w-[900px] space-y-5 text-[15px] leading-[1.85] text-slate-700 sm:text-[16px]">
-                    <p>
-                      Viễn Chí Bảo là{' '}
-                      <strong className="text-slate-900">
-                        “Công ty công nghệ và truyền thông số”
-                      </strong>
-                      : tập trung xây dựng các thương hiệu toàn cầu dựa trên{' '}
-                      <strong className="text-slate-900">AI, dữ liệu thị trường</strong> và{' '}
-                      <strong className="text-slate-900">
-                        hệ sinh thái truyền thông đa nền tảng
-                      </strong>
-                      .
-                    </p>
-                    <p>
-                      Chúng tôi lựa chọn một hướng đi khác biệt:{' '}
-                      <strong className="text-slate-900">
-                        kết hợp công nghệ tiên tiến nhất với những ngành nghề thủ công truyền thống
-                        nhất
-                      </strong>
-                      . Thay vì mở rộng sang nhiều lĩnh vực, Viễn Chí Bảo tập trung vào các ngành
-                      hàng mà Việt Nam có lợi thế cạnh tranh tự nhiên và văn hoá, bao gồm{' '}
-                      <strong className="text-slate-900">
-                        trang sức, đồ da thủ công và các sản phẩm thủ công mỹ nghệ
-                      </strong>
-                      . Đây là những sản phẩm không chỉ có giá trị vật chất mà còn chứa đựng{' '}
-                      <strong className="text-slate-900">
-                        bản sắc văn hoá, tay nghề thủ công và câu chuyện con người
-                      </strong>{' '}
-                      phía sau mỗi sản phẩm.
-                    </p>
-                    <p>
-                      Điểm khác biệt của Viễn Chí Bảo nằm ở việc{' '}
-                      <strong className="text-slate-900">ứng dụng công nghệ và AI</strong> để tái
-                      cấu trúc cách các sản phẩm thủ công được xây dựng thương hiệu và phân phối ra
-                      toàn cầu. Chúng tôi tin rằng việc{' '}
-                      <strong className="text-slate-900">
-                        kết hợp công nghệ tiên tiến nhất với các ngành nghề thủ công truyền thống
-                      </strong>{' '}
-                      không chỉ mở ra một hướng đi độc đáo trên thị trường, mà còn tạo ra lợi thế
-                      cạnh tranh khác biệt so với cả các công ty công nghệ thuần tuý lẫn các doanh
-                      nghiệp thủ công truyền thống. Công nghệ giúp nâng cao khả năng tiếp cận thị
-                      trường, trong khi giá trị văn hoá và tay nghề thủ công tạo nên chiều sâu và sự
-                      khác biệt cho sản phẩm.
-                    </p>
-                    <p>
-                      Chúng tôi sở hữu một đội ngũ nhân sự trẻ trung, sáng tạo, nhanh nhẹn về{' '}
-                      <strong className="text-slate-900">truyền thông hình ảnh</strong>. Đội ngũ này
-                      kết hợp với{' '}
-                      <strong className="text-slate-900">
-                        AI và các công cụ công nghệ truyền thông số
-                      </strong>{' '}
-                      để xây dựng hệ thống phát triển IP nhân hiệu và thương hiệu sản phẩm trên quy
-                      mô lớn.
-                    </p>
-                    <p>
-                      Thông qua việc{' '}
-                      <strong className="text-slate-900">
-                        phân tích dữ liệu thị trường và các xu hướng nội dung theo thời gian thực
-                      </strong>
-                      , Viễn Chí Bảo có khả năng nhanh chóng nắm bắt các xu hướng mới và chuyển hoá
-                      chúng thành các chiến dịch nội dung hiệu quả. Nhờ các quy trình sản xuất nội
-                      dung được tối ưu bằng công nghệ và AI, chúng tôi có thể vận hành{' '}
-                      <strong className="text-slate-900">
-                        hệ thống sản xuất nội dung với tốc độ cao
-                      </strong>
-                      , giúp các IP và thương hiệu phát triển nhanh chóng trên các nền tảng mạng xã
-                      hội. Các IP được xây dựng như những{' '}
-                      <strong className="text-slate-900">thực thể truyền thông độc lập</strong>,
-                      xuất hiện đồng thời trên nhiều nền tảng và thị trường khác nhau. Hệ sinh thái
-                      truyền thông của chúng tôi bao gồm{' '}
-                      <strong className="text-slate-900">
-                        hàng trăm kênh và tài khoản mạng xã hội tại Việt Nam và đang lan ra các quốc
-                        gia
-                      </strong>
-                      , tạo thành một mạng lưới phân phối nội dung và thương hiệu có khả năng mở
-                      rộng mạnh mẽ.
-                    </p>
+                    {c.introduction.paragraphs.map((para, idx) => (
+                      <p key={idx}>{para}</p>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -753,7 +594,7 @@ export function AboutUsPage() {
               <Reveal reduced={reduced}>
                 <div className="text-center">
                   <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-                    ĐỊNH VỊ CHIẾN LƯỢC
+                    {c.strategy.sectionTitle}
                   </h2>
                   <div className="mx-auto mt-3 h-1 w-20 rounded-full bg-primary" />
                 </div>
@@ -766,25 +607,20 @@ export function AboutUsPage() {
                       className="absolute left-4 top-4 h-6 w-6 text-primary sm:left-5 sm:top-5"
                       aria-hidden
                     />
-                    Là một{' '}
-                    <strong className="text-slate-900">
-                      nền tảng thương mại điện tử và truyền thông
-                    </strong>{' '}
-                    cho sản phẩm thủ công cao cấp, hoạt động tại{' '}
-                    <strong className="text-slate-900">giao điểm của ba lĩnh vực</strong>.
+                    {c.strategy.bannerQuote}
                   </div>
                 </div>
               </Reveal>
 
               <ul className="relative z-10 mt-14 grid items-start gap-8 sm:grid-cols-3 lg:gap-10">
-                {STRATEGIC_PILLARS.map((p, i) => (
+                {c.strategy.pillars.map((p, i) => (
                   <Reveal key={p.label} reduced={reduced} delayMs={i * 120}>
                     <li className="group mx-auto flex w-full max-w-[320px] flex-col items-center">
-                      {p.label === 'THỦ CÔNG TRUYỀN THỐNG' ? (
+                      {i === 0 ? (
                         <div className="aspect-[3/4] w-full overflow-hidden rounded-2xl bg-slate-100 shadow-lg ring-4 ring-white transition-transform duration-500 group-hover:-translate-y-1">
                           <img
-                            src={STRATEGY_IMAGE_TRADITIONAL}
-                            alt="Nghệ nhân thủ công truyền thống Viễn Chí Bảo tại xưởng"
+                            src={landingPublicImgSrc(c.strategy.traditionalImageSrc)}
+                            alt={c.strategy.traditionalImageAlt}
                             className="h-full w-full object-cover object-center"
                             loading="lazy"
                             decoding="async"
@@ -838,18 +674,21 @@ export function AboutUsPage() {
             <Reveal reduced={reduced}>
               <div className="text-center">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-white/90 backdrop-blur-sm">
-                  <Briefcase className="h-3.5 w-3.5" aria-hidden />
-                  Đội ngũ dẫn dắt
+                  {(() => {
+                    const BadgeIcon = landingLucide(c.leadership.badgeIcon)
+                    return <BadgeIcon className="h-3.5 w-3.5" aria-hidden />
+                  })()}
+                  {c.leadership.badge}
                 </span>
                 <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-                  BAN ĐIỀU HÀNH CÔNG TY
+                  {c.leadership.sectionTitle}
                 </h2>
                 <div className="mx-auto mt-3 h-1 w-20 rounded-full bg-white/70" />
               </div>
             </Reveal>
 
             <ul className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-5 lg:gap-6">
-              {LEADERS.map((person, i) => (
+              {c.leadership.leaders.map((person, i) => (
                 <Reveal key={person.name} reduced={reduced} delayMs={i * 90}>
                   <li className="flex h-full flex-col items-center">
                     {/* Avatar tròn */}
@@ -860,7 +699,7 @@ export function AboutUsPage() {
                       />
                       <div className="relative h-40 w-40 overflow-hidden rounded-full ring-4 ring-white/30 sm:h-44 sm:w-44">
                         <img
-                          src={person.photo}
+                          src={landingPublicImgSrc(person.photo)}
                           alt={`Chân dung ${person.name} — ${person.role}`}
                           className="h-full w-full object-cover object-top"
                           loading="lazy"
@@ -908,8 +747,8 @@ export function AboutUsPage() {
                     />
                     <div className="relative overflow-hidden rounded-xl bg-white p-2 shadow-md ring-1 ring-slate-200/90">
                       <img
-                        src={OVERVIEW_SOCIAL_BANNER}
-                        alt="Hệ sinh thái kênh TikTok và YouTube Viễn Chí Bảo — đa dạng gương mặt và nội dung kim hoàn"
+                        src={landingPublicImgSrc(c.overview.socialBannerSrc)}
+                        alt={c.overview.socialBannerAlt}
                         className="block h-auto w-full rounded-lg"
                         loading="lazy"
                         decoding="async"
@@ -921,28 +760,24 @@ export function AboutUsPage() {
                 <Reveal reduced={reduced} delayMs={120}>
                   <div className="flex flex-wrap items-end gap-3">
                     <span className="text-6xl font-black leading-none text-red-600 sm:text-7xl">
-                      &gt;10.000
+                      {c.overview.videoStatValue}
                     </span>
                     <div className="mb-1 flex flex-col text-sm font-extrabold uppercase tracking-[0.15em] text-slate-700">
-                      <span className="text-red-600">VIDEO PUBLISHED</span>
-                      <span>/MONTH</span>
+                      <span className="text-red-600">{c.overview.videoStatLine1}</span>
+                      <span>{c.overview.videoStatLine2}</span>
                     </div>
                   </div>
                   <div className="mt-5 space-y-2">
                     <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                      Hồ sơ công ty
+                      {c.overview.sectionKicker}
                     </p>
                     <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-                      TỔNG QUAN CÔNG TY
+                      {c.overview.sectionTitle}
                     </h2>
                     <div className="h-1 w-16 rounded-full bg-red-500" />
                   </div>
                   <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-slate-600">
-                    Viễn Chí Bảo là doanh nghiệp với{' '}
-                    <strong className="text-slate-900">10+ năm hoạt động</strong>, chuyển mình từ
-                    công ty thương mại điện tử truyền thống thành{' '}
-                    <strong className="text-slate-900">công ty công nghệ và truyền thông số</strong>
-                    .
+                    {c.overview.leadParagraph}
                   </p>
                 </Reveal>
               </div>
@@ -951,13 +786,12 @@ export function AboutUsPage() {
               <div className="space-y-5">
                 <Reveal reduced={reduced}>
                   <p className="text-[15px] leading-relaxed text-slate-600">
-                    Công ty tập trung xây dựng thương hiệu toàn cầu dựa trên{' '}
-                    <strong className="text-slate-900">ba nền tảng chính</strong>:
+                    {c.overview.brandIntro}
                   </p>
                 </Reveal>
 
                 <ul className="space-y-4">
-                  {BRAND_PILLARS.map((p, i) => (
+                  {c.overview.brandPillars.map((p, i) => (
                     <Reveal key={p.text} reduced={reduced} delayMs={i * 110}>
                       <li
                         className={cn(
@@ -975,7 +809,10 @@ export function AboutUsPage() {
                               : 'bg-white/15 text-white ring-1 ring-white/30'
                           )}
                         >
-                          <p.icon className="h-5 w-5" aria-hidden />
+                          {(() => {
+                            const PillarIcon = landingLucide(p.icon)
+                            return <PillarIcon className="h-5 w-5" aria-hidden />
+                          })()}
                         </span>
                         <p
                           className={cn(
@@ -992,15 +829,7 @@ export function AboutUsPage() {
 
                 <Reveal reduced={reduced} delayMs={400}>
                   <p className="text-[15px] leading-relaxed text-slate-600">
-                    Viễn Chí Bảo lựa chọn hướng đi khác biệt khi kết hợp{' '}
-                    <strong className="text-slate-900">
-                      công nghệ hiện đại với các ngành nghề thủ công truyền thống
-                    </strong>
-                    , tập trung vào các lĩnh vực mà Việt Nam có lợi thế như{' '}
-                    <strong className="text-slate-900">
-                      trang sức, đồ da thủ công và sản phẩm thủ công mỹ nghệ
-                    </strong>
-                    .
+                    {c.overview.closingParagraph}
                   </p>
                 </Reveal>
               </div>
@@ -1009,30 +838,28 @@ export function AboutUsPage() {
             {/* Stats row */}
             <Reveal reduced={reduced} delayMs={200}>
               <div className="mt-14 grid gap-4 rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-6 sm:grid-cols-4 sm:p-8">
-                {[
-                  { icon: TrendingUp, label: '10+', desc: 'Năm phát triển' },
-                  { icon: Globe2, label: '20+', desc: 'Quốc gia mục tiêu' },
-                  { icon: Video, label: '300+', desc: 'Kênh social media' },
-                  { icon: Cpu, label: 'AI-first', desc: 'Vận hành công nghệ' },
-                ].map((s, i) => (
-                  <div
-                    key={s.desc}
-                    className={cn(
-                      'flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors',
-                      i !== 3 && 'sm:border-r sm:border-slate-200/80'
-                    )}
-                  >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <s.icon className="h-5 w-5" aria-hidden />
-                    </span>
-                    <div>
-                      <p className="text-xl font-extrabold tracking-tight text-slate-900">
-                        {s.label}
-                      </p>
-                      <p className="text-xs font-medium text-slate-500">{s.desc}</p>
+                {c.overview.stats.map((s, i) => {
+                  const StatIcon = landingLucide(s.icon)
+                  return (
+                    <div
+                      key={s.desc}
+                      className={cn(
+                        'flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors',
+                        i !== 3 && 'sm:border-r sm:border-slate-200/80'
+                      )}
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <StatIcon className="h-5 w-5" aria-hidden />
+                      </span>
+                      <div>
+                        <p className="text-xl font-extrabold tracking-tight text-slate-900">
+                          {s.label}
+                        </p>
+                        <p className="text-xs font-medium text-slate-500">{s.desc}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </Reveal>
           </div>
@@ -1046,11 +873,10 @@ export function AboutUsPage() {
                 <div className="flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
                   <div className="max-w-2xl space-y-3">
                     <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-                      Đồng hành cùng Viễn Chí Bảo
+                      {c.cta.title}
                     </h2>
                     <p className="text-[15px] leading-relaxed text-white/90 sm:text-base">
-                      Kết nối thủ công Việt Nam với thế giới – bằng công nghệ, dữ liệu và một hệ
-                      sinh thái truyền thông rộng lớn.
+                      {c.cta.body}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3">
@@ -1090,7 +916,7 @@ export function AboutUsPage() {
                     >
                       <a href="#vision-mission">
                         <BarChart3 className="h-4 w-4" aria-hidden />
-                        Xem hồ sơ công ty
+                        {c.cta.secondaryButton}
                       </a>
                     </Button>
                   </div>
@@ -1103,16 +929,19 @@ export function AboutUsPage() {
 
       <footer className="relative z-10 border-t border-slate-200 bg-white py-8">
         <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-3 px-4 text-center text-xs leading-relaxed text-slate-500 sm:flex-row sm:px-6 sm:text-left">
-          <p>© {new Date().getFullYear()} Công ty Viễn Chí Bảo. Mọi quyền được bảo lưu.</p>
+          <p>
+            © {new Date().getFullYear()} {c.footer.copyrightRest}
+          </p>
           <div className="flex items-center gap-5">
             <a href="#introduction" className="font-medium text-primary hover:underline">
-              Giới thiệu
+              {c.footer.linkIntro}
             </a>
             <a href="#leadership" className="font-medium text-primary hover:underline">
-              Ban điều hành
+              {c.footer.linkLeadership}
             </a>
             <Link to="/" className="font-medium text-primary hover:underline">
-              ← Trang chủ {appName}
+              {c.footer.linkHomePrefix}
+              {appName}
             </Link>
           </div>
         </div>

@@ -3,14 +3,15 @@ import type { LucideIcon } from 'lucide-react'
 import {
   BookOpen,
   CalendarClock,
-  ClipboardCheck,
   LayoutList,
   School,
+  Sparkles,
   Users,
   FileCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { usePermission } from '@/hooks/usePermission'
 
 type NavDef = {
   to: string
@@ -47,11 +48,26 @@ function navActive(pathname: string, item: NavDef): boolean {
 
 export function ManagerHubNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const { canId } = usePermission()
+
+  const items: NavDef[] = [
+    ...MANAGER_NAV,
+    ...(canId('company.landing.edit')
+      ? ([
+          {
+            to: '/hr-admin/settings/company-landing',
+            label: 'Trang giới thiệu công ty',
+            icon: Sparkles,
+            match: 'prefix',
+          },
+        ] satisfies NavDef[])
+      : []),
+  ]
 
   return (
     <div className="sticky top-0 z-10 border-b border-border bg-card/95 px-3 py-2.5 shadow-[var(--shadow-card)] backdrop-blur-sm md:px-4">
       <div className="mx-auto flex max-w-[1400px] flex-wrap gap-1.5 md:gap-2">
-        {MANAGER_NAV.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon
           const active = navActive(pathname, item)
           return (

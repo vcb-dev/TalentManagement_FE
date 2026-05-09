@@ -132,7 +132,7 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
     <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
       <div className="page-toolbar-flat">
         <div className="text-base font-semibold tracking-tight text-foreground">
-          Dashboard BOD — Tháng {page?.monthLabel ?? '—'}
+          Tổng quan ban lãnh đạo — Tháng {page?.monthLabel ?? '—'}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button

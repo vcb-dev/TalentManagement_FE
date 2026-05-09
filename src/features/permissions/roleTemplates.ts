@@ -64,6 +64,7 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
       'kpi.edit_own',
       'kpi.team_view',
       'kpi.team_edit',
+      'kpi.leader_review',
       'report.view',
       'hr.employees.view',
       'hr.employees.create',
@@ -79,6 +80,7 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
       'manager.exam.classify',
       'admin.permissions.assign',
       'kpi.window_override',
+      'company.landing.edit',
     ],
   },
   {
@@ -100,6 +102,7 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
       'hr.dept.view',
       'hr.org.manage',
       'kpi.window_override',
+      'company.landing.edit',
     ],
   },
   {

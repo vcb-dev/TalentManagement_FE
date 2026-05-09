@@ -54,7 +54,7 @@ export const createEmployeeSchema = z.object({
     errorMap: () => ({ message: 'Role không hợp lệ' }),
   }),
   departmentId: z.string().uuid('Chọn phòng ban hợp lệ'),
-  teamId: z.string().uuid('Chọn team hợp lệ'),
+  teamId: z.string().uuid('Chọn nhóm hợp lệ'),
   phone: optionalPhoneString,
   birthDate: optionalBirthDateString,
 })

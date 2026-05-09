@@ -674,7 +674,7 @@ export function ChecklistStarScreen({
                     to="/dashboard"
                     className="block text-center text-sm font-semibold text-primary-600 hover:underline"
                   >
-                    ← Về Dashboard học tập
+                    ← Về tổng quan học tập
                   </Link>
                 </div>
               </div>

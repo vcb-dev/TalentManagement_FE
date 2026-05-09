@@ -53,6 +53,8 @@ import { Route as ProtectedManagerGradeClassClassIdRouteImport } from './routes/
 import { Route as ProtectedLearningPathLevelIdStarIdRouteImport } from './routes/_protected/learning-path/$levelId/$starId'
 import { Route as ProtectedLeaderTeamEmployeeIdRouteImport } from './routes/_protected/leader/team/$employeeId'
 import { Route as ProtectedHrAdminSettingsKpiWindowsRouteImport } from './routes/_protected/hr-admin/settings/kpi-windows'
+import { Route as ProtectedHrAdminSettingsKpiCatalogAllowlistRouteImport } from './routes/_protected/hr-admin/settings/kpi-catalog-allowlist'
+import { Route as ProtectedHrAdminSettingsCompanyLandingRouteImport } from './routes/_protected/hr-admin/settings/company-landing'
 import { Route as ProtectedHrAdminKpiCatalogCodeRouteImport } from './routes/_protected/hr-admin/kpi-catalog.$code'
 import { Route as ProtectedExamSubmissionSubmissionIdRouteImport } from './routes/_protected/exam/submission/$submissionId'
 import { Route as ProtectedExamExamIdResultRouteImport } from './routes/_protected/exam/$examId/result'
@@ -303,6 +305,18 @@ const ProtectedHrAdminSettingsKpiWindowsRoute =
     path: '/hr-admin/settings/kpi-windows',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
+const ProtectedHrAdminSettingsKpiCatalogAllowlistRoute =
+  ProtectedHrAdminSettingsKpiCatalogAllowlistRouteImport.update({
+    id: '/hr-admin/settings/kpi-catalog-allowlist',
+    path: '/hr-admin/settings/kpi-catalog-allowlist',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedHrAdminSettingsCompanyLandingRoute =
+  ProtectedHrAdminSettingsCompanyLandingRouteImport.update({
+    id: '/hr-admin/settings/company-landing',
+    path: '/hr-admin/settings/company-landing',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedHrAdminKpiCatalogCodeRoute =
   ProtectedHrAdminKpiCatalogCodeRouteImport.update({
     id: '/hr-admin/kpi-catalog/$code',
@@ -378,6 +392,8 @@ export interface FileRoutesByFullPath {
   '/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
   '/exam/submission/$submissionId': typeof ProtectedExamSubmissionSubmissionIdRoute
   '/hr-admin/kpi-catalog/$code': typeof ProtectedHrAdminKpiCatalogCodeRoute
+  '/hr-admin/settings/company-landing': typeof ProtectedHrAdminSettingsCompanyLandingRoute
+  '/hr-admin/settings/kpi-catalog-allowlist': typeof ProtectedHrAdminSettingsKpiCatalogAllowlistRoute
   '/hr-admin/settings/kpi-windows': typeof ProtectedHrAdminSettingsKpiWindowsRoute
   '/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
@@ -428,6 +444,8 @@ export interface FileRoutesByTo {
   '/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
   '/exam/submission/$submissionId': typeof ProtectedExamSubmissionSubmissionIdRoute
   '/hr-admin/kpi-catalog/$code': typeof ProtectedHrAdminKpiCatalogCodeRoute
+  '/hr-admin/settings/company-landing': typeof ProtectedHrAdminSettingsCompanyLandingRoute
+  '/hr-admin/settings/kpi-catalog-allowlist': typeof ProtectedHrAdminSettingsKpiCatalogAllowlistRoute
   '/hr-admin/settings/kpi-windows': typeof ProtectedHrAdminSettingsKpiWindowsRoute
   '/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
@@ -481,6 +499,8 @@ export interface FileRoutesById {
   '/_protected/exam/$examId/result': typeof ProtectedExamExamIdResultRoute
   '/_protected/exam/submission/$submissionId': typeof ProtectedExamSubmissionSubmissionIdRoute
   '/_protected/hr-admin/kpi-catalog/$code': typeof ProtectedHrAdminKpiCatalogCodeRoute
+  '/_protected/hr-admin/settings/company-landing': typeof ProtectedHrAdminSettingsCompanyLandingRoute
+  '/_protected/hr-admin/settings/kpi-catalog-allowlist': typeof ProtectedHrAdminSettingsKpiCatalogAllowlistRoute
   '/_protected/hr-admin/settings/kpi-windows': typeof ProtectedHrAdminSettingsKpiWindowsRoute
   '/_protected/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/_protected/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
@@ -533,6 +553,8 @@ export interface FileRouteTypes {
     | '/exam/$examId/result'
     | '/exam/submission/$submissionId'
     | '/hr-admin/kpi-catalog/$code'
+    | '/hr-admin/settings/company-landing'
+    | '/hr-admin/settings/kpi-catalog-allowlist'
     | '/hr-admin/settings/kpi-windows'
     | '/leader/team/$employeeId'
     | '/learning-path/$levelId/$starId'
@@ -583,6 +605,8 @@ export interface FileRouteTypes {
     | '/exam/$examId/result'
     | '/exam/submission/$submissionId'
     | '/hr-admin/kpi-catalog/$code'
+    | '/hr-admin/settings/company-landing'
+    | '/hr-admin/settings/kpi-catalog-allowlist'
     | '/hr-admin/settings/kpi-windows'
     | '/leader/team/$employeeId'
     | '/learning-path/$levelId/$starId'
@@ -635,6 +659,8 @@ export interface FileRouteTypes {
     | '/_protected/exam/$examId/result'
     | '/_protected/exam/submission/$submissionId'
     | '/_protected/hr-admin/kpi-catalog/$code'
+    | '/_protected/hr-admin/settings/company-landing'
+    | '/_protected/hr-admin/settings/kpi-catalog-allowlist'
     | '/_protected/hr-admin/settings/kpi-windows'
     | '/_protected/leader/team/$employeeId'
     | '/_protected/learning-path/$levelId/$starId'
@@ -964,6 +990,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedHrAdminSettingsKpiWindowsRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/hr-admin/settings/kpi-catalog-allowlist': {
+      id: '/_protected/hr-admin/settings/kpi-catalog-allowlist'
+      path: '/hr-admin/settings/kpi-catalog-allowlist'
+      fullPath: '/hr-admin/settings/kpi-catalog-allowlist'
+      preLoaderRoute: typeof ProtectedHrAdminSettingsKpiCatalogAllowlistRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/hr-admin/settings/company-landing': {
+      id: '/_protected/hr-admin/settings/company-landing'
+      path: '/hr-admin/settings/company-landing'
+      fullPath: '/hr-admin/settings/company-landing'
+      preLoaderRoute: typeof ProtectedHrAdminSettingsCompanyLandingRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/hr-admin/kpi-catalog/$code': {
       id: '/_protected/hr-admin/kpi-catalog/$code'
       path: '/hr-admin/kpi-catalog/$code'
@@ -1072,6 +1112,8 @@ interface ProtectedRouteRouteChildren {
   ProtectedExamExamIdResultRoute: typeof ProtectedExamExamIdResultRoute
   ProtectedExamSubmissionSubmissionIdRoute: typeof ProtectedExamSubmissionSubmissionIdRoute
   ProtectedHrAdminKpiCatalogCodeRoute: typeof ProtectedHrAdminKpiCatalogCodeRoute
+  ProtectedHrAdminSettingsCompanyLandingRoute: typeof ProtectedHrAdminSettingsCompanyLandingRoute
+  ProtectedHrAdminSettingsKpiCatalogAllowlistRoute: typeof ProtectedHrAdminSettingsKpiCatalogAllowlistRoute
   ProtectedHrAdminSettingsKpiWindowsRoute: typeof ProtectedHrAdminSettingsKpiWindowsRoute
   ProtectedLeaderTeamEmployeeIdRoute: typeof ProtectedLeaderTeamEmployeeIdRoute
   ProtectedLearningPathLevelIdStarIdRoute: typeof ProtectedLearningPathLevelIdStarIdRoute
@@ -1123,6 +1165,10 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedExamSubmissionSubmissionIdRoute:
     ProtectedExamSubmissionSubmissionIdRoute,
   ProtectedHrAdminKpiCatalogCodeRoute: ProtectedHrAdminKpiCatalogCodeRoute,
+  ProtectedHrAdminSettingsCompanyLandingRoute:
+    ProtectedHrAdminSettingsCompanyLandingRoute,
+  ProtectedHrAdminSettingsKpiCatalogAllowlistRoute:
+    ProtectedHrAdminSettingsKpiCatalogAllowlistRoute,
   ProtectedHrAdminSettingsKpiWindowsRoute:
     ProtectedHrAdminSettingsKpiWindowsRoute,
   ProtectedLeaderTeamEmployeeIdRoute: ProtectedLeaderTeamEmployeeIdRoute,

@@ -103,6 +103,7 @@ export default defineConfig(({ mode }) => {
       allowedHosts: ['.ngrok-free.dev', '.ngrok-free.app', '.ngrok.io'],
       proxy: {
         '/uploads': { target: apiTarget, changeOrigin: true },
+        '/company-landing': { target: apiTarget, changeOrigin: true },
       },
     },
   }

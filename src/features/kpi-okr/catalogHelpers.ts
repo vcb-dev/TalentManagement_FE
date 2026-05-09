@@ -1,7 +1,9 @@
 /**
  * Helpers cho Epic 9 — KPI Catalog trên FE.
- * Đồng bộ với BE sales-scope.ts.
+ * Đồng bộ với BE sales-scope.ts; tập merge đầy đủ lấy từ GET /performance/catalog-division-allowlist.
  */
+
+import type { PerformanceAssignment } from '@/features/kpi-okr/api'
 
 /** Label hiển thị cho category */
 export function categoryLabel(category: string | null | undefined): string {
@@ -45,8 +47,8 @@ export function resolveTemplateCodeForTeam(team: { code?: string | null; name: s
   return 'SALES_NV'
 }
 
-/** Danh sách division IDs được allowlist catalog (dùng VITE_CATALOG_ENABLED_DIVISION_IDS). */
-export function getCatalogEnabledDivisionIds(): string[] {
+/** Chỉ env FE — bổ sung cho API; khi có `mergedDivisionIds` từ API thì ưu tiên tham số đó. */
+export function getEnvCatalogEnabledDivisionIds(): string[] {
   const raw = import.meta.env.VITE_CATALOG_ENABLED_DIVISION_IDS as string | undefined
   if (!raw) return []
   return raw
@@ -55,19 +57,26 @@ export function getCatalogEnabledDivisionIds(): string[] {
     .filter(Boolean)
 }
 
+/** @deprecated alias */
+export const getCatalogEnabledDivisionIds = getEnvCatalogEnabledDivisionIds
+
 /** Các pattern fallback nhận diện division qua tên/code. */
 const CATALOG_DIVISION_PATTERNS = [/kinh[_\s]?doanh/i, /vận[_\s]?đơn|van[._\s-]?don|bảo[_\s]?hành/i]
 
-/** Kiểm tra division có trong allowlist catalog không. */
+/**
+ * `mergedDivisionIdsFromApi`: từ GET catalog-division-allowlist.mergedDivisionIds (env ∪ DB server).
+ * Khi chưa có (undefined), fallback env FE + pattern — có thể lệch DB tới khi query xong.
+ */
 export function isCatalogEnabledDepartment(
   division?: {
     id?: string
     name?: string | null
     code?: string | null
-  } | null
+  } | null,
+  mergedDivisionIdsFromApi?: string[] | null
 ): boolean {
   if (!division) return false
-  const ids = getCatalogEnabledDivisionIds()
+  const ids = mergedDivisionIdsFromApi ?? getEnvCatalogEnabledDivisionIds()
   if (division.id && ids.includes(division.id)) return true
   const label = division.code ?? division.name ?? ''
   return CATALOG_DIVISION_PATTERNS.some((p) => p.test(label))
@@ -93,5 +102,3 @@ export function groupByCategory(
   }
   return map
 }
-
-import type { PerformanceAssignment } from '@/features/kpi-okr/api'

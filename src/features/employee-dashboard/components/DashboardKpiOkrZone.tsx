@@ -235,7 +235,7 @@ export function DashboardKpiOkrZone({
           : 'Chưa có KPI trong kỳ'
         : isMember
           ? `${kpi.okCount}/${kpi.totalCount} chỉ tiêu đạt OK (cá nhân)${monthSpan > 1 ? ' · gộp kỳ' : ''}`
-          : `${kpi.okCount}/${kpi.totalCount} chỉ tiêu đạt OK · ${isLeader ? 'team' : 'tất cả team'}${monthSpan > 1 ? ' (gộp kỳ)' : ''}`}
+          : `${kpi.okCount}/${kpi.totalCount} chỉ tiêu đạt OK · ${isLeader ? 'nhóm' : 'tất cả nhóm'}${monthSpan > 1 ? ' (gộp kỳ)' : ''}`}
     </span>
   )
   const okrFooter = (
@@ -258,7 +258,7 @@ export function DashboardKpiOkrZone({
             ? 'Bạn đã nộp khảo sát tháng này'
             : 'Bạn chưa nộp khảo sát trong kỳ đã chọn'
         : teamSize === 0
-          ? 'Không có thành viên trong team'
+          ? 'Không có thành viên trong nhóm'
           : monthSpan > 1
             ? `${report.respondentsCount}/${teamSize} thành viên đã nộp khảo sát (ít nhất một tháng trong kỳ)`
             : `${report.respondentsCount}/${teamSize} thành viên đã nộp khảo sát`}
@@ -293,8 +293,8 @@ export function DashboardKpiOkrZone({
           {isMember
             ? 'Tổng quan cá nhân: chỉ tiêu được giao, đánh giá quản lý và khảo sát theo kỳ (năm + từ tháng đến tháng) — cùng cách lọc với trưởng nhóm / quản lý.'
             : isLeader
-              ? 'Theo dõi tiến độ team: chỉ tiêu đã giao, đánh giá quản lý và mức độ tham gia khảo sát theo kỳ bạn chọn.'
-              : 'Tổng quan nhiều team: so sánh KPI/OKR và khảo sát trên cùng một kỳ thời gian.'}
+              ? 'Theo dõi tiến độ nhóm: chỉ tiêu đã giao, đánh giá quản lý và mức độ tham gia khảo sát theo kỳ bạn chọn.'
+              : 'Tổng quan nhiều nhóm: so sánh KPI/OKR và khảo sát trên cùng một kỳ thời gian.'}
         </p>
       </section>
 
@@ -326,13 +326,13 @@ export function DashboardKpiOkrZone({
             <div className="mb-1.5 flex items-center gap-2">
               <Users className="h-3.5 w-3.5 text-primary" strokeWidth={2} aria-hidden />
               <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Team đang xem
+                Nhóm đang xem
               </Label>
             </div>
             {teamOptions.length > 1 || isManager ? (
               <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
                 <SelectTrigger className="h-11 w-full rounded-xl border-border bg-background text-left text-sm font-medium">
-                  <SelectValue placeholder="Chọn team để tải số liệu" />
+                  <SelectValue placeholder="Chọn nhóm để tải số liệu" />
                 </SelectTrigger>
                 <SelectContent>
                   {teamOptions.map((t) => (
@@ -357,7 +357,7 @@ export function DashboardKpiOkrZone({
                 ) : null}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Chưa có team khả dụng.</p>
+              <p className="text-xs text-muted-foreground">Chưa có nhóm khả dụng.</p>
             )}
           </div>
 
@@ -444,8 +444,8 @@ export function DashboardKpiOkrZone({
       {!selectedTeamId ? (
         <div className="rounded-3xl border border-dashed border-border bg-muted/40 p-8 text-center text-sm text-muted-foreground">
           {isManager
-            ? 'Chọn team ở phía trên để tải báo cáo KPI/OKR.'
-            : 'Bạn chưa được gán vào team nào. Vui lòng liên hệ HR/Admin.'}
+            ? 'Chọn nhóm ở phía trên để tải báo cáo KPI/OKR.'
+            : 'Bạn chưa được gán vào nhóm nào. Vui lòng liên hệ nhân sự hoặc quản trị.'}
         </div>
       ) : (
         <>
@@ -480,7 +480,7 @@ export function DashboardKpiOkrZone({
                   isMember
                     ? 'Báo cáo hàng tháng (cá nhân)'
                     : isLeader
-                      ? 'Báo cáo hàng tháng (team)'
+                      ? 'Báo cáo hàng tháng (nhóm)'
                       : 'Báo cáo hàng tháng'
                 }
                 percent={report.percent}
@@ -525,7 +525,7 @@ export function DashboardKpiOkrZone({
                   {isMember
                     ? 'Nhập tiến độ & KPI của tôi'
                     : isLeader
-                      ? 'KPI & OKR trong team'
+                      ? 'KPI & OKR trong nhóm'
                       : 'Chi tiết KPI & OKR'}
                 </Link>
               ) : null}

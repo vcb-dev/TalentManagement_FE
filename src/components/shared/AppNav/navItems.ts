@@ -13,7 +13,9 @@ import {
   LayoutGrid,
   LineChart,
   ListOrdered,
+  ListChecks,
   Network,
+  Sparkles,
   School,
   ShieldCheck,
   Target,
@@ -52,7 +54,7 @@ export const COMPANY_LANDING_NAV_ITEM: AppNavItem = {
 export const MEMBER_SELF_ITEMS: AppNavItem[] = [
   {
     to: '/dashboard',
-    label: 'Dashboard cá nhân',
+    label: 'Tổng quan cá nhân',
     icon: LayoutGrid,
     match: 'exact',
     permissionIdsAny: ['dashboard.view', 'home.view'],
@@ -124,6 +126,8 @@ const HR_ITEMS: AppNavItem[] = [
       if (p === '/hr-admin/org' || p.startsWith('/hr-admin/org/')) return false
       if (p.startsWith('/hr-admin/kpi-catalog')) return false
       if (p.startsWith('/hr-admin/settings/kpi-windows')) return false
+      if (p.startsWith('/hr-admin/settings/kpi-catalog-allowlist')) return false
+      if (p.startsWith('/hr-admin/settings/company-landing')) return false
       return p === '/hr-admin' || p.startsWith('/hr-admin/')
     },
     search: { page: 1 },
@@ -131,24 +135,42 @@ const HR_ITEMS: AppNavItem[] = [
   },
   {
     to: '/hr-admin/org',
-    label: 'Phòng ban & Team',
+    label: 'Phòng ban & nhóm',
     icon: Network,
     match: 'prefix',
     permissionId: 'hr.org.manage',
   },
   {
     to: '/hr-admin/kpi-catalog/SALES_NV',
-    label: 'Catalog KPI/OKR',
+    label: 'Danh mục KPI/OKR',
     icon: BookOpen,
     match: 'prefix',
     permissionId: 'kpi.catalog_edit',
   },
+  {
+    to: '/hr-admin/settings/company-landing',
+    label: 'Trang giới thiệu công ty',
+    icon: Sparkles,
+    match: 'prefix',
+    permissionId: 'company.landing.edit',
+  },
+]
+
+/** Cấu hình hệ thống — route dưới `/hr-admin/settings/` */
+export const SETTINGS_ITEMS: AppNavItem[] = [
   {
     to: '/hr-admin/settings/kpi-windows',
     label: 'Cửa sổ KPI/OKR',
     icon: CalendarRange,
     match: 'prefix',
     permissionId: 'kpi.window_override',
+  },
+  {
+    to: '/hr-admin/settings/kpi-catalog-allowlist',
+    label: 'Phòng ban áp dụng danh mục KPI',
+    icon: ListChecks,
+    match: 'prefix',
+    permissionId: 'kpi.catalog_edit',
   },
 ]
 
@@ -169,7 +191,7 @@ const BOD_ITEMS: AppNavItem[] = [
   },
   {
     to: '/bod/team-comparison',
-    label: 'So sánh team',
+    label: 'So sánh nhóm',
     icon: BarChart3,
     match: 'prefix',
     permissionId: 'bod.comparison.view',
@@ -242,17 +264,10 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
   },
   {
     to: '/manager/kpi-okr/leader-review',
-    label: 'Đánh giá Leader',
+    label: 'Đánh giá trưởng nhóm',
     icon: ShieldCheck,
     match: 'prefix',
     permissionId: 'kpi.leader_review',
-  },
-  {
-    to: '/hr-admin/settings/kpi-windows',
-    label: 'Cửa sổ KPI/OKR',
-    icon: CalendarRange,
-    match: 'prefix',
-    permissionId: 'kpi.window_override',
   },
 ]
 
@@ -286,14 +301,14 @@ export const TEACHER_HEADER_ITEMS: AppNavItem[] = [
 export const LEADER_KPI_ITEMS: AppNavItem[] = [
   {
     to: '/dashboard',
-    label: 'Dashboard',
+    label: 'Tổng quan',
     icon: LayoutGrid,
     match: 'exact',
     permissionIdsAny: ['dashboard.view', 'home.view'],
   },
   {
     to: '/leader/kpi-okr',
-    label: 'KPI & OKR trong team',
+    label: 'KPI & OKR trong nhóm',
     icon: Target,
     match: 'prefix',
     permissionIdsAny: ['kpi.team_view', 'kpi.team_edit'],
@@ -344,6 +359,7 @@ export function flatSidebarNavItems(
     ROOM_BOOKING_ITEMS,
     MANAGER_OPS_ITEMS,
     HR_ITEMS,
+    SETTINGS_ITEMS,
     BOD_ITEMS,
     TEACHER_HEADER_ITEMS,
   ]
@@ -368,7 +384,7 @@ export type AppNavGroup = {
 
 /**
  * Sidebar có nhóm: gom theo luồng sử dụng (Tổng quan → Học tập → Quản lý lớp →
- * Nhân sự → Ban lãnh đạo) thay vì danh sách phẳng dài. Mỗi item chỉ xuất hiện
+ * Nhân sự → Cài đặt → …) thay vì danh sách phẳng dài. Mỗi item chỉ xuất hiện
  * 1 lần (dedupe theo `to`+`search`); nhóm rỗng (sau filter quyền) sẽ bị ẩn.
  */
 export function groupedSidebarNavItems(
@@ -391,11 +407,6 @@ export function groupedSidebarNavItems(
   const find = (items: AppNavItem[], to: string) => items.filter((i) => i.to === to)
 
   const groups: AppNavGroup[] = [
-    {
-      id: 'company',
-      label: 'Công ty',
-      items: take([COMPANY_LANDING_NAV_ITEM]),
-    },
     {
       id: 'overview',
       label: 'Tổng quan',
@@ -432,8 +443,6 @@ export function groupedSidebarNavItems(
         ...find(TEACHER_HEADER_ITEMS, '/exam/grader'),
         ...find(MANAGER_OPS_ITEMS, '/manager/approvals'),
         ...find(MANAGER_OPS_ITEMS, '/manager/learning-submissions'),
-        ...find(MANAGER_OPS_ITEMS, '/manager/kpi-okr/leader-review'),
-        ...find(MANAGER_OPS_ITEMS, '/hr-admin/settings/kpi-windows'),
       ]),
     },
     {
@@ -442,12 +451,28 @@ export function groupedSidebarNavItems(
       items: take([
         ...find(HR_ITEMS, '/hr-admin'),
         ...find(HR_ITEMS, '/hr-admin/org'),
+        ...find(HR_ITEMS, '/hr-admin/kpi-catalog/SALES_NV'),
+        ...find(MANAGER_OPS_ITEMS, '/manager/kpi-okr/leader-review'),
+        ...find(HR_ITEMS, '/hr-admin/settings/company-landing'),
         ...ROOM_BOOKING_ITEMS.filter(
           (i) => i.search?.tab === 'requests' || i.search?.tab === 'approvals'
         ),
         ...find(MANAGER_OPS_ITEMS, '/permissions'),
         ...find(BOD_ITEMS, '/permissions'),
       ]),
+    },
+    {
+      id: 'settings',
+      label: 'Cài đặt',
+      items: take([
+        ...find(SETTINGS_ITEMS, '/hr-admin/settings/kpi-windows'),
+        ...find(SETTINGS_ITEMS, '/hr-admin/settings/kpi-catalog-allowlist'),
+      ]),
+    },
+    {
+      id: 'company',
+      label: 'Công ty',
+      items: take([COMPANY_LANDING_NAV_ITEM]),
     },
   ]
 
@@ -477,6 +502,7 @@ export function mergeCompactHeaderNavItems(
   push(ROOM_BOOKING_ITEMS)
   push(BOD_ITEMS)
   push(HR_ITEMS)
+  push(SETTINGS_ITEMS)
   push(LEADER_KPI_ITEMS)
   push(MANAGER_OPS_ITEMS)
   push(TEACHER_HEADER_ITEMS)

@@ -241,7 +241,7 @@ function MonthlyReportMemberEditableRow({
       numericValue = n
     }
     if (item.status === 'done' && !evidence.trim()) {
-      toast.warning('Trạng thái Hoàn thành nhưng Evidence đang trống.')
+      toast.warning('Trạng thái Hoàn thành nhưng minh chứng đang trống.')
     }
     setSaving(true)
     try {
@@ -447,15 +447,15 @@ export function MonthlyReportScreen() {
       >
         <h1 className={PAGE_HEADER_TITLE}>
           <span className={PAGE_HEADER_GRADIENT}>
-            {canSeeTeamWide ? 'Báo cáo hàng tháng (team)' : 'Báo cáo hàng tháng'}
+            {canSeeTeamWide ? 'Báo cáo hàng tháng (nhóm)' : 'Báo cáo hàng tháng'}
           </span>
         </h1>
         <p className={PAGE_HEADER_DESCRIPTION}>
           {isManager
-            ? 'Tổng hợp KPI/OKR, chi tiết mục tiêu từng nhân sự và form khảo sát hàng tháng của team đã chọn.'
+            ? 'Tổng hợp KPI/OKR, chi tiết mục tiêu từng nhân sự và form khảo sát hàng tháng của nhóm đã chọn.'
             : isLeader
-              ? 'Tổng hợp báo cáo theo tháng của các thành viên trong team kèm danh sách phản hồi khảo sát.'
-              : 'Theo dõi báo cáo tiến độ KPI/OKR và trả lời form khảo sát của Leader theo từng tháng.'}
+              ? 'Tổng hợp báo cáo theo tháng của các thành viên trong nhóm kèm danh sách phản hồi khảo sát.'
+              : 'Theo dõi báo cáo tiến độ KPI/OKR và trả lời form khảo sát của trưởng nhóm theo từng tháng.'}
         </p>
       </div>
 
@@ -495,17 +495,17 @@ export function MonthlyReportScreen() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Team / Đội nhóm
+                  Nhóm
                 </Label>
                 <Select
                   value={selectedTeamId || '__none'}
                   onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
                 >
                   <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                    <SelectValue placeholder="Chọn team" />
+                    <SelectValue placeholder="Chọn nhóm" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none">— Chọn team —</SelectItem>
+                    <SelectItem value="__none">— Chọn nhóm —</SelectItem>
                     {teamsInDept.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name}
@@ -610,25 +610,25 @@ export function MonthlyReportScreen() {
           <Card className="border-emerald-200 bg-emerald-50/50">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-emerald-600">{hrCounters.promoted}</div>
-              <div className="text-xs text-emerald-500">Len cap</div>
+              <div className="text-xs text-emerald-500">Lên cấp</div>
             </CardContent>
           </Card>
           <Card className="border-amber-200 bg-amber-50/50">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-amber-600">{hrCounters.notLearned}</div>
-              <div className="text-xs text-amber-500">Chua hoan thanh hoc</div>
+              <div className="text-xs text-amber-500">Chưa hoàn thành học</div>
             </CardContent>
           </Card>
           <Card className="border-blue-200 bg-blue-50/50">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-blue-600">{hrCounters.newJoiners}</div>
-              <div className="text-xs text-blue-500">Moi vao</div>
+              <div className="text-xs text-blue-500">Mới vào</div>
             </CardContent>
           </Card>
           <Card className="border-rose-200 bg-rose-50/50">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-rose-600">{hrCounters.leavers}</div>
-              <div className="text-xs text-rose-500">Nghi viec</div>
+              <div className="text-xs text-rose-500">Nghỉ việc</div>
             </CardContent>
           </Card>
         </div>
@@ -639,7 +639,7 @@ export function MonthlyReportScreen() {
         <div className="mb-4 flex justify-end">
           <Button variant="outline" size="sm" className="gap-2" onClick={handleExportExcel}>
             <Download className="h-4 w-4" />
-            Xuat Excel
+            Xuất dữ liệu Excel
           </Button>
         </div>
       )}
@@ -648,7 +648,7 @@ export function MonthlyReportScreen() {
         <div className="mb-4 flex items-center gap-2 text-game-soft-foreground">
           <BarChart3 className="h-4 w-4 text-amber-700" strokeWidth={2} />
           <span className="text-sm text-amber-800">
-            Mock API đang bật, màn báo cáo chỉ hiển thị khi gọi API thật.
+            Chế độ giả lập đang bật — báo cáo đầy đủ khi kết nối máy chủ thật.
           </span>
         </div>
       ) : null}
@@ -661,7 +661,7 @@ export function MonthlyReportScreen() {
           )}
         >
           <CardContent className="pt-6 text-sm text-muted-foreground">
-            Chọn team để tải báo cáo hàng tháng.
+            Chọn nhóm để tải báo cáo hàng tháng.
           </CardContent>
         </Card>
       ) : membersQ.isLoading || summariesQ.isLoading || assignmentsQ.isLoading ? (
@@ -702,8 +702,8 @@ export function MonthlyReportScreen() {
             <CardContent>
               {summaryRows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Chưa có dữ liệu tổng hợp cho kỳ đã chọn. Leader có thể tính lại tổng hợp ở màn KPI
-                  & OKR.
+                  Chưa có dữ liệu tổng hợp cho kỳ đã chọn. Trưởng nhóm có thể tính lại tổng hợp ở
+                  màn KPI & OKR.
                 </p>
               ) : (
                 <Table>
@@ -785,10 +785,10 @@ export function MonthlyReportScreen() {
                 <>
                   <p className="mb-3 text-[13px] text-muted-foreground">
                     {allowEpic4SelfEdit
-                      ? 'Cập nhật số liệu, Evidence và tự đánh giá (Epic 4); bấm Lưu từng dòng. Đánh giá QL do Leader cập nhật.'
+                      ? 'Cập nhật số liệu, minh chứng và tự đánh giá; bấm Lưu từng dòng. Đánh giá của quản lý do trưởng nhóm cập nhật.'
                       : canSeeTeamWide
-                        ? 'Theo dõi Evidence / số liệu / tự đánh giá của nhân sự (read-only).'
-                        : 'Bạn xem Evidence và tự đánh giá ở đây (read-only). Để chỉnh sửa cần quyền kpi.edit_own — có thể cập nhật thêm tại mục KPI & OKR trong workspace.'}
+                        ? 'Theo dõi minh chứng, số liệu và tự đánh giá của nhân sự (chỉ xem).'
+                        : 'Bạn xem minh chứng và tự đánh giá ở đây (chỉ xem). Để chỉnh sửa cần quyền cập nhật KPI của bản thân — có thể chỉnh thêm tại mục KPI & OKR trong workspace.'}
                   </p>
                   <div className="overflow-x-auto rounded-lg border border-blue-100/50 dark:border-blue-900/30">
                     <Table>
@@ -800,8 +800,8 @@ export function MonthlyReportScreen() {
                           <TableHead>Nội dung</TableHead>
                           <TableHead>Chỉ tiêu</TableHead>
                           <TableHead className="whitespace-nowrap">Số liệu</TableHead>
-                          <TableHead className="whitespace-nowrap">Đ.vị</TableHead>
-                          <TableHead className="min-w-[140px]">Evidence</TableHead>
+                          <TableHead className="whitespace-nowrap">Đơn vị</TableHead>
+                          <TableHead className="min-w-[140px]">Minh chứng</TableHead>
                           <TableHead className="whitespace-nowrap">Tự đánh giá</TableHead>
                           <TableHead className="min-w-[120px]">Tự nhận xét</TableHead>
                           <TableHead className="whitespace-nowrap">QL đánh giá</TableHead>
@@ -878,8 +878,8 @@ export function MonthlyReportScreen() {
               </CardTitle>
               <p className="text-[13px] text-slate-500">
                 {canSeeTeamWide
-                  ? 'Danh sách câu trả lời của từng nhân sự trong team theo kỳ đã chọn.'
-                  : 'Trả lời câu hỏi khảo sát hàng tháng do Leader thiết lập. Bấm "Gửi câu trả lời" để lưu.'}
+                  ? 'Danh sách câu trả lời của từng nhân sự trong nhóm theo kỳ đã chọn.'
+                  : 'Trả lời câu hỏi khảo sát hàng tháng do trưởng nhóm thiết lập. Bấm "Gửi câu trả lời" để lưu.'}
               </p>
             </CardHeader>
             <CardContent>
@@ -898,16 +898,14 @@ export function MonthlyReportScreen() {
           <div className="flex items-start gap-2 rounded-xl border border-dashed border-game-accent/25 bg-game-accent/[0.05] p-3 text-xs text-game-muted">
             <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-game-accent" strokeWidth={2} />
             <span>
-              Quyền: <span className="font-semibold text-game-soft-foreground">view</span> trên{' '}
-              <code className="rounded bg-white/80 px-1 py-0.5">monthly_report</code>
+              Quyền xem báo cáo hàng tháng.
               {isLeader ? (
-                <> · Leader có thể điều phối dữ liệu báo cáo ở màn KPI/OKR team.</>
+                <> Trưởng nhóm có thể điều phối dữ liệu báo cáo ở màn KPI/OKR nhóm.</>
               ) : null}
               {isManager ? (
                 <>
                   {' '}
-                  · Manager chỉ xem (read-only) dữ liệu tổng hợp, chi tiết mục tiêu và phản hồi khảo
-                  sát của team.
+                  Quản lý chỉ xem dữ liệu tổng hợp, chi tiết mục tiêu và phản hồi khảo sát của nhóm.
                 </>
               ) : null}
             </span>

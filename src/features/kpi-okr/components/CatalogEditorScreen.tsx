@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -18,6 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import { performanceApi } from '@/features/kpi-okr/api'
 import { categoryLabel, categoryBadgeClass } from '@/features/kpi-okr/catalogHelpers'
+import { usePermission } from '@/hooks/usePermission'
 import { BookOpen, Plus, Trash2, Pencil, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -29,6 +31,7 @@ const TENURE_STAGE_OPTIONS = ['M1', 'M2', 'M3', 'OFFICIAL']
 export function CatalogEditorScreen() {
   const [selectedCode, setSelectedCode] = useState('SALES_NV')
   const queryClient = useQueryClient()
+  const { canId } = usePermission()
 
   const { data: catalog, isLoading } = useQuery({
     queryKey: ['performance', 'catalog', selectedCode],
@@ -63,10 +66,10 @@ export function CatalogEditorScreen() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Catalog KPI/OKR
+            Danh mục KPI/OKR
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Quản lý template KPI/OKR theo vị trí và stage thâm niên.
+            Quản lý mẫu KPI/OKR theo vị trí và giai đoạn thâm niên.
           </p>
         </div>
       </div>
@@ -75,8 +78,18 @@ export function CatalogEditorScreen() {
       <div className="flex items-start gap-3 rounded-lg border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-900 dark:bg-indigo-950/30">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
         <div className="text-xs text-indigo-700 dark:text-indigo-300">
-          Catalog này áp dụng cho các phòng ban trong allowlist. Muốn thêm catalog phòng ban mới —
-          liên hệ HR_ADMIN để thêm vào allowlist.
+          Danh mục này áp dụng cho các phòng ban nằm trong danh sách cho phép (cấu hình môi trường
+          kết hợp danh sách HR lưu trong hệ thống).{' '}
+          {canId('kpi.catalog_edit') ? (
+            <Link
+              to="/hr-admin/settings/kpi-catalog-allowlist"
+              className="font-semibold underline underline-offset-2 hover:text-indigo-900 dark:hover:text-indigo-100"
+            >
+              Cấu hình phòng ban áp dụng
+            </Link>
+          ) : (
+            <>Muốn thêm phòng ban — liên hệ HR có quyền chỉnh danh sách này.</>
+          )}
         </div>
       </div>
 
@@ -85,7 +98,7 @@ export function CatalogEditorScreen() {
         {/* Sidebar */}
         <div className="space-y-1">
           <Label className="px-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-            Danh sách catalog
+            Danh sách danh mục
           </Label>
           {CATALOG_CODES.map((code) => (
             <button

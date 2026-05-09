@@ -181,7 +181,7 @@ function DivisionFormDialog({
         <DialogHeader>
           <DialogTitle>{mode === 'create' ? 'Thêm phòng ban' : 'Sửa phòng ban'}</DialogTitle>
           <DialogDescription>
-            Phòng ban là đơn vị tổ chức cha chứa các team. Mã & mô tả chỉ bắt buộc nếu cần tra cứu.
+            Phòng ban là đơn vị tổ chức cha chứa các nhóm. Mã & mô tả chỉ bắt buộc nếu cần tra cứu.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-1">
@@ -231,7 +231,7 @@ function DivisionFormDialog({
                 Đang hoạt động
               </Label>
               <p className="text-xs text-muted-foreground">
-                Bỏ đánh dấu nếu muốn lưu trữ phòng ban mà không xoá team.
+                Bỏ đánh dấu nếu muốn lưu trữ phòng ban mà không xoá nhóm.
               </p>
             </div>
           </div>
@@ -412,7 +412,7 @@ export function HrOrgStructure() {
     mutationFn: ({ name, divisionId }: { name: string; divisionId: string }) =>
       orgCrudApi.createTeam(name, divisionId),
     onSuccess: () => {
-      toast.success('Đã tạo team')
+      toast.success('Đã tạo nhóm')
       setCrudModal(null)
       setCrudName('')
       invalidateOrgStructure()
@@ -423,7 +423,7 @@ export function HrOrgStructure() {
   const updateTeamM = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => orgCrudApi.updateTeam(id, { name }),
     onSuccess: () => {
-      toast.success('Đã cập nhật team')
+      toast.success('Đã cập nhật nhóm')
       setCrudModal(null)
       setCrudName('')
       invalidateOrgStructure()
@@ -434,7 +434,7 @@ export function HrOrgStructure() {
   const deleteTeamM = useMutation({
     mutationFn: (id: string) => orgCrudApi.deleteTeam(id),
     onSuccess: (_data, id) => {
-      toast.success('Đã xóa team')
+      toast.success('Đã xóa nhóm')
       setCrudModal(null)
       setMembersTeamId((cur) => (cur === id ? null : cur))
       invalidateOrgStructure()
@@ -636,7 +636,7 @@ export function HrOrgStructure() {
           <CardContent className="py-8 text-center">
             <p className="text-base font-medium text-destructive">
               Không tải được dữ liệu. Kiểm tra quyền{' '}
-              <code className="rounded bg-muted px-1">hr.org.manage</code> và kết nối API.
+              <code className="rounded bg-muted px-1">hr.org.manage</code> và kết nối máy chủ.
             </p>
           </CardContent>
         </Card>
@@ -653,21 +653,19 @@ export function HrOrgStructure() {
         )}
       >
         <h1 className={PAGE_HEADER_TITLE}>
-          <span className={PAGE_HEADER_GRADIENT}>Phòng ban & Team</span>
+          <span className={PAGE_HEADER_GRADIENT}>Phòng ban & nhóm</span>
         </h1>
         <p className={PAGE_HEADER_DESCRIPTION}>
-          Một phòng ban (đơn vị tổ chức) chứa nhiều team. Mở rộng từng phòng ban để xem team và
-          thành viên. Nếu có quyền <code className="rounded bg-muted px-1">hr.org.manage</code>, bạn
-          có thể thêm / sửa / xóa phòng ban và team qua API{' '}
-          <code className="rounded bg-muted px-1">/org/divisions</code> và{' '}
-          <code className="rounded bg-muted px-1">/org/teams</code>.
+          Một phòng ban (đơn vị tổ chức) chứa nhiều nhóm. Mở rộng từng phòng ban để xem nhóm và
+          thành viên. Khi có quyền <code className="rounded bg-muted px-1">hr.org.manage</code>, bạn
+          có thể thêm, sửa hoặc xóa phòng ban và nhóm trên hệ thống.
         </p>
       </div>
 
       {mockBanner && (
         <Card className="mb-6 border-amber-500/40 bg-amber-500/10 shadow-none">
           <CardContent className="py-3 text-sm text-amber-950 dark:text-amber-100">
-            Đang bật mock API — quản trị org thật cần tắt mock và gọi server.
+            Đang bật chế độ giả lập — quản trị thật cần tắt giả lập và kết nối máy chủ.
           </CardContent>
         </Card>
       )}
@@ -684,7 +682,7 @@ export function HrOrgStructure() {
           </Card>
           <Card className="border-accent/40 bg-gradient-to-br from-accent/15 via-card to-card shadow-sm">
             <CardContent className="py-3">
-              <p className="text-xs font-medium text-accent">Team</p>
+              <p className="text-xs font-medium text-accent">Nhóm</p>
               <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
                 {summary.teamCount}
               </p>
@@ -693,7 +691,7 @@ export function HrOrgStructure() {
           <Card className="border-blue-500/35 bg-gradient-to-br from-blue-500/15 via-card to-card shadow-sm">
             <CardContent className="py-3">
               <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                Thành viên (gộp team)
+                Thành viên (gộp nhóm)
               </p>
               <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
                 {summary.memberCount}
@@ -710,7 +708,7 @@ export function HrOrgStructure() {
                 value={orgSearch}
                 onChange={(e) => setOrgSearch(e.target.value)}
                 className="pl-9"
-                placeholder="Tìm theo tên / mã phòng ban, team..."
+                placeholder="Tìm theo tên / mã phòng ban, nhóm..."
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -748,7 +746,7 @@ export function HrOrgStructure() {
 
           <div className="flex flex-col gap-2 border-t border-border/40 pt-3 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex min-w-0 items-center gap-2">
-              <Label className="shrink-0 text-xs font-medium text-muted-foreground">Team</Label>
+              <Label className="shrink-0 text-xs font-medium text-muted-foreground">Nhóm</Label>
               <Select
                 value={teamCountFilter}
                 onValueChange={(v) => setTeamCountFilter(v as TeamCountFilter)}
@@ -758,8 +756,8 @@ export function HrOrgStructure() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="with-teams">Có team</SelectItem>
-                  <SelectItem value="without-teams">Chưa có team</SelectItem>
+                  <SelectItem value="with-teams">Có nhóm</SelectItem>
+                  <SelectItem value="without-teams">Chưa có nhóm</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -798,7 +796,7 @@ export function HrOrgStructure() {
                       <ArrowUpZA className="h-3.5 w-3.5" /> Tên Z → A
                     </span>
                   </SelectItem>
-                  <SelectItem value="most-teams">Nhiều team nhất</SelectItem>
+                  <SelectItem value="most-teams">Nhiều nhóm nhất</SelectItem>
                   <SelectItem value="most-members">Nhiều thành viên nhất</SelectItem>
                 </SelectContent>
               </Select>
@@ -836,7 +834,7 @@ export function HrOrgStructure() {
               <div className="space-y-1">
                 <p className="text-base font-medium text-foreground">Chưa có phòng ban</p>
                 <p className="max-w-md text-sm text-muted-foreground">
-                  Hãy tạo phòng ban trước. Sau khi có phòng ban, bạn mới có thể tạo team trong phòng
+                  Hãy tạo phòng ban trước. Sau khi có phòng ban, bạn mới có thể tạo nhóm trong phòng
                   ban đó.
                 </p>
               </div>
@@ -895,7 +893,7 @@ export function HrOrgStructure() {
                         variant="outline"
                         className="border-primary/30 bg-primary/10 font-normal tabular-nums text-primary"
                       >
-                        {dept.teams.length} team
+                        {dept.teams.length} nhóm
                       </Badge>
                       {dept.description ? (
                         <span className="line-clamp-1 max-w-[420px] text-xs text-muted-foreground/90">
@@ -919,7 +917,7 @@ export function HrOrgStructure() {
                       onClick={() => openCreateTeamForDept(dept)}
                     >
                       <Plus className="mr-1 h-3.5 w-3.5" />
-                      Team
+                      Nhóm
                     </Button>
                     <Button
                       type="button"
@@ -949,8 +947,8 @@ export function HrOrgStructure() {
                   <Table className="min-w-[640px]">
                     <TableHeader>
                       <TableRow className="border-b border-border/80 bg-gradient-to-r from-primary/10 via-muted/20 to-accent/10 hover:bg-muted/25">
-                        <TableHead className="w-[28%] pl-6">Team</TableHead>
-                        <TableHead className="max-w-[260px]">Leader</TableHead>
+                        <TableHead className="w-[28%] pl-6">Nhóm</TableHead>
+                        <TableHead className="max-w-[260px]">Trưởng nhóm</TableHead>
                         <TableHead className="w-[108px]">Thành viên</TableHead>
                         <TableHead className="pr-6 text-right">Thao tác</TableHead>
                       </TableRow>
@@ -961,7 +959,7 @@ export function HrOrgStructure() {
                           <TableCell colSpan={4} className="py-10 text-center">
                             <div className="flex flex-col items-center gap-3">
                               <p className="text-sm text-muted-foreground">
-                                Chưa có team trong phòng ban này.
+                                Chưa có nhóm trong phòng ban này.
                               </p>
                               {canManageOrg && !mockBanner ? (
                                 <Button
@@ -972,7 +970,7 @@ export function HrOrgStructure() {
                                   onClick={() => openCreateTeamForDept(dept)}
                                 >
                                   <Plus className="mr-1 h-3.5 w-3.5" />
-                                  Tạo team đầu tiên
+                                  Tạo nhóm đầu tiên
                                 </Button>
                               ) : null}
                             </div>
@@ -1013,8 +1011,8 @@ export function HrOrgStructure() {
                         }
                       >
                         {expandedAllTeamsByDept[dept.id]
-                          ? 'Thu gọn team'
-                          : `Xem thêm ${dept.teams.length - 6} team`}
+                          ? 'Thu gọn nhóm'
+                          : `Xem thêm ${dept.teams.length - 6} nhóm`}
                       </Button>
                     </div>
                   ) : null}
@@ -1026,7 +1024,7 @@ export function HrOrgStructure() {
         {orgSearch.trim() && filteredDepartments.length === 0 ? (
           <Card className="border-dashed border-border/80 bg-muted/15 shadow-none">
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              Không có phòng ban hoặc team nào khớp từ khóa tìm kiếm.
+              Không có phòng ban hoặc nhóm nào khớp từ khóa tìm kiếm.
             </CardContent>
           </Card>
         ) : null}
@@ -1073,14 +1071,14 @@ export function HrOrgStructure() {
         )}
         title={
           crudModal?.kind === 'team-create'
-            ? `Thêm team trong «${crudModal.dept.name}»`
+            ? `Thêm nhóm trong «${crudModal.dept.name}»`
             : crudModal?.kind === 'team-edit'
-              ? 'Sửa team'
+              ? 'Sửa nhóm'
               : ''
         }
         description={
           crudModal?.kind === 'team-create'
-            ? `Team sẽ được gán cứng vào phòng ban «${crudModal.dept.name}». Sau đó bạn có thể gán nhân sự cho team.`
+            ? `Nhóm sẽ được gán vào phòng ban «${crudModal.dept.name}». Sau đó bạn có thể gán nhân sự cho nhóm.`
             : undefined
         }
         name={crudName}
@@ -1097,12 +1095,12 @@ export function HrOrgStructure() {
         open={Boolean(
           crudModal && (crudModal.kind === 'dept-delete' || crudModal.kind === 'team-delete')
         )}
-        title={crudModal?.kind === 'dept-delete' ? 'Xóa phòng ban?' : 'Xóa team?'}
+        title={crudModal?.kind === 'dept-delete' ? 'Xóa phòng ban?' : 'Xóa nhóm?'}
         body={
           crudModal?.kind === 'dept-delete'
             ? `Xóa phòng ban «${crudModal.dept.name}»? Thao tác có thể thất bại nếu còn nhân sự tham chiếu.`
             : crudModal?.kind === 'team-delete'
-              ? `Xóa team «${crudModal.team.name}»? Thao tác có thể thất bại nếu còn nhân sự tham chiếu.`
+              ? `Xóa nhóm «${crudModal.team.name}»? Thao tác có thể thất bại nếu còn nhân sự tham chiếu.`
               : ''
         }
         pending={orgCrudPending}
@@ -1155,7 +1153,7 @@ function FragmentTeamRow({
                 size="icon"
                 variant="ghost"
                 className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                aria-label="Sửa team"
+                aria-label="Sửa nhóm"
                 onClick={onEditTeam}
               >
                 <Pencil className="h-4 w-4" />
@@ -1165,7 +1163,7 @@ function FragmentTeamRow({
                 size="icon"
                 variant="ghost"
                 className="h-8 w-8 shrink-0 text-destructive/80 hover:text-destructive"
-                aria-label="Xóa team"
+                aria-label="Xóa nhóm"
                 onClick={onDeleteTeam}
               >
                 <Trash2 className="h-4 w-4" />
@@ -1296,12 +1294,12 @@ function TeamMembersPanel({
     mutationFn: (userId: string) => organizationApi.addTeamMember(teamId, userId),
     onSuccess: (data) => {
       if (data.movedFromTeamId) {
-        toast.success('Đã chuyển nhân sự sang team này (đã gỡ khỏi team cũ)')
+        toast.success('Đã chuyển nhân sự sang nhóm này (đã gỡ khỏi nhóm cũ)')
         void queryClient.invalidateQueries({
           queryKey: teamMembersQueryKey(data.movedFromTeamId),
         })
       } else {
-        toast.success('Đã thêm thành viên vào team')
+        toast.success('Đã thêm thành viên vào nhóm')
       }
       invalidateMembers()
       void queryClient.invalidateQueries({ queryKey: ['organization', 'eligible-users'] })
@@ -1312,7 +1310,7 @@ function TeamMembersPanel({
   const removeMemberM = useMutation({
     mutationFn: (userId: string) => organizationApi.removeTeamMember(teamId, userId),
     onSuccess: () => {
-      toast.success('Đã xoá thành viên khỏi team')
+      toast.success('Đã xoá thành viên khỏi nhóm')
       setPendingRemove(null)
       invalidateMembers()
     },
@@ -1344,7 +1342,7 @@ function TeamMembersPanel({
     <>
       <DialogHeader className="shrink-0 space-y-1 border-b border-border/70 bg-gradient-to-r from-primary/[0.08] via-card to-card px-6 py-5 pr-14">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Thành viên team
+          Thành viên nhóm
         </p>
         <DialogTitle className="text-left text-xl font-semibold">
           <span className="text-primary">{teamName}</span>
@@ -1354,7 +1352,7 @@ function TeamMembersPanel({
           <div className="text-left">
             <span className="mt-2 block text-xs text-muted-foreground">
               {canManage
-                ? 'Quản lý thành viên trực tiếp trong team: bấm "Thêm thành viên" để gán nhân sự, hoặc xoá khỏi team qua nút trong cột "Hành động".'
+                ? 'Quản lý thành viên trực tiếp trong nhóm: bấm "Thêm thành viên" để gán nhân sự, hoặc gỡ khỏi nhóm qua nút trong cột "Hành động".'
                 : 'Chỉ xem danh sách thành viên. Để thêm / xoá thành viên cần quyền hr.org.manage.'}
             </span>
           </div>
@@ -1403,7 +1401,7 @@ function TeamMembersPanel({
             </div>
           ) : members.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
-              <p className="text-sm text-muted-foreground">Chưa có thành viên trong team.</p>
+              <p className="text-sm text-muted-foreground">Chưa có thành viên trong nhóm.</p>
               {canManage ? (
                 <Button
                   type="button"
@@ -1421,7 +1419,7 @@ function TeamMembersPanel({
             <Table className="min-w-[720px]">
               <TableHeader>
                 <TableRow className="border-b border-border/80 bg-muted/30 hover:bg-muted/30">
-                  <TableHead className="w-[52px] pl-3">Avatar</TableHead>
+                  <TableHead className="w-[52px] pl-3">Ảnh</TableHead>
                   <TableHead className="min-w-[140px]">Tên thành viên</TableHead>
                   <TableHead className="min-w-[180px]">Email</TableHead>
                   <TableHead className="min-w-[130px]">Vai trò</TableHead>
@@ -1482,7 +1480,7 @@ function TeamMembersPanel({
                               className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                               onClick={() => setPendingRemove(m)}
                               disabled={removing}
-                              title="Xoá khỏi team"
+                              title="Gỡ khỏi nhóm"
                             >
                               <UserMinus className="mr-1.5 h-4 w-4" />
                               {removing ? 'Đang xoá…' : 'Xoá'}
@@ -1513,10 +1511,10 @@ function TeamMembersPanel({
       {canManage ? (
         <OrgCrudConfirmDialog
           open={Boolean(pendingRemove)}
-          title="Xoá thành viên khỏi team?"
+          title="Gỡ thành viên khỏi nhóm?"
           body={
             pendingRemove
-              ? `Sẽ gỡ «${memberRowDisplayName(pendingRemove)}» khỏi team «${teamName}». Hành động này không xoá tài khoản; có thể thêm lại sau.`
+              ? `Sẽ gỡ «${memberRowDisplayName(pendingRemove)}» khỏi nhóm «${teamName}». Hành động này không xoá tài khoản; có thể thêm lại sau.`
               : ''
           }
           pending={removeMemberM.isPending}
@@ -1573,8 +1571,8 @@ function AddTeamMemberDialog({
         <DialogHeader className="shrink-0 space-y-1 border-b border-border/70 px-6 py-5">
           <DialogTitle>Thêm thành viên vào «{teamName}»</DialogTitle>
           <DialogDescription>
-            Tìm theo tên, email hoặc mã nhân viên. Nhân sự đang thuộc team khác sẽ được chuyển sang
-            team này khi bạn chọn.
+            Tìm theo tên, email hoặc mã nhân viên. Nhân sự đang thuộc nhóm khác sẽ được chuyển sang
+            nhóm này khi bạn chọn.
           </DialogDescription>
         </DialogHeader>
 
@@ -1604,7 +1602,7 @@ function AddTeamMemberDialog({
               <p className="text-sm text-muted-foreground">
                 {deferredQ.trim()
                   ? 'Không tìm thấy nhân sự phù hợp.'
-                  : 'Gõ để tìm nhân sự cần thêm vào team.'}
+                  : 'Gõ để tìm nhân sự cần thêm vào nhóm.'}
               </p>
             </div>
           ) : (
@@ -1658,10 +1656,10 @@ function EligibleUserRowItem({
         </div>
         {row.currentTeamName ? (
           <div className="mt-0.5 text-[11px] text-amber-600 dark:text-amber-400">
-            Đang thuộc team: {row.currentTeamName} (sẽ chuyển sang team mới)
+            Đang thuộc nhóm: {row.currentTeamName} (sẽ chuyển sang nhóm mới)
           </div>
         ) : (
-          <div className="mt-0.5 text-[11px] text-muted-foreground">Chưa thuộc team nào</div>
+          <div className="mt-0.5 text-[11px] text-muted-foreground">Chưa thuộc nhóm nào</div>
         )}
       </div>
       <Button

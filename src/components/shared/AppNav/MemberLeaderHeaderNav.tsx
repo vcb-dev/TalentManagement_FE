@@ -49,7 +49,6 @@ function routeGroup(item: AppNavItem): string {
 
 function buildHeaderGroups(items: AppNavItem[], labels: Record<string, string>): HeaderNavGroup[] {
   const order = [
-    'company',
     'dashboard',
     'learning',
     'room-booking',
@@ -59,6 +58,7 @@ function buildHeaderGroups(items: AppNavItem[], labels: Record<string, string>):
     'teacher',
     'bod',
     'other',
+    'company',
   ]
 
   const bucket = new Map<string, AppNavItem[]>()

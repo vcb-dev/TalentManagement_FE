@@ -190,7 +190,7 @@ export function EmployeeLearningDashboard() {
             </div>
             <h1 className={PAGE_HEADER_TITLE}>
               <span className={PAGE_HEADER_GRADIENT}>
-                {isManagerLearningDash ? 'Dashboard Quản lý' : 'Dashboard Cá nhân'}
+                {isManagerLearningDash ? 'Tổng quan quản lý' : 'Tổng quan cá nhân'}
               </span>
             </h1>
             <p className={PAGE_HEADER_DESCRIPTION}>

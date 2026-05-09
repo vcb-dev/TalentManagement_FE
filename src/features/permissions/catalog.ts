@@ -32,14 +32,14 @@ const nodes: PermissionNode[] = [
   {
     id: 'mod.dashboard',
     parentId: null,
-    label: 'Dashboard cá nhân',
+    label: 'Tổng quan cá nhân',
     kind: 'module',
     scope: 'global',
   },
   {
     id: 'dashboard.view',
     parentId: 'mod.dashboard',
-    label: 'Xem dashboard',
+    label: 'Xem tổng quan cá nhân',
     kind: 'function',
     scope: 'global',
     legacy: { action: 'view', resource: 'checklist' },
@@ -100,7 +100,7 @@ const nodes: PermissionNode[] = [
   {
     id: 'kpi.team_view',
     parentId: 'mod.kpi',
-    label: 'Xem KPI/OKR trong team',
+    label: 'Xem KPI/OKR trong nhóm',
     kind: 'function',
     scope: 'global',
     legacy: { action: 'view', resource: 'okr' },
@@ -108,7 +108,14 @@ const nodes: PermissionNode[] = [
   {
     id: 'kpi.team_edit',
     parentId: 'mod.kpi',
-    label: 'Sửa KPI/OKR trong team',
+    label: 'Sửa KPI/OKR trong nhóm',
+    kind: 'function',
+    scope: 'global',
+  },
+  {
+    id: 'kpi.leader_review',
+    parentId: 'mod.kpi',
+    label: 'Quản lý chấm điểm trưởng nhóm',
     kind: 'function',
     scope: 'global',
   },
@@ -140,6 +147,21 @@ const nodes: PermissionNode[] = [
     id: 'report.edit',
     parentId: 'mod.report',
     label: 'Tạo & sửa báo cáo',
+    kind: 'function',
+    scope: 'global',
+  },
+
+  {
+    id: 'mod.company',
+    parentId: null,
+    label: 'Công ty & Landing',
+    kind: 'module',
+    scope: 'global',
+  },
+  {
+    id: 'company.landing.edit',
+    parentId: 'mod.company',
+    label: 'Chỉnh sửa nội dung trang giới thiệu công ty',
     kind: 'function',
     scope: 'global',
   },
@@ -189,7 +211,7 @@ const nodes: PermissionNode[] = [
   {
     id: 'hr.org.manage',
     parentId: 'mod.hr',
-    label: 'Quản lý phòng ban & team',
+    label: 'Quản lý phòng ban & nhóm',
     kind: 'function',
     scope: 'global',
     legacy: { action: 'edit', resource: 'department' },
@@ -199,7 +221,7 @@ const nodes: PermissionNode[] = [
   {
     id: 'manager.team.view',
     parentId: 'mod.manager',
-    label: 'Xem tiến độ team',
+    label: 'Xem tiến độ nhóm',
     kind: 'function',
     scope: 'global',
     legacy: { action: 'view', resource: 'team' },
@@ -271,7 +293,7 @@ const nodes: PermissionNode[] = [
   {
     id: 'bod.comparison.view',
     parentId: 'mod.bod',
-    label: 'So sánh team',
+    label: 'So sánh nhóm',
     kind: 'function',
     scope: 'global',
   },
@@ -319,7 +341,7 @@ const nodes: PermissionNode[] = [
   {
     id: 'data.limit_orders',
     parentId: 'mod.manager',
-    label: 'Giới hạn dữ liệu team theo phụ trách',
+    label: 'Giới hạn dữ liệu nhóm theo phụ trách',
     kind: 'data_toggle',
     scope: 'global',
   },
@@ -345,6 +367,7 @@ export const PERMISSION_MODULE_IDS_UI_ORDER: readonly string[] = [
   'mod.exam',
   'mod.kpi',
   'mod.report',
+  'mod.company',
   'mod.hr',
   'mod.manager',
   'mod.bod',
@@ -358,38 +381,44 @@ export const PERMISSION_MODULE_IDS_UI_ORDER: readonly string[] = [
  */
 export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly string[]>> = {
   'mod.home': ['Trang chủ ứng dụng (/)'],
-  'mod.dashboard': ['Dashboard cá nhân (/dashboard)'],
+  'mod.dashboard': ['Tổng quan cá nhân (/dashboard)'],
   'mod.learning': ['Lộ trình học & checklist theo cấp (/learning-path, …)'],
   'mod.exam': [
     'Kết quả & lịch thi, phòng thi, làm bài (/exam, /exam/…, trừ khu vực chấm thi dành cho giảng viên /exam/grader)',
   ],
   'mod.kpi': [
     'KPI & OKR cá nhân (/kpi-okr)',
-    'KPI & OKR trong team — quản lý/leader (/leader/kpi-okr, khi được cấp quyền team)',
+    'KPI & OKR trong nhóm — trưởng nhóm (/leader/kpi-okr, khi được cấp quyền nhóm)',
+    'Đánh giá trưởng nhóm (KPI/OKR) — quản lý (/manager/kpi-okr/leader-review)',
     'Cửa sổ giao KPI/OKR theo tháng (/hr-admin/settings/kpi-windows, quyền HR)',
+    'Phòng ban áp dụng danh mục KPI (/hr-admin/settings/kpi-catalog-allowlist, quyền HR)',
   ],
   'mod.report': [
     'Báo cáo KPI/OKR hàng tháng (/monthly-report, …)',
-    'Kèm tùy chọn phạm vi dữ liệu: chỉ dữ liệu team/người phụ trách (khi bật cờ tương ứng trong khối này)',
+    'Kèm tùy chọn phạm vi dữ liệu: chỉ dữ liệu nhóm/người phụ trách (khi bật cờ tương ứng trong khối này)',
+  ],
+  'mod.company': [
+    'Trang giới thiệu công ty công khai (/)',
+    'Cấu hình nội dung (/hr-admin/settings/company-landing)',
   ],
   'mod.hr': [
     'Danh sách & hồ sơ nhân viên (/hr-admin, /hr-admin/$mãNhânViên)',
-    'Cơ cấu phòng ban & team (/hr-admin/org)',
+    'Cơ cấu phòng ban & nhóm (/hr-admin/org)',
   ],
   'mod.manager': [
-    'Xem team & hồ sơ qua màn Nhân sự (/hr-admin) khi cần quyền xem team',
+    'Xem nhóm & hồ sơ qua màn Nhân sự (/hr-admin) khi cần quyền xem nhóm',
     'Chia lớp (/manager/classes)',
     'Duyệt bài nộp (/manager/review-submissions)',
     'Lịch thi, bài thi theo lớp, màn chấm (/manager/exam-schedule, /manager/class-exams, /manager/grading, …)',
     'Duyệt thăng cấp / sao (/manager/approvals)',
-    'Bài tập lộ trình cho team (/manager/exercises)',
+    'Bài tập lộ trình cho nhóm (/manager/exercises)',
     'Phân loại bài thi, luồng thi theo cấp hình (trong ứng dụng thi, khi có quyền phân loại)',
     'Tùy chọn phạm vi: giới hạn dữ liệu vận hành theo người phụ trách (ABAC, không phải một URL riêng)',
   ],
   'mod.bod': [
     'Tổng quan nhân sự (/bod/dashboard)',
     'Xếp hạng tập sự (/bod/trainee-ranking)',
-    'So sánh team (/bod/team-comparison)',
+    'So sánh nhóm (/bod/team-comparison)',
   ],
   'mod.teacher': [
     'Lớp phụ trách (/teacher/classes)',

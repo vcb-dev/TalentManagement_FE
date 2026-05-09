@@ -22,7 +22,7 @@ export type DivisionEntity = {
 
 function assertOrgCrudNotMock(action: string): void {
   if (isMockApiEnabled()) {
-    throw new Error(`Đang bật mock API — không thể ${action}.`)
+    throw new Error(`Đang bật chế độ giả lập — không thể ${action}.`)
   }
 }
 

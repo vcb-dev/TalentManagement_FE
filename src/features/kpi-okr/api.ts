@@ -6,6 +6,12 @@ export type PerformanceKind = 'KPI' | 'OKR'
 export type PerformanceStatus = 'not_started' | 'in_progress' | 'done' | 'blocked'
 export type PerformanceGradeLetter = 'A' | 'B' | 'C'
 
+export type CatalogDivisionAllowlistResponse = {
+  envDivisionIds: string[]
+  databaseDivisionIds: string[]
+  mergedDivisionIds: string[]
+}
+
 export type PerformanceAssignment = {
   id: string
   teamId: string
@@ -199,6 +205,33 @@ export const performanceApi = {
     return res.data
   },
 
+  /**
+   * Nhiều dòng mục tiêu khác nhau × cùng danh sách nhân sự — một transaction (tối đa 300 bản ghi).
+   */
+  createAssignmentsBatchMulti: async (
+    teamId: string,
+    body: {
+      assigneeUserIds: string[]
+      year: number
+      month: number
+      reviewerName?: string | null
+      lines: Array<{
+        kind: PerformanceKind
+        content: string
+        priority?: number
+        targetMetric?: string | null
+        kpiSetAt?: string | null
+      }>
+    }
+  ) => {
+    if (isMockApiEnabled()) throw new Error('Mock: không tạo KPI qua API')
+    const res = await apiClient.post<PerformanceAssignment[]>(
+      `/performance/teams/${teamId}/assignments/batch-multi`,
+      body
+    )
+    return res.data
+  },
+
   patchAssignment: async (
     id: string,
     body: Partial<
@@ -361,6 +394,31 @@ export const performanceApi = {
     return res.data
   },
 
+  // ─── Epic 9: Catalog division allowlist (HR) ──────────────────────────
+
+  getCatalogDivisionAllowlist: async () => {
+    if (isMockApiEnabled()) {
+      return {
+        envDivisionIds: [],
+        databaseDivisionIds: [],
+        mergedDivisionIds: [],
+      }
+    }
+    const res = await apiClient.get<CatalogDivisionAllowlistResponse>(
+      '/performance/catalog-division-allowlist'
+    )
+    return res.data
+  },
+
+  putCatalogDivisionAllowlist: async (divisionIds: string[]) => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.put<CatalogDivisionAllowlistResponse>(
+      '/performance/catalog-division-allowlist',
+      { divisionIds }
+    )
+    return res.data
+  },
+
   // ─── Sprint 2 / Epic 9: Auto-seed ───────────────────────────────────
 
   autoSeedTeam: async (
@@ -380,11 +438,11 @@ export const performanceApi = {
 
   // ─── Sprint 3: Manager đánh giá Leader ──────────────────────────────
 
-  listLeaderEvaluations: async (departmentId: string, year: number, month: number) => {
+  listLeaderEvaluations: async (teamId: string, year: number, month: number) => {
     if (isMockApiEnabled()) return [] as LeaderEvaluationRow[]
     const res = await apiClient.get<LeaderEvaluationRow[]>(
       '/performance/manager/leaders/evaluations',
-      { params: { departmentId, year, month } }
+      { params: { teamId, year, month } }
     )
     return res.data
   },
@@ -594,6 +652,8 @@ export type LeaderEvaluationRow = {
   teamId: string | null
   kpiOkCount: number
   kpiNotCount: number
+  okrOkCount: number
+  okrNotCount: number
   evaluation: {
     id: string
     evaluateeRole: string
