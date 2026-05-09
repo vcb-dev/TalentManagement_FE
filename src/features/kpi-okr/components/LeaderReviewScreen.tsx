@@ -41,6 +41,7 @@ import {
 import {
   ASSIGN_TABLE_HEAD,
   AssignmentEpic4ReadCells,
+  AssignmentEpic4ReadStack,
   KindBadge,
   PriorityBadge,
   XL_TH,
@@ -469,29 +470,41 @@ function LeaderEvaluationRow({
                 Chưa có KPI/OKR giao cho trưởng nhóm trong kỳ này.
               </p>
             ) : (
-              <div className="max-h-[calc(100vh-400px)] overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
-                <Table className="w-full min-w-[1180px]">
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
-                      {ASSIGN_TABLE_HEAD.map((h) => (
-                        <TableHead key={h} className={XL_TH}>
-                          {h}
-                        </TableHead>
+              <>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+                  {assignmentRows.map((a, idx) => (
+                    <ManagerLeaderAssignmentMobileCard
+                      key={a.id}
+                      assignment={a}
+                      onSaved={onSaved}
+                      rowStripe={idx % 2 === 1}
+                    />
+                  ))}
+                </div>
+                <div className="hidden max-h-[calc(100vh-400px)] overflow-auto rounded-lg border border-slate-200 dark:border-slate-800 md:block">
+                  <Table className="w-full min-w-[1180px]">
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
+                        {ASSIGN_TABLE_HEAD.map((h) => (
+                          <TableHead key={h} className={XL_TH}>
+                            {h}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {assignmentRows.map((a, idx) => (
+                        <ManagerLeaderAssignmentEditor
+                          key={a.id}
+                          assignment={a}
+                          onSaved={onSaved}
+                          rowStripe={idx % 2 === 1}
+                        />
                       ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {assignmentRows.map((a, idx) => (
-                      <ManagerLeaderAssignmentEditor
-                        key={a.id}
-                        assignment={a}
-                        onSaved={onSaved}
-                        rowStripe={idx % 2 === 1}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </div>
         ) : null}
@@ -602,5 +615,103 @@ function ManagerLeaderAssignmentEditor({
         </Button>
       </TableCell>
     </TableRow>
+  )
+}
+
+function ManagerLeaderAssignmentMobileCard({
+  assignment,
+  onSaved,
+  rowStripe,
+}: {
+  assignment: PerformanceAssignment
+  onSaved: () => void
+  rowStripe?: boolean
+}) {
+  const [status, setStatus] = useState(() => assignment.managerEvalStatus?.trim() ?? '')
+  const [note, setNote] = useState(() => assignment.managerReviewNote?.trim() ?? '')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setStatus(assignment.managerEvalStatus?.trim() ?? '')
+    setNote(assignment.managerReviewNote?.trim() ?? '')
+  }, [
+    assignment.id,
+    assignment.managerEvalStatus,
+    assignment.managerReviewNote,
+    assignment.updatedAt,
+  ])
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      await performanceApi.patchAssignment(assignment.id, {
+        managerEvalStatus: status.trim() ? status : null,
+        managerReviewNote: note.trim() ? note : null,
+      })
+      toast.success('Đã lưu đánh giá mục')
+      onSaved()
+    } catch {
+      toast.error('Không lưu được mục — kiểm tra quyền.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        'space-y-3 py-4 first:pt-0',
+        rowStripe ? 'bg-slate-50/30 dark:bg-slate-900/20' : ''
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-2 text-xs tabular-nums text-slate-500">
+        <span className="font-medium">{periodLabel(assignment)}</span>
+        <span>{formatKpiSetAt(assignment.kpiSetAt)}</span>
+        <KindBadge kind={assignment.kind} />
+        <PriorityBadge priority={assignment.priority} />
+      </div>
+      <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">
+        {assignment.content}
+      </p>
+      <p className="text-sm font-semibold tabular-nums text-primary">
+        Chỉ tiêu: {assignment.targetMetric || '—'}
+      </p>
+      <AssignmentEpic4ReadStack row={assignment} />
+      <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <span className="text-[10px] font-bold uppercase text-slate-400">Đánh giá QL</span>
+        <Select
+          value={status || '__none'}
+          onValueChange={(v) => setStatus(v === '__none' ? '' : v)}
+          disabled={saving}
+        >
+          <SelectTrigger className="h-10 w-full text-xs">
+            <SelectValue placeholder="—" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">—</SelectItem>
+            <SelectItem value="OK">OK</SelectItem>
+            <SelectItem value="NOT">NOT</SelectItem>
+          </SelectContent>
+        </Select>
+        <Textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={3}
+          disabled={saving}
+          className="min-h-[72px] resize-y text-xs"
+          placeholder="Nhận xét QL…"
+        />
+        <Button
+          type="button"
+          size="sm"
+          className="h-10 w-full"
+          variant="secondary"
+          disabled={saving}
+          onClick={() => void save()}
+        >
+          {saving ? '…' : 'Lưu'}
+        </Button>
+      </div>
+    </div>
   )
 }

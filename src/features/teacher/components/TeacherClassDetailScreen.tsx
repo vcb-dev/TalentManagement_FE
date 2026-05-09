@@ -646,7 +646,148 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
           {viewMode === 'table' ? (
             <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl shadow-slate-200/50 ring-1 ring-slate-200/60">
-              <div className="overflow-x-auto">
+              <div className="divide-y divide-border md:hidden">
+                {filtered.map((m) => {
+                  const currentSchedule = schedules.find((s) => s.id === activeScheduleId)
+                  const rawAttendance =
+                    currentSchedule?.attendanceData?.[m.id]?.attendance || 'NONE'
+
+                  let displayAttendance = rawAttendance
+                  if (currentSchedule && (rawAttendance === 'NONE' || !rawAttendance)) {
+                    const now = new Date()
+                    const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000)
+                    const vnDate = vnNow.toISOString().split('T')[0]
+                    const vnTime = vnNow.toISOString().split('T')[1].substring(0, 5)
+
+                    const isPassed =
+                      currentSchedule.dateIso < vnDate ||
+                      (currentSchedule.dateIso === vnDate && currentSchedule.endTime < vnTime)
+
+                    if (isPassed) {
+                      displayAttendance = 'ABSENT'
+                    }
+                  }
+
+                  const sessionData = {
+                    ...(currentSchedule?.attendanceData?.[m.id] || {}),
+                    attendance: displayAttendance,
+                  }
+
+                  return (
+                    <div key={m.id} className="space-y-3 p-4">
+                      <div className="flex items-center gap-3">
+                        <EmployeeAvatar
+                          name={m.name}
+                          className="h-10 w-10 shrink-0 rounded-2xl shadow-sm ring-2 ring-background"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-black text-primary">{m.name}</p>
+                          <p className="break-all text-[10px] font-medium text-muted-foreground/80">
+                            {m.email}
+                          </p>
+                        </div>
+                      </div>
+                      {!activeScheduleId ? (
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Kết quả cuối khóa
+                          </p>
+                          {m.examResult ? (
+                            <Badge className="rounded-lg border-0 bg-emerald-100/80 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                              {m.examResult}
+                            </Badge>
+                          ) : (
+                            <span className="font-bold text-muted-foreground/40">—</span>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="space-y-1">
+                            <p className="text-[11px] font-black text-foreground">
+                              {currentSchedule?.dateIso}
+                            </p>
+                            <p className="text-[10px] font-bold text-muted-foreground/60">
+                              {currentSchedule?.startTime} - {currentSchedule?.endTime}
+                            </p>
+                          </div>
+                          <p className="break-words text-[11px] font-bold text-muted-foreground">
+                            {currentSchedule?.topic}
+                          </p>
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                              Điểm danh
+                            </p>
+                            <Select
+                              value={sessionData.attendance || 'NONE'}
+                              onValueChange={(v) =>
+                                updateAttendance.mutate({
+                                  scheduleId: activeScheduleId!,
+                                  input: { userId: m.id, attendance: v },
+                                })
+                              }
+                            >
+                              <SelectTrigger
+                                className={cn(
+                                  'h-10 w-full max-w-full rounded-full border-0 font-black text-[10px] uppercase tracking-widest shadow-sm',
+                                  sessionData.attendance === 'PRESENT' &&
+                                    'bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20',
+                                  sessionData.attendance === 'ABSENT' &&
+                                    'bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20',
+                                  sessionData.attendance === 'LATE' &&
+                                    'bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20',
+                                  (!sessionData.attendance || sessionData.attendance === 'NONE') &&
+                                    'bg-slate-100 text-slate-500 ring-1 ring-slate-200'
+                                )}
+                              >
+                                <SelectValue placeholder="Chưa chọn" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-2xl border-slate-200 p-1 shadow-2xl">
+                                <SelectItem
+                                  value="NONE"
+                                  className="rounded-xl py-2 font-bold text-slate-500 focus:bg-slate-50"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                                    Chưa chọn
+                                  </div>
+                                </SelectItem>
+                                <SelectItem
+                                  value="PRESENT"
+                                  className="rounded-xl py-2 font-bold text-emerald-600 focus:bg-emerald-50"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                    Tham gia
+                                  </div>
+                                </SelectItem>
+                                <SelectItem
+                                  value="ABSENT"
+                                  className="rounded-xl py-2 font-bold text-rose-600 focus:bg-rose-50"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                                    Vắng mặt
+                                  </div>
+                                </SelectItem>
+                                <SelectItem
+                                  value="LATE"
+                                  className="rounded-xl py-2 font-bold text-amber-600 focus:bg-amber-50"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                    Đến muộn
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[600px] border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/50">

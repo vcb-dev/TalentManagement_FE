@@ -318,7 +318,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                 <EmployeeAvatar
                   name={employee.name}
                   showOnlineDot={employee.status === 'ACTIVE'}
-                  className="h-44 w-44 rounded-2xl border-[3px] border-white text-4xl shadow-[var(--shadow-game-float)] ring-4 ring-primary/15"
+                  className="h-32 w-32 rounded-2xl border-[3px] border-white text-2xl shadow-[var(--shadow-game-float)] ring-4 ring-primary/15 sm:h-44 sm:w-44 sm:text-4xl"
                 />
               </div>
 
@@ -463,7 +463,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
               </div>
 
               <nav
-                className="flex flex-wrap gap-0 border-b border-indigo-100/80 bg-white/65 px-2 md:px-4"
+                className="flex flex-wrap gap-0 border-b border-indigo-100/80 bg-white/65 px-1 sm:px-2 md:px-4"
                 aria-label="Mục hồ sơ nhân viên"
               >
                 {tabLabels.map((label, i) => {
@@ -476,16 +476,19 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                       variant="ghost"
                       onClick={() => setTab(i)}
                       className={cn(
-                        'relative h-auto min-h-0 rounded-none px-3 py-3.5 text-sm font-semibold transition-colors md:px-4',
+                        'relative inline-flex h-auto min-h-0 items-center gap-1.5 rounded-none px-2 py-3 text-xs font-semibold transition-colors sm:gap-2 sm:px-3 sm:py-3.5 sm:text-sm md:px-4',
                         active
                           ? 'text-indigo-700 hover:bg-transparent hover:text-indigo-700'
                           : 'text-muted-foreground hover:bg-indigo-50/70 hover:text-indigo-700'
                       )}
                     >
-                      <Icon className="h-4 w-4 shrink-0 opacity-85" strokeWidth={2} />
+                      <Icon
+                        className="h-3.5 w-3.5 shrink-0 opacity-85 sm:h-4 sm:w-4"
+                        strokeWidth={2}
+                      />
                       {label}
                       {active ? (
-                        <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-indigo-600 md:left-4 md:right-4" />
+                        <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-indigo-600 sm:left-3 sm:right-3 md:left-4 md:right-4" />
                       ) : null}
                     </Button>
                   )

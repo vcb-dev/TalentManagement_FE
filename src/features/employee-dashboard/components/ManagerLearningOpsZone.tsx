@@ -362,52 +362,81 @@ export function ManagerLearningOpsZone({
             Không có bản ghi nào trong kỳ này.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border/60">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-border/80 bg-muted/40">
-                  <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Họ tên</th>
-                  <th className="min-w-[10rem] px-3 py-2.5 font-bold text-foreground sm:px-4">
-                    Cặp cấp thi
-                  </th>
-                  <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Mã NV</th>
-                  <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Email</th>
-                  <th className="w-28 px-3 py-2.5 text-right font-bold text-foreground sm:px-4">
-                    Lần trượt
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(data?.usersWithAtLeastTwoExamFails ?? []).map((row) => {
-                  const lf = row.levelFrom as LevelCode
-                  const lt = row.levelTo as LevelCode
-                  const pairLabel = `${LEVEL_LABELS[lf] ?? row.levelFrom} → ${LEVEL_LABELS[lt] ?? row.levelTo}`
-                  return (
-                    <tr
-                      key={`${row.userId}-${row.levelFrom}-${row.levelTo}`}
-                      className="border-b border-border/50 last:border-0 odd:bg-background/40"
-                    >
-                      <td className="px-3 py-2.5 font-semibold text-foreground sm:px-4">
-                        {row.fullName?.trim() || '—'}
-                      </td>
-                      <td className="px-3 py-2.5 text-xs font-medium text-foreground sm:px-4">
-                        {pairLabel}
-                      </td>
-                      <td className="px-3 py-2.5 tabular-nums text-muted-foreground sm:px-4">
-                        {row.employeeCode?.trim() || '—'}
-                      </td>
-                      <td className="max-w-[200px] truncate px-3 py-2.5 text-muted-foreground sm:max-w-xs sm:px-4">
-                        {row.email?.trim() || '—'}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-black tabular-nums text-amber-700 dark:text-amber-400 sm:px-4">
-                        {row.failCount}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="divide-y divide-border/60 rounded-xl border border-border/60 md:hidden">
+              {(data?.usersWithAtLeastTwoExamFails ?? []).map((row) => {
+                const lf = row.levelFrom as LevelCode
+                const lt = row.levelTo as LevelCode
+                const pairLabel = `${LEVEL_LABELS[lf] ?? row.levelFrom} → ${LEVEL_LABELS[lt] ?? row.levelTo}`
+                return (
+                  <div
+                    key={`${row.userId}-${row.levelFrom}-${row.levelTo}`}
+                    className="space-y-2 p-4 odd:bg-background/40"
+                  >
+                    <p className="break-words font-semibold text-foreground">
+                      {row.fullName?.trim() || '—'}
+                    </p>
+                    <p className="text-xs font-medium text-foreground">{pairLabel}</p>
+                    <p className="tabular-nums text-sm text-muted-foreground">
+                      Mã NV: {row.employeeCode?.trim() || '—'}
+                    </p>
+                    <p className="break-all text-sm text-muted-foreground">
+                      {row.email?.trim() || '—'}
+                    </p>
+                    <p className="text-right text-lg font-black tabular-nums text-amber-700 dark:text-amber-400">
+                      Trượt: {row.failCount} lần
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="hidden overflow-x-auto rounded-xl border border-border/60 md:block">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border/80 bg-muted/40">
+                    <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Họ tên</th>
+                    <th className="min-w-[10rem] px-3 py-2.5 font-bold text-foreground sm:px-4">
+                      Cặp cấp thi
+                    </th>
+                    <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Mã NV</th>
+                    <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Email</th>
+                    <th className="w-28 px-3 py-2.5 text-right font-bold text-foreground sm:px-4">
+                      Lần trượt
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data?.usersWithAtLeastTwoExamFails ?? []).map((row) => {
+                    const lf = row.levelFrom as LevelCode
+                    const lt = row.levelTo as LevelCode
+                    const pairLabel = `${LEVEL_LABELS[lf] ?? row.levelFrom} → ${LEVEL_LABELS[lt] ?? row.levelTo}`
+                    return (
+                      <tr
+                        key={`${row.userId}-${row.levelFrom}-${row.levelTo}`}
+                        className="border-b border-border/50 last:border-0 odd:bg-background/40"
+                      >
+                        <td className="px-3 py-2.5 font-semibold text-foreground sm:px-4">
+                          {row.fullName?.trim() || '—'}
+                        </td>
+                        <td className="px-3 py-2.5 text-xs font-medium text-foreground sm:px-4">
+                          {pairLabel}
+                        </td>
+                        <td className="px-3 py-2.5 tabular-nums text-muted-foreground sm:px-4">
+                          {row.employeeCode?.trim() || '—'}
+                        </td>
+                        <td className="max-w-[200px] truncate px-3 py-2.5 text-muted-foreground sm:max-w-xs sm:px-4">
+                          {row.email?.trim() || '—'}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-black tabular-nums text-amber-700 dark:text-amber-400 sm:px-4">
+                          {row.failCount}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </div>

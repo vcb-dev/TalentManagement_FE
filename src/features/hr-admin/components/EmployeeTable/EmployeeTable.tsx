@@ -102,8 +102,75 @@ export function EmployeeTable({
   ]
 
   return (
-    <div className="space-y-3">
-      <DataTable columns={columns} data={employees} isLoading={isLoading} />
+    <div className="min-w-0 space-y-3">
+      <div className="rounded-lg border border-border/70 bg-card/40 shadow-sm">
+        <DataTable
+          columns={columns}
+          data={employees}
+          isLoading={isLoading}
+          getRowKey={(e) => e.id}
+          renderMobileRow={(e) => (
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <EmployeeAvatar name={e.name} />
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-foreground">{e.name}</p>
+                  <p className="mt-0.5 break-all text-xs text-muted-foreground">{e.email}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <RoleBadge role={e.role} />
+                <StatusBadge status={e.status as EmployeeStatus} />
+              </div>
+              <p className="text-xs text-muted-foreground">Cập nhật: {formatViDate(e.updatedAt)}</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 w-full sm:w-auto"
+                  onClick={() => onView(e.id)}
+                >
+                  Xem
+                </Button>
+                {listMode === 'hr' ? (
+                  <>
+                    {canEdit ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9 w-full sm:w-auto"
+                        onClick={() => onEdit(e.id)}
+                      >
+                        Sửa
+                      </Button>
+                    ) : null}
+                    {e.status === 'INACTIVE' && onReactivate && canEdit ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9 w-full sm:w-auto"
+                        onClick={() => onReactivate(e.id)}
+                      >
+                        Kích hoạt
+                      </Button>
+                    ) : null}
+                    {e.status !== 'INACTIVE' && canDeactivate ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-9 w-full text-destructive hover:bg-destructive/10 sm:w-auto"
+                        onClick={() => onDeactivate(e.id)}
+                      >
+                        Vô hiệu
+                      </Button>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            </div>
+          )}
+        />
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>
           {pagination.total === 0

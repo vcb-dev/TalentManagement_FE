@@ -1,4 +1,5 @@
 import { useId, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from '@tanstack/react-router'
 import { useForm, useWatch, type Control } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -273,32 +274,34 @@ function ProfileIdentityCard({
             className="h-full w-full object-cover text-2xl"
           />
           {portraitUploading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/40 backdrop-blur-sm">
               <RefreshCw className="h-6 w-6 animate-spin text-white" />
             </div>
           )}
+          <Input
+            id={avatarUploadInputId}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="sr-only"
+            disabled={portraitUploading}
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) onPortraitFile(f)
+              e.target.value = ''
+            }}
+          />
+          <label
+            htmlFor={avatarUploadInputId}
+            className={cn(
+              'absolute bottom-1 right-1 z-[2] flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-white shadow-md ring-2 ring-white transition-transform hover:scale-110 hover:bg-primary/90 active:scale-95 dark:ring-slate-900',
+              'md:bottom-1.5 md:right-1.5',
+              portraitUploading && 'pointer-events-none opacity-50'
+            )}
+            aria-label="Tải ảnh đại diện"
+          >
+            <Upload className="h-4 w-4" strokeWidth={2.25} />
+          </label>
         </div>
-        <Input
-          id={avatarUploadInputId}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          className="sr-only"
-          disabled={portraitUploading}
-          onChange={(e) => {
-            const f = e.target.files?.[0]
-            if (f) onPortraitFile(f)
-            e.target.value = ''
-          }}
-        />
-        <label
-          htmlFor={avatarUploadInputId}
-          className={cn(
-            'absolute -bottom-2 -right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-110 active:scale-95',
-            portraitUploading && 'pointer-events-none opacity-50'
-          )}
-        >
-          <Upload className="h-4 w-4" />
-        </label>
       </div>
 
       <div className="min-w-0 flex-1 space-y-3">
@@ -397,7 +400,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
 
   return (
     <Form {...form}>
-      <div className="relative -m-5 min-h-[calc(100vh-3rem)] overflow-hidden bg-slate-50/50 pb-20 pt-6 text-foreground md:-m-6 lg:-m-8 dark:bg-slate-950">
+      <div className="relative -m-5 min-h-[calc(100vh-3rem)] bg-slate-50/50 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-6 text-foreground md:-m-6 md:pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:-m-8 dark:bg-slate-950">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute -left-20 -top-16 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute -right-16 top-24 h-80 w-80 rounded-full bg-indigo-500/10 blur-3xl" />
@@ -407,7 +410,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
         <div className="mx-auto w-full max-w-[1400px] px-4 md:px-6">
           <div className="mb-8 border-none bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-8 text-white shadow-2xl rounded-3xl relative overflow-hidden">
             <div className="absolute right-0 top-0 h-full w-1/3 bg-white/10 [mask-image:linear-gradient(to_left,white,transparent)]" />
-            <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative z-10 flex flex-col gap-4">
               <div className="min-w-0">
                 <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2">
                   Hồ sơ cá nhân
@@ -416,15 +419,6 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                   Quản lý thông tin nhân sự và lộ trình phát triển.
                 </p>
               </div>
-              <Button
-                type="button"
-                disabled={patchPending}
-                onClick={onSaveProfile}
-                className="h-12 shrink-0 rounded-2xl bg-white px-8 font-bold text-indigo-600 shadow-xl transition-all hover:bg-blue-50 active:scale-[0.98] disabled:opacity-60"
-              >
-                {patchPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
-              </Button>
             </div>
           </div>
 
@@ -597,18 +591,35 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
             </aside>
           </div>
         </div>
-
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/80 p-4 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80 sm:hidden">
-          <Button
-            type="button"
-            disabled={patchPending}
-            onClick={onSaveProfile}
-            className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 font-black uppercase tracking-widest text-white shadow-lg shadow-blue-200 transition-all active:scale-[0.98] disabled:opacity-60"
-          >
-            {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
-          </Button>
-        </div>
       </div>
+
+      {typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed inset-x-0 bottom-0 z-[60]"
+              role="presentation"
+            >
+              <div
+                className="pointer-events-auto border-t border-slate-200/90 bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_-12px_rgba(15,23,42,0.12)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95"
+                role="region"
+                aria-label="Lưu hồ sơ"
+              >
+                <div className="mx-auto flex w-full max-w-[1400px] justify-stretch sm:justify-end">
+                  <Button
+                    type="button"
+                    disabled={patchPending}
+                    onClick={onSaveProfile}
+                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 font-bold text-white shadow-lg shadow-indigo-500/25 transition-all hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] disabled:opacity-60 sm:w-auto sm:min-w-[220px] sm:px-8"
+                  >
+                    {patchPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
+                  </Button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </Form>
   )
 }

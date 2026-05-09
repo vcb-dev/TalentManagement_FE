@@ -299,11 +299,122 @@ export function ManagerGradingScreen() {
           <span className="text-xs text-muted-foreground">{filteredRows.length} lịch thi</span>
         </div>
 
-        {/* Table */}
+        {/* Table (desktop) + thẻ (mobile) */}
         <div>
+          <div className="space-y-3 md:hidden">
+            {isLoading ? (
+              <div className="rounded-xl border border-primary/15 bg-card px-4 py-8 text-center text-sm text-muted-foreground shadow-[var(--shadow-card)] ring-1 ring-primary/10">
+                Đang tải danh sách bài thi...
+              </div>
+            ) : paginatedRows.length === 0 ? (
+              <div className="rounded-xl border border-primary/15 bg-card px-4 py-10 text-center text-sm text-muted-foreground shadow-[var(--shadow-card)] ring-1 ring-primary/10">
+                {filteredRows.length === 0 && allRows.length > 0
+                  ? 'Không có lịch thi nào phù hợp với bộ lọc.'
+                  : 'Chưa có bài thi nào cần chấm.'}
+              </div>
+            ) : (
+              paginatedRows.map((row) => {
+                const temp = getTemporalStatus(row.dateIso, row.startTime, row.endTime)
+                return (
+                  <div
+                    key={row.key}
+                    className="space-y-3 rounded-xl border border-primary/15 bg-card p-4 shadow-[var(--shadow-card)] ring-1 ring-primary/10"
+                  >
+                    <div>
+                      <div className="text-base font-bold uppercase leading-snug text-foreground">
+                        {row.topic}
+                      </div>
+                      <div className="mt-1 text-xs font-medium text-primary">
+                        Lớp: {row.className}
+                      </div>
+                    </div>
+                    <p className="text-sm text-foreground">
+                      <span className="font-semibold text-muted-foreground">Giáo viên chấm: </span>
+                      {row.teacherName}
+                    </p>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground">Thời gian thi</p>
+                      {row.dateIso ? (
+                        <div className="mt-1">
+                          <p className="text-sm font-bold text-foreground">
+                            {new Date(row.dateIso + 'T00:00:00').toLocaleDateString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })}
+                          </p>
+                          {row.startTime && row.endTime ? (
+                            <p className="text-xs text-muted-foreground">
+                              {row.startTime} — {row.endTime}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </div>
+                    <div>
+                      <span
+                        className={cn(
+                          'inline-flex rounded-full px-3 py-1 text-[11px] font-bold',
+                          temp.badgeClass
+                        )}
+                      >
+                        {temp.label}
+                      </span>
+                    </div>
+                    <div className="text-sm">
+                      {row.total > 0 ? (
+                        <span className="font-medium text-foreground">
+                          {row.total} bài (
+                          {row.pending > 0 ? (
+                            <span className="font-bold text-rose-600">{row.pending} chờ chấm</span>
+                          ) : row.drafts > 0 ? (
+                            <span className="font-bold text-amber-600">Đã lưu bản nháp</span>
+                          ) : (
+                            <span className="font-bold text-emerald-600">Đã chấm hết</span>
+                          )}
+                          )
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Chưa có bài nộp</span>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={
+                        row.total > 0 && row.pending === 0 && row.drafts === 0
+                          ? 'outline'
+                          : 'default'
+                      }
+                      className={cn(
+                        'h-10 w-full font-bold',
+                        row.total > 0 && row.pending === 0 && row.drafts === 0
+                          ? 'border-primary text-primary hover:bg-primary/5'
+                          : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      )}
+                      onClick={() =>
+                        void navigate({
+                          to: '/manager/grade-class/$classId',
+                          params: { classId: row.classId },
+                          search: row.scheduleId ? ({ scheduleId: row.scheduleId } as any) : {},
+                        })
+                      }
+                    >
+                      {row.total > 0 && row.pending === 0 && row.drafts === 0
+                        ? 'Xem bài chấm thi'
+                        : 'Chấm thi'}
+                    </Button>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
           <div
             className={cn(
-              'overflow-x-auto rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10'
+              'hidden overflow-x-auto rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10 md:block'
             )}
           >
             <table className="w-full min-w-[900px] border-collapse text-left text-sm">

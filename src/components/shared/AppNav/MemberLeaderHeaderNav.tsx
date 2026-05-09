@@ -168,8 +168,13 @@ export function MemberLeaderHeaderNav() {
             <NavigationMenuItem key={group.id}>
               <NavigationMenuTrigger
                 className={cn(
-                  'border-transparent bg-transparent text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white focus:text-white data-[state=open]:border-white/30 data-[state=open]:bg-white/15 data-[state=open]:text-white',
-                  active && 'border-white/30 bg-white/15 text-white'
+                  'h-10 rounded-md px-4 py-2 text-sm font-medium shadow-none',
+                  '!border-transparent !bg-transparent !text-white/90',
+                  'hover:!border-white/25 hover:!bg-white/10 hover:!text-white',
+                  'focus:!bg-white/10 focus:!text-white focus:!shadow-none',
+                  'focus-visible:!ring-2 focus-visible:!ring-white/35 focus-visible:!ring-offset-0 focus-visible:!border-white/25 focus-visible:!outline-none',
+                  'data-[state=open]:!border-white/30 data-[state=open]:!bg-white/15 data-[state=open]:!text-white',
+                  active && '!border-white/30 !bg-white/15 !text-white'
                 )}
               >
                 {group.label}

@@ -57,11 +57,9 @@ function clampTwoDigit(value: string, min: number, max: number): string {
   return pad2(Math.min(max, Math.max(min, parsed)))
 }
 
-function formatExamViShort(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+function examScheduleIsPast(e: { dateIso: string; startTime: string }): boolean {
+  const examTime = new Date(`${e.dateIso}T${e.startTime}:00`).getTime()
+  return examTime < Date.now()
 }
 
 export function ManagerExamScheduleScreen() {
@@ -234,18 +232,18 @@ export function ManagerExamScheduleScreen() {
   return (
     <>
       <ManagerScreenLayout hideHubNav hideToolbar>
-        <div className="mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
           <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
             <h1 className={PAGE_HEADER_TITLE}>
               <span className={PAGE_HEADER_GRADIENT}>Lịch thi & Người chấm</span>
             </h1>
             <p className={PAGE_HEADER_DESCRIPTION}>{PAGE_SUBTITLE}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             {canManage && (
               <Button
                 type="button"
-                className="h-10 gap-2 rounded-xl px-5 text-xs font-bold shadow-sm"
+                className="h-10 w-full gap-2 rounded-xl px-5 text-xs font-bold shadow-sm sm:w-auto"
                 onClick={() => openExamModal()}
               >
                 <Calendar className="h-4 w-4" />
@@ -255,7 +253,7 @@ export function ManagerExamScheduleScreen() {
           </div>
         </div>
 
-        <div className="group relative mb-8 flex flex-wrap items-center gap-6 rounded-[28px] border border-border/50 bg-white/50 p-6 backdrop-blur-xl shadow-xl shadow-primary/5 transition-all hover:border-primary/20">
+        <div className="group relative mb-8 flex flex-col gap-4 rounded-[28px] border border-border/50 bg-white/50 p-4 backdrop-blur-xl shadow-xl shadow-primary/5 transition-all hover:border-primary/20 sm:gap-6 sm:p-6 md:flex-row md:flex-wrap md:items-center">
           <div className="hidden items-center gap-3 border-r border-border/50 pr-6 lg:flex">
             <div className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-primary/10 text-primary">
               <Users className="h-5.5 w-5.5" strokeWidth={2.5} />
@@ -268,43 +266,45 @@ export function ManagerExamScheduleScreen() {
             </div>
           </div>
 
-          <div className="flex-1 min-w-[240px] relative">
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm tên lớp học hoặc kỳ thi..."
-              className="h-12 w-full rounded-[18px] border-border/60 bg-white pl-11 pr-4 font-bold shadow-sm focus:ring-primary/20 transition-all hover:border-primary/30"
-            />
-            <Loader2
-              className={cn(
-                'absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-muted-foreground/50',
-                loadingExams && 'animate-spin'
-              )}
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 px-4 py-1.5 bg-muted/30 rounded-2xl border border-border/40">
-              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                Từ ngày
-              </span>
-              <DatePicker
-                value={startDate}
-                onChange={setStartDate}
-                max={endDate || undefined}
-                className="h-9 w-32 border-0 bg-transparent shadow-none p-0 focus:ring-0 font-bold text-xs"
+          <div className="flex w-full min-w-0 flex-1 flex-col gap-4">
+            <div className="relative min-w-0 w-full">
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm kiếm tên lớp học hoặc kỳ thi..."
+                className="h-12 w-full rounded-[18px] border-border/60 bg-white pl-11 pr-4 font-bold shadow-sm transition-all hover:border-primary/30 focus:ring-primary/20"
+              />
+              <Loader2
+                className={cn(
+                  'absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-muted-foreground/50',
+                  loadingExams && 'animate-spin'
+                )}
               />
             </div>
-            <div className="flex items-center gap-2 px-4 py-1.5 bg-muted/30 rounded-2xl border border-border/40">
-              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                Đến ngày
-              </span>
-              <DatePicker
-                value={endDate}
-                onChange={setEndDate}
-                min={startDate || undefined}
-                className="h-9 w-32 border-0 bg-transparent shadow-none p-0 focus:ring-0 font-bold text-xs"
-              />
+
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch">
+              <div className="flex w-full min-w-0 flex-1 flex-col gap-2 rounded-2xl border border-border/40 bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:px-4 sm:py-1.5">
+                <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                  Từ ngày
+                </span>
+                <DatePicker
+                  value={startDate}
+                  onChange={setStartDate}
+                  max={endDate || undefined}
+                  className="h-9 w-full min-w-0 border-0 bg-transparent p-0 text-xs font-bold shadow-none focus:ring-0 sm:w-32"
+                />
+              </div>
+              <div className="flex w-full min-w-0 flex-1 flex-col gap-2 rounded-2xl border border-border/40 bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:px-4 sm:py-1.5">
+                <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                  Đến ngày
+                </span>
+                <DatePicker
+                  value={endDate}
+                  onChange={setEndDate}
+                  min={startDate || undefined}
+                  className="h-9 w-full min-w-0 border-0 bg-transparent p-0 text-xs font-bold shadow-none focus:ring-0 sm:w-32"
+                />
+              </div>
             </div>
           </div>
 
@@ -312,7 +312,7 @@ export function ManagerExamScheduleScreen() {
             <Button
               type="button"
               variant="ghost"
-              className="h-12 px-6 rounded-[18px] font-black text-[10px] uppercase tracking-widest text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all"
+              className="h-12 w-full shrink-0 rounded-[18px] px-6 font-black text-[10px] uppercase tracking-widest text-rose-500 transition-all hover:bg-rose-50 hover:text-rose-600 sm:w-auto"
               onClick={() => {
                 setStartDate('')
                 setEndDate('')
@@ -325,119 +325,217 @@ export function ManagerExamScheduleScreen() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-          <table className="w-full border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b bg-muted/30">
-                <th className="px-5 py-4 font-bold text-foreground">Tên lớp & Kỳ thi</th>
-                <th className="px-5 py-4 font-bold text-foreground">Thời gian</th>
-                <th className="px-5 py-4 font-bold text-foreground">Người chấm</th>
-                <th className="px-5 py-4 text-right font-bold text-foreground">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredExams.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-5 py-20 text-center">
-                    <div className="flex flex-col items-center justify-center text-muted-foreground">
-                      <Calendar className="mb-4 h-10 w-10 opacity-20" />
-                      <p className="font-bold">Không tìm thấy kỳ thi nào</p>
-                      <p className="text-xs">Hãy nhấn "Tạo lịch thi mới" để bắt đầu</p>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          {/* Mobile: thẻ — đủ nội dung, nút full width */}
+          <div className="divide-y divide-border md:hidden">
+            {filteredExams.length === 0 ? (
+              <div className="flex flex-col items-center justify-center px-4 py-16 text-muted-foreground">
+                <Calendar className="mb-4 h-10 w-10 opacity-20" />
+                <p className="font-bold">Không tìm thấy kỳ thi nào</p>
+                <p className="mt-1 text-center text-xs">
+                  Hãy nhấn &quot;Tạo lịch thi mới&quot; để bắt đầu
+                </p>
+              </div>
+            ) : (
+              filteredExams.map((e) => {
+                const isPast = examScheduleIsPast(e)
+                return (
+                  <div key={e.id} className="space-y-3 bg-card p-4">
+                    <div className="min-w-0">
+                      <p className="text-base font-bold leading-snug text-foreground">
+                        {e.className}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-muted-foreground">{e.topic}</p>
                     </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredExams.map((e) => {
-                  const examTime = new Date(`${e.dateIso}T${e.startTime}:00`).getTime()
-                  const isPast = examTime < Date.now()
-
-                  return (
-                    <tr key={e.id} className="border-b transition-colors hover:bg-muted/20">
-                      <td className="px-5 py-5">
-                        <p className="font-bold text-foreground leading-tight">{e.className}</p>
-                        <span className="flex items-center gap-1 mt-1 text-[11px] font-medium text-muted-foreground">
-                          {e.topic}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p
+                        className={cn(
+                          'text-sm font-black tabular-nums',
+                          isPast ? 'text-muted-foreground' : 'text-foreground'
+                        )}
+                      >
+                        {formatViDate(e.dateIso)} lúc {e.startTime}
+                      </p>
+                      {isPast ? (
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                          Đã kết thúc
                         </span>
-                      </td>
-                      <td className="px-5 py-5">
-                        <div className="space-y-1">
-                          <p
-                            className={cn(
-                              'font-black tabular-nums text-sm',
-                              isPast ? 'text-muted-foreground' : 'text-foreground'
-                            )}
-                          >
-                            {formatViDate(e.dateIso)} lúc {e.startTime}
-                          </p>
-                          {isPast ? (
-                            <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
-                              Đã kết thúc
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-600">
-                              Sắp diễn ra
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-5">
-                        <p className="font-bold text-foreground text-xs">
-                          {e.examTeacherName || (e.examTeacherUserId ? 'Đã gán' : 'Chưa gán')}
-                        </p>
-                      </td>
-                      <td className="px-5 py-5 text-right">
-                        <div className="flex flex-wrap items-center justify-end gap-2">
+                      ) : (
+                        <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-600">
+                          Sắp diễn ra
+                        </span>
+                      )}
+                    </div>
+                    <div className="rounded-lg bg-muted/40 px-3 py-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        Người chấm
+                      </p>
+                      <p className="mt-0.5 break-words text-sm font-bold text-foreground">
+                        {e.examTeacherName || (e.examTeacherUserId ? 'Đã gán' : 'Chưa gán')}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-10 w-full gap-1.5 rounded-xl border-primary/20 text-xs font-bold text-primary hover:bg-primary/5"
+                        onClick={() => setSelectedClassIdForScores(e.classId)}
+                      >
+                        <Users className="h-3.5 w-3.5 shrink-0" />
+                        Học viên & Điểm
+                      </Button>
+                      {canManage ? (
+                        <div className="flex gap-2">
                           <Button
                             type="button"
-                            variant="outline"
                             size="sm"
-                            className="h-8 rounded-lg gap-1.5 text-[11px] font-bold border-primary/20 text-primary hover:bg-primary/5"
-                            onClick={() => setSelectedClassIdForScores(e.classId)}
+                            variant="outline"
+                            className="h-10 min-w-0 flex-1 gap-1.5 rounded-xl text-xs font-bold"
+                            onClick={() => openExamModal(e.classId, e.id)}
                           >
-                            <Users className="h-3.5 w-3.5" />
-                            Học viên & Điểm
+                            <Edit3 className="h-3.5 w-3.5 shrink-0" />
+                            Sửa
                           </Button>
-                          {canManage && (
-                            <>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="h-8 rounded-lg gap-1.5 text-[11px] font-bold"
-                                onClick={() => openExamModal(e.classId, e.id)}
-                              >
-                                <Edit3 className="h-3.5 w-3.5" />
-                                Sửa
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50"
-                                onClick={() => {
-                                  if (confirm('Bạn có chắc chắn muốn xóa lịch thi này?')) {
-                                    deleteSchedule.mutate({ classId: e.classId, scheduleId: e.id })
-                                  }
-                                }}
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
-                            </>
-                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-10 shrink-0 rounded-xl px-3 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                            onClick={() => {
+                              if (confirm('Bạn có chắc chắn muốn xóa lịch thi này?')) {
+                                deleteSchedule.mutate({ classId: e.classId, scheduleId: e.id })
+                              }
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* Desktop: bảng */}
+          <div className="hidden md:block md:overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="px-5 py-4 font-bold text-foreground">Tên lớp & Kỳ thi</th>
+                  <th className="px-5 py-4 font-bold text-foreground">Thời gian</th>
+                  <th className="px-5 py-4 font-bold text-foreground">Người chấm</th>
+                  <th className="px-5 py-4 text-right font-bold text-foreground">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredExams.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-20 text-center">
+                      <div className="flex flex-col items-center justify-center text-muted-foreground">
+                        <Calendar className="mb-4 h-10 w-10 opacity-20" />
+                        <p className="font-bold">Không tìm thấy kỳ thi nào</p>
+                        <p className="text-xs">Hãy nhấn &quot;Tạo lịch thi mới&quot; để bắt đầu</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredExams.map((e) => {
+                    const isPast = examScheduleIsPast(e)
+
+                    return (
+                      <tr key={e.id} className="border-b transition-colors hover:bg-muted/20">
+                        <td className="px-5 py-5">
+                          <p className="font-bold text-foreground leading-tight">{e.className}</p>
+                          <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                            {e.topic}
+                          </span>
+                        </td>
+                        <td className="px-5 py-5">
+                          <div className="space-y-1">
+                            <p
+                              className={cn(
+                                'font-black tabular-nums text-sm',
+                                isPast ? 'text-muted-foreground' : 'text-foreground'
+                              )}
+                            >
+                              {formatViDate(e.dateIso)} lúc {e.startTime}
+                            </p>
+                            {isPast ? (
+                              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                                Đã kết thúc
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-600">
+                                Sắp diễn ra
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-5 py-5">
+                          <p className="text-xs font-bold text-foreground">
+                            {e.examTeacherName || (e.examTeacherUserId ? 'Đã gán' : 'Chưa gán')}
+                          </p>
+                        </td>
+                        <td className="px-5 py-5 text-right">
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 gap-1.5 rounded-lg border-primary/20 text-[11px] font-bold text-primary hover:bg-primary/5"
+                              onClick={() => setSelectedClassIdForScores(e.classId)}
+                            >
+                              <Users className="h-3.5 w-3.5" />
+                              Học viên & Điểm
+                            </Button>
+                            {canManage && (
+                              <>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 gap-1.5 rounded-lg text-[11px] font-bold"
+                                  onClick={() => openExamModal(e.classId, e.id)}
+                                >
+                                  <Edit3 className="h-3.5 w-3.5" />
+                                  Sửa
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                  onClick={() => {
+                                    if (confirm('Bạn có chắc chắn muốn xóa lịch thi này?')) {
+                                      deleteSchedule.mutate({
+                                        classId: e.classId,
+                                        scheduleId: e.id,
+                                      })
+                                    }
+                                  }}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </ManagerScreenLayout>
 
       {examModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="max-h-[min(92dvh,900px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-2xl animate-in zoom-in-95 duration-200 sm:p-6">
             <div className="mb-6 flex items-center justify-between">
               <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
@@ -485,7 +583,7 @@ export function ManagerExamScheduleScreen() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-muted-foreground ml-1">Ngày thi</label>
                   <DatePicker

@@ -59,6 +59,8 @@ export interface EmployeeCardProps {
   onEdit: (e: React.MouseEvent) => void
   cardIndex?: number
   variant?: 'hr' | 'team'
+  /** Thu nhỏ padding/avatar — dùng lưới 2 cột trên mobile. */
+  compact?: boolean
 }
 
 export function EmployeeCard({
@@ -69,6 +71,7 @@ export function EmployeeCard({
   onEdit,
   cardIndex,
   variant = 'hr',
+  compact = false,
 }: EmployeeCardProps) {
   const tierLine = levelPillText(employee.currentLevel)
   const inactive = employee.status === 'INACTIVE'
@@ -137,7 +140,8 @@ export function EmployeeCard({
         }
       }}
       className={cn(
-        'group relative flex w-full cursor-pointer flex-col rounded-2xl border border-slate-200/80 bg-gradient-to-br p-5 text-left shadow-[0_10px_24px_-14px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/60 backdrop-blur-[1px] dark:border-slate-800 dark:ring-slate-800/70',
+        'group relative flex w-full cursor-pointer flex-col rounded-2xl border border-slate-200/80 bg-gradient-to-br text-left shadow-[0_10px_24px_-14px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/60 backdrop-blur-[1px] dark:border-slate-800 dark:ring-slate-800/70',
+        compact ? 'p-3 sm:p-5' : 'p-5',
         tone.cardBg,
         'transition-[transform,box-shadow,border-color] duration-200 ease-out',
         'hover:-translate-y-1 hover:border-primary/50 hover:shadow-[0_14px_32px_-14px_rgba(37,99,235,0.45)]',
@@ -157,11 +161,16 @@ export function EmployeeCard({
         aria-hidden
       />
       {/* Hàng 1: avatar | cấp + sao (theo mock HTML) */}
-      <div className="mb-5 flex items-start justify-between gap-3">
+      <div
+        className={cn('mb-5 flex items-start justify-between gap-2 sm:gap-3', compact && 'mb-3')}
+      >
         <div className="relative shrink-0">
           <div
             className={cn(
-              'flex h-[5.25rem] w-[5.25rem] items-center justify-center rounded-2xl text-xl font-extrabold leading-tight shadow-md ring-2 ring-background sm:h-[5.75rem] sm:w-[5.75rem] sm:text-2xl',
+              'flex items-center justify-center rounded-2xl font-extrabold leading-tight shadow-md ring-2 ring-background',
+              compact
+                ? 'h-[3.75rem] w-[3.75rem] text-base sm:h-[5.25rem] sm:w-[5.25rem] sm:text-xl md:h-[5.75rem] md:w-[5.75rem] md:text-2xl'
+                : 'h-[5.25rem] w-[5.25rem] text-xl sm:h-[5.75rem] sm:w-[5.75rem] sm:text-2xl',
               avatarClassForRole(employee.role),
               inactive && 'grayscale-[0.35]'
             )}
@@ -175,10 +184,10 @@ export function EmployeeCard({
             )}
           />
         </div>
-        <div className="flex min-w-0 flex-col items-end gap-1.5">
+        <div className="flex min-w-0 flex-col items-end gap-1 sm:gap-1.5">
           <span
             className={cn(
-              'max-w-[9rem] truncate rounded-md px-2 py-0.5 text-center text-[10px] font-bold tracking-tight sm:max-w-[10rem]',
+              'max-w-[6rem] truncate rounded-md px-1.5 py-0.5 text-center text-[9px] font-bold tracking-tight sm:max-w-[9rem] sm:px-2 sm:text-[10px] md:max-w-[10rem]',
               tone.chip
             )}
             title={tierLine}
@@ -198,17 +207,30 @@ export function EmployeeCard({
       </div>
 
       {/* Hàng 2: tên + vị trí + PB */}
-      <div className="mb-5 min-w-0">
+      <div className={cn('mb-5 min-w-0', compact && 'mb-3')}>
         <h3
           className={cn(
-            'text-base font-bold leading-snug text-foreground',
+            'font-bold leading-snug text-foreground',
+            compact ? 'text-xs sm:text-base' : 'text-base',
             inactive && 'text-muted-foreground'
           )}
         >
           {employee.name}
         </h3>
-        <p className="mt-0.5 text-xs font-semibold text-foreground/80">{positionLabel}</p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+        <p
+          className={cn(
+            'mt-0.5 font-semibold text-foreground/80',
+            compact ? 'text-[10px] sm:text-xs' : 'text-xs'
+          )}
+        >
+          {positionLabel}
+        </p>
+        <div
+          className={cn(
+            'mt-1.5 flex flex-wrap items-center gap-1 sm:gap-1.5',
+            compact ? 'text-[9px] sm:text-[11px]' : 'text-[11px]'
+          )}
+        >
           <span
             className={cn(
               'inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold',
@@ -226,9 +248,11 @@ export function EmployeeCard({
         </div>
       </div>
 
-      <div className="mb-5 px-1 py-1">
-        {employee.currentStar > 0 ? <StarRow filled={employee.currentStar} /> : null}
-      </div>
+      {!compact ? (
+        <div className="mb-5 px-1 py-1">
+          {employee.currentStar > 0 ? <StarRow filled={employee.currentStar} /> : null}
+        </div>
+      ) : null}
 
       <div className="mt-auto flex gap-2">
         {inactive ? (
@@ -301,7 +325,7 @@ export function EmployeeCard({
           </>
         )}
       </div>
-      {!inactive ? (
+      {!inactive && !compact ? (
         <p className="mt-2 text-center text-[11px] font-medium text-muted-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           Bấm để xem thông tin tóm tắt
         </p>

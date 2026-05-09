@@ -916,7 +916,7 @@ export function RoadmapCrud() {
         </Dialog>
 
         {/* Grouped Card Display Layout */}
-        <div className="space-y-8 pb-16 mt-6 max-w-7xl mx-auto px-4">
+        <div className="mx-auto mt-6 max-w-7xl space-y-8 px-2 pb-16 sm:px-4">
           {!isLoading && uniqueLevels.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 rounded-[3rem] border border-dashed border-gray-200 bg-white shadow-sm">
               <div className="h-20 w-20 rounded-3xl bg-gray-50 flex items-center justify-center text-gray-300 font-black text-3xl mb-4">
@@ -971,7 +971,7 @@ export function RoadmapCrud() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-6 pl-6 border-l border-gray-200 ml-5">
+                  <div className="ml-2 grid grid-cols-1 gap-4 border-l border-gray-200 pl-3 sm:ml-4 sm:gap-6 sm:pl-5 md:ml-5 md:pl-6">
                     {uniqueTopics.map((topicKey) => {
                       const topicItems = group.items.filter(
                         (i) => (i.topic || '').trim().toLowerCase() === topicKey
@@ -984,7 +984,7 @@ export function RoadmapCrud() {
                           className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300"
                         >
                           {/* Topic Header - COMPACT */}
-                          <div className="bg-gray-50/50 px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+                          <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 px-3 py-3 sm:px-6">
                             <div className="flex items-center gap-3">
                               <div className="h-8 w-8 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center">
                                 <BookOpen className="h-4 w-4" />
@@ -1001,7 +1001,7 @@ export function RoadmapCrud() {
                               <div
                                 key={item.id}
                                 className={safeCn(
-                                  'py-3 px-5 rounded-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all hover:bg-primary/[0.02]',
+                                  'flex flex-col justify-between gap-4 rounded-xl px-3 py-3 transition-all hover:bg-primary/[0.02] sm:px-5 lg:flex-row lg:items-center',
                                   idx % 2 === 0 ? 'bg-gray-50/30' : 'bg-white'
                                 )}
                               >

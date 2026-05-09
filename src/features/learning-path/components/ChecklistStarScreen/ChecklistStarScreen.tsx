@@ -339,7 +339,7 @@ export function ChecklistStarScreen({
         </div>
       ) : null}
 
-      <div className="page-shell">
+      <div className={cn(embedInLearningPath ? 'min-w-0 px-0 py-1 sm:py-2' : 'page-shell')}>
         {isLoading ? (
           <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 lg:grid-cols-12">
             <div className="space-y-4 lg:col-span-7">
@@ -368,7 +368,12 @@ export function ChecklistStarScreen({
               </span>
             </nav>
 
-            <div className="relative mb-8 overflow-hidden rounded-3xl vcb-banner-gradient px-6 py-8 text-white shadow-xl sm:px-8">
+            <div
+              className={cn(
+                'relative mb-8 overflow-hidden rounded-3xl vcb-banner-gradient text-white shadow-xl',
+                embedInLearningPath ? 'px-4 py-6 sm:px-6 sm:py-8' : 'px-6 py-8 sm:px-8'
+              )}
+            >
               <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
               <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0 space-y-2">

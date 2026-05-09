@@ -203,7 +203,38 @@ export function TeacherClassesScreen() {
 
           {viewMode === 'table' ? (
             <div className="overflow-hidden rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10">
-              <div className="overflow-x-auto">
+              <div className="divide-y divide-border md:hidden">
+                {filtered.map((c) => (
+                  <div key={c.id} className="space-y-3 p-4">
+                    <p className="text-base font-semibold text-foreground">{c.title}</p>
+                    <span
+                      className={cn(
+                        'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold',
+                        c.accent === 'primary'
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-amber-100 text-amber-900'
+                      )}
+                    >
+                      {c.periodBadge}
+                    </span>
+                    <p className="text-sm text-muted-foreground">{c.examLine}</p>
+                    <p className="text-sm font-semibold tabular-nums text-foreground">
+                      Học viên: {c.memberCount}
+                    </p>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-10 w-full font-semibold"
+                      asChild
+                    >
+                      <Link to="/teacher/classes/$classId" params={{ classId: c.id }}>
+                        Xem chi tiết
+                      </Link>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[640px] border-collapse text-left text-sm">
                   <thead>
                     <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">

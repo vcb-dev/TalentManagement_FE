@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { getRouteApi, Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -28,8 +28,11 @@ const CATALOG_CODES = ['SALES_NV', 'LIVESTREAM_NV', 'VAN_DON_NV']
 const CATEGORY_OPTIONS = ['BASE', 'KPI_BONUS', 'PERFORMANCE_BONUS', 'BENEFIT']
 const TENURE_STAGE_OPTIONS = ['M1', 'M2', 'M3', 'OFFICIAL']
 
+const catalogEditorRoute = getRouteApi('/_protected/hr-admin/kpi-catalog/$code')
+
 export function CatalogEditorScreen() {
-  const [selectedCode, setSelectedCode] = useState('SALES_NV')
+  const { code: selectedCode } = catalogEditorRoute.useParams()
+  const navigate = catalogEditorRoute.useNavigate()
   const queryClient = useQueryClient()
   const { canId } = usePermission()
 
@@ -43,6 +46,10 @@ export function CatalogEditorScreen() {
 
   const isMultiStage = stages.length > 1
   const [activeStage, setActiveStage] = useState<string>('')
+
+  useEffect(() => {
+    setActiveStage('')
+  }, [selectedCode])
 
   type ItemRow = NonNullable<typeof catalog>['items'] extends (infer T)[] ? T : never
   const itemsByStage: Record<string, ItemRow[]> = catalog?.items
@@ -61,21 +68,21 @@ export function CatalogEditorScreen() {
   const currentStage = activeStage && stages.includes(activeStage) ? activeStage : firstStage
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="min-w-0 space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-xl">
             Danh mục KPI/OKR
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-xs text-slate-500 sm:text-sm">
             Quản lý mẫu KPI/OKR theo vị trí và giai đoạn thâm niên.
           </p>
         </div>
       </div>
 
       {/* Banner */}
-      <div className="flex items-start gap-3 rounded-lg border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-900 dark:bg-indigo-950/30">
+      <div className="flex items-start gap-2 rounded-lg border border-indigo-200 bg-indigo-50/50 p-3 sm:gap-3 sm:p-4 dark:border-indigo-900 dark:bg-indigo-950/30">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
         <div className="text-xs text-indigo-700 dark:text-indigo-300">
           Danh mục này áp dụng cho các phòng ban nằm trong danh sách cho phép (cấu hình môi trường
@@ -94,28 +101,38 @@ export function CatalogEditorScreen() {
       </div>
 
       {/* Sidebar + Content layout */}
-      <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
-        {/* Sidebar */}
-        <div className="space-y-1">
-          <Label className="px-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[240px_1fr] lg:gap-6">
+        {/* Sidebar: cuộn ngang trên mobile, cột trên lg */}
+        <div className="min-w-0 space-y-1">
+          <Label className="hidden px-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 lg:block">
             Danh sách danh mục
           </Label>
-          {CATALOG_CODES.map((code) => (
-            <button
-              key={code}
-              type="button"
-              onClick={() => setSelectedCode(code)}
-              className={cn(
-                'flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-all',
-                selectedCode === code
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
-              )}
-            >
-              <BookOpen className="h-4 w-4 shrink-0" />
-              {code}
-            </button>
-          ))}
+          <Label className="mb-1 block px-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 lg:hidden">
+            Chọn danh mục
+          </Label>
+          <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0">
+            {CATALOG_CODES.map((code) => (
+              <button
+                key={code}
+                type="button"
+                onClick={() =>
+                  void navigate({
+                    to: '/hr-admin/kpi-catalog/$code',
+                    params: { code },
+                  })
+                }
+                className={cn(
+                  'flex shrink-0 items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-all lg:w-full',
+                  selectedCode === code
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                )}
+              >
+                <BookOpen className="h-4 w-4 shrink-0" />
+                {code}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Content */}
@@ -131,14 +148,14 @@ export function CatalogEditorScreen() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             {/* Metadata */}
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              <CardContent className="p-4 pt-5 sm:p-6 sm:pt-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-base font-bold text-slate-900 dark:text-slate-100 sm:text-lg">
                         {catalog.name}
                       </span>
                       <Badge variant="outline" className="h-5 font-mono text-[10px]">
@@ -146,10 +163,12 @@ export function CatalogEditorScreen() {
                       </Badge>
                     </div>
                     {catalog.description && (
-                      <p className="mt-1 text-sm text-slate-500">{catalog.description}</p>
+                      <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+                        {catalog.description}
+                      </p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <div className="shrink-0 text-[11px] text-slate-400 sm:text-xs">
                     {catalog.items?.length ?? 0} items
                     {' · '}
                     {(catalog.revenueTiers?.length ?? 0) > 0
@@ -162,14 +181,14 @@ export function CatalogEditorScreen() {
 
             {/* Stage tabs (multi-stage only) */}
             {isMultiStage && stages.length > 0 && (
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1.5">
                 {stages.map((s) => (
                   <button
                     key={s}
                     type="button"
                     onClick={() => setActiveStage(s)}
                     className={cn(
-                      'rounded-lg px-4 py-2 text-xs font-bold transition-all',
+                      'rounded-lg px-3 py-2 text-xs font-bold transition-all sm:px-4',
                       currentStage === s
                         ? 'bg-indigo-600 text-white shadow'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
@@ -181,11 +200,11 @@ export function CatalogEditorScreen() {
               </div>
             )}
 
-            {/* Items table */}
+            {/* Items table / mobile cards */}
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between text-sm font-bold">
-                  <span>
+              <CardHeader className="space-y-2 p-4 pb-2 sm:p-6 sm:pb-2">
+                <CardTitle className="flex flex-col gap-2 text-sm font-bold sm:flex-row sm:items-center sm:justify-between">
+                  <span className="min-w-0 leading-snug">
                     {isMultiStage ? `Stage ${currentStage}` : 'Danh sách chỉ tiêu'} (
                     {itemsByStage[currentStage]?.length ?? 0})
                   </span>
@@ -200,18 +219,19 @@ export function CatalogEditorScreen() {
                   />
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
+              <CardContent className="min-w-0 p-0 sm:p-6 sm:pt-0">
+                {/* Desktop */}
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="w-full min-w-[640px] text-xs">
                     <thead>
                       <tr className="border-b text-left text-slate-400">
-                        <th className="pb-2 pr-2 font-medium w-8">#</th>
+                        <th className="w-8 pb-2 pr-2 font-medium">#</th>
                         <th className="pb-2 pr-2 font-medium">Nhóm</th>
                         <th className="pb-2 pr-2 font-medium">Loại</th>
                         <th className="pb-2 pr-2 font-medium">Nội dung</th>
                         <th className="pb-2 pr-2 font-medium">Chỉ tiêu/Tháng</th>
                         <th className="pb-2 pr-2 font-medium">Đơn vị</th>
-                        <th className="pb-2 font-medium w-16" />
+                        <th className="w-16 pb-2 font-medium" />
                       </tr>
                     </thead>
                     <tbody>
@@ -225,7 +245,7 @@ export function CatalogEditorScreen() {
                             <Badge
                               variant="outline"
                               className={cn(
-                                'h-4 text-[9px] font-bold px-1',
+                                'h-4 px-1 text-[9px] font-bold',
                                 categoryBadgeClass(item.category)
                               )}
                             >
@@ -233,11 +253,11 @@ export function CatalogEditorScreen() {
                             </Badge>
                           </td>
                           <td className="py-2 pr-2">
-                            <Badge variant="outline" className="h-4 text-[9px] font-bold px-1">
+                            <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold">
                               {item.kind}
                             </Badge>
                           </td>
-                          <td className="py-2 pr-2 max-w-xs truncate font-medium text-slate-700 dark:text-slate-300">
+                          <td className="max-w-xs truncate py-2 pr-2 font-medium text-slate-700 dark:text-slate-300">
                             {item.content}
                           </td>
                           <td className="py-2 pr-2 tabular-nums text-slate-600">
@@ -270,19 +290,75 @@ export function CatalogEditorScreen() {
                     </tbody>
                   </table>
                 </div>
+                {/* Mobile: thẻ, đủ cột không cần cuộn ngang */}
+                <ul className="divide-y divide-border md:hidden">
+                  {(itemsByStage[currentStage] ?? []).map((item, idx) => (
+                    <li key={item.id} className="space-y-2 px-4 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="tabular-nums text-[11px] text-slate-400">#{idx + 1}</span>
+                        <div className="flex shrink-0 gap-0.5">
+                          <EditItemButton
+                            item={item}
+                            onSaved={() =>
+                              queryClient.invalidateQueries({
+                                queryKey: ['performance', 'catalog', selectedCode],
+                              })
+                            }
+                          />
+                          <DeleteItemButton
+                            itemId={item.id}
+                            onDeleted={() =>
+                              queryClient.invalidateQueries({
+                                queryKey: ['performance', 'catalog', selectedCode],
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'h-5 px-1.5 text-[9px] font-bold',
+                            categoryBadgeClass(item.category)
+                          )}
+                        >
+                          {categoryLabel(item.category).replace(/^[A-E]\.\s/, '')}
+                        </Badge>
+                        <Badge variant="outline" className="h-5 px-1.5 text-[9px] font-bold">
+                          {item.kind}
+                        </Badge>
+                      </div>
+                      <p className="text-sm font-medium leading-snug text-slate-800 dark:text-slate-200">
+                        {item.content}
+                      </p>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                        <span>
+                          <span className="text-muted-foreground">Chỉ tiêu/Tháng:</span>{' '}
+                          {item.monthlyTarget ||
+                            (item.numericTarget != null ? String(item.numericTarget) : '—')}
+                        </span>
+                        <span>
+                          <span className="text-muted-foreground">Đơn vị:</span>{' '}
+                          {item.numericUnit || '—'}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
 
             {/* Revenue Tiers (Sales NV only) */}
             {(catalog.revenueTiers?.length ?? 0) > 0 && (
               <Card>
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                   <CardTitle className="text-sm font-bold">
                     Tier doanh thu ({catalog.revenueTiers?.length ?? 0})
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
+                <CardContent className="min-w-0 p-0 sm:p-6 sm:pt-0">
+                  <div className="hidden overflow-x-auto md:block">
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="border-b text-left text-slate-400">
@@ -315,6 +391,26 @@ export function CatalogEditorScreen() {
                       </tbody>
                     </table>
                   </div>
+                  <ul className="divide-y divide-border md:hidden">
+                    {catalog.revenueTiers?.map((tier: any) => (
+                      <li key={tier.id} className="space-y-1.5 px-4 py-3 text-sm">
+                        <div className="font-semibold text-foreground">{tier.tierLabel}</div>
+                        <div className="text-xs tabular-nums text-slate-600">
+                          <span className="text-muted-foreground">Từ:</span>{' '}
+                          {Number(tier.minAmount).toLocaleString('vi-VN')} VND
+                        </div>
+                        <div className="text-xs tabular-nums text-slate-600">
+                          <span className="text-muted-foreground">Đến:</span>{' '}
+                          {tier.maxAmount != null
+                            ? `${Number(tier.maxAmount).toLocaleString('vi-VN')} VND`
+                            : 'Không giới hạn'}
+                        </div>
+                        <div className="text-xs font-medium text-slate-700">
+                          % Thưởng: {tier.bonusPercent != null ? `${tier.bonusPercent}%` : '—'}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 </CardContent>
               </Card>
             )}
@@ -378,17 +474,21 @@ function AddItemButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-7 gap-1 text-[11px]">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 w-full gap-1 text-[11px] sm:h-7 sm:w-auto"
+        >
           <Plus className="h-3 w-3" />
           Thêm item
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[min(90dvh,900px)] w-[calc(100vw-1.5rem)] max-w-lg overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>Thêm item vào catalog {catalogCode}</DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div className="space-y-1">
               <Label className="text-[11px]">Stage</Label>
               <select
@@ -421,7 +521,7 @@ function AddItemButton({
               placeholder="Nội dung KPI/OKR..."
             />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div className="space-y-1">
               <Label className="text-[11px]">Loại</Label>
               <select {...register('kind')} className="w-full h-8 rounded border px-2 text-xs">
@@ -446,7 +546,7 @@ function AddItemButton({
               />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div className="space-y-1">
               <Label className="text-[11px]">Chỉ tiêu/Tháng</Label>
               <Input {...register('monthlyTarget')} className="h-8 text-xs" />
@@ -516,7 +616,7 @@ function EditItemButton({ item, onSaved }: { item: any; onSaved: () => void }) {
           <Pencil className="h-3 w-3 text-slate-400" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[min(90dvh,900px)] w-[calc(100vw-1.5rem)] max-w-lg overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>Sửa item</DialogTitle>
         </DialogHeader>
@@ -525,7 +625,7 @@ function EditItemButton({ item, onSaved }: { item: any; onSaved: () => void }) {
             <Label className="text-[11px]">Nội dung</Label>
             <Textarea {...register('content')} className="h-20 text-xs" />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div className="space-y-1">
               <Label className="text-[11px]">Chỉ tiêu/Tháng</Label>
               <Input {...register('monthlyTarget')} className="h-8 text-xs" />

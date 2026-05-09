@@ -80,6 +80,219 @@ function showNotification(title: string, body: string) {
   }
 }
 
+function BookingStatusBadge({ b }: { b: MeetingBooking }) {
+  const { date: td, time: ct } = getVnNow()
+  const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
+
+  if (b.status === 'approved' && isPast)
+    return (
+      <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700">
+        ✓ Đã họp xong
+      </span>
+    )
+
+  if (b.status === 'pending' && isPast)
+    return (
+      <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-slate-500">
+        Quá hạn
+      </span>
+    )
+
+  const map = {
+    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    rejected: 'bg-rose-50 text-rose-700 border-rose-200',
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  }
+  const label = {
+    approved: 'Đã duyệt',
+    rejected: b.isOverridden ? 'Bị ghi đè' : 'Từ chối',
+    pending: 'Chờ duyệt',
+  }
+  const isModified =
+    b.status === 'pending' &&
+    b.updatedAt &&
+    new Date(b.updatedAt).getTime() > new Date(b.createdAt).getTime() + 5000
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight border ${map[b.status]}`}
+      >
+        {label[b.status]}
+      </span>
+      {isModified && (
+        <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-tighter text-indigo-700">
+          Yêu cầu đổi lịch
+        </span>
+      )}
+    </div>
+  )
+}
+
+type BookingRowActionsProps = {
+  b: MeetingBooking
+  user: ReturnType<typeof useAuthStore.getState>['user']
+  isPrivileged: boolean
+  processingId: string | null
+  handleApprove: (id: string) => void
+  setRejectId: (id: string) => void
+  handleEdit: (b: MeetingBooking) => void
+  handleDelete: (id: string) => void
+  variant?: 'table' | 'mobile'
+}
+
+function BookingRowActions({
+  b,
+  user,
+  isPrivileged,
+  processingId,
+  handleApprove,
+  setRejectId,
+  handleEdit,
+  handleDelete,
+  variant = 'table',
+}: BookingRowActionsProps) {
+  const mobile = variant === 'mobile'
+  const btnWrap = mobile ? 'w-full justify-center' : ''
+
+  return (
+    <div className={mobile ? 'flex w-full flex-col gap-2' : 'flex items-center justify-end gap-2'}>
+      {isPrivileged && b.status === 'pending' && (
+        <>
+          <button
+            type="button"
+            onClick={() => handleApprove(b.id)}
+            disabled={!!processingId}
+            className={`group relative flex items-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 hover:shadow-emerald-500/40 active:scale-95 disabled:opacity-50 ${btnWrap}`}
+          >
+            {processingId === b.id ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-3 w-3" />
+            )}
+            <span>DUYỆT</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRejectId(b.id)}
+            disabled={!!processingId}
+            className={`group flex items-center gap-2 rounded-xl border-2 border-rose-100 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600 transition-all hover:border-rose-200 hover:bg-rose-50 active:scale-95 disabled:opacity-50 ${btnWrap}`}
+          >
+            <X className="h-3 w-3" />
+            <span>TỪ CHỐI</span>
+          </button>
+        </>
+      )}
+      {b.userId === user?.id && (
+        <div className={mobile ? 'flex w-full flex-col gap-2' : 'flex gap-2'}>
+          <button
+            type="button"
+            onClick={() => handleEdit(b)}
+            disabled={!!processingId}
+            className={`flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary transition-all hover:bg-primary hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
+          >
+            <span>ĐỔI LỊCH</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDelete(b.id)}
+            disabled={!!processingId}
+            className={`flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600 transition-all hover:bg-rose-600 hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
+          >
+            {processingId === b.id ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <X className="h-3 w-3" />
+            )}
+            <span>HỦY</span>
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const BookingCardMobile = memo(
+  ({
+    b,
+    user,
+    isPrivileged,
+    processingId,
+    handleApprove,
+    setRejectId,
+    handleEdit,
+    handleDelete,
+  }: {
+    b: MeetingBooking
+    user: ReturnType<typeof useAuthStore.getState>['user']
+    isPrivileged: boolean
+    processingId: string | null
+    handleApprove: (id: string) => void
+    setRejectId: (id: string) => void
+    handleEdit: (b: MeetingBooking) => void
+    handleDelete: (id: string) => void
+  }) => {
+    return (
+      <div className="space-y-3 border-b border-border/50 p-4 last:border-b-0">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            Phòng
+          </p>
+          <p className="font-black text-foreground">{b.room}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            Người đặt / Team
+          </p>
+          <span className="text-[11px] font-bold uppercase text-foreground">{b.userName}</span>
+          <span className="mt-0.5 block text-[9px] font-medium uppercase text-muted-foreground">
+            {b.team}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              Ngày
+            </p>
+            <p className="text-sm text-muted-foreground">{b.date}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              Giờ
+            </p>
+            <p className="text-sm font-bold text-primary">
+              {b.timeFrom} – {b.timeTo}
+            </p>
+          </div>
+        </div>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            Lý do
+          </p>
+          <p className="break-words text-sm">{b.reason}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            Trạng thái
+          </p>
+          <BookingStatusBadge b={b} />
+        </div>
+        <BookingRowActions
+          b={b}
+          user={user}
+          isPrivileged={isPrivileged}
+          processingId={processingId}
+          handleApprove={handleApprove}
+          setRejectId={setRejectId}
+          handleEdit={handleEdit}
+          handleDelete={handleDelete}
+          variant="mobile"
+        />
+      </div>
+    )
+  }
+)
+
 const BookingRow = memo(
   ({
     b,
@@ -92,7 +305,7 @@ const BookingRow = memo(
     handleDelete,
   }: {
     b: MeetingBooking
-    user: any
+    user: ReturnType<typeof useAuthStore.getState>['user']
     isPrivileged: boolean
     processingId: string | null
     handleApprove: (id: string) => void
@@ -100,120 +313,35 @@ const BookingRow = memo(
     handleEdit: (b: MeetingBooking) => void
     handleDelete: (id: string) => void
   }) => {
-    const statusBadge = () => {
-      const { date: td, time: ct } = getVnNow()
-      const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
-
-      if (b.status === 'approved' && isPast)
-        return (
-          <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700 border border-blue-200">
-            ✓ Đã họp xong
-          </span>
-        )
-
-      if (b.status === 'pending' && isPast)
-        return (
-          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-slate-500 border border-slate-200">
-            Quá hạn
-          </span>
-        )
-
-      const map = {
-        approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        rejected: 'bg-rose-50 text-rose-700 border-rose-200',
-        pending: 'bg-amber-50 text-amber-700 border-amber-200',
-      }
-      const label = {
-        approved: 'Đã duyệt',
-        rejected: b.isOverridden ? 'Bị ghi đè' : 'Từ chối',
-        pending: 'Chờ duyệt',
-      }
-      const isModified =
-        b.status === 'pending' &&
-        b.updatedAt &&
-        new Date(b.updatedAt).getTime() > new Date(b.createdAt).getTime() + 5000
-
-      return (
-        <div className="flex flex-col gap-1">
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight border ${map[b.status]}`}
-          >
-            {label[b.status]}
-          </span>
-          {isModified && (
-            <span className="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 border-indigo-200 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-tighter border">
-              Yêu cầu đổi lịch
-            </span>
-          )}
-        </div>
-      )
-    }
-
     return (
       <tr className="group hover:bg-primary/[0.02]">
         <td className="px-6 py-5 font-black">{b.room}</td>
         <td className="px-6 py-5">
           <div className="flex flex-col">
-            <span className="uppercase font-bold text-[11px]">{b.userName}</span>
-            <span className="text-[9px] font-medium text-muted-foreground uppercase">{b.team}</span>
+            <span className="text-[11px] font-bold uppercase">{b.userName}</span>
+            <span className="text-[9px] font-medium uppercase text-muted-foreground">{b.team}</span>
           </div>
         </td>
         <td className="px-6 py-5 text-muted-foreground">{b.date}</td>
         <td className="px-6 py-5 font-bold text-primary">
           {b.timeFrom} – {b.timeTo}
         </td>
-        <td className="px-6 py-5 max-w-[200px] truncate">{b.reason}</td>
-        <td className="px-6 py-5">{statusBadge()}</td>
+        <td className="max-w-[200px] truncate px-6 py-5">{b.reason}</td>
+        <td className="px-6 py-5">
+          <BookingStatusBadge b={b} />
+        </td>
         <td className="px-6 py-5 text-right">
-          <div className="flex items-center justify-end gap-2">
-            {isPrivileged && b.status === 'pending' && (
-              <>
-                <button
-                  onClick={() => handleApprove(b.id)}
-                  disabled={!!processingId}
-                  className="group relative flex items-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 hover:shadow-emerald-500/40 active:scale-95 disabled:opacity-50"
-                >
-                  {processingId === b.id ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-3 w-3" />
-                  )}
-                  <span>DUYỆT</span>
-                </button>
-                <button
-                  onClick={() => setRejectId(b.id)}
-                  disabled={!!processingId}
-                  className="group flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600 border-2 border-rose-100 hover:bg-rose-50 hover:border-rose-200 transition-all active:scale-95 disabled:opacity-50"
-                >
-                  <X className="h-3 w-3" />
-                  <span>TỪ CHỐI</span>
-                </button>
-              </>
-            )}
-            {b.userId === user?.id && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleEdit(b)}
-                  disabled={!!processingId}
-                  className="flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white transition-all active:scale-95 disabled:opacity-50"
-                >
-                  <span>ĐỔI LỊCH</span>
-                </button>
-                <button
-                  onClick={() => handleDelete(b.id)}
-                  disabled={!!processingId}
-                  className="flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-600 hover:text-white transition-all active:scale-95 disabled:opacity-50"
-                >
-                  {processingId === b.id ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <X className="h-3 w-3" />
-                  )}
-                  <span>HỦY</span>
-                </button>
-              </div>
-            )}
-          </div>
+          <BookingRowActions
+            b={b}
+            user={user}
+            isPrivileged={isPrivileged}
+            processingId={processingId}
+            handleApprove={handleApprove}
+            setRejectId={setRejectId}
+            handleEdit={handleEdit}
+            handleDelete={handleDelete}
+            variant="table"
+          />
         </td>
       </tr>
     )
@@ -523,8 +651,45 @@ export default function RoomBookingPage() {
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className="divide-y divide-border/50 bg-white/30 md:hidden">
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="animate-pulse space-y-3 p-4">
+                  <div className="h-4 w-32 rounded bg-muted" />
+                  <div className="h-4 w-48 rounded bg-muted" />
+                  <div className="h-4 w-40 rounded bg-muted" />
+                  <div className="h-10 w-full rounded-xl bg-muted" />
+                </div>
+              ))
+            ) : pageData.length === 0 ? (
+              <div className="px-6 py-20 text-center">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="rounded-full bg-muted p-4">
+                    <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Không tìm thấy lịch đặt nào
+                  </p>
+                </div>
+              </div>
+            ) : (
+              pageData.map((b) => (
+                <BookingCardMobile
+                  key={b.id}
+                  b={b}
+                  user={user}
+                  isPrivileged={isPrivileged}
+                  processingId={processingId}
+                  handleApprove={handleApprove}
+                  setRejectId={setRejectId}
+                  handleEdit={handleEdit}
+                  handleDelete={handleDelete}
+                />
+              ))
+            )}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="bg-muted/30">
                 <tr>
                   {['Phòng', 'Người đặt / Team', 'Ngày', 'Giờ', 'Lý do', 'Trạng thái', ''].map(
@@ -544,25 +709,25 @@ export default function RoomBookingPage() {
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="animate-pulse">
                       <td className="px-6 py-5">
-                        <div className="h-4 w-20 bg-muted rounded" />
+                        <div className="h-4 w-20 rounded bg-muted" />
                       </td>
                       <td className="px-6 py-5">
-                        <div className="h-4 w-32 bg-muted rounded" />
+                        <div className="h-4 w-32 rounded bg-muted" />
                       </td>
                       <td className="px-6 py-5">
-                        <div className="h-4 w-24 bg-muted rounded" />
+                        <div className="h-4 w-24 rounded bg-muted" />
                       </td>
                       <td className="px-6 py-5">
-                        <div className="h-4 w-16 bg-muted rounded" />
+                        <div className="h-4 w-16 rounded bg-muted" />
                       </td>
                       <td className="px-6 py-5">
-                        <div className="h-4 w-40 bg-muted rounded" />
+                        <div className="h-4 w-40 rounded bg-muted" />
                       </td>
                       <td className="px-6 py-5">
-                        <div className="h-6 w-20 bg-muted rounded-full" />
+                        <div className="h-6 w-20 rounded-full bg-muted" />
                       </td>
                       <td className="px-6 py-5">
-                        <div className="h-8 w-24 bg-muted rounded-xl ml-auto" />
+                        <div className="ml-auto h-8 w-24 rounded-xl bg-muted" />
                       </td>
                     </tr>
                   ))

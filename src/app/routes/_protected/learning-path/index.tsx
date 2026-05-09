@@ -1,15 +1,13 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChecklistStarScreen } from '@/features/learning-path/components/ChecklistStarScreen'
 import { useMyProfilePage } from '@/features/profile/hooks'
-import { LEVEL_LABELS, LEVELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
+import { STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { useAuthStore } from '@/stores/auth.store'
 import { RoadmapCrud } from '@/features/manager/components/RoadmapCrud'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 
 const levelIdSchema = z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong'])
 
@@ -51,11 +49,9 @@ function LearningPathIndex() {
 function LearningPathMemberPage() {
   const { data: profile, isLoading, isError } = useMyProfilePage()
   const search = Route.useSearch()
-  const navigate = useNavigate()
-
   if (isLoading) {
     return (
-      <div className="p-8">
+      <div className="space-y-4 py-1">
         <PageHeader title="Lộ trình học" description="Đang tải thông tin lộ trình của bạn…" />
         <div className="space-y-4">
           <Skeleton className="h-24 w-full rounded-xl" />
@@ -67,7 +63,7 @@ function LearningPathMemberPage() {
 
   if (isError || !profile) {
     return (
-      <div className="p-8">
+      <div className="space-y-4 py-1">
         <PageHeader title="Lộ trình học" />
         <Card>
           <CardContent className="py-6 text-sm text-muted-foreground">
@@ -83,13 +79,13 @@ function LearningPathMemberPage() {
   const starStr = String(currentStarId)
 
   return (
-    <div className="p-8">
+    <div className="min-w-0 space-y-6">
       <PageHeader
         title="Lộ trình học"
         description={`${profile.currentLevel.progressLine} — Cấp và mốc do quản lý phân công.`}
       />
 
-      <div className="mt-8">
+      <div className="min-w-0">
         <ChecklistStarScreen levelId={currentLevelId} starId={starStr} embedInLearningPath />
       </div>
     </div>

@@ -86,7 +86,7 @@ export function SkeletonEmployeeCard({ className, ...props }: HTMLAttributes<HTM
 export function SkeletonEmployeeCardGrid({ count = 8 }: { count?: number }) {
   return (
     <div
-      className="grid gap-4 gap-y-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+      className="grid grid-cols-2 gap-3 gap-y-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5"
       role="status"
       aria-busy
       aria-label="Đang tải danh sách nhân viên"

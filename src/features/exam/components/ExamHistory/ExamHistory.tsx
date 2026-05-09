@@ -20,7 +20,23 @@ export function ExamHistory({ rows, isLoading }: ExamHistoryProps) {
   return (
     <Card>
       <CardContent className="p-4 sm:p-6">
-        <DataTable columns={columns} data={rows} isLoading={isLoading} />
+        <DataTable
+          columns={columns}
+          data={rows}
+          isLoading={isLoading}
+          getRowKey={(r) => r.id}
+          renderMobileRow={(r) => (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground">Nhân viên</p>
+              <p className="break-all text-sm font-medium">{r.employeeId}</p>
+              <p className="text-xs font-semibold text-muted-foreground">Kết quả</p>
+              <p className="text-sm">{r.result}</p>
+              <p className="text-xs text-muted-foreground">
+                Thời điểm: {formatViDate(r.classifiedAt)}
+              </p>
+            </div>
+          )}
+        />
       </CardContent>
     </Card>
   )

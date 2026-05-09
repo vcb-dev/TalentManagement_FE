@@ -159,14 +159,106 @@ export function GraderExamListScreen({ classId }: GraderExamListScreenProps) {
               </div>
             </div>
 
-            {/* Table */}
+            {/* Table (md+) + thẻ (mobile) */}
             <div
               className={cn(
                 'overflow-hidden rounded-xl border border-primary/15 bg-card shadow-sm',
                 SECTION_FADE_UP
               )}
             >
-              <div className="overflow-x-auto">
+              <div className="space-y-3 p-3 md:hidden">
+                {isLoading ? (
+                  <div className="py-10 text-center text-sm font-bold text-muted-foreground">
+                    Đang tải danh sách bài thi...
+                  </div>
+                ) : rows.length === 0 ? (
+                  <div className="py-12 text-center text-sm text-muted-foreground">
+                    {onlyPending
+                      ? 'Không có bài nào đang chờ chấm 🎉'
+                      : 'Chưa có bài thi nào được nộp.'}
+                  </div>
+                ) : (
+                  rows.map((row, rowIdx) => {
+                    const dateObj = new Date(row.createdAt)
+                    const formattedDate = dateObj.toLocaleDateString('vi-VN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    })
+                    const initials = getInitials(row.fullName)
+                    return (
+                      <div
+                        key={row.id}
+                        role="button"
+                        tabIndex={0}
+                        className={cn(
+                          'cursor-pointer rounded-xl border border-border/80 bg-card p-4 shadow-sm outline-none transition-colors hover:bg-primary/[0.05] focus-visible:ring-2 focus-visible:ring-primary/30',
+                          CARD_ENTRANCE_HOVER
+                        )}
+                        style={staggerStyle(rowIdx, 42)}
+                        onClick={() => goGrade(row)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            goGrade(row)
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
+                            {initials}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-foreground">{row.fullName}</p>
+                            <p className="text-xs text-muted-foreground">{row.teamGroup || '—'}</p>
+                          </div>
+                        </div>
+                        <div className="mt-3 text-sm">
+                          <p className="font-bold text-foreground">
+                            {row.learningClass?.name || (
+                              <span className="italic font-normal text-muted-foreground">
+                                Chưa gắn lớp
+                              </span>
+                            )}
+                          </p>
+                          {row.schedule ? (
+                            <p className="mt-1 text-[11px] font-medium text-primary">
+                              Kỳ thi: {row.schedule.topic} ({row.schedule.startTime})
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">{formattedDate}</span>
+                          {statusBadge(row.status)}
+                        </div>
+                        <Button
+                          type="button"
+                          variant={row.status === 'done' ? 'outline' : 'default'}
+                          size="sm"
+                          className={cn(
+                            'mt-3 w-full rounded-lg text-xs font-bold shadow-sm',
+                            row.status === 'done' &&
+                              'border-border bg-card text-muted-foreground hover:bg-muted/40'
+                          )}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            goGrade(row)
+                          }}
+                        >
+                          {row.status === 'done'
+                            ? 'Xem lại'
+                            : row.status === 'grading'
+                              ? 'Tiếp tục'
+                              : 'Chấm thi'}
+                        </Button>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[700px] border-collapse text-left text-sm">
                   <thead className="bg-primary/[0.06] text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     <tr>

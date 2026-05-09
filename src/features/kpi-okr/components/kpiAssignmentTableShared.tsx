@@ -123,6 +123,41 @@ export function PriorityBadge({ priority }: { priority: number }) {
 }
 
 /** Evidence / số liệu / tự đánh giá — read-only (leader / viewer / quản lý xem trưởng nhóm). */
+/** Stack layout (mobile) — cùng nội dung với AssignmentEpic4ReadCells */
+export function AssignmentEpic4ReadStack({ row }: { row: PerformanceAssignment }) {
+  const num =
+    row.numericValue !== undefined && row.numericValue !== null ? String(row.numericValue) : '—'
+  const displayEv = evidenceTextWithoutUploadPaths(row.evidence)
+  const imageUrls = evidenceImageUrlsFromText(row.evidence)
+  const hasImagePreviews = imageUrls.length > 0
+  return (
+    <div className="space-y-2 text-[13px]">
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        <span>
+          <span className="font-semibold text-muted-foreground">Số liệu: </span>
+          {num}
+        </span>
+        <span className="text-xs uppercase text-muted-foreground">
+          Đơn vị: {row.numericUnit ?? '—'}
+        </span>
+      </div>
+      {displayEv ? (
+        <p className="break-words text-xs text-foreground">{displayEv}</p>
+      ) : !hasImagePreviews ? (
+        <span className="text-slate-400">—</span>
+      ) : null}
+      <EvidenceImagePreviews
+        evidence={row.evidence}
+        maxHeightClass="h-16 max-w-[min(100%,280px)]"
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-bold uppercase text-muted-foreground">Tự đánh giá:</span>
+        <EvalStatusBadge status={row.selfEvalStatus ?? null} />
+      </div>
+    </div>
+  )
+}
+
 export function AssignmentEpic4ReadCells({ row, td }: { row: PerformanceAssignment; td: string }) {
   const num =
     row.numericValue !== undefined && row.numericValue !== null ? String(row.numericValue) : '—'

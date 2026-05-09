@@ -41,6 +41,7 @@ import { KpiEvidenceInput } from '@/features/kpi-okr/components/KpiEvidenceInput
 import {
   ASSIGN_TABLE_HEAD,
   AssignmentEpic4ReadCells,
+  AssignmentEpic4ReadStack,
   EvalStatusBadge,
   KindBadge,
   PriorityBadge,
@@ -371,14 +372,18 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
 
       <div
         className={cn(
-          'mb-8 border-none bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-8 text-white shadow-2xl rounded-3xl relative overflow-hidden',
+          'mb-8 border-none bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 px-4 py-5 text-white shadow-2xl rounded-3xl relative overflow-hidden sm:px-6 sm:py-6 md:p-8',
           SECTION_FADE_UP
         )}
       >
         <div className="absolute right-0 top-0 h-full w-1/3 bg-white/10 [mask-image:linear-gradient(to_left,white,transparent)]" />
-        <div className="relative z-10">
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2">{title}</h1>
-          <p className="text-blue-50/80 max-w-2xl font-medium">{description}</p>
+        <div className="relative z-10 min-w-0">
+          <h1 className="text-2xl font-black tracking-tight mb-2 sm:text-3xl md:text-4xl">
+            {title}
+          </h1>
+          <p className="text-blue-50/80 max-w-2xl text-sm font-medium sm:text-base">
+            {description}
+          </p>
         </div>
       </div>
 
@@ -389,7 +394,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         )}
         style={{ animationDelay: '50ms' }}
       >
-        <CardContent className="p-6">
+        <CardContent className="min-w-0 p-4 sm:p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
             <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {!isManagerReadOnly && (
@@ -666,15 +671,7 @@ const XL_TEXTAREA = cn(
   'placeholder:text-slate-400'
 )
 
-function MemberSelfAssignmentRow({
-  row,
-  rowStripe,
-  onSaved,
-}: {
-  row: PerformanceAssignment
-  rowStripe: boolean
-  onSaved: () => void
-}) {
+function useMemberSelfAssignmentEdit(row: PerformanceAssignment, onSaved: () => void) {
   const [evidence, setEvidence] = useState(row.evidence ?? '')
   const [numericRaw, setNumericRaw] = useState(
     row.numericValue != null ? String(row.numericValue) : ''
@@ -698,8 +695,6 @@ function MemberSelfAssignmentRow({
     row.selfEvalStatus,
     row.selfReviewNote,
   ])
-
-  const td = xlTd(rowStripe)
 
   const save = async () => {
     const nTrim = numericRaw.trim()
@@ -732,6 +727,48 @@ function MemberSelfAssignmentRow({
       setSaving(false)
     }
   }
+
+  return {
+    evidence,
+    setEvidence,
+    numericRaw,
+    setNumericRaw,
+    numericUnit,
+    setNumericUnit,
+    selfEvalStatus,
+    setSelfEvalStatus,
+    selfReviewNote,
+    setSelfReviewNote,
+    saving,
+    save,
+  }
+}
+
+function MemberSelfAssignmentRow({
+  row,
+  rowStripe,
+  onSaved,
+}: {
+  row: PerformanceAssignment
+  rowStripe: boolean
+  onSaved: () => void
+}) {
+  const {
+    evidence,
+    setEvidence,
+    numericRaw,
+    setNumericRaw,
+    numericUnit,
+    setNumericUnit,
+    selfEvalStatus,
+    setSelfEvalStatus,
+    selfReviewNote,
+    setSelfReviewNote,
+    saving,
+    save,
+  } = useMemberSelfAssignmentEdit(row, onSaved)
+
+  const td = xlTd(rowStripe)
 
   return (
     <TableRow className="group transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
@@ -868,6 +905,142 @@ function ReadOnlyAssignmentRow({
       </TableCell>
       <TableCell className={td} />
     </TableRow>
+  )
+}
+
+function ReadOnlyAssignmentMobileCard({
+  row,
+  rowStripe,
+}: {
+  row: PerformanceAssignment
+  rowStripe: boolean
+}) {
+  return (
+    <div className={cn('space-y-3 p-4', rowStripe ? 'bg-slate-50/30 dark:bg-slate-900/20' : '')}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium tabular-nums text-slate-500">{periodLabel(row)}</span>
+        <span className="text-xs tabular-nums text-slate-500">{formatKpiSetAt(row.kpiSetAt)}</span>
+        <KindBadge kind={row.kind} />
+        <PriorityBadge priority={row.priority} />
+      </div>
+      <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">
+        {row.content}
+      </p>
+      <p className="text-sm font-semibold tabular-nums text-primary">
+        Chỉ tiêu: {row.targetMetric || '—'}
+      </p>
+      <AssignmentEpic4ReadStack row={row} />
+      <div className="flex flex-col gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <span className="text-[10px] font-bold uppercase text-muted-foreground">Đánh giá QL</span>
+        <EvalStatusBadge status={row.managerEvalStatus} />
+        {row.managerReviewNote ? (
+          <p className="break-words text-xs italic text-slate-500">{row.managerReviewNote}</p>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function MemberSelfAssignmentMobileCard({
+  row,
+  rowStripe,
+  onSaved,
+}: {
+  row: PerformanceAssignment
+  rowStripe: boolean
+  onSaved: () => void
+}) {
+  const {
+    evidence,
+    setEvidence,
+    numericRaw,
+    setNumericRaw,
+    numericUnit,
+    setNumericUnit,
+    selfEvalStatus,
+    setSelfEvalStatus,
+    selfReviewNote,
+    setSelfReviewNote,
+    saving,
+    save,
+  } = useMemberSelfAssignmentEdit(row, onSaved)
+
+  return (
+    <div className={cn('space-y-3 p-4', rowStripe ? 'bg-slate-50/30 dark:bg-slate-900/20' : '')}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium tabular-nums text-slate-500">{periodLabel(row)}</span>
+        <span className="text-xs tabular-nums text-slate-500">{formatKpiSetAt(row.kpiSetAt)}</span>
+        <KindBadge kind={row.kind} />
+        <PriorityBadge priority={row.priority} />
+      </div>
+      <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">
+        {row.content}
+      </p>
+      <p className="text-sm font-semibold tabular-nums text-primary">
+        Chỉ tiêu: {row.targetMetric || '—'}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <span className="text-[10px] font-bold uppercase text-muted-foreground">Số liệu</span>
+          <Input
+            value={numericRaw}
+            onChange={(e) => setNumericRaw(e.target.value)}
+            className={XL_INPUT}
+            placeholder="—"
+          />
+        </div>
+        <div className="space-y-1">
+          <span className="text-[10px] font-bold uppercase text-muted-foreground">Đơn vị</span>
+          <Input
+            value={numericUnit}
+            onChange={(e) => setNumericUnit(e.target.value)}
+            className={XL_INPUT}
+            placeholder="VND"
+          />
+        </div>
+      </div>
+      <div className="space-y-1">
+        <span className="text-[10px] font-bold uppercase text-muted-foreground">Minh chứng</span>
+        <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={saving} />
+      </div>
+      <div className="space-y-2">
+        <span className="text-[10px] font-bold uppercase text-muted-foreground">Tự đánh giá</span>
+        <select
+          value={selfEvalStatus}
+          onChange={(e) => setSelfEvalStatus(e.target.value)}
+          className={XL_INPUT}
+        >
+          <option value="">—</option>
+          <option value="OK">OK</option>
+          <option value="NOT">NOT</option>
+        </select>
+        <textarea
+          value={selfReviewNote}
+          onChange={(e) => setSelfReviewNote(e.target.value)}
+          rows={2}
+          className={cn(XL_TEXTAREA, 'mt-1 min-h-[52px] max-w-none')}
+          placeholder="Nhận xét"
+        />
+      </div>
+      <div className="flex flex-col gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <span className="text-[10px] font-bold uppercase text-muted-foreground">Đánh giá QL</span>
+        <EvalStatusBadge status={row.managerEvalStatus} />
+        {row.managerReviewNote ? (
+          <p className="break-words text-xs italic text-slate-500">{row.managerReviewNote}</p>
+        ) : null}
+      </div>
+      {!isMockApiEnabled() ? (
+        <Button
+          type="button"
+          size="sm"
+          className="h-10 w-full rounded-lg font-semibold"
+          disabled={saving}
+          onClick={() => void save()}
+        >
+          {saving ? 'Đang lưu…' : 'Lưu'}
+        </Button>
+      ) : null}
+    </div>
   )
 }
 
@@ -1275,6 +1448,66 @@ function AssignmentTableSingleUser({
     memberSelfEditableResults && Boolean(prioritizeUserId && userId === prioritizeUserId)
   const memberMetaLine = memberMetaForDisplay(members, userId)
 
+  const tableHeader = (
+    <TableHeader>
+      <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
+        {ASSIGN_TABLE_HEAD.map((h) => (
+          <TableHead key={h} className={XL_TH}>
+            {h}
+          </TableHead>
+        ))}
+      </TableRow>
+    </TableHeader>
+  )
+
+  const tableBody = (
+    <TableBody>
+      {rows.length === 0 ? (
+        <TableRow>
+          <TableCell colSpan={ASSIGN_TABLE_HEAD.length} className="h-32 text-center text-slate-400">
+            Chưa có dữ liệu cho nhân sự này.
+          </TableCell>
+        </TableRow>
+      ) : (
+        rows.map((r, idx) => {
+          if (allowSelfEdit && leaderMode === 'results') {
+            return (
+              <MemberSelfAssignmentRow
+                key={r.id}
+                row={r}
+                rowStripe={idx % 2 === 1}
+                onSaved={onRefresh}
+              />
+            )
+          }
+          if (canEditTeam) {
+            return (
+              <LeaderAssignmentRow
+                key={r.id}
+                row={r}
+                mode={leaderMode}
+                onSaved={onRefresh}
+                rowStripe={idx % 2 === 1}
+                canEditTeam={canEditTeam}
+              />
+            )
+          }
+          if (allowSelfEdit) {
+            return (
+              <MemberSelfAssignmentRow
+                key={r.id}
+                row={r}
+                rowStripe={idx % 2 === 1}
+                onSaved={onRefresh}
+              />
+            )
+          }
+          return <ReadOnlyAssignmentRow key={r.id} row={r} rowStripe={idx % 2 === 1} />
+        })
+      )}
+    </TableBody>
+  )
+
   return (
     <div
       className={cn(
@@ -1319,65 +1552,50 @@ function AssignmentTableSingleUser({
           </Badge>
         </div>
       </div>
-      <div className="max-h-[calc(100vh-400px)] overflow-auto">
+      {canEditTeam ? (
+        <div className="max-h-[min(70vh,calc(100vh-400px))] min-w-0 overflow-auto [scrollbar-width:thin] md:hidden">
+          <Table className="w-full min-w-[1180px]">
+            {tableHeader}
+            {tableBody}
+          </Table>
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-100 border-t border-slate-100 dark:divide-slate-800 dark:border-slate-800 md:hidden">
+          {rows.length === 0 ? (
+            <div className="p-8 text-center text-sm text-slate-400">
+              Chưa có dữ liệu cho nhân sự này.
+            </div>
+          ) : (
+            rows.map((r, idx) => {
+              if (allowSelfEdit && leaderMode === 'results') {
+                return (
+                  <MemberSelfAssignmentMobileCard
+                    key={r.id}
+                    row={r}
+                    rowStripe={idx % 2 === 1}
+                    onSaved={onRefresh}
+                  />
+                )
+              }
+              if (allowSelfEdit) {
+                return (
+                  <MemberSelfAssignmentMobileCard
+                    key={r.id}
+                    row={r}
+                    rowStripe={idx % 2 === 1}
+                    onSaved={onRefresh}
+                  />
+                )
+              }
+              return <ReadOnlyAssignmentMobileCard key={r.id} row={r} rowStripe={idx % 2 === 1} />
+            })
+          )}
+        </div>
+      )}
+      <div className="hidden max-h-[calc(100vh-400px)] min-w-0 overflow-auto [scrollbar-width:thin] md:block">
         <Table className="w-full min-w-[1180px]">
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
-              {ASSIGN_TABLE_HEAD.map((h) => (
-                <TableHead key={h} className={XL_TH}>
-                  {h}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={ASSIGN_TABLE_HEAD.length}
-                  className="h-32 text-center text-slate-400"
-                >
-                  Chưa có dữ liệu cho nhân sự này.
-                </TableCell>
-              </TableRow>
-            ) : (
-              rows.map((r, idx) => {
-                if (allowSelfEdit && leaderMode === 'results') {
-                  return (
-                    <MemberSelfAssignmentRow
-                      key={r.id}
-                      row={r}
-                      rowStripe={idx % 2 === 1}
-                      onSaved={onRefresh}
-                    />
-                  )
-                }
-                if (canEditTeam) {
-                  return (
-                    <LeaderAssignmentRow
-                      key={r.id}
-                      row={r}
-                      mode={leaderMode}
-                      onSaved={onRefresh}
-                      rowStripe={idx % 2 === 1}
-                      canEditTeam={canEditTeam}
-                    />
-                  )
-                }
-                if (allowSelfEdit) {
-                  return (
-                    <MemberSelfAssignmentRow
-                      key={r.id}
-                      row={r}
-                      rowStripe={idx % 2 === 1}
-                      onSaved={onRefresh}
-                    />
-                  )
-                }
-                return <ReadOnlyAssignmentRow key={r.id} row={r} rowStripe={idx % 2 === 1} />
-              })
-            )}
-          </TableBody>
+          {tableHeader}
+          {tableBody}
         </Table>
       </div>
     </div>
@@ -2428,7 +2646,71 @@ function SummaryPanel({
         )}
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+          {displayRows.map((r) => (
+            <div key={r.id} className="space-y-3 py-4 first:pt-0">
+              <div>
+                <div className="font-bold text-slate-900 dark:text-slate-100">{rowName(r)}</div>
+                <div className="text-[11px] text-slate-500">
+                  {r.assigneeEmployeeCode?.trim() || r.assigneeEmail?.trim() || '—'}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 rounded-lg border border-amber-100/80 bg-amber-50/25 p-3 dark:border-amber-900/30 dark:bg-amber-950/20">
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-amber-800 dark:text-amber-300">
+                    KPI đạt
+                  </p>
+                  <p className="text-lg font-bold tabular-nums text-slate-800 dark:text-slate-200">
+                    {r.kpiOkCount}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-amber-800 dark:text-amber-300">
+                    KPI chưa
+                  </p>
+                  <p className="text-lg font-bold tabular-nums text-slate-800 dark:text-slate-200">
+                    {r.kpiNotCount}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[10px] font-bold uppercase text-amber-800 dark:text-amber-300">
+                    Xếp loại KPI
+                  </p>
+                  <span className="mt-1 inline-flex h-6 items-center rounded-md bg-amber-100 px-2 text-[11px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                    {r.kpiGrade || '—'}
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 rounded-lg border border-blue-100/80 bg-blue-50/25 p-3 dark:border-blue-900/30 dark:bg-blue-950/20">
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-blue-800 dark:text-blue-300">
+                    OKR đạt
+                  </p>
+                  <p className="text-lg font-bold tabular-nums text-slate-800 dark:text-slate-200">
+                    {r.okrOkCount}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-blue-800 dark:text-blue-300">
+                    OKR chưa
+                  </p>
+                  <p className="text-lg font-bold tabular-nums text-slate-800 dark:text-slate-200">
+                    {r.okrNotCount}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[10px] font-bold uppercase text-blue-800 dark:text-blue-300">
+                    Xếp loại OKR
+                  </p>
+                  <span className="mt-1 inline-flex h-6 items-center rounded-md bg-blue-100 px-2 text-[11px] font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    {r.okrGrade || '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
           <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
@@ -2474,7 +2756,7 @@ function SummaryPanel({
               {displayRows.map((r) => (
                 <TableRow
                   key={r.id}
-                  className="group transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-900/50 border-b-slate-50 dark:border-b-slate-900"
+                  className="group border-b-slate-50 transition-colors hover:bg-slate-50/50 dark:border-b-slate-900 dark:hover:bg-slate-900/50"
                 >
                   <TableCell className="py-4">
                     <div className="font-bold text-slate-900 dark:text-slate-100">{rowName(r)}</div>
@@ -2482,24 +2764,24 @@ function SummaryPanel({
                       {r.assigneeEmployeeCode?.trim() || r.assigneeEmail?.trim() || '—'}
                     </div>
                   </TableCell>
-                  <TableCell className="text-center tabular-nums text-slate-700 dark:text-slate-300 bg-amber-50/20 dark:bg-amber-900/5">
+                  <TableCell className="bg-amber-50/20 text-center tabular-nums text-slate-700 dark:bg-amber-900/5 dark:text-slate-300">
                     {r.kpiOkCount}
                   </TableCell>
-                  <TableCell className="text-center tabular-nums text-slate-700 dark:text-slate-300 bg-amber-50/20 dark:bg-amber-900/5">
+                  <TableCell className="bg-amber-50/20 text-center tabular-nums text-slate-700 dark:bg-amber-900/5 dark:text-slate-300">
                     {r.kpiNotCount}
                   </TableCell>
-                  <TableCell className="text-center bg-amber-50/20 dark:bg-amber-900/5">
+                  <TableCell className="bg-amber-50/20 text-center dark:bg-amber-900/5">
                     <span className="inline-flex h-6 items-center rounded-md bg-amber-100 px-2 text-[11px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                       {r.kpiGrade || '—'}
                     </span>
                   </TableCell>
-                  <TableCell className="text-center tabular-nums text-slate-700 dark:text-slate-300 bg-blue-50/20 dark:bg-blue-900/5">
+                  <TableCell className="bg-blue-50/20 text-center tabular-nums text-slate-700 dark:bg-blue-900/5 dark:text-slate-300">
                     {r.okrOkCount}
                   </TableCell>
-                  <TableCell className="text-center tabular-nums text-slate-700 dark:text-slate-300 bg-blue-50/20 dark:bg-blue-900/5">
+                  <TableCell className="bg-blue-50/20 text-center tabular-nums text-slate-700 dark:bg-blue-900/5 dark:text-slate-300">
                     {r.okrNotCount}
                   </TableCell>
-                  <TableCell className="text-center bg-blue-50/20 dark:bg-blue-900/5">
+                  <TableCell className="bg-blue-50/20 text-center dark:bg-blue-900/5">
                     <span className="inline-flex h-6 items-center rounded-md bg-blue-100 px-2 text-[11px] font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                       {r.okrGrade || '—'}
                     </span>

@@ -135,6 +135,28 @@ export function ApprovalQueue({
     toast.success('Đã duyệt nhanh (demo)')
   }
 
+  const promotionApproveLabel = (p: ApprovalsPage['promotions'][number]): React.ReactNode => {
+    if (isApproving === p.id) {
+      return <RefreshCw className="h-3 w-3 animate-spin" />
+    }
+    const starBadge = p.badges.find((b) => b.label.includes('sao'))
+    const stars = starBadge ? parseInt(starBadge.label, 10) : 0
+
+    if (stars >= 6) {
+      const levelBadge = p.badges.find((b) =>
+        ['Tập sự', 'Biết việc', 'Được việc'].includes(b.label)
+      )
+      const currentLevel = levelBadge?.label || ''
+      let nextLevelLabel = 'cấp mới'
+      if (currentLevel === 'Tập sự') nextLevelLabel = 'Biết việc'
+      else if (currentLevel === 'Biết việc') nextLevelLabel = 'Được việc'
+
+      return `Duyệt lên ${nextLevelLabel}`
+    }
+
+    return 'Thăng cấp sao'
+  }
+
   const pageSubtitle = 'Phê duyệt khi nhân viên đủ điều kiện; có thể từ chối kèm lý do (nối API).'
 
   return (
@@ -298,7 +320,91 @@ export function ApprovalQueue({
                     Danh sách nhân sự chờ duyệt thăng cấp / sao
                   </h3>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="divide-y divide-border md:hidden">
+                  {filteredPromotions.map((p, pi) => (
+                    <div
+                      key={p.id}
+                      className={cn(
+                        'space-y-3 p-4',
+                        p.state === 'waiting' && 'opacity-70',
+                        p.state === 'done' && 'opacity-60'
+                      )}
+                      style={staggerStyle(pi, 30)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={cn(
+                            'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-2 ring-background shadow-sm',
+                            p.avatarClass ?? 'bg-primary/10 text-primary'
+                          )}
+                        >
+                          {p.initials ?? initialsFromName(p.name)}
+                        </div>
+                        <span className="min-w-0 break-words text-sm font-bold text-foreground">
+                          {p.name}
+                        </span>
+                      </div>
+                      <p className="text-xs font-medium leading-relaxed text-muted-foreground">
+                        {p.description}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {p.badges.map((b, i) => (
+                          <span
+                            key={i}
+                            className={cn(
+                              'inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset',
+                              b.tone === 'info' && 'bg-blue-50 text-blue-700 ring-blue-700/10',
+                              b.tone === 'warning' &&
+                                'bg-amber-50 text-amber-700 ring-amber-700/10',
+                              b.tone === 'success' &&
+                                'bg-emerald-50 text-emerald-700 ring-emerald-700/10',
+                              b.tone === 'danger' && 'bg-rose-50 text-rose-700 ring-rose-700/10',
+                              (!b.tone || b.tone === 'neutral') &&
+                                'bg-gray-50 text-gray-600 ring-gray-500/10'
+                            )}
+                          >
+                            {b.label}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                        {p.state === 'actionable' && onApprove && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isApproving === p.id}
+                            onClick={() => onApprove(p.id)}
+                            className="h-10 w-full min-w-0 rounded-lg bg-emerald-600 px-3 py-1 text-[10px] font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95 sm:flex-1"
+                          >
+                            {promotionApproveLabel(p)}
+                          </Button>
+                        )}
+                        {p.state === 'actionable' && onReject && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onReject(p.id)}
+                            className="h-10 w-full rounded-lg border-rose-200 bg-rose-50 px-3 py-1 text-[10px] font-bold text-rose-700 shadow-sm hover:bg-rose-100 sm:flex-1"
+                          >
+                            Từ chối
+                          </Button>
+                        )}
+                        {p.state === 'waiting' && (
+                          <span className="text-[10px] font-bold text-muted-foreground rounded-md bg-muted px-2 py-1">
+                            {p.stateLabel ?? 'Đang chờ'}
+                          </span>
+                        )}
+                        {p.state === 'done' && (
+                          <span className="text-[10px] font-bold italic text-muted-foreground">
+                            Hoàn tất
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto md:block">
                   <table className="w-full border-collapse text-left">
                     <thead>
                       <tr className="border-b border-border bg-muted/20 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -329,13 +435,13 @@ export function ApprovalQueue({
                               >
                                 {p.initials ?? initialsFromName(p.name)}
                               </div>
-                              <span className="text-sm font-bold text-foreground truncate max-w-[150px]">
+                              <span className="max-w-[150px] truncate text-sm font-bold text-foreground">
                                 {p.name}
                               </span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="text-xs font-medium text-muted-foreground leading-relaxed">
+                            <div className="text-xs font-medium leading-relaxed text-muted-foreground">
                               {p.description}
                             </div>
                           </td>
@@ -371,30 +477,9 @@ export function ApprovalQueue({
                                   size="sm"
                                   disabled={isApproving === p.id}
                                   onClick={() => onApprove(p.id)}
-                                  className="h-8 min-w-[100px] rounded-lg bg-emerald-600 px-3 py-1 text-[10px] font-bold text-white hover:bg-emerald-700 shadow-sm transition-all active:scale-95"
+                                  className="h-8 min-w-[100px] rounded-lg bg-emerald-600 px-3 py-1 text-[10px] font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95"
                                 >
-                                  {(() => {
-                                    if (isApproving === p.id) {
-                                      return <RefreshCw className="h-3 w-3 animate-spin" />
-                                    }
-                                    const starBadge = p.badges.find((b) => b.label.includes('sao'))
-                                    const stars = starBadge ? parseInt(starBadge.label, 10) : 0
-
-                                    if (stars >= 6) {
-                                      const levelBadge = p.badges.find((b) =>
-                                        ['Tập sự', 'Biết việc', 'Được việc'].includes(b.label)
-                                      )
-                                      const currentLevel = levelBadge?.label || ''
-                                      let nextLevelLabel = 'cấp mới'
-                                      if (currentLevel === 'Tập sự') nextLevelLabel = 'Biết việc'
-                                      else if (currentLevel === 'Biết việc')
-                                        nextLevelLabel = 'Được việc'
-
-                                      return `Duyệt lên ${nextLevelLabel}`
-                                    }
-
-                                    return 'Thăng cấp sao'
-                                  })()}
+                                  {promotionApproveLabel(p)}
                                 </Button>
                               )}
                               {p.state === 'actionable' && onReject && (
@@ -403,18 +488,18 @@ export function ApprovalQueue({
                                   size="sm"
                                   variant="outline"
                                   onClick={() => onReject(p.id)}
-                                  className="h-8 rounded-lg border-rose-200 bg-rose-50 px-3 py-1 text-[10px] font-bold text-rose-700 hover:bg-rose-100 shadow-sm"
+                                  className="h-8 rounded-lg border-rose-200 bg-rose-50 px-3 py-1 text-[10px] font-bold text-rose-700 shadow-sm hover:bg-rose-100"
                                 >
                                   Từ chối
                                 </Button>
                               )}
                               {p.state === 'waiting' && (
-                                <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                                <span className="rounded-md bg-muted px-2 py-1 text-[10px] font-bold text-muted-foreground">
                                   {p.stateLabel ?? 'Đang chờ'}
                                 </span>
                               )}
                               {p.state === 'done' && (
-                                <span className="text-[10px] font-bold text-muted-foreground italic">
+                                <span className="text-[10px] font-bold italic text-muted-foreground">
                                   Hoàn tất
                                 </span>
                               )}

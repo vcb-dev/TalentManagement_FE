@@ -671,29 +671,31 @@ export function HrOrgStructure() {
       )}
 
       <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card className="border-primary/30 bg-gradient-to-br from-primary/15 via-card to-card shadow-sm">
-            <CardContent className="py-3">
-              <p className="text-xs font-medium text-primary">Phòng ban</p>
-              <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
+            <CardContent className="px-2.5 py-2 sm:p-6">
+              <p className="text-[10px] font-medium leading-tight text-primary sm:text-xs">
+                Phòng ban
+              </p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground drop-shadow-sm sm:mt-0 sm:text-2xl">
                 {summary.deptCount}
               </p>
             </CardContent>
           </Card>
           <Card className="border-accent/40 bg-gradient-to-br from-accent/15 via-card to-card shadow-sm">
-            <CardContent className="py-3">
-              <p className="text-xs font-medium text-accent">Nhóm</p>
-              <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
+            <CardContent className="px-2.5 py-2 sm:p-6">
+              <p className="text-[10px] font-medium leading-tight text-accent sm:text-xs">Nhóm</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground drop-shadow-sm sm:mt-0 sm:text-2xl">
                 {summary.teamCount}
               </p>
             </CardContent>
           </Card>
           <Card className="border-blue-500/35 bg-gradient-to-br from-blue-500/15 via-card to-card shadow-sm">
-            <CardContent className="py-3">
-              <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
+            <CardContent className="px-2.5 py-2 sm:p-6">
+              <p className="text-[10px] font-medium leading-tight text-blue-700 dark:text-blue-300 sm:text-xs">
                 Thành viên (gộp nhóm)
               </p>
-              <p className="text-2xl font-semibold text-foreground tabular-nums drop-shadow-sm">
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground drop-shadow-sm sm:mt-0 sm:text-2xl">
                 {summary.memberCount}
               </p>
             </CardContent>
@@ -858,127 +860,134 @@ export function HrOrgStructure() {
           value={Array.from(expandedDeptIds)}
           onValueChange={(vals) => setExpandedDeptIds(new Set(vals))}
         >
-          {filteredDepartments.map((dept) => (
-            <AccordionItem
-              key={dept.id}
-              value={dept.id}
-              className="overflow-hidden rounded-2xl border border-primary/15 bg-card shadow-sm transition-[box-shadow,ring,border-color] data-[state=open]:border-primary/35 data-[state=open]:shadow-[0_10px_40px_rgb(106_90_224/0.16)] data-[state=open]:ring-1 data-[state=open]:ring-primary/20"
-            >
-              <div className="flex items-start gap-1 border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-accent/10 px-2 py-3 sm:gap-2 sm:px-4 sm:py-4">
-                <AccordionTrigger className="-mx-1 flex min-w-0 flex-1 justify-start gap-0 py-1 sm:-mx-0">
-                  <ChevronDown className="chevron-accordion mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
-                  <Building2 className="mx-2 mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                  <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5 text-left">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="text-base font-semibold leading-snug">{dept.name}</span>
-                      {dept.code ? (
+          {filteredDepartments.map((dept) => {
+            const teamsToShow =
+              dept.teams.length === 0
+                ? []
+                : expandedAllTeamsByDept[dept.id]
+                  ? dept.teams
+                  : dept.teams.slice(0, 6)
+
+            return (
+              <AccordionItem
+                key={dept.id}
+                value={dept.id}
+                className="overflow-hidden rounded-2xl border border-primary/15 bg-card shadow-sm transition-[box-shadow,ring,border-color] data-[state=open]:border-primary/35 data-[state=open]:shadow-[0_10px_40px_rgb(106_90_224/0.16)] data-[state=open]:ring-1 data-[state=open]:ring-primary/20"
+              >
+                <div className="flex items-start gap-1 border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-accent/10 px-2 py-3 sm:gap-2 sm:px-4 sm:py-4">
+                  <AccordionTrigger className="-mx-1 flex min-w-0 flex-1 justify-start gap-0 py-1 sm:-mx-0">
+                    <ChevronDown className="chevron-accordion mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
+                    <Building2 className="mx-2 mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                    <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5 text-left">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="text-base font-semibold leading-snug">{dept.name}</span>
+                        {dept.code ? (
+                          <Badge
+                            variant="outline"
+                            className="border-primary/30 bg-primary/5 font-mono text-[11px] font-normal uppercase tracking-wide text-primary"
+                          >
+                            {dept.code}
+                          </Badge>
+                        ) : null}
+                        {!dept.isActive && (
+                          <Badge
+                            variant="outline"
+                            className="border-destructive/50 bg-destructive/10 text-destructive"
+                          >
+                            Ngưng dùng
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">
                         <Badge
                           variant="outline"
-                          className="border-primary/30 bg-primary/5 font-mono text-[11px] font-normal uppercase tracking-wide text-primary"
+                          className="border-primary/30 bg-primary/10 font-normal tabular-nums text-primary"
                         >
-                          {dept.code}
+                          {dept.teams.length} nhóm
                         </Badge>
-                      ) : null}
-                      {!dept.isActive && (
-                        <Badge
-                          variant="outline"
-                          className="border-destructive/50 bg-destructive/10 text-destructive"
-                        >
-                          Ngưng dùng
-                        </Badge>
-                      )}
+                        {dept.description ? (
+                          <span className="line-clamp-2 min-w-0 w-full text-xs text-muted-foreground/90 sm:line-clamp-1 sm:max-w-[420px]">
+                            {dept.description}
+                          </span>
+                        ) : null}
+                      </span>
                     </span>
-                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">
-                      <Badge
-                        variant="outline"
-                        className="border-primary/30 bg-primary/10 font-normal tabular-nums text-primary"
+                  </AccordionTrigger>
+                  {canManageOrg && !mockBanner ? (
+                    <div
+                      className="flex shrink-0 items-center gap-1 pt-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                      role="presentation"
+                    >
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-8 rounded-full px-2.5 text-xs"
+                        onClick={() => openCreateTeamForDept(dept)}
                       >
-                        {dept.teams.length} nhóm
-                      </Badge>
-                      {dept.description ? (
-                        <span className="line-clamp-1 max-w-[420px] text-xs text-muted-foreground/90">
-                          {dept.description}
-                        </span>
-                      ) : null}
-                    </span>
-                  </span>
-                </AccordionTrigger>
-                {canManageOrg && !mockBanner ? (
-                  <div
-                    className="flex shrink-0 items-center gap-1 pt-0.5"
-                    onClick={(e) => e.stopPropagation()}
-                    role="presentation"
-                  >
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      className="h-8 rounded-full px-2.5 text-xs"
-                      onClick={() => openCreateTeamForDept(dept)}
-                    >
-                      <Plus className="mr-1 h-3.5 w-3.5" />
-                      Nhóm
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                      aria-label="Sửa phòng ban"
-                      onClick={() => openEditDepartment(dept)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-destructive/80 hover:text-destructive"
-                      aria-label="Xóa phòng ban"
-                      onClick={() => setCrudModal({ kind: 'dept-delete', dept })}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-              <AccordionContent className="px-0">
-                <div className="overflow-x-auto">
-                  <Table className="min-w-[640px]">
-                    <TableHeader>
-                      <TableRow className="border-b border-border/80 bg-gradient-to-r from-primary/10 via-muted/20 to-accent/10 hover:bg-muted/25">
-                        <TableHead className="w-[28%] pl-6">Nhóm</TableHead>
-                        <TableHead className="max-w-[260px]">Trưởng nhóm</TableHead>
-                        <TableHead className="w-[108px]">Thành viên</TableHead>
-                        <TableHead className="pr-6 text-right">Thao tác</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dept.teams.length === 0 ? (
-                        <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={4} className="py-10 text-center">
-                            <div className="flex flex-col items-center gap-3">
-                              <p className="text-sm text-muted-foreground">
-                                Chưa có nhóm trong phòng ban này.
-                              </p>
-                              {canManageOrg && !mockBanner ? (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="secondary"
-                                  className="rounded-full"
-                                  onClick={() => openCreateTeamForDept(dept)}
-                                >
-                                  <Plus className="mr-1 h-3.5 w-3.5" />
-                                  Tạo nhóm đầu tiên
-                                </Button>
-                              ) : null}
-                            </div>
-                          </TableCell>
+                        <Plus className="mr-1 h-3.5 w-3.5" />
+                        Nhóm
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        aria-label="Sửa phòng ban"
+                        onClick={() => openEditDepartment(dept)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-destructive/80 hover:text-destructive"
+                        aria-label="Xóa phòng ban"
+                        onClick={() => setCrudModal({ kind: 'dept-delete', dept })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+                <AccordionContent className="px-0">
+                  <div className="hidden overflow-x-auto md:block">
+                    <Table className="min-w-[640px]">
+                      <TableHeader>
+                        <TableRow className="border-b border-border/80 bg-gradient-to-r from-primary/10 via-muted/20 to-accent/10 hover:bg-muted/25">
+                          <TableHead className="w-[28%] pl-6">Nhóm</TableHead>
+                          <TableHead className="max-w-[260px]">Trưởng nhóm</TableHead>
+                          <TableHead className="w-[108px]">Thành viên</TableHead>
+                          <TableHead className="pr-6 text-right">Thao tác</TableHead>
                         </TableRow>
-                      ) : (
-                        (expandedAllTeamsByDept[dept.id] ? dept.teams : dept.teams.slice(0, 6)).map(
-                          (team) => (
+                      </TableHeader>
+                      <TableBody>
+                        {dept.teams.length === 0 ? (
+                          <TableRow className="hover:bg-transparent">
+                            <TableCell colSpan={4} className="py-10 text-center">
+                              <div className="flex flex-col items-center gap-3">
+                                <p className="text-sm text-muted-foreground">
+                                  Chưa có nhóm trong phòng ban này.
+                                </p>
+                                {canManageOrg && !mockBanner ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    className="rounded-full"
+                                    onClick={() => openCreateTeamForDept(dept)}
+                                  >
+                                    <Plus className="mr-1 h-3.5 w-3.5" />
+                                    Tạo nhóm đầu tiên
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          teamsToShow.map((team) => (
                             <FragmentTeamRow
                               key={team.id}
                               team={team}
@@ -992,11 +1001,53 @@ export function HrOrgStructure() {
                               }}
                               onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
                             />
-                          )
-                        )
-                      )}
-                    </TableBody>
-                  </Table>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <div className="md:hidden">
+                    {dept.teams.length === 0 ? (
+                      <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          Chưa có nhóm trong phòng ban này.
+                        </p>
+                        {canManageOrg && !mockBanner ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="rounded-full"
+                            onClick={() => openCreateTeamForDept(dept)}
+                          >
+                            <Plus className="mr-1 h-3.5 w-3.5" />
+                            Tạo nhóm đầu tiên
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <ul className="space-y-3 px-2 pb-2 pt-1">
+                        {teamsToShow.map((team) => (
+                          <li key={team.id}>
+                            <TeamCardMobile
+                              team={team}
+                              membersOpen={membersTeamId === team.id}
+                              onOpenMembers={() => toggleTeamMembers(dept.id, team.id)}
+                              canManageOrg={canManageOrg}
+                              mockBanner={mockBanner}
+                              onEditTeam={() => {
+                                setCrudName(team.name)
+                                setCrudModal({ kind: 'team-edit', team })
+                              }}
+                              onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
                   {dept.teams.length > 6 ? (
                     <div className="flex justify-center border-t border-border/60 bg-gradient-to-r from-primary/5 to-accent/5 px-4 py-2">
                       <Button
@@ -1016,10 +1067,10 @@ export function HrOrgStructure() {
                       </Button>
                     </div>
                   ) : null}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
+                </AccordionContent>
+              </AccordionItem>
+            )
+          })}
         </Accordion>
         {orgSearch.trim() && filteredDepartments.length === 0 ? (
           <Card className="border-dashed border-border/80 bg-muted/15 shadow-none">
@@ -1107,6 +1158,87 @@ export function HrOrgStructure() {
         onClose={() => setCrudModal(null)}
         onConfirm={submitDeleteModal}
       />
+    </div>
+  )
+}
+
+function TeamCardMobile({
+  team,
+  membersOpen,
+  onOpenMembers,
+  canManageOrg,
+  mockBanner,
+  onEditTeam,
+  onDeleteTeam,
+}: {
+  team: OrgAdminTeamRow
+  membersOpen: boolean
+  onOpenMembers: () => void
+  canManageOrg: boolean
+  mockBanner: boolean
+  onEditTeam: () => void
+  onDeleteTeam: () => void
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-xl border border-border/60 bg-card p-3 shadow-sm',
+        membersOpen && 'border-primary/40 bg-primary/[0.06] ring-1 ring-primary/15'
+      )}
+    >
+      <div className="min-w-0 space-y-2">
+        <div className="break-words text-base font-semibold leading-snug text-foreground">
+          {team.name}
+        </div>
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground/85">Trưởng nhóm:</span> <span>—</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Thành viên</span>
+          <Badge
+            variant="outline"
+            className="border-accent/35 bg-accent/10 tabular-nums text-accent"
+          >
+            {team._count.users}
+          </Badge>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {canManageOrg && !mockBanner ? (
+          <>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Sửa nhóm"
+              onClick={onEditTeam}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-9 w-9 shrink-0 text-destructive/80 hover:text-destructive"
+              aria-label="Xóa nhóm"
+              onClick={onDeleteTeam}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </>
+        ) : null}
+        <Button
+          type="button"
+          variant={membersOpen ? 'secondary' : 'outline'}
+          size="sm"
+          className="min-w-0 flex-1 rounded-full sm:flex-initial"
+          onClick={onOpenMembers}
+        >
+          <Users className="h-3.5 w-3.5" />
+          {membersOpen ? 'Đóng' : 'Thành viên'}
+        </Button>
+      </div>
     </div>
   )
 }

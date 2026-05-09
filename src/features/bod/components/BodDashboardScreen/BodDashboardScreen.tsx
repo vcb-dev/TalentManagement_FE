@@ -129,12 +129,12 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
   const onShare = () => toast.success('Đã sao chép link chia sẻ (demo)')
 
   return (
-    <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
-      <div className="page-toolbar-flat">
-        <div className="text-base font-semibold tracking-tight text-foreground">
+    <div className="-m-5 flex min-h-[calc(100vh-3rem)] min-w-0 flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
+      <div className={cn('page-toolbar-flat', 'max-sm:flex-col max-sm:items-stretch max-sm:gap-3')}>
+        <div className="min-w-0 text-sm font-semibold leading-snug tracking-tight text-foreground sm:text-base">
           Tổng quan ban lãnh đạo — Tháng {page?.monthLabel ?? '—'}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Button
             type="button"
             variant="outline"
@@ -161,7 +161,7 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
       <div className="page-shell">
         {isLoading ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {Array.from({ length: 5 }, (_, i) => (
                 <SkeletonStatTile key={i} />
               ))}
@@ -195,7 +195,7 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
           </div>
         ) : (
           <>
-            <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {(
                 [
                   {
@@ -312,7 +312,7 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
                 <div className="card-section-header font-bold">
                   Bản đồ năng lực theo phòng ban (Radar chart)
                 </div>
-                <div className="flex items-center justify-center p-4">
+                <div className="flex min-w-0 items-center justify-center overflow-x-auto p-3 sm:p-4">
                   <BodRadarSvg />
                 </div>
               </div>
@@ -330,9 +330,10 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
                 <div className="flex flex-col gap-3 p-4">
                   {page.levelRows.map((row) => (
                     <div key={row.label}>
-                      <div className="mb-1 flex justify-between text-xs">
+                      <div className="mb-1 flex flex-wrap justify-between gap-x-2 gap-y-1 text-xs">
                         <span
                           className={cn(
+                            'min-w-0',
                             row.barTone === 'red'
                               ? 'font-medium text-[#991B1B]'
                               : 'text-muted-foreground'
@@ -342,6 +343,7 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
                         </span>
                         <span
                           className={cn(
+                            'shrink-0 tabular-nums',
                             row.barTone === 'red' ? 'text-[#991B1B]' : 'text-muted-foreground'
                           )}
                         >
@@ -378,14 +380,16 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
                     <div
                       key={row.label}
                       className={cn(
-                        'flex items-center justify-between py-2 text-sm',
+                        'flex flex-col gap-1.5 py-2 text-sm sm:flex-row sm:items-center sm:justify-between',
                         i < page.hrMovement.length - 1 && 'border-b border-border'
                       )}
                     >
-                      <span className="text-xs font-semibold text-foreground">{row.label}</span>
+                      <span className="min-w-0 text-xs font-semibold text-foreground">
+                        {row.label}
+                      </span>
                       <span
                         className={cn(
-                          'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
+                          'inline-flex shrink-0 self-start rounded-full px-2.5 py-0.5 text-xs font-bold sm:self-auto',
                           HR_BADGE[row.badgeTone]
                         )}
                       >

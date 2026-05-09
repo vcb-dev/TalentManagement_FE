@@ -28,7 +28,7 @@ export function ManagerScreenLayout({
   return (
     <div
       className={cn(
-        '-m-5 flex flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8',
+        '-m-5 flex min-w-0 flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8',
         hideToolbar ? 'min-h-[calc(100vh-3.5rem)]' : 'min-h-[calc(100vh-3rem)]'
       )}
     >

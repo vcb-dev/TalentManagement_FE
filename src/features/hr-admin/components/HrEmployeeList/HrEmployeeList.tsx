@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import { useForm, useWatch } from 'react-hook-form'
 import {
@@ -36,8 +36,21 @@ const HR_ROLE_TABS: { value: 'all' | Role; label: string }[] = [
   ...HR_DIRECTORY_ROLE_TAB_ORDER.map((r) => ({ value: r, label: ROLE_LABEL_VI[r] })),
 ]
 
-/** Cố định 15 nhân viên / trang (màn danh sách HR). */
-const HR_EMPLOYEE_PAGE_SIZE = 15
+/** Dưới breakpoint `sm` (640px): 10 nhân viên / trang + lưới 2 cột. */
+function useHrDirectoryMobileLayout() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia('(max-width: 639px)')
+      mq.addEventListener('change', onChange)
+      return () => mq.removeEventListener('change', onChange)
+    },
+    () => window.matchMedia('(max-width: 639px)').matches,
+    () => false
+  )
+}
+
+const HR_EMPLOYEE_PAGE_SIZE_DESKTOP = 15
+const HR_EMPLOYEE_PAGE_SIZE_MOBILE = 10
 
 export interface HrEmployeeListProps {
   initialFilters?: Partial<EmployeeFilters>
@@ -51,6 +64,10 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   const canEdit = canId('hr.employees.edit')
   const canDeactivate = canId('hr.employees.deactivate')
   const navigate = hrAdminListRoute.useNavigate()
+  const isHrDirectoryMobileGrid = useHrDirectoryMobileLayout()
+  const targetPageSize = isHrDirectoryMobileGrid
+    ? HR_EMPLOYEE_PAGE_SIZE_MOBILE
+    : HR_EMPLOYEE_PAGE_SIZE_DESKTOP
 
   const table = useEmployeeTable(initialFilters ?? {})
   const {
@@ -81,12 +98,15 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   navigateForSearchRef.current = navigate
 
   useEffect(() => {
-    if (filters.pageSize === HR_EMPLOYEE_PAGE_SIZE) return
+    if (filters.pageSize === targetPageSize) return
+    const oldSize = Math.max(1, filters.pageSize)
+    const oldPage = filters.page
+    const newPage = Math.floor(((oldPage - 1) * oldSize) / targetPageSize) + 1
     void navigate({
       to: '/hr-admin',
-      search: (s) => ({ ...s, pageSize: HR_EMPLOYEE_PAGE_SIZE, page: 1 }),
+      search: (s) => ({ ...s, pageSize: targetPageSize, page: newPage }),
     })
-  }, [filters.pageSize, navigate])
+  }, [filters.page, filters.pageSize, navigate, targetPageSize])
 
   useEffect(() => {
     searchForm.reset({ searchDraft: filters.search ?? '' })
@@ -103,11 +123,11 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
       setSelectedId(null)
       void navigateForSearchRef.current({
         to: '/hr-admin',
-        search: (s) => ({ ...s, page: 1, pageSize: HR_EMPLOYEE_PAGE_SIZE }),
+        search: (s) => ({ ...s, page: 1, pageSize: targetPageSize }),
       })
     }, 320)
     return () => window.clearTimeout(t)
-  }, [searchDraft])
+  }, [searchDraft, targetPageSize])
 
   const selected = useMemo(
     () => employees.find((e) => e.id === selectedId) ?? null,
@@ -137,7 +157,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     void navigate({
       to: '/hr-admin',
       search: (prev) => {
-        const base = { ...prev, page: 1, pageSize: HR_EMPLOYEE_PAGE_SIZE }
+        const base = { ...prev, page: 1, pageSize: targetPageSize }
         if (tab === 'all') {
           const { role: _r, ...rest } = base
           return rest
@@ -151,7 +171,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     setSelectedId(null)
     void navigate({
       to: '/hr-admin',
-      search: (s) => ({ ...s, page: nextPage, pageSize: HR_EMPLOYEE_PAGE_SIZE }),
+      search: (s) => ({ ...s, page: nextPage, pageSize: targetPageSize }),
     })
   }
 
@@ -164,7 +184,11 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
       <div
         className={cn(
           'page-shell scrollbar-hide overflow-x-hidden',
-          selectedId ? 'lg:pr-[380px]' : undefined
+          selectedId ? 'lg:pr-[380px]' : undefined,
+          viewMode === 'cards' &&
+            (employees.length > 0 || pagination.total > 0) &&
+            !selectedId &&
+            'max-md:pb-[7.25rem]'
         )}
       >
         {/* Tiêu đề + nút + thống kê — bố cục như code.html, giữ màu ô thống kê hiện tại */}
@@ -358,7 +382,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         </div>
 
         {viewMode === 'cards' && (employees.length > 0 || pagination.total > 0) ? (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/50 px-3 py-3 shadow-sm ring-1 ring-border/50 backdrop-blur-sm sm:px-4">
+          <div className="mb-5 hidden flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/50 px-3 py-3 shadow-sm ring-1 ring-border/50 backdrop-blur-sm sm:px-4 md:flex">
             <span className="text-xs font-medium text-muted-foreground">
               {pagination.total === 0
                 ? 'Không có nhân viên phù hợp'
@@ -393,37 +417,39 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
                 <SkeletonStatTile key={i} />
               ))}
             </div>
-            <SkeletonEmployeeCardGrid count={10} />
+            <SkeletonEmployeeCardGrid count={targetPageSize} />
           </div>
         ) : (
           <>
             <div
               className={cn(
-                'grid gap-8 gap-y-4',
+                'grid gap-3 gap-y-3 md:gap-8 md:gap-y-4',
                 selectedId
-                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-                  : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+                  ? 'grid-cols-2 lg:grid-cols-4'
+                  : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
               )}
             >
               {employees.map((e: EmployeeEntity, idx) => (
-                <EmployeeCard
-                  key={e.id}
-                  cardIndex={idx}
-                  employee={e}
-                  selected={selectedId === e.id}
-                  variant="hr"
-                  onSelect={() => {
-                    setSelectedId(e.id)
-                  }}
-                  onView={(ev) => {
-                    ev.stopPropagation()
-                    onView(e.id)
-                  }}
-                  onEdit={(ev) => {
-                    ev.stopPropagation()
-                    onEdit(e.id)
-                  }}
-                />
+                <div key={e.id} className="min-w-0">
+                  <EmployeeCard
+                    cardIndex={idx}
+                    employee={e}
+                    selected={selectedId === e.id}
+                    variant="hr"
+                    compact={isHrDirectoryMobileGrid}
+                    onSelect={() => {
+                      setSelectedId(e.id)
+                    }}
+                    onView={(ev) => {
+                      ev.stopPropagation()
+                      onView(e.id)
+                    }}
+                    onEdit={(ev) => {
+                      ev.stopPropagation()
+                      onEdit(e.id)
+                    }}
+                  />
+                </div>
               ))}
             </div>
             {employees.length === 0 ? (
@@ -443,6 +469,29 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         canDeactivate={canDeactivate}
         canReactivate={canEdit}
       />
+
+      {viewMode === 'cards' && (employees.length > 0 || pagination.total > 0) && !selectedId ? (
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 shadow-[0_-6px_24px_-8px_rgba(0,0,0,0.12)] backdrop-blur-md supports-[backdrop-filter]:bg-background/80 md:hidden"
+          style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom, 0px))' }}
+        >
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-2">
+            <span className="text-center text-[11px] font-medium text-muted-foreground sm:text-left">
+              {pagination.total === 0
+                ? 'Không có nhân viên phù hợp'
+                : `Hiển thị ${rangeFrom}–${rangeTo} trong ${pagination.total} nhân viên`}
+            </span>
+            <div className="min-w-0 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]">
+              <PaginationCardStepper
+                className="min-w-min justify-center"
+                page={pagination.page}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

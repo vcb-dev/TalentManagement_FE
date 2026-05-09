@@ -261,120 +261,203 @@ export function MemberClassesPanel() {
           </div>
         </div>
 
-        <div className={cn('overflow-x-auto transition-opacity', isFetching && 'opacity-60')}>
-          <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-50 bg-slate-50/30">
-                <th className="px-8 py-4 text-[11px] font-black uppercase tracking-widest text-slate-400">
-                  Thời gian
-                </th>
-                <th className="px-6 py-4 text-[11px] font-black uppercase tracking-widest text-slate-400">
-                  Giảng viên
-                </th>
-                <th className="px-6 py-4 text-[11px] font-black uppercase tracking-widest text-slate-400">
-                  Nội dung
-                </th>
-                <th className="px-6 py-4 text-[11px] font-black uppercase tracking-widest text-slate-400">
-                  Địa điểm
-                </th>
-                <th className="px-6 py-4 text-[11px] font-black uppercase tracking-widest text-slate-400 text-center">
-                  Trạng thái
-                </th>
-                <th className="px-8 py-4 text-[11px] font-black uppercase tracking-widest text-slate-400 text-right">
-                  Hành động
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {cls.schedules.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-8 py-20 text-center">
-                    <p className="text-sm font-bold text-slate-400">Không tìm thấy lịch học nào</p>
-                  </td>
-                </tr>
-              ) : (
-                cls.schedules.map((s) => (
-                  <tr key={s.id} className="group transition-colors hover:bg-slate-50/50">
-                    <td className="px-8 py-5">
-                      <div className="space-y-1">
-                        <p className="text-xs font-black text-slate-900">
-                          {formatDateIsoVi(s.dateIso)}
-                        </p>
-                        <p className="text-[10px] font-bold text-slate-400">
-                          {s.startTime} - {s.endTime}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <p className="text-xs font-bold text-slate-700">{cls.teacherName}</p>
-                    </td>
-                    <td className="px-6 py-5">
-                      <p className="max-w-[200px] truncate text-xs font-bold text-slate-600">
-                        {s.topic}
-                      </p>
-                    </td>
-                    <td className="px-6 py-5">
-                      <p className="text-xs font-bold text-slate-500">
-                        {s.location?.trim() || '—'}
-                      </p>
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                      <Badge
+        <div className={cn('transition-opacity', isFetching && 'opacity-60')}>
+          <div className="divide-y divide-slate-50 md:hidden">
+            {cls.schedules.length === 0 ? (
+              <div className="px-4 py-16 text-center">
+                <p className="text-sm font-bold text-slate-400">Không tìm thấy lịch học nào</p>
+              </div>
+            ) : (
+              cls.schedules.map((s) => (
+                <div key={s.id} className="space-y-3 p-4">
+                  <div>
+                    <p className="text-xs font-black text-slate-900">
+                      {formatDateIsoVi(s.dateIso)}
+                    </p>
+                    <p className="text-[10px] font-bold text-slate-400">
+                      {s.startTime} - {s.endTime}
+                    </p>
+                  </div>
+                  <p className="text-xs font-bold text-slate-700">
+                    <span className="font-semibold text-slate-400">Giảng viên: </span>
+                    {cls.teacherName}
+                  </p>
+                  <p className="break-words text-xs font-bold text-slate-600">{s.topic}</p>
+                  <p className="text-xs font-bold text-slate-500">
+                    <span className="font-semibold text-slate-400">Địa điểm: </span>
+                    {s.location?.trim() || '—'}
+                  </p>
+                  <Badge
+                    className={cn(
+                      'h-7 rounded-lg px-3 text-[10px] font-black uppercase tracking-tight border-0 shadow-sm',
+                      s.attendance === 'PRESENT'
+                        ? 'bg-emerald-500/10 text-emerald-600'
+                        : s.attendance === 'LATE'
+                          ? 'bg-amber-500/10 text-amber-600'
+                          : s.attendance === 'ABSENT'
+                            ? 'bg-rose-500/10 text-rose-600'
+                            : 'bg-slate-100 text-slate-400'
+                    )}
+                  >
+                    {s.attendance === 'PRESENT'
+                      ? 'Tham gia'
+                      : s.attendance === 'LATE'
+                        ? 'Đi muộn'
+                        : s.attendance === 'ABSENT'
+                          ? 'Vắng mặt'
+                          : 'Chưa điểm danh'}
+                  </Badge>
+                  <div className="pt-1">
+                    {s.attendance === 'PRESENT' || s.attendance === 'LATE' ? (
+                      <Button
                         className={cn(
-                          'h-7 rounded-lg px-3 text-[10px] font-black uppercase tracking-tight shadow-sm border-0',
-                          s.attendance === 'PRESENT'
-                            ? 'bg-emerald-500/10 text-emerald-600'
-                            : s.attendance === 'LATE'
-                              ? 'bg-amber-500/10 text-amber-600'
-                              : s.attendance === 'ABSENT'
-                                ? 'bg-rose-500/10 text-rose-600'
-                                : 'bg-slate-100 text-slate-400'
+                          'h-10 w-full rounded-xl px-5 text-[11px] font-black uppercase tracking-widest shadow-lg transition-all',
+                          s.isEvaluated
+                            ? 'bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600'
+                            : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
                         )}
+                        onClick={() => {
+                          setEvalTarget({ scheduleId: s.id, topic: s.topic })
+                          setEvalModalOpen(true)
+                        }}
                       >
-                        {s.attendance === 'PRESENT'
-                          ? 'Tham gia'
-                          : s.attendance === 'LATE'
-                            ? 'Đi muộn'
-                            : s.attendance === 'ABSENT'
-                              ? 'Vắng mặt'
-                              : 'Chưa điểm danh'}
-                      </Badge>
-                    </td>
-                    <td className="px-8 py-5 text-right">
-                      {s.attendance === 'PRESENT' || s.attendance === 'LATE' ? (
-                        <Button
-                          className={cn(
-                            'h-9 rounded-xl px-5 text-[11px] font-black uppercase tracking-widest transition-all shadow-lg',
-                            s.isEvaluated
-                              ? 'bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600'
-                              : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
-                          )}
-                          onClick={() => {
-                            setEvalTarget({ scheduleId: s.id, topic: s.topic })
-                            setEvalModalOpen(true)
-                          }}
-                        >
-                          {s.isEvaluated ? (
-                            <>
-                              <Edit3 className="mr-2 h-3.5 w-3.5" /> Sửa đánh giá
-                            </>
-                          ) : (
-                            <>
-                              <Star className="mr-2 h-3.5 w-3.5" /> Đánh giá buổi học
-                            </>
-                          )}
-                        </Button>
-                      ) : (
-                        <span className="text-[10px] font-bold text-slate-300 italic">
-                          Không khả dụng
-                        </span>
-                      )}
+                        {s.isEvaluated ? (
+                          <>
+                            <Edit3 className="mr-2 h-3.5 w-3.5" /> Sửa đánh giá
+                          </>
+                        ) : (
+                          <>
+                            <Star className="mr-2 h-3.5 w-3.5" /> Đánh giá buổi học
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <span className="text-[10px] font-bold italic text-slate-300">
+                        Không khả dụng
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-50 bg-slate-50/30">
+                  <th className="px-8 py-4 text-[11px] font-black uppercase tracking-widest text-slate-400">
+                    Thời gian
+                  </th>
+                  <th className="px-6 py-4 text-[11px] font-black uppercase tracking-widest text-slate-400">
+                    Giảng viên
+                  </th>
+                  <th className="px-6 py-4 text-[11px] font-black uppercase tracking-widest text-slate-400">
+                    Nội dung
+                  </th>
+                  <th className="px-6 py-4 text-[11px] font-black uppercase tracking-widest text-slate-400">
+                    Địa điểm
+                  </th>
+                  <th className="px-6 py-4 text-center text-[11px] font-black uppercase tracking-widest text-slate-400">
+                    Trạng thái
+                  </th>
+                  <th className="px-8 py-4 text-right text-[11px] font-black uppercase tracking-widest text-slate-400">
+                    Hành động
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {cls.schedules.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-8 py-20 text-center">
+                      <p className="text-sm font-bold text-slate-400">
+                        Không tìm thấy lịch học nào
+                      </p>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  cls.schedules.map((s) => (
+                    <tr key={s.id} className="group transition-colors hover:bg-slate-50/50">
+                      <td className="px-8 py-5">
+                        <div className="space-y-1">
+                          <p className="text-xs font-black text-slate-900">
+                            {formatDateIsoVi(s.dateIso)}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-400">
+                            {s.startTime} - {s.endTime}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <p className="text-xs font-bold text-slate-700">{cls.teacherName}</p>
+                      </td>
+                      <td className="px-6 py-5">
+                        <p className="max-w-[200px] truncate text-xs font-bold text-slate-600">
+                          {s.topic}
+                        </p>
+                      </td>
+                      <td className="px-6 py-5">
+                        <p className="text-xs font-bold text-slate-500">
+                          {s.location?.trim() || '—'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <Badge
+                          className={cn(
+                            'h-7 rounded-lg border-0 px-3 text-[10px] font-black uppercase tracking-tight shadow-sm',
+                            s.attendance === 'PRESENT'
+                              ? 'bg-emerald-500/10 text-emerald-600'
+                              : s.attendance === 'LATE'
+                                ? 'bg-amber-500/10 text-amber-600'
+                                : s.attendance === 'ABSENT'
+                                  ? 'bg-rose-500/10 text-rose-600'
+                                  : 'bg-slate-100 text-slate-400'
+                          )}
+                        >
+                          {s.attendance === 'PRESENT'
+                            ? 'Tham gia'
+                            : s.attendance === 'LATE'
+                              ? 'Đi muộn'
+                              : s.attendance === 'ABSENT'
+                                ? 'Vắng mặt'
+                                : 'Chưa điểm danh'}
+                        </Badge>
+                      </td>
+                      <td className="px-8 py-5 text-right">
+                        {s.attendance === 'PRESENT' || s.attendance === 'LATE' ? (
+                          <Button
+                            className={cn(
+                              'h-9 rounded-xl px-5 text-[11px] font-black uppercase tracking-widest shadow-lg transition-all',
+                              s.isEvaluated
+                                ? 'bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600'
+                                : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
+                            )}
+                            onClick={() => {
+                              setEvalTarget({ scheduleId: s.id, topic: s.topic })
+                              setEvalModalOpen(true)
+                            }}
+                          >
+                            {s.isEvaluated ? (
+                              <>
+                                <Edit3 className="mr-2 h-3.5 w-3.5" /> Sửa đánh giá
+                              </>
+                            ) : (
+                              <>
+                                <Star className="mr-2 h-3.5 w-3.5" /> Đánh giá buổi học
+                              </>
+                            )}
+                          </Button>
+                        ) : (
+                          <span className="text-[10px] font-bold italic text-slate-300">
+                            Không khả dụng
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -397,39 +480,50 @@ export function MemberClassesPanel() {
         contentWidth="wide"
       >
         <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
-                <TableHead className="h-10 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Họ tên
-                </TableHead>
-                <TableHead className="hidden h-10 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 sm:table-cell">
-                  Email
-                </TableHead>
-                <TableHead className="hidden h-10 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 md:table-cell">
-                  Vị trí
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cls.members.map((m) => (
-                <TableRow
-                  key={m.userId}
-                  className="border-slate-50 transition-colors hover:bg-slate-50/50"
-                >
-                  <TableCell className="px-4 py-3 text-xs font-bold text-slate-700">
-                    {m.name}
-                  </TableCell>
-                  <TableCell className="hidden px-4 py-3 text-xs text-slate-500 sm:table-cell">
-                    {m.email}
-                  </TableCell>
-                  <TableCell className="hidden px-4 py-3 text-xs font-medium text-slate-500 md:table-cell">
-                    {m.jobTitle?.trim() || '—'}
-                  </TableCell>
+          <div className="divide-y divide-slate-50 md:hidden">
+            {cls.members.map((m) => (
+              <div key={m.userId} className="space-y-1 p-4">
+                <p className="text-xs font-bold text-slate-700">{m.name}</p>
+                <p className="break-all text-xs text-slate-500">{m.email}</p>
+                <p className="text-xs font-medium text-slate-500">
+                  Vị trí: {m.jobTitle?.trim() || '—'}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                  <TableHead className="h-10 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Họ tên
+                  </TableHead>
+                  <TableHead className="h-10 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Email
+                  </TableHead>
+                  <TableHead className="h-10 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Vị trí
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {cls.members.map((m) => (
+                  <TableRow
+                    key={m.userId}
+                    className="border-slate-50 transition-colors hover:bg-slate-50/50"
+                  >
+                    <TableCell className="px-4 py-3 text-xs font-bold text-slate-700">
+                      {m.name}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-xs text-slate-500">{m.email}</TableCell>
+                    <TableCell className="px-4 py-3 text-xs font-medium text-slate-500">
+                      {m.jobTitle?.trim() || '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </Modal>
     </div>

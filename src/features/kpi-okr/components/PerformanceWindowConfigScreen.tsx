@@ -286,52 +286,101 @@ export function PerformanceWindowConfigScreen() {
         <CardHeader>
           <CardTitle className="text-base">Đã cấu hình (50 bản ghi gần nhất)</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="space-y-4 p-4 sm:p-6">
           {listQ.isLoading ? (
             <Skeleton className="h-40 w-full rounded-lg" />
           ) : listQ.isError ? (
             <p className="text-sm text-destructive">Không tải được danh sách.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Phạm vi</TableHead>
-                  <TableHead>Kỳ</TableHead>
-                  <TableHead>Giao KPI/OKR</TableHead>
-                  <TableHead>Khảo sát</TableHead>
-                  <TableHead className="w-[100px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="divide-y divide-border md:hidden">
                 {(listQ.data ?? []).map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-medium">{teamLabel(row.teamId)}</TableCell>
-                    <TableCell className="tabular-nums">
-                      T{row.month}/{row.year}
-                    </TableCell>
-                    <TableCell className="tabular-nums text-muted-foreground">
-                      {row.assignStartDay} → {row.assignEndDay}
-                    </TableCell>
-                    <TableCell className="tabular-nums text-muted-foreground">
-                      {row.answerStartDay} → {row.answerEndDay}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-1"
-                        onClick={() => applyRowToForm(row)}
-                        disabled={mock}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Sửa
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                  <div key={row.id} className="space-y-2 py-4 first:pt-0">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                        Phạm vi
+                      </p>
+                      <p className="font-medium">{teamLabel(row.teamId)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground">Kỳ</p>
+                      <p className="tabular-nums">
+                        T{row.month}/{row.year}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                        Giao KPI/OKR
+                      </p>
+                      <p className="tabular-nums text-muted-foreground">
+                        {row.assignStartDay} → {row.assignEndDay}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                        Khảo sát
+                      </p>
+                      <p className="tabular-nums text-muted-foreground">
+                        {row.answerStartDay} → {row.answerEndDay}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-1"
+                      onClick={() => applyRowToForm(row)}
+                      disabled={mock}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Sửa
+                    </Button>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+              <div className="hidden overflow-x-auto md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Phạm vi</TableHead>
+                      <TableHead>Kỳ</TableHead>
+                      <TableHead>Giao KPI/OKR</TableHead>
+                      <TableHead>Khảo sát</TableHead>
+                      <TableHead className="w-[100px]" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(listQ.data ?? []).map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell className="font-medium">{teamLabel(row.teamId)}</TableCell>
+                        <TableCell className="tabular-nums">
+                          T{row.month}/{row.year}
+                        </TableCell>
+                        <TableCell className="tabular-nums text-muted-foreground">
+                          {row.assignStartDay} → {row.assignEndDay}
+                        </TableCell>
+                        <TableCell className="tabular-nums text-muted-foreground">
+                          {row.answerStartDay} → {row.answerEndDay}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => applyRowToForm(row)}
+                            disabled={mock}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Sửa
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
           {(listQ.data ?? []).length === 0 && !listQ.isLoading ? (
             <p className={cn('mt-3 text-center text-sm text-muted-foreground')}>
