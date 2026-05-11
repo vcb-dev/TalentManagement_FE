@@ -41,14 +41,17 @@ export type AppNavItem = {
   hiddenForRoles?: Role[]
   /** Các mục con hiển thị dưới dạng dropdown/hover */
   children?: AppNavItem[]
+  /** Mở trong tab mới, không điều hướng khỏi app hiện tại */
+  openNewTab?: boolean
 }
 
-/** Trang landing giới thiệu Viễn Chí Bảo (`/`). */
+/** Trang giới thiệu Viễn Chí Bảo (`/about-us`) — mở tab mới. */
 export const COMPANY_LANDING_NAV_ITEM: AppNavItem = {
-  to: '/',
+  to: '/about-us',
   label: 'Viễn Chí Bảo',
   icon: Home,
   match: 'exact',
+  openNewTab: true,
 }
 
 /** Member: dashboard, lộ trình, thi, KPI, báo cáo — quyền bám route + catalog (tránh link tới màn không vào được). */
@@ -477,11 +480,6 @@ export function groupedSidebarNavItems(
         ...find(SETTINGS_ITEMS, '/hr-admin/settings/kpi-catalog-allowlist'),
       ]),
     },
-    {
-      id: 'company',
-      label: 'Công ty',
-      items: take([COMPANY_LANDING_NAV_ITEM]),
-    },
   ]
 
   return groups.filter((g) => g.items.length > 0)
@@ -505,7 +503,6 @@ export function mergeCompactHeaderNavItems(
       out.push(item)
     }
   }
-  push([COMPANY_LANDING_NAV_ITEM])
   push(MEMBER_SELF_ITEMS)
   push(ROOM_BOOKING_ITEMS)
   push(BOD_ITEMS)

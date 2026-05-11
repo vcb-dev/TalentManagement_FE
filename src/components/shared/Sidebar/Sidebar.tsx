@@ -123,6 +123,18 @@ const NavLink = memo(function NavLink({
     )
   }
 
+  if (item.openNewTab) {
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild collapsed={collapsed} active={active}>
+          <a href={item.to} target="_blank" rel="noopener noreferrer" title={title}>
+            {inner}
+          </a>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    )
+  }
+
   if (item.search !== undefined) {
     return (
       <SidebarMenuItem>

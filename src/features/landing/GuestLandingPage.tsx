@@ -182,6 +182,12 @@ export function GuestLandingPage() {
             >
               Phạm vi dự án
             </a>
+            <Link
+              to="/about-us"
+              className="hidden text-sm font-medium text-gray-600 transition-colors hover:text-primary sm:inline"
+            >
+              Giới thiệu
+            </Link>
             <Button size="sm" className="shadow-sm" asChild>
               <Link to="/login">Đăng nhập</Link>
             </Button>

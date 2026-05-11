@@ -60,6 +60,21 @@ function MobileNavLink({
     </>
   )
 
+  if (item.openNewTab) {
+    return (
+      <SidebarMenuItem
+        className={cn('mb-0', open ? 'translate-x-0 opacity-100' : '-translate-x-4 opacity-0')}
+        style={style}
+      >
+        <SidebarMenuButton asChild className={className}>
+          <a href={item.to} target="_blank" rel="noopener noreferrer" onClick={onSelect}>
+            {inner}
+          </a>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    )
+  }
+
   if (item.search !== undefined) {
     return (
       <SidebarMenuItem

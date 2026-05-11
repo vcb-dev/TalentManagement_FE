@@ -23,7 +23,7 @@ type HeaderNavGroup = {
 }
 
 function routeGroup(item: AppNavItem): string {
-  if (item.to === '/') return 'company'
+  if (item.to === '/about-us') return 'company'
   if (item.to.startsWith('/room-booking')) return 'room-booking'
   if (item.to.startsWith('/manager')) return 'manager'
   if (item.to.startsWith('/hr-admin') || item.to.startsWith('/permissions')) return 'hr'
@@ -96,6 +96,14 @@ function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) 
     </>
   )
 
+  if (item.openNewTab) {
+    return (
+      <a href={item.to} target="_blank" rel="noopener noreferrer" className={className}>
+        {inner}
+      </a>
+    )
+  }
+
   if (item.search !== undefined) {
     return (
       <Link to={item.to} search={item.search} preload="intent" className={className}>
@@ -148,20 +156,32 @@ export function MemberLeaderHeaderNav() {
           const singleItem = group.items[0]!
 
           if (isSingle) {
+            const linkClass = cn(
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 active:scale-95 border border-transparent bg-transparent text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white focus:text-white',
+              active && 'border-white/30 bg-white/15 text-white'
+            )
             return (
               <NavigationMenuItem key={group.id}>
                 <NavigationMenuLink asChild>
-                  <Link
-                    to={singleItem.to}
-                    search={singleItem.search}
-                    preload="intent"
-                    className={cn(
-                      'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 active:scale-95 border border-transparent bg-transparent text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white focus:text-white',
-                      active && 'border-white/30 bg-white/15 text-white'
-                    )}
-                  >
-                    {group.label}
-                  </Link>
+                  {singleItem.openNewTab ? (
+                    <a
+                      href={singleItem.to}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={linkClass}
+                    >
+                      {group.label}
+                    </a>
+                  ) : (
+                    <Link
+                      to={singleItem.to}
+                      search={singleItem.search}
+                      preload="intent"
+                      className={linkClass}
+                    >
+                      {group.label}
+                    </Link>
+                  )}
                 </NavigationMenuLink>
               </NavigationMenuItem>
             )
