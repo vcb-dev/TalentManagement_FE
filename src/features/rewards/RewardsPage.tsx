@@ -5,19 +5,26 @@ import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
 import {
   Award,
-  AlertTriangle,
-  TrendingUp,
-  Trash2,
+  Calendar,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Filter,
+  MoreVertical,
+  Plus,
   Search,
+  Settings2,
+  Trash2,
+  Users,
   Edit,
   LayoutGrid,
-  ChevronDown,
   ChevronUp,
-  Users,
   User,
   History,
-  Check,
+  AlertTriangle,
+  TrendingUp,
 } from 'lucide-react'
+import { CustomSelect } from '@/components/shared/CustomSelect'
 
 type Rule = {
   id: string
@@ -86,6 +93,8 @@ const CATEGORY_MAPPING: Record<string, string> = {
   'SAN XUAT': 'SẢN XUẤT',
   'VẬN ĐƠN': 'VẬN ĐƠN',
   'VAN DON': 'VẬN ĐƠN',
+  TECH: 'CÔNG NGHỆ',
+  'CÔNG NGHỆ': 'CÔNG NGHỆ',
 }
 
 const HIDDEN_CATEGORIES: string[] = []
@@ -100,8 +109,7 @@ export default function RewardsPage() {
   const isPrivileged =
     currentUser?.role === 'HR' || currentUser?.role === 'BOD' || currentUser?.role === 'MANAGER'
 
-  // Main Tabs
-  const [activeTab, setActiveTab] = useState<'my' | 'admin'>(isPrivileged ? 'admin' : 'my')
+  // Main Tabs (Persona Tabs removed by request)
   const [adminSubTab, setAdminSubTab] = useState<'log' | 'catalog' | 'history'>('log')
   const [mySubTab, setMySubTab] = useState<'history' | 'catalog'>('history')
 
@@ -126,6 +134,7 @@ export default function RewardsPage() {
 
   // Filter states
   const [teamSearch, setTeamSearch] = useState<string>('')
+  const [logTeamFilter, setLogTeamFilter] = useState<string>('all')
 
   // Action States
   const [showActionPanel, setShowActionPanel] = useState(false)
@@ -135,6 +144,15 @@ export default function RewardsPage() {
   const [appliedRuleIds, setAppliedRuleIds] = useState<Set<string>>(new Set())
   const [customNote, setCustomNote] = useState<string>('')
   const [submitting, setSubmitting] = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+
+  const [historySearch, setHistorySearch] = useState<string>('')
+  const [historyTeamFilter, setHistoryTeamFilter] = useState<string>('all')
+  const [historyPage, setHistoryPage] = useState(1)
+  const itemsPerPage = 6
+
+  // Member search
+  const [memberRuleSearch, setMemberRuleSearch] = useState('')
 
   // Rule CRUD Modal
   const [showRuleModal, setShowRuleModal] = useState(false)
@@ -151,17 +169,16 @@ export default function RewardsPage() {
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true)
     try {
-      const rulesRes = await apiClient.get<Rule[]>('/reward/rules')
+      const rulesUrl = isPrivileged ? '/reward/rules' : '/reward/my-rules'
+      const rulesRes = await apiClient.get<Rule[]>(rulesUrl)
       setRules(rulesRes.data || [])
 
       if (isPrivileged) {
-        const [recordsRes, empRes] = await Promise.all([
-          apiClient.get<RecordEntity[]>('/reward/records'),
-          apiClient.get<any>('/employees?pageSize=500'),
-        ])
+        const employeesRes = await apiClient.get<any>('/employees?pageSize=3000')
+        setEmployees(employeesRes.data?.data || [])
+
+        const recordsRes = await apiClient.get<RecordEntity[]>('/reward/records')
         setAllRecords(recordsRes.data || [])
-        const empData = empRes.data?.data || empRes.data?.items || empRes.data
-        setEmployees(Array.isArray(empData) ? empData : [])
       }
 
       const myRes = await apiClient.get<RecordEntity[]>('/reward/my-records')
@@ -177,9 +194,9 @@ export default function RewardsPage() {
     fetchData()
   }, [isPrivileged])
 
-  // Auto-expand teams when searching
+  // Auto-expand teams when searching or filtering
   useEffect(() => {
-    if (teamSearch.trim()) {
+    if (teamSearch.trim() || logTeamFilter !== 'all') {
       const matchingIds = Object.keys(filteredTeamGroups)
       setExpandedTeams((prev) => {
         const next = new Set(prev)
@@ -187,29 +204,50 @@ export default function RewardsPage() {
         return next
       })
     }
-  }, [teamSearch])
+  }, [teamSearch, logTeamFilter])
 
   const groupedEmployees = useMemo(() => {
     const groups: Record<string, { name: string; members: any[] }> = {}
     if (!Array.isArray(employees)) return groups
     employees.forEach((emp: any) => {
-      const tName = emp.teamNames && emp.teamNames.length > 0 ? emp.teamNames[0] : 'CHƯA GÁN TEAM'
-      const tId = emp.teamIds && emp.teamIds.length > 0 ? emp.teamIds[0] : 'no-team'
-      if (!groups[tId]) groups[tId] = { name: tName, members: [] }
-      groups[tId].members.push(emp)
+      const tIds = emp.teamIds && emp.teamIds.length > 0 ? emp.teamIds : ['no-team']
+      const tNames = emp.teamNames && emp.teamNames.length > 0 ? emp.teamNames : ['CHƯA GÁN TEAM']
+
+      tIds.forEach((tid: string, idx: number) => {
+        const tName = tNames[idx] || tNames[0] || 'CHƯA GÁN TEAM'
+        if (!groups[tid]) groups[tid] = { name: tName, members: [] }
+        // Tránh trùng lặp trong cùng 1 team (nếu dữ liệu bị trùng)
+        if (!groups[tid].members.find((m) => m.id === emp.id)) {
+          groups[tid].members.push(emp)
+        }
+      })
     })
     return groups
   }, [employees])
 
   const filteredTeamGroups = useMemo(() => {
-    if (!teamSearch) return groupedEmployees
+    let baseGroups = groupedEmployees
+
+    // Filter by Dropdown first
+    if (logTeamFilter !== 'all') {
+      const filtered: Record<string, { name: string; members: Employee[] }> = {}
+      if (baseGroups[logTeamFilter]) {
+        filtered[logTeamFilter] = baseGroups[logTeamFilter]
+      }
+      baseGroups = filtered
+    }
+
+    if (!teamSearch) return baseGroups
+
     const filtered: Record<string, { name: string; members: Employee[] }> = {}
-    const searchLow = teamSearch.toLowerCase()
-    Object.entries(groupedEmployees).forEach(([tid, group]) => {
-      const matchesTeam = group.name.toLowerCase().includes(searchLow)
-      const matchingMembers = group.members.filter((m) =>
-        (m.name || '').toLowerCase().includes(searchLow)
-      )
+    const searchLow = teamSearch.toLowerCase().replace(/\s/g, '')
+    Object.entries(baseGroups).forEach(([tid, group]) => {
+      const groupNameLow = group.name.toLowerCase().replace(/\s/g, '')
+      const matchesTeam = groupNameLow.includes(searchLow)
+      const matchingMembers = group.members.filter((m) => {
+        const memberNameLow = (m.name || '').toLowerCase().replace(/\s/g, '')
+        return memberNameLow.includes(searchLow)
+      })
       if (matchesTeam || matchingMembers.length > 0) {
         filtered[tid] = {
           name: group.name,
@@ -218,7 +256,7 @@ export default function RewardsPage() {
       }
     })
     return filtered
-  }, [groupedEmployees, teamSearch])
+  }, [groupedEmployees, teamSearch, logTeamFilter])
 
   const detectCategoryFromTeam = (teamName: string) => {
     const name = teamName.toUpperCase()
@@ -313,37 +351,42 @@ export default function RewardsPage() {
   }
 
   const handleDeleteRule = async (id: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa quy định này?')) return
-    try {
-      await apiClient.delete(`/reward/rules/${id}`)
-      await fetchData(true)
-      toast.success('Đã xóa quy định thành công')
-    } catch (error) {
-      console.error('Failed to delete rule:', error)
-      toast.error('Không thể xóa quy định này')
-    }
+    const promise = apiClient.delete(`/reward/rules/${id}`)
+
+    toast.promise(promise, {
+      loading: 'Đang xóa quy định...',
+      success: () => {
+        setDeleteConfirmId(null)
+        fetchData(true)
+        return 'Đã xóa quy định thành công'
+      },
+      error: 'Không thể xóa quy định này',
+    })
   }
 
   const handleSaveRule = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
-    try {
-      const payload = {
-        ...ruleForm,
-        teamId: ruleForm.teamId || null,
-        amount: Number(ruleForm.amount),
-      }
-      if (editingRuleId) await apiClient.patch(`/reward/rules/${editingRuleId}`, payload)
-      else await apiClient.post('/reward/rules', payload)
-      setShowRuleModal(false)
-      await fetchData(true)
-      toast.success(editingRuleId ? 'Đã cập nhật quy chuẩn' : 'Đã thêm quy chuẩn mới')
-    } catch (error) {
-      console.error('Failed to save rule:', error)
-      toast.error('Lỗi khi lưu quy chuẩn')
-    } finally {
-      setSubmitting(false)
+    const payload = {
+      ...ruleForm,
+      teamId: ruleForm.teamId || null,
+      amount: Number(ruleForm.amount),
     }
+
+    const promise = editingRuleId
+      ? apiClient.patch(`/reward/rules/${editingRuleId}`, payload)
+      : apiClient.post('/reward/rules', payload)
+
+    toast.promise(promise, {
+      loading: editingRuleId ? 'Đang cập nhật...' : 'Đang tạo mới...',
+      success: () => {
+        setShowRuleModal(false)
+        fetchData(true)
+        return editingRuleId ? 'Đã cập nhật quy chuẩn' : 'Đã thêm quy chuẩn mới'
+      },
+      error: 'Lỗi khi lưu quy chuẩn',
+      finally: () => setSubmitting(false),
+    })
   }
 
   const myTotalRewards = myRecords
@@ -354,13 +397,34 @@ export default function RewardsPage() {
     .reduce((sum, r) => sum + Number(r.amount || 0), 0)
   const myNetBalance = myTotalRewards - myTotalPenalties
 
-  const excelTabs = Array.from(
-    new Set(
-      rules
-        .filter((r) => !HIDDEN_CATEGORIES.includes(r.category.toUpperCase().replace(/_/g, ' ')))
-        .map((r) => getDisplayCategory(r.category))
-    )
-  ).sort((a, b) => (a === 'CHUNG' ? -1 : b === 'CHUNG' ? 1 : a.localeCompare(b)))
+  const excelTabs = useMemo(() => {
+    return Array.from(
+      new Set(
+        rules
+          .filter((r) => !HIDDEN_CATEGORIES.includes(r.category.toUpperCase().replace(/_/g, ' ')))
+          .map((r) => getDisplayCategory(r.category))
+      )
+    ).sort((a, b) => (a === 'CHUNG' ? -1 : b === 'CHUNG' ? 1 : a.localeCompare(b)))
+  }, [rules])
+
+  const memberTabs = useMemo(() => {
+    if (isPrivileged) return excelTabs
+
+    const userTeamIds = currentUser?.teamIds || []
+    const categoriesFromRules = rules
+      .filter((r) => r.teamId && userTeamIds.includes(r.teamId))
+      .map((r) => getDisplayCategory(r.category))
+
+    const userTeamCategory = currentUser?.team
+      ? getDisplayCategory(detectCategoryFromTeam(currentUser.team))
+      : null
+
+    const allowedCategories = new Set(['CHUNG'])
+    categoriesFromRules.forEach((c) => allowedCategories.add(c))
+    if (userTeamCategory) allowedCategories.add(userTeamCategory)
+
+    return excelTabs.filter((tab) => allowedCategories.has(tab))
+  }, [excelTabs, isPrivileged, currentUser, rules])
 
   const activeCategoryRules = useMemo(() => {
     return rules.filter((r) => {
@@ -378,6 +442,27 @@ export default function RewardsPage() {
 
   const filteredActionRules = activeCategoryRules.filter((r) => r.type === actionKind)
 
+  const myTeamRules = useMemo(() => {
+    if (!currentUser) return []
+    // Use teamIds from session first, fallback to employee search if session is missing it
+    const userTeamIds =
+      currentUser.teamIds && currentUser.teamIds.length > 0
+        ? currentUser.teamIds
+        : employees.find((e) => e.email.toLowerCase() === currentUser.email.toLowerCase())
+            ?.teamIds || []
+
+    return rules.filter((r) => {
+      const isGeneral =
+        !r.teamId ||
+        r.category.toUpperCase() === 'GENERAL' ||
+        r.category.toUpperCase() === 'CHUNG' ||
+        !r.team
+
+      if (isGeneral) return true
+      return !!r.teamId && userTeamIds.includes(r.teamId)
+    })
+  }, [rules, currentUser, employees])
+
   return (
     <>
       <div className="p-6 max-w-7xl mx-auto space-y-8 animate-fade-in">
@@ -392,22 +477,6 @@ export default function RewardsPage() {
               Hệ thống áp quy chuẩn theo Team và bộ phận VCB.
             </p>
           </div>
-          {isPrivileged && (
-            <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
-              <button
-                onClick={() => setActiveTab('admin')}
-                className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'admin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Quản trị
-              </button>
-              <button
-                onClick={() => setActiveTab('my')}
-                className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'my' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Cá nhân
-              </button>
-            </div>
-          )}
         </div>
 
         {loading ? (
@@ -415,209 +484,323 @@ export default function RewardsPage() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
             <p className="text-slate-500 text-sm italic">Đang tải dữ liệu...</p>
           </div>
-        ) : activeTab === 'my' ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-emerald-600 p-6 rounded-2xl flex items-center justify-between text-white shadow-lg shadow-emerald-100">
-                <div>
-                  <p className="text-emerald-100 text-xs font-bold uppercase">Thưởng tích lũy</p>
-                  <p className="text-3xl font-black">{myTotalRewards.toLocaleString()} đ</p>
-                </div>
-                <TrendingUp className="h-10 w-10 opacity-20" />
-              </div>
-              <div className="bg-rose-600 p-6 rounded-2xl flex items-center justify-between text-white shadow-lg shadow-rose-100">
-                <div>
-                  <p className="text-rose-100 text-xs font-bold uppercase">Phạt khấu trừ</p>
-                  <p className="text-3xl font-black">{myTotalPenalties.toLocaleString()} đ</p>
-                </div>
-                <AlertTriangle className="h-10 w-10 opacity-20" />
-              </div>
-              <div className="bg-indigo-600 p-6 rounded-2xl flex items-center justify-between text-white shadow-lg shadow-indigo-100">
-                <div>
-                  <p className="text-indigo-100 text-xs font-bold uppercase">Số dư thực tính</p>
-                  <p className="text-3xl font-black">{myNetBalance.toLocaleString()} đ</p>
-                </div>
-                <Award className="h-10 w-10 opacity-20" />
-              </div>
-            </div>
-            <div className="flex border-b border-slate-200 mb-4">
-              <button
-                onClick={() => setMySubTab('history')}
-                className={`px-6 py-3 text-sm font-bold transition-all border-b-2 ${mySubTab === 'history' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400'}`}
-              >
-                Lịch sử của tôi
-              </button>
-              <button
-                onClick={() => setMySubTab('catalog')}
-                className={`px-6 py-3 text-sm font-bold transition-all border-b-2 ${mySubTab === 'catalog' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400'}`}
-              >
-                Tra cứu Quy chuẩn
-              </button>
-            </div>
-            {mySubTab === 'history' ? (
-              <div className="space-y-4">
-                {myRecords.length > 0 ? (
-                  myRecords.map((rec) => (
-                    <div
-                      key={rec.id}
-                      className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div
-                          className={`p-3 rounded-2xl flex-shrink-0 ${rec.kind === 'REWARD' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}
-                        >
-                          {rec.kind === 'REWARD' ? (
-                            <Award className="h-6 w-6" />
-                          ) : (
-                            <AlertTriangle className="h-6 w-6" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${rec.kind === 'REWARD' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}
-                            >
-                              {rec.kind === 'REWARD' ? 'Khen thưởng' : 'Vi phạm'}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-bold">
-                              {new Date(rec.createdAt).toLocaleDateString('vi-VN', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </span>
-                          </div>
-                          <h4 className="font-black text-slate-800 text-base mb-1">{rec.title}</h4>
-                          {rec.note && (
-                            <p className="text-sm text-slate-500 italic mb-2">"{rec.note}"</p>
-                          )}
-                          <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold">
-                            <User className="h-3 w-3" />
-                            Ghi nhận bởi:{' '}
-                            <span className="text-indigo-500">
-                              {rec.createdBy?.fullNameLegal || 'Hệ thống'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center border-t md:border-t-0 pt-4 md:pt-0 border-slate-50">
-                        <div className="md:hidden text-[10px] font-black text-slate-400 uppercase">
-                          Giá trị
-                        </div>
-                        <div
-                          className={`text-xl font-black ${rec.kind === 'REWARD' ? 'text-emerald-600' : 'text-rose-600'}`}
-                        >
-                          {rec.kind === 'REWARD' ? '+' : '-'}
-                          {Number(rec.amount || 0).toLocaleString()} đ
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="bg-white border border-dashed border-slate-200 rounded-[3rem] py-24 text-center">
-                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <History className="h-8 w-8 text-slate-200" />
-                    </div>
-                    <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">
-                      Chưa có lịch sử ghi nhận
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                  {excelTabs.map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setSelectedRuleCategory(tab)}
-                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase whitespace-nowrap border-2 ${selectedRuleCategory === tab ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                  {['REWARD', 'PENALTY'].map((type) => (
-                    <div
-                      key={type}
-                      className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden"
-                    >
-                      <div
-                        className={`px-6 py-4 border-b font-black text-xs uppercase tracking-widest ${type === 'REWARD' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : 'bg-rose-50 text-rose-800 border-rose-100'}`}
-                      >
-                        {type === 'REWARD' ? 'Khen thưởng' : 'Phạt lỗi'} [{selectedRuleCategory}]
-                      </div>
-                      <div className="divide-y divide-slate-50">
-                        {activeCategoryRules
-                          .filter((r) => r.type === type)
-                          .map((rule) => (
-                            <div
-                              key={rule.id}
-                              className="p-5 flex justify-between items-center hover:bg-slate-50"
-                            >
-                              <div>
-                                <div className="font-bold text-slate-700 text-sm">{rule.title}</div>
-                                {rule.note && (
-                                  <div className="text-[11px] text-slate-400 italic">
-                                    {rule.note}
-                                  </div>
-                                )}
-                              </div>
-                              <div
-                                className={`font-black ${type === 'REWARD' ? 'text-emerald-600' : 'text-rose-600'}`}
-                              >
-                                {Number(rule.amount || 0).toLocaleString()} đ
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         ) : (
           <div className="space-y-6">
             <div className="flex border-b border-slate-200">
-              <button
-                onClick={() => setAdminSubTab('log')}
-                className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'log' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-              >
-                <Users className="h-4 w-4" /> Ghi nhận theo Team
-              </button>
-              <button
-                onClick={() => setAdminSubTab('catalog')}
-                className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'catalog' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-              >
-                <LayoutGrid className="h-4 w-4" /> Danh mục quy chuẩn
-              </button>
-              <button
-                onClick={() => setAdminSubTab('history')}
-                className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'history' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-              >
-                <History className="h-4 w-4" /> Lịch sử hệ thống
-              </button>
+              {isPrivileged ? (
+                <>
+                  <button
+                    onClick={() => setAdminSubTab('log')}
+                    className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'log' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                  >
+                    <Users className="h-4 w-4" /> Ghi nhận theo Team
+                  </button>
+                  <button
+                    onClick={() => setAdminSubTab('catalog')}
+                    className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'catalog' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                  >
+                    <LayoutGrid className="h-4 w-4" /> Danh mục quy chuẩn
+                  </button>
+                  <button
+                    onClick={() => setAdminSubTab('history')}
+                    className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'history' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                  >
+                    <History className="h-4 w-4" /> Lịch sử hệ thống
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setMySubTab('history')}
+                    className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${mySubTab === 'history' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                  >
+                    <User className="h-4 w-4" /> Thưởng / Lỗi cá nhân
+                  </button>
+                  <button
+                    onClick={() => setMySubTab('catalog')}
+                    className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${mySubTab === 'catalog' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                  >
+                    <Award className="h-4 w-4" /> Danh mục Khen thưởng / Phạt
+                  </button>
+                </>
+              )}
             </div>
 
-            {adminSubTab === 'log' ? (
+            {!isPrivileged ? (
+              /* MEMBER VIEW CONTENT */
+              <div className="space-y-8 animate-fade-in">
+                {mySubTab === 'history' ? (
+                  <div className="space-y-6">
+                    {/* Member Stats Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 flex items-center gap-4">
+                        <div className="h-12 w-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white">
+                          <TrendingUp className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                            Khen thưởng
+                          </p>
+                          <h3 className="text-xl font-black text-emerald-900">
+                            +{myTotalRewards.toLocaleString()}đ
+                          </h3>
+                        </div>
+                      </div>
+                      <div className="bg-rose-50 p-6 rounded-3xl border border-rose-100 flex items-center gap-4">
+                        <div className="h-12 w-12 bg-rose-600 rounded-2xl flex items-center justify-center text-white">
+                          <AlertTriangle className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">
+                            Vi phạm/Phạt
+                          </p>
+                          <h3 className="text-xl font-black text-rose-900">
+                            -{myTotalPenalties.toLocaleString()}đ
+                          </h3>
+                        </div>
+                      </div>
+                      <div
+                        className={`p-6 rounded-3xl border flex items-center gap-4 ${myNetBalance >= 0 ? 'bg-indigo-50 border-indigo-100' : 'bg-amber-50 border-amber-100'}`}
+                      >
+                        <div
+                          className={`h-12 w-12 rounded-2xl flex items-center justify-center text-white ${myNetBalance >= 0 ? 'bg-indigo-600' : 'bg-amber-600'}`}
+                        >
+                          <Award className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <p
+                            className={`text-[10px] font-black uppercase tracking-widest ${myNetBalance >= 0 ? 'text-indigo-600' : 'text-amber-600'}`}
+                          >
+                            Tổng tích lũy
+                          </p>
+                          <h3
+                            className={`text-xl font-black ${myNetBalance >= 0 ? 'text-indigo-900' : 'text-amber-900'}`}
+                          >
+                            {myNetBalance >= 0 ? '+' : ''}
+                            {myNetBalance.toLocaleString()}đ
+                          </h3>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Member History Table */}
+                    <div className="bg-white border rounded-3xl shadow-xl overflow-hidden">
+                      <div className="px-8 py-5 border-b bg-slate-50 flex items-center justify-between">
+                        <h3 className="font-black text-slate-800 uppercase text-xs tracking-widest">
+                          Lịch sử cá nhân
+                        </h3>
+                      </div>
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-900 text-white text-[10px] font-black uppercase">
+                          <tr>
+                            <th className="py-5 px-8">Nội dung</th>
+                            <th className="py-5 px-6">Số tiền</th>
+                            <th className="py-5 px-6">Ghi chú</th>
+                            <th className="py-5 px-8 text-right">Thời gian</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {myRecords.length > 0 ? (
+                            myRecords.map((rec) => (
+                              <tr key={rec.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="py-5 px-8">
+                                  <div className="font-bold text-slate-800">{rec.title}</div>
+                                  <div
+                                    className={`text-[10px] font-black uppercase mt-0.5 ${rec.kind === 'REWARD' ? 'text-emerald-500' : 'text-rose-500'}`}
+                                  >
+                                    {rec.kind === 'REWARD' ? 'Khen thưởng' : 'Phạt vi phạm'}
+                                  </div>
+                                </td>
+                                <td
+                                  className={`py-5 px-6 font-black ${rec.kind === 'REWARD' ? 'text-emerald-600' : 'text-rose-600'}`}
+                                >
+                                  {rec.kind === 'REWARD' ? '+' : '-'}
+                                  {Number(rec.amount || 0).toLocaleString()} đ
+                                </td>
+                                <td className="py-5 px-6 text-slate-500 text-xs italic">
+                                  {rec.note || '-'}
+                                </td>
+                                <td className="py-5 px-8 text-slate-400 text-xs font-medium text-right">
+                                  {new Date(rec.createdAt).toLocaleDateString('vi-VN')}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={4} className="py-20 text-center text-slate-400 italic">
+                                Chưa có dữ liệu khen thưởng/phạt.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  /* Member Team Rules Catalog */
+                  <div className="space-y-6">
+                    <div className="bg-white p-5 rounded-3xl border shadow-xl flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
+                          <LayoutGrid className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-black text-slate-800 uppercase text-xs tracking-widest">
+                            Quy chuẩn nội bộ Team
+                          </h3>
+                          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                            Khung quy định thưởng phạt áp dụng
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
+                      {memberTabs.map((tab) => (
+                        <button
+                          key={tab}
+                          onClick={() => setSelectedRuleCategory(tab)}
+                          className={`px-6 py-3 rounded-2xl text-[11px] font-black uppercase transition-all whitespace-nowrap border-2 ${selectedRuleCategory === tab ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl' : 'bg-white text-slate-400 border-slate-50 hover:border-indigo-100 shadow-sm'}`}
+                        >
+                          {tab}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                      {['REWARD', 'PENALTY'].map((type) => {
+                        const isTableExp = type === 'REWARD' ? rewardsExpanded : penaltiesExpanded
+                        const setTableExp =
+                          type === 'REWARD' ? setRewardsExpanded : setPenaltiesExpanded
+                        const isFullView =
+                          type === 'REWARD' ? catalogRewardsFull : catalogPenaltiesFull
+                        const setFullView =
+                          type === 'REWARD' ? setCatalogRewardsFull : setCatalogPenaltiesFull
+
+                        const allItems = activeCategoryRules.filter((r) => r.type === type)
+                        const displayItems = isFullView ? allItems : allItems.slice(0, 4)
+
+                        return (
+                          <div
+                            key={type}
+                            className="bg-white border rounded-3xl shadow-xl overflow-hidden"
+                          >
+                            <button
+                              onClick={() => setTableExp(!isTableExp)}
+                              className={`w-full px-8 py-5 border-b font-black text-xs uppercase flex items-center justify-between transition-colors ${isTableExp ? (type === 'REWARD' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100') : 'bg-white text-slate-400 hover:bg-slate-50'}`}
+                            >
+                              <div className="flex items-center gap-2">
+                                {type === 'REWARD' ? (
+                                  <TrendingUp className="h-4 w-4" />
+                                ) : (
+                                  <AlertTriangle className="h-4 w-4" />
+                                )}
+                                <span>
+                                  Danh mục {type === 'REWARD' ? 'Khen thưởng' : 'Phạt lỗi'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <span className="opacity-40">{allItems.length} mục</span>
+                                {isTableExp ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </div>
+                            </button>
+
+                            {isTableExp && (
+                              <div className="overflow-x-auto animate-fade-in">
+                                <table className="w-full text-left text-[13px]">
+                                  <thead>
+                                    <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase border-b">
+                                      <th className="py-4 px-8">Quy chuẩn</th>
+                                      <th className="py-4 px-6 text-right">Định mức</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-50">
+                                    {displayItems.map((rule) => (
+                                      <tr
+                                        key={rule.id}
+                                        className="hover:bg-slate-50 transition-colors"
+                                      >
+                                        <td className="py-5 px-8">
+                                          <div>
+                                            <div className="font-bold text-slate-800 leading-tight">
+                                              {rule.title}
+                                            </div>
+                                            {rule.note && (
+                                              <div className="text-[11px] text-slate-400 italic mt-0.5">
+                                                {rule.note}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td
+                                          className={`py-5 px-6 font-black whitespace-nowrap text-right ${type === 'REWARD' ? 'text-emerald-600' : 'text-rose-600'}`}
+                                        >
+                                          {rule.amount
+                                            ? `${Number(rule.amount).toLocaleString('vi-VN')} đ`
+                                            : 'Chưa có'}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                                {allItems.length > 4 && (
+                                  <div className="p-4 bg-slate-50/50 border-t flex justify-center">
+                                    <button
+                                      onClick={() => setFullView(!isFullView)}
+                                      className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm ${isFullView ? 'bg-white text-slate-500 hover:bg-slate-100' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'}`}
+                                    >
+                                      {isFullView
+                                        ? 'Thu gọn'
+                                        : `Xem thêm ${allItems.length - 4} mục`}
+                                    </button>
+                                  </div>
+                                )}
+                                {allItems.length === 0 && (
+                                  <div className="py-20 text-center text-slate-300 italic font-medium uppercase tracking-widest text-[10px]">
+                                    Trống dữ liệu bộ phận {selectedRuleCategory}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : adminSubTab === 'log' ? (
               <div className="space-y-6">
-                <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xl flex items-center justify-between">
-                  <div className="relative w-full max-w-md">
+                <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xl flex flex-col md:flex-row items-center gap-4">
+                  <div className="relative flex-1 w-full">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       type="text"
                       placeholder="Tìm Team hoặc Nhân sự..."
                       value={teamSearch}
                       onChange={(e) => setTeamSearch(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold focus:border-indigo-600 outline-none"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold focus:border-indigo-600 outline-none transition-all"
                     />
                   </div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden md:block">
-                    Chọn Team → Chọn thành viên → Chọn lỗi để áp phạt nhanh
+
+                  <CustomSelect
+                    className="min-w-[200px]"
+                    value={logTeamFilter}
+                    onValueChange={(val) => setLogTeamFilter(val)}
+                    options={[
+                      { label: 'Tất cả Team', value: 'all' },
+                      ...Object.entries(groupedEmployees)
+                        .sort((a, b) => a[1].name.localeCompare(b[1].name))
+                        .map(([tid, group]) => ({ label: group.name, value: tid })),
+                    ]}
+                  />
+
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden lg:block ml-auto">
+                    Chọn Team → Chọn thành viên
                   </p>
                 </div>
 
@@ -813,7 +996,9 @@ export default function RewardsPage() {
                                     <td
                                       className={`py-5 px-6 font-black whitespace-nowrap ${type === 'REWARD' ? 'text-emerald-600' : 'text-rose-600'}`}
                                     >
-                                      {Number(rule.amount || 0).toLocaleString('vi-VN')} đ
+                                      {rule.amount
+                                        ? `${Number(rule.amount).toLocaleString('vi-VN')} đ`
+                                        : 'Chưa có'}
                                     </td>
                                     <td className="py-5 px-8">
                                       <div className="flex justify-center gap-1">
@@ -822,7 +1007,7 @@ export default function RewardsPage() {
                                             setEditingRuleId(rule.id)
                                             setRuleForm({
                                               teamId: rule.teamId || '',
-                                              category: rule.category,
+                                              category: getDisplayCategory(rule.category),
                                               type: rule.type,
                                               title: rule.title,
                                               amount: Number(rule.amount || 0),
@@ -835,7 +1020,7 @@ export default function RewardsPage() {
                                           <Edit className="h-4 w-4" />
                                         </button>
                                         <button
-                                          onClick={() => handleDeleteRule(rule.id)}
+                                          onClick={() => setDeleteConfirmId(rule.id)}
                                           className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                                         >
                                           <Trash2 className="h-4 w-4" />
@@ -871,44 +1056,161 @@ export default function RewardsPage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white border rounded-3xl shadow-xl overflow-hidden">
-                <table className="w-full text-left text-[13px]">
-                  <thead className="bg-slate-900 text-white text-[10px] font-black uppercase">
-                    <tr>
-                      <th className="py-4 px-8">Nhân sự</th>
-                      <th className="py-4 px-6">Loại</th>
-                      <th className="py-4 px-6">Nội dung</th>
-                      <th className="py-4 px-6">Số tiền</th>
-                      <th className="py-4 px-8">Ngày</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {allRecords.map((rec) => (
-                      <tr key={rec.id}>
-                        <td className="py-4 px-8 font-bold">
-                          {rec.user.fullNameLegal}
-                          <div className="text-[10px] text-indigo-500">{rec.user.team?.name}</div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${rec.kind === 'REWARD' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-700'}`}
-                          >
-                            {rec.kind === 'REWARD' ? 'Thưởng' : 'Phạt'}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">{rec.title}</td>
-                        <td
-                          className={`py-4 px-6 font-black ${rec.kind === 'REWARD' ? 'text-emerald-600' : 'text-rose-600'}`}
-                        >
-                          {Number(rec.amount || 0).toLocaleString()} đ
-                        </td>
-                        <td className="py-4 px-8 text-slate-400">
-                          {new Date(rec.createdAt).toLocaleDateString()}
-                        </td>
+              <div className="space-y-6">
+                <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xl flex flex-col md:flex-row items-center gap-4">
+                  <div className="relative flex-1 w-full">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm nhân sự hoặc nội dung..."
+                      value={historySearch}
+                      onChange={(e) => {
+                        setHistorySearch(e.target.value)
+                        setHistoryPage(1)
+                      }}
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold focus:border-indigo-600 outline-none transition-all"
+                    />
+                  </div>
+
+                  <CustomSelect
+                    className="min-w-[200px]"
+                    value={historyTeamFilter}
+                    onValueChange={(val) => {
+                      setHistoryTeamFilter(val)
+                      setHistoryPage(1)
+                    }}
+                    options={[
+                      { label: 'Tất cả Team', value: 'all' },
+                      ...Array.from(
+                        new Set(allRecords.map((r) => r.user.team?.name).filter(Boolean))
+                      )
+                        .sort()
+                        .map((t) => ({ label: t as string, value: t as string })),
+                    ]}
+                  />
+
+                  <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-auto">
+                    <History className="h-4 w-4" />
+                    Tổng: {allRecords.length}
+                  </div>
+                </div>
+
+                <div className="bg-white border rounded-3xl shadow-xl overflow-hidden">
+                  <table className="w-full text-left text-[13px]">
+                    <thead className="bg-slate-900 text-white text-[10px] font-black uppercase">
+                      <tr>
+                        <th className="py-5 px-8">Nhân sự</th>
+                        <th className="py-5 px-6">Loại</th>
+                        <th className="py-5 px-6">Nội dung</th>
+                        <th className="py-5 px-6">Số tiền</th>
+                        <th className="py-5 px-8">Ngày</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {(() => {
+                        const filtered = allRecords.filter((rec) => {
+                          const s = historySearch.toLowerCase()
+                          const matchesSearch =
+                            rec.user.fullNameLegal.toLowerCase().includes(s) ||
+                            rec.title.toLowerCase().includes(s)
+
+                          const matchesTeam =
+                            historyTeamFilter === 'all' || rec.user.team?.name === historyTeamFilter
+
+                          return matchesSearch && matchesTeam
+                        })
+                        const totalPages = Math.ceil(filtered.length / itemsPerPage)
+                        const start = (historyPage - 1) * itemsPerPage
+                        const pageItems = filtered.slice(start, start + itemsPerPage)
+
+                        return (
+                          <>
+                            {pageItems.map((rec) => (
+                              <tr key={rec.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="py-5 px-8 font-bold">
+                                  {rec.user.fullNameLegal}
+                                  <div className="text-[10px] text-indigo-500 font-black uppercase mt-0.5">
+                                    {rec.user.team?.name}
+                                  </div>
+                                </td>
+                                <td className="py-5 px-6">
+                                  <span
+                                    className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${rec.kind === 'REWARD' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-700'}`}
+                                  >
+                                    {rec.kind === 'REWARD' ? 'Thưởng' : 'Phạt'}
+                                  </span>
+                                </td>
+                                <td className="py-5 px-6 font-medium text-slate-700">
+                                  {rec.title}
+                                  {rec.note && (
+                                    <div className="text-[11px] text-slate-400 italic mt-0.5 font-medium">
+                                      {rec.note}
+                                    </div>
+                                  )}
+                                </td>
+                                <td
+                                  className={`py-5 px-6 font-black ${rec.kind === 'REWARD' ? 'text-emerald-600' : 'text-rose-600'}`}
+                                >
+                                  {Number(rec.amount || 0).toLocaleString()} đ
+                                </td>
+                                <td className="py-5 px-8 text-slate-400 font-bold">
+                                  {new Date(rec.createdAt).toLocaleDateString('vi-VN')}
+                                </td>
+                              </tr>
+                            ))}
+                            {pageItems.length === 0 && (
+                              <tr>
+                                <td
+                                  colSpan={5}
+                                  className="py-20 text-center text-slate-300 italic font-medium uppercase tracking-widest text-[10px]"
+                                >
+                                  Không tìm thấy dữ liệu phù hợp
+                                </td>
+                              </tr>
+                            )}
+                            {/* Pagination Row */}
+                            {totalPages > 1 && (
+                              <tr>
+                                <td colSpan={5} className="py-6 px-8 bg-slate-50/50">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                      Trang {historyPage} / {totalPages}
+                                    </p>
+                                    <div className="flex gap-1">
+                                      <button
+                                        disabled={historyPage === 1}
+                                        onClick={() => setHistoryPage((p) => p - 1)}
+                                        className="p-2 bg-white border border-slate-200 rounded-xl disabled:opacity-30 hover:bg-slate-100 transition-all shadow-sm"
+                                      >
+                                        <ChevronUp className="-rotate-90 h-4 w-4" />
+                                      </button>
+                                      {Array.from({ length: totalPages }).map((_, i) => (
+                                        <button
+                                          key={i}
+                                          onClick={() => setHistoryPage(i + 1)}
+                                          className={`w-8 h-8 rounded-xl text-[10px] font-black transition-all shadow-sm ${historyPage === i + 1 ? 'bg-indigo-600 text-white shadow-indigo-100' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100'}`}
+                                        >
+                                          {i + 1}
+                                        </button>
+                                      ))}
+                                      <button
+                                        disabled={historyPage === totalPages}
+                                        onClick={() => setHistoryPage((p) => p + 1)}
+                                        className="p-2 bg-white border border-slate-200 rounded-xl disabled:opacity-30 hover:bg-slate-100 transition-all shadow-sm"
+                                      >
+                                        <ChevronDown className="-rotate-90 h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -992,7 +1294,7 @@ export default function RewardsPage() {
                           <div
                             className={`font-black text-sm whitespace-nowrap px-4 py-1.5 rounded-full bg-white shadow-sm ${actionKind === 'REWARD' ? 'text-emerald-600' : 'text-rose-600'}`}
                           >
-                            {Number(rule.amount || 0).toLocaleString()} đ
+                            {rule.amount ? `${Number(rule.amount).toLocaleString()} đ` : 'Chưa có'}
                           </div>
                           <div
                             className={`h-8 w-8 rounded-full border-2 flex items-center justify-center transition-all shadow-inner ${selectedRuleIds.has(rule.id) ? (actionKind === 'REWARD' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-rose-600 border-rose-600 text-white') : 'border-slate-200 bg-white'}`}
@@ -1059,33 +1361,42 @@ export default function RewardsPage() {
               </div>
               <form onSubmit={handleSaveRule} className="p-8 space-y-5">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Phân loại Excel
-                    </label>
-                    <input
-                      required
-                      type="text"
-                      value={ruleForm.category}
-                      onChange={(e) =>
-                        setRuleForm({ ...ruleForm, category: e.target.value.toUpperCase() })
-                      }
-                      className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold focus:border-indigo-600 outline-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Loại
-                    </label>
-                    <select
-                      value={ruleForm.type}
-                      onChange={(e) => setRuleForm({ ...ruleForm, type: e.target.value as any })}
-                      className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold focus:border-indigo-600 outline-none"
-                    >
-                      <option value="REWARD">Khen thưởng</option>
-                      <option value="PENALTY">Phạt lỗi</option>
-                    </select>
-                  </div>
+                  <CustomSelect
+                    label="Phân loại Excel"
+                    value={ruleForm.category}
+                    onValueChange={(val) => setRuleForm({ ...ruleForm, category: val })}
+                    options={[
+                      'CHUNG',
+                      'TECH',
+                      'ADS',
+                      'EDITOR',
+                      'HÀNH CHÍNH',
+                      'KẾ TOÁN',
+                      'KINH DOANH',
+                      'LIVESTREAM',
+                      'LOGISTIC',
+                      'MEDIA',
+                      'SẢN XUẤT',
+                      'SALE CSKH',
+                      'TMĐT',
+                      'VẬN ĐƠN',
+                      'CỬA HÀNG',
+                    ]
+                      .sort()
+                      .map((cat) => ({
+                        label: cat === 'TECH' ? 'CÔNG NGHỆ' : cat,
+                        value: cat,
+                      }))}
+                  />
+                  <CustomSelect
+                    label="Loại"
+                    value={ruleForm.type}
+                    onValueChange={(val) => setRuleForm({ ...ruleForm, type: val as any })}
+                    options={[
+                      { label: 'Khen thưởng', value: 'REWARD' },
+                      { label: 'Phạt lỗi', value: 'PENALTY' },
+                    ]}
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -1104,9 +1415,14 @@ export default function RewardsPage() {
                     Định mức (VNĐ)
                   </label>
                   <input
-                    type="number"
-                    value={ruleForm.amount}
-                    onChange={(e) => setRuleForm({ ...ruleForm, amount: Number(e.target.value) })}
+                    type="text"
+                    inputMode="numeric"
+                    value={ruleForm.amount ? Number(ruleForm.amount).toLocaleString('vi-VN') : ''}
+                    onChange={(e) => {
+                      const rawValue = e.target.value.replace(/\D/g, '')
+                      setRuleForm({ ...ruleForm, amount: rawValue ? Number(rawValue) : 0 })
+                    }}
+                    placeholder="VD: 100.000"
                     className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-black text-indigo-600 focus:border-indigo-600 outline-none"
                   />
                 </div>
@@ -1125,6 +1441,40 @@ export default function RewardsPage() {
                   {submitting ? 'Đang lưu...' : 'Lưu quy chuẩn'}
                 </button>
               </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {deleteConfirmId &&
+        createPortal(
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+              onClick={() => setDeleteConfirmId(null)}
+            />
+            <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl overflow-hidden border border-slate-100 animate-scale-in relative z-10 p-8 text-center">
+              <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 className="h-10 w-10 text-rose-500" />
+              </div>
+              <h3 className="text-xl font-black text-slate-800 mb-2 uppercase">Xác nhận xóa?</h3>
+              <p className="text-slate-500 text-sm mb-8 font-medium">
+                Hành động này không thể hoàn tác. Quy chuẩn này sẽ bị xóa vĩnh viễn khỏi hệ thống.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-slate-200 transition-all"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  onClick={() => deleteConfirmId && handleDeleteRule(deleteConfirmId)}
+                  className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl shadow-rose-200 hover:bg-rose-700 transition-all"
+                >
+                  Xác nhận xóa
+                </button>
+              </div>
             </div>
           </div>,
           document.body

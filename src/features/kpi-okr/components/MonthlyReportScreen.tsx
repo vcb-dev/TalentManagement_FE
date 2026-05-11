@@ -49,6 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { CustomSelect } from '@/components/shared/CustomSelect'
 
 function nowYm() {
   const d = new Date()
@@ -177,19 +178,17 @@ function MonthlyReportEpic4EditableStack({
         <Label className="text-[10px] font-bold uppercase text-muted-foreground">Minh chứng</Label>
         <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={disabled} />
       </div>
-      <div className="space-y-1">
-        <Label className="text-[10px] font-bold uppercase text-muted-foreground">Tự đánh giá</Label>
-        <select
-          value={selfEvalStatus}
-          onChange={(e) => setSelfEvalStatus(e.target.value)}
-          className={cn(inputCls, 'w-full min-w-[76px]')}
-          disabled={disabled}
-        >
-          <option value="">—</option>
-          <option value="OK">OK</option>
-          <option value="NOT">NOT</option>
-        </select>
-      </div>
+      <CustomSelect
+        label="Tự đánh giá"
+        value={selfEvalStatus}
+        onValueChange={setSelfEvalStatus}
+        options={[
+          { label: '—', value: '' },
+          { label: 'OK', value: 'OK' },
+          { label: 'NOT', value: 'NOT' },
+        ]}
+        disabled={disabled}
+      />
       <div className="space-y-1">
         <Label className="text-[10px] font-bold uppercase text-muted-foreground">Tự nhận xét</Label>
         <Textarea
@@ -331,16 +330,16 @@ function MonthlyReportEpic4EditableCells({
         <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={disabled} />
       </TableCell>
       <TableCell className="align-top p-2">
-        <select
+        <CustomSelect
           value={selfEvalStatus}
-          onChange={(e) => setSelfEvalStatus(e.target.value)}
-          className={cn(inputCls, 'w-full min-w-[76px]')}
+          onValueChange={setSelfEvalStatus}
+          options={[
+            { label: '—', value: '' },
+            { label: 'OK', value: 'OK' },
+            { label: 'NOT', value: 'NOT' },
+          ]}
           disabled={disabled}
-        >
-          <option value="">—</option>
-          <option value="OK">OK</option>
-          <option value="NOT">NOT</option>
-        </select>
+        />
       </TableCell>
       <TableCell className="max-w-[200px] align-top p-2">
         <Textarea

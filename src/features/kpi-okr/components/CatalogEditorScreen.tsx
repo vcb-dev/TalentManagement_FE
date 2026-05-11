@@ -22,6 +22,7 @@ import { categoryLabel, categoryBadgeClass } from '@/features/kpi-okr/catalogHel
 import { usePermission } from '@/hooks/usePermission'
 import { BookOpen, Plus, Trash2, Pencil, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { CustomSelect } from '@/components/shared/CustomSelect'
 
 const CATALOG_CODES = ['SALES_NV', 'LIVESTREAM_NV', 'VAN_DON_NV']
 
@@ -489,29 +490,21 @@ function AddItemButton({
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-3">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label className="text-[11px]">Stage</Label>
-              <select
-                {...register('tenureStage')}
-                className="w-full h-8 rounded border px-2 text-xs"
-              >
-                {TENURE_STAGE_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[11px]">Nhóm</Label>
-              <select {...register('category')} className="w-full h-8 rounded border px-2 text-xs">
-                {CATEGORY_OPTIONS.map((c) => (
-                  <option key={c} value={c}>
-                    {categoryLabel(c)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <CustomSelect
+              label="Stage"
+              value={form.watch('tenureStage')}
+              onValueChange={(val) => form.setValue('tenureStage', val)}
+              options={TENURE_STAGE_OPTIONS.map((s) => ({ label: s, value: s }))}
+            />
+            <CustomSelect
+              label="Nhóm"
+              value={form.watch('category')}
+              onValueChange={(val) => form.setValue('category', val)}
+              options={CATEGORY_OPTIONS.map((c) => ({
+                label: categoryLabel(c),
+                value: c,
+              }))}
+            />
           </div>
           <div className="space-y-1">
             <Label className="text-[11px]">Nội dung</Label>
@@ -522,13 +515,15 @@ function AddItemButton({
             />
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <div className="space-y-1">
-              <Label className="text-[11px]">Loại</Label>
-              <select {...register('kind')} className="w-full h-8 rounded border px-2 text-xs">
-                <option value="KPI">KPI</option>
-                <option value="OKR">OKR</option>
-              </select>
-            </div>
+            <CustomSelect
+              label="Loại"
+              value={form.watch('kind')}
+              onValueChange={(val) => form.setValue('kind', val)}
+              options={[
+                { label: 'KPI', value: 'KPI' },
+                { label: 'OKR', value: 'OKR' },
+              ]}
+            />
             <div className="space-y-1">
               <Label className="text-[11px]">Ưu tiên</Label>
               <input

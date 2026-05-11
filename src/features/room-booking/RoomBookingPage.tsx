@@ -14,6 +14,8 @@ import {
   LogOut,
   Loader2,
 } from 'lucide-react'
+import { CustomSelect } from '@/components/shared/CustomSelect'
+import { DatePicker } from '@/components/ui/date-picker'
 import { useAuthStore } from '@/stores/auth.store'
 import {
   getBookings,
@@ -848,30 +850,24 @@ export default function RoomBookingPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase ml-1">Chọn phòng</label>
-                    <select
+                    <CustomSelect
                       value={room}
-                      onChange={(e) => setRoom(e.target.value)}
-                      className="w-full p-4 bg-muted/40 rounded-2xl border border-border font-bold outline-none"
-                    >
-                      <option value="Tầng 5">Tầng 5</option>
-                      <option value="Tầng 6">Tầng 6</option>
-                    </select>
+                      onValueChange={(val) => setRoom(val)}
+                      options={[
+                        { label: 'Tầng 5', value: 'Tầng 5' },
+                        { label: 'Tầng 6', value: 'Tầng 6' },
+                      ]}
+                    />
                   </div>
-                  <div className="space-y-2 relative">
+                  <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase ml-1 flex items-center gap-1">
                       Ngày
                     </label>
-                    <div className="relative group cursor-pointer">
-                      <input
-                        type="date"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        className="w-full p-4 bg-muted/40 rounded-2xl border border-border font-black outline-none focus:border-primary transition-all text-center tracking-widest cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:opacity-0"
-                      />
-                      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-primary group-focus-within:text-primary/100 text-opacity-50 transition-all">
-                        <Calendar className="w-5 h-5 opacity-60" />
-                      </div>
-                    </div>
+                    <DatePicker
+                      value={date}
+                      onChange={setDate}
+                      className="h-14 rounded-2xl bg-muted/40 font-black text-center tracking-widest"
+                    />
                   </div>
                 </div>
                 {/* Hiển thị khung giờ khả dụng */}

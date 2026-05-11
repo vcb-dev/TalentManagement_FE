@@ -81,24 +81,22 @@ export function DatePicker({
           variant="outline"
           disabled={disabled}
           className={cn(
-            'h-10 w-full justify-start rounded-md border border-border bg-background px-3 py-2 text-left text-sm font-normal',
-            !selectedDate && 'text-muted-foreground',
+            'h-12 w-full justify-start rounded-2xl border-2 border-slate-100 bg-white px-4 py-3 text-left text-sm font-bold shadow-sm transition-all hover:border-primary hover:bg-slate-50 active:scale-[0.98]',
+            !selectedDate && 'text-slate-400 font-medium',
+            selectedDate && 'border-primary/20 bg-primary/5 text-primary',
             className
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
+          <CalendarIcon
+            className={cn('mr-2 h-4 w-4', selectedDate ? 'text-primary' : 'text-slate-400')}
+          />
           {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: vi }) : placeholder}
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-auto overflow-hidden p-0"
+        className="w-auto overflow-hidden p-0 rounded-[2.5rem] border-none shadow-2xl animate-in zoom-in-95 duration-200"
         align="start"
-        /*
-         * Radix mặc định auto-focus phần tử đầu tiên trong content. Với
-         * `captionLayout="dropdown"`, đó là <select> tháng/năm (opacity-0) —
-         * trên Windows có thể làm dropdown native mở ngay khi mở popover.
-         * Giữ focus trên trigger; user Tab / click vào lịch như bình thường.
-         */
+        sideOffset={12}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Calendar
