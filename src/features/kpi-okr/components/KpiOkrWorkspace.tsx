@@ -51,7 +51,7 @@ import {
   periodLabel,
   xlTd,
 } from '@/features/kpi-okr/components/kpiAssignmentTableShared'
-import { isCatalogEnabledDepartment } from '@/features/kpi-okr/catalogHelpers'
+import { isCatalogEnabledDepartment, isMandatoryMetric } from '@/features/kpi-okr/catalogHelpers'
 import {
   parseKpiOkrImportFile,
   type ImportAssignmentItem,
@@ -707,6 +707,10 @@ function useMemberSelfAssignmentEdit(row: PerformanceAssignment, onSaved: () => 
       }
       numericValue = n
     }
+    if (isMandatoryMetric(row.content) && numericValue === null) {
+      toast.error(`"${row.content}" là chỉ số bắt buộc — vui lòng nhập Số liệu trước khi lưu.`)
+      return
+    }
     if (row.status === 'done' && !evidence.trim()) {
       toast.warning('Trạng thái Hoàn thành nhưng Evidence đang trống.')
     }
@@ -753,6 +757,7 @@ function MemberSelfAssignmentRow({
   rowStripe: boolean
   onSaved: () => void
 }) {
+  const isMandatory = isMandatoryMetric(row.content)
   const {
     evidence,
     setEvidence,
@@ -793,12 +798,28 @@ function MemberSelfAssignmentRow({
         {row.targetMetric || '—'}
       </TableCell>
       <TableCell className={cn(td, 'p-2 align-middle')}>
-        <Input
-          value={numericRaw}
-          onChange={(e) => setNumericRaw(e.target.value)}
-          className={XL_INPUT}
-          placeholder="—"
-        />
+        <div className="relative">
+          <Input
+            value={numericRaw}
+            onChange={(e) => setNumericRaw(e.target.value)}
+            className={cn(
+              XL_INPUT,
+              isMandatory &&
+                !numericRaw.trim() &&
+                'border-destructive ring-1 ring-destructive/30 focus:ring-destructive/40'
+            )}
+            placeholder={isMandatory ? 'Bắt buộc nhập' : '—'}
+            aria-required={isMandatory}
+          />
+          {isMandatory && (
+            <span
+              className="pointer-events-none absolute -right-1 -top-1 text-[10px] font-bold text-destructive"
+              title="Chỉ số bắt buộc nhập"
+            >
+              *
+            </span>
+          )}
+        </div>
       </TableCell>
       <TableCell className={cn(td, 'p-2 align-middle')}>
         <Input
@@ -950,6 +971,7 @@ function MemberSelfAssignmentMobileCard({
   rowStripe: boolean
   onSaved: () => void
 }) {
+  const isMandatory = isMandatoryMetric(row.content)
   const {
     evidence,
     setEvidence,
@@ -972,6 +994,11 @@ function MemberSelfAssignmentMobileCard({
         <span className="text-xs tabular-nums text-slate-500">{formatKpiSetAt(row.kpiSetAt)}</span>
         <KindBadge kind={row.kind} />
         <PriorityBadge priority={row.priority} />
+        {isMandatory && (
+          <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
+            Bắt buộc nhập
+          </span>
+        )}
       </div>
       <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">
         {row.content}
@@ -981,12 +1008,23 @@ function MemberSelfAssignmentMobileCard({
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
-          <span className="text-[10px] font-bold uppercase text-muted-foreground">Số liệu</span>
+          <span
+            className={cn(
+              'text-[10px] font-bold uppercase',
+              isMandatory ? 'text-destructive' : 'text-muted-foreground'
+            )}
+          >
+            Số liệu{isMandatory && <span className="ml-0.5">*</span>}
+          </span>
           <Input
             value={numericRaw}
             onChange={(e) => setNumericRaw(e.target.value)}
-            className={XL_INPUT}
-            placeholder="—"
+            className={cn(
+              XL_INPUT,
+              isMandatory && !numericRaw.trim() && 'border-destructive ring-1 ring-destructive/30'
+            )}
+            placeholder={isMandatory ? 'Bắt buộc nhập' : '—'}
+            aria-required={isMandatory}
           />
         </div>
         <div className="space-y-1">
@@ -1448,6 +1486,11 @@ function AssignmentTableSingleUser({
     memberSelfEditableResults && Boolean(prioritizeUserId && userId === prioritizeUserId)
   const memberMetaLine = memberMetaForDisplay(members, userId)
 
+  /** Epic 5.5: các row bắt buộc nhập Số liệu chưa có giá trị. */
+  const mandatoryUnfilled = allowSelfEdit
+    ? rows.filter((r) => isMandatoryMetric(r.content) && r.numericValue == null)
+    : []
+
   const tableHeader = (
     <TableHeader>
       <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
@@ -1552,6 +1595,16 @@ function AssignmentTableSingleUser({
           </Badge>
         </div>
       </div>
+      {mandatoryUnfilled.length > 0 && (
+        <div className="flex items-start gap-2 border-b border-destructive/20 bg-destructive/5 px-4 py-2.5 text-sm text-destructive dark:bg-destructive/10">
+          <span className="mt-0.5 shrink-0 font-bold">!</span>
+          <span>
+            Chỉ số bắt buộc chưa nhập Số liệu:{' '}
+            <strong>{mandatoryUnfilled.map((r) => r.content).join(', ')}</strong> — vui lòng điền
+            trước khi kết thúc tháng.
+          </span>
+        </div>
+      )}
       {canEditTeam ? (
         <div className="max-h-[min(70vh,calc(100vh-400px))] min-w-0 overflow-auto [scrollbar-width:thin] md:hidden">
           <Table className="w-full min-w-[1180px]">

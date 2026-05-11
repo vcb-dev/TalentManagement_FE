@@ -501,6 +501,25 @@ export const performanceApi = {
     return res.data
   },
 
+  // ─── Epic 5.5: Sales Honor Board ─────────────────────────────────────
+
+  getSalesHonorBoard: async (year: number, month: number) => {
+    if (isMockApiEnabled()) {
+      return {
+        year,
+        month,
+        topIndividualRevenue: null,
+        topIndividualOrders: null,
+        topTeamRevenue: null,
+        topTeamOrders: null,
+      } as SalesHonorBoardResponse
+    }
+    const res = await apiClient.get<SalesHonorBoardResponse>('/performance/honor-board/sales', {
+      params: { year, month },
+    })
+    return res.data
+  },
+
   // ─── Sprint 4: User Snapshot ─────────────────────────────────────────
 
   getUserSnapshot: async (userId: string, year: number, month: number) => {
@@ -690,6 +709,36 @@ export type HonorBoardResponse = {
     content: string
     numericValue: number
   }>
+}
+
+export type SalesHonorWinnerIndividual = {
+  user: {
+    id: string
+    displayName: string | null
+    email: string | null
+    avatarUrl: string | null
+  }
+  teamName: string | null
+  numericValue: number
+  numericUnit: string
+  content: 'Doanh thu lên đơn' | 'Số đơn chốt'
+}
+
+export type SalesHonorWinnerTeam = {
+  team: { id: string; name: string }
+  totalValue: number
+  numericUnit: string
+  memberCount: number
+  metric: 'REVENUE' | 'ORDERS'
+}
+
+export type SalesHonorBoardResponse = {
+  year: number
+  month: number
+  topIndividualRevenue: SalesHonorWinnerIndividual | null
+  topIndividualOrders: SalesHonorWinnerIndividual | null
+  topTeamRevenue: SalesHonorWinnerTeam | null
+  topTeamOrders: SalesHonorWinnerTeam | null
 }
 
 export type UserSnapshotResponse = {

@@ -86,6 +86,18 @@ export function isCatalogEnabledDepartment(
 export const CATEGORY_ORDER = ['BASE', 'KPI_BONUS', 'PERFORMANCE_BONUS', 'BENEFIT'] as const
 
 /**
+ * Các KPI item bắt buộc phải nhập Số liệu (numericValue) mỗi tháng — Epic 5.5.
+ * Đồng bộ với SALES_HONOR_METRICS ở BE sales-scope.ts.
+ */
+export const SALES_MANDATORY_METRICS = ['Doanh thu lên đơn', 'Số đơn chốt'] as const
+export type SalesMandatoryMetric = (typeof SALES_MANDATORY_METRICS)[number]
+
+/** Trả true nếu row KPI này bắt buộc nhập Số liệu. */
+export function isMandatoryMetric(content: string | null | undefined): boolean {
+  return SALES_MANDATORY_METRICS.includes(content as SalesMandatoryMetric)
+}
+
+/**
  * Group assignments theo category và sắp xếp theo thứ tự hiển thị.
  * Trả null nếu không có assignment nào có category (phòng không thuộc catalog).
  */
