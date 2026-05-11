@@ -13,6 +13,7 @@ import { useManagerSubmissions } from '@/features/exam/hooks'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 import { managerClassApiSchema } from '@/features/manager/schemas'
 import { z } from 'zod'
+import { CustomSelect } from '@/components/shared/CustomSelect'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
 
@@ -264,38 +265,28 @@ export function ManagerGradingScreen() {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Lớp:
-            </label>
-            <select
-              value={filterClass}
-              onChange={(e) => handleFilterClass(e.target.value)}
-              className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="all">Tất cả lớp</option>
-              {classNames.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Trạng thái chấm:
-            </label>
-            <select
-              value={filterGrading}
-              onChange={(e) => handleFilterGrading(e.target.value)}
-              className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="all">Tất cả</option>
-              <option value="pending">Chờ chấm</option>
-              <option value="done">Đã chấm hết</option>
-              <option value="no_submission">Chưa có bài nộp</option>
-            </select>
-          </div>
+          <CustomSelect
+            label="Lớp"
+            value={filterClass}
+            onValueChange={handleFilterClass}
+            options={[
+              { label: 'Tất cả lớp', value: 'all' },
+              ...classNames.map((name) => ({ label: name, value: name })),
+            ]}
+            className="min-w-[180px]"
+          />
+          <CustomSelect
+            label="Trạng thái chấm"
+            value={filterGrading}
+            onValueChange={handleFilterGrading}
+            options={[
+              { label: 'Tất cả', value: 'all' },
+              { label: 'Chờ chấm', value: 'pending' },
+              { label: 'Đã chấm hết', value: 'done' },
+              { label: 'Chưa có bài nộp', value: 'no_submission' },
+            ]}
+            className="min-w-[180px]"
+          />
           <span className="text-xs text-muted-foreground">{filteredRows.length} lịch thi</span>
         </div>
 

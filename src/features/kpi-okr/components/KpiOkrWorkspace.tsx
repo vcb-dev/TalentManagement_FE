@@ -14,9 +14,11 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  TrendingUp,
   Users,
   X,
 } from 'lucide-react'
+import { CustomSelect } from '@/components/shared/CustomSelect'
 import { cn } from '@/lib/utils'
 import { CARD_ENTRANCE, SECTION_FADE_UP } from '@/lib/cardMotion'
 import { useAuthStore } from '@/stores/auth.store'
@@ -812,15 +814,15 @@ function MemberSelfAssignmentRow({
         <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={saving} />
       </TableCell>
       <TableCell className={cn(td, 'p-2 align-middle')}>
-        <select
+        <CustomSelect
           value={selfEvalStatus}
-          onChange={(e) => setSelfEvalStatus(e.target.value)}
-          className={XL_INPUT}
-        >
-          <option value="">—</option>
-          <option value="OK">OK</option>
-          <option value="NOT">NOT</option>
-        </select>
+          onValueChange={setSelfEvalStatus}
+          options={[
+            { label: '—', value: '' },
+            { label: 'OK', value: 'OK' },
+            { label: 'NOT', value: 'NOT' },
+          ]}
+        />
         <textarea
           value={selfReviewNote}
           onChange={(e) => setSelfReviewNote(e.target.value)}
@@ -1005,15 +1007,15 @@ function MemberSelfAssignmentMobileCard({
       </div>
       <div className="space-y-2">
         <span className="text-[10px] font-bold uppercase text-muted-foreground">Tự đánh giá</span>
-        <select
+        <CustomSelect
           value={selfEvalStatus}
-          onChange={(e) => setSelfEvalStatus(e.target.value)}
-          className={XL_INPUT}
-        >
-          <option value="">—</option>
-          <option value="OK">OK</option>
-          <option value="NOT">NOT</option>
-        </select>
+          onValueChange={setSelfEvalStatus}
+          options={[
+            { label: '—', value: '' },
+            { label: 'OK', value: 'OK' },
+            { label: 'NOT', value: 'NOT' },
+          ]}
+        />
         <textarea
           value={selfReviewNote}
           onChange={(e) => setSelfReviewNote(e.target.value)}
