@@ -88,7 +88,14 @@ export interface MyProfilePage {
   exams: ProfileExamCard[]
   workSummary: ProfileWorkSummaryRow[]
   workTimeline: ProfileTimelineItem[]
-  orgInfo: { roleBadge: string; department: string; team: string; employeeCode: string; startDate: string }
+  orgInfo: {
+    roleBadge: string
+    department: string
+    team: string
+    employeeCode: string
+    startDate: string
+  }
   personalInfo: { phone: string; birthDate: string }
   security: { lastPasswordChange: string }
+  nextStarTopics?: Array<{ topic: string; objectives: string[] }>
 }

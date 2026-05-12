@@ -389,21 +389,33 @@ export default function RoomBookingPage() {
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const prevBookingsCount = useRef(0)
+  const load = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true)
     try {
-      setBookings(await getBookings())
+      const data = await getBookings()
+
+      // Nếu là silent update và có lịch mới (số lượng tăng lên)
+      if (isSilent && data.length > prevBookingsCount.current) {
+        showNotification('Lịch họp mới', `Có yêu cầu đặt phòng mới vừa được cập nhật.`)
+      }
+
+      setBookings(data)
+      prevBookingsCount.current = data.length
     } catch {
     } finally {
-      setLoading(false)
+      if (!isSilent) setLoading(false)
     }
-  }, [])
+  }, []) // Không phụ thuộc vào bookings để tránh loop
 
   useEffect(() => {
-    load()
+    load(false)
+    const interval = setInterval(() => load(true), 10000)
+
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission()
     }
+    return () => clearInterval(interval)
   }, [load])
 
   useEffect(() => {
@@ -648,9 +660,20 @@ export default function RoomBookingPage() {
                 ))}
               </div>
             )}
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              Tổng: {filtered.length} bản ghi
-            </span>
+            <div className="flex items-center gap-4">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                Tổng: {filtered.length} bản ghi
+              </span>
+              <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 shadow-sm">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                </span>
+                <span className="text-[9px] font-black tracking-tighter text-emerald-700 uppercase">
+                  LIVE
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className="divide-y divide-border/50 bg-white/30 md:hidden">

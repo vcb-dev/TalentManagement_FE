@@ -1,9 +1,4 @@
-import {
-  LEVEL_LABELS,
-  LEVELS,
-  STARS_PER_LEVEL,
-  type LevelCode,
-} from '@/lib/constants'
+import { LEVEL_LABELS, LEVELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import type { ProfileIconKey } from '@/features/profile/profileContentIcons'
 import type { MyProfilePage } from '@/features/profile/types'
 import type { MeUserSelf } from '@/features/profile/userSelf.types'
@@ -61,6 +56,7 @@ export type MeDashboard = {
     milestonesByStatus: Record<string, number>
     examsByOutcome: Record<string, number>
   }
+  nextStarTopics?: Array<{ topic: string; objectives: string[] }>
 }
 
 export type MeLearningPathMilestone = {
@@ -183,15 +179,14 @@ export function mapMeAggregatedToPage(
   dashboard: MeDashboard,
   learningPath: MeLearningPath,
   exams: MeExamAttempt[],
-  userSelf: MeUserSelf,
+  userSelf: MeUserSelf
 ): MyProfilePage {
   const hr = userSelf
   const career = dashboard.career
   const level = parseLevel(career?.careerLevel)
   const stars = career?.currentStars ?? 0
   const maxStars = STARS_PER_LEVEL[level] || 6
-  const levelProgressPct =
-    maxStars <= 0 ? 100 : Math.min(100, Math.round((stars / maxStars) * 100))
+  const levelProgressPct = maxStars <= 0 ? 100 : Math.min(100, Math.round((stars / maxStars) * 100))
 
   const ms = dashboard.learningStats.milestonesByStatus
   const doneM = ms.done ?? 0
@@ -203,7 +198,7 @@ export function mapMeAggregatedToPage(
   const examTotal = Object.values(ex).reduce((a, n) => a + (typeof n === 'number' ? n : 0), 0)
 
   const promotions = [...dashboard.promotionHistory].sort(
-    (a, b) => new Date(b.promotedAt).getTime() - new Date(a.promotedAt).getTime(),
+    (a, b) => new Date(b.promotedAt).getTime() - new Date(a.promotedAt).getTime()
   )
 
   const levelHistory =
@@ -235,25 +230,23 @@ export function mapMeAggregatedToPage(
           },
         ]
 
-  const learningTimeline: MyProfilePage['learningTimeline'] = learningPath.milestones.map(
-    (m) => {
-      const b = milestoneBadge(m.status)
-      const minL = LEVEL_LABELS[parseLevel(m.minCareerLevel)]
-      const metaParts = [
-        m.description?.trim() || `Yêu cầu tối thiểu: ${minL}`,
-        m.completedAt ? `Hoàn thành: ${formatViDate(m.completedAt)}` : null,
-      ].filter(Boolean)
-      return {
-        title: m.title,
-        titleIconKey: LEVEL_TITLE_ICONS[parseLevel(m.minCareerLevel)],
-        meta: metaParts.join(' · '),
-        badge: b.badge,
-        badgeClass: b.badgeClass,
-        cardClass: b.cardClass,
-        dimmed: b.dimmed,
-      }
-    },
-  )
+  const learningTimeline: MyProfilePage['learningTimeline'] = learningPath.milestones.map((m) => {
+    const b = milestoneBadge(m.status)
+    const minL = LEVEL_LABELS[parseLevel(m.minCareerLevel)]
+    const metaParts = [
+      m.description?.trim() || `Yêu cầu tối thiểu: ${minL}`,
+      m.completedAt ? `Hoàn thành: ${formatViDate(m.completedAt)}` : null,
+    ].filter(Boolean)
+    return {
+      title: m.title,
+      titleIconKey: LEVEL_TITLE_ICONS[parseLevel(m.minCareerLevel)],
+      meta: metaParts.join(' · '),
+      badge: b.badge,
+      badgeClass: b.badgeClass,
+      cardClass: b.cardClass,
+      dimmed: b.dimmed,
+    }
+  })
 
   const examSummaryRows: MyProfilePage['examSummary'] = [
     { label: 'Tổng kỳ thi', value: String(examTotal) },
@@ -291,37 +284,38 @@ export function mapMeAggregatedToPage(
     }
   })
 
-  const workTimeline: MyProfilePage['workTimeline'] = [...LEVELS]
-    .reverse()
-    .map((code, revIdx) => {
-      const idx = LEVELS.indexOf(level)
-      const stepIx = LEVELS.indexOf(code)
-      const isCurrent = code === level
-      const isPast = stepIx < idx
-      const isFuture = stepIx > idx
-      return {
-        title: LEVEL_LABELS[code],
-        titleIconKey: LEVEL_TITLE_ICONS[code],
-        meta: isCurrent
-          ? `Sao ${stars}/${maxStars || '—'} trong cấp`
-          : isPast
-            ? 'Đã hoàn thành giai đoạn'
-            : 'Chưa tới mốc này',
-        badge: isCurrent ? 'Hiện tại' : isPast ? 'Đã qua' : 'Chưa mở',
-        badgeClass: isCurrent
-          ? 'bg-primary/15 text-primary'
-          : isPast
-            ? 'bg-[#DCFCE7] text-[#166534]'
-            : 'border border-border bg-muted text-muted-foreground',
-        cardClass: isCurrent
-          ? 'border-primary/30 bg-primary/5'
-          : isPast
-            ? 'border-border bg-white'
-            : 'border-border bg-muted/40 opacity-85',
-        dimmed: isFuture,
-        extra: revIdx === LEVELS.length - 1 && hr.startDateWork?.trim() ? `Vào làm: ${hr.startDateWork}` : undefined,
-      }
-    })
+  const workTimeline: MyProfilePage['workTimeline'] = [...LEVELS].reverse().map((code, revIdx) => {
+    const idx = LEVELS.indexOf(level)
+    const stepIx = LEVELS.indexOf(code)
+    const isCurrent = code === level
+    const isPast = stepIx < idx
+    const isFuture = stepIx > idx
+    return {
+      title: LEVEL_LABELS[code],
+      titleIconKey: LEVEL_TITLE_ICONS[code],
+      meta: isCurrent
+        ? `Sao ${stars}/${maxStars || '—'} trong cấp`
+        : isPast
+          ? 'Đã hoàn thành giai đoạn'
+          : 'Chưa tới mốc này',
+      badge: isCurrent ? 'Hiện tại' : isPast ? 'Đã qua' : 'Chưa mở',
+      badgeClass: isCurrent
+        ? 'bg-primary/15 text-primary'
+        : isPast
+          ? 'bg-[#DCFCE7] text-[#166534]'
+          : 'border border-border bg-muted text-muted-foreground',
+      cardClass: isCurrent
+        ? 'border-primary/30 bg-primary/5'
+        : isPast
+          ? 'border-border bg-white'
+          : 'border-border bg-muted/40 opacity-85',
+      dimmed: isFuture,
+      extra:
+        revIdx === LEVELS.length - 1 && hr.startDateWork?.trim()
+          ? `Vào làm: ${hr.startDateWork}`
+          : undefined,
+    }
+  })
 
   const phoneDisplay = hr.phonePrimary?.trim() || ''
 
@@ -452,5 +446,6 @@ export function mapMeAggregatedToPage(
       lastPasswordChange: '—',
     },
     userRecord: userSelf,
+    nextStarTopics: dashboard.nextStarTopics,
   }
 }

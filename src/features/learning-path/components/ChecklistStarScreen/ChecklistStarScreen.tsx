@@ -10,7 +10,6 @@ import {
   ListChecks,
   Lock,
   Paperclip,
-  Trophy,
   Loader2,
 } from 'lucide-react'
 import { StarEmblem } from '@/components/icons/StarEmblem'
@@ -53,6 +52,8 @@ export interface ChecklistStarScreenProps {
   starId: string
   /** Gắn trong `/learning-path` (member): bỏ nút về hub, không full-bleed âm lề. */
   embedInLearningPath?: boolean
+  /** If true, filter roadmap topics by star number parsed from topic name */
+  filterByStar?: boolean
 }
 
 function BannerStars({ filled, total = 5 }: { filled: number; total?: number }) {
@@ -110,15 +111,29 @@ export function ChecklistStarScreen({
   levelId,
   starId,
   embedInLearningPath = false,
+  filterByStar = false,
 }: ChecklistStarScreenProps) {
   const navigate = useNavigate()
   const { data: myPath } = useMyLearningPath()
   const roadmapTopicsByLevel = useMemo(() => {
     if (!embedInLearningPath || !myPath) return []
-    return (myPath.roadmapTopics ?? [])
+    let topics = (myPath.roadmapTopics ?? [])
       .filter((t: any) => t.levelId === levelId)
       .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-  }, [embedInLearningPath, myPath, levelId])
+
+    // Filter by star number when enabled (e.g. biet_viec Sao 1-6)
+    if (filterByStar && starId) {
+      const starNum = parseInt(starId) || 1
+      topics = topics.filter((t: any) => {
+        const match = t.topic.match(/^Sao\s*(\d+)/i)
+        if (match) return parseInt(match[1]) === starNum
+        // Non-star topics (like "Nền tảng Tư duy") always show
+        return true
+      })
+    }
+
+    return topics
+  }, [embedInLearningPath, myPath, levelId, filterByStar, starId])
 
   const probationMilestones = useMemo(() => {
     if (!embedInLearningPath || !myPath) return []
@@ -144,7 +159,7 @@ export function ChecklistStarScreen({
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const [selectedObjectiveId, setSelectedObjectiveId] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [isPendingTransition, startTransition] = useTransition()
+  const [_, startTransition] = useTransition()
 
   const handleToggleTask = useCallback((id: string) => {
     startTransition(() => {
@@ -249,7 +264,6 @@ export function ChecklistStarScreen({
   const onPickFile = () => fileRef.current?.click()
 
   const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.mp4']
-  const MAX_FILE_SIZE = 25 * 1024 * 1024 // 25MB
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

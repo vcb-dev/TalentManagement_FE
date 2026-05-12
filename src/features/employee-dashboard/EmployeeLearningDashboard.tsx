@@ -1,4 +1,4 @@
-import { useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { BarChart3, GraduationCap, Medal, Sparkles, Target, Trophy } from 'lucide-react'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { ProgressStar } from '@/components/shared/ProgressStar/ProgressStar'
@@ -24,6 +24,7 @@ import { LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { PromotionCelebrationModal } from '@/components/shared/PromotionCelebrationModal'
 import { useAuthStore } from '@/stores/auth.store'
 import type { Role, StaffLevel } from '@/types/auth'
 
@@ -177,8 +178,72 @@ export function EmployeeLearningDashboard() {
 
   const starPct = maxStars > 0 ? Math.round((filledStars / maxStars) * 100) : 0
 
+  // ─── Promotion Celebration Detection ───
+  const [celebrationPromotion, setCelebrationPromotion] = useState<{
+    fromLevel: LevelCode | null
+    toLevel: LevelCode
+    promotedAt: string
+    displayName: string
+    nextStarTopics?: Array<{ topic: string; objectives: string[] }>
+  } | null>(null)
+
+  useEffect(() => {
+    if (isLoading || !meDashboard || isManagerLearningDash) return
+
+    const history = meDashboard.promotionHistory ?? []
+    if (history.length === 0) return
+
+    // Tìm thăng cấp gần nhất trong 7 ngày gần đây
+    const now = Date.now()
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
+    const recentPromo = history.find((p: any) => {
+      const isLevelUp = p.fromLevel && p.toLevel && p.fromLevel !== p.toLevel
+      const isStarUp =
+        p.fromLevel && p.toLevel && p.fromLevel === p.toLevel && p.note?.includes('Sao')
+      if (!isLevelUp && !isStarUp) return false
+
+      const promotedAt = new Date(p.promotedAt).getTime()
+      return now - promotedAt < sevenDaysMs
+    })
+
+    if (!recentPromo) return
+
+    // Kiểm tra xem user đã dismiss chưa (localStorage)
+    const dismissKey = `promo_seen_${user?.id}_${recentPromo.promotedAt}`
+    if (localStorage.getItem(dismissKey)) return
+
+    setCelebrationPromotion({
+      fromLevel: recentPromo.fromLevel as LevelCode,
+      toLevel: recentPromo.toLevel as LevelCode,
+      promotedAt: recentPromo.promotedAt,
+      displayName: recentPromo.note?.includes('Sao')
+        ? `${greetingName} — ${recentPromo.note}`
+        : greetingName,
+      nextStarTopics: (meDashboard as any).nextStarTopics,
+    })
+  }, [isLoading, meDashboard, isManagerLearningDash, user?.id, greetingName])
+
+  const handleDismissCelebration = useCallback(() => {
+    if (celebrationPromotion && user?.id) {
+      const dismissKey = `promo_seen_${user.id}_${celebrationPromotion.promotedAt}`
+      localStorage.setItem(dismissKey, '1')
+    }
+    setCelebrationPromotion(null)
+  }, [celebrationPromotion, user?.id])
+
   return (
     <div className="relative -m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
+      {/* Promotion Celebration Modal */}
+      {celebrationPromotion && (
+        <PromotionCelebrationModal
+          fromLevel={celebrationPromotion.fromLevel}
+          toLevel={celebrationPromotion.toLevel}
+          displayName={celebrationPromotion.displayName}
+          promotedAt={celebrationPromotion.promotedAt}
+          nextStarTopics={celebrationPromotion.nextStarTopics}
+          onDismiss={handleDismissCelebration}
+        />
+      )}
       {/* Subtle background */}
       <div
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,hsl(var(--primary)/0.16),transparent_55%),radial-gradient(ellipse_80%_50%_at_100%_50%,hsl(var(--accent)/0.12),transparent_50%)]"
