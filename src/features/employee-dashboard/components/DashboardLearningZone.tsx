@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react'
 import {
   BookOpen,
   CalendarDays,
@@ -126,32 +127,50 @@ function RoadmapSkeleton() {
 }
 
 /** Khối lộ trình học, thi cử — phần tab học tập (phần đầu dashboard nằm ở EmployeeLearningDashboard). */
-export function DashboardLearningZone({
+export const DashboardLearningZone = memo(function DashboardLearningZone({
   isLoading = false,
   currentLevel,
   currentStars,
 }: DashboardLearningZoneProps) {
-  const levelIndex = LEVELS.indexOf(currentLevel)
+  const levelIndex = useMemo(() => LEVELS.indexOf(currentLevel), [currentLevel])
   const currentIndex = levelIndex >= 0 ? levelIndex : 0
   const maxStarsActive = STARS_PER_LEVEL[currentLevel]
-  const progressPct =
-    maxStarsActive > 0 ? Math.round(Math.min(100, (currentStars / maxStarsActive) * 100)) : null
+  const progressPct = useMemo(
+    () =>
+      maxStarsActive > 0 ? Math.round(Math.min(100, (currentStars / maxStarsActive) * 100)) : null,
+    [currentStars, maxStarsActive]
+  )
 
   const { data: examList, isLoading: examListLoading } = useExams({ page: 1, pageSize: 50 }, true)
   const { data: enrolled, isLoading: classLoading } = useMyEnrolledClass()
   const { data: learningPath, isLoading: pathLoading } = useMyLearningPath()
 
-  const nextExam = pickNextExam(examList?.data ?? [])
-  const nextExamFmt = nextExam ? formatExamDateTime(nextExam.scheduledAt) : null
-  const nextSlot = pickNextStudySlot(enrolled?.enrolledClass?.schedules ?? [])
-  const nextSlotFmt = nextSlot ? formatSlotWhen(nextSlot) : null
+  const nextExam = useMemo(() => pickNextExam(examList?.data ?? []), [examList?.data])
+  const nextExamFmt = useMemo(
+    () => (nextExam ? formatExamDateTime(nextExam.scheduledAt) : null),
+    [nextExam]
+  )
+  const nextSlot = useMemo(
+    () => pickNextStudySlot(enrolled?.enrolledClass?.schedules ?? []),
+    [enrolled?.enrolledClass?.schedules]
+  )
+  const nextSlotFmt = useMemo(() => (nextSlot ? formatSlotWhen(nextSlot) : null), [nextSlot])
 
   const milestones = learningPath?.milestones ?? []
-  const sortedMilestones = [...milestones].sort((a, b) => a.sortOrder - b.sortOrder)
-  const doneMs = sortedMilestones.filter((m) => m.status === 'done').length
+  const sortedMilestones = useMemo(
+    () => [...milestones].sort((a, b) => a.sortOrder - b.sortOrder),
+    [milestones]
+  )
+  const doneMs = useMemo(
+    () => sortedMilestones.filter((m: any) => m.status === 'done').length,
+    [sortedMilestones]
+  )
   const totalMs = sortedMilestones.length
-  const roadPct = totalMs > 0 ? Math.min(100, Math.round((doneMs / totalMs) * 100)) : 0
-  const topMilestones = sortedMilestones.slice(0, 5)
+  const roadPct = useMemo(
+    () => (totalMs > 0 ? Math.min(100, Math.round((doneMs / totalMs) * 100)) : 0),
+    [doneMs, totalMs]
+  )
+  const topMilestones = useMemo(() => sortedMilestones.slice(0, 5), [sortedMilestones])
 
   const blockLoading = examListLoading || classLoading || pathLoading
 
@@ -471,7 +490,7 @@ export function DashboardLearningZone({
                     </div>
                   </div>
                   <ul className="relative space-y-3">
-                    {topMilestones.map((m, j) => {
+                    {topMilestones.map((m: any, j: number) => {
                       const Icon =
                         m.status === 'done'
                           ? CheckCircle2
@@ -533,4 +552,4 @@ export function DashboardLearningZone({
       </div>
     </div>
   )
-}
+})

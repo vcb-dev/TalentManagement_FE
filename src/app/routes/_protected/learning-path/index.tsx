@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { Check, Lock, Star } from 'lucide-react'
@@ -52,81 +52,115 @@ function LearningPathIndex() {
 }
 
 // ─── Star Navigation Tabs ───
-function StarSelector({
-  currentStars,
-  selectedStar,
-  onSelectStar,
-  totalStars = 6,
-}: {
-  currentStars: number
-  selectedStar: number
-  onSelectStar: (star: number) => void
-  totalStars?: number
-}) {
-  return (
-    <div className="mb-6 flex flex-wrap gap-2">
-      {Array.from({ length: totalStars }, (_, i) => {
-        const starNum = i + 1
-        // User can see up to currentStars + 1 (the one they're working on)
-        const isUnlocked = starNum <= currentStars + 1
-        const isActive = starNum === selectedStar
-        const isDone = starNum <= currentStars
+const StarSelector = memo(
+  ({
+    currentStars,
+    selectedStar,
+    onSelectStar,
+    totalStars = 6,
+  }: {
+    currentStars: number
+    selectedStar: number
+    onSelectStar: (star: number) => void
+    totalStars?: number
+  }) => {
+    return (
+      <div className="mb-6 flex flex-wrap gap-2">
+        {Array.from({ length: totalStars }, (_, i) => {
+          const starNum = i + 1
+          // User can see up to currentStars + 1 (the one they're working on)
+          const isUnlocked = starNum <= currentStars + 1
+          const isActive = starNum === selectedStar
+          const isDone = starNum <= currentStars
 
-        return (
-          <button
-            key={starNum}
-            type="button"
-            onClick={() => isUnlocked && onSelectStar(starNum)}
-            disabled={!isUnlocked}
-            className={cn(
-              'group relative flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-semibold transition-all duration-200',
-              isActive &&
-                'border-primary-500 bg-gradient-to-br from-primary-50 to-primary-100 text-primary-700 shadow-md shadow-primary-500/15 ring-2 ring-primary-500/30',
-              isDone &&
-                !isActive &&
-                'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:shadow-sm',
-              !isUnlocked &&
-                'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400 opacity-60',
-              isUnlocked &&
-                !isActive &&
-                !isDone &&
-                'border-gray-200 bg-white text-gray-600 hover:border-primary-300 hover:bg-primary-50/50 hover:shadow-sm'
-            )}
-          >
-            {!isUnlocked ? (
-              <Lock className="h-3.5 w-3.5" />
-            ) : isDone ? (
-              <Check className="h-3.5 w-3.5" />
-            ) : (
-              <Star
-                className={cn(
-                  'h-3.5 w-3.5',
-                  isActive ? 'fill-primary-500 text-primary-500' : 'text-gray-400'
-                )}
-              />
-            )}
-            Sao {starNum}
-            {isDone && (
-              <span className="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600">
-                ✓
-              </span>
-            )}
-            {isActive && !isDone && (
-              <span className="ml-1 rounded-full bg-primary-100 px-1.5 py-0.5 text-[10px] font-bold text-primary-600">
-                Đang học
-              </span>
-            )}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
+          return (
+            <button
+              key={starNum}
+              type="button"
+              onClick={() => isUnlocked && onSelectStar(starNum)}
+              disabled={!isUnlocked}
+              className={cn(
+                'group relative flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-semibold transition-all duration-200',
+                isActive &&
+                  'border-primary-500 bg-gradient-to-br from-primary-50 to-primary-100 text-primary-700 shadow-md shadow-primary-500/15 ring-2 ring-primary-500/30',
+                isDone &&
+                  !isActive &&
+                  'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:shadow-sm',
+                !isUnlocked &&
+                  'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400 opacity-60',
+                isUnlocked &&
+                  !isActive &&
+                  !isDone &&
+                  'border-gray-200 bg-white text-gray-600 hover:border-primary-300 hover:bg-primary-50/50 hover:shadow-sm'
+              )}
+            >
+              {!isUnlocked ? (
+                <Lock className="h-3.5 w-3.5" />
+              ) : isDone ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Star
+                  className={cn(
+                    'h-3.5 w-3.5',
+                    isActive ? 'fill-primary-500 text-primary-500' : 'text-gray-400'
+                  )}
+                />
+              )}
+              Sao {starNum}
+              {isDone && (
+                <span className="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600">
+                  ✓
+                </span>
+              )}
+              {isActive && !isDone && (
+                <span className="ml-1 rounded-full bg-primary-100 px-1.5 py-0.5 text-[10px] font-bold text-primary-600">
+                  Đang học
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+)
 
 function LearningPathMemberPage() {
   const { data: profile, isLoading, isError } = useMyProfilePage()
   const search = Route.useSearch()
   const [selectedStar, setSelectedStar] = useState<number | null>(null)
+
+  const handleSelectStar = useCallback((star: number) => {
+    setSelectedStar(star)
+  }, [])
+
+  const currentLevelId = useMemo(
+    () =>
+      (search.levelId as LevelCode) ||
+      profile?.placement?.levelId ||
+      (profile as any)?.careerLevel ||
+      'tap_su',
+    [search.levelId, profile?.placement?.levelId, (profile as any)?.careerLevel]
+  )
+
+  const currentStars = profile?.placement?.starId ?? 0
+  const maxStars = useMemo(
+    () => STARS_PER_LEVEL[currentLevelId as LevelCode] || 6,
+    [currentLevelId]
+  )
+
+  // Levels with star progression (biet_viec has Sao 1-6)
+  const hasStarProgression = useMemo(
+    () => currentLevelId === 'biet_viec' && maxStars > 0,
+    [currentLevelId, maxStars]
+  )
+
+  // Compute effective selected star
+  const effectiveStar = useMemo(
+    () => selectedStar ?? search.starId ?? Math.min(currentStars + 1, maxStars),
+    [selectedStar, search.starId, currentStars, maxStars]
+  )
+  const starStr = useMemo(() => String(effectiveStar), [effectiveStar])
 
   if (isLoading) {
     return (
@@ -153,25 +187,6 @@ function LearningPathMemberPage() {
     )
   }
 
-  const currentLevelId =
-    (search.levelId as LevelCode) ||
-    profile.placement?.levelId ||
-    (profile as any).careerLevel ||
-    'tap_su'
-  const currentStars = profile.placement?.starId ?? 0
-  const maxStars = STARS_PER_LEVEL[currentLevelId] || 6
-
-  // Levels with star progression (biet_viec has Sao 1-6)
-  const hasStarProgression = currentLevelId === 'biet_viec' && maxStars > 0
-
-  // Compute effective selected star
-  const effectiveStar = selectedStar ?? search.starId ?? Math.min(currentStars + 1, maxStars)
-  const starStr = String(effectiveStar)
-
-  const handleSelectStar = useCallback((star: number) => {
-    setSelectedStar(star)
-  }, [])
-
   return (
     <div className="min-w-0 space-y-6">
       <PageHeader
@@ -195,6 +210,7 @@ function LearningPathMemberPage() {
           starId={starStr}
           embedInLearningPath
           filterByStar={hasStarProgression}
+          currentStars={currentStars}
         />
       </div>
     </div>

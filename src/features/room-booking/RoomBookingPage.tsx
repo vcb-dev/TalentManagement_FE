@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearch } from '@tanstack/react-router'
 import {
   Plus,
@@ -28,6 +29,7 @@ import {
   type MeetingBooking,
   type BookedSlot,
 } from './api'
+import { useVnTime, getVnNow } from '@/hooks/useVnTime'
 
 const ROOMS = [
   {
@@ -46,25 +48,6 @@ const ROOMS = [
 
 const PAGE_SIZE = 6
 
-function getVnNow() {
-  const now = new Date()
-  const f = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-  const parts = f.formatToParts(now)
-  const m = new Map(parts.map((p) => [p.type, p.value]))
-  return {
-    date: `${m.get('year')}-${m.get('month')}-${m.get('day')}`,
-    time: `${m.get('hour')}:${m.get('minute')}`,
-  }
-}
-
 // Chị Google nói
 function speak(text: string) {
   if (!window.speechSynthesis) return
@@ -82,8 +65,14 @@ function showNotification(title: string, body: string) {
   }
 }
 
-function BookingStatusBadge({ b }: { b: MeetingBooking }) {
-  const { date: td, time: ct } = getVnNow()
+function BookingStatusBadge({
+  b,
+  vnTime,
+}: {
+  b: MeetingBooking
+  vnTime: { date: string; time: string }
+}) {
+  const { date: td, time: ct } = vnTime
   const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
 
   if (b.status === 'approved' && isPast)
@@ -224,6 +213,8 @@ const BookingCardMobile = memo(
     setRejectId,
     handleEdit,
     handleDelete,
+    variant = 'mobile',
+    vnTime,
   }: {
     b: MeetingBooking
     user: ReturnType<typeof useAuthStore.getState>['user']
@@ -233,6 +224,8 @@ const BookingCardMobile = memo(
     setRejectId: (id: string) => void
     handleEdit: (b: MeetingBooking) => void
     handleDelete: (id: string) => void
+    variant?: 'table' | 'mobile'
+    vnTime: { date: string; time: string }
   }) => {
     return (
       <div className="space-y-3 border-b border-border/50 p-4 last:border-b-0">
@@ -277,7 +270,7 @@ const BookingCardMobile = memo(
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
             Trạng thái
           </p>
-          <BookingStatusBadge b={b} />
+          <BookingStatusBadge b={b} vnTime={vnTime} />
         </div>
         <BookingRowActions
           b={b}
@@ -305,6 +298,7 @@ const BookingRow = memo(
     setRejectId,
     handleEdit,
     handleDelete,
+    vnTime,
   }: {
     b: MeetingBooking
     user: ReturnType<typeof useAuthStore.getState>['user']
@@ -314,6 +308,8 @@ const BookingRow = memo(
     setRejectId: (id: string) => void
     handleEdit: (b: MeetingBooking) => void
     handleDelete: (id: string) => void
+    variant?: 'table' | 'mobile'
+    vnTime: { date: string; time: string }
   }) => {
     return (
       <tr className="group hover:bg-primary/[0.02]">
@@ -329,8 +325,8 @@ const BookingRow = memo(
           {b.timeFrom} – {b.timeTo}
         </td>
         <td className="max-w-[200px] truncate px-6 py-5">{b.reason}</td>
-        <td className="px-6 py-5">
-          <BookingStatusBadge b={b} />
+        <td className="whitespace-nowrap px-6 py-4">
+          <BookingStatusBadge b={b} vnTime={vnTime} />
         </td>
         <td className="px-6 py-5 text-right">
           <BookingRowActions
@@ -351,13 +347,13 @@ const BookingRow = memo(
 )
 
 export default function RoomBookingPage() {
+  const queryClient = useQueryClient()
+  const vnTime = useVnTime()
   const search = useSearch({ from: '/_protected/room-booking' }) as any
   const user = useAuthStore((s) => s.user)
   const isPrivileged = user?.role === 'HR' || user?.role === 'MANAGER' || user?.role === 'BOD'
 
-  const [bookings, setBookings] = useState<MeetingBooking[]>([])
   const [showModal, setShowModal] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
 
@@ -377,6 +373,93 @@ export default function RoomBookingPage() {
   const [page, setPage] = useState(1)
   const [processingId, setProcessingId] = useState<string | null>(null)
 
+  const [rejectId, setRejectId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+
+  const prevBookingsCount = useRef(0)
+
+  // Query Data
+  const { data: bookings = [], isLoading: isFetching } = useQuery({
+    queryKey: ['room-bookings'],
+    queryFn: getBookings,
+    refetchInterval: 10000,
+    meta: {
+      onSuccess: (data: MeetingBooking[]) => {
+        if (data.length > prevBookingsCount.current && prevBookingsCount.current > 0) {
+          showNotification('Lịch họp mới', `Có yêu cầu đặt phòng mới vừa được cập nhật.`)
+        }
+        prevBookingsCount.current = data.length
+      },
+    },
+  })
+
+  // Mutations
+  const createMut = useMutation({
+    mutationFn: createBooking,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['room-bookings'] })
+      setShowModal(false)
+      resetForm()
+      const msg = isEmergency
+        ? 'Đặt phòng khẩn cấp thành công'
+        : 'Đặt phòng thành công, vui lòng chờ duyệt'
+      setSuccess(msg)
+      speak(msg)
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
+      setError(msg)
+      speak(`Lỗi: ${msg}`)
+    },
+  })
+
+  const updateMut = useMutation({
+    mutationFn: (vars: { id: string; payload: any }) => updateBooking(vars.id, vars.payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['room-bookings'] })
+      setShowModal(false)
+      resetForm()
+      setSuccess('Cập nhật lịch họp thành công')
+      speak('Đã cập nhật lịch họp')
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
+      setError(msg)
+      speak(`Lỗi: ${msg}`)
+    },
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: deleteBooking,
+    onMutate: (id) => setProcessingId(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['room-bookings'] })
+      speak('Đã hủy lịch họp')
+    },
+    onSettled: () => setProcessingId(null),
+  })
+
+  const approveMut = useMutation({
+    mutationFn: approveBooking,
+    onMutate: (id) => setProcessingId(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['room-bookings'] })
+      speak('Đã duyệt lịch họp thành công')
+    },
+    onSettled: () => setProcessingId(null),
+  })
+
+  const rejectMut = useMutation({
+    mutationFn: (vars: { id: string; reason: string }) => rejectBooking(vars.id, vars.reason),
+    onMutate: (vars) => setProcessingId(vars.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['room-bookings'] })
+      setRejectId(null)
+      speak('Đã từ chối lịch họp')
+    },
+    onSettled: () => setProcessingId(null),
+  })
+
   useEffect(() => {
     if (search.tab === 'requests') {
       setFilter('requests')
@@ -386,37 +469,11 @@ export default function RoomBookingPage() {
     setPage(1)
   }, [search.tab])
 
-  const [rejectId, setRejectId] = useState<string | null>(null)
-  const [rejectReason, setRejectReason] = useState('')
-
-  const prevBookingsCount = useRef(0)
-  const load = useCallback(async (isSilent = false) => {
-    if (!isSilent) setLoading(true)
-    try {
-      const data = await getBookings()
-
-      // Nếu là silent update và có lịch mới (số lượng tăng lên)
-      if (isSilent && data.length > prevBookingsCount.current) {
-        showNotification('Lịch họp mới', `Có yêu cầu đặt phòng mới vừa được cập nhật.`)
-      }
-
-      setBookings(data)
-      prevBookingsCount.current = data.length
-    } catch {
-    } finally {
-      if (!isSilent) setLoading(false)
-    }
-  }, []) // Không phụ thuộc vào bookings để tránh loop
-
   useEffect(() => {
-    load(false)
-    const interval = setInterval(() => load(true), 10000)
-
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission()
     }
-    return () => clearInterval(interval)
-  }, [load])
+  }, [])
 
   useEffect(() => {
     if (!showModal || !room || !date) return
@@ -426,7 +483,7 @@ export default function RoomBookingPage() {
   }, [showModal, room, date])
 
   const filtered = useMemo(() => {
-    const { date: todayDate, time: nowTime } = getVnNow()
+    const { date: todayDate, time: nowTime } = vnTime
     const isBookingCompleted = (b: MeetingBooking) =>
       b.status === 'approved' &&
       (b.date < todayDate || (b.date === todayDate && b.timeTo <= nowTime))
@@ -450,7 +507,7 @@ export default function RoomBookingPage() {
       if (isBookingCompleted(b)) return false
       return true
     })
-  }, [bookings, filter, user?.id, user?.team])
+  }, [bookings, filter, user?.id, user?.team, vnTime])
 
   const totalPages = useMemo(() => Math.ceil(filtered.length / PAGE_SIZE), [filtered.length])
   const pageData = useMemo(
@@ -487,59 +544,30 @@ export default function RoomBookingPage() {
       speak(m)
       return
     }
-    const { date: vnDate, time: vnTime } = getVnNow()
+    const { date: vnDate, time: vnTimeStr } = vnTime
     if (date < vnDate) {
       const m = 'Không thể đặt lịch trong quá khứ'
       setError(m)
       speak(m)
       return
     }
-    if (date === vnDate && timeFrom < vnTime) {
+    if (date === vnDate && timeFrom < vnTimeStr) {
       const m = 'Thời gian bắt đầu không thể ở quá khứ'
       setError(m)
       speak(m)
       return
     }
 
-    setLoading(true)
-    try {
-      const payload = { room, date, timeFrom, timeTo, reason, note, isEmergency }
-      if (editingId) {
-        await updateBooking(editingId, payload)
-        setSuccess('Cập nhật lịch họp thành công')
-        speak('Đã cập nhật lịch họp')
-      } else {
-        await createBooking(payload)
-        const msg = isEmergency
-          ? 'Đặt phòng khẩn cấp thành công'
-          : 'Đặt phòng thành công, vui lòng chờ duyệt'
-        setSuccess(msg)
-        speak(msg)
-      }
-      setShowModal(false)
-      resetForm()
-      load()
-      setTimeout(() => setSuccess(''), 4000)
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
-      setError(msg)
-      speak(`Lỗi: ${msg}`)
-    } finally {
-      setLoading(false)
+    const payload = { room, date, timeFrom, timeTo, reason, note, isEmergency }
+    if (editingId) {
+      updateMut.mutate({ id: editingId, payload })
+    } else {
+      createMut.mutate(payload)
     }
   }
 
   async function handleApprove(id: string) {
-    setProcessingId(id)
-    try {
-      await approveBooking(id)
-      speak('Đã duyệt lịch họp thành công')
-      load()
-    } catch {
-      speak('Lỗi khi duyệt')
-    } finally {
-      setProcessingId(null)
-    }
+    approveMut.mutate(id)
   }
 
   async function handleReject() {
@@ -547,31 +575,12 @@ export default function RoomBookingPage() {
       alert('Vui lòng nhập lý do')
       return
     }
-    setProcessingId(rejectId)
-    try {
-      await rejectBooking(rejectId, rejectReason)
-      setRejectId(null)
-      speak('Đã từ chối lịch họp')
-      load()
-    } catch {
-      speak('Lỗi khi từ chối')
-    } finally {
-      setProcessingId(null)
-    }
+    rejectMut.mutate({ id: rejectId, reason: rejectReason })
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Bạn có chắc chắn muốn hủy lịch họp này?')) return
-    setProcessingId(id)
-    try {
-      await deleteBooking(id)
-      speak('Đã hủy lịch họp')
-      load()
-    } catch (err: any) {
-      alert(err?.response?.data?.message || 'Lỗi khi hủy lịch')
-    } finally {
-      setProcessingId(null)
-    }
+    deleteMut.mutate(id)
   }
 
   function handleEdit(b: MeetingBooking) {
@@ -604,7 +613,13 @@ export default function RoomBookingPage() {
               Lịch đặt và quản lý tài nguyên phòng họp tại Lumina.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {(createMut.isPending || updateMut.isPending || isFetching) && (
+              <div className="flex items-center gap-2 rounded-xl bg-primary/5 px-4 py-2 text-primary">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-xs font-bold uppercase tracking-wider">Đang cập nhật...</span>
+              </div>
+            )}
             <button
               onClick={() => speak('Hệ thống đặt phòng Lumina xin chào bạn')}
               className="p-3 rounded-full bg-secondary hover:bg-secondary/80 transition shadow-sm"
@@ -676,43 +691,7 @@ export default function RoomBookingPage() {
             </div>
           </div>
 
-          <div className="divide-y divide-border/50 bg-white/30 md:hidden">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="animate-pulse space-y-3 p-4">
-                  <div className="h-4 w-32 rounded bg-muted" />
-                  <div className="h-4 w-48 rounded bg-muted" />
-                  <div className="h-4 w-40 rounded bg-muted" />
-                  <div className="h-10 w-full rounded-xl bg-muted" />
-                </div>
-              ))
-            ) : pageData.length === 0 ? (
-              <div className="px-6 py-20 text-center">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="rounded-full bg-muted p-4">
-                    <AlertCircle className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Không tìm thấy lịch đặt nào
-                  </p>
-                </div>
-              </div>
-            ) : (
-              pageData.map((b) => (
-                <BookingCardMobile
-                  key={b.id}
-                  b={b}
-                  user={user}
-                  isPrivileged={isPrivileged}
-                  processingId={processingId}
-                  handleApprove={handleApprove}
-                  setRejectId={setRejectId}
-                  handleEdit={handleEdit}
-                  handleDelete={handleDelete}
-                />
-              ))
-            )}
-          </div>
+          {/* Table */}
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="bg-muted/30">
@@ -730,7 +709,7 @@ export default function RoomBookingPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50 bg-white/30">
-                {loading ? (
+                {isFetching && bookings.length === 0 ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="animate-pulse">
                       <td className="px-6 py-5">
@@ -781,11 +760,52 @@ export default function RoomBookingPage() {
                       setRejectId={setRejectId}
                       handleEdit={handleEdit}
                       handleDelete={handleDelete}
+                      vnTime={vnTime}
                     />
                   ))
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="divide-y divide-border/50 bg-card sm:hidden">
+            {isFetching && bookings.length === 0 ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="animate-pulse space-y-3 p-4">
+                  <div className="h-4 w-32 rounded bg-muted" />
+                  <div className="h-4 w-48 rounded bg-muted" />
+                  <div className="h-4 w-40 rounded bg-muted" />
+                  <div className="h-10 w-full rounded-xl bg-muted" />
+                </div>
+              ))
+            ) : pageData.length === 0 ? (
+              <div className="px-6 py-20 text-center">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="rounded-full bg-muted p-4">
+                    <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Không tìm thấy lịch đặt nào
+                  </p>
+                </div>
+              </div>
+            ) : (
+              pageData.map((b) => (
+                <BookingCardMobile
+                  key={b.id}
+                  b={b}
+                  user={user}
+                  isPrivileged={isPrivileged}
+                  processingId={processingId}
+                  handleApprove={handleApprove}
+                  setRejectId={setRejectId}
+                  handleEdit={handleEdit}
+                  handleDelete={handleDelete}
+                  vnTime={vnTime}
+                />
+              ))
+            )}
           </div>
 
           {/* Phân trang */}
@@ -1115,10 +1135,10 @@ export default function RoomBookingPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={createMut.isPending || updateMut.isPending}
                     className="flex-1 py-4 bg-primary text-white font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                   >
-                    {loading ? (
+                    {createMut.isPending || updateMut.isPending ? (
                       <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                     ) : editingId ? (
                       'Cập nhật'

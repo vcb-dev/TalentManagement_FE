@@ -54,6 +54,7 @@ export interface ChecklistStarScreenProps {
   embedInLearningPath?: boolean
   /** If true, filter roadmap topics by star number parsed from topic name */
   filterByStar?: boolean
+  currentStars?: number
 }
 
 function BannerStars({ filled, total = 5 }: { filled: number; total?: number }) {
@@ -112,9 +113,10 @@ export function ChecklistStarScreen({
   starId,
   embedInLearningPath = false,
   filterByStar = false,
+  currentStars = 0,
 }: ChecklistStarScreenProps) {
   const navigate = useNavigate()
-  const { data: myPath } = useMyLearningPath()
+  const { data: myPath, isLoading: isPathLoading } = useMyLearningPath()
   const roadmapTopicsByLevel = useMemo(() => {
     if (!embedInLearningPath || !myPath) return []
     let topics = (myPath.roadmapTopics ?? [])
@@ -122,12 +124,14 @@ export function ChecklistStarScreen({
       .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
 
     // Filter by star number when enabled (e.g. biet_viec Sao 1-6)
-    if (filterByStar && starId) {
+    // NOTE: The user now wants to see "toàn bộ lộ trình", so we don't strictly filter OUT other stars,
+    // but we might still use starId to highlight or scroll.
+    // For now, if embedInLearningPath is true, we show all but mark as locked below.
+    if (filterByStar && starId && !embedInLearningPath) {
       const starNum = parseInt(starId) || 1
       topics = topics.filter((t: any) => {
         const match = t.topic.match(/^Sao\s*(\d+)/i)
         if (match) return parseInt(match[1]) === starNum
-        // Non-star topics (like "Nền tảng Tư duy") always show
         return true
       })
     }
@@ -181,26 +185,23 @@ export function ChecklistStarScreen({
     ? probationMilestones.filter((m) => m.status === 'done').length
     : sortedItems.filter((i) => checklist.isCompleted(i.id)).length
 
-  const currentItem = useProbationFlow
-    ? probationMilestones.find((m) => m.status === 'in_progress')
-    : sortedItems.find((i) => checklist.isUnlocked(i.id) && !checklist.isCompleted(i.id))
-
   const tasks = useMemo(() => {
     if (useProbationFlow && roadmapTopicsByLevel.length > 0) {
-      const currentMilestoneIndex = probationMilestones.findIndex((m) => m.status === 'in_progress')
-      const doneCount = probationMilestones.filter((m) => m.status === 'done').length
-
-      return roadmapTopicsByLevel.map((topic, idx) => {
+      return roadmapTopicsByLevel.map((topic) => {
         const titleRaw = topic.topic.trim()
-        const isDone = idx < doneCount
-        const isCurrent = currentMilestoneIndex >= 0 ? idx === currentMilestoneIndex : idx === 0
+        const match = titleRaw.match(/^Sao\s*(\d+)/i)
+        const topicStar = match && match[1] ? parseInt(match[1]) : 1
+
+        const isDone = topicStar <= currentStars
+        const isCurrent = topicStar === currentStars + 1
+        const isLocked = topicStar > currentStars + 1
 
         return {
           id: topic.id,
           title: titleRaw,
           order: topic.sortOrder,
           description: topic.objectives.map((o) => o.objective).join('\n'),
-          completedAt: isDone ? (probationMilestones[idx]?.completedAt ?? null) : null,
+          completedAt: null, // We don't have per-topic completion date in this simplified view yet
           kind: isDone ? ('done' as const) : isCurrent ? ('current' as const) : ('locked' as const),
           objectives: topic.objectives,
         }
@@ -233,7 +234,18 @@ export function ChecklistStarScreen({
       kind: rowKind(sortedItems, it.id, checklist),
       objectives: [],
     }))
-  }, [useProbationFlow, roadmapTopicsByLevel, probationMilestones, sortedItems, checklist])
+  }, [
+    useProbationFlow,
+    roadmapTopicsByLevel,
+    probationMilestones,
+    sortedItems,
+    checklist,
+    currentStars,
+  ])
+
+  const currentItem = useProbationFlow
+    ? tasks.find((t) => t.kind === 'current')
+    : sortedItems.find((i) => checklist.isUnlocked(i.id) && !checklist.isCompleted(i.id))
 
   const activeTaskId = expandedTaskId ?? currentItem?.id ?? tasks[0]?.id ?? null
 
@@ -354,7 +366,7 @@ export function ChecklistStarScreen({
       ) : null}
 
       <div className={cn(embedInLearningPath ? 'min-w-0 px-0 py-1 sm:py-2' : 'page-shell')}>
-        {isLoading ? (
+        {isLoading || (embedInLearningPath && isPathLoading) ? (
           <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 lg:grid-cols-12">
             <div className="space-y-4 lg:col-span-7">
               <div>
@@ -378,7 +390,7 @@ export function ChecklistStarScreen({
               <span className="font-bold uppercase tracking-widest text-gray-500">{levelName}</span>
               <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden />
               <span className="font-bold uppercase tracking-widest text-primary-600">
-                Sao {starId}
+                Toàn bộ lộ trình
               </span>
             </nav>
 
@@ -398,7 +410,7 @@ export function ChecklistStarScreen({
                     <BannerStars filled={Math.min(doneCount, 5)} total={5} />
                   </div>
                   <h1 className="text-[22px] font-extrabold leading-tight tracking-tight">
-                    Sao {starId} — {levelName}
+                    Lộ trình học {levelName}
                   </h1>
                   <p className="max-w-xl text-sm font-medium text-white/80">
                     Bắt đầu hành trình chinh phục kỹ năng chuyên môn tại VCB.
@@ -440,48 +452,84 @@ export function ChecklistStarScreen({
                       lý hoặc đơn vị đào tạo.
                     </p>
                   ) : (
-                    tasks.map((it, idx) => {
-                      const doneDate = it.completedAt
-                        ? new Date(it.completedAt).toLocaleDateString('vi-VN')
-                        : undefined
-                      return (
-                        <div key={it.id} className={CARD_ENTRANCE} style={staggerStyle(idx, 60)}>
-                          <ChecklistTaskCard
-                            id={it.id}
-                            title={it.title}
-                            kind={it.kind}
-                            expanded={activeTaskId === it.id}
-                            onToggle={() => handleToggleTask(it.id)}
-                            objective={
-                              it.description?.trim() || 'Chưa có objective cho đầu mục này.'
-                            }
-                            objectiveList={it.objectives}
-                            subtitle={
-                              it.kind === 'done'
-                                ? doneDate
-                                  ? `Hoàn thành ${doneDate}`
-                                  : 'Đã hoàn thành'
-                                : it.kind === 'current'
-                                  ? 'Ấn vào để xem chi tiết'
-                                  : 'Hoàn thành nhiệm vụ trước để mở'
-                            }
-                            primaryAction={
-                              it.kind === 'done'
-                                ? it.order === 2
-                                  ? { label: 'Xem kết quả', onClick: () => {} }
-                                  : { label: 'Xem bằng chứng', onClick: () => {} }
-                                : it.kind === 'current'
-                                  ? useProbationFlow
-                                    ? undefined
-                                    : { label: 'Nộp bằng chứng', onClick: onPickFile }
+                    <div className="space-y-10">
+                      {[1, 2, 3, 4, 5, 6].map((starNum) => {
+                        const starTasks = tasks.filter((t) => {
+                          const match = t.title?.match(/^Sao\s*(\d+)/i)
+                          return match && match[1] ? parseInt(match[1]) === starNum : starNum === 1
+                        })
+                        if (starTasks.length === 0) return null
+
+                        const isUnlocked = starNum <= currentStars + 1
+                        const isDone = starNum <= currentStars
+
+                        return (
+                          <div key={starNum} className="space-y-4">
+                            <div className="flex items-center gap-3">
+                              <h3
+                                className={cn(
+                                  'text-sm font-black uppercase tracking-[0.2em]',
+                                  isUnlocked ? 'text-primary-600' : 'text-gray-400'
+                                )}
+                              >
+                                {isDone ? '✓ ' : !isUnlocked ? '🔒 ' : '⭐ '}
+                                Sao {starNum}
+                              </h3>
+                              <div className="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent" />
+                            </div>
+                            <div className="space-y-4">
+                              {starTasks.map((it, idx) => {
+                                const doneDate = it.completedAt
+                                  ? new Date(it.completedAt).toLocaleDateString('vi-VN')
                                   : undefined
-                            }
-                            selectedObjectiveId={selectedObjectiveId}
-                            onSelectObjective={handleSelectObjective}
-                          />
-                        </div>
-                      )
-                    })
+                                return (
+                                  <div
+                                    key={it.id}
+                                    className={CARD_ENTRANCE}
+                                    style={staggerStyle(idx, 60)}
+                                  >
+                                    <ChecklistTaskCard
+                                      id={it.id}
+                                      title={it.title}
+                                      kind={it.kind}
+                                      expanded={activeTaskId === it.id}
+                                      onToggle={handleToggleTask}
+                                      objective={
+                                        it.description?.trim() ||
+                                        'Chưa có objective cho đầu mục này.'
+                                      }
+                                      objectiveList={it.objectives}
+                                      subtitle={
+                                        it.kind === 'done'
+                                          ? doneDate
+                                            ? `Hoàn thành ${doneDate}`
+                                            : 'Đã hoàn thành'
+                                          : it.kind === 'current'
+                                            ? 'Ấn vào để xem chi tiết'
+                                            : `Mở khóa sau khi hoàn thành Sao ${starNum - 1}`
+                                      }
+                                      primaryAction={
+                                        it.kind === 'done'
+                                          ? it.order === 2
+                                            ? { label: 'Xem kết quả', onClick: () => {} }
+                                            : { label: 'Xem bằng chứng', onClick: () => {} }
+                                          : it.kind === 'current'
+                                            ? useProbationFlow
+                                              ? undefined
+                                              : { label: 'Nộp bằng chứng', onClick: onPickFile }
+                                            : undefined
+                                      }
+                                      selectedObjectiveId={selectedObjectiveId}
+                                      onSelectObjective={handleSelectObjective}
+                                    />
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   )}
                 </div>
               </div>
@@ -731,7 +779,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
     assessment: string | null
   }>
   expanded: boolean
-  onToggle: () => void
+  onToggle: (id: string) => void
   subtitle?: string
   primaryAction?: { label: string; onClick: () => void }
   selectedObjectiveId?: string | null
@@ -952,46 +1000,18 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
 
   if (kind === 'locked') {
     return (
-      <div
-        className={cn(
-          'rounded-xl p-5 transition-all duration-300 ring-1 ring-gray-100/80 border-l-4',
-          expanded
-            ? 'bg-white border-primary-600 shadow-md ring-primary-100'
-            : 'bg-gray-50/80 opacity-90 border-transparent hover:opacity-100'
-        )}
-      >
-        <Button
-          type="button"
-          variant="ghost"
-          className="whitespace-normal h-auto w-full justify-start gap-4 p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
-          onClick={onToggle}
-          aria-expanded={expanded}
-          aria-controls={`objective-${id}`}
-        >
-          <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-gray-300 bg-white" />
+      <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-5 opacity-60 grayscale transition-all">
+        <div className="flex items-center gap-4">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-400">
+            <Lock className="h-3 w-3" />
+          </div>
           <div className="min-w-0 flex-1">
-            <h4
-              className={cn(
-                'break-words text-base font-bold transition-colors',
-                expanded ? 'text-primary-600' : 'text-gray-600'
-              )}
-            >
-              {title}
-            </h4>
-            {subtitle ? (
-              <p className="mt-1 break-words text-sm leading-relaxed text-gray-400">{subtitle}</p>
-            ) : null}
+            <h4 className="text-base font-bold text-gray-500">{title}</h4>
+            <p className="mt-1 text-xs font-medium text-gray-400 uppercase tracking-wider">
+              {subtitle || 'Hoàn thành mốc trước để mở'}
+            </p>
           </div>
-          <Lock className="mt-0.5 h-5 w-5 shrink-0 text-gray-300" strokeWidth={2} aria-hidden />
-        </Button>
-        {expanded ? (
-          <div
-            id={`objective-${id}`}
-            className="mt-4 rounded-2xl bg-white/60 p-4 shadow-inner ring-1 ring-gray-100/50"
-          >
-            {objectiveContent}
-          </div>
-        ) : null}
+        </div>
       </div>
     )
   }
@@ -1011,7 +1031,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
             type="button"
             variant="ghost"
             className="whitespace-normal h-auto min-w-0 flex-1 justify-start gap-4 p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
-            onClick={onToggle}
+            onClick={() => onToggle(id)}
             aria-expanded={expanded}
             aria-controls={`objective-${id}`}
           >
@@ -1082,7 +1102,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
         type="button"
         variant="ghost"
         className="whitespace-normal h-auto w-full justify-start gap-4 p-0 text-left font-normal normal-case tracking-normal hover:bg-transparent"
-        onClick={onToggle}
+        onClick={() => onToggle(id)}
         aria-expanded={expanded}
         aria-controls={`objective-${id}`}
       >
