@@ -81,6 +81,8 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
       'admin.permissions.assign',
       'kpi.window_override',
       'company.landing.edit',
+      'reward.threshold_view',
+      'reward.record_view',
     ],
   },
   {
@@ -103,6 +105,9 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
       'hr.org.manage',
       'kpi.window_override',
       'company.landing.edit',
+      'reward.threshold_view',
+      'reward.calculate',
+      'reward.record_view',
     ],
   },
   {

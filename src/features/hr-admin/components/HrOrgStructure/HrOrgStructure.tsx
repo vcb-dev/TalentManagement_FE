@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { toast } from 'sonner'
@@ -95,6 +95,7 @@ function OrgCrudNameDialog({
   pending,
   onClose,
   onSubmit,
+  children,
 }: {
   open: boolean
   title: string
@@ -104,6 +105,7 @@ function OrgCrudNameDialog({
   pending: boolean
   onClose: () => void
   onSubmit: () => void
+  children?: React.ReactNode
 }) {
   return (
     <Dialog
@@ -133,6 +135,7 @@ function OrgCrudNameDialog({
             }}
           />
         </div>
+        {children}
         <DialogFooter className="gap-2 sm:gap-0">
           <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
             Hủy
@@ -350,6 +353,7 @@ export function HrOrgStructure() {
 
   const [crudModal, setCrudModal] = useState<OrgCrudModal>(null)
   const [crudName, setCrudName] = useState('')
+  const [trafficFlag, setTrafficFlag] = useState(false)
   const emptyDivisionForm = useMemo<DivisionFormValues>(
     () => ({ name: '', code: '', description: '', isActive: true }),
     []
@@ -409,23 +413,40 @@ export function HrOrgStructure() {
   })
 
   const createTeamM = useMutation({
-    mutationFn: ({ name, divisionId }: { name: string; divisionId: string }) =>
-      orgCrudApi.createTeam(name, divisionId),
+    mutationFn: ({
+      name,
+      divisionId,
+      isTrafficTeam,
+    }: {
+      name: string
+      divisionId: string
+      isTrafficTeam: boolean
+    }) => orgCrudApi.createTeam(name, divisionId, isTrafficTeam),
     onSuccess: () => {
       toast.success('Đã tạo nhóm')
       setCrudModal(null)
       setCrudName('')
+      setTrafficFlag(false)
       invalidateOrgStructure()
     },
     onError: (e) => toast.error(readApiErrorMessage(e)),
   })
 
   const updateTeamM = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => orgCrudApi.updateTeam(id, { name }),
+    mutationFn: ({
+      id,
+      name,
+      isTrafficTeam,
+    }: {
+      id: string
+      name: string
+      isTrafficTeam: boolean
+    }) => orgCrudApi.updateTeam(id, { name, isTrafficTeam }),
     onSuccess: () => {
       toast.success('Đã cập nhật nhóm')
       setCrudModal(null)
       setCrudName('')
+      setTrafficFlag(false)
       invalidateOrgStructure()
     },
     onError: (e) => toast.error(readApiErrorMessage(e)),
@@ -467,6 +488,7 @@ export function HrOrgStructure() {
 
   const openCreateTeamForDept = useCallback((dept: OrgAdminDivisionRow) => {
     setCrudName('')
+    setTrafficFlag(false)
     setCrudModal({ kind: 'team-create', dept })
   }, [])
 
@@ -506,8 +528,9 @@ export function HrOrgStructure() {
     }
     if (!crudModal) return
     if (crudModal.kind === 'team-create')
-      createTeamM.mutate({ name, divisionId: crudModal.dept.id })
-    else if (crudModal.kind === 'team-edit') updateTeamM.mutate({ id: crudModal.team.id, name })
+      createTeamM.mutate({ name, divisionId: crudModal.dept.id, isTrafficTeam: trafficFlag })
+    else if (crudModal.kind === 'team-edit')
+      updateTeamM.mutate({ id: crudModal.team.id, name, isTrafficTeam: trafficFlag })
   }, [crudModal, crudName, createTeamM, updateTeamM])
 
   const submitDeleteModal = useCallback(() => {
@@ -997,6 +1020,7 @@ export function HrOrgStructure() {
                               mockBanner={mockBanner}
                               onEditTeam={() => {
                                 setCrudName(team.name)
+                                setTrafficFlag(team.isTrafficTeam ?? false)
                                 setCrudModal({ kind: 'team-edit', team })
                               }}
                               onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
@@ -1038,6 +1062,7 @@ export function HrOrgStructure() {
                               mockBanner={mockBanner}
                               onEditTeam={() => {
                                 setCrudName(team.name)
+                                setTrafficFlag(team.isTrafficTeam ?? false)
                                 setCrudModal({ kind: 'team-edit', team })
                               }}
                               onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
@@ -1138,9 +1163,21 @@ export function HrOrgStructure() {
         onClose={() => {
           setCrudModal(null)
           setCrudName('')
+          setTrafficFlag(false)
         }}
         onSubmit={submitNameModal}
-      />
+      >
+        <div className="flex items-center gap-2 pt-1">
+          <Checkbox
+            id="team-traffic-flag"
+            checked={trafficFlag}
+            onCheckedChange={(v) => setTrafficFlag(Boolean(v))}
+          />
+          <Label htmlFor="team-traffic-flag" className="cursor-pointer text-sm font-normal">
+            Nhóm Traffic — áp dụng công thức xếp hạng Traffic
+          </Label>
+        </div>
+      </OrgCrudNameDialog>
 
       <OrgCrudConfirmDialog
         open={Boolean(
@@ -1187,8 +1224,16 @@ function TeamCardMobile({
       )}
     >
       <div className="min-w-0 space-y-2">
-        <div className="break-words text-base font-semibold leading-snug text-foreground">
+        <div className="flex flex-wrap items-center gap-2 break-words text-base font-semibold leading-snug text-foreground">
           {team.name}
+          {team.isTrafficTeam && (
+            <Badge
+              variant="outline"
+              className="border-sky-200 bg-sky-50 text-[10px] font-bold text-sky-600 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400"
+            >
+              Traffic
+            </Badge>
+          )}
         </div>
         <div className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground/85">Trưởng nhóm:</span> <span>—</span>
@@ -1268,7 +1313,17 @@ function FragmentTeamRow({
       )}
     >
       <TableCell className="pl-6 align-top">
-        <div className="font-semibold text-foreground">{team.name}</div>
+        <div className="flex items-center gap-2 font-semibold text-foreground">
+          {team.name}
+          {team.isTrafficTeam && (
+            <Badge
+              variant="outline"
+              className="border-sky-200 bg-sky-50 text-[10px] font-bold text-sky-600 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400"
+            >
+              Traffic
+            </Badge>
+          )}
+        </div>
       </TableCell>
       <TableCell className="max-w-[260px] align-top text-sm text-muted-foreground">—</TableCell>
       <TableCell className="align-top">

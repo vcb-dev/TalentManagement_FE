@@ -10,6 +10,7 @@ export type CatalogDivisionAllowlistResponse = {
   envDivisionIds: string[]
   databaseDivisionIds: string[]
   mergedDivisionIds: string[]
+  trafficTeamIds: string[]
 }
 
 export type PerformanceAssignment = {
@@ -402,6 +403,7 @@ export const performanceApi = {
         envDivisionIds: [],
         databaseDivisionIds: [],
         mergedDivisionIds: [],
+        trafficTeamIds: [],
       }
     }
     const res = await apiClient.get<CatalogDivisionAllowlistResponse>(
@@ -491,16 +493,6 @@ export const performanceApi = {
     return res.data
   },
 
-  // ─── Sprint 4: Honor Board ──────────────────────────────────────────
-
-  getHonorBoard: async (year: number, month: number, departmentId?: string) => {
-    if (isMockApiEnabled()) return { topByDepartment: [], outstandingOkr: [] } as HonorBoardResponse
-    const res = await apiClient.get<HonorBoardResponse>('/performance/honor-board', {
-      params: { year, month, departmentId },
-    })
-    return res.data
-  },
-
   // ─── Epic 5.5: Sales Honor Board ─────────────────────────────────────
 
   getSalesHonorBoard: async (year: number, month: number) => {
@@ -515,6 +507,24 @@ export const performanceApi = {
       } as SalesHonorBoardResponse
     }
     const res = await apiClient.get<SalesHonorBoardResponse>('/performance/honor-board/sales', {
+      params: { year, month },
+    })
+    return res.data
+  },
+
+  // ─── Epic 10: Traffic Honor Board ────────────────────────────────────
+
+  getTrafficHonorBoard: async (year: number, month: number) => {
+    if (isMockApiEnabled()) {
+      return {
+        year,
+        month,
+        teamWinners: [],
+        individualWinners: [],
+        warnings: [],
+      } as TrafficHonorBoardResponse
+    }
+    const res = await apiClient.get<TrafficHonorBoardResponse>('/performance/honor-board/traffic', {
       params: { year, month },
     })
     return res.data
@@ -693,24 +703,6 @@ export type MonthlyReport = {
   }
 }
 
-export type HonorBoardResponse = {
-  topByDepartment: Array<{
-    departmentId: string
-    departmentName: string
-    user: { id: string; displayName: string | null; email: string | null }
-    kind: 'KPI' | 'OKR'
-    content: string
-    numericValue: number
-    numericUnit: string | null
-  }>
-  outstandingOkr: Array<{
-    user: { id: string; displayName: string | null }
-    departmentName: string
-    content: string
-    numericValue: number
-  }>
-}
-
 export type SalesHonorWinnerIndividual = {
   user: {
     id: string
@@ -739,6 +731,39 @@ export type SalesHonorBoardResponse = {
   topIndividualOrders: SalesHonorWinnerIndividual | null
   topTeamRevenue: SalesHonorWinnerTeam | null
   topTeamOrders: SalesHonorWinnerTeam | null
+}
+
+// ─── Epic 10: Traffic Honor Board ────────────────────────────────────────────
+
+export type TrafficHonorTeamWinner = {
+  teamId: string
+  teamName: string
+  metricKey: string
+  metricLabel: string
+  totalValue: number
+  numericUnit: string
+  memberCount: number
+  amount: number
+  ratioPercent: number
+}
+
+export type TrafficHonorIndividualWinner = {
+  userId: string
+  displayName: string
+  teamName: string | null
+  metricKey: string
+  metricLabel: string
+  numericValue: number
+  numericUnit: string
+  amount: number
+}
+
+export type TrafficHonorBoardResponse = {
+  year: number
+  month: number
+  teamWinners: TrafficHonorTeamWinner[]
+  individualWinners: TrafficHonorIndividualWinner[]
+  warnings: string[]
 }
 
 export type UserSnapshotResponse = {

@@ -53,7 +53,12 @@ import {
   periodLabel,
   xlTd,
 } from '@/features/kpi-okr/components/kpiAssignmentTableShared'
-import { isCatalogEnabledDepartment, isMandatoryMetric } from '@/features/kpi-okr/catalogHelpers'
+import {
+  isCatalogEnabledDepartment,
+  isMandatoryMetric,
+  isTrafficTeam,
+} from '@/features/kpi-okr/catalogHelpers'
+import { LeaderKpiGuidance } from '@/features/kpi-okr/components/LeaderKpiGuidance'
 import {
   parseKpiOkrImportFile,
   type ImportAssignmentItem,
@@ -334,15 +339,10 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     [user?.id, eff]
   )
 
-  const showAutoSeed =
-    variant === 'leader' &&
-    canEditTeam &&
-    eff.has('kpi.auto_seed') &&
-    Boolean(
-      selectedDept &&
-      isCatalogEnabledDepartment(selectedDept, catalogAllowlistQ.data?.mergedDivisionIds ?? null)
-    ) &&
-    !isMockApiEnabled()
+  const isKinhDoanhTeam = Boolean(
+    selectedDept &&
+    isCatalogEnabledDepartment(selectedDept, catalogAllowlistQ.data?.mergedDivisionIds ?? null)
+  )
 
   const selectedTeamForSeed = useMemo(() => {
     if (!selectedTeamId) return null
@@ -352,6 +352,19 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     }
     return null
   }, [departments, selectedTeamId])
+
+  const isTrafficTeamSelected = isTrafficTeam(
+    selectedTeamId,
+    catalogAllowlistQ.data?.trafficTeamIds ?? null,
+    selectedTeamForSeed?.name ?? null
+  )
+
+  const showAutoSeed =
+    variant === 'leader' &&
+    canEditTeam &&
+    eff.has('kpi.auto_seed') &&
+    (isKinhDoanhTeam || isTrafficTeamSelected) &&
+    !isMockApiEnabled()
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: assignKey })
@@ -603,6 +616,12 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         </div>
       )}
 
+      {(isKinhDoanhTeam || isTrafficTeamSelected) && (
+        <div className="mb-4">
+          <LeaderKpiGuidance variant={isKinhDoanhTeam ? 'KINH_DOANH' : 'TRAFFIC'} />
+        </div>
+      )}
+
       <div className="space-y-6">
         <WorkReportPanel
           assignmentsThisMonth={visibleAssignmentsThisMonth}
@@ -625,6 +644,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           canMemberEditSelfResults={canMemberEditSelfResults}
           showAutoSeed={showAutoSeed}
           selectedTeamName={selectedTeamForSeed?.name ?? ''}
+          isTrafficTeam={isTrafficTeamSelected}
         />
         <SummaryPanel
           rows={summariesQ.data ?? []}
@@ -836,10 +856,10 @@ function MemberSelfAssignmentRow({
       </TableCell>
       <TableCell className={cn(td, 'p-2 align-middle')}>
         <CustomSelect
-          value={selfEvalStatus}
-          onValueChange={setSelfEvalStatus}
+          value={selfEvalStatus || '__none'}
+          onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
           options={[
-            { label: '—', value: '' },
+            { label: '—', value: '__none' },
             { label: 'OK', value: 'OK' },
             { label: 'NOT', value: 'NOT' },
           ]}
@@ -1046,10 +1066,10 @@ function MemberSelfAssignmentMobileCard({
       <div className="space-y-2">
         <span className="text-[10px] font-bold uppercase text-muted-foreground">Tự đánh giá</span>
         <CustomSelect
-          value={selfEvalStatus}
-          onValueChange={setSelfEvalStatus}
+          value={selfEvalStatus || '__none'}
+          onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
           options={[
-            { label: '—', value: '' },
+            { label: '—', value: '__none' },
             { label: 'OK', value: 'OK' },
             { label: 'NOT', value: 'NOT' },
           ]}
@@ -1854,6 +1874,7 @@ function WorkReportPanel({
   canMemberEditSelfResults,
   showAutoSeed,
   selectedTeamName,
+  isTrafficTeam,
 }: {
   assignmentsThisMonth: PerformanceAssignment[]
   assignmentsPrevMonth: PerformanceAssignment[]
@@ -1875,6 +1896,7 @@ function WorkReportPanel({
   canMemberEditSelfResults: boolean
   showAutoSeed: boolean
   selectedTeamName: string
+  isTrafficTeam: boolean
 }) {
   const byUserThis = useMemo(
     () => groupAssignmentsByUser(assignmentsThisMonth),
@@ -1958,6 +1980,7 @@ function WorkReportPanel({
                 month={month}
                 members={members}
                 teamName={selectedTeamName}
+                isTrafficTeam={isTrafficTeam}
                 assignmentWindowOpen={assignmentWindowOpen}
                 assignStartDay={assignmentWindowBounds.startDay}
                 assignEndDay={assignmentWindowBounds.endDay}

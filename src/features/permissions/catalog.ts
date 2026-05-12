@@ -352,6 +352,29 @@ const nodes: PermissionNode[] = [
     kind: 'data_toggle',
     scope: 'global',
   },
+
+  { id: 'mod.reward', parentId: null, label: 'Thưởng KPI tháng', kind: 'module', scope: 'global' },
+  {
+    id: 'reward.threshold_view',
+    parentId: 'mod.reward',
+    label: 'Xem & cấu hình ngưỡng thưởng',
+    kind: 'function',
+    scope: 'global',
+  },
+  {
+    id: 'reward.calculate',
+    parentId: 'mod.reward',
+    label: 'Tính thưởng KPI tháng',
+    kind: 'function',
+    scope: 'global',
+  },
+  {
+    id: 'reward.record_view',
+    parentId: 'mod.reward',
+    label: 'Xem lịch sử thưởng',
+    kind: 'function',
+    scope: 'global',
+  },
 ]
 
 export const PERMISSION_NODES: readonly PermissionNode[] = nodes
@@ -373,6 +396,7 @@ export const PERMISSION_MODULE_IDS_UI_ORDER: readonly string[] = [
   'mod.bod',
   'mod.teacher',
   'mod.admin_rbac',
+  'mod.reward',
 ] as const
 
 /**
@@ -425,6 +449,7 @@ export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly stri
     'Khu vực chấm bài, kỳ thi dành cho giảng viên (/exam/grader, …)',
   ],
   'mod.admin_rbac': ['Gán & chỉnh quyền nhân viên (/permissions, màn bạn đang dùng)'],
+  'mod.reward': ['Quản lý thưởng KPI tháng (/hr-admin/settings/rewards)'],
 }
 
 export function getModuleUiScreens(moduleId: string): readonly string[] {

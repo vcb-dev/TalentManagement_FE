@@ -180,10 +180,10 @@ function MonthlyReportEpic4EditableStack({
       </div>
       <CustomSelect
         label="Tự đánh giá"
-        value={selfEvalStatus}
-        onValueChange={setSelfEvalStatus}
+        value={selfEvalStatus || '__none'}
+        onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
         options={[
-          { label: '—', value: '' },
+          { label: '—', value: '__none' },
           { label: 'OK', value: 'OK' },
           { label: 'NOT', value: 'NOT' },
         ]}
@@ -331,10 +331,10 @@ function MonthlyReportEpic4EditableCells({
       </TableCell>
       <TableCell className="align-top p-2">
         <CustomSelect
-          value={selfEvalStatus}
-          onValueChange={setSelfEvalStatus}
+          value={selfEvalStatus || '__none'}
+          onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
           options={[
-            { label: '—', value: '' },
+            { label: '—', value: '__none' },
             { label: 'OK', value: 'OK' },
             { label: 'NOT', value: 'NOT' },
           ]}

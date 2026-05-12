@@ -11,9 +11,9 @@ import {
 } from '@/components/shared/PageHeader'
 import { useMyDashboard } from '@/features/dashboard/hooks'
 import { DashboardKpiOkrZone } from '@/features/employee-dashboard/components/DashboardKpiOkrZone'
-import { HonorBoardCard } from '@/features/employee-dashboard/components/HonorBoardCard'
 import { SalesHonorBanner } from '@/features/employee-dashboard/components/SalesHonorBanner'
 import { SalesHonorDetailCard } from '@/features/employee-dashboard/components/SalesHonorDetailCard'
+import { TrafficHonorDetailCard } from '@/features/employee-dashboard/components/TrafficHonorDetailCard'
 import { DashboardLearningZone } from '@/features/employee-dashboard/components/DashboardLearningZone'
 import { ManagerHrSnapshotCards } from '@/features/employee-dashboard/components/ManagerHrSnapshotCards'
 import { ManagerLearningOpsZone } from '@/features/employee-dashboard/components/ManagerLearningOpsZone'
@@ -148,11 +148,6 @@ export function EmployeeLearningDashboard() {
     }),
     [managerReportPeriod]
   )
-
-  const honorBoardYm = useMemo(() => {
-    const d = new Date()
-    return { year: d.getFullYear(), month: d.getMonth() + 1 }
-  }, [])
 
   const { data: meDashboard, isLoading } = useMyDashboard({ enabled: Boolean(user) })
   const greetingName = user?.name?.trim() || 'bạn'
@@ -542,12 +537,8 @@ export function EmployeeLearningDashboard() {
               aria-labelledby="dash-tab-kpi"
               hidden={tab !== 'kpi'}
             >
-              <HonorBoardCard
-                year={honorBoardYm.year}
-                month={honorBoardYm.month}
-                className="mb-6"
-              />
               {isManagerLearningDash && <SalesHonorDetailCard className="mb-6" />}
+              {isManagerLearningDash && <TrafficHonorDetailCard className="mb-6" />}
               <DashboardKpiOkrZone
                 role={role as 'LEADER' | 'MANAGER' | 'MEMBER'}
                 paths={paths}

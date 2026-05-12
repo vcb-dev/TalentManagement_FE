@@ -210,7 +210,8 @@ export default function RewardsPage() {
     const groups: Record<string, { name: string; members: any[] }> = {}
     if (!Array.isArray(employees)) return groups
     employees.forEach((emp: any) => {
-      const tIds = emp.teamIds && emp.teamIds.length > 0 ? emp.teamIds : ['no-team']
+      const rawIds = Array.isArray(emp.teamIds) ? emp.teamIds.filter((id: string) => !!id) : []
+      const tIds = rawIds.length > 0 ? rawIds : ['no-team']
       const tNames = emp.teamNames && emp.teamNames.length > 0 ? emp.teamNames : ['CHƯA GÁN TEAM']
 
       tIds.forEach((tid: string, idx: number) => {
@@ -794,6 +795,7 @@ export default function RewardsPage() {
                     options={[
                       { label: 'Tất cả Team', value: 'all' },
                       ...Object.entries(groupedEmployees)
+                        .filter(([tid]) => !!tid)
                         .sort((a, b) => a[1].name.localeCompare(b[1].name))
                         .map(([tid, group]) => ({ label: group.name, value: tid })),
                     ]}

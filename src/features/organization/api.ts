@@ -62,14 +62,22 @@ export const orgCrudApi = {
     const res = await apiClient.delete<DivisionEntity>(`/org/divisions/${id}`)
     return res.data
   },
-  createTeam: async (name: string, divisionId: string): Promise<OrgMasterEntity> => {
+  createTeam: async (
+    name: string,
+    divisionId: string,
+    isTrafficTeam?: boolean
+  ): Promise<OrgMasterEntity> => {
     assertOrgCrudNotMock('tạo team')
-    const res = await apiClient.post<OrgMasterEntity>('/org/teams', { name, divisionId })
+    const res = await apiClient.post<OrgMasterEntity>('/org/teams', {
+      name,
+      divisionId,
+      isTrafficTeam,
+    })
     return res.data
   },
   updateTeam: async (
     id: string,
-    body: { name?: string; divisionId?: string }
+    body: { name?: string; divisionId?: string; isTrafficTeam?: boolean }
   ): Promise<OrgMasterEntity> => {
     assertOrgCrudNotMock('sửa team')
     const res = await apiClient.patch<OrgMasterEntity>(`/org/teams/${id}`, body)
@@ -105,6 +113,7 @@ export type OrgAdminTeamRow = {
   name: string
   /** Giữ tên `departmentId` để không phá các kiểu dùng chung; logic là divisionId. */
   departmentId: string
+  isTrafficTeam: boolean
   _count: { users: number }
 }
 

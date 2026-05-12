@@ -89,12 +89,67 @@ export const CATEGORY_ORDER = ['BASE', 'KPI_BONUS', 'PERFORMANCE_BONUS', 'BENEFI
  * Các KPI item bắt buộc phải nhập Số liệu (numericValue) mỗi tháng — Epic 5.5.
  * Đồng bộ với SALES_HONOR_METRICS ở BE sales-scope.ts.
  */
-export const SALES_MANDATORY_METRICS = ['Doanh thu lên đơn', 'Số đơn chốt'] as const
+export const SALES_MANDATORY_METRICS = [
+  'Doanh thu lên đơn',
+  'Số đơn hàng chốt được (có cọc, XN ĐT)',
+] as const
 export type SalesMandatoryMetric = (typeof SALES_MANDATORY_METRICS)[number]
 
-/** Trả true nếu row KPI này bắt buộc nhập Số liệu. */
-export function isMandatoryMetric(content: string | null | undefined): boolean {
-  return SALES_MANDATORY_METRICS.includes(content as SalesMandatoryMetric)
+/** Epic 10 — Metric bắt buộc theo templateCode. */
+export const MANDATORY_METRICS_BY_TEMPLATE: Record<string, readonly string[]> = {
+  SALES_NV: SALES_MANDATORY_METRICS,
+  TRAFFIC_TEAM_NV: [
+    'Tổng view traffic team',
+    'Doanh thu team traffic',
+    'Traffic cá nhân tháng',
+    'Doanh thu cá nhân tháng',
+  ],
+  LIVESTREAM_NV: [],
+  VAN_DON_NV: [],
+}
+
+/** Trả true nếu row KPI này bắt buộc nhập Số liệu (tính theo templateCode nếu có, fallback SALES_NV). */
+export function isMandatoryMetric(
+  content: string | null | undefined,
+  templateCode?: string | null
+): boolean {
+  const list = templateCode
+    ? (MANDATORY_METRICS_BY_TEMPLATE[templateCode] ?? SALES_MANDATORY_METRICS)
+    : SALES_MANDATORY_METRICS
+  return list.includes(content as string)
+}
+
+/** Allowlist traffic team IDs (FE-side fallback; ưu tiên dùng data từ API nếu có). */
+export const TRAFFIC_TEAM_IDS_FALLBACK = [
+  '02d0d0d0-0001-4001-8001-000000000101',
+  '02d0d0d0-0001-4001-8001-000000000102',
+  '02d0d0d0-0001-4001-8001-000000000103',
+  '02d0d0d0-0001-4001-8001-000000000104',
+  '02d0d0d0-0001-4001-8001-000000000105',
+  '02d0d0d0-0001-4001-8001-000000000106',
+  '02d0d0d0-0001-4001-8001-000000000107',
+  '02d0d0d0-0001-4001-8001-000000000401',
+] as const
+
+/** Pattern khớp tên team Traffic (fallback khi UUID không có trong allowlist). */
+const TRAFFIC_TEAM_NAME_RE = /^(huyk?\s*\d+|đvkd\d*|global\s+(japan|indo|thai|đài\s*loan|taiwan))/i
+
+/**
+ * Kiểm tra team có thuộc nhóm Traffic không.
+ * `trafficTeamIdsFromApi`: từ bảng kpi_traffic_team_allowlist (nếu đã load).
+ * `teamName`: tên team từ org tree — dùng làm fallback khi UUID không khớp allowlist.
+ */
+export function isTrafficTeam(
+  teamId: string | null | undefined,
+  trafficTeamIdsFromApi?: readonly string[] | null,
+  teamName?: string | null
+): boolean {
+  if (teamId) {
+    const ids = trafficTeamIdsFromApi ?? TRAFFIC_TEAM_IDS_FALLBACK
+    if (ids.includes(teamId as string)) return true
+  }
+  if (teamName) return TRAFFIC_TEAM_NAME_RE.test(teamName.trim())
+  return false
 }
 
 /**

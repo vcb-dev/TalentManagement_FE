@@ -1,4 +1,3 @@
-import React from 'react'
 import * as Select from '@radix-ui/react-select'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
