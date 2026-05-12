@@ -88,17 +88,17 @@ export function useApproveRequest() {
 
       return { previousData }
     },
-    onError: (err, id, context: any) => {
+    onError: (err, _id, context: any) => {
       if (context?.previousData) {
         qc.setQueryData(managerKeys.approvals(), context.previousData)
       }
       toast.error(getApiErrorMessage(err) || 'Thao tác thất bại')
     },
     onSuccess: (res: any) => {
-      if (res?.status === 'PROMOTED') {
-        toast.success('Đã thăng cấp thành công!')
+      if (res?.status === 'PROMOTED' || res?.status === 'STAR_UP') {
+        // Modal sẽ được hiển thị bởi Container — không cần toast ở đây
       } else {
-        toast.success('Đã thăng cấp sao')
+        toast.success('Đã thăng cấp sao ⭐')
       }
     },
     onSettled: () => {

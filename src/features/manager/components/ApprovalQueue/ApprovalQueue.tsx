@@ -139,17 +139,21 @@ export function ApprovalQueue({
     if (isApproving === p.id) {
       return <RefreshCw className="h-3 w-3 animate-spin" />
     }
+    const levelBadge = p.badges.find((b) => ['Tập sự', 'Biết việc', 'Được việc'].includes(b.label))
+    const currentLevel = levelBadge?.label || ''
+
+    // Tập sự → luôn hiện nút thăng cấp lên Biết việc (không cần 6 sao)
+    if (currentLevel === 'Tập sự') {
+      return 'Duyệt lên Biết việc'
+    }
+
     const starBadge = p.badges.find((b) => b.label.includes('sao'))
     const stars = starBadge ? parseInt(starBadge.label, 10) : 0
 
     if (stars >= 6) {
-      const levelBadge = p.badges.find((b) =>
-        ['Tập sự', 'Biết việc', 'Được việc'].includes(b.label)
-      )
-      const currentLevel = levelBadge?.label || ''
       let nextLevelLabel = 'cấp mới'
-      if (currentLevel === 'Tập sự') nextLevelLabel = 'Biết việc'
-      else if (currentLevel === 'Biết việc') nextLevelLabel = 'Được việc'
+      if (currentLevel === 'Biết việc') nextLevelLabel = 'Được việc'
+      else if (currentLevel === 'Được việc') nextLevelLabel = 'Đóng góp kết quả'
 
       return `Duyệt lên ${nextLevelLabel}`
     }

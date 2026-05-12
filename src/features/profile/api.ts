@@ -31,6 +31,7 @@ function rawToMeDashboard(raw: unknown): MeDashboard {
       milestonesByStatus: ls?.milestonesByStatus ?? {},
       examsByOutcome: ls?.examsByOutcome ?? {},
     },
+    nextStarTopics: (raw as any).nextStarTopics ?? [],
   }
 }
 
