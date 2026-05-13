@@ -132,6 +132,22 @@ export function isAnyMandatoryMetric(content: string | null | undefined): boolea
   return ALL_MANDATORY_METRICS_FE.includes(content as string)
 }
 
+/**
+ * Các chỉ số được đưa vào thi đua / xếp hạng / khen thưởng hàng tháng.
+ * Đồng bộ với RANKING_METRIC_CONTENTS_SALES + RANKING_METRIC_CONTENTS_TRAFFIC ở BE sales-scope.ts.
+ */
+export const RANKING_REWARD_METRIC_CONTENTS: readonly string[] = [
+  'Doanh thu lên đơn',
+  'Số đơn hàng chốt được (có cọc, XN ĐT)',
+  'Traffic cá nhân tháng',
+  'Doanh thu cá nhân tháng',
+]
+
+/** Trả true nếu chỉ số này được tính vào thi đua / xếp hạng / khen thưởng. */
+export function isRankingRewardMetric(content: string | null | undefined): boolean {
+  return RANKING_REWARD_METRIC_CONTENTS.includes(content as string)
+}
+
 /** Allowlist traffic team IDs (FE-side fallback; ưu tiên dùng data từ API nếu có). */
 export const TRAFFIC_TEAM_IDS_FALLBACK = [
   '02d0d0d0-0001-4001-8001-000000000101',

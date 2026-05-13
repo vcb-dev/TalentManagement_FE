@@ -25,7 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
 import { performanceApi, type PerformanceKind } from '@/features/kpi-okr/api'
-import { isAnyMandatoryMetric } from '@/features/kpi-okr/catalogHelpers'
+import { isAnyMandatoryMetric, isRankingRewardMetric } from '@/features/kpi-okr/catalogHelpers'
 import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 
@@ -41,6 +41,7 @@ type MetricEntry = {
   numericUnit: string | null
   teamIds: Set<string>
   isMandatory: boolean
+  isRanking: boolean
 }
 
 const PRIORITY_OPTIONS = [
@@ -407,6 +408,7 @@ export function ManagerKpiOkrScreen() {
             numericUnit: a.numericUnit ?? null,
             teamIds: new Set([team.id]),
             isMandatory: isAnyMandatoryMetric(a.content),
+            isRanking: isRankingRewardMetric(a.content),
           })
         } else {
           map.get(a.content)!.teamIds.add(team.id)
@@ -509,12 +511,17 @@ export function ManagerKpiOkrScreen() {
         </Select>
       </div>
 
-      {/* Summary */}
+      {/* Summary + legend */}
       {!isLoading && filtered.length > 0 && (
-        <div className="mb-4 flex items-center gap-2 text-xs text-slate-500">
+        <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
           <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium dark:bg-slate-800">
             {filtered.length} chỉ số cố định
           </span>
+          <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+            <span>🏆</span>
+            <span>Thi đua</span>
+          </span>
+          <span className="text-slate-400">= tính vào xếp hạng &amp; khen thưởng hàng tháng</span>
         </div>
       )}
 
@@ -571,6 +578,11 @@ export function ManagerKpiOkrScreen() {
                   <span className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
                     {entry.content}
                   </span>
+                  {entry.isRanking && (
+                    <span className="shrink-0 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                      🏆 Thi đua
+                    </span>
+                  )}
                 </div>
 
                 {/* Kind */}
