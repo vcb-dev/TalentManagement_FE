@@ -95,18 +95,26 @@ export const SALES_MANDATORY_METRICS = [
 ] as const
 export type SalesMandatoryMetric = (typeof SALES_MANDATORY_METRICS)[number]
 
-/** Epic 10 — Metric bắt buộc theo templateCode. */
+/** Epic 10 — Metric bắt buộc (cố định) theo templateCode — không được phép xóa. */
 export const MANDATORY_METRICS_BY_TEMPLATE: Record<string, readonly string[]> = {
   SALES_NV: SALES_MANDATORY_METRICS,
-  TRAFFIC_TEAM_NV: [
-    'Tổng view traffic team',
-    'Doanh thu team traffic',
-    'Traffic cá nhân tháng',
-    'Doanh thu cá nhân tháng',
-  ],
+  TRAFFIC_TEAM_NV: ['Traffic cá nhân tháng', 'Doanh thu cá nhân tháng'],
   LIVESTREAM_NV: [],
   VAN_DON_NV: [],
 }
+
+/** Các metric traffic đã bị loại khỏi danh sách cố định — cần cleanup khỏi DB nếu đã tạo. */
+export const REMOVED_TRAFFIC_MANDATORY_METRICS = [
+  'Tổng view traffic team',
+  'Doanh thu team traffic',
+  'Số content win mới (>50k views)',
+  'Số sản phẩm mới win',
+] as const
+
+/** Tất cả chỉ số cố định từ mọi template — dùng để check toàn cục (không cần templateCode). */
+export const ALL_MANDATORY_METRICS_FE: readonly string[] = [
+  ...new Set(Object.values(MANDATORY_METRICS_BY_TEMPLATE).flat()),
+]
 
 /** Trả true nếu row KPI này bắt buộc nhập Số liệu (tính theo templateCode nếu có, fallback SALES_NV). */
 export function isMandatoryMetric(
@@ -117,6 +125,11 @@ export function isMandatoryMetric(
     ? (MANDATORY_METRICS_BY_TEMPLATE[templateCode] ?? SALES_MANDATORY_METRICS)
     : SALES_MANDATORY_METRICS
   return list.includes(content as string)
+}
+
+/** Trả true nếu content là chỉ số cố định ở BẤT KỲ template nào — dùng cho màn manager. */
+export function isAnyMandatoryMetric(content: string | null | undefined): boolean {
+  return ALL_MANDATORY_METRICS_FE.includes(content as string)
 }
 
 /** Allowlist traffic team IDs (FE-side fallback; ưu tiên dùng data từ API nếu có). */

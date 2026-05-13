@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { CalendarRange, Info, Pencil } from 'lucide-react'
@@ -35,6 +35,7 @@ export function PerformanceWindowConfigScreen() {
   const queryClient = useQueryClient()
   const mock = isMockApiEnabled()
   const { allTeams, isLoading: teamsLoading } = useHrOrgSelectOptions()
+  const formCardRef = useRef<HTMLDivElement>(null)
 
   const now = useMemo(() => new Date(), [])
   const [year, setYear] = useState(now.getFullYear())
@@ -84,6 +85,9 @@ export function PerformanceWindowConfigScreen() {
       setScope('global')
       setTeamId('')
     }
+    setTimeout(() => {
+      formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
   }
 
   const onSubmit = (e: React.FormEvent) => {
@@ -134,153 +138,155 @@ export function PerformanceWindowConfigScreen() {
         </Card>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Thêm hoặc cập nhật</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Phạm vi</Label>
-                <Select
-                  value={scope}
-                  onValueChange={(v) => setScope(v as 'global' | 'team')}
-                  disabled={mock || upsertM.isPending}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="global">
-                      Toàn hệ thống (mọi nhóm chưa có cấu hình riêng)
-                    </SelectItem>
-                    <SelectItem value="team">Một nhóm</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {scope === 'team' ? (
+      <div ref={formCardRef}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Thêm hoặc cập nhật</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onSubmit} className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Nhóm</Label>
+                  <Label>Phạm vi</Label>
                   <Select
-                    value={teamId}
-                    onValueChange={setTeamId}
-                    disabled={mock || upsertM.isPending || teamsLoading}
+                    value={scope}
+                    onValueChange={(v) => setScope(v as 'global' | 'team')}
+                    disabled={mock || upsertM.isPending}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={teamsLoading ? 'Đang tải…' : 'Chọn nhóm'} />
+                      <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {allTeams.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
+                    <SelectContent>
+                      <SelectItem value="global">
+                        Toàn hệ thống (mọi nhóm chưa có cấu hình riêng)
+                      </SelectItem>
+                      <SelectItem value="team">Một nhóm</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              ) : (
-                <div className="hidden sm:block" aria-hidden />
-              )}
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="w-year">Năm</Label>
-                <Input
-                  id="w-year"
-                  type="number"
-                  min={2020}
-                  max={2035}
-                  value={year}
-                  onChange={(e) => setYear(Number(e.target.value))}
-                  disabled={mock || upsertM.isPending}
-                />
+                {scope === 'team' ? (
+                  <div className="space-y-2">
+                    <Label>Nhóm</Label>
+                    <Select
+                      value={teamId}
+                      onValueChange={setTeamId}
+                      disabled={mock || upsertM.isPending || teamsLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={teamsLoading ? 'Đang tải…' : 'Chọn nhóm'} />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {allTeams.map((t) => (
+                          <SelectItem key={t.value} value={t.value}>
+                            {t.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="hidden sm:block" aria-hidden />
+                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="w-month">Tháng</Label>
-                <Input
-                  id="w-month"
-                  type="number"
-                  min={1}
-                  max={12}
-                  value={month}
-                  onChange={(e) => setMonth(Number(e.target.value))}
-                  disabled={mock || upsertM.isPending}
-                />
-              </div>
-            </div>
 
-            <div className="rounded-xl border border-border/80 bg-muted/30 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Giao mục tiêu KPI/OKR (trưởng nhóm)
-              </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="a-start">Ngày bắt đầu (trong tháng)</Label>
+                  <Label htmlFor="w-year">Năm</Label>
                   <Input
-                    id="a-start"
+                    id="w-year"
                     type="number"
-                    min={1}
-                    max={31}
-                    value={assignStartDay}
-                    onChange={(e) => setAssignStartDay(Number(e.target.value))}
+                    min={2020}
+                    max={2035}
+                    value={year}
+                    onChange={(e) => setYear(Number(e.target.value))}
                     disabled={mock || upsertM.isPending}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="a-end">Ngày kết thúc</Label>
+                  <Label htmlFor="w-month">Tháng</Label>
                   <Input
-                    id="a-end"
+                    id="w-month"
                     type="number"
                     min={1}
-                    max={31}
-                    value={assignEndDay}
-                    onChange={(e) => setAssignEndDay(Number(e.target.value))}
+                    max={12}
+                    value={month}
+                    onChange={(e) => setMonth(Number(e.target.value))}
                     disabled={mock || upsertM.isPending}
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-xl border border-border/80 bg-muted/30 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Trả lời khảo sát
-              </p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="q-start">Ngày bắt đầu</Label>
-                  <Input
-                    id="q-start"
-                    type="number"
-                    min={1}
-                    max={31}
-                    value={answerStartDay}
-                    onChange={(e) => setAnswerStartDay(Number(e.target.value))}
-                    disabled={mock || upsertM.isPending}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="q-end">Ngày kết thúc</Label>
-                  <Input
-                    id="q-end"
-                    type="number"
-                    min={1}
-                    max={31}
-                    value={answerEndDay}
-                    onChange={(e) => setAnswerEndDay(Number(e.target.value))}
-                    disabled={mock || upsertM.isPending}
-                  />
+              <div className="rounded-xl border border-border/80 bg-muted/30 p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Giao mục tiêu KPI/OKR (trưởng nhóm)
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="a-start">Ngày bắt đầu (trong tháng)</Label>
+                    <Input
+                      id="a-start"
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={assignStartDay}
+                      onChange={(e) => setAssignStartDay(Number(e.target.value))}
+                      disabled={mock || upsertM.isPending}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="a-end">Ngày kết thúc</Label>
+                    <Input
+                      id="a-end"
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={assignEndDay}
+                      onChange={(e) => setAssignEndDay(Number(e.target.value))}
+                      disabled={mock || upsertM.isPending}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <Button type="submit" disabled={mock || upsertM.isPending}>
-              {upsertM.isPending ? 'Đang lưu…' : 'Lưu cấu hình'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="rounded-xl border border-border/80 bg-muted/30 p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Trả lời khảo sát
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="q-start">Ngày bắt đầu</Label>
+                    <Input
+                      id="q-start"
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={answerStartDay}
+                      onChange={(e) => setAnswerStartDay(Number(e.target.value))}
+                      disabled={mock || upsertM.isPending}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="q-end">Ngày kết thúc</Label>
+                    <Input
+                      id="q-end"
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={answerEndDay}
+                      onChange={(e) => setAnswerEndDay(Number(e.target.value))}
+                      disabled={mock || upsertM.isPending}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Button type="submit" disabled={mock || upsertM.isPending}>
+                {upsertM.isPending ? 'Đang lưu…' : 'Lưu cấu hình'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>

@@ -7,6 +7,11 @@ import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { performanceApi } from '@/features/kpi-okr/api'
+import {
+  validateUploadFile,
+  UPLOAD_ACCEPT_IMAGES,
+  UPLOAD_MAX_SIZE_BYTES,
+} from '@/lib/fileUploadUtils'
 
 function stripTrailingJunk(pathMatch: string): string {
   return pathMatch.replace(/[.,;!?)\]}"'>]+$/g, '')
@@ -226,6 +231,14 @@ export function KpiEvidenceInput({
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file || disabled) return
+    const validationError = validateUploadFile(file, {
+      maxSizeBytes: UPLOAD_MAX_SIZE_BYTES,
+      accept: UPLOAD_ACCEPT_IMAGES,
+    })
+    if (validationError) {
+      toast.error(validationError)
+      return
+    }
     setUploading(true)
     try {
       const { url } = await performanceApi.uploadKpiEvidenceImage(file)
@@ -261,7 +274,7 @@ export function KpiEvidenceInput({
           {uploading ? 'Đang tải…' : 'Tải ảnh'}
         </Button>
         <span className="text-[11px] text-muted-foreground">
-          Hoặc dán link trong ô dưới (JPEG/PNG/WebP/GIF, tối đa 8MB)
+          Hoặc dán link trong ô dưới · JPEG/PNG/WebP/GIF · tối đa 8MB
         </span>
       </div>
       <Textarea

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -9,20 +9,24 @@ const LeaderKpiOkrScreen = lazy(() =>
   }))
 )
 
+const ManagerKpiOkrScreen = lazy(() =>
+  import('@/features/kpi-okr').then((module) => ({
+    default: module.ManagerKpiOkrScreen,
+  }))
+)
+
 export const Route = createFileRoute('/_protected/leader/kpi-okr')({
   beforeLoad: () => {
-    if (useAuthStore.getState().user?.role === 'MANAGER') {
-      throw redirect({ to: '/monthly-report' })
-    }
-    requireRoleOrPermissionPrefixes(['LEADER'], ['kpi.team_'])
+    requireRoleOrPermissionPrefixes(['LEADER', 'MANAGER'], ['kpi.team_'])
   },
   component: LeaderKpiOkrPage,
 })
 
 function LeaderKpiOkrPage() {
+  const role = useAuthStore((s) => s.user?.role)
   return (
     <Suspense fallback={null}>
-      <LeaderKpiOkrScreen />
+      {role === 'MANAGER' ? <ManagerKpiOkrScreen /> : <LeaderKpiOkrScreen />}
     </Suspense>
   )
 }

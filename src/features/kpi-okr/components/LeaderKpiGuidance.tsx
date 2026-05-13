@@ -42,11 +42,6 @@ export function LeaderKpiGuidance({ variant }: LeaderKpiGuidanceProps) {
 function TrafficGuidance() {
   return (
     <>
-      <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
-        <strong>⚠ Bắt buộc:</strong> Nhấn <strong>"Tự seed theo catalog"</strong> để tạo KPI cá nhân
-        cho từng thành viên trước khi nhập kết quả. Không seed → hệ thống không tính thưởng cá nhân.
-      </div>
-
       <div className="rounded-lg bg-red-50 border border-red-100 px-3 py-2 text-xs dark:bg-red-950/20 dark:border-red-900/40">
         <p className="font-bold text-red-600 dark:text-red-400 mb-1.5 text-[11px] uppercase tracking-wide">
           Bắt buộc nhập

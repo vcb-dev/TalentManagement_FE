@@ -1,15 +1,9 @@
 // @ts-nocheck -- route registered automatically by file-based router on next build
-import { createFileRoute } from '@tanstack/react-router'
-import { requirePermissionPrefix } from '@/lib/permissionGuards'
-import { CatalogEditorScreen } from '@/features/kpi-okr/components/CatalogEditorScreen'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_protected/hr-admin/kpi-catalog/$code')({
   beforeLoad: () => {
-    requirePermissionPrefix('kpi.catalog_edit')
+    throw redirect({ to: '/hr-admin' })
   },
-  component: CatalogEditorPage,
+  component: () => null,
 })
-
-function CatalogEditorPage() {
-  return <CatalogEditorScreen />
-}

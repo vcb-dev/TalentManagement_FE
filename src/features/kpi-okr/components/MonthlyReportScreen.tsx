@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { BarChart3, Calendar, Download, RefreshCw, UserRound } from 'lucide-react'
 import {
@@ -29,6 +29,11 @@ import {
   getMaxViewableYm,
   isKpiPeriodSelectable,
 } from '@/features/kpi-okr/kpiPeriodLimits'
+import {
+  isMandatoryMetric,
+  isTrafficTeam,
+  MANDATORY_METRICS_BY_TEMPLATE,
+} from '@/features/kpi-okr/catalogHelpers'
 import { FormPanel } from '@/features/kpi-okr/components/KpiOkrWorkspace'
 import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
 import { organizationApi } from '@/features/organization/api'
@@ -564,6 +569,7 @@ export function MonthlyReportScreen() {
   const [month, setMonth] = useState(() => nowYm().month)
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
+  const detailSectionRef = useRef<HTMLDivElement>(null)
 
   const maxViewYm = getMaxViewableYm()
 
@@ -631,6 +637,34 @@ export function MonthlyReportScreen() {
   })()
 
   const detailRows = selectedDetailUserId ? (assignmentsByUser.get(selectedDetailUserId) ?? []) : []
+
+  // Tính tiến độ chỉ số cố định theo team type
+  const selectedTeamForReport = useMemo(
+    () => departments.flatMap((d) => d.teams).find((t) => t.id === selectedTeamId) ?? null,
+    [departments, selectedTeamId]
+  )
+  const isTrafficTeamReport = isTrafficTeam(
+    selectedTeamId || null,
+    null,
+    selectedTeamForReport?.name ?? null
+  )
+  const fixedTemplateCode = isTrafficTeamReport ? 'TRAFFIC_TEAM_NV' : 'SALES_NV'
+  const fixedMetricsList = MANDATORY_METRICS_BY_TEMPLATE[fixedTemplateCode] ?? []
+
+  const fixedMetricsProgress = useMemo(() => {
+    if (!fixedMetricsList.length || !assignmentsData.length) return []
+    const totalMembers = new Set(assignmentsData.map((a) => a.assigneeUserId)).size
+    return fixedMetricsList.map((metricContent) => {
+      const matching = assignmentsData.filter((a) => a.content === metricContent)
+      const filled = matching.filter((a) => a.numericValue != null).length
+      const total = matching.length || totalMembers
+      const sum = matching.reduce(
+        (acc, a) => acc + (a.numericValue != null ? Number(a.numericValue) : 0),
+        0
+      )
+      return { content: metricContent, filled, total, sum }
+    })
+  }, [assignmentsData, fixedMetricsList])
 
   const eff = useMemo(() => resolveEffectivePermissionSet(user), [user])
   const allowEpic4SelfEdit =
@@ -1044,143 +1078,188 @@ export function MonthlyReportScreen() {
                   </div>
                 </>
               )}
-            </CardContent>
-          </Card>
-
-          <Card
-            className={cn(
-              'relative overflow-hidden border-blue-200/55 bg-gradient-to-br from-blue-50/70 via-card to-fuchsia-50/65 shadow-lg shadow-blue-500/10',
-              CARD_ENTRANCE
-            )}
-          >
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-fuchsia-500"
-            />
-            <CardHeader>
-              <CardTitle className="bg-gradient-to-r from-blue-700 via-indigo-700 to-fuchsia-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
-                Chi tiết mục tiêu trong tháng
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {canSeeTeamWide ? (
-                <div className="flex flex-wrap gap-2">
-                  {Array.from(assignmentsByUser.keys()).map((uid) => (
-                    <Button
-                      key={uid}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100',
-                        uid === selectedDetailUserId &&
-                          'border-fuchsia-400 bg-gradient-to-r from-fuchsia-600 to-indigo-600 text-white hover:from-fuchsia-700 hover:to-indigo-700'
-                      )}
-                      onClick={() => setSelectedUserId(uid)}
-                    >
-                      <UserRound className="mr-1 h-3.5 w-3.5" />
-                      {teamMemberName(uid)}
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
-              {detailRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Không có mục tiêu KPI/OKR trong kỳ này.
-                </p>
-              ) : (
-                <>
-                  <p className="mb-3 text-[13px] text-muted-foreground">
-                    {allowEpic4SelfEdit
-                      ? 'Cập nhật số liệu, minh chứng và tự đánh giá; bấm Lưu từng dòng. Đánh giá của quản lý do trưởng nhóm cập nhật.'
-                      : canSeeTeamWide
-                        ? 'Theo dõi minh chứng, số liệu và tự đánh giá của nhân sự (chỉ xem).'
-                        : 'Bạn xem minh chứng và tự đánh giá ở đây (chỉ xem). Để chỉnh sửa cần quyền cập nhật KPI của bản thân — có thể chỉnh thêm tại mục KPI & OKR trong workspace.'}
+              {fixedMetricsProgress.length > 0 && (
+                <div className="mt-4 border-t pt-4">
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Tổng hợp chỉ số cố định tháng này
                   </p>
-                  <div className="divide-y divide-blue-100/50 md:hidden dark:divide-blue-900/30">
-                    {detailRows.map((item) =>
-                      allowEpic4SelfEdit ? (
-                        <MonthlyReportDetailEditableMobileCard
-                          key={item.id}
-                          item={item}
-                          onSaved={invalidateMonthlyAssignments}
-                        />
-                      ) : (
-                        <MonthlyReportDetailReadOnlyCard key={item.id} item={item} />
-                      )
-                    )}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {fixedMetricsProgress.map(({ content, filled, total, sum }) => (
+                      <div
+                        key={content}
+                        className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900"
+                      >
+                        <p
+                          className="mb-1 truncate text-[11px] text-slate-500 dark:text-slate-400"
+                          title={content}
+                        >
+                          {content}
+                        </p>
+                        <p className="text-xl font-bold tabular-nums text-slate-800 dark:text-slate-100">
+                          {sum > 0
+                            ? sum >= 1_000_000
+                              ? `${(sum / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr`
+                              : sum.toLocaleString('vi-VN')
+                            : '—'}
+                        </p>
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          {filled}/{total} người đã nhập
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                  <div className="hidden overflow-x-auto rounded-lg border border-blue-100/50 md:block dark:border-blue-900/30">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-blue-500/10">
-                          <TableHead className="whitespace-nowrap">Ngày xét</TableHead>
-                          <TableHead>Hạng mục</TableHead>
-                          <TableHead className="whitespace-nowrap">Ưu tiên</TableHead>
-                          <TableHead>Nội dung</TableHead>
-                          <TableHead>Chỉ tiêu</TableHead>
-                          <TableHead className="whitespace-nowrap">Số liệu</TableHead>
-                          <TableHead className="whitespace-nowrap">Đơn vị</TableHead>
-                          <TableHead className="min-w-[140px]">Minh chứng</TableHead>
-                          <TableHead className="whitespace-nowrap">Tự đánh giá</TableHead>
-                          <TableHead className="min-w-[120px]">Tự nhận xét</TableHead>
-                          <TableHead className="whitespace-nowrap">QL đánh giá</TableHead>
-                          <TableHead>QL nhận xét</TableHead>
-                          <TableHead className="whitespace-nowrap text-right">Thao tác</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {detailRows.map((item) => (
-                          <TableRow key={item.id} className="transition-colors hover:bg-blue-500/5">
-                            <TableCell className="whitespace-nowrap tabular-nums text-slate-500">
-                              {formatKpiSetAt(item.kpiSetAt)}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                className={
-                                  item.kind === 'KPI'
-                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                                    : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
-                                }
-                              >
-                                {item.kind}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap">
-                              <PriorityText priority={item.priority} />
-                            </TableCell>
-                            <TableCell className="max-w-[520px] whitespace-pre-wrap">
-                              {item.content}
-                            </TableCell>
-                            <TableCell className="tabular-nums font-semibold text-primary">
-                              {item.targetMetric?.trim() || '—'}
-                            </TableCell>
-                            {allowEpic4SelfEdit ? (
-                              <MonthlyReportMemberEditableRow
-                                item={item}
-                                onSaved={invalidateMonthlyAssignments}
-                              />
-                            ) : (
-                              <>
-                                <MonthlyReportEpic4ReadCells item={item} />
-                                <TableCell>
-                                  <EvalBadge status={item.managerEvalStatus} />
-                                </TableCell>
-                                <TableCell className="max-w-[280px] text-[12px] italic text-slate-500">
-                                  {item.managerReviewNote?.trim() || '—'}
-                                </TableCell>
-                                <TableCell className="text-center text-slate-400">—</TableCell>
-                              </>
-                            )}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </>
+                </div>
               )}
             </CardContent>
           </Card>
+
+          <div ref={detailSectionRef}>
+            <Card
+              className={cn(
+                'relative overflow-hidden border-blue-200/55 bg-gradient-to-br from-blue-50/70 via-card to-fuchsia-50/65 shadow-lg shadow-blue-500/10',
+                CARD_ENTRANCE
+              )}
+            >
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-fuchsia-500"
+              />
+              <CardHeader>
+                <CardTitle className="bg-gradient-to-r from-blue-700 via-indigo-700 to-fuchsia-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
+                  Chi tiết mục tiêu trong tháng
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {canSeeTeamWide ? (
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(assignmentsByUser.keys()).map((uid) => (
+                      <Button
+                        key={uid}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100',
+                          uid === selectedDetailUserId &&
+                            'border-fuchsia-400 bg-gradient-to-r from-fuchsia-600 to-indigo-600 text-white hover:from-fuchsia-700 hover:to-indigo-700'
+                        )}
+                        onClick={() => {
+                          setSelectedUserId(uid)
+                          setTimeout(() => {
+                            detailSectionRef.current?.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'start',
+                            })
+                          }, 0)
+                        }}
+                      >
+                        <UserRound className="mr-1 h-3.5 w-3.5" />
+                        {teamMemberName(uid)}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
+                {detailRows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Không có mục tiêu KPI/OKR trong kỳ này.
+                  </p>
+                ) : (
+                  <>
+                    <p className="mb-3 text-[13px] text-muted-foreground">
+                      {allowEpic4SelfEdit
+                        ? 'Cập nhật số liệu, minh chứng và tự đánh giá; bấm Lưu từng dòng. Đánh giá của quản lý do trưởng nhóm cập nhật.'
+                        : canSeeTeamWide
+                          ? 'Theo dõi minh chứng, số liệu và tự đánh giá của nhân sự (chỉ xem).'
+                          : 'Bạn xem minh chứng và tự đánh giá ở đây (chỉ xem). Để chỉnh sửa cần quyền cập nhật KPI của bản thân — có thể chỉnh thêm tại mục KPI & OKR trong workspace.'}
+                    </p>
+                    <div className="divide-y divide-blue-100/50 md:hidden dark:divide-blue-900/30">
+                      {detailRows.map((item) =>
+                        allowEpic4SelfEdit ? (
+                          <MonthlyReportDetailEditableMobileCard
+                            key={item.id}
+                            item={item}
+                            onSaved={invalidateMonthlyAssignments}
+                          />
+                        ) : (
+                          <MonthlyReportDetailReadOnlyCard key={item.id} item={item} />
+                        )
+                      )}
+                    </div>
+                    <div className="hidden overflow-x-auto rounded-lg border border-blue-100/50 md:block dark:border-blue-900/30">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-blue-500/10">
+                            <TableHead className="whitespace-nowrap">Ngày xét</TableHead>
+                            <TableHead>Hạng mục</TableHead>
+                            <TableHead className="whitespace-nowrap">Ưu tiên</TableHead>
+                            <TableHead>Nội dung</TableHead>
+                            <TableHead>Chỉ tiêu</TableHead>
+                            <TableHead className="whitespace-nowrap">Số liệu</TableHead>
+                            <TableHead className="whitespace-nowrap">Đơn vị</TableHead>
+                            <TableHead className="min-w-[140px]">Minh chứng</TableHead>
+                            <TableHead className="whitespace-nowrap">Tự đánh giá</TableHead>
+                            <TableHead className="min-w-[120px]">Tự nhận xét</TableHead>
+                            <TableHead className="whitespace-nowrap">QL đánh giá</TableHead>
+                            <TableHead>QL nhận xét</TableHead>
+                            <TableHead className="whitespace-nowrap text-right">Thao tác</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {detailRows.map((item) => (
+                            <TableRow
+                              key={item.id}
+                              className="transition-colors hover:bg-blue-500/5"
+                            >
+                              <TableCell className="whitespace-nowrap tabular-nums text-slate-500">
+                                {formatKpiSetAt(item.kpiSetAt)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  className={
+                                    item.kind === 'KPI'
+                                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                                      : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
+                                  }
+                                >
+                                  {item.kind}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                <PriorityText priority={item.priority} />
+                              </TableCell>
+                              <TableCell className="max-w-[520px] whitespace-pre-wrap">
+                                {item.content}
+                              </TableCell>
+                              <TableCell className="tabular-nums font-semibold text-primary">
+                                {item.targetMetric?.trim() || '—'}
+                              </TableCell>
+                              {allowEpic4SelfEdit ? (
+                                <MonthlyReportMemberEditableRow
+                                  item={item}
+                                  onSaved={invalidateMonthlyAssignments}
+                                />
+                              ) : (
+                                <>
+                                  <MonthlyReportEpic4ReadCells item={item} />
+                                  <TableCell>
+                                    <EvalBadge status={item.managerEvalStatus} />
+                                  </TableCell>
+                                  <TableCell className="max-w-[280px] text-[12px] italic text-slate-500">
+                                    {item.managerReviewNote?.trim() || '—'}
+                                  </TableCell>
+                                  <TableCell className="text-center text-slate-400">—</TableCell>
+                                </>
+                              )}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           <Card
             className={cn(

@@ -634,6 +634,64 @@ export const performanceApi = {
     return res.data
   },
 
+  // ─── Manager cascade operations ────────────────────────────────────────
+
+  cascadeAddAssignment: async (
+    teamId: string,
+    body: {
+      year: number
+      month: number
+      kind: 'KPI' | 'OKR'
+      priority?: number
+      content: string
+      targetMetric?: string | null
+      numericUnit?: string | null
+      dailyTarget?: string | null
+      category?: string | null
+      tenureStage?: string | null
+    }
+  ) => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.post<{ created: number }>(
+      `/performance/teams/${teamId}/assignments/cascade-add`,
+      body
+    )
+    return res.data
+  },
+
+  cascadeUpdateByContent: async (
+    teamId: string,
+    body: {
+      year: number
+      month: number
+      oldContent: string
+      newContent?: string | null
+      targetMetric?: string | null
+      numericUnit?: string | null
+      priority?: number | null
+      dailyTarget?: string | null
+    }
+  ) => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.put<{ updated: number }>(
+      `/performance/teams/${teamId}/assignments/cascade-by-content`,
+      body
+    )
+    return res.data
+  },
+
+  cascadeDeleteByContent: async (
+    teamId: string,
+    body: { year: number; month: number; content: string; allowMandatory?: boolean }
+  ) => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.delete<{ deleted: number }>(
+      `/performance/teams/${teamId}/assignments/cascade-by-content`,
+      { data: body }
+    )
+    return res.data
+  },
+
   patchRevenueTier: async (
     id: string,
     body: {

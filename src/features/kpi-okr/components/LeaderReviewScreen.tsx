@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -52,7 +60,14 @@ import {
 import { useHrOrgTree } from '@/features/hr-admin/useHrOrgTree'
 import { useAuthStore } from '@/stores/auth.store'
 import type { UserSession } from '@/types/auth'
-import { ChevronDown, ChevronRight, PencilIcon } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  PencilIcon,
+  Save,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 
@@ -70,6 +85,7 @@ export function LeaderReviewScreen() {
   const [year, setYear] = useState(new Date().getFullYear())
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [teamId, setTeamId] = useState<string>('')
+  const [expandAll, setExpandAll] = useState(false)
   const queryClient = useQueryClient()
 
   const treeQ = useHrOrgTree()
@@ -174,7 +190,7 @@ export function LeaderReviewScreen() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-wrap items-end gap-4 justify-between">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Nhóm</Label>
               {fixedTeamOnly ? (
@@ -228,6 +244,26 @@ export function LeaderReviewScreen() {
                 </SelectContent>
               </Select>
             </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5 self-end"
+              onClick={() => setExpandAll((v) => !v)}
+            >
+              {expandAll ? (
+                <>
+                  <ChevronsDownUp className="h-3.5 w-3.5" />
+                  Thu gọn tất cả
+                </>
+              ) : (
+                <>
+                  <ChevronsUpDown className="h-3.5 w-3.5" />
+                  Mở rộng tất cả
+                </>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -274,6 +310,7 @@ export function LeaderReviewScreen() {
               assignmentsFetchError={assignmentsQ.isError}
               assignmentsDisabled={isMockApiEnabled()}
               onSaved={invalidateLeaderReview}
+              forceExpand={expandAll}
             />
           ))}
         </div>
@@ -291,6 +328,7 @@ function LeaderEvaluationRow({
   assignmentsFetchError,
   assignmentsDisabled,
   onSaved,
+  forceExpand,
 }: {
   leader: LeaderEvaluationRow
   year: number
@@ -300,9 +338,30 @@ function LeaderEvaluationRow({
   assignmentsFetchError: boolean
   assignmentsDisabled: boolean
   onSaved: () => void
+  forceExpand?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [assignmentsOpen, setAssignmentsOpen] = useState(false)
+  const [savingAll, setSavingAll] = useState(false)
+  const rowRefs = useRef<Map<string, AssignmentEditorHandle>>(new Map())
+
+  useEffect(() => {
+    setAssignmentsOpen(!!forceExpand)
+  }, [forceExpand])
+
+  const handleSaveAll = async () => {
+    setSavingAll(true)
+    const saves = [...rowRefs.current.values()].map((r) => r.save())
+    const results = await Promise.allSettled(saves)
+    setSavingAll(false)
+    const failed = results.filter((r) => r.status === 'rejected').length
+    if (failed > 0) {
+      toast.error(`${failed} mục lưu thất bại — kiểm tra quyền.`)
+    } else {
+      toast.success(`Đã lưu tất cả ${results.length} mục.`)
+    }
+    onSaved()
+  }
 
   const form = useForm({
     defaultValues: {
@@ -388,6 +447,19 @@ function LeaderEvaluationRow({
               )}
               Chấm từng mục ({assignmentRows.length})
             </Button>
+            {assignmentsOpen && assignmentRows.length > 0 && !assignmentsDisabled ? (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                className="gap-1"
+                disabled={savingAll}
+                onClick={() => void handleSaveAll()}
+              >
+                <Save className="h-3.5 w-3.5" />
+                {savingAll ? 'Đang lưu…' : 'Lưu tất cả'}
+              </Button>
+            ) : null}
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -475,6 +547,10 @@ function LeaderEvaluationRow({
                   {assignmentRows.map((a, idx) => (
                     <ManagerLeaderAssignmentMobileCard
                       key={a.id}
+                      ref={(el) => {
+                        if (el) rowRefs.current.set(`mobile-${a.id}`, el)
+                        else rowRefs.current.delete(`mobile-${a.id}`)
+                      }}
                       assignment={a}
                       onSaved={onSaved}
                       rowStripe={idx % 2 === 1}
@@ -496,6 +572,10 @@ function LeaderEvaluationRow({
                       {assignmentRows.map((a, idx) => (
                         <ManagerLeaderAssignmentEditor
                           key={a.id}
+                          ref={(el) => {
+                            if (el) rowRefs.current.set(a.id, el)
+                            else rowRefs.current.delete(a.id)
+                          }}
                           assignment={a}
                           onSaved={onSaved}
                           rowStripe={idx % 2 === 1}
@@ -513,15 +593,12 @@ function LeaderEvaluationRow({
   )
 }
 
-function ManagerLeaderAssignmentEditor({
-  assignment,
-  onSaved,
-  rowStripe,
-}: {
-  assignment: PerformanceAssignment
-  onSaved: () => void
-  rowStripe?: boolean
-}) {
+type AssignmentEditorHandle = { save: () => Promise<void> }
+
+const ManagerLeaderAssignmentEditor = forwardRef<
+  AssignmentEditorHandle,
+  { assignment: PerformanceAssignment; onSaved: () => void; rowStripe?: boolean }
+>(function ManagerLeaderAssignmentEditor({ assignment, onSaved, rowStripe }, ref) {
   const [status, setStatus] = useState(() => assignment.managerEvalStatus?.trim() ?? '')
   const [note, setNote] = useState(() => assignment.managerReviewNote?.trim() ?? '')
   const [saving, setSaving] = useState(false)
@@ -547,10 +624,13 @@ function ManagerLeaderAssignmentEditor({
       onSaved()
     } catch {
       toast.error('Không lưu được mục — kiểm tra quyền.')
+      throw new Error('save failed')
     } finally {
       setSaving(false)
     }
   }
+
+  useImperativeHandle(ref, () => ({ save }), [status, note])
 
   const td = xlTd(rowStripe ?? false)
 
@@ -616,17 +696,12 @@ function ManagerLeaderAssignmentEditor({
       </TableCell>
     </TableRow>
   )
-}
+})
 
-function ManagerLeaderAssignmentMobileCard({
-  assignment,
-  onSaved,
-  rowStripe,
-}: {
-  assignment: PerformanceAssignment
-  onSaved: () => void
-  rowStripe?: boolean
-}) {
+const ManagerLeaderAssignmentMobileCard = forwardRef<
+  AssignmentEditorHandle,
+  { assignment: PerformanceAssignment; onSaved: () => void; rowStripe?: boolean }
+>(function ManagerLeaderAssignmentMobileCard({ assignment, onSaved, rowStripe }, ref) {
   const [status, setStatus] = useState(() => assignment.managerEvalStatus?.trim() ?? '')
   const [note, setNote] = useState(() => assignment.managerReviewNote?.trim() ?? '')
   const [saving, setSaving] = useState(false)
@@ -652,10 +727,13 @@ function ManagerLeaderAssignmentMobileCard({
       onSaved()
     } catch {
       toast.error('Không lưu được mục — kiểm tra quyền.')
+      throw new Error('save failed')
     } finally {
       setSaving(false)
     }
   }
+
+  useImperativeHandle(ref, () => ({ save }), [status, note])
 
   return (
     <div
@@ -714,4 +792,4 @@ function ManagerLeaderAssignmentMobileCard({
       </div>
     </div>
   )
-}
+})

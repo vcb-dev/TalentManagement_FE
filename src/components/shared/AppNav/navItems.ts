@@ -2,7 +2,6 @@ import type { LucideIcon } from 'lucide-react'
 import type { Role, UserSession } from '@/types/auth'
 import {
   BarChart3,
-  BookOpen,
   Calendar,
   CalendarRange,
   ClipboardList,
@@ -150,13 +149,6 @@ const HR_ITEMS: AppNavItem[] = [
     icon: Network,
     match: 'prefix',
     permissionId: 'hr.org.manage',
-  },
-  {
-    to: '/hr-admin/kpi-catalog/SALES_NV',
-    label: 'Danh mục KPI/OKR',
-    icon: BookOpen,
-    match: 'prefix',
-    permissionId: 'kpi.catalog_edit',
   },
   {
     to: '/hr-admin/settings/company-landing',
@@ -337,7 +329,6 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
     icon: Target,
     match: 'prefix',
     permissionIdsAny: ['kpi.team_view', 'kpi.team_edit'],
-    hiddenForRoles: ['MANAGER'],
   },
   {
     to: '/monthly-report',

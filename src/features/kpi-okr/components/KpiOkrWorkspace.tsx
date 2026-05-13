@@ -38,7 +38,6 @@ import {
   getAssignmentWindowPhase,
   resolveAssignmentWindowForTeam,
 } from '@/features/kpi-okr/kpiPeriodLimits'
-import { AutoSeedModal } from '@/features/kpi-okr/components/AutoSeedModal'
 import { KpiEvidenceInput } from '@/features/kpi-okr/components/KpiEvidenceInput'
 import {
   ASSIGN_TABLE_HEAD,
@@ -57,6 +56,9 @@ import {
   isCatalogEnabledDepartment,
   isMandatoryMetric,
   isTrafficTeam,
+  MANDATORY_METRICS_BY_TEMPLATE,
+  REMOVED_TRAFFIC_MANDATORY_METRICS,
+  resolveTemplateCodeForTeam,
 } from '@/features/kpi-okr/catalogHelpers'
 import { LeaderKpiGuidance } from '@/features/kpi-okr/components/LeaderKpiGuidance'
 import {
@@ -144,7 +146,7 @@ function prevMonthYear(year: number, month: number): { prevYear: number; prevMon
 }
 
 export type KpiOkrWorkspaceProps = {
-  variant: 'leader' | 'member'
+  variant: 'leader' | 'member' | 'manager'
   title: string
   description: string
 }
@@ -152,7 +154,8 @@ export type KpiOkrWorkspaceProps = {
 export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspaceProps) {
   const user = useAuthStore((s) => s.user)
   const isMemberView = variant === 'member'
-  const isManagerReadOnly = user?.role === 'MANAGER'
+  const isManagerVariant = variant === 'manager'
+  const isManagerReadOnly = user?.role === 'MANAGER' && !isManagerVariant
   const qc = useQueryClient()
   const treeQ = useHrOrgTree()
   const { year: y0, month: m0 } = nowYm()
@@ -168,6 +171,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   )
 
   const canEditTeam = useMemo(() => {
+    if (variant === 'manager') return eff.has('kpi.team_edit')
     if (variant === 'leader') return !isManagerReadOnly && eff.has('kpi.team_edit')
     return false
   }, [variant, eff, isManagerReadOnly])
@@ -359,12 +363,118 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     selectedTeamForSeed?.name ?? null
   )
 
-  const showAutoSeed =
-    variant === 'leader' &&
-    canEditTeam &&
-    eff.has('kpi.auto_seed') &&
-    (isKinhDoanhTeam || isTrafficTeamSelected) &&
-    !isMockApiEnabled()
+  const selectedTemplateCode = useMemo(() => {
+    if (isTrafficTeamSelected) return 'TRAFFIC_TEAM_NV'
+    if (selectedTeamForSeed) return resolveTemplateCodeForTeam(selectedTeamForSeed)
+    return 'SALES_NV'
+  }, [isTrafficTeamSelected, selectedTeamForSeed])
+
+  const mandatoryList = useMemo(
+    () => MANDATORY_METRICS_BY_TEMPLATE[selectedTemplateCode] ?? [],
+    [selectedTemplateCode]
+  )
+
+  const periodKey = `${selectedTeamId}|${year}|${month}`
+  const autoSeedDoneRef = useRef<Set<string>>(new Set())
+  const cleanupDoneRef = useRef<Set<string>>(new Set())
+
+  const assignmentsThisMonth = assignmentsQ.data ?? []
+  const loadingThis = assignmentsQ.isLoading
+
+  // Seed mandatory metrics if missing
+  useEffect(() => {
+    if (
+      !selectedTeamId ||
+      loadingThis ||
+      !canEditTeam ||
+      isMockApiEnabled() ||
+      !(isKinhDoanhTeam || isTrafficTeamSelected) ||
+      !mandatoryList.length ||
+      autoSeedDoneRef.current.has(periodKey)
+    )
+      return
+
+    const presentContents = new Set(assignmentsThisMonth.map((a) => a.content))
+    const missing = mandatoryList.filter((m) => !presentContents.has(m))
+    if (!missing.length) return
+
+    autoSeedDoneRef.current.add(periodKey)
+    void Promise.all(
+      missing.map((content) =>
+        performanceApi.cascadeAddAssignment(selectedTeamId, {
+          year,
+          month,
+          content,
+          kind: 'KPI',
+          priority: 1,
+          category: 'KPI_BONUS',
+        })
+      )
+    )
+      .then(() => {
+        void qc.invalidateQueries({ queryKey: assignKey })
+      })
+      .catch((err: unknown) => {
+        autoSeedDoneRef.current.delete(periodKey)
+        toast.error('Không thể khởi tạo chỉ số cố định: ' + getApiErrorMessage(err))
+      })
+  }, [
+    selectedTeamId,
+    year,
+    month,
+    loadingThis,
+    assignmentsThisMonth,
+    mandatoryList,
+    isKinhDoanhTeam,
+    isTrafficTeamSelected,
+    canEditTeam,
+    periodKey,
+    qc,
+    assignKey,
+  ])
+
+  // Cleanup removed mandatory metrics
+  useEffect(() => {
+    if (
+      !selectedTeamId ||
+      loadingThis ||
+      !canEditTeam ||
+      isMockApiEnabled() ||
+      !isTrafficTeamSelected ||
+      cleanupDoneRef.current.has(periodKey)
+    )
+      return
+
+    const presentContents = new Set(assignmentsThisMonth.map((a) => a.content))
+    const toRemove = (REMOVED_TRAFFIC_MANDATORY_METRICS as readonly string[]).filter((m) =>
+      presentContents.has(m)
+    )
+    if (!toRemove.length) return
+
+    cleanupDoneRef.current.add(periodKey)
+    void Promise.all(
+      toRemove.map((content) =>
+        performanceApi.cascadeDeleteByContent(selectedTeamId, { year, month, content })
+      )
+    )
+      .then(() => {
+        void qc.invalidateQueries({ queryKey: assignKey })
+      })
+      .catch(() => {
+        cleanupDoneRef.current.delete(periodKey)
+      })
+  }, [
+    selectedTeamId,
+    year,
+    month,
+    loadingThis,
+    assignmentsThisMonth,
+    isTrafficTeamSelected,
+    canEditTeam,
+    periodKey,
+    qc,
+    assignKey,
+  ])
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: assignKey })
@@ -412,7 +522,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         <CardContent className="min-w-0 p-4 sm:p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
             <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {!isManagerReadOnly && (
+              {!isManagerReadOnly && !isManagerVariant && (
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Phòng ban
@@ -454,14 +564,18 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none">— Chọn nhóm —</SelectItem>
-                    {(isManagerReadOnly ? allTeamsFlat : teamsInDept).map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name}
-                        {isManagerReadOnly && 'deptName' in t && t.deptName ? (
-                          <span className="ml-1 text-[11px] text-slate-400">· {t.deptName}</span>
-                        ) : null}
-                      </SelectItem>
-                    ))}
+                    {(isManagerReadOnly || isManagerVariant ? allTeamsFlat : teamsInDept).map(
+                      (t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name}
+                          {(isManagerReadOnly || isManagerVariant) &&
+                          'deptName' in t &&
+                          t.deptName ? (
+                            <span className="ml-1 text-[11px] text-slate-400">· {t.deptName}</span>
+                          ) : null}
+                        </SelectItem>
+                      )
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -618,7 +732,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
 
       {(isKinhDoanhTeam || isTrafficTeamSelected) && (
         <div className="mb-4">
-          <LeaderKpiGuidance variant={isKinhDoanhTeam ? 'KINH_DOANH' : 'TRAFFIC'} />
+          <LeaderKpiGuidance variant={isTrafficTeamSelected ? 'TRAFFIC' : 'KINH_DOANH'} />
         </div>
       )}
 
@@ -642,9 +756,8 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           assignmentWindowOpen={assignmentWindowOpen}
           assignmentWindowBounds={assignmentWindowBounds}
           canMemberEditSelfResults={canMemberEditSelfResults}
-          showAutoSeed={showAutoSeed}
-          selectedTeamName={selectedTeamForSeed?.name ?? ''}
-          isTrafficTeam={isTrafficTeamSelected}
+          templateCode={selectedTemplateCode}
+          isManagerCascade={isManagerVariant}
         />
         <SummaryPanel
           rows={summariesQ.data ?? []}
@@ -1119,12 +1232,17 @@ function LeaderAssignmentRow({
   onSaved,
   rowStripe,
   canEditTeam,
+  isMandatory = false,
+  isCascade = false,
 }: {
   row: PerformanceAssignment
   mode: 'planning' | 'results'
   onSaved: () => void
   rowStripe: boolean
   canEditTeam: boolean
+  isMandatory?: boolean
+  /** Manager cascade mode: edit/delete áp dụng cho toàn team. */
+  isCascade?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -1203,8 +1321,22 @@ function LeaderAssignmentRow({
           }
 
     try {
-      await performanceApi.patchAssignment(row.id, patch)
-      toast.success('Đã cập nhật.')
+      if (isCascade && mode === 'planning') {
+        // Manager cascade: update all assignments in team with same content
+        await performanceApi.cascadeUpdateByContent(row.teamId, {
+          year: row.year,
+          month: row.month,
+          oldContent: row.content,
+          newContent: (patch as { content?: string }).content ?? row.content,
+          targetMetric: (patch as { targetMetric?: string | null }).targetMetric,
+          priority: (patch as { priority?: number }).priority,
+        })
+      } else {
+        await performanceApi.patchAssignment(row.id, patch)
+      }
+      toast.success(
+        isCascade && mode === 'planning' ? 'Đã cập nhật cho toàn team.' : 'Đã cập nhật.'
+      )
       setOpen(false)
       onSaved()
     } catch {
@@ -1215,8 +1347,17 @@ function LeaderAssignmentRow({
   const handleDeleteAssignment = async () => {
     setDeleting(true)
     try {
-      await performanceApi.deleteAssignment(row.id)
-      toast.success('Đã xóa mục tiêu.')
+      if (isCascade) {
+        await performanceApi.cascadeDeleteByContent(row.teamId, {
+          year: row.year,
+          month: row.month,
+          content: row.content,
+        })
+        toast.success('Đã xóa chỉ số cho toàn team.')
+      } else {
+        await performanceApi.deleteAssignment(row.id)
+        toast.success('Đã xóa mục tiêu.')
+      }
       setDeleteConfirmOpen(false)
       setOpen(false)
       onSaved()
@@ -1229,6 +1370,7 @@ function LeaderAssignmentRow({
 
   const td = xlTd(rowStripe)
   const editable = canEditTeam && !isMockApiEnabled()
+  const canDelete = editable && !isMandatory
 
   return (
     <TableRow
@@ -1402,18 +1544,27 @@ function LeaderAssignmentRow({
                   </Form>
                 </DialogContent>
               </Dialog>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                disabled={deleting || isSubmitting}
-                className="h-8 w-8 rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
-                title="Xóa mục tiêu"
-                onClick={() => setDeleteConfirmOpen(true)}
-              >
-                <Trash2 className="h-4 w-4" />
-                <span className="sr-only">Xóa</span>
-              </Button>
+              {canDelete ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  disabled={deleting || isSubmitting}
+                  className="h-8 w-8 rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+                  title="Xóa mục tiêu"
+                  onClick={() => setDeleteConfirmOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="sr-only">Xóa</span>
+                </Button>
+              ) : isMandatory ? (
+                <span
+                  className="flex h-8 w-8 items-center justify-center text-slate-300"
+                  title="Chỉ số cố định — không thể xóa"
+                >
+                  <Lock className="h-3.5 w-3.5" />
+                </span>
+              ) : null}
             </div>
             <Dialog
               open={deleteConfirmOpen}
@@ -1485,13 +1636,15 @@ function orderUserEntriesFirst(
 
 function AssignmentTableSingleUser({
   userId,
-  rows,
+  rows: rawRows,
   members,
   canEditTeam,
   onRefresh,
   leaderMode,
   memberSelfEditableResults,
   prioritizeUserId,
+  templateCode,
+  isManagerCascade,
 }: {
   userId: string
   rows: PerformanceAssignment[]
@@ -1501,7 +1654,19 @@ function AssignmentTableSingleUser({
   leaderMode: 'planning' | 'results'
   memberSelfEditableResults: boolean
   prioritizeUserId?: string
+  templateCode?: string
+  isManagerCascade?: boolean
 }) {
+  // Manager variant: dedup rows by content — each metric shown once for team-wide cascade operations
+  const rows = useMemo(() => {
+    if (!isManagerCascade) return rawRows
+    const seen = new Set<string>()
+    return rawRows.filter((r) => {
+      if (seen.has(r.content)) return false
+      seen.add(r.content)
+      return true
+    })
+  }, [rawRows, isManagerCascade])
   const isPlanning = leaderMode === 'planning'
   /** Epic 4: member chỉnh Evidence / số liệu / tự đánh giá cho đúng user của mình — cả tháng này (planning) lẫn tháng trước (results). */
   const allowSelfEdit =
@@ -1554,6 +1719,8 @@ function AssignmentTableSingleUser({
                 onSaved={onRefresh}
                 rowStripe={idx % 2 === 1}
                 canEditTeam={canEditTeam}
+                isMandatory={isMandatoryMetric(r.content, templateCode)}
+                isCascade={isManagerCascade}
               />
             )
           }
@@ -1687,6 +1854,8 @@ function UserAssignmentWorkbench({
   prioritizeUserId,
   showUserList = true,
   memberSelfEditableResults,
+  templateCode,
+  isManagerCascade,
 }: {
   byUser: Map<string, PerformanceAssignment[]>
   members: TeamMemberRow[]
@@ -1698,6 +1867,8 @@ function UserAssignmentWorkbench({
   prioritizeUserId?: string
   showUserList?: boolean
   memberSelfEditableResults: boolean
+  templateCode?: string
+  isManagerCascade?: boolean
 }) {
   const userEntries = useMemo(
     () => orderUserEntriesFirst(Array.from(byUser.entries()), prioritizeUserId),
@@ -1729,6 +1900,8 @@ function UserAssignmentWorkbench({
         leaderMode={leaderMode}
         memberSelfEditableResults={memberSelfEditableResults}
         prioritizeUserId={prioritizeUserId}
+        templateCode={templateCode}
+        isManagerCascade={isManagerCascade}
       />
     )
   }
@@ -1847,6 +2020,8 @@ function UserAssignmentWorkbench({
           leaderMode={leaderMode}
           memberSelfEditableResults={memberSelfEditableResults}
           prioritizeUserId={prioritizeUserId}
+          templateCode={templateCode}
+          isManagerCascade={isManagerCascade}
         />
       </div>
     </div>
@@ -1872,9 +2047,8 @@ function WorkReportPanel({
   assignmentWindowOpen,
   assignmentWindowBounds,
   canMemberEditSelfResults,
-  showAutoSeed,
-  selectedTeamName,
-  isTrafficTeam,
+  templateCode,
+  isManagerCascade,
 }: {
   assignmentsThisMonth: PerformanceAssignment[]
   assignmentsPrevMonth: PerformanceAssignment[]
@@ -1894,9 +2068,8 @@ function WorkReportPanel({
   assignmentWindowOpen: boolean
   assignmentWindowBounds: { startDay: number; endDay: number }
   canMemberEditSelfResults: boolean
-  showAutoSeed: boolean
-  selectedTeamName: string
-  isTrafficTeam: boolean
+  templateCode?: string
+  isManagerCascade?: boolean
 }) {
   const byUserThis = useMemo(
     () => groupAssignmentsByUser(assignmentsThisMonth),
@@ -1963,30 +2136,27 @@ function WorkReportPanel({
                 </div>
               )}
             </div>
-            {canEditTeam && selectedTeamId && !isMockApiEnabled() && assignmentWindowOpen && (
-              <MiniCreateForm
-                teamId={selectedTeamId}
-                year={year}
-                month={month}
-                members={members}
-                defaultAssigneeId={currentUserId ?? ''}
-                onCreated={onRefresh}
-              />
-            )}
-            {showAutoSeed && selectedTeamName ? (
-              <AutoSeedModal
-                teamId={selectedTeamId}
-                year={year}
-                month={month}
-                members={members}
-                teamName={selectedTeamName}
-                isTrafficTeam={isTrafficTeam}
-                assignmentWindowOpen={assignmentWindowOpen}
-                assignStartDay={assignmentWindowBounds.startDay}
-                assignEndDay={assignmentWindowBounds.endDay}
-                onSeeded={onRefresh}
-              />
-            ) : null}
+            {canEditTeam &&
+              selectedTeamId &&
+              !isMockApiEnabled() &&
+              assignmentWindowOpen &&
+              (isManagerCascade ? (
+                <ManagerCascadeAddForm
+                  teamId={selectedTeamId}
+                  year={year}
+                  month={month}
+                  onCreated={onRefresh}
+                />
+              ) : (
+                <MiniCreateForm
+                  teamId={selectedTeamId}
+                  year={year}
+                  month={month}
+                  members={members}
+                  defaultAssigneeId={currentUserId ?? ''}
+                  onCreated={onRefresh}
+                />
+              ))}
           </div>
         </div>
         <UserAssignmentWorkbench
@@ -1999,6 +2169,8 @@ function WorkReportPanel({
           prioritizeUserId={currentUserId}
           showUserList={!isMemberView}
           memberSelfEditableResults={canMemberEditSelfResults}
+          templateCode={templateCode}
+          isManagerCascade={isManagerCascade}
         />
       </section>
 
@@ -2026,6 +2198,8 @@ function WorkReportPanel({
           prioritizeUserId={currentUserId}
           showUserList={!isMemberView}
           memberSelfEditableResults={canMemberEditSelfResults}
+          templateCode={templateCode}
+          isManagerCascade={isManagerCascade}
         />
       </section>
     </div>
@@ -2047,6 +2221,125 @@ function miniCreateEmptyLine(): {
   targetMetric: string
 } {
   return { kind: 'KPI', priority: 1, content: '', kpiSetAt: '', targetMetric: '' }
+}
+
+/** Dialog đơn giản cho manager thêm chỉ số cho toàn team (cascade). */
+function ManagerCascadeAddForm({
+  teamId,
+  year,
+  month,
+  onCreated,
+}: {
+  teamId: string
+  year: number
+  month: number
+  onCreated: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting },
+  } = useForm<{
+    kind: 'KPI' | 'OKR'
+    priority: number
+    content: string
+    targetMetric: string
+  }>({ defaultValues: { kind: 'KPI', priority: 2, content: '', targetMetric: '' } })
+
+  const onSubmit = handleSubmit(async (values) => {
+    if (!values.content.trim()) {
+      toast.error('Nội dung không được trống.')
+      return
+    }
+    try {
+      const result = await performanceApi.cascadeAddAssignment(teamId, {
+        year,
+        month,
+        kind: values.kind,
+        priority: values.priority,
+        content: values.content.trim(),
+        targetMetric: values.targetMetric.trim() || null,
+      })
+      toast.success(`Đã thêm chỉ số cho ${result.created} thành viên.`)
+      reset()
+      setOpen(false)
+      onCreated()
+    } catch {
+      toast.error('Không thêm được. Vui lòng thử lại.')
+    }
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          type="button"
+          className="rounded-lg bg-primary px-4 font-semibold shadow-sm transition-all hover:bg-primary/90"
+        >
+          Thêm chỉ số cho team
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Thêm chỉ số mới cho toàn team</DialogTitle>
+          <DialogDescription>
+            Chỉ số sẽ được tạo cho tất cả thành viên active trong team.
+          </DialogDescription>
+        </DialogHeader>
+        <form className="grid gap-3" onSubmit={onSubmit}>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Loại</Label>
+              <select
+                {...register('kind')}
+                className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm"
+              >
+                <option value="KPI">KPI</option>
+                <option value="OKR">OKR</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Ưu tiên</Label>
+              <select
+                {...register('priority', { valueAsNumber: true })}
+                className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm"
+              >
+                <option value={1}>P1 — Cao</option>
+                <option value={2}>P2 — Trung bình</option>
+                <option value={3}>P3 — Thấp</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Nội dung *</Label>
+            <Input
+              {...register('content')}
+              placeholder="Tên chỉ số / mục tiêu"
+              className="h-9 rounded-lg border-slate-200"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Chỉ tiêu</Label>
+            <Input
+              {...register('targetMetric')}
+              placeholder="VD: 100,000,000 VND / tháng"
+              className="h-9 rounded-lg border-slate-200"
+            />
+          </div>
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Hủy
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Đang thêm…' : 'Thêm cho toàn team'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 function MiniCreateForm({
