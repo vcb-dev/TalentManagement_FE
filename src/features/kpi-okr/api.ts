@@ -649,6 +649,7 @@ export const performanceApi = {
       dailyTarget?: string | null
       category?: string | null
       tenureStage?: string | null
+      syncTemplate?: boolean
     }
   ) => {
     if (isMockApiEnabled()) throw new Error('Mock')
@@ -670,6 +671,7 @@ export const performanceApi = {
       numericUnit?: string | null
       priority?: number | null
       dailyTarget?: string | null
+      syncTemplate?: boolean
     }
   ) => {
     if (isMockApiEnabled()) throw new Error('Mock')
@@ -682,13 +684,35 @@ export const performanceApi = {
 
   cascadeDeleteByContent: async (
     teamId: string,
-    body: { year: number; month: number; content: string; allowMandatory?: boolean }
+    body: {
+      year: number
+      month: number
+      content: string
+      allowMandatory?: boolean
+      syncTemplate?: boolean
+    }
   ) => {
     if (isMockApiEnabled()) throw new Error('Mock')
     const res = await apiClient.delete<{ deleted: number }>(
       `/performance/teams/${teamId}/assignments/cascade-by-content`,
       { data: body }
     )
+    return res.data
+  },
+
+  listTeamMetricTemplates: async (teamId: string) => {
+    if (isMockApiEnabled()) return []
+    const res = await apiClient.get<
+      {
+        id: string
+        content: string
+        kind: string
+        priority: number
+        targetMetric: string | null
+        numericUnit: string | null
+        category: string | null
+      }[]
+    >(`/performance/teams/${teamId}/metric-templates`)
     return res.data
   },
 

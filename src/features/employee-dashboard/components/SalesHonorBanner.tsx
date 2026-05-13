@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Trophy, X, Users, Star } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Trophy, X, Users, Star, ChevronLeft, ChevronRight } from 'lucide-react'
 import { performanceApi, type SalesHonorBoardResponse } from '@/features/kpi-okr/api'
 import { cn } from '@/lib/utils'
 
 const DISMISS_KEY = 'salesHonorBanner_dismissed'
+const SLIDE_INTERVAL_MS = 3500
 
 function currentYearMonth(): { year: number; month: number; key: string } {
   const d = new Date()
@@ -20,6 +21,21 @@ function formatNumber(value: number, unit: string): string {
   return `${formatted} ${unit}`
 }
 
+type Slide = {
+  kind: 'team' | 'individual'
+  category: 'revenue' | 'orders' | 'traffic' | 'other'
+  title: string
+  name: string
+  value: string
+}
+
+const SLIDE_BG: Record<number, string> = {
+  0: 'from-amber-500 to-orange-400',
+  1: 'from-rose-500 to-pink-400',
+  2: 'from-violet-500 to-indigo-400',
+  3: 'from-emerald-500 to-teal-400',
+}
+
 export function SalesHonorBanner() {
   const { year, month, key: monthKey } = useMemo(currentYearMonth, [])
   const [data, setData] = useState<SalesHonorBoardResponse | null>(null)
@@ -27,6 +43,11 @@ export function SalesHonorBanner() {
     if (typeof window === 'undefined') return false
     return window.localStorage.getItem(DISMISS_KEY) === monthKey
   })
+  const [active, setActive] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const [animDir, setAnimDir] = useState<'left' | 'right'>('left')
+  const [transitioning, setTransitioning] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (dismissed) return
@@ -44,6 +65,91 @@ export function SalesHonorBanner() {
     }
   }, [year, month, dismissed])
 
+  const slides = useMemo<Slide[]>(() => {
+    if (!data) return []
+    const result: Slide[] = []
+    if (data.topTeamRevenue) {
+      result.push({
+        kind: 'team',
+        category: 'revenue',
+        title: 'Team · Doanh thu cao nhất',
+        name: data.topTeamRevenue.team.name,
+        value: formatNumber(
+          data.topTeamRevenue.totalValue,
+          data.topTeamRevenue.numericUnit || 'VND'
+        ),
+      })
+    }
+    if (data.topTeamOrders) {
+      result.push({
+        kind: 'team',
+        category: 'orders',
+        title: 'Team · Số đơn cao nhất',
+        name: data.topTeamOrders.team.name,
+        value: formatNumber(data.topTeamOrders.totalValue, data.topTeamOrders.numericUnit || 'đơn'),
+      })
+    }
+    if (data.topIndividualRevenue) {
+      result.push({
+        kind: 'individual',
+        category: 'revenue',
+        title: 'Cá nhân · Doanh thu cao nhất',
+        name: data.topIndividualRevenue.user.displayName ?? '—',
+        value: formatNumber(
+          data.topIndividualRevenue.numericValue,
+          data.topIndividualRevenue.numericUnit || 'VND'
+        ),
+      })
+    }
+    if (data.topIndividualOrders) {
+      result.push({
+        kind: 'individual',
+        category: 'orders',
+        title: 'Cá nhân · Số đơn cao nhất',
+        name: data.topIndividualOrders.user.displayName ?? '—',
+        value: formatNumber(
+          data.topIndividualOrders.numericValue,
+          data.topIndividualOrders.numericUnit || 'đơn'
+        ),
+      })
+    }
+    return result
+  }, [data])
+
+  const goTo = (idx: number, dir: 'left' | 'right') => {
+    if (transitioning || idx === active) return
+    setAnimDir(dir)
+    setTransitioning(true)
+    setTimeout(() => {
+      setActive(idx)
+      setTransitioning(false)
+    }, 280)
+  }
+
+  const prev = () => {
+    const idx = (active - 1 + slides.length) % slides.length
+    goTo(idx, 'right')
+  }
+  const next = () => {
+    const idx = (active + 1) % slides.length
+    goTo(idx, 'left')
+  }
+
+  useEffect(() => {
+    if (paused || slides.length <= 1) return
+    timerRef.current = setInterval(() => {
+      setAnimDir('left')
+      setTransitioning(true)
+      setTimeout(() => {
+        setActive((a) => (a + 1) % slides.length)
+        setTransitioning(false)
+      }, 280)
+    }, SLIDE_INTERVAL_MS)
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [paused, slides.length, active])
+
   const handleDismiss = () => {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(DISMISS_KEY, monthKey)
@@ -51,107 +157,121 @@ export function SalesHonorBanner() {
     setDismissed(true)
   }
 
-  if (dismissed || !data) return null
+  if (dismissed || !data || slides.length === 0) return null
 
-  const hasAnyWinner =
-    data.topIndividualRevenue ||
-    data.topIndividualOrders ||
-    data.topTeamRevenue ||
-    data.topTeamOrders
-  if (!hasAnyWinner) return null
-
-  const lines: Array<{ icon: 'team' | 'individual'; label: string; value: string }> = []
-  if (data.topTeamRevenue) {
-    lines.push({
-      icon: 'team',
-      label: `Team ${data.topTeamRevenue.team.name}: Doanh thu cao nhất`,
-      value: formatNumber(data.topTeamRevenue.totalValue, data.topTeamRevenue.numericUnit || 'VND'),
-    })
-  }
-  if (data.topTeamOrders) {
-    lines.push({
-      icon: 'team',
-      label: `Team ${data.topTeamOrders.team.name}: Số đơn cao nhất`,
-      value: formatNumber(data.topTeamOrders.totalValue, data.topTeamOrders.numericUnit || 'đơn'),
-    })
-  }
-  if (data.topIndividualRevenue) {
-    lines.push({
-      icon: 'individual',
-      label: `${data.topIndividualRevenue.user.displayName ?? '—'}: Doanh thu cao nhất`,
-      value: formatNumber(
-        data.topIndividualRevenue.numericValue,
-        data.topIndividualRevenue.numericUnit || 'VND'
-      ),
-    })
-  }
-  if (data.topIndividualOrders) {
-    lines.push({
-      icon: 'individual',
-      label: `${data.topIndividualOrders.user.displayName ?? '—'}: Số đơn cao nhất`,
-      value: formatNumber(
-        data.topIndividualOrders.numericValue,
-        data.topIndividualOrders.numericUnit || 'đơn'
-      ),
-    })
-  }
+  const slide = slides[active]
+  const bg = SLIDE_BG[active % Object.keys(SLIDE_BG).length]
 
   return (
     <div
-      className={cn(
-        'relative overflow-hidden rounded-2xl border border-amber-300/40',
-        'bg-gradient-to-r from-amber-50 via-orange-50 to-rose-50',
-        'shadow-sm dark:from-amber-950/30 dark:via-orange-950/30 dark:to-rose-950/30',
-        'dark:border-amber-700/40'
-      )}
+      className={cn('relative overflow-hidden rounded-2xl select-none', 'shadow-md')}
       role="region"
       aria-label="Vinh danh Phòng Kinh doanh tháng"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
     >
+      {/* Slide */}
       <div
-        className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-amber-300/30 blur-3xl"
-        aria-hidden
-      />
-      <div className="relative flex flex-col gap-3 p-4 md:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden />
-            <h2 className="text-sm font-bold uppercase tracking-wide text-amber-900 dark:text-amber-200 md:text-base">
-              Vinh danh Phòng Kinh doanh · Tháng {month}/{year}
-            </h2>
+        className={cn(
+          'relative bg-gradient-to-r transition-all duration-300',
+          bg,
+          transitioning && animDir === 'left' && '-translate-x-4 opacity-0',
+          transitioning && animDir === 'right' && 'translate-x-4 opacity-0',
+          !transitioning && 'translate-x-0 opacity-100'
+        )}
+      >
+        {/* Decorative circles */}
+        <div
+          className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-white/10"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-6 -left-6 h-24 w-24 rounded-full bg-white/10"
+          aria-hidden
+        />
+
+        <div className="relative flex items-center gap-4 px-5 py-4 md:px-6 md:py-5">
+          {/* Icon */}
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm md:h-14 md:w-14">
+            {slide.kind === 'team' ? (
+              <Users className="h-6 w-6 text-white md:h-7 md:w-7" aria-hidden />
+            ) : (
+              <Star className="h-6 w-6 text-white md:h-7 md:w-7" aria-hidden />
+            )}
           </div>
+
+          {/* Text */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-3.5 w-3.5 text-yellow-200" aria-hidden />
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/80">
+                Vinh danh · Tháng {month}/{year}
+              </p>
+            </div>
+            <p className="mt-0.5 text-xs font-medium text-white/70">{slide.title}</p>
+            <p className="mt-1 truncate text-lg font-extrabold leading-tight text-white md:text-xl">
+              {slide.name}
+            </p>
+            <p className="mt-0.5 text-sm font-bold text-yellow-200 drop-shadow">{slide.value}</p>
+          </div>
+
+          {/* Dismiss button */}
           <button
             type="button"
             onClick={handleDismiss}
-            className="rounded-full p-1 text-amber-700 transition hover:bg-amber-200/60 dark:text-amber-300 dark:hover:bg-amber-900/40"
+            className="absolute right-3 top-3 rounded-full p-1 text-white/70 transition hover:bg-white/20 hover:text-white"
             aria-label="Đóng banner vinh danh"
           >
-            <X className="h-4 w-4" aria-hidden />
+            <X className="h-3.5 w-3.5" aria-hidden />
           </button>
         </div>
-        <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          {lines.map((line, idx) => (
-            <li
-              key={idx}
-              className="flex items-center gap-2 rounded-xl bg-white/70 px-3 py-2 text-sm shadow-sm ring-1 ring-amber-200/60 dark:bg-amber-950/40 dark:ring-amber-700/40"
-            >
-              {line.icon === 'team' ? (
-                <Users
-                  className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
-                  aria-hidden
-                />
-              ) : (
-                <Star className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" aria-hidden />
-              )}
-              <span className="min-w-0 flex-1 truncate font-medium text-foreground">
-                {line.label}
-              </span>
-              <span className="shrink-0 font-bold text-amber-700 dark:text-amber-300">
-                {line.value}
-              </span>
-            </li>
-          ))}
-        </ul>
       </div>
+
+      {/* Navigation arrows — only if >1 slides */}
+      {slides.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={prev}
+            className={cn(
+              'absolute left-1 top-1/2 -translate-y-1/2 rounded-full p-1',
+              'bg-black/20 text-white backdrop-blur-sm transition hover:bg-black/40'
+            )}
+            aria-label="Slide trước"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={next}
+            className={cn(
+              'absolute right-1 top-1/2 -translate-y-1/2 rounded-full p-1',
+              'bg-black/20 text-white backdrop-blur-sm transition hover:bg-black/40'
+            )}
+            aria-label="Slide tiếp"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </>
+      )}
+
+      {/* Dot indicators */}
+      {slides.length > 1 && (
+        <div className={cn('absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5')}>
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => goTo(i, i > active ? 'left' : 'right')}
+              aria-label={`Chuyển sang slide ${i + 1}`}
+              className={cn(
+                'rounded-full transition-all duration-300',
+                i === active ? 'h-2 w-5 bg-white' : 'h-2 w-2 bg-white/50 hover:bg-white/80'
+              )}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

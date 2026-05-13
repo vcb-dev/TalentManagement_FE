@@ -142,10 +142,16 @@ function AddEditDialog({
               targetMetric: targetMetric || null,
               numericUnit: numericUnit || null,
               category: 'KPI_BONUS',
+              syncTemplate: true,
             })
           ),
           ...toRemove.map((teamId) =>
-            performanceApi.cascadeDeleteByContent(teamId, { year, month, content: initial.content })
+            performanceApi.cascadeDeleteByContent(teamId, {
+              year,
+              month,
+              content: initial.content,
+              syncTemplate: true,
+            })
           ),
           ...toUpdate.map((teamId) =>
             performanceApi.cascadeUpdateByContent(teamId, {
@@ -156,6 +162,7 @@ function AddEditDialog({
               targetMetric: targetMetric || null,
               numericUnit: numericUnit || null,
               priority,
+              syncTemplate: true,
             })
           ),
         ])
@@ -172,6 +179,7 @@ function AddEditDialog({
               targetMetric: targetMetric || null,
               numericUnit: numericUnit || null,
               category: 'KPI_BONUS',
+              syncTemplate: true,
             })
           )
         )
@@ -445,6 +453,7 @@ export function ManagerKpiOkrScreen() {
             month,
             content: entry.content,
             allowMandatory: true,
+            syncTemplate: true,
           })
         )
       )

@@ -377,6 +377,15 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   const periodKey = `${selectedTeamId}|${year}|${month}`
   const autoSeedDoneRef = useRef<Set<string>>(new Set())
   const cleanupDoneRef = useRef<Set<string>>(new Set())
+  const templateSeedDoneRef = useRef<Set<string>>(new Set())
+
+  // Template chỉ số tùy chỉnh do manager cấu hình — dùng để auto-seed tháng mới
+  const templateQ = useQuery({
+    queryKey: ['team-metric-templates', selectedTeamId],
+    queryFn: () => performanceApi.listTeamMetricTemplates(selectedTeamId!),
+    enabled: !!selectedTeamId && !isMockApiEnabled() && !!canEditTeam,
+    staleTime: 60_000,
+  })
 
   const assignmentsThisMonth = assignmentsQ.data ?? []
   const loadingThis = assignmentsQ.isLoading
@@ -470,6 +479,57 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     loadingThis,
     assignmentsThisMonth,
     isTrafficTeamSelected,
+    canEditTeam,
+    periodKey,
+    qc,
+    assignKey,
+  ])
+
+  // Seed template metrics (custom metrics configured by manager) for any team type
+  useEffect(() => {
+    const templates = templateQ.data ?? []
+    if (
+      !selectedTeamId ||
+      loadingThis ||
+      !canEditTeam ||
+      isMockApiEnabled() ||
+      templateQ.isLoading ||
+      !templates.length ||
+      templateSeedDoneRef.current.has(periodKey)
+    )
+      return
+
+    const presentContents = new Set(assignmentsThisMonth.map((a) => a.content))
+    const missing = templates.filter((t) => !presentContents.has(t.content))
+    if (!missing.length) return
+
+    templateSeedDoneRef.current.add(periodKey)
+    void Promise.all(
+      missing.map((tmpl) =>
+        performanceApi.cascadeAddAssignment(selectedTeamId, {
+          year,
+          month,
+          content: tmpl.content,
+          kind: tmpl.kind as 'KPI' | 'OKR',
+          priority: tmpl.priority,
+          category: tmpl.category,
+          targetMetric: tmpl.targetMetric,
+          numericUnit: tmpl.numericUnit,
+        })
+      )
+    )
+      .then(() => void qc.invalidateQueries({ queryKey: assignKey }))
+      .catch(() => {
+        templateSeedDoneRef.current.delete(periodKey)
+      })
+  }, [
+    selectedTeamId,
+    year,
+    month,
+    loadingThis,
+    templateQ.isLoading,
+    templateQ.data,
+    assignmentsThisMonth,
     canEditTeam,
     periodKey,
     qc,

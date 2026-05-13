@@ -12,8 +12,7 @@ import {
 import { useMyDashboard } from '@/features/dashboard/hooks'
 import { DashboardKpiOkrZone } from '@/features/employee-dashboard/components/DashboardKpiOkrZone'
 import { SalesHonorBanner } from '@/features/employee-dashboard/components/SalesHonorBanner'
-import { SalesHonorDetailCard } from '@/features/employee-dashboard/components/SalesHonorDetailCard'
-import { TrafficHonorDetailCard } from '@/features/employee-dashboard/components/TrafficHonorDetailCard'
+import { VinhDanhSlide } from '@/features/employee-dashboard/components/VinhDanhSlide'
 import { DashboardLearningZone } from '@/features/employee-dashboard/components/DashboardLearningZone'
 import { ManagerHrSnapshotCards } from '@/features/employee-dashboard/components/ManagerHrSnapshotCards'
 import { ManagerLearningOpsZone } from '@/features/employee-dashboard/components/ManagerLearningOpsZone'
@@ -618,8 +617,7 @@ export function EmployeeLearningDashboard() {
               aria-labelledby="dash-tab-kpi"
               hidden={tab !== 'kpi'}
             >
-              {isManagerLearningDash && <SalesHonorDetailCard className="mb-6" />}
-              {isManagerLearningDash && <TrafficHonorDetailCard className="mb-6" />}
+              {isManagerLearningDash && <VinhDanhSlide className="mb-6" />}
               <DashboardKpiOkrZone
                 role={role as 'LEADER' | 'MANAGER' | 'MEMBER'}
                 paths={paths}
