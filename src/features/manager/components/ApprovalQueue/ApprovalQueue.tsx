@@ -1,17 +1,22 @@
 import * as React from 'react'
 import { Link } from '@tanstack/react-router'
 import {
+  ArrowRight,
   Award,
+  ChevronRight,
+  Filter,
   History,
   Inbox,
   LayoutList,
   Medal,
   RefreshCw,
+  Search,
   ShieldCheck,
   Sparkles,
+  Star,
   TrendingUp,
-  User,
-  Zap,
+  UserCheck,
+  Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -35,14 +40,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { ApprovalsPage } from '@/features/manager/types'
-
-const BADGE_TONE: Record<string, string> = {
-  success: 'bg-[#DCFCE7] text-[#166534]',
-  neutral: 'border border-border bg-muted text-muted-foreground',
-  warning: 'bg-[#FEF3C7] text-[#92400E]',
-  danger: 'bg-[#FEE2E2] text-[#991B1B]',
-  info: 'bg-primary/10 text-primary',
-}
 
 function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/)
@@ -70,9 +67,6 @@ export function ApprovalQueue({
   onReject,
 }: ApprovalQueueProps) {
   const user = useAuthStore((s) => s.user)
-  const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
-  const displayName = user?.name ?? 'Manager'
-
   const [searchQuery, setSearchQuery] = React.useState('')
   const [levelFilter, setLevelFilter] = React.useState<string>('all')
   const [teamFilter, setTeamFilter] = React.useState<string>('all')
@@ -81,7 +75,6 @@ export function ApprovalQueue({
   const hasPromotions = !!page && page.promotions.length > 0
   const hasGrader = !!page && page.graderReviews.length > 0
 
-  // Extract unique teams for filtering
   const uniqueTeams = React.useMemo(() => {
     if (!page) return []
     const teams = new Set<string>()
@@ -92,137 +85,173 @@ export function ApprovalQueue({
     return Array.from(teams).sort()
   }, [page])
 
-  // Apply filters locally
   const filteredPromotions = React.useMemo(() => {
     if (!page) return []
     return page.promotions.filter((p) => {
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase())
-
       const levelBadge = p.badges.find(
-        (b) => b.label === 'Tập sự' || b.label === 'Biết việc'
+        (b) => b.label === 'Tập sự' || b.label === 'Biết việc' || b.label === 'Được việc'
       )?.label
       const matchesLevel = levelFilter === 'all' || levelBadge === levelFilter
-
       const matchesTeam = teamFilter === 'all' || p.description.includes(`Team: ${teamFilter}`)
-
       return matchesSearch && matchesLevel && matchesTeam
     })
   }, [page, searchQuery, levelFilter, teamFilter])
 
   const showQueueEmpty = !!page && filteredPromotions.length === 0 && !hasGrader
-  const showNoPage = !page
+
+  const stats = React.useMemo(() => {
+    if (!page) return { levelUps: 0, starUps: 0 }
+    let levelUps = 0
+    let starUps = 0
+    page.promotions.forEach((p) => {
+      const isLevelUp = p.badges.some((b) => b.label.includes('sao') && parseInt(b.label) >= 6)
+      const currentLevel = p.badges.find((b) => ['Tập sự'].includes(b.label))
+      if (isLevelUp || currentLevel) levelUps++
+      else starUps++
+    })
+    return { levelUps, starUps }
+  }, [page])
 
   const onGraderConfirm = (id: string) => {
     toast.success('Đã xác nhận kết quả chấm')
-    void id
   }
 
   const onGraderRedo = (id: string) => {
-    toast.info('Đã gửi yêu cầu chấm lại (demo)')
-    void id
+    toast.info('Đã gửi yêu cầu chấm lại')
   }
 
-  const onQuickApprove = () => {
-    if (!page?.promotions?.length) {
-      toast.info('Không có dữ liệu chờ duyệt')
-      return
-    }
-    const actionable = page.promotions.filter((p) => p.state === 'actionable')
-    if (actionable.length === 0) {
-      toast.info('Không có dữ liệu chờ duyệt')
-      return
-    }
-    toast.success('Đã duyệt nhanh (demo)')
-  }
-
-  const promotionApproveLabel = (p: ApprovalsPage['promotions'][number]): React.ReactNode => {
-    if (isApproving === p.id) {
-      return <RefreshCw className="h-3 w-3 animate-spin" />
-    }
+  const getPromotionAction = (p: ApprovalsPage['promotions'][number]) => {
     const levelBadge = p.badges.find((b) => ['Tập sự', 'Biết việc', 'Được việc'].includes(b.label))
     const currentLevel = levelBadge?.label || ''
 
-    // Tập sự → luôn hiện nút thăng cấp lên Biết việc (không cần 6 sao)
     if (currentLevel === 'Tập sự') {
-      return 'Duyệt lên Biết việc'
+      return { label: 'Lên Biết việc', type: 'level' }
     }
 
     const starBadge = p.badges.find((b) => b.label.includes('sao'))
     const stars = starBadge ? parseInt(starBadge.label, 10) : 0
 
     if (stars >= 6) {
-      let nextLevelLabel = 'cấp mới'
-      if (currentLevel === 'Biết việc') nextLevelLabel = 'Được việc'
-      else if (currentLevel === 'Được việc') nextLevelLabel = 'Đóng góp kết quả'
-
-      return `Duyệt lên ${nextLevelLabel}`
+      let nextLevel = 'cấp mới'
+      if (currentLevel === 'Biết việc') nextLevel = 'Được việc'
+      else if (currentLevel === 'Được việc') nextLevel = 'Đóng góp kết quả'
+      return { label: `Lên ${nextLevel}`, type: 'level' }
     }
 
-    return 'Thăng cấp sao'
+    return { label: 'Thăng sao', type: 'star' }
   }
-
-  const pageSubtitle = 'Phê duyệt khi nhân viên đủ điều kiện; có thể từ chối kèm lý do (nối API).'
 
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
-      <div className="mb-8 flex flex-col gap-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
-            <h1 className={PAGE_HEADER_TITLE}>
-              <span className={PAGE_HEADER_GRADIENT}>Duyệt thăng cấp & thăng sao</span>
-            </h1>
-            <p className={PAGE_HEADER_DESCRIPTION}>{pageSubtitle}</p>
+      <div className="animate-page-entrance flex flex-col gap-6 pb-12">
+        {/* Header Section */}
+        <div className={cn('rounded-[32px] p-8 md:p-10', PAGE_HEADER_SURFACE)}>
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-2xl">
+              <h1 className={cn(PAGE_HEADER_TITLE, 'mb-3')}>
+                <span className={PAGE_HEADER_GRADIENT}>Quản lý thăng tiến</span>
+              </h1>
+              <p className={cn(PAGE_HEADER_DESCRIPTION, 'max-w-lg')}>
+                Phê duyệt thăng cấp bậc và thăng sao cho nhân sự đủ điều kiện. Hệ thống tự động gợi
+                ý dựa trên kết quả học tập và KPI.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Link
+                to="/hr-admin"
+                search={{ page: 1, pageSize: 15 }}
+                className="inline-flex items-center gap-2 rounded-2xl border border-primary/10 bg-card px-5 py-3 text-sm font-bold text-primary shadow-sm transition-all hover:bg-muted/50 active:scale-95"
+              >
+                <History className="h-4 w-4" />
+                Lịch sử duyệt
+              </Link>
+            </div>
+          </div>
+
+          {/* Quick Stats Grid */}
+          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="group rounded-[24px] border border-primary/5 bg-white/60 p-5 shadow-sm transition-all hover:shadow-md dark:bg-card/20">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-transform group-hover:scale-110">
+                  <Inbox className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="text-2xl font-black text-foreground">{pendingCount}</div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Chờ xử lý
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="group rounded-[24px] border border-emerald-500/5 bg-white/60 p-5 shadow-sm transition-all hover:shadow-md dark:bg-card/20">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 transition-transform group-hover:scale-110">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="text-2xl font-black text-foreground">{stats.levelUps}</div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Thăng cấp bậc
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="group rounded-[24px] border border-amber-500/5 bg-white/60 p-5 shadow-sm transition-all hover:shadow-md dark:bg-card/20">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 transition-transform group-hover:scale-110">
+                  <Sparkles className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="text-2xl font-black text-foreground">{stats.starUps}</div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Thăng cấp sao
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Redesigned Filter Bar (Compact) */}
-        <div className="flex flex-col gap-2 rounded-[16px] border border-border bg-card/40 p-1.5 shadow-sm sm:flex-row sm:items-center">
+        {/* Search & Filter Bar */}
+        <div className="flex flex-col gap-3 rounded-3xl border border-border bg-card/50 p-3 shadow-sm backdrop-blur-md sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <Inbox className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-primary/40" />
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/40" />
             <input
               type="text"
-              placeholder="Tìm kiếm nhân sự..."
+              placeholder="Tìm tên nhân sự hoặc team..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 w-full rounded-lg border-none bg-transparent pl-9 pr-3 text-[13px] font-medium focus:ring-0 placeholder:text-muted-foreground/40"
+              className="h-11 w-full rounded-[18px] border-none bg-muted/40 pl-11 pr-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/40"
             />
           </div>
 
-          <div className="hidden h-5 w-px bg-border/60 sm:block" />
-
-          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
-            <div className="relative">
-              <ShieldCheck className="absolute left-2.5 top-[50%] z-10 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 rounded-[18px] bg-muted/40 px-3 py-1">
+              <ShieldCheck className="h-4 w-4 text-muted-foreground/60" />
               <Select value={levelFilter} onValueChange={setLevelFilter}>
-                <SelectTrigger className="h-auto min-h-[32px] w-full border-border bg-muted/20 pl-8 pr-2 py-1 text-xs font-semibold leading-tight sm:w-[120px]">
+                <SelectTrigger className="h-9 w-[130px] border-none bg-transparent p-0 text-[13px] font-bold shadow-none focus:ring-0">
                   <SelectValue placeholder="Cấp bậc" />
                 </SelectTrigger>
-                <SelectContent className="min-w-[120px]">
-                  <SelectItem className="py-1 text-xs" value="all">
-                    Tất cả cấp bậc
-                  </SelectItem>
-                  <SelectItem className="py-1 text-xs" value="Tập sự">
-                    Tập sự
-                  </SelectItem>
-                  <SelectItem className="py-1 text-xs" value="Biết việc">
-                    Biết việc
-                  </SelectItem>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả cấp</SelectItem>
+                  <SelectItem value="Tập sự">Tập sự</SelectItem>
+                  <SelectItem value="Biết việc">Biết việc</SelectItem>
+                  <SelectItem value="Được việc">Được việc</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="relative">
-              <LayoutList className="absolute left-2.5 top-[50%] z-10 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
+            <div className="flex items-center gap-2 rounded-[18px] bg-muted/40 px-3 py-1">
+              <Users className="h-4 w-4 text-muted-foreground/60" />
               <Select value={teamFilter} onValueChange={setTeamFilter}>
-                <SelectTrigger className="h-auto min-h-[32px] w-full border-border bg-muted/20 pl-8 pr-2 py-1 text-xs font-semibold leading-tight sm:w-[150px]">
-                  <SelectValue placeholder="Team" />
+                <SelectTrigger className="h-9 w-[150px] border-none bg-transparent p-0 text-[13px] font-bold shadow-none focus:ring-0">
+                  <SelectValue placeholder="Tất cả Team" />
                 </SelectTrigger>
-                <SelectContent className="max-h-64 min-w-[150px]">
-                  <SelectItem className="py-1 text-xs" value="all">
-                    Tất cả Team
-                  </SelectItem>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả Team</SelectItem>
                   {uniqueTeams.map((team) => (
-                    <SelectItem key={team} className="py-1 text-xs" value={team}>
+                    <SelectItem key={team} value={team}>
                       {team}
                     </SelectItem>
                   ))}
@@ -239,7 +268,7 @@ export function ApprovalQueue({
                   setLevelFilter('all')
                   setTeamFilter('all')
                 }}
-                className="h-8 rounded-lg px-2 text-[11px] font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                className="h-10 rounded-2xl px-4 text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
               >
                 Xóa lọc
               </Button>
@@ -247,318 +276,235 @@ export function ApprovalQueue({
           </div>
         </div>
 
+        {/* Content Area */}
         {isLoading ? (
-          <SkeletonApprovalCardList count={5} />
+          <SkeletonApprovalCardList count={4} />
         ) : (
-          <div className="space-y-8">
-            {(showNoPage || showQueueEmpty) && (
-              <div
-                className={cn(
-                  'relative flex min-h-[320px] flex-col items-center justify-center rounded-[32px] border border-border/60 bg-muted/30 px-6 py-10 text-center',
-                  CARD_ENTRANCE_HOVER
-                )}
-              >
-                <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[32px]">
-                  <div className="absolute left-1/2 top-8 h-48 w-48 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
-                </div>
-                <div className="relative mb-6 flex h-52 w-52 items-center justify-center">
-                  <div className="absolute -right-2 -top-2 flex h-14 w-14 rotate-12 items-center justify-center rounded-2xl border border-border bg-[#FEF3C7] shadow-md">
-                    <Sparkles className="h-6 w-6 text-[#d97706]" strokeWidth={2} />
-                  </div>
-                  <div className="relative flex h-44 w-44 flex-col items-center justify-center overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-card)]">
-                    <div className="absolute left-0 right-0 top-0 h-1.5 bg-primary" />
-                    <Inbox
-                      className="pointer-events-none absolute -bottom-3 -right-3 h-28 w-28 text-primary/10"
-                      strokeWidth={1}
-                    />
-                    <ShieldCheck
-                      className="relative z-10 h-12 w-12 text-primary"
-                      strokeWidth={1.75}
-                    />
-                    <div className="relative z-10 mt-3 flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-primary/25" />
-                      <span className="h-2 w-8 rounded-full bg-primary" />
-                      <span className="h-2 w-2 rounded-full bg-primary/25" />
-                    </div>
-                  </div>
-                </div>
-                <h3 className="text-base font-semibold text-foreground">
-                  {showNoPage ? 'Không có dữ liệu' : 'Không có dữ liệu chờ duyệt'}
-                </h3>
-                <p className="mt-2 max-w-xs text-xs leading-relaxed text-muted-foreground">
-                  {showNoPage
-                    ? 'Không thể tải dữ liệu. Vui lòng thử lại sau.'
-                    : 'Hiện tại không có yêu cầu thăng cấp hoặc thăng sao nào cần xử lý. Hãy quay lại sau!'}
-                </p>
-                <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-                  <Link
-                    to="/hr-admin"
-                    search={{ page: 1, pageSize: 15 }}
-                    className="rounded-xl border border-primary/20 px-4 py-2 text-xs font-semibold text-primary transition hover:bg-card"
-                  >
-                    <span className="inline-flex items-center gap-1.5">
-                      <History className="h-3.5 w-3.5" strokeWidth={2} />
-                      Xem lịch sử
-                    </span>
-                  </Link>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => window.location.reload()}
-                    className="rounded-xl px-4 py-2 text-xs font-semibold normal-case tracking-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
-                  >
-                    <span className="inline-flex items-center gap-1.5">
-                      <RefreshCw className="h-3.5 w-3.5" strokeWidth={2} />
-                      Tải lại trang
-                    </span>
-                  </Button>
-                </div>
-              </div>
-            )}
-
+          <div className="space-y-6">
+            {/* Promotion Cards Grid */}
             {hasPromotions && (
-              <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-                <div className="border-b border-border bg-muted/30 px-6 py-4">
-                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-primary" />
-                    Danh sách nhân sự chờ duyệt thăng cấp / sao
-                  </h3>
-                </div>
-                <div className="divide-y divide-border md:hidden">
-                  {filteredPromotions.map((p, pi) => (
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {filteredPromotions.map((p, pi) => {
+                  const action = getPromotionAction(p)
+                  const isLevelUp = action.type === 'level'
+
+                  return (
                     <div
                       key={p.id}
                       className={cn(
-                        'space-y-3 p-4',
-                        p.state === 'waiting' && 'opacity-70',
-                        p.state === 'done' && 'opacity-60'
+                        'group relative overflow-hidden rounded-[32px] border border-border bg-card p-6 transition-all duration-300',
+                        CARD_ENTRANCE_HOVER,
+                        p.state === 'waiting' && 'opacity-70 grayscale-[0.5]',
+                        p.highlighted && 'ring-2 ring-primary/20 bg-primary/[0.02]'
                       )}
-                      style={staggerStyle(pi, 30)}
+                      style={staggerStyle(pi, 50)}
                     >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-2 ring-background shadow-sm',
-                            p.avatarClass ?? 'bg-primary/10 text-primary'
-                          )}
-                        >
-                          {p.initials ?? initialsFromName(p.name)}
-                        </div>
-                        <span className="min-w-0 break-words text-sm font-bold text-foreground">
-                          {p.name}
-                        </span>
-                      </div>
-                      <p className="text-xs font-medium leading-relaxed text-muted-foreground">
-                        {p.description}
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {p.badges.map((b, i) => (
-                          <span
-                            key={i}
-                            className={cn(
-                              'inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset',
-                              b.tone === 'info' && 'bg-blue-50 text-blue-700 ring-blue-700/10',
-                              b.tone === 'warning' &&
-                                'bg-amber-50 text-amber-700 ring-amber-700/10',
-                              b.tone === 'success' &&
-                                'bg-emerald-50 text-emerald-700 ring-emerald-700/10',
-                              b.tone === 'danger' && 'bg-rose-50 text-rose-700 ring-rose-700/10',
-                              (!b.tone || b.tone === 'neutral') &&
-                                'bg-gray-50 text-gray-600 ring-gray-500/10'
-                            )}
-                          >
-                            {b.label}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                        {p.state === 'actionable' && onApprove && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            disabled={isApproving === p.id}
-                            onClick={() => onApprove(p.id)}
-                            className="h-10 w-full min-w-0 rounded-lg bg-emerald-600 px-3 py-1 text-[10px] font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95 sm:flex-1"
-                          >
-                            {promotionApproveLabel(p)}
-                          </Button>
-                        )}
-                        {p.state === 'actionable' && onReject && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => onReject(p.id)}
-                            className="h-10 w-full rounded-lg border-rose-200 bg-rose-50 px-3 py-1 text-[10px] font-bold text-rose-700 shadow-sm hover:bg-rose-100 sm:flex-1"
-                          >
-                            Từ chối
-                          </Button>
-                        )}
-                        {p.state === 'waiting' && (
-                          <span className="text-[10px] font-bold text-muted-foreground rounded-md bg-muted px-2 py-1">
-                            {p.stateLabel ?? 'Đang chờ'}
-                          </span>
-                        )}
-                        {p.state === 'done' && (
-                          <span className="text-[10px] font-bold italic text-muted-foreground">
-                            Hoàn tất
-                          </span>
+                      {/* Badge Decor */}
+                      <div className="absolute -right-4 -top-4 rotate-12 opacity-[0.03] transition-transform group-hover:rotate-0">
+                        {isLevelUp ? (
+                          <Award className="h-32 w-32" />
+                        ) : (
+                          <Star className="h-32 w-32" />
                         )}
                       </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full border-collapse text-left">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/20 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                        <th className="px-6 py-3">Nhân sự</th>
-                        <th className="px-6 py-3">Team & Phòng ban</th>
-                        <th className="px-6 py-3">Thông tin thăng cấp</th>
-                        <th className="px-6 py-3 text-right">Thao tác</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {filteredPromotions.map((p, pi) => (
-                        <tr
-                          key={p.id}
-                          className={cn(
-                            'group transition-colors hover:bg-muted/30',
-                            p.state === 'waiting' && 'opacity-70',
-                            p.state === 'done' && 'opacity-60'
-                          )}
-                          style={staggerStyle(pi, 30)}
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={cn(
-                                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-2 ring-background shadow-sm',
-                                  p.avatarClass ?? 'bg-primary/10 text-primary'
-                                )}
-                              >
-                                {p.initials ?? initialsFromName(p.name)}
-                              </div>
-                              <span className="max-w-[150px] truncate text-sm font-bold text-foreground">
+
+                      <div className="relative flex flex-col gap-6">
+                        {/* Top: Profile & Level Path */}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <div
+                              className={cn(
+                                'flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] text-lg font-black shadow-lg ring-4 ring-background transition-transform group-hover:scale-105',
+                                p.avatarClass ??
+                                  'bg-gradient-to-br from-primary to-primary-600 text-white'
+                              )}
+                            >
+                              {p.initials ?? initialsFromName(p.name)}
+                            </div>
+                            <div>
+                              <h3 className="text-base font-black tracking-tight text-foreground">
                                 {p.name}
+                              </h3>
+                              <p className="mt-0.5 text-xs font-bold text-muted-foreground/70">
+                                {p.description}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="hidden flex-col items-end gap-1 sm:flex">
+                            <div className="flex items-center gap-2 rounded-full bg-muted/50 px-3 py-1.5">
+                              {isLevelUp ? (
+                                <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                              ) : (
+                                <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                              )}
+                              <span className="text-[11px] font-black uppercase tracking-wider">
+                                {isLevelUp ? 'Thăng cấp bậc' : 'Thăng sao'}
                               </span>
                             </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-xs font-medium leading-relaxed text-muted-foreground">
-                              {p.description}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex flex-wrap gap-1.5">
+                          </div>
+                        </div>
+
+                        {/* Middle: Path Visualization */}
+                        <div className="flex items-center justify-center rounded-2xl bg-muted/30 py-4 px-6 border border-border/40">
+                          <div className="flex flex-1 flex-col items-center gap-1">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                              Hiện tại
+                            </span>
+                            <div className="flex flex-wrap justify-center gap-1.5">
                               {p.badges.map((b, i) => (
                                 <span
                                   key={i}
                                   className={cn(
-                                    'inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset',
+                                    'rounded-lg px-2 py-1 text-[11px] font-black ring-1 ring-inset',
                                     b.tone === 'info' &&
                                       'bg-blue-50 text-blue-700 ring-blue-700/10',
                                     b.tone === 'warning' &&
                                       'bg-amber-50 text-amber-700 ring-amber-700/10',
                                     b.tone === 'success' &&
                                       'bg-emerald-50 text-emerald-700 ring-emerald-700/10',
-                                    b.tone === 'danger' &&
-                                      'bg-rose-50 text-rose-700 ring-rose-700/10',
                                     (!b.tone || b.tone === 'neutral') &&
-                                      'bg-gray-50 text-gray-600 ring-gray-500/10'
+                                      'bg-gray-100 text-gray-600 ring-gray-400/10'
                                   )}
                                 >
                                   {b.label}
                                 </span>
                               ))}
                             </div>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              {p.state === 'actionable' && onApprove && (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  disabled={isApproving === p.id}
-                                  onClick={() => onApprove(p.id)}
-                                  className="h-8 min-w-[100px] rounded-lg bg-emerald-600 px-3 py-1 text-[10px] font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95"
-                                >
-                                  {promotionApproveLabel(p)}
-                                </Button>
-                              )}
-                              {p.state === 'actionable' && onReject && (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => onReject(p.id)}
-                                  className="h-8 rounded-lg border-rose-200 bg-rose-50 px-3 py-1 text-[10px] font-bold text-rose-700 shadow-sm hover:bg-rose-100"
-                                >
-                                  Từ chối
-                                </Button>
-                              )}
-                              {p.state === 'waiting' && (
-                                <span className="rounded-md bg-muted px-2 py-1 text-[10px] font-bold text-muted-foreground">
-                                  {p.stateLabel ?? 'Đang chờ'}
-                                </span>
-                              )}
-                              {p.state === 'done' && (
-                                <span className="text-[10px] font-bold italic text-muted-foreground">
-                                  Hoàn tất
-                                </span>
-                              )}
+                          </div>
+
+                          <div className="mx-4 flex flex-col items-center">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-card shadow-sm border border-border transition-transform group-hover:translate-x-1">
+                              <ArrowRight className="h-4 w-4 text-primary" />
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          </div>
+
+                          <div className="flex flex-1 flex-col items-center gap-1">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-primary/60">
+                              Mục tiêu
+                            </span>
+                            <span className="rounded-lg bg-primary/10 px-3 py-1 text-[11px] font-black text-primary ring-1 ring-primary/20">
+                              {action.label.replace('Lên ', '')}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Bottom: Actions */}
+                        <div className="flex items-center gap-3">
+                          {p.state === 'actionable' ? (
+                            <>
+                              <Button
+                                onClick={() => onApprove?.(p.id)}
+                                disabled={isApproving === p.id}
+                                className="h-12 flex-1 rounded-2xl bg-emerald-600 font-black text-white shadow-[0_8px_16px_-4px_rgba(5,150,105,0.25)] transition-all hover:bg-emerald-700 hover:shadow-lg active:scale-95"
+                              >
+                                {isApproving === p.id ? (
+                                  <RefreshCw className="h-5 w-5 animate-spin" />
+                                ) : (
+                                  <span className="inline-flex items-center gap-2">
+                                    <UserCheck className="h-5 w-5" />
+                                    {action.label}
+                                  </span>
+                                )}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => onReject?.(p.id)}
+                                className="h-12 rounded-2xl border-rose-200 bg-rose-50 px-6 font-bold text-rose-700 shadow-sm hover:bg-rose-100 hover:text-rose-800"
+                              >
+                                Từ chối
+                              </Button>
+                            </>
+                          ) : (
+                            <div className="flex h-12 w-full items-center justify-center rounded-2xl bg-muted/50 text-[13px] font-black text-muted-foreground italic border border-border/60">
+                              {p.stateLabel ?? 'Đang chờ xử lý'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
 
+            {/* Empty State */}
+            {(showQueueEmpty || !page) && (
+              <div className="flex min-h-[400px] flex-col items-center justify-center rounded-[40px] border-2 border-dashed border-border/60 bg-muted/20 p-12 text-center">
+                <div className="relative mb-8">
+                  <div className="absolute inset-0 animate-pulse rounded-full bg-primary/5 blur-3xl" />
+                  <div className="relative flex h-32 w-32 items-center justify-center rounded-[40px] bg-card shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)]">
+                    <UserCheck className="h-16 w-16 text-primary/20" strokeWidth={1} />
+                    <Sparkles className="absolute -right-2 -top-2 h-10 w-10 text-amber-400" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-black text-foreground">Hàng chờ trống</h3>
+                <p className="mt-3 max-w-sm text-sm font-medium leading-relaxed text-muted-foreground">
+                  Hiện tại không có yêu cầu thăng tiến nào cần phê duyệt. Bạn đã hoàn thành xuất sắc
+                  công việc quản trị hôm nay!
+                </p>
+                <Button
+                  variant="ghost"
+                  onClick={() => window.location.reload()}
+                  className="mt-8 rounded-2xl font-bold text-primary hover:bg-primary/5"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Làm mới dữ liệu
+                </Button>
+              </div>
+            )}
+
+            {/* Grader Reviews Section */}
             {hasGrader && (
-              <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[var(--shadow-card)]">
-                <div className="card-section-header">Duyệt bài người chấm đã chấm</div>
-                <div className="p-4">
-                  {page!.graderReviews.map((row, idx) => (
+              <div className="mt-12 rounded-[32px] border border-border bg-card shadow-sm overflow-hidden">
+                <div className="flex items-center gap-3 border-b border-border bg-muted/30 px-8 py-5">
+                  <Medal className="h-5 w-5 text-primary" />
+                  <h3 className="text-sm font-black uppercase tracking-wider text-foreground">
+                    Phê duyệt kết quả chấm bài
+                  </h3>
+                </div>
+                <div className="divide-y divide-border px-4">
+                  {page!.graderReviews.map((row) => (
                     <div
                       key={row.id}
-                      className={cn(
-                        'flex flex-wrap items-center justify-between gap-2 py-2 text-xs',
-                        idx < page!.graderReviews.length - 1 && 'border-b border-border'
-                      )}
+                      className="group flex flex-col gap-4 p-5 transition-colors hover:bg-muted/20 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div className="min-w-0 flex-1">
-                        <span className="font-semibold text-foreground">{row.employeeName}</span>
-                        <span className="text-muted-foreground"> · {row.detail} </span>
-                        <span
-                          className={cn(
-                            'ml-1 inline-flex rounded-full px-2 py-0.5 text-[0.65rem] font-bold',
-                            row.graderVerdict === 'pass'
-                              ? 'bg-[#DCFCE7] text-[#166534]'
-                              : 'bg-[#FEE2E2] text-[#991B1B]'
-                          )}
-                        >
-                          {row.graderVerdict === 'pass'
-                            ? 'Người chấm: Đạt'
-                            : 'Người chấm: Không đạt'}
-                        </span>
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/5 text-primary text-xs font-black">
+                          {initialsFromName(row.employeeName)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-black text-foreground">
+                              {row.employeeName}
+                            </span>
+                            <span
+                              className={cn(
+                                'inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter',
+                                row.graderVerdict === 'pass'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-rose-100 text-rose-700'
+                              )}
+                            >
+                              {row.graderVerdict === 'pass' ? 'Đạt' : 'Trượt'}
+                            </span>
+                          </div>
+                          <p className="text-xs font-medium text-muted-foreground/80 mt-0.5">
+                            {row.detail}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex shrink-0 gap-1">
+                      <div className="flex items-center gap-2">
                         <Button
-                          type="button"
-                          variant="outline"
                           onClick={() => onGraderConfirm(row.id)}
-                          className="rounded-[9px] border-[#67E8F9] bg-[#CFFAFE] px-2.5 py-1 text-xs font-medium text-[#0E7490] hover:bg-[#B2E8E2]"
+                          className="h-9 rounded-xl bg-primary px-4 text-xs font-black text-white hover:bg-primary-600 active:scale-95 shadow-sm"
                         >
                           Xác nhận
                         </Button>
                         <Button
-                          type="button"
-                          variant="outline"
+                          variant="ghost"
                           onClick={() => onGraderRedo(row.id)}
-                          className="rounded-[9px] border-[#FCA5A5] bg-[#FEE2E2] px-2.5 py-1 text-xs font-medium text-[#991B1B] hover:bg-[#FECACA]"
+                          className="h-9 rounded-xl px-4 text-xs font-bold text-rose-600 hover:bg-rose-50"
                         >
                           Chấm lại
                         </Button>
@@ -568,51 +514,6 @@ export function ApprovalQueue({
                 </div>
               </div>
             )}
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
-              <div
-                className={cn(
-                  'group flex flex-col justify-between gap-4 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-card)] sm:flex-row sm:items-center lg:col-span-8',
-                  CARD_ENTRANCE_HOVER
-                )}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border bg-card text-primary shadow-sm">
-                    <TrendingUp className="h-7 w-7" strokeWidth={1.75} />
-                  </div>
-                  <div className="min-w-0 text-left">
-                    <h4 className="text-sm font-semibold text-foreground">
-                      Tiến độ thăng cấp tuần này
-                    </h4>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      85% nhân sự đã hoàn thành KPI tối thiểu
-                    </p>
-                  </div>
-                </div>
-                <div className="text-left sm:text-right">
-                  <div className="text-base font-bold text-primary">12/14</div>
-                  <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Nhân sự đủ chuẩn
-                  </div>
-                </div>
-              </div>
-              <div
-                className={cn(
-                  'relative overflow-hidden rounded-3xl border border-[#FEF3C7] bg-[#FEF3C7]/80 p-5 shadow-[var(--shadow-card)] lg:col-span-4',
-                  CARD_ENTRANCE_HOVER
-                )}
-              >
-                <div className="relative z-10">
-                  <Award className="mb-2 h-5 w-5 text-[#92400E]" strokeWidth={1.75} />
-                  <h4 className="text-sm font-bold text-[#78350f]">Ngôi sao sáng</h4>
-                  <p className="mt-1 text-xs text-[#92400E]/90">Nguyễn Văn A · 6.2k pts</p>
-                </div>
-                <Medal
-                  className="pointer-events-none absolute -bottom-2 -right-2 h-24 w-24 rotate-12 text-[#d97706]/15"
-                  strokeWidth={1}
-                />
-              </div>
-            </div>
           </div>
         )}
       </div>

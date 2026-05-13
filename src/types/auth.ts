@@ -40,4 +40,5 @@ export interface UserSession {
   staffLevel: StaffLevel
   jobTitle?: string
   team?: string
+  portraitRef?: string
 }

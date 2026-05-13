@@ -148,9 +148,9 @@ export function PromotionCelebrationModal({
           </button>
 
           {/* Content */}
-          <div className="px-6 pb-8 pt-8 text-center">
+          <div className="px-5 pb-6 pt-5 text-center">
             {/* Glowing icon */}
-            <div className="relative mx-auto mb-6 flex h-24 w-24 items-center justify-center">
+            <div className="relative mx-auto mb-4 flex h-20 w-20 items-center justify-center">
               <div
                 className={cn(
                   'absolute inset-0 animate-pulse rounded-full bg-gradient-to-r opacity-30 blur-xl',
@@ -163,7 +163,7 @@ export function PromotionCelebrationModal({
                   theme.gradient
                 )}
               >
-                <LevelIcon className="h-10 w-10 text-white drop-shadow-lg" strokeWidth={1.75} />
+                <LevelIcon className="h-9 w-9 text-white drop-shadow-lg" strokeWidth={1.75} />
               </div>
               {/* Orbiting sparkles */}
               <div className="absolute -right-1 -top-1 animate-bounce">
@@ -178,31 +178,31 @@ export function PromotionCelebrationModal({
             </div>
 
             {/* Celebration text */}
-            <p className="mb-1 text-xs font-bold uppercase tracking-[0.25em] text-yellow-400/80">
+            <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.25em] text-yellow-400/80">
               🎉 Chúc mừng 🎉
             </p>
-            <h2 className="mb-2 text-2xl font-black text-white">{displayName}</h2>
-            <p className="mb-5 text-sm font-medium text-white/70">Đã thăng cấp thành công!</p>
+            <h2 className="mb-1 text-xl font-black text-white">{displayName}</h2>
+            <p className="mb-4 text-xs font-medium text-white/70">Đã thăng cấp thành công!</p>
 
             {/* Level transition */}
-            <div className="mx-auto mb-6 flex items-center justify-center gap-3">
-              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 backdrop-blur">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Từ</p>
-                <p className="mt-0.5 text-sm font-bold text-white/60">{fromLabel}</p>
+            <div className="mx-auto mb-5 flex items-center justify-center gap-2">
+              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 backdrop-blur">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-white/40">Từ</p>
+                <p className="mt-0.5 text-xs font-bold text-white/60">{fromLabel}</p>
               </div>
 
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/5">
-                <TrendingUp className={cn('h-5 w-5', theme.accent)} />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/5">
+                <TrendingUp className={cn('h-4 w-4', theme.accent)} />
               </div>
 
               <div
                 className={cn(
-                  'rounded-xl border px-4 py-2.5 backdrop-blur',
+                  'rounded-lg border px-3 py-2 backdrop-blur',
                   'border-white/20 bg-gradient-to-br from-white/10 to-white/5'
                 )}
               >
-                <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Lên</p>
-                <p className={cn('mt-0.5 text-sm font-black', theme.accent)}>{toLabel}</p>
+                <p className="text-[9px] font-bold uppercase tracking-wider text-white/40">Lên</p>
+                <p className={cn('mt-0.5 text-xs font-black', theme.accent)}>{toLabel}</p>
               </div>
             </div>
 
@@ -212,8 +212,8 @@ export function PromotionCelebrationModal({
 
             {/* Roadmap Preview */}
             {nextStarTopics && nextStarTopics.length > 0 && (
-              <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-left backdrop-blur">
-                <div className="mb-3 flex items-center gap-2">
+              <div className="mb-5 rounded-xl border border-white/10 bg-white/5 p-3.5 text-left backdrop-blur">
+                <div className="mb-2.5 flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-white/60" />
                   <p className="text-[11px] font-bold uppercase tracking-wider text-white/50">
                     Lộ trình học tiếp theo
@@ -225,18 +225,18 @@ export function PromotionCelebrationModal({
                       <p className={cn('text-xs font-bold', theme.accent)}>{item.topic}</p>
                       {item.objectives.length > 0 && (
                         <ul className="mt-1 space-y-0.5">
-                          {item.objectives.slice(0, 3).map((obj, j) => (
+                          {item.objectives.slice(0, 2).map((obj, j) => (
                             <li
                               key={j}
-                              className="flex items-start gap-1.5 text-[11px] text-white/60"
+                              className="flex items-start gap-1.5 text-[10px] text-white/60"
                             >
                               <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-white/30" />
                               {obj}
                             </li>
                           ))}
-                          {item.objectives.length > 3 && (
-                            <li className="text-[11px] text-white/40">
-                              +{item.objectives.length - 3} mục khác
+                          {item.objectives.length > 2 && (
+                            <li className="text-[10px] text-white/40">
+                              +{item.objectives.length - 2} mục khác
                             </li>
                           )}
                         </ul>

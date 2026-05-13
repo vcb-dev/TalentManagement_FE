@@ -15,6 +15,7 @@ import {
 import { MemberLeaderHeaderNav } from '@/components/shared/AppNav/MemberLeaderHeaderNav'
 import { MobileHeaderNav } from '@/components/shared/AppNav/MobileHeaderNav'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { Sidebar } from '@/components/shared/Sidebar'
 import { defaultEntryPathFromSession } from '@/lib/routeGuards'
 import { formatRoleLabelsVi } from '@/lib/roleLabels'
@@ -68,6 +69,7 @@ export function AppShell({ children, title }: AppShellProps) {
           >
             <EmployeeAvatar
               name={displayName}
+              photoUrl={user?.portraitRef ? resolvePublicAssetUrl(user.portraitRef) : null}
               showOnlineDot
               className="h-8 w-8 border-2 border-cyan-200/50 bg-gradient-to-br from-[#7c3aed] via-[#5b63f3] to-[#22d3ee] text-[11px] font-bold text-white sm:h-9 sm:w-9"
             />

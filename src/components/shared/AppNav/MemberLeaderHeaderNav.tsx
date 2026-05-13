@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
   isNavItemActive,
@@ -116,24 +117,27 @@ export function MemberLeaderHeaderNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { canId } = usePermission()
   const role = useAuthStore((s) => s.user?.role)
-  const items = mergeCompactHeaderNavItems(canId, role)
+  const items = useMemo(() => mergeCompactHeaderNavItems(canId, role), [canId, role])
 
   const isPrivileged = role === 'HR' || role === 'MANAGER' || role === 'BOD'
-  const labels: Record<string, string> = {
-    company: 'Công ty',
-    dashboard: 'Tổng quan',
-    learning: 'Học tập',
-    'room-booking': isPrivileged ? 'Duyệt lịch phòng họp' : 'Đặt phòng họp',
-    kpi: 'KPI / Báo cáo',
-    manager: 'Quản lý lớp',
-    hr: 'Nhân sự',
-    rewards: 'Khen thưởng/Phạt',
-    teacher: 'Giảng viên',
-    bod: 'BOD',
-    other: 'Khác',
-  }
+  const labels: Record<string, string> = useMemo(
+    () => ({
+      company: 'Công ty',
+      dashboard: 'Tổng quan',
+      learning: 'Học tập',
+      'room-booking': isPrivileged ? 'Duyệt lịch phòng họp' : 'Đặt phòng họp',
+      kpi: 'KPI / Báo cáo',
+      manager: 'Quản lý lớp',
+      hr: 'Nhân sự',
+      rewards: 'Khen thưởng/Phạt',
+      teacher: 'Giảng viên',
+      bod: 'BOD',
+      other: 'Khác',
+    }),
+    [isPrivileged]
+  )
 
-  const groups = buildHeaderGroups(items, labels)
+  const groups = useMemo(() => buildHeaderGroups(items, labels), [items, labels])
 
   return (
     <NavigationMenu

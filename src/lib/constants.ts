@@ -15,7 +15,7 @@ export const LEVEL_LABELS: Record<LevelCode, string> = {
 }
 
 export const STARS_PER_LEVEL: Record<LevelCode, number> = {
-  tap_su: 6,
+  tap_su: 0,
   biet_viec: 6,
   duoc_viec: 6,
   dong_gop_ket_qua: 6,
