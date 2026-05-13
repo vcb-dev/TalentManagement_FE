@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { useQueries, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Plus, Search, Trash2, ChevronDown } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Pencil, Plus, Search, Trash2, ChevronDown, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,7 +26,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
 import { performanceApi, type PerformanceKind } from '@/features/kpi-okr/api'
-import { isAnyMandatoryMetric, isRankingRewardMetric } from '@/features/kpi-okr/catalogHelpers'
 import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { useEffect } from 'react'
@@ -376,11 +376,7 @@ export function ManagerKpiOkrScreen() {
   const [thresholdsLoading, setThresholdsLoading] = useState(false)
   const qc = useQueryClient()
 
-  const {
-    departments,
-    teamsByDept: teamsByDeptMap,
-    isLoading: orgLoading,
-  } = useHrOrgSelectOptions()
+  const { departments, teamsByDept: teamsByDeptMap } = useHrOrgSelectOptions()
 
   const allTeams = useMemo<TeamInfo[]>(
     () =>
@@ -395,49 +391,20 @@ export function ManagerKpiOkrScreen() {
     [departments, teamsByDeptMap]
   )
 
-  // Fetch assignments for ALL teams in parallel
-  const assignmentQueries = useQueries({
-    queries: allTeams.map((team) => ({
-      queryKey: ['mgr-kpi-cfg', team.id, year, month],
-      queryFn: () => performanceApi.listAssignments(team.id, year, month),
-      staleTime: 30_000,
-      enabled: !isMockApiEnabled(),
-    })),
+  // Server-side aggregated summary — 1 request, BE handles grouping + isMandatory/isRanking flags
+  const { data: summaryData = [], isLoading: summaryLoading } = useQuery({
+    queryKey: ['mgr-kpi-summary', year, month],
+    queryFn: () => performanceApi.getManagerAssignmentSummary(year, month),
+    staleTime: 30_000,
+    enabled: !isMockApiEnabled(),
   })
 
-  const isLoading = orgLoading || assignmentQueries.some((q) => q.isLoading)
+  const isLoading = summaryLoading
 
-  // Aggregate: unique content → teams that have it
-  const metrics = useMemo<MetricEntry[]>(() => {
-    const map = new Map<string, MetricEntry>()
-    allTeams.forEach((team, i) => {
-      const rows = assignmentQueries[i]?.data ?? []
-      const seen = new Set<string>()
-      for (const a of rows) {
-        if (seen.has(a.content)) continue
-        seen.add(a.content)
-        if (!map.has(a.content)) {
-          map.set(a.content, {
-            content: a.content,
-            kind: a.kind,
-            priority: a.priority,
-            targetMetric: a.targetMetric ?? null,
-            numericUnit: a.numericUnit ?? null,
-            teamIds: new Set([team.id]),
-            isMandatory: isAnyMandatoryMetric(a.content),
-            isRanking: isRankingRewardMetric(a.content),
-          })
-        } else {
-          map.get(a.content)!.teamIds.add(team.id)
-        }
-      }
-    })
-    return [...map.values()].sort((a, b) => {
-      if (a.isMandatory !== b.isMandatory) return a.isMandatory ? -1 : 1
-      if (a.priority !== b.priority) return a.priority - b.priority
-      return a.content.localeCompare(b.content, 'vi')
-    })
-  }, [allTeams, assignmentQueries])
+  const metrics = useMemo<MetricEntry[]>(
+    () => summaryData.map((r) => ({ ...r, teamIds: new Set(r.teamIds) })),
+    [summaryData]
+  )
 
   const filtered = useMemo(() => {
     const mandatory = metrics.filter((m) => m.isMandatory)
@@ -447,9 +414,7 @@ export function ManagerKpiOkrScreen() {
   }, [metrics, search])
 
   const invalidateAll = () => {
-    allTeams.forEach((t) => {
-      void qc.invalidateQueries({ queryKey: ['mgr-kpi-cfg', t.id, year, month] })
-    })
+    void qc.invalidateQueries({ queryKey: ['mgr-kpi-cfg-batch'] })
   }
 
   // Fetch thresholds when tab switches
@@ -503,10 +468,18 @@ export function ManagerKpiOkrScreen() {
             viên.
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="shrink-0 gap-2">
-          <Plus className="h-4 w-4" />
-          Thêm chỉ số cố định
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button asChild variant="outline" className="gap-2">
+            <Link to="/leader/kpi-sales-config">
+              <Settings2 className="h-4 w-4" />
+              Cấu hình KPI Kinh doanh
+            </Link>
+          </Button>
+          <Button onClick={() => setAddOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Thêm chỉ số cố định
+          </Button>
+        </div>
       </div>
 
       {/* Filter bar */}

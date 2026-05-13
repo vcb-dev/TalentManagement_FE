@@ -12,7 +12,6 @@ import {
   LayoutGrid,
   LineChart,
   ListOrdered,
-  ListChecks,
   Network,
   Sparkles,
   School,
@@ -135,7 +134,6 @@ const HR_ITEMS: AppNavItem[] = [
       if (p === '/hr-admin/org' || p.startsWith('/hr-admin/org/')) return false
       if (p.startsWith('/hr-admin/kpi-catalog')) return false
       if (p.startsWith('/hr-admin/settings/kpi-windows')) return false
-      if (p.startsWith('/hr-admin/settings/kpi-catalog-allowlist')) return false
       if (p.startsWith('/hr-admin/settings/company-landing')) return false
       if (p.startsWith('/hr-admin/settings/rewards')) return false
       return p === '/hr-admin' || p.startsWith('/hr-admin/')
@@ -167,13 +165,6 @@ export const SETTINGS_ITEMS: AppNavItem[] = [
     icon: CalendarRange,
     match: 'prefix',
     permissionId: 'kpi.window_override',
-  },
-  {
-    to: '/hr-admin/settings/kpi-catalog-allowlist',
-    label: 'Phòng ban áp dụng danh mục KPI',
-    icon: ListChecks,
-    match: 'prefix',
-    permissionId: 'kpi.catalog_edit',
   },
   {
     to: '/hr-admin/settings/rewards',
@@ -484,7 +475,6 @@ export function groupedSidebarNavItems(
       label: 'Cài đặt',
       items: take([
         ...find(SETTINGS_ITEMS, '/hr-admin/settings/kpi-windows'),
-        ...find(SETTINGS_ITEMS, '/hr-admin/settings/kpi-catalog-allowlist'),
         ...find(SETTINGS_ITEMS, '/hr-admin/settings/rewards'),
       ]),
     },

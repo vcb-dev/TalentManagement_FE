@@ -82,11 +82,40 @@ export type PerformanceQuestionnaire = {
   }[]
 }
 
+export type ManagerMetricSummary = {
+  content: string
+  kind: PerformanceKind
+  priority: number
+  targetMetric: string | null
+  numericUnit: string | null
+  teamIds: string[]
+  isMandatory: boolean
+  isRanking: boolean
+}
+
 export const performanceApi = {
   listAssignments: async (teamId: string, year: number, month: number) => {
     if (isMockApiEnabled()) return [] as PerformanceAssignment[]
     const res = await apiClient.get<PerformanceAssignment[]>(
       `/performance/teams/${teamId}/assignments`,
+      { params: { year, month } }
+    )
+    return res.data
+  },
+
+  listAssignmentsMultiTeam: async (teamIds: string[], year: number, month: number) => {
+    if (isMockApiEnabled()) return [] as PerformanceAssignment[]
+    const res = await apiClient.get<PerformanceAssignment[]>(
+      `/performance/assignments/multi-team`,
+      { params: { teamIds: teamIds.join(','), year, month } }
+    )
+    return res.data
+  },
+
+  getManagerAssignmentSummary: async (year: number, month: number) => {
+    if (isMockApiEnabled()) return [] as ManagerMetricSummary[]
+    const res = await apiClient.get<ManagerMetricSummary[]>(
+      `/performance/assignments/manager-summary`,
       { params: { year, month } }
     )
     return res.data
@@ -408,15 +437,6 @@ export const performanceApi = {
     }
     const res = await apiClient.get<CatalogDivisionAllowlistResponse>(
       '/performance/catalog-division-allowlist'
-    )
-    return res.data
-  },
-
-  putCatalogDivisionAllowlist: async (divisionIds: string[]) => {
-    if (isMockApiEnabled()) throw new Error('Mock')
-    const res = await apiClient.put<CatalogDivisionAllowlistResponse>(
-      '/performance/catalog-division-allowlist',
-      { divisionIds }
     )
     return res.data
   },
