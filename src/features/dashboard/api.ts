@@ -62,6 +62,14 @@ export const myDashboardSchema = z.object({
   career: careerSchema,
   promotionHistory: z.array(promotionSchema).default([]),
   highlightAchievements: z.array(highlightAchievementSchema).default([]),
+  nextStarTopics: z
+    .array(
+      z.object({
+        topic: z.string(),
+        objectives: z.array(z.string()),
+      })
+    )
+    .optional(),
 })
 
 export type MyDashboardResponse = z.infer<typeof myDashboardSchema>

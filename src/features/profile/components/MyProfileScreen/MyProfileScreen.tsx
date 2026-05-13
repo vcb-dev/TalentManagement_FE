@@ -368,6 +368,13 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
       onSuccess: (res) => {
         toast.success('Đã cập nhật ảnh đại diện')
         form.setValue('portraitRef', res.portraitRef)
+        // Cập nhật vào auth store để Navbar thay đổi ngay
+        if (user) {
+          useAuthStore.getState().setUser({
+            ...user,
+            portraitRef: res.portraitRef,
+          })
+        }
       },
       onError: () => toast.error('Không tải được ảnh. Thử lại sau.'),
     })

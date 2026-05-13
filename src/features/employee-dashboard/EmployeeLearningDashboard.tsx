@@ -25,6 +25,7 @@ import { CARD_ENTRANCE_HOVER, STAR_POP, staggerStyle } from '@/lib/cardMotion'
 import { LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { Button } from '@/components/ui/button'
 import { PromotionCelebrationModal } from '@/components/shared/PromotionCelebrationModal'
 import { useAuthStore } from '@/stores/auth.store'
@@ -185,29 +186,49 @@ export function EmployeeLearningDashboard() {
   } | null>(null)
 
   useEffect(() => {
-    if (isLoading || !meDashboard || isManagerLearningDash) return
+    if (isLoading || !meDashboard) return
 
     const history = meDashboard.promotionHistory ?? []
-    if (history.length === 0) return
+    if (history.length === 0) {
+      console.log('[Celebration] No promotion history found.')
+      return
+    }
 
     // Tìm thăng cấp gần nhất trong 7 ngày gần đây
     const now = Date.now()
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
+    const detectWindowMs = 7 * 24 * 60 * 60 * 1000
     const recentPromo = history.find((p: any) => {
-      const isLevelUp = p.fromLevel && p.toLevel && p.fromLevel !== p.toLevel
+      // 1. Level up: toLevel khác fromLevel (hoặc fromLevel null)
+      const isLevelUp = p.toLevel && (!p.fromLevel || p.fromLevel !== p.toLevel)
+
+      // 2. Star up: toLevel giống fromLevel nhưng note có chữ "Sao"
       const isStarUp =
-        p.fromLevel && p.toLevel && p.fromLevel === p.toLevel && p.note?.includes('Sao')
+        p.fromLevel &&
+        p.toLevel &&
+        p.fromLevel === p.toLevel &&
+        (p.note?.toLowerCase().includes('sao') || p.note?.includes('⭐'))
+
       if (!isLevelUp && !isStarUp) return false
 
       const promotedAt = new Date(p.promotedAt).getTime()
-      return now - promotedAt < sevenDaysMs
+      const isRecent = now - promotedAt < detectWindowMs
+
+      return isRecent
     })
 
-    if (!recentPromo) return
+    if (!recentPromo) {
+      console.log('[Celebration] No recent promotion in the last 7 days.')
+      return
+    }
 
     // Kiểm tra xem user đã dismiss chưa (localStorage)
-    const dismissKey = `promo_seen_${user?.id}_${recentPromo.promotedAt}`
-    if (localStorage.getItem(dismissKey)) return
+    const dismissKey = `promo_seen_${user?.id}_${new Date(recentPromo.promotedAt).getTime()}`
+    if (localStorage.getItem(dismissKey)) {
+      console.log('[Celebration] Promotion already seen/dismissed.')
+      return
+    }
+
+    console.log('[Celebration] Triggering celebration for:', recentPromo)
 
     setCelebrationPromotion({
       fromLevel: recentPromo.fromLevel as LevelCode,
@@ -218,11 +239,11 @@ export function EmployeeLearningDashboard() {
         : greetingName,
       nextStarTopics: (meDashboard as any).nextStarTopics,
     })
-  }, [isLoading, meDashboard, isManagerLearningDash, user?.id, greetingName])
+  }, [isLoading, meDashboard, user?.id, greetingName])
 
   const handleDismissCelebration = useCallback(() => {
     if (celebrationPromotion && user?.id) {
-      const dismissKey = `promo_seen_${user.id}_${celebrationPromotion.promotedAt}`
+      const dismissKey = `promo_seen_${user.id}_${new Date(celebrationPromotion.promotedAt).getTime()}`
       localStorage.setItem(dismissKey, '1')
     }
     setCelebrationPromotion(null)
@@ -312,6 +333,7 @@ export function EmployeeLearningDashboard() {
                     />
                     <EmployeeAvatar
                       name={avatarName}
+                      photoUrl={resolvePublicAssetUrl(user?.portraitRef || apiUser?.portraitRef)}
                       className="relative z-10 h-24 w-24 text-xl ring-[3px] ring-white/90 shadow-[0_12px_40px_-12px_hsl(var(--primary)/0.45)] ring-offset-[3px] ring-offset-[hsl(var(--accent)/0.08)]"
                     />
                     <span className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/40 bg-gradient-to-r from-primary to-accent px-3 py-0.5 text-[0.55rem] font-black uppercase tracking-wide text-primary-foreground shadow-[0_6px_20px_hsl(var(--primary)/0.4)]">
@@ -320,45 +342,39 @@ export function EmployeeLearningDashboard() {
                   </div>
                 )}
 
-                <div className="relative w-full text-center">
-                  <p className="mb-1 text-[0.6rem] font-bold uppercase tracking-[0.2em] text-primary">
-                    Sao
-                  </p>
-                  {maxStars > 0 ? (
-                    <>
-                      <div
-                        className="inline-flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-primary/20 bg-gradient-to-b from-white/80 to-primary/[0.06] px-3 py-3 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.85)] dark:from-card/90 dark:to-primary/[0.08]"
-                        role="img"
-                        aria-label={`${filledStars} trên ${maxStars} sao`}
-                      >
-                        {Array.from({ length: maxStars }, (_, i) => (
-                          <span
-                            key={i}
-                            className={cn('inline-flex rounded-sm', STAR_POP)}
-                            style={staggerStyle(i, 55)}
-                          >
-                            <ProgressStar
-                              filled={i < filledStars}
-                              variant="primary"
-                              className="h-6 w-6 sm:h-7 sm:w-7"
-                            />
-                          </span>
-                        ))}
-                      </div>
-                      <p className="mt-3 text-base font-black tabular-nums tracking-tight text-foreground">
-                        <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                          {filledStars}
-                        </span>
-                        <span className="text-muted-foreground/80">/{maxStars}</span>{' '}
-                        <span className="text-xs font-bold text-muted-foreground">sao</span>
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-xs font-medium text-muted-foreground">
-                      {levelLabel} — chưa áp dụng sao.
+                {maxStars > 0 && (
+                  <div className="relative w-full text-center">
+                    <p className="mb-1 text-[0.6rem] font-bold uppercase tracking-[0.2em] text-primary">
+                      Sao
                     </p>
-                  )}
-                </div>
+                    <div
+                      className="inline-flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-primary/20 bg-gradient-to-b from-white/80 to-primary/[0.06] px-3 py-3 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.85)] dark:from-card/90 dark:to-primary/[0.08]"
+                      role="img"
+                      aria-label={`${filledStars} trên ${maxStars} sao`}
+                    >
+                      {Array.from({ length: maxStars }, (_, i) => (
+                        <span
+                          key={i}
+                          className={cn('inline-flex rounded-sm', STAR_POP)}
+                          style={staggerStyle(i, 55)}
+                        >
+                          <ProgressStar
+                            filled={i < filledStars}
+                            variant="primary"
+                            className="h-6 w-6 sm:h-7 sm:w-7"
+                          />
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-base font-black tabular-nums tracking-tight text-foreground">
+                      <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                        {filledStars}
+                      </span>
+                      <span className="text-muted-foreground/80">/{maxStars}</span>{' '}
+                      <span className="text-xs font-bold text-muted-foreground">sao</span>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
