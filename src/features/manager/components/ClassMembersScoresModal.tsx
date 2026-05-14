@@ -106,8 +106,8 @@ export function ClassMembersScoresModal({
                         <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                           <Calendar className="h-3 w-3" />
                           <span>
-                            {sub.submittedAt
-                              ? new Date(sub.submittedAt).toLocaleDateString('vi-VN')
+                            {sub.createdAt
+                              ? new Date(sub.createdAt).toLocaleDateString('vi-VN')
                               : 'N/A'}
                           </span>
                         </div>
@@ -122,18 +122,22 @@ export function ClassMembersScoresModal({
                         <p
                           className={cn(
                             'text-xl font-black tracking-tighter tabular-nums',
-                            sub.totalScore >= 90
-                              ? 'text-emerald-600'
-                              : sub.totalScore >= 40
-                                ? 'text-primary'
-                                : 'text-rose-500'
+                            sub.totalScore === null || sub.totalScore === undefined
+                              ? 'text-slate-400'
+                              : sub.totalScore >= 90
+                                ? 'text-emerald-600'
+                                : sub.totalScore >= 40
+                                  ? 'text-primary'
+                                  : 'text-rose-500'
                           )}
                         >
-                          {sub.totalScore}%
+                          {sub.totalScore !== null && sub.totalScore !== undefined
+                            ? `${sub.totalScore}%`
+                            : 'N/A'}
                         </p>
                       </div>
                       <Badge
-                        variant={sub.status === 'done' ? 'default' : 'secondary'}
+                        variant={sub.status === 'done' ? 'default' : 'muted'}
                         className={cn(
                           'rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter',
                           sub.status === 'done'

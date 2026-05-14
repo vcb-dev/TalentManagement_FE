@@ -90,7 +90,70 @@ export function PromotionCelebrationModal({
     }
   }, [])
 
+  // TỰ ĐỘNG PHÁT GIỌNG NÓI CHÚC MỪNG SIÊU TRUYỀN CẢM, THƯỚT THA NHẸ NHÀNG
+  useEffect(() => {
+    if (!window.speechSynthesis) return
+
+    const speakCongratulation = () => {
+      window.speechSynthesis.cancel()
+
+      const message = `Chúc mừng ${displayName} đã xuất sắc thăng cấp thành công lên trình độ ${toLabel}`
+      const msg = new SpeechSynthesisUtterance(message)
+
+      const voices = window.speechSynthesis.getVoices()
+
+      // Ưu tiên giọng đỉnh cao:
+      // 1. Hoài My (Microsoft Edge Neural - Nữ nhẹ nhàng thướt tha số 1 thế giới)
+      // 2. Linh (Apple iOS/macOS Premium - Rất dịu dàng tự nhiên)
+      // 3. Các giọng Việt Nam chất lượng cao khác
+      const optimalVoice =
+        voices.find((v) => v.name.includes('HoaiMy') || v.voiceURI.includes('HoaiMy')) ||
+        voices.find((v) => v.name.includes('Linh')) ||
+        voices.find(
+          (v) =>
+            (v.lang.includes('vi') || v.lang.includes('VN')) &&
+            (v.name.includes('Natural') || v.name.includes('Neural') || v.name.includes('Premium'))
+        ) ||
+        voices.find((v) => v.lang.includes('vi') || v.lang.includes('VN'))
+
+      if (optimalVoice) {
+        msg.voice = optimalVoice
+      }
+      msg.lang = 'vi-VN'
+
+      // TỐI ƯU THÔNG SỐ ĐỂ THÀNH GIỌNG "THƯỚT THA, NHẸ NHÀNG":
+      msg.rate = 0.82 // Đọc chậm rãi, từ tốn, trang trọng (mặc định 1.0 là quá nhanh, robot)
+      msg.pitch = 1.06 // Tông cao hơn xíu tạo độ ngọt ngào, thân thiện
+      msg.volume = 0.95
+
+      window.speechSynthesis.speak(msg)
+    }
+
+    // Để hiệu ứng pháo hoa nổ đẹp đẽ 1.2 giây trước khi cất tiếng nói cho sang trọng
+    const tSpeak = setTimeout(() => {
+      const voices = window.speechSynthesis.getVoices()
+      if (voices.length > 0) {
+        speakCongratulation()
+      } else {
+        window.speechSynthesis.onvoiceschanged = () => {
+          speakCongratulation()
+          window.speechSynthesis.onvoiceschanged = null
+        }
+      }
+    }, 1200)
+
+    return () => {
+      clearTimeout(tSpeak)
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel()
+      }
+    }
+  }, [displayName, toLabel])
+
   const handleClose = useCallback(() => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel() // Tắt giọng nói ngay khi bấm đóng
+    }
     setVisible(false)
     setTimeout(onDismiss, 350)
   }, [onDismiss])

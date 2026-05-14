@@ -26,6 +26,7 @@ import {
   deleteBooking,
   approveBooking,
   rejectBooking,
+  finishBooking,
   type MeetingBooking,
   type BookedSlot,
 } from './api'
@@ -75,14 +76,22 @@ function BookingStatusBadge({
   const { date: td, time: ct } = vnTime
   const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
 
-  if (b.status === 'approved' && isPast)
+  if (b.status === 'approved' && b.timeStatus === 'ongoing')
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-indigo-700 animate-pulse">
+        <span className="h-1.5 w-1.5 rounded-full bg-indigo-600"></span>
+        Đang họp
+      </span>
+    )
+
+  if (b.status === 'approved' && (isPast || b.timeStatus === 'done'))
     return (
       <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-blue-700">
         ✓ Đã họp xong
       </span>
     )
 
-  if (b.status === 'pending' && isPast)
+  if (b.status === 'pending' && (isPast || b.timeStatus === 'done'))
     return (
       <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-slate-500">
         Quá hạn
@@ -126,9 +135,10 @@ type BookingRowActionsProps = {
   isPrivileged: boolean
   processingId: string | null
   handleApprove: (id: string) => void
-  setRejectId: (id: string) => void
+  handleRejectId: (id: string) => void
   handleEdit: (b: MeetingBooking) => void
   handleDelete: (id: string) => void
+  handleFinish: (id: string) => void
   variant?: 'table' | 'mobile'
 }
 
@@ -138,9 +148,10 @@ function BookingRowActions({
   isPrivileged,
   processingId,
   handleApprove,
-  setRejectId,
+  handleRejectId,
   handleEdit,
   handleDelete,
+  handleFinish,
   variant = 'table',
 }: BookingRowActionsProps) {
   const mobile = variant === 'mobile'
@@ -148,6 +159,25 @@ function BookingRowActions({
 
   return (
     <div className={mobile ? 'flex w-full flex-col gap-2' : 'flex items-center justify-end gap-2'}>
+      {/* Nút Kết thúc sớm (chỉ hiện khi đang họp) */}
+      {b.status === 'approved' &&
+        b.timeStatus === 'ongoing' &&
+        (b.userId === user?.id || isPrivileged) && (
+          <button
+            type="button"
+            onClick={() => handleFinish(b.id)}
+            disabled={!!processingId}
+            className={`flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-indigo-200 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50 ${btnWrap}`}
+          >
+            {processingId === b.id ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-3 w-3" />
+            )}
+            <span>ĐÃ HỌP XONG</span>
+          </button>
+        )}
+
       {isPrivileged && b.status === 'pending' && (
         <>
           <button
@@ -165,7 +195,7 @@ function BookingRowActions({
           </button>
           <button
             type="button"
-            onClick={() => setRejectId(b.id)}
+            onClick={() => handleRejectId(b.id)}
             disabled={!!processingId}
             className={`group flex items-center gap-2 rounded-xl border-2 border-rose-100 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600 transition-all hover:border-rose-200 hover:bg-rose-50 active:scale-95 disabled:opacity-50 ${btnWrap}`}
           >
@@ -174,7 +204,7 @@ function BookingRowActions({
           </button>
         </>
       )}
-      {b.userId === user?.id && (
+      {b.userId === user?.id && b.status !== 'approved' && (
         <div className={mobile ? 'flex w-full flex-col gap-2' : 'flex gap-2'}>
           <button
             type="button"
@@ -210,9 +240,10 @@ const BookingCardMobile = memo(
     isPrivileged,
     processingId,
     handleApprove,
-    setRejectId,
+    handleRejectId,
     handleEdit,
     handleDelete,
+    handleFinish,
     variant = 'mobile',
     vnTime,
   }: {
@@ -221,9 +252,10 @@ const BookingCardMobile = memo(
     isPrivileged: boolean
     processingId: string | null
     handleApprove: (id: string) => void
-    setRejectId: (id: string) => void
+    handleRejectId: (id: string) => void
     handleEdit: (b: MeetingBooking) => void
     handleDelete: (id: string) => void
+    handleFinish: (id: string) => void
     variant?: 'table' | 'mobile'
     vnTime: { date: string; time: string }
   }) => {
@@ -278,9 +310,10 @@ const BookingCardMobile = memo(
           isPrivileged={isPrivileged}
           processingId={processingId}
           handleApprove={handleApprove}
-          setRejectId={setRejectId}
+          handleRejectId={handleRejectId}
           handleEdit={handleEdit}
           handleDelete={handleDelete}
+          handleFinish={handleFinish}
           variant="mobile"
         />
       </div>
@@ -295,9 +328,10 @@ const BookingRow = memo(
     isPrivileged,
     processingId,
     handleApprove,
-    setRejectId,
+    handleRejectId,
     handleEdit,
     handleDelete,
+    handleFinish,
     vnTime,
   }: {
     b: MeetingBooking
@@ -305,9 +339,10 @@ const BookingRow = memo(
     isPrivileged: boolean
     processingId: string | null
     handleApprove: (id: string) => void
-    setRejectId: (id: string) => void
+    handleRejectId: (id: string) => void
     handleEdit: (b: MeetingBooking) => void
     handleDelete: (id: string) => void
+    handleFinish: (id: string) => void
     variant?: 'table' | 'mobile'
     vnTime: { date: string; time: string }
   }) => {
@@ -335,9 +370,10 @@ const BookingRow = memo(
             isPrivileged={isPrivileged}
             processingId={processingId}
             handleApprove={handleApprove}
-            setRejectId={setRejectId}
+            handleRejectId={handleRejectId}
             handleEdit={handleEdit}
             handleDelete={handleDelete}
+            handleFinish={handleFinish}
             variant="table"
           />
         </td>
@@ -367,14 +403,14 @@ export default function RoomBookingPage() {
   const [isEmergency, setIsEmergency] = useState(false)
   const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([])
 
-  const [filter, setFilter] = useState<'all' | 'today' | 'mine' | 'requests'>(
-    search.tab === 'requests' ? 'requests' : 'all'
-  )
+  const [filter, setFilter] = useState<'today' | 'tomorrow' | 'team' | 'mine' | 'requests'>('today')
+  const [selectedRoom, setSelectedRoom] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [processingId, setProcessingId] = useState<string | null>(null)
 
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [finishConfirmId, setFinishConfirmId] = useState<string | null>(null)
 
   const prevBookingsCount = useRef(0)
 
@@ -460,11 +496,24 @@ export default function RoomBookingPage() {
     onSettled: () => setProcessingId(null),
   })
 
+  const finishMut = useMutation({
+    mutationFn: finishBooking,
+    onMutate: (id) => setProcessingId(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['room-bookings'] })
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
+      setError(msg)
+    },
+    onSettled: () => setProcessingId(null),
+  })
+
   useEffect(() => {
     if (search.tab === 'requests') {
       setFilter('requests')
     } else {
-      setFilter('all')
+      setFilter('today')
     }
     setPage(1)
   }, [search.tab])
@@ -483,16 +532,20 @@ export default function RoomBookingPage() {
   }, [showModal, room, date])
 
   const filtered = useMemo(() => {
-    const { date: todayDate, time: nowTime } = vnTime
-    const isBookingCompleted = (b: MeetingBooking) =>
-      b.status === 'approved' &&
-      (b.date < todayDate || (b.date === todayDate && b.timeTo <= nowTime))
+    const { date: todayDate } = vnTime
 
-    return bookings.filter((b) => {
-      if (filter === ('requests' as any)) return b.status === 'pending'
+    // Calculate Tomorrow Date
+    const tomorrow = new Date(todayDate)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowDate = tomorrow.toISOString().split('T')[0]
+
+    let result = bookings.filter((b) => {
+      // Step 1: Base tab filters
+      if (filter === 'requests') return b.status === 'pending'
       if (filter === 'mine') return b.userId === user?.id
-      if (filter === 'today') {
-        if (b.userId === user?.id) return true
+      if (filter === 'today') return b.date === todayDate
+      if (filter === 'tomorrow') return b.date === tomorrowDate
+      if (filter === 'team') {
         const userTeam = (user?.team ?? '').trim().toLowerCase()
         const bookingTeam = (b.team ?? '').trim().toLowerCase()
         return (
@@ -503,11 +556,20 @@ export default function RoomBookingPage() {
             userTeam.includes(bookingTeam))
         )
       }
-      // Tab 'all' (Toàn bộ): ẩn các booking đã họp xong
-      if (isBookingCompleted(b)) return false
       return true
     })
-  }, [bookings, filter, user?.id, user?.team, vnTime])
+
+    // Step 2: Room filter
+    if (selectedRoom !== 'all') {
+      result = result.filter((b) => b.room === selectedRoom)
+    }
+
+    // Step 3: Sorting (Time from small to large)
+    return result.sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date)
+      return a.timeFrom.localeCompare(b.timeFrom)
+    })
+  }, [bookings, filter, selectedRoom, user?.id, user?.team, vnTime])
 
   const totalPages = useMemo(() => Math.ceil(filtered.length / PAGE_SIZE), [filtered.length])
   const pageData = useMemo(
@@ -583,6 +645,16 @@ export default function RoomBookingPage() {
     deleteMut.mutate(id)
   }
 
+  async function handleFinish(id: string) {
+    setFinishConfirmId(id)
+  }
+
+  async function executeFinish() {
+    if (!finishConfirmId) return
+    finishMut.mutate(finishConfirmId)
+    setFinishConfirmId(null)
+  }
+
   function handleEdit(b: MeetingBooking) {
     setEditingId(b.id)
     setRoom(b.room)
@@ -651,42 +723,68 @@ export default function RoomBookingPage() {
 
         {/* Bảng lịch họp */}
         <div className="rounded-[2.5rem] border border-border bg-card/50 shadow-sm backdrop-blur-xl overflow-hidden">
-          <div className="flex flex-col gap-4 border-b border-border/50 p-6 sm:flex-row sm:items-center sm:justify-between bg-muted/20">
-            {search.tab === 'requests' ? (
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-1 bg-rose-500 rounded-full" />
-                <h2 className="text-sm font-black uppercase tracking-wider text-rose-600">
-                  Duyệt yêu cầu đổi lịch
-                </h2>
+          <div className="flex flex-col gap-6 border-b border-border/50 p-6 bg-muted/20">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              {search.tab === 'requests' ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-1 bg-rose-500 rounded-full" />
+                  <h2 className="text-sm font-black uppercase tracking-wider text-rose-600">
+                    Duyệt yêu cầu đổi lịch
+                  </h2>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-1 rounded-2xl bg-background/50 border border-border/40 w-fit">
+                  {(['today', 'tomorrow', 'team', 'mine'] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => {
+                        setFilter(f)
+                        setPage(1)
+                      }}
+                      className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${filter === f ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:bg-secondary'}`}
+                    >
+                      {f === 'today'
+                        ? 'Hôm nay'
+                        : f === 'tomorrow'
+                          ? 'Ngày mai'
+                          : f === 'team'
+                            ? 'Team mình'
+                            : 'Của tôi'}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-4">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                  Tổng: {filtered.length} bản ghi
+                </span>
+                <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 shadow-sm">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[9px] font-black tracking-tighter text-emerald-700 uppercase">
+                    LIVE
+                  </span>
+                </div>
               </div>
-            ) : (
-              <div className="flex items-center gap-2 p-1 rounded-2xl bg-background/50 border border-border/40 w-fit">
-                {(['all', 'today', 'mine'] as const).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => {
-                      setFilter(f)
-                      setPage(1)
-                    }}
-                    className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${filter === f ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:bg-secondary'}`}
-                  >
-                    {f === 'all' ? 'Toàn bộ' : f === 'today' ? 'Team mình' : 'Của tôi'}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="flex items-center gap-4">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                Tổng: {filtered.length} bản ghi
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">
+                Lọc theo phòng:
               </span>
-              <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 shadow-sm">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                </span>
-                <span className="text-[9px] font-black tracking-tighter text-emerald-700 uppercase">
-                  LIVE
-                </span>
+              <div className="w-64">
+                <CustomSelect
+                  value={selectedRoom}
+                  onValueChange={setSelectedRoom}
+                  options={[
+                    { value: 'all', label: 'Tất cả các phòng' },
+                    ...ROOMS.map((r) => ({ value: r.id, label: r.name })),
+                  ]}
+                  placeholder="Chọn phòng..."
+                />
               </div>
             </div>
           </div>
@@ -757,9 +855,10 @@ export default function RoomBookingPage() {
                       isPrivileged={isPrivileged}
                       processingId={processingId}
                       handleApprove={handleApprove}
-                      setRejectId={setRejectId}
+                      handleRejectId={setRejectId}
                       handleEdit={handleEdit}
                       handleDelete={handleDelete}
+                      handleFinish={handleFinish}
                       vnTime={vnTime}
                     />
                   ))
@@ -799,9 +898,10 @@ export default function RoomBookingPage() {
                   isPrivileged={isPrivileged}
                   processingId={processingId}
                   handleApprove={handleApprove}
-                  setRejectId={setRejectId}
+                  handleRejectId={setRejectId}
                   handleEdit={handleEdit}
                   handleDelete={handleDelete}
+                  handleFinish={handleFinish}
                   vnTime={vnTime}
                 />
               ))
@@ -1184,6 +1284,47 @@ export default function RoomBookingPage() {
               >
                 Xác nhận
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {finishConfirmId && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+          onClick={() => setFinishConfirmId(null)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
+          <div
+            className="relative w-full max-w-md bg-card p-10 rounded-[3rem] shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center space-y-6">
+              <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="h-10 w-10 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black uppercase tracking-tight mb-2">
+                  Kết thúc họp sớm
+                </h3>
+                <p className="text-muted-foreground text-sm leading-relaxed px-4">
+                  Bạn xác nhận đã họp xong và muốn giải phóng phòng cho người khác?
+                </p>
+              </div>
+              <div className="flex w-full gap-4 pt-4">
+                <button
+                  onClick={() => setFinishConfirmId(null)}
+                  className="flex-1 py-4 font-bold text-muted-foreground uppercase hover:bg-muted/50 rounded-2xl transition-all"
+                >
+                  Quay lại
+                </button>
+                <button
+                  onClick={executeFinish}
+                  className="flex-1 py-4 bg-indigo-600 text-white font-black rounded-2xl uppercase shadow-lg shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                  XÁC NHẬN
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -89,3 +89,7 @@ export async function updateBooking(
   const { data } = await apiClient.patch<MeetingBooking>(`/room-booking/${id}`, payload)
   return data
 }
+export async function finishBooking(id: string): Promise<MeetingBooking> {
+  const { data } = await apiClient.patch<MeetingBooking>(`/room-booking/${id}/finish`)
+  return data
+}

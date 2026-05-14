@@ -11,7 +11,11 @@ import {
   Lock,
   Paperclip,
   Loader2,
+  Eye,
+  Info,
+  ExternalLink,
 } from 'lucide-react'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
   useLearningChecklist,
@@ -22,6 +26,13 @@ import {
 import { useChecklistItem } from '@/features/learning-path/components/ChecklistItem/useChecklistItem'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Skeleton, SkeletonApprovalCardRow } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE, CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -157,6 +168,12 @@ export function ChecklistStarScreen({
   const completed = data?.completedIds ?? []
   const checklist = useChecklistItem(sortedItems, completed)
   const { data: submissions } = useStarSubmissions(starId)
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null)
+  const lastSubmissionRef = useRef<any>(null)
+  if (selectedSubmission) {
+    lastSubmissionRef.current = selectedSubmission
+  }
+  const displaySubmission = selectedSubmission || lastSubmissionRef.current
   const submit = useSubmitEvidence()
   const fileRef = useRef<HTMLInputElement>(null)
   const evidenceForm = useForm<{ note: string }>({ defaultValues: { note: '' } })
@@ -510,9 +527,22 @@ export function ChecklistStarScreen({
                                       }
                                       primaryAction={
                                         it.kind === 'done'
-                                          ? it.order === 2
-                                            ? { label: 'Xem kết quả', onClick: () => {} }
-                                            : { label: 'Xem bằng chứng', onClick: () => {} }
+                                          ? {
+                                              label:
+                                                it.order === 2 ? 'Xem kết quả' : 'Xem bằng chứng',
+                                              onClick: () => {
+                                                const sub = (submissions as any[])?.find(
+                                                  (s) => s.itemId === it.id
+                                                )
+                                                if (sub) {
+                                                  setSelectedSubmission(sub)
+                                                } else {
+                                                  toast.error(
+                                                    'Không tìm thấy dữ liệu chi tiết bài nộp.'
+                                                  )
+                                                }
+                                              },
+                                            }
                                           : it.kind === 'current'
                                             ? useProbationFlow
                                               ? undefined
@@ -699,23 +729,126 @@ export function ChecklistStarScreen({
                     )}
 
                     {(submissions ?? []).length > 0 ? (
-                      <ul className="divide-y divide-primary-100/60 text-left text-sm">
-                        {(submissions ?? []).slice(0, 5).map((s) => (
-                          <li key={s.id} className="py-3 first:pt-0 last:pb-0">
-                            <div className="font-semibold text-gray-900">{s.fileName}</div>
-                            <div className="mt-0.5 text-[13px] text-gray-500">
-                              {new Date(s.createdAt).toLocaleDateString('vi-VN')} ·{' '}
-                              <span className="font-medium text-primary-600">
-                                {s.status === 'ACCEPTED'
-                                  ? 'Đã duyệt'
-                                  : s.status === 'PENDING'
-                                    ? 'Chờ duyệt'
-                                    : 'Từ chối'}
-                              </span>
+                      <>
+                        <ul className="divide-y divide-primary-100/60 text-left text-sm">
+                          {(submissions ?? []).slice(0, 5).map((s) => (
+                            <li key={s.id} className="group py-3 first:pt-0 last:pb-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <div
+                                    className="truncate font-semibold text-gray-900"
+                                    title={s.fileName}
+                                  >
+                                    {s.fileName}
+                                  </div>
+                                  <div className="mt-0.5 text-[13px] text-gray-500">
+                                    {new Date(s.createdAt).toLocaleDateString('vi-VN')} ·{' '}
+                                    <span className="font-medium text-primary-600">
+                                      {s.status === 'ACCEPTED' || s.status === 'GRADED'
+                                        ? 'Đã duyệt'
+                                        : s.status === 'PENDING'
+                                          ? 'Chờ duyệt'
+                                          : 'Từ chối'}
+                                    </span>
+                                  </div>
+                                </div>
+                                {s.url && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0 rounded-full bg-primary-50 text-primary-600 shadow-sm hover:bg-primary-100 hover:text-primary-700"
+                                    title="Xem bài đã nộp"
+                                    onClick={() => {
+                                      const fullUrl = resolvePublicAssetUrl(s.url!)
+                                      if (fullUrl) window.open(fullUrl, '_blank')
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {s.status === 'GRADED' && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0 rounded-full bg-blue-50 text-blue-600 shadow-sm hover:bg-blue-100 hover:text-blue-700 ml-2"
+                                    title="Xem kết quả"
+                                    onClick={() => setSelectedSubmission(s)}
+                                  >
+                                    <Info className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+
+                        <Dialog
+                          open={!!selectedSubmission}
+                          onOpenChange={(open) => !open && setSelectedSubmission(null)}
+                        >
+                          <DialogContent className="sm:max-w-[520px] overflow-hidden">
+                            <DialogHeader>
+                              <DialogTitle>Kết quả chấm điểm</DialogTitle>
+                              <DialogDescription>
+                                Chi tiết điểm số và nhận xét từ quản lý.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="flex flex-col gap-2">
+                                <span className="text-sm font-semibold">Điểm số:</span>
+                                <span className="text-2xl font-black text-blue-600">
+                                  {displaySubmission?.score ?? 'Chưa có'}
+                                </span>
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                <span className="text-sm font-semibold">Nhận xét:</span>
+                                <p className="text-sm italic p-3 bg-gray-50 rounded-lg border whitespace-pre-wrap text-slate-600 leading-relaxed">
+                                  {displaySubmission?.managerComment
+                                    ? `"${displaySubmission.managerComment}"`
+                                    : 'Không có nhận xét.'}
+                                </p>
+                              </div>
+
+                              {displaySubmission?.fileName && (
+                                <div className="flex flex-col gap-2 border-t border-dashed border-slate-200 pt-4">
+                                  <span className="text-sm font-semibold text-slate-800">
+                                    File minh chứng đã nộp:
+                                  </span>
+                                  <div className="flex items-center justify-between bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 gap-3">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <Paperclip className="h-4 w-4 text-indigo-600 shrink-0" />
+                                      <span
+                                        className="text-sm font-extrabold text-indigo-900 truncate flex-1"
+                                        title={displaySubmission.fileName}
+                                      >
+                                        {displaySubmission.fileName}
+                                      </span>
+                                    </div>
+                                    {displaySubmission.url && (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        className="h-9 gap-1.5 rounded-xl font-bold bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hover:shadow transition-all shrink-0 flex items-center"
+                                        onClick={() => {
+                                          const fullUrl = resolvePublicAssetUrl(
+                                            displaySubmission.url!
+                                          )
+                                          if (fullUrl) window.open(fullUrl, '_blank')
+                                        }}
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                        <span>Xem file</span>
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          </li>
-                        ))}
-                      </ul>
+                          </DialogContent>
+                        </Dialog>
+                      </>
                     ) : (
                       <div className={cn('py-4', selectedObjective && 'text-center')}>
                         {!selectedObjective && (
