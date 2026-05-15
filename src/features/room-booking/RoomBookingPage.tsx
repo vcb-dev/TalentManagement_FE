@@ -550,7 +550,7 @@ export default function RoomBookingPage() {
   }, [showModal, room, date])
 
   const filtered = useMemo(() => {
-    const { date: todayDate } = vnTime
+    const { date: todayDate, time: currentTime } = vnTime
 
     // Calculate Tomorrow Date
     const tomorrow = new Date(todayDate)
@@ -582,8 +582,31 @@ export default function RoomBookingPage() {
       result = result.filter((b) => b.room === selectedRoom)
     }
 
-    // Step 3: Sorting (Time from small to large)
+    // Step 3: Sorting (Đang họp -> Sắp tới -> Đã xong/Từ chối)
+    const getPriority = (b: MeetingBooking) => {
+      const isPast = b.date < todayDate || (b.date === todayDate && b.timeTo <= currentTime)
+      const isDone = b.timeStatus === 'done' || (b.status === 'approved' && isPast)
+      const isOverdue = b.status === 'pending' && isPast
+      const isRejected = b.status === 'rejected'
+
+      // Bét bảng (Rank 3): Đã họp xong, Quá hạn hoặc Bị từ chối
+      if (isDone || isOverdue || isRejected) return 3
+
+      // Top 1 (Rank 1): Đang diễn ra
+      if (b.status === 'approved' && b.timeStatus === 'ongoing') return 1
+
+      // Top 2 (Rank 2): Sắp tới (Chờ duyệt hoặc Đã duyệt)
+      return 2
+    }
+
     return result.sort((a, b) => {
+      const pA = getPriority(a)
+      const pB = getPriority(b)
+
+      // Nếu khác nhóm ưu tiên -> hiển thị theo nhóm
+      if (pA !== pB) return pA - pB
+
+      // Nếu cùng nhóm -> Xếp theo thời gian (Ca sớm lên trước)
       if (a.date !== b.date) return a.date.localeCompare(b.date)
       return a.timeFrom.localeCompare(b.timeFrom)
     })
