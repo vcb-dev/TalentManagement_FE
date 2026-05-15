@@ -140,6 +140,7 @@ type BookingRowActionsProps = {
   handleDelete: (id: string) => void
   handleFinish: (id: string) => void
   variant?: 'table' | 'mobile'
+  vnTime: { date: string; time: string }
 }
 
 function BookingRowActions({
@@ -153,32 +154,43 @@ function BookingRowActions({
   handleDelete,
   handleFinish,
   variant = 'table',
+  vnTime,
 }: BookingRowActionsProps) {
   const mobile = variant === 'mobile'
   const btnWrap = mobile ? 'w-full justify-center' : ''
+  const isOwner = b.userId === user?.id
+
+  // 1. TÍNH TOÁN TRẠNG THÁI QUÁ HẠN (GIỐNG BADGE)
+  const { date: td, time: ct } = vnTime
+  const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
+  const isOverdueOrDone = isPast || b.timeStatus === 'done'
+
+  // QUÁ HẠN THÌ TUYỆT ĐỐI KHÔNG HIỂN THỊ NÚT NÀO
+  if (isOverdueOrDone) {
+    return null
+  }
 
   return (
     <div className={mobile ? 'flex w-full flex-col gap-2' : 'flex items-center justify-end gap-2'}>
-      {/* Nút Kết thúc sớm (chỉ hiện khi đang họp) */}
-      {b.status === 'approved' &&
-        b.timeStatus === 'ongoing' &&
-        (b.userId === user?.id || isPrivileged) && (
-          <button
-            type="button"
-            onClick={() => handleFinish(b.id)}
-            disabled={!!processingId}
-            className={`flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-indigo-200 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50 ${btnWrap}`}
-          >
-            {processingId === b.id ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <CheckCircle2 className="h-3 w-3" />
-            )}
-            <span>ĐÃ HỌP XONG</span>
-          </button>
-        )}
+      {/* NÚT ĐÃ HỌP XONG: Chỉ hiện khi ĐANG HỌP và là lịch ĐÃ DUYỆT */}
+      {b.status === 'approved' && b.timeStatus === 'ongoing' && (isOwner || isPrivileged) && (
+        <button
+          type="button"
+          onClick={() => handleFinish(b.id)}
+          disabled={!!processingId}
+          className={`flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-indigo-200 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50 ${btnWrap}`}
+        >
+          {processingId === b.id ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <CheckCircle2 className="h-3 w-3" />
+          )}
+          <span>ĐÃ HỌP XONG</span>
+        </button>
+      )}
 
-      {isPrivileged && b.status === 'pending' && (
+      {/* NÚT DUYỆT/TỪ CHỐI DÀNH CHO ADMIN: Chỉ hiện khi CHỜ DUYỆT và CHƯA HỌP */}
+      {isPrivileged && b.status === 'pending' && b.timeStatus !== 'ongoing' && (
         <>
           <button
             type="button"
@@ -204,31 +216,35 @@ function BookingRowActions({
           </button>
         </>
       )}
-      {b.userId === user?.id && b.status !== 'approved' && (
-        <div className={mobile ? 'flex w-full flex-col gap-2' : 'flex gap-2'}>
-          <button
-            type="button"
-            onClick={() => handleEdit(b)}
-            disabled={!!processingId}
-            className={`flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary transition-all hover:bg-primary hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
-          >
-            <span>ĐỔI LỊCH</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDelete(b.id)}
-            disabled={!!processingId}
-            className={`flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600 transition-all hover:bg-rose-600 hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
-          >
-            {processingId === b.id ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <X className="h-3 w-3" />
-            )}
-            <span>HỦY</span>
-          </button>
-        </div>
-      )}
+
+      {/* NÚT ĐỔI LỊCH & HỦY DÀNH CHO CHỦ SỞ HỮU: Chỉ hiện khi CHƯA HỌP và trạng thái CHƯA KẾT THÚC */}
+      {isOwner &&
+        b.timeStatus !== 'ongoing' &&
+        (b.status === 'approved' || b.status === 'pending' || b.status === 'rejected') && (
+          <div className={mobile ? 'flex w-full flex-col gap-2' : 'flex gap-2'}>
+            <button
+              type="button"
+              onClick={() => handleEdit(b)}
+              disabled={!!processingId}
+              className={`flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary transition-all hover:bg-primary hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
+            >
+              <span>ĐỔI LỊCH</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDelete(b.id)}
+              disabled={!!processingId}
+              className={`flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600 transition-all hover:bg-rose-600 hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
+            >
+              {processingId === b.id ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <X className="h-3 w-3" />
+              )}
+              <span>HỦY</span>
+            </button>
+          </div>
+        )}
     </div>
   )
 }
@@ -244,7 +260,6 @@ const BookingCardMobile = memo(
     handleEdit,
     handleDelete,
     handleFinish,
-    variant = 'mobile',
     vnTime,
   }: {
     b: MeetingBooking
@@ -315,6 +330,7 @@ const BookingCardMobile = memo(
           handleDelete={handleDelete}
           handleFinish={handleFinish}
           variant="mobile"
+          vnTime={vnTime}
         />
       </div>
     )
@@ -375,6 +391,7 @@ const BookingRow = memo(
             handleDelete={handleDelete}
             handleFinish={handleFinish}
             variant="table"
+            vnTime={vnTime}
           />
         </td>
       </tr>
