@@ -428,6 +428,7 @@ export default function RoomBookingPage() {
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [finishConfirmId, setFinishConfirmId] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   const prevBookingsCount = useRef(0)
 
@@ -658,8 +659,13 @@ export default function RoomBookingPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Bạn có chắc chắn muốn hủy lịch họp này?')) return
-    deleteMut.mutate(id)
+    setDeleteConfirmId(id)
+  }
+
+  async function executeDelete() {
+    if (!deleteConfirmId) return
+    deleteMut.mutate(deleteConfirmId)
+    setDeleteConfirmId(null)
   }
 
   async function handleFinish(id: string) {
@@ -1340,6 +1346,45 @@ export default function RoomBookingPage() {
                   className="flex-1 py-4 bg-indigo-600 text-white font-black rounded-2xl uppercase shadow-lg shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
                 >
                   XÁC NHẬN
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmId && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+          onClick={() => setDeleteConfirmId(null)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
+          <div
+            className="relative w-full max-w-md bg-card p-10 rounded-[3rem] shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center space-y-6">
+              <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center">
+                <AlertCircle className="h-10 w-10 text-rose-500" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black uppercase tracking-tight mb-2">Hủy lịch họp</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed px-4">
+                  Bạn có chắc chắn muốn hủy lịch họp này không? Hành động này không thể khôi phục.
+                </p>
+              </div>
+              <div className="flex w-full gap-4 pt-4">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="flex-1 py-4 font-bold text-muted-foreground uppercase hover:bg-muted/50 rounded-2xl transition-all"
+                >
+                  Quay lại
+                </button>
+                <button
+                  onClick={executeDelete}
+                  className="flex-1 py-4 bg-rose-500 text-white font-black rounded-2xl uppercase shadow-lg shadow-rose-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                  XÁC NHẬN HỦY
                 </button>
               </div>
             </div>
