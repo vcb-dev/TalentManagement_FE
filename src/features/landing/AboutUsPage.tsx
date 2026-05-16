@@ -143,7 +143,7 @@ function ImageFrame({
         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
           <Images className="h-5 w-5" aria-hidden />
         </span>
-        <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em]">{label}</p>
+        <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em]">{label}</p>
       </div>
     </div>
   )
@@ -283,7 +283,7 @@ export function AboutUsPage() {
                   : 'motion-reduce:animate-none animate-[guest-landing-hero-in_0.8s_ease-out_both]'
               )}
             >
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-800 shadow-sm">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.22em] text-amber-800 shadow-sm">
                 <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 {c.hero.badge}
               </span>
@@ -385,7 +385,7 @@ export function AboutUsPage() {
           <div className="mx-auto max-w-[1400px] px-4 sm:px-6">
             <Reveal reduced={reduced}>
               <div className="mx-auto max-w-2xl text-center">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-primary">
                   {(() => {
                     const KickerIcon = landingLucide(c.visionMissionSection.kickerIcon)
                     return <KickerIcon className="h-3.5 w-3.5" aria-hidden />
@@ -673,7 +673,7 @@ export function AboutUsPage() {
           <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6">
             <Reveal reduced={reduced}>
               <div className="text-center">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-white/90 backdrop-blur-sm">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-white/90 backdrop-blur-sm">
                   {(() => {
                     const BadgeIcon = landingLucide(c.leadership.badgeIcon)
                     return <BadgeIcon className="h-3.5 w-3.5" aria-hidden />
@@ -715,7 +715,7 @@ export function AboutUsPage() {
                       {person.bullets.map((b) => (
                         <li
                           key={b}
-                          className="flex items-start gap-2 text-left text-[13px] leading-relaxed text-white/85"
+                          className="flex items-start gap-2 text-left text-sm leading-relaxed text-white/85"
                         >
                           <span
                             className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300"
@@ -768,7 +768,7 @@ export function AboutUsPage() {
                     </div>
                   </div>
                   <div className="mt-5 space-y-2">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
                       {c.overview.sectionKicker}
                     </p>
                     <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">

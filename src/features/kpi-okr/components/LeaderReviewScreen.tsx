@@ -1,4 +1,4 @@
-import {
+﻿import {
   useCallback,
   useEffect,
   useMemo,
@@ -417,7 +417,7 @@ function LeaderEvaluationRow({
                   <Badge
                     variant="outline"
                     className={cn(
-                      'h-4 text-[9px] font-extrabold px-1',
+                      'h-4 text-xs font-extrabold px-1',
                       evalScore === 'A'
                         ? 'border-emerald-200 text-emerald-600'
                         : evalScore === 'B'
@@ -756,7 +756,7 @@ const ManagerLeaderAssignmentMobileCard = forwardRef<
       </p>
       <AssignmentEpic4ReadStack row={assignment} />
       <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <span className="text-[10px] font-bold uppercase text-slate-400">Đánh giá QL</span>
+        <span className="text-xs font-bold uppercase text-slate-400">Đánh giá QL</span>
         <Select
           value={status || '__none'}
           onValueChange={(v) => setStatus(v === '__none' ? '' : v)}

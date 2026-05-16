@@ -279,7 +279,7 @@ export function EmployeeLearningDashboard() {
         <SalesHonorBanner />
         <section className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
-            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-gradient-to-r from-primary/[0.12] to-accent/[0.1] px-3 py-0.5 text-[0.6rem] font-bold uppercase tracking-widest text-primary shadow-sm">
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-gradient-to-r from-primary/[0.12] to-accent/[0.1] px-3 py-0.5 text-xs font-bold uppercase tracking-widest text-primary shadow-sm">
               <Sparkles className="h-3 w-3" aria-hidden />
               {isManagerLearningDash ? 'Quản lý' : 'Cá nhân'}
             </div>
@@ -359,7 +359,7 @@ export function EmployeeLearningDashboard() {
 
                 {maxStars > 0 && (
                   <div className="relative w-full text-center">
-                    <p className="mb-1 text-[0.6rem] font-bold uppercase tracking-[0.2em] text-primary">
+                    <p className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-primary">
                       Sao
                     </p>
                     <div
@@ -406,7 +406,7 @@ export function EmployeeLearningDashboard() {
                 aria-hidden
               />
               <div className="relative mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-[0.6rem] font-bold uppercase tracking-widest text-primary">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-primary">
                   Thông tin
                 </h2>
                 <span className="rounded-full border border-amber-500/30 bg-tier-gold-muted/80 px-2 py-0.5 text-[0.55rem] font-black tabular-nums text-tier-gold shadow-sm">
@@ -467,7 +467,7 @@ export function EmployeeLearningDashboard() {
                     <span className="text-xs font-semibold text-foreground">
                       {p.fromLevel ? LEVEL_LABELS[p.fromLevel] : '—'} → {LEVEL_LABELS[p.toLevel]}
                     </span>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {formatDateVi(p.promotedAt)}
                       {p.note ? ` · ${p.note}` : ''}
                     </span>
@@ -524,13 +524,13 @@ export function EmployeeLearningDashboard() {
                             (achievement.score != null ? `+${achievement.score}` : 'Nổi bật')}
                         </span>
                       </div>
-                      <h3 className="text-[0.6rem] font-bold uppercase tracking-widest text-foreground/80">
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-foreground/80">
                         {achievement.title}
                       </h3>
                       <p className="mt-1 text-xs font-semibold leading-snug text-foreground">
                         {achievement.description?.trim() || 'Đã ghi nhận một thành tựu.'}
                       </p>
-                      <div className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-primary">
+                      <div className="mt-2 flex items-center gap-1.5 text-xs font-bold text-primary">
                         <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
                         {achievement.levelScope?.trim() || 'Cá nhân'}
                       </div>

@@ -1,4 +1,4 @@
-import { TrendingDown, TrendingUp, Users } from 'lucide-react'
+﻿import { TrendingDown, TrendingUp, Users } from 'lucide-react'
 import { useLearningOpsSummary } from '@/features/dashboard/hooks'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -80,7 +80,7 @@ export function ManagerHrSnapshotCards({
                 className="absolute -right-3 -top-3 h-16 w-16 rounded-full bg-indigo-500/8 blur-xl"
                 aria-hidden
               />
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600/80 dark:text-indigo-400">
+              <p className="mb-1 text-xs font-bold uppercase tracking-wider text-indigo-600/80 dark:text-indigo-400">
                 Tổng đầu lượng
               </p>
               <p
@@ -91,7 +91,7 @@ export function ManagerHrSnapshotCards({
               >
                 {total.toLocaleString('vi-VN')}
               </p>
-              <p className="mt-1 text-[10px] text-muted-foreground">nhân sự đang làm việc</p>
+              <p className="mt-1 text-xs text-muted-foreground">nhân sự đang làm việc</p>
             </div>
 
             {/* Off */}
@@ -101,7 +101,7 @@ export function ManagerHrSnapshotCards({
                 aria-hidden
               />
               <div className="mb-1 flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600/80 dark:text-rose-400">
+                <p className="text-xs font-bold uppercase tracking-wider text-rose-600/80 dark:text-rose-400">
                   Nghỉ việc {periodSuffix}
                 </p>
                 <TrendingDown className="h-3.5 w-3.5 text-rose-500/70" aria-hidden />
@@ -109,7 +109,7 @@ export function ManagerHrSnapshotCards({
               <p className="text-3xl font-black tabular-nums text-foreground">
                 {off.toLocaleString('vi-VN')}
               </p>
-              <p className="mt-1 text-[10px] font-medium text-rose-600/70 dark:text-rose-400">
+              <p className="mt-1 text-xs font-medium text-rose-600/70 dark:text-rose-400">
                 {pct(off, total)} tổng
               </p>
             </div>
@@ -121,7 +121,7 @@ export function ManagerHrSnapshotCards({
                 aria-hidden
               />
               <div className="mb-1 flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400">
+                <p className="text-xs font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400">
                   Tuyển mới {periodSuffix}
                 </p>
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-500/70" aria-hidden />
@@ -129,7 +129,7 @@ export function ManagerHrSnapshotCards({
               <p className="text-3xl font-black tabular-nums text-foreground">
                 {newHires.toLocaleString('vi-VN')}
               </p>
-              <p className="mt-1 text-[10px] font-medium text-emerald-600/70 dark:text-emerald-400">
+              <p className="mt-1 text-xs font-medium text-emerald-600/70 dark:text-emerald-400">
                 {pct(newHires, total)} tổng
               </p>
             </div>
@@ -137,7 +137,7 @@ export function ManagerHrSnapshotCards({
         )}
 
         {isFetching && data ? (
-          <p className="mt-3 text-center text-[10px] text-muted-foreground">Đang cập nhật…</p>
+          <p className="mt-3 text-center text-xs text-muted-foreground">Đang cập nhật…</p>
         ) : null}
       </div>
     </div>

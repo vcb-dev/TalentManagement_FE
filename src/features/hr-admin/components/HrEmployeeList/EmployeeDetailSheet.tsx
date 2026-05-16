@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+﻿import { Link } from '@tanstack/react-router'
 import { MoreHorizontal, X } from 'lucide-react'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { toast } from 'sonner'
@@ -23,20 +23,20 @@ function statusBadge(status: EmployeeEntity['status']) {
   switch (status) {
     case 'ACTIVE':
       return (
-        <span className="inline-flex rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-200">
+        <span className="inline-flex rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-200">
           Hoạt động
         </span>
       )
     case 'RESERVED':
     case 'PROBATION':
       return (
-        <span className="inline-flex rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-bold text-amber-900 dark:text-amber-200">
+        <span className="inline-flex rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-900 dark:text-amber-200">
           Bảo lưu / Thử việc
         </span>
       )
     case 'INACTIVE':
       return (
-        <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
+        <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">
           Ngừng HĐ
         </span>
       )
@@ -156,10 +156,10 @@ export function EmployeeDetailSheet({
           <h3 className="mb-1 text-xl font-bold text-foreground">{employee.name}</h3>
           <p className="mb-3 text-sm font-semibold text-indigo-600">{positionLabel}</p>
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <span className="rounded-full border border-indigo-300/40 bg-indigo-500/12 px-3 py-1 text-[10px] font-bold tracking-tight text-indigo-700">
+            <span className="rounded-full border border-indigo-300/40 bg-indigo-500/12 px-3 py-1 text-xs font-bold tracking-tight text-indigo-700">
               {tierLine}
             </span>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold text-slate-600">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
               ID: {idShort.toUpperCase()}
             </span>
             {statusBadge(employee.status)}
@@ -170,14 +170,14 @@ export function EmployeeDetailSheet({
           <div className="mt-2 flex flex-wrap justify-center gap-1.5">
             <span
               className={cn(
-                'inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold',
+                'inline-flex rounded-full px-2 py-0.5 text-xs font-bold',
                 roleBadgeClass(employee.role)
               )}
             >
               {roleShortLabel(employee.role)}
             </span>
             <span
-              className="max-w-[150px] truncate rounded-full bg-primary/[0.08] px-2 py-0.5 text-[10px] font-semibold text-primary-700"
+              className="max-w-[150px] truncate rounded-full bg-primary/[0.08] px-2 py-0.5 text-xs font-semibold text-primary-700"
               title={employeeDeptDisplay(employee)}
             >
               {employeeDeptDisplay(employee)}
@@ -187,13 +187,13 @@ export function EmployeeDetailSheet({
 
         <div className="mb-8 grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] to-indigo-500/[0.06] p-4">
-            <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="mb-1 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Cấp sao
             </span>
             <span className="text-xl font-bold text-indigo-600">{employee.currentStar}/6</span>
           </div>
           <div className="rounded-xl border border-cyan-300/35 bg-gradient-to-br from-cyan-500/[0.08] to-blue-500/[0.06] p-4">
-            <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="mb-1 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Tiến độ
             </span>
             <span className="text-xl font-bold text-cyan-700">{xpPct}%</span>
@@ -206,29 +206,25 @@ export function EmployeeDetailSheet({
           </h4>
           <div className="grid grid-cols-1 gap-2.5">
             <div className="rounded-lg border border-indigo-200/70 bg-white/85 px-3 py-2 shadow-sm">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Phòng ban</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Phòng ban</p>
               <p className="text-xs font-semibold text-foreground">
                 {employeeDeptDisplay(employee)}
               </p>
             </div>
             <div className="rounded-lg border border-cyan-200/70 bg-white/85 px-3 py-2 shadow-sm">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Team</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Team</p>
               <p className="text-xs font-semibold text-foreground">{teamLine}</p>
             </div>
             <div className="rounded-lg border border-emerald-200/70 bg-white/85 px-3 py-2 shadow-sm">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Số điện thoại
-              </p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Số điện thoại</p>
               <p className="text-xs font-semibold text-foreground">{employee.phone || '—'}</p>
             </div>
             <div className="rounded-lg border border-violet-200/70 bg-white/85 px-3 py-2 shadow-sm">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ngày sinh</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Ngày sinh</p>
               <p className="text-xs font-semibold text-foreground">{fmtDate(employee.birthDate)}</p>
             </div>
             <div className="rounded-lg border border-amber-200/75 bg-white/85 px-3 py-2 shadow-sm">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Ngày bắt đầu
-              </p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Ngày bắt đầu</p>
               <p className="text-xs font-semibold text-foreground">{fmtDate(employee.startDate)}</p>
             </div>
           </div>
@@ -246,9 +242,7 @@ export function EmployeeDetailSheet({
               />
               <div>
                 <p className="text-xs font-bold text-foreground">Cập nhật hồ sơ</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {fmtDateTime(employee.updatedAt)}
-                </p>
+                <p className="text-xs text-muted-foreground">{fmtDateTime(employee.updatedAt)}</p>
               </div>
             </div>
             <div className="flex gap-3">
@@ -258,9 +252,7 @@ export function EmployeeDetailSheet({
               />
               <div>
                 <p className="text-xs font-medium text-foreground">Tạo hồ sơ</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {fmtDateTime(employee.createdAt)}
-                </p>
+                <p className="text-xs text-muted-foreground">{fmtDateTime(employee.createdAt)}</p>
               </div>
             </div>
             <div className="flex gap-3">
@@ -270,9 +262,7 @@ export function EmployeeDetailSheet({
               />
               <div>
                 <p className="text-xs font-medium text-foreground">Trạng thái hiện tại</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {statusLabelVi(employee.status)}
-                </p>
+                <p className="text-xs text-muted-foreground">{statusLabelVi(employee.status)}</p>
               </div>
             </div>
           </div>

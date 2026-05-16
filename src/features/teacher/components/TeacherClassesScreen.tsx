@@ -116,7 +116,7 @@ export function TeacherClassesScreen() {
                 <p className={PAGE_HEADER_DESCRIPTION}>
                   Lớp do quản lý gán cho bạn. Vào chi tiết để xem thành viên, chấm điểm và{' '}
                   <strong className="font-semibold text-foreground">xếp lịch học buổi</strong> (API{' '}
-                  <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">
                     /teacher/classes/:id/schedules
                   </code>
                   ).
@@ -171,7 +171,7 @@ export function TeacherClassesScreen() {
                       aria-selected={selected}
                       id={`teacher-class-filter-${key}`}
                       className={cn(
-                        'h-auto min-h-0 justify-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-xs font-semibold md:text-[13px]',
+                        'h-auto min-h-0 justify-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-xs font-semibold md:text-sm',
                         selected
                           ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary'
                           : 'text-muted-foreground hover:bg-muted/70 hover:text-primary'
@@ -209,7 +209,7 @@ export function TeacherClassesScreen() {
                     <p className="text-base font-semibold text-foreground">{c.title}</p>
                     <span
                       className={cn(
-                        'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold',
+                        'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
                         c.accent === 'primary'
                           ? 'bg-primary/10 text-primary'
                           : 'bg-amber-100 text-amber-900'
@@ -255,7 +255,7 @@ export function TeacherClassesScreen() {
                         <td className="px-4 py-3">
                           <span
                             className={cn(
-                              'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold',
+                              'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
                               c.accent === 'primary'
                                 ? 'bg-primary/10 text-primary'
                                 : 'bg-amber-100 text-amber-900'

@@ -2,13 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { ArrowLeft, Info } from 'lucide-react'
+import { Info } from 'lucide-react'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
   PAGE_HEADER_SURFACE,
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
+import { Breadcrumb } from '@/components/shared/Breadcrumb'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -148,15 +149,11 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
       <div className="mb-8 flex flex-col gap-8">
+        <Breadcrumb
+          items={[{ label: 'Phân quyền', href: '/permissions' }, { label: employee.name }]}
+        />
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
-            <Link
-              to="/permissions"
-              className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-            >
-              <ArrowLeft className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
-              Danh sách nhân viên
-            </Link>
             <h1 className={PAGE_HEADER_TITLE}>
               <span className={PAGE_HEADER_GRADIENT}>Phân quyền cho {employee.name}</span>
             </h1>

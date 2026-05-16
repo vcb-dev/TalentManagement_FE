@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+﻿import { memo, useMemo } from 'react'
 import {
   BookOpen,
   CalendarDays,
@@ -232,7 +232,7 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
                       <div className="absolute left-0 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-600 text-primary-foreground shadow-lg shadow-primary/40 ring-2 ring-primary/30 motion-safe:transition-transform motion-safe:duration-300 hover:scale-110">
                         <Check className="h-5 w-5" strokeWidth={2.5} aria-hidden />
                       </div>
-                      <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-widest text-primary">
+                      <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary">
                         Cấp độ {displayNum}
                       </p>
                       <h4 className="text-lg font-bold leading-tight text-foreground">{title}</h4>
@@ -263,7 +263,7 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
                           aria-hidden
                         />
                       </div>
-                      <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-widest text-primary">
+                      <p className="mb-1 text-xs font-bold uppercase tracking-widest text-primary">
                         Cấp độ {displayNum}
                       </p>
                       <h4 className="text-xl font-black leading-tight text-foreground">{title}</h4>
@@ -313,7 +313,7 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
                     </div>
                     <p
                       className={cn(
-                        'mb-1 text-[0.65rem] font-bold uppercase tracking-widest',
+                        'mb-1 text-xs font-bold uppercase tracking-widest',
                         isLast ? 'text-muted-foreground' : 'text-muted-foreground'
                       )}
                     >
@@ -366,7 +366,7 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
                 </div>
               ) : nextExam && nextExamFmt ? (
                 <div className="relative mb-4 rounded-2xl border border-primary/10 bg-card/95 p-4 shadow-inner backdrop-blur-sm">
-                  <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-tighter text-primary/90">
+                  <p className="mb-1 text-xs font-bold uppercase tracking-tighter text-primary/90">
                     {nextExam.status === 'IN_PROGRESS' ? 'Kỳ thi / lịch' : 'Môn thi & lịch'}
                   </p>
                   <p className="font-bold text-foreground">{nextExam.title}</p>
@@ -380,9 +380,7 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
                       {nextExamFmt.timeLine}
                     </div>
                     {nextExam.status === 'IN_PROGRESS' ? (
-                      <span className="text-[0.65rem] font-bold uppercase text-primary">
-                        Đang mở
-                      </span>
+                      <span className="text-xs font-bold uppercase text-primary">Đang mở</span>
                     ) : null}
                   </div>
                 </div>
@@ -399,7 +397,7 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
                 </div>
               ) : nextSlot && nextSlotFmt ? (
                 <div className="relative mb-4 rounded-xl border border-accent/20 bg-gradient-to-r from-card/90 to-accent/[0.06] p-3 text-sm">
-                  <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-tight text-accent">
+                  <p className="mb-1 text-xs font-bold uppercase tracking-tight text-accent">
                     Buổi học gần nhất
                   </p>
                   <p className="font-bold text-foreground">{nextSlot.topic}</p>
@@ -511,7 +509,7 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
                           />
                           <div className="min-w-0 flex-1">
                             <p className="font-bold leading-snug text-foreground">{m.title}</p>
-                            <p className="text-[0.65rem] font-semibold text-muted-foreground">
+                            <p className="text-xs font-semibold text-muted-foreground">
                               {milestoneStatusLabel(m.status)}
                             </p>
                           </div>

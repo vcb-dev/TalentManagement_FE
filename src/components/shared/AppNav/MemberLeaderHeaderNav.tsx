@@ -80,16 +80,16 @@ function buildHeaderGroups(items: AppNavItem[], labels: Record<string, string>):
 function HeaderNavLink({ item, active }: { item: AppNavItem; active: boolean }) {
   const Icon = item.icon
   const className = cn(
-    'flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-sm text-[#24292f] transition-all duration-200 hover:bg-slate-50 active:scale-95',
-    active && 'bg-slate-50 font-medium'
+    'flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-sm text-foreground transition-all duration-200 hover:bg-muted active:scale-95',
+    active && 'bg-muted font-medium text-foreground'
   )
 
   const inner = (
     <>
       <Icon
         className={cn(
-          'h-4 w-4 shrink-0 sm:h-[1.125rem] sm:w-[1.125rem] text-[#57606a]',
-          active && 'text-[#24292f]'
+          'h-4 w-4 shrink-0 sm:h-[1.125rem] sm:w-[1.125rem] text-muted-foreground',
+          active && 'text-foreground'
         )}
         strokeWidth={2.25}
       />
@@ -206,7 +206,7 @@ export function MemberLeaderHeaderNav() {
               >
                 {group.label}
               </NavigationMenuTrigger>
-              <NavigationMenuContent className="z-50 min-w-[16rem] rounded-md border border-[#d0d7de] bg-white p-1.5 shadow-[0_8px_24px_rgba(140,149,159,0.2)]">
+              <NavigationMenuContent className="z-50 min-w-[16rem] rounded-md border border-border bg-card p-1.5 shadow-md">
                 <ul className="grid gap-1">
                   {group.items.map((item) => (
                     <li key={item.to + item.label}>

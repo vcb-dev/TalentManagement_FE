@@ -107,14 +107,13 @@ html {
 }
 
 /*
- * Khoá scroll ở cấp document: AppShell đã quản lý chiều cao bằng `h-screen
- * overflow-hidden`, nên không cần thanh scroll ngoài cùng của trình duyệt.
- * Mọi vùng nội dung dài (main, sheet, dialog…) tự xử lý scroll bên trong.
+ * Chỉ đặt height 100% và overscroll — KHÔNG overflow:hidden ở body
+ * vì login/public pages cần scroll bình thường.
+ * AppShell tự quản lý overflow-hidden trên container h-screen của nó.
  */
 html,
 body {
   height: 100%;
-  overflow: hidden;
   overscroll-behavior: none;
 }
 

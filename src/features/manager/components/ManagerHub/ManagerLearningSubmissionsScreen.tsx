@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import {
   FileText,
   Users,
@@ -163,7 +163,7 @@ export function ManagerLearningSubmissionsScreen() {
                         </h3>
                         <span
                           className={cn(
-                            'rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-widest',
+                            'rounded-lg px-2.5 py-1 text-xs font-black uppercase tracking-widest',
                             status.className
                           )}
                         >
@@ -174,13 +174,13 @@ export function ManagerLearningSubmissionsScreen() {
 
                       <div className="mb-4 flex flex-wrap gap-x-6 gap-y-2">
                         <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-                          <span className="text-[10px] uppercase tracking-widest text-gray-400">
+                          <span className="text-xs uppercase tracking-widest text-gray-400">
                             Team
                           </span>
                           <span className="text-foreground">{row.team || 'N/A'}</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-                          <span className="text-[10px] uppercase tracking-widest text-gray-400">
+                          <span className="text-xs uppercase tracking-widest text-gray-400">
                             Cấp độ
                           </span>
                           <span className="text-primary">
@@ -188,7 +188,7 @@ export function ManagerLearningSubmissionsScreen() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-                          <span className="text-[10px] uppercase tracking-widest text-gray-400">
+                          <span className="text-xs uppercase tracking-widest text-gray-400">
                             Ngày nộp
                           </span>
                           <span>{formatViDate(row.createdAt)}</span>
@@ -197,7 +197,7 @@ export function ManagerLearningSubmissionsScreen() {
 
                       <div className="rounded-2xl border border-primary/10 bg-primary/5 p-5">
                         <div className="mb-1 flex items-center gap-2">
-                          <span className="text-[10px] font-black uppercase tracking-tighter text-primary/60">
+                          <span className="text-xs font-black uppercase tracking-tighter text-primary/60">
                             Chủ đề:
                           </span>
                           <span className="text-sm font-extrabold text-primary-700">

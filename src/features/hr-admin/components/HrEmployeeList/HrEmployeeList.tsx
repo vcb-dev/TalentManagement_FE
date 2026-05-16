@@ -7,7 +7,8 @@ import {
   PAGE_HEADER_SURFACE,
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
-import { Search } from 'lucide-react'
+import { Layers, Search, UserCheck, UserMinus, Users } from 'lucide-react'
+import { StatCard } from '@/components/shared/StatCard'
 import { toast } from 'sonner'
 import { EmployeeTable } from '@/features/hr-admin/components/EmployeeTable'
 import { useEmployeeTable } from '@/features/hr-admin/components/EmployeeTable/useEmployeeTable'
@@ -16,7 +17,6 @@ import type { EmployeeFilters } from '@/features/hr-admin/types'
 import { Button } from '@/components/ui/button'
 import { PaginationCardStepper } from '@/components/ui/pagination'
 import { SkeletonEmployeeCardGrid, SkeletonStatTile } from '@/components/ui/skeleton'
-import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { Form } from '@/components/ui/form'
 import { InputFieldController } from '@/components/ui/form-controllers'
@@ -236,98 +236,36 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {(
-              [
-                {
-                  key: 'total',
-                  className:
-                    'rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.09] via-card to-teal-500/[0.06] p-5 shadow-[var(--shadow-card)] ring-1 ring-primary/10',
-                  body: (
-                    <>
-                      <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                        Tổng nhân sự
-                      </span>
-                      <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="bg-gradient-to-r from-primary to-teal-600 bg-clip-text text-2xl font-bold leading-none text-transparent">
-                          {stats.total}
-                        </span>
-                        <span className="text-[10px] font-bold text-primary">{totalStatHint}</span>
-                      </div>
-                    </>
-                  ),
-                },
-                {
-                  key: 'active',
-                  className:
-                    'rounded-xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/95 via-card to-teal-50/80 p-5 shadow-[var(--shadow-card)] ring-1 ring-emerald-500/15',
-                  body: (
-                    <>
-                      <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                        Hoạt động
-                      </span>
-                      <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="text-2xl font-bold leading-none text-emerald-700">
-                          {stats.active}
-                        </span>
-                        {stats.pageCount > 0 ? (
-                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-200">
-                            {stats.activePct}% trang
-                          </span>
-                        ) : null}
-                      </div>
-                    </>
-                  ),
-                },
-                {
-                  key: 'inactive',
-                  className:
-                    'rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-card to-violet-50/50 p-5 shadow-[var(--shadow-card)] ring-1 ring-amber-400/20',
-                  body: (
-                    <>
-                      <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                        Ngừng / bảo lưu
-                      </span>
-                      <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="text-2xl font-bold leading-none text-amber-800">
-                          {stats.inactive + stats.reserved}
-                        </span>
-                        <span className="text-[10px] font-medium text-muted-foreground">
-                          trên trang hiện tại
-                        </span>
-                      </div>
-                    </>
-                  ),
-                },
-                {
-                  key: 'page',
-                  className:
-                    'rounded-xl border border-violet-200/70 bg-gradient-to-br from-violet-50/90 via-card to-fuchsia-50/40 p-5 shadow-[var(--shadow-card)] ring-1 ring-violet-400/15',
-                  body: (
-                    <>
-                      <span className="mb-2 block text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                        Trang
-                      </span>
-                      <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="text-2xl font-bold leading-none text-violet-800">
-                          {pagination.page}
-                        </span>
-                        <span className="text-[10px] font-medium text-muted-foreground">
-                          trên {totalPages} trang
-                        </span>
-                      </div>
-                    </>
-                  ),
-                },
-              ] as const
-            ).map((s, i) => (
-              <div
-                key={s.key}
-                className={cn(s.className, CARD_ENTRANCE_HOVER)}
-                style={staggerStyle(i)}
-              >
-                {s.body}
-              </div>
-            ))}
+            <StatCard
+              title="Tổng nhân sự"
+              value={stats.total}
+              icon={<Users className="h-5 w-5" />}
+              description={totalStatHint}
+              tone="default"
+            />
+            <StatCard
+              title="Hoạt động"
+              value={stats.active}
+              icon={<UserCheck className="h-5 w-5" />}
+              description={
+                stats.pageCount > 0 ? `${stats.activePct}% trên trang hiện tại` : undefined
+              }
+              tone="success"
+            />
+            <StatCard
+              title="Ngừng / bảo lưu"
+              value={stats.inactive + stats.reserved}
+              icon={<UserMinus className="h-5 w-5" />}
+              description="trên trang hiện tại"
+              tone="warning"
+            />
+            <StatCard
+              title="Trang"
+              value={pagination.page}
+              icon={<Layers className="h-5 w-5" />}
+              description={`trên ${totalPages} trang`}
+              tone="info"
+            />
           </div>
         </div>
 
@@ -476,7 +414,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
           style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom, 0px))' }}
         >
           <div className="mx-auto flex w-full max-w-7xl flex-col gap-2">
-            <span className="text-center text-[11px] font-medium text-muted-foreground sm:text-left">
+            <span className="text-center text-xs font-medium text-muted-foreground sm:text-left">
               {pagination.total === 0
                 ? 'Không có nhân viên phù hợp'
                 : `Hiển thị ${rangeFrom}–${rangeTo} trong ${pagination.total} nhân viên`}

@@ -2,24 +2,25 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Skeleton, SkeletonStatTile } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE_HOVER, PROGRESS_BAR_FILL, staggerStyle } from '@/lib/cardMotion'
+import { StatCard } from '@/components/shared/StatCard'
 import { cn } from '@/lib/utils'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import type { BodDashboardPage } from '@/features/bod/types'
 
 const BAR_FILL: Record<BodDashboardPage['levelRows'][number]['barTone'], string> = {
-  gray: 'bg-[#888780]',
+  gray: 'bg-muted-foreground/40',
   indigo: 'bg-primary',
-  teal: 'bg-[#0E7490]',
-  amber: 'bg-[#D97706]',
-  red: 'bg-[#991B1B]',
+  teal: 'bg-cyan-600',
+  amber: 'bg-amber-500',
+  red: 'bg-red-700',
 }
 
 const HR_BADGE: Record<BodDashboardPage['hrMovement'][number]['badgeTone'], string> = {
-  green: 'bg-[#DCFCE7] text-[#166534]',
-  red: 'bg-[#FEE2E2] text-[#991B1B]',
+  green: 'bg-green-50 text-green-700',
+  red: 'bg-red-50 text-red-700',
   blue: 'bg-primary/10 text-primary',
-  amber: 'bg-[#FEF3C7] text-[#92400E]',
+  amber: 'bg-amber-50 text-amber-800',
   gray: 'border border-border bg-muted text-muted-foreground',
 }
 
@@ -28,16 +29,16 @@ const ALERT_STYLE: Record<
   { wrap: string; title: string }
 > = {
   danger: {
-    wrap: 'border-l-4 border-[#991B1B] bg-[#FEF2F2]',
-    title: 'text-[#991B1B]',
+    wrap: 'border-l-4 border-red-700 bg-red-50',
+    title: 'text-red-700',
   },
   warning: {
-    wrap: 'border-l-4 border-[#F59E0B] bg-[#FFFBEB]',
-    title: 'text-[#92400E]',
+    wrap: 'border-l-4 border-amber-500 bg-amber-50',
+    title: 'text-amber-800',
   },
   success: {
-    wrap: 'border-l-4 border-[#22C55E] bg-[#F0FDF4]',
-    title: 'text-[#166534]',
+    wrap: 'border-l-4 border-green-500 bg-green-50',
+    title: 'text-green-700',
   },
 }
 
@@ -48,24 +49,24 @@ function BodRadarSvg() {
         <polygon
           points="0,-78 67,-39 67,39 0,78 -67,39 -67,-39"
           fill="none"
-          stroke="#D9D9D9"
+          stroke="#e5e7eb"
           strokeWidth={1}
         />
         <polygon
           points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26"
           fill="none"
-          stroke="#D9D9D9"
+          stroke="#e5e7eb"
           strokeWidth={1}
         />
         <polygon
           points="0,-26 22,-13 22,13 0,26 -22,13 -22,-13"
           fill="none"
-          stroke="#D9D9D9"
+          stroke="#e5e7eb"
           strokeWidth={1}
         />
-        <line x1="0" y1="-78" x2="0" y2="78" stroke="#D9D9D9" strokeWidth={0.8} />
-        <line x1="-67" y1="-39" x2="67" y2="39" stroke="#D9D9D9" strokeWidth={0.8} />
-        <line x1="67" y1="-39" x2="-67" y2="39" stroke="#D9D9D9" strokeWidth={0.8} />
+        <line x1="0" y1="-78" x2="0" y2="78" stroke="#e5e7eb" strokeWidth={0.8} />
+        <line x1="-67" y1="-39" x2="67" y2="39" stroke="#e5e7eb" strokeWidth={0.8} />
+        <line x1="67" y1="-39" x2="-67" y2="39" stroke="#e5e7eb" strokeWidth={0.8} />
         <polygon
           points="0,-65 54,-25 48,32 -12,60 -56,22 -42,-32"
           fill="rgba(43,87,154,.12)"
@@ -83,7 +84,7 @@ function BodRadarSvg() {
           y="-84"
           textAnchor="middle"
           fontSize={10}
-          fill="#5F5E5A"
+          fill="#6b7280"
           fontFamily="sans-serif"
         >
           Kinh doanh
@@ -93,21 +94,21 @@ function BodRadarSvg() {
           y="-28"
           textAnchor="start"
           fontSize={10}
-          fill="#5F5E5A"
+          fill="#6b7280"
           fontFamily="sans-serif"
         >
           Marketing
         </text>
-        <text x="74" y="38" textAnchor="start" fontSize={10} fill="#5F5E5A" fontFamily="sans-serif">
+        <text x="74" y="38" textAnchor="start" fontSize={10} fill="#6b7280" fontFamily="sans-serif">
           Sản xuất
         </text>
-        <text x="0" y="92" textAnchor="middle" fontSize={10} fill="#5F5E5A" fontFamily="sans-serif">
+        <text x="0" y="92" textAnchor="middle" fontSize={10} fill="#6b7280" fontFamily="sans-serif">
           Hậu cần
         </text>
-        <text x="-74" y="38" textAnchor="end" fontSize={10} fill="#5F5E5A" fontFamily="sans-serif">
+        <text x="-74" y="38" textAnchor="end" fontSize={10} fill="#6b7280" fontFamily="sans-serif">
           Nhân sự
         </text>
-        <text x="-74" y="-28" textAnchor="end" fontSize={10} fill="#5F5E5A" fontFamily="sans-serif">
+        <text x="-74" y="-28" textAnchor="end" fontSize={10} fill="#6b7280" fontFamily="sans-serif">
           Kỹ thuật
         </text>
       </g>
@@ -125,8 +126,8 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const displayName = user?.name ?? 'BOD'
 
-  const onExportPdf = () => toast.info('Đang xuất PDF (demo)…')
-  const onShare = () => toast.success('Đã sao chép link chia sẻ (demo)')
+  const onExportPdf = () => toast.info('Tính năng xuất PDF sắp ra mắt')
+  const onShare = () => toast.info('Tính năng chia sẻ sắp ra mắt')
 
   return (
     <div className="-m-5 flex min-h-[calc(100vh-3rem)] min-w-0 flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
@@ -152,7 +153,7 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
           >
             Chia sẻ link
           </Button>
-          <span className="rounded-full bg-[#FEE2E2] px-2.5 py-1 text-xs font-medium text-[#991B1B]">
+          <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
             {displayName} ({roleLabel})
           </span>
         </div>
@@ -196,109 +197,36 @@ export function BodDashboardScreen({ page, isLoading }: BodDashboardScreenProps)
         ) : (
           <>
             <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              {(
-                [
-                  {
-                    k: 't',
-                    className:
-                      'rounded-[9px] border border-border bg-card p-3.5 shadow-[var(--shadow-card)]',
-                    body: (
-                      <>
-                        <div className="mb-1 text-xs font-semibold text-muted-foreground">
-                          👥 Tổng nhân sự
-                        </div>
-                        <div className="text-[28px] font-extrabold leading-tight text-foreground">
-                          {page.stats.totalHeadcount}
-                        </div>
-                        <div className="mt-1 text-xs text-[#0E7490]">
-                          {page.stats.totalDeltaLabel}
-                        </div>
-                      </>
-                    ),
-                  },
-                  {
-                    k: 'g',
-                    className:
-                      'rounded-[9px] border border-[#FCD34D] p-3.5 shadow-[var(--shadow-card)]',
-                    style: { background: 'linear-gradient(135deg,#FEF9C3,#FEF3C7)' } as const,
-                    body: (
-                      <>
-                        <div className="mb-1 text-xs font-semibold text-[#92400E]">
-                          Chỉ số hoàn thành mục tiêu
-                        </div>
-                        <div className="text-[28px] font-extrabold leading-tight text-[#92400E]">
-                          {page.stats.goldTierPct}%
-                        </div>
-                        <div className="mt-1 text-xs text-[#B45309]">
-                          {page.stats.goldDeltaLabel}
-                        </div>
-                      </>
-                    ),
-                  },
-                  {
-                    k: 'd',
-                    className:
-                      'rounded-[9px] border border-[#C4B5FD] p-3.5 shadow-[var(--shadow-card)]',
-                    style: { background: 'linear-gradient(135deg,#EDE9FE,#DDD6FE)' } as const,
-                    body: (
-                      <>
-                        <div className="mb-1 text-xs font-semibold text-primary">
-                          Nhân sự cấp Tướng
-                        </div>
-                        <div className="text-[28px] font-extrabold leading-tight text-primary">
-                          {page.stats.diamondCount}
-                        </div>
-                        <div className="mt-1 text-xs text-primary">
-                          {page.stats.diamondSubLabel}
-                        </div>
-                      </>
-                    ),
-                  },
-                  {
-                    k: 'r',
-                    className:
-                      'rounded-[9px] border border-border bg-card p-3.5 shadow-[var(--shadow-card)]',
-                    body: (
-                      <>
-                        <div className="mb-1 text-xs font-semibold text-muted-foreground">
-                          📉 Nghỉ việc T3
-                        </div>
-                        <div className="text-[28px] font-extrabold leading-tight text-foreground">
-                          {page.stats.resignations}
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {page.stats.turnoverLabel}
-                        </div>
-                      </>
-                    ),
-                  },
-                  {
-                    k: 'v',
-                    className:
-                      'rounded-[9px] border border-[#FCA5A5] p-3.5 shadow-[var(--shadow-card)]',
-                    style: { background: 'linear-gradient(135deg,#FEF2F2,#FEE2E2)' } as const,
-                    body: (
-                      <>
-                        <div className="mb-1 text-xs font-semibold text-[#991B1B]">⚠️ Bảo lưu</div>
-                        <div className="text-[28px] font-extrabold leading-tight text-[#991B1B]">
-                          {page.stats.reserveCount}
-                        </div>
-                        <div className="mt-1 text-xs text-[#991B1B]">
-                          {page.stats.reserveSubLabel}
-                        </div>
-                      </>
-                    ),
-                  },
-                ] as const
-              ).map((s, i) => (
-                <div
-                  key={s.k}
-                  className={cn(s.className, CARD_ENTRANCE_HOVER)}
-                  style={{ ...('style' in s ? s.style : {}), ...staggerStyle(i) }}
-                >
-                  {s.body}
-                </div>
-              ))}
+              <StatCard
+                title="Tổng nhân sự"
+                value={page.stats.totalHeadcount}
+                description={page.stats.totalDeltaLabel}
+                tone="info"
+              />
+              <StatCard
+                title="Hoàn thành mục tiêu"
+                value={`${page.stats.goldTierPct}%`}
+                description={page.stats.goldDeltaLabel}
+                tone="warning"
+              />
+              <StatCard
+                title="Nhân sự cấp Tướng"
+                value={page.stats.diamondCount}
+                description={page.stats.diamondSubLabel}
+                tone="default"
+              />
+              <StatCard
+                title="Nghỉ việc tháng này"
+                value={page.stats.resignations}
+                description={page.stats.turnoverLabel}
+                tone="danger"
+              />
+              <StatCard
+                title="Bảo lưu"
+                value={page.stats.reserveCount}
+                description={page.stats.reserveSubLabel}
+                tone="danger"
+              />
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">

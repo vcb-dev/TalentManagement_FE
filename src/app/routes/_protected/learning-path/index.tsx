@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react'
+﻿import { memo, useCallback, useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { Check, Lock, Star } from 'lucide-react'
@@ -108,12 +108,12 @@ const StarSelector = memo(
               )}
               Sao {starNum}
               {isDone && (
-                <span className="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600">
+                <span className="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-xs font-bold text-emerald-600">
                   ✓
                 </span>
               )}
               {isActive && !isDone && (
-                <span className="ml-1 rounded-full bg-primary-100 px-1.5 py-0.5 text-[10px] font-bold text-primary-600">
+                <span className="ml-1 rounded-full bg-primary-100 px-1.5 py-0.5 text-xs font-bold text-primary-600">
                   Đang học
                 </span>
               )}

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Bell, ChevronDown, LogOut, UserCircle } from 'lucide-react'
-import { toast } from 'sonner'
+import { Bell, BellOff, ChevronDown, LogOut, UserCircle } from 'lucide-react'
 import { useLogout } from '@/features/auth/hooks'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { MemberLeaderHeaderNav } from '@/components/shared/AppNav/MemberLeaderHeaderNav'
 import { MobileHeaderNav } from '@/components/shared/AppNav/MobileHeaderNav'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
@@ -51,16 +51,28 @@ export function AppShell({ children, title }: AppShellProps) {
       >
         Giới thiệu
       </a>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="shrink-0 text-white/85 hover:bg-white/12 hover:text-white"
-        aria-label="Thông báo"
-        onClick={() => toast.info('Chưa có thông báo mới (demo)')}
-      >
-        <Bell className="h-5 w-5" strokeWidth={2} />
-      </Button>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="shrink-0 text-white/85 hover:bg-white/12 hover:text-white"
+            aria-label="Thông báo"
+          >
+            <Bell className="h-5 w-5" strokeWidth={2} />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-72 p-0">
+          <div className="border-b border-border px-4 py-3">
+            <p className="text-sm font-semibold text-foreground">Thông báo</p>
+          </div>
+          <div className="flex flex-col items-center gap-2 py-8 text-center">
+            <BellOff className="h-8 w-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">Bạn chưa có thông báo mới</p>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
@@ -69,7 +81,7 @@ export function AppShell({ children, title }: AppShellProps) {
             variant="ghost"
             title="Nhấn để mở hồ sơ cá nhân"
             className={cn(
-              'group ml-0.5 h-auto min-h-0 shrink-0 gap-2 rounded-full border border-cyan-300/35 bg-white/10 py-1 pl-1 pr-2 text-left font-normal normal-case tracking-normal text-white shadow-[0_0_14px_rgba(34,211,238,0.18)] outline-none transition-[box-shadow,background-color] hover:bg-white/15 hover:shadow-[0_0_18px_rgba(34,211,238,0.28)] focus-visible:ring-2 focus-visible:ring-cyan-300/45 sm:pr-2.5 lg:pr-3'
+              'group ml-0.5 h-auto min-h-0 shrink-0 gap-2 rounded-full border border-accent/30 bg-white/10 py-1 pl-1 pr-2 text-left font-normal normal-case tracking-normal text-white shadow-sm outline-none transition-[box-shadow,background-color] hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-accent/45 sm:pr-2.5 lg:pr-3'
             )}
             aria-label="Mở menu hồ sơ cá nhân"
             aria-haspopup="menu"
@@ -78,7 +90,7 @@ export function AppShell({ children, title }: AppShellProps) {
               name={displayName}
               photoUrl={user?.portraitRef ? resolvePublicAssetUrl(user.portraitRef) : null}
               showOnlineDot
-              className="h-8 w-8 border-2 border-cyan-200/50 bg-gradient-to-br from-[#7c3aed] via-[#5b63f3] to-[#22d3ee] text-[11px] font-bold text-white sm:h-9 sm:w-9"
+              className="h-8 w-8 border-2 border-accent/40 bg-gradient-to-br from-primary via-primary/80 to-accent text-xs font-bold text-white sm:h-9 sm:w-9"
             />
             <span className="hidden max-w-[11rem] truncate text-sm font-semibold text-white xl:inline">
               {displayName}

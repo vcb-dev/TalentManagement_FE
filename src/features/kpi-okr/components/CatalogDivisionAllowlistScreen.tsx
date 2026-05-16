@@ -158,12 +158,10 @@ export function CatalogDivisionAllowlistScreen() {
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium">{d.name}</div>
                         {fromEnv && (
-                          <div className="text-[11px] text-muted-foreground">
-                            Cố định tại hệ thống
-                          </div>
+                          <div className="text-xs text-muted-foreground">Cố định tại hệ thống</div>
                         )}
                         {fromDb && !fromEnv && (
-                          <div className="text-[11px] text-muted-foreground">
+                          <div className="text-xs text-muted-foreground">
                             Đã chọn trong danh sách
                           </div>
                         )}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Plus, Search, Trash2, ChevronDown, Settings2, Trophy } from 'lucide-react'
@@ -22,6 +22,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
@@ -275,7 +276,7 @@ function AddEditDialog({
                 </SelectContent>
               </Select>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-xs text-slate-400">
               Chỉ số sẽ hiển thị từ tháng này trở đi trong bảng vinh danh
             </p>
           </div>
@@ -292,7 +293,7 @@ function AddEditDialog({
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-xs text-slate-400">
               Áp dụng cho cả trưởng nhóm và thành viên trong team đã chọn
             </p>
             <div className="max-h-52 overflow-y-auto rounded-lg border divide-y bg-white dark:bg-slate-950">
@@ -311,10 +312,10 @@ function AddEditDialog({
                           checked={allSel ? true : someSel ? 'indeterminate' : false}
                           onCheckedChange={() => toggleDept(deptId)}
                         />
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                           {deptName}
                         </span>
-                        <span className="ml-auto text-[11px] text-slate-400">
+                        <span className="ml-auto text-xs text-slate-400">
                           {teams.filter((t) => selectedTeamIds.has(t.id)).length}/{teams.length}
                         </span>
                       </div>
@@ -372,6 +373,7 @@ export function ManagerKpiOkrScreen() {
   const [search, setSearch] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [editEntry, setEditEntry] = useState<MetricEntry | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<MetricEntry | null>(null)
   const qc = useQueryClient()
 
   const { departments, teamsByDept: teamsByDeptMap } = useHrOrgSelectOptions()
@@ -409,17 +411,23 @@ export function ManagerKpiOkrScreen() {
   const invalidate = () =>
     void qc.invalidateQueries({ queryKey: ['vinh-danh-configs', year, month] })
 
-  const handleDelete = async (entry: MetricEntry) => {
-    if (!confirm(`Xóa chỉ số vinh danh "${entry.content}" khỏi ${entry.teamIds.size} team?`)) return
+  const handleDelete = (entry: MetricEntry) => {
+    setDeleteTarget(entry)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
     try {
       await performanceApi.deleteVinhDanhConfig({
-        content: entry.content,
-        teamIds: [...entry.teamIds],
+        content: deleteTarget.content,
+        teamIds: [...deleteTarget.teamIds],
       })
       toast.success('Đã xóa chỉ số vinh danh.')
       invalidate()
     } catch (err) {
       toast.error(getApiErrorMessage(err))
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -509,7 +517,7 @@ export function ManagerKpiOkrScreen() {
 
       {/* Table */}
       <div className="rounded-xl border bg-white shadow-sm dark:bg-slate-950 overflow-hidden">
-        <div className="hidden md:grid grid-cols-[2fr_72px_88px_160px_120px_1fr_72px] gap-4 border-b bg-slate-50 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:bg-slate-900/60">
+        <div className="hidden md:grid grid-cols-[2fr_72px_88px_160px_120px_1fr_72px] gap-4 border-b bg-slate-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 dark:bg-slate-900/60">
           <span>Nội dung</span>
           <span>Loại</span>
           <span>Ưu tiên</span>
@@ -568,7 +576,7 @@ export function ManagerKpiOkrScreen() {
                   <Badge
                     variant="outline"
                     className={cn(
-                      'text-[11px] font-semibold',
+                      'text-xs font-semibold',
                       entry.kind === 'KPI'
                         ? 'border-indigo-200 bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30'
                         : 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30'
@@ -583,7 +591,7 @@ export function ManagerKpiOkrScreen() {
                   <Badge
                     variant="outline"
                     className={cn(
-                      'text-[11px]',
+                      'text-xs',
                       entry.priority === 1
                         ? 'border-rose-200 bg-rose-50 text-rose-600'
                         : entry.priority === 2
@@ -616,14 +624,14 @@ export function ManagerKpiOkrScreen() {
                     return t ? (
                       <span
                         key={tid}
-                        className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                        className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
                       >
                         {t.name}
                       </span>
                     ) : null
                   })}
                   {entry.teamIds.size > 4 && (
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-400 dark:bg-slate-800">
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-400 dark:bg-slate-800">
                       +{entry.teamIds.size - 4} team
                     </span>
                   )}
@@ -676,6 +684,22 @@ export function ManagerKpiOkrScreen() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+        title={`Xóa chỉ số vinh danh?`}
+        description={
+          deleteTarget
+            ? `Xóa "${deleteTarget.content}" khỏi ${deleteTarget.teamIds.size} team. Thao tác không thể hoàn tác.`
+            : undefined
+        }
+        confirmLabel="Xóa"
+        destructive
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   )
 }

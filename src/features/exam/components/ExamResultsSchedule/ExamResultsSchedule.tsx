@@ -1,4 +1,4 @@
-import { format } from 'date-fns'
+﻿import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { ArrowRight, Building2, Calendar, Clock, Link2, MapPin, Shield } from 'lucide-react'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
@@ -444,14 +444,14 @@ export function ExamResultsSchedule({
                     {res.isSubmission ? (
                       <span
                         className={cn(
-                          'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                          'rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide',
                           isDone ? 'bg-success-muted text-success' : 'bg-warning-muted text-warning'
                         )}
                       >
                         {isDone ? 'Đã chấm' : 'Chờ chấm'}
                       </span>
                     ) : (
-                      <span className="rounded-full bg-success-muted px-2 py-0.5 text-[10px] font-bold text-success uppercase">
+                      <span className="rounded-full bg-success-muted px-2 py-0.5 text-xs font-bold text-success uppercase">
                         HOÀN THÀNH
                       </span>
                     )}

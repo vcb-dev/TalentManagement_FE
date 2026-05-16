@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+﻿import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { CalendarRange, Info, Pencil } from 'lucide-react'
@@ -303,19 +303,17 @@ export function PerformanceWindowConfigScreen() {
                 {(listQ.data ?? []).map((row) => (
                   <div key={row.id} className="space-y-2 py-4 first:pt-0">
                     <div>
-                      <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                        Phạm vi
-                      </p>
+                      <p className="text-xs font-bold uppercase text-muted-foreground">Phạm vi</p>
                       <p className="font-medium">{teamLabel(row.teamId)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold uppercase text-muted-foreground">Kỳ</p>
+                      <p className="text-xs font-bold uppercase text-muted-foreground">Kỳ</p>
                       <p className="tabular-nums">
                         T{row.month}/{row.year}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                      <p className="text-xs font-bold uppercase text-muted-foreground">
                         Giao KPI/OKR
                       </p>
                       <p className="tabular-nums text-muted-foreground">
@@ -323,9 +321,7 @@ export function PerformanceWindowConfigScreen() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                        Khảo sát
-                      </p>
+                      <p className="text-xs font-bold uppercase text-muted-foreground">Khảo sát</p>
                       <p className="tabular-nums text-muted-foreground">
                         {row.answerStartDay} → {row.answerEndDay}
                       </p>

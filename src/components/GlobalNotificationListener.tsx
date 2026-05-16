@@ -228,7 +228,7 @@ export default function GlobalNotificationListener() {
                   <div>
                     <p
                       className={cn(
-                        'text-[10px] font-bold uppercase tracking-widest',
+                        'text-xs font-semibold uppercase tracking-wide',
                         r.alertType === 'someone_else_start' ? 'text-red-400' : 'text-blue-400'
                       )}
                     >
@@ -239,7 +239,7 @@ export default function GlobalNotificationListener() {
                   <div className="text-right">
                     <p
                       className={cn(
-                        'text-[10px] font-bold uppercase tracking-widest',
+                        'text-xs font-semibold uppercase tracking-wide',
                         r.alertType === 'someone_else_start' ? 'text-red-400' : 'text-blue-400'
                       )}
                     >

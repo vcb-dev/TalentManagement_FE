@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+﻿import { useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -212,7 +212,7 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
 
                             {questionGrade.note && (
                               <div className="mt-4 border-t border-primary/10 pt-3">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-primary/60">
+                                <p className="text-xs font-bold uppercase tracking-wider text-primary/60">
                                   Góp ý từ người chấm
                                 </p>
                                 <p className="mt-1 whitespace-pre-wrap text-sm font-bold leading-relaxed text-foreground">

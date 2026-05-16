@@ -224,7 +224,7 @@ export function GraderExamListScreen({ classId }: GraderExamListScreenProps) {
                             )}
                           </p>
                           {row.schedule ? (
-                            <p className="mt-1 text-[11px] font-medium text-primary">
+                            <p className="mt-1 text-xs font-medium text-primary">
                               Kỳ thi: {row.schedule.topic} ({row.schedule.startTime})
                             </p>
                           ) : null}
@@ -341,7 +341,7 @@ export function GraderExamListScreen({ classId }: GraderExamListScreenProps) {
                                 )}
                               </div>
                               {row.schedule && (
-                                <div className="mt-1 text-[11px] font-medium text-primary">
+                                <div className="mt-1 text-xs font-medium text-primary">
                                   Kỳ thi: {row.schedule.topic} ({row.schedule.startTime})
                                 </div>
                               )}

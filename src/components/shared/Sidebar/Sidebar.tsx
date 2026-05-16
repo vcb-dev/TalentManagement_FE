@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react'
+﻿import { memo, useMemo, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
@@ -91,7 +91,7 @@ const NavLink = memo(function NavLink({
             onMouseLeave={() => setIsOpen(false)}
             className="w-56 p-1 bg-white/95 backdrop-blur-sm border-indigo-100 shadow-xl rounded-xl z-[100]"
           >
-            <div className="px-3 py-2 text-[10px] font-black uppercase text-indigo-500/70 tracking-widest border-b border-indigo-50/50 mb-1">
+            <div className="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground tracking-wide border-b border-border/50 mb-1">
               {item.label}
             </div>
             {item.children.map((child) => {
@@ -261,7 +261,7 @@ function SidebarInner() {
                         aria-expanded={isOpen}
                         aria-controls={`sidebar-group-${group.id}`}
                         className={cn(
-                          'group/header mx-1 flex items-center justify-between rounded-md px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors',
+                          'group/header mx-1 flex items-center justify-between rounded-md px-2 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors',
                           groupHasActive
                             ? 'text-indigo-700 dark:text-indigo-200'
                             : 'text-muted-foreground/75 hover:bg-white/55 hover:text-foreground dark:hover:bg-white/5',

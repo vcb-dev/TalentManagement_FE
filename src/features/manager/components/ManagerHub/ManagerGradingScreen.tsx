@@ -347,7 +347,7 @@ export function ManagerGradingScreen() {
                     <div>
                       <span
                         className={cn(
-                          'inline-flex rounded-full px-3 py-1 text-[11px] font-bold',
+                          'inline-flex rounded-full px-3 py-1 text-xs font-bold',
                           temp.badgeClass
                         )}
                       >
@@ -467,7 +467,7 @@ export function ManagerGradingScreen() {
                                 })}
                               </span>
                               {row.startTime && row.endTime ? (
-                                <span className="text-[11px] font-medium text-muted-foreground">
+                                <span className="text-xs font-medium text-muted-foreground">
                                   {row.startTime} — {row.endTime}
                                 </span>
                               ) : null}
@@ -479,7 +479,7 @@ export function ManagerGradingScreen() {
                         <td className="px-3 py-4 text-center">
                           <span
                             className={cn(
-                              'inline-flex rounded-full px-3 py-1 text-[11px] font-bold whitespace-nowrap',
+                              'inline-flex rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap',
                               temp.badgeClass
                             )}
                           >

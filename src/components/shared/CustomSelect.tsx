@@ -1,4 +1,4 @@
-import * as Select from '@radix-ui/react-select'
+﻿import * as Select from '@radix-ui/react-select'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -27,7 +27,7 @@ export const CustomSelect = ({
   return (
     <div className={cn('space-y-2', className)}>
       {label && (
-        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">
+        <label className="text-xs font-black text-slate-400 uppercase tracking-widest block ml-1">
           {label}
         </label>
       )}

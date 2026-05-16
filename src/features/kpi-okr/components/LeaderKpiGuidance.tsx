@@ -43,7 +43,7 @@ function TrafficGuidance() {
   return (
     <>
       <div className="rounded-lg bg-red-50 border border-red-100 px-3 py-2 text-xs dark:bg-red-950/20 dark:border-red-900/40">
-        <p className="font-bold text-red-600 dark:text-red-400 mb-1.5 text-[11px] uppercase tracking-wide">
+        <p className="font-bold text-red-600 dark:text-red-400 mb-1.5 text-xs uppercase tracking-wide">
           Bắt buộc nhập
         </p>
         <ul className="space-y-1 text-slate-700 dark:text-slate-300">
@@ -83,7 +83,7 @@ function KinhDoanhGuidance() {
     <>
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-lg bg-red-50 border border-red-100 px-3 py-2 dark:bg-red-950/20 dark:border-red-900/40">
-          <p className="font-bold text-red-600 dark:text-red-400 mb-1.5 text-[11px] uppercase tracking-wide">
+          <p className="font-bold text-red-600 dark:text-red-400 mb-1.5 text-xs uppercase tracking-wide">
             Bắt buộc nhập
           </p>
           <ul className="space-y-1 text-slate-700 dark:text-slate-300">
@@ -96,7 +96,7 @@ function KinhDoanhGuidance() {
           </ul>
         </div>
         <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 dark:bg-slate-800/30 dark:border-slate-700">
-          <p className="font-bold text-slate-500 dark:text-slate-400 mb-1.5 text-[11px] uppercase tracking-wide">
+          <p className="font-bold text-slate-500 dark:text-slate-400 mb-1.5 text-xs uppercase tracking-wide">
             Không bắt buộc
           </p>
           <ul className="space-y-1 text-slate-600 dark:text-slate-400">

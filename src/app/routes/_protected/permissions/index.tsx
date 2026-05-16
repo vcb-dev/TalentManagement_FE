@@ -362,7 +362,7 @@ function PermissionsIndexPage() {
                   </span>
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {PERMISSIONS_PAGE_SIZE} / trang
                   </span>
                   <PaginationPrevNext

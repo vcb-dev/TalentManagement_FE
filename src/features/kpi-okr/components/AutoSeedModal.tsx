@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+﻿import { useState, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -204,7 +204,7 @@ export function AutoSeedModal({
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Label className="text-xs font-medium text-slate-600">Nhân sự áp dụng</Label>
-                <Badge variant="muted" className="h-5 text-[10px]">
+                <Badge variant="muted" className="h-5 text-xs">
                   <Users className="mr-1 h-3 w-3" />
                   {memberUsers.length}
                 </Badge>
@@ -262,7 +262,7 @@ export function AutoSeedModal({
           <div className="space-y-4">
             <div className="rounded-lg border bg-slate-50/50 p-3 space-y-2">
               <div className="flex items-center gap-2 text-sm">
-                <Badge variant="outline" className="h-5 text-[10px] font-mono">
+                <Badge variant="outline" className="h-5 text-xs font-mono">
                   {preview.templateCode}
                 </Badge>
                 <span className="text-slate-500">

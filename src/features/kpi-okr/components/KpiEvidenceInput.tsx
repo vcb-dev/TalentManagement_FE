@@ -273,7 +273,7 @@ export function KpiEvidenceInput({
           <Upload className="h-3.5 w-3.5" />
           {uploading ? 'Đang tải…' : 'Tải ảnh'}
         </Button>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           Hoặc dán link trong ô dưới · JPEG/PNG/WebP/GIF · tối đa 8MB
         </span>
       </div>
@@ -284,7 +284,7 @@ export function KpiEvidenceInput({
         disabled={disabled}
         placeholder="Link minh chứng, đường dẫn ảnh, hoặc mô tả…"
         className={cn(
-          'min-h-[72px] resize-y rounded-md border border-slate-200 bg-white p-2 text-[12px] dark:border-slate-700 dark:bg-slate-950',
+          'min-h-[72px] resize-y rounded-md border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950',
           textareaClassName
         )}
       />

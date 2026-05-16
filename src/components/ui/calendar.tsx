@@ -1,4 +1,4 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 import { DayPicker } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 
@@ -45,7 +45,7 @@ export function Calendar({
         week: 'flex w-full mt-2',
         weekdays: 'flex',
         weekday:
-          'text-slate-400 h-10 w-10 p-0 text-center align-middle text-[10px] font-black uppercase tracking-widest',
+          'text-slate-400 h-10 w-10 p-0 text-center align-middle text-xs font-black uppercase tracking-widest',
         day: 'group/day relative h-11 w-11 p-0 text-center align-middle text-sm font-medium',
         day_button:
           'rdp-day_button box-border inline-flex h-10 min-h-10 w-10 min-w-10 items-center justify-center align-middle rounded-xl border-2 border-transparent p-0 text-sm font-bold transition-all duration-300 hover:shadow-md active:scale-95',

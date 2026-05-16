@@ -121,7 +121,7 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
       cardClass: 'border-primary/30 bg-primary/5',
       stats: [
         { label: 'Ngày nộp', value: '22/03/2026' },
-        { label: 'Người chấm', value: 'Lê Thu Hà', valueClass: 'text-[11px]' },
+        { label: 'Người chấm', value: 'Lê Thu Hà', valueClass: 'text-xs' },
         { label: 'Tiến độ', value: '2/5 mục', valueClass: 'text-[#92400E]' },
       ],
     },
@@ -133,7 +133,7 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
       cardClass: 'border-[#86EFAC] bg-[#F0FDF4]',
       stats: [
         { label: 'Ngày thi', value: '15/03/2026' },
-        { label: 'Người chấm', value: 'Lê Thu Hà', valueClass: 'text-[11px]' },
+        { label: 'Người chấm', value: 'Lê Thu Hà', valueClass: 'text-xs' },
         { label: 'Kết quả', value: '5/5 mục', valueClass: 'text-[#166534]' },
       ],
       note: '"Thực hiện đúng quy trình, mini-project chất lượng tốt. Trình bày mạch lạc."',
@@ -146,7 +146,7 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
       cardClass: 'border-[#FCD34D] bg-[#FFFBEB]',
       stats: [
         { label: 'Ngày thi', value: '05/01/2026' },
-        { label: 'Người chấm', value: 'Trần Minh', valueClass: 'text-[11px]' },
+        { label: 'Người chấm', value: 'Trần Minh', valueClass: 'text-xs' },
         { label: 'Kết quả', value: '2/4 mục', valueClass: 'text-[#991B1B]' },
       ],
       note: '"Bài kiểm tra kiến thức chưa đạt. Thi lại sau 2 tuần."',
@@ -159,7 +159,7 @@ export const MOCK_MY_PROFILE_PAGE: MyProfilePage = {
       cardClass: 'border-[#86EFAC] bg-[#F0FDF4]',
       stats: [
         { label: 'Ngày thi', value: '18/12/2023' },
-        { label: 'Người chấm', value: 'Phạm Ngọc', valueClass: 'text-[11px]' },
+        { label: 'Người chấm', value: 'Phạm Ngọc', valueClass: 'text-xs' },
         { label: 'Kết quả', value: '3/3 mục', valueClass: 'text-[#166534]' },
       ],
     },

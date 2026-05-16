@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+﻿import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { FormProvider, type Control, useForm, useWatch } from 'react-hook-form'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
@@ -323,7 +323,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
               </div>
 
               <div>
-                <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <div className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   Phân công
                 </div>
                 <div className="space-y-4">
@@ -332,7 +332,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                       <span className="text-sm font-semibold leading-snug text-foreground">
                         {deptName}
                       </span>
-                      <span className="shrink-0 rounded-md bg-indigo-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-800">
+                      <span className="shrink-0 rounded-md bg-indigo-500/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-indigo-800">
                         Chính
                       </span>
                     </div>
@@ -343,7 +343,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                         <span className="text-sm font-semibold leading-snug text-foreground">
                           {teamName}
                         </span>
-                        <span className="shrink-0 rounded-md bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-800">
+                        <span className="shrink-0 rounded-md bg-cyan-500/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-cyan-800">
                           Nhóm
                         </span>
                       </div>
@@ -355,7 +355,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
               <div className="h-px bg-border" />
 
               <div>
-                <div className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <div className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   Kỹ năng &amp; huy hiệu
                 </div>
                 <ul className="space-y-2">
@@ -853,7 +853,7 @@ function ExamCard({
       <div className="grid grid-cols-3 gap-1.5">
         {stats.map(([l, v]) => (
           <div key={l} className="rounded-lg bg-white/70 px-2 py-1.5">
-            <div className="text-[9px] font-semibold uppercase text-muted-foreground">{l}</div>
+            <div className="text-xs font-semibold uppercase text-muted-foreground">{l}</div>
             <div className="text-sm font-bold">{v}</div>
           </div>
         ))}

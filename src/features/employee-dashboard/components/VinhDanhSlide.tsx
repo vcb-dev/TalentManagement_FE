@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { Trophy, ChevronLeft, ChevronRight, Star, Users } from 'lucide-react'
 import { performanceApi, type VinhDanhHonorBoardResponse } from '@/features/kpi-okr/api'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
@@ -201,12 +201,12 @@ export function VinhDanhSlide({ className }: { className?: string }) {
 
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {slide.departmentName && (
-                <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[0.65rem] font-medium text-white/80 backdrop-blur-sm">
+                <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium text-white/80 backdrop-blur-sm">
                   {slide.departmentName}
                 </span>
               )}
               {slide.teamName && (
-                <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[0.65rem] text-white/60 backdrop-blur-sm">
+                <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/60 backdrop-blur-sm">
                   {slide.teamName}
                 </span>
               )}

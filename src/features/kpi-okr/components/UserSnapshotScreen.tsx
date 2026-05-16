@@ -1,4 +1,4 @@
-// @ts-nocheck -- uses file-based router params not yet in route tree
+﻿// @ts-nocheck -- uses file-based router params not yet in route tree
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, useSearch } from '@tanstack/react-router'
@@ -144,7 +144,7 @@ export function UserSnapshotScreen() {
                       <Badge
                         variant="outline"
                         className={cn(
-                          'h-4 text-[9px] font-bold px-1',
+                          'h-4 text-xs font-bold px-1',
                           latestOkr.status === 'done'
                             ? 'border-emerald-200 text-emerald-600'
                             : 'border-slate-200 text-slate-500'
@@ -272,7 +272,7 @@ function EvalBadge({ status }: { status: string | null | undefined }) {
     <Badge
       variant="outline"
       className={cn(
-        'h-4 text-[9px] font-bold px-1',
+        'h-4 text-xs font-bold px-1',
         isOk
           ? 'border-emerald-200 bg-emerald-50 text-emerald-600'
           : 'border-rose-200 bg-rose-50 text-rose-600'
@@ -293,7 +293,7 @@ function GradeBadge({ grade, className }: { grade: string; className?: string })
     <Badge
       variant="outline"
       className={cn(
-        'h-4 text-[9px] font-extrabold px-1',
+        'h-4 text-xs font-extrabold px-1',
         map[grade] || 'border-slate-200 text-slate-500',
         className
       )}

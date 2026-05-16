@@ -1,4 +1,4 @@
-import { Link, createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+﻿import { Link, createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -336,7 +336,7 @@ function LoginPage() {
                       <span className="font-mono text-xs font-semibold text-foreground sm:text-xs">
                         {acc.email}
                       </span>
-                      <span className="mt-0.5 block text-[10px] text-muted-foreground sm:text-xs">
+                      <span className="mt-0.5 block text-xs text-muted-foreground sm:text-xs">
                         <span className="font-medium text-primary/90">
                           {ROLE_LABEL_VI[acc.role]}
                         </span>
@@ -367,7 +367,7 @@ function LoginPage() {
             <Trophy className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
           </div>
           <div className="min-w-0 text-left">
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               THÀNH TÍCH GẦN ĐÂY
             </p>
             <p className="mt-0.5 text-sm font-bold leading-snug text-foreground">

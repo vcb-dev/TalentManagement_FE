@@ -43,7 +43,7 @@ export function EmployeeAvatar({ name, className, photoUrl, showOnlineDot }: Emp
       </Avatar>
       {showOnlineDot ? (
         <span
-          className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#22C55E] shadow-sm"
+          className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500 shadow-sm"
           aria-hidden
         />
       ) : null}

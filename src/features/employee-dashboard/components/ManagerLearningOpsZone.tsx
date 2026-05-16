@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from 'recharts'
 import { AlertTriangle, GraduationCap, LineChart } from 'lucide-react'
 import { useLearningOpsSummary } from '@/features/dashboard/hooks'
@@ -244,14 +244,14 @@ export function ManagerLearningOpsZone({
             Vận hành &amp; phân bổ
           </h2>
           <span
-            className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold tabular-nums text-primary"
+            className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-bold tabular-nums text-primary"
             title="Kỳ đang lọc"
           >
             {rangeLabel}
           </span>
         </div>
         {isFetching && !isLoading ? (
-          <span className="text-[10px] font-medium text-muted-foreground">Đang tải…</span>
+          <span className="text-xs font-medium text-muted-foreground">Đang tải…</span>
         ) : null}
       </div>
 
