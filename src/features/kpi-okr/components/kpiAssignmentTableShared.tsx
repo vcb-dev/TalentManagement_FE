@@ -22,8 +22,8 @@ export function formatViNumber(value: number | string | null | undefined): strin
 }
 
 /**
- * Cột Nội dung — giới hạn 2 dòng, có nút "Xem thêm" / "Thu gọn".
- * Dùng cho cả editable row lẫn read-only row.
+ * Cột Nội dung — luôn clamp 2 dòng, badge inline trong text (không thêm chiều cao).
+ * "Xem thêm" / "Thu gọn" hiện khi content > 40 ký tự hoặc có badge.
  */
 export function ContentCell({
   content,
@@ -35,25 +35,33 @@ export function ContentCell({
   className?: string
 }) {
   const [expanded, setExpanded] = useState(false)
-  const isLong = content.length > 80
+  const needsToggle = content.length > 40 || !!badge
 
   return (
-    <div className={cn('flex flex-col gap-1', className)}>
-      <div className="flex flex-wrap items-start gap-1.5">
-        <span className={cn('font-medium text-slate-900 dark:text-slate-100', !expanded && isLong && 'line-clamp-2')}>
-          {content}
-        </span>
-        {badge}
+    <div className={cn('flex min-w-0 flex-col gap-0.5', className)}>
+      {/* Text + badge inline → cùng bị clamp khi collapsed */}
+      <div
+        className={cn(
+          'break-words text-sm font-medium leading-snug text-slate-900 dark:text-slate-100',
+          !expanded && 'line-clamp-2'
+        )}
+      >
+        {content}
+        {badge && !expanded && (
+          <span className="ml-1.5 inline-flex align-middle">{badge}</span>
+        )}
       </div>
-      {isLong && (
+      {/* Badge tách dòng chỉ khi expanded */}
+      {expanded && badge && <div className="mt-0.5">{badge}</div>}
+      {needsToggle && (
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className="h-auto self-start px-0 py-0.5 text-xs font-semibold text-primary hover:bg-transparent hover:text-primary/80"
+          className="h-auto self-start px-0 py-0.5 text-xs font-medium text-primary/60 hover:bg-transparent hover:text-primary"
           onClick={() => setExpanded((v) => !v)}
         >
-          {expanded ? 'Thu gọn ↑' : 'Xem thêm ↓'}
+          {expanded ? '↑ Thu gọn' : '↓ Xem thêm'}
         </Button>
       )}
     </div>

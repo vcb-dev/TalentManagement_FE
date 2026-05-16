@@ -50,10 +50,12 @@ import {
   ASSIGN_TABLE_HEAD,
   AssignmentEpic4ReadCells,
   AssignmentEpic4ReadStack,
+  ContentCell,
   KindBadge,
   PriorityBadge,
   XL_TH,
   formatKpiSetAt,
+  formatViNumber,
   periodLabel,
   xlTd,
 } from '@/features/kpi-okr/components/kpiAssignmentTableShared'
@@ -648,13 +650,11 @@ const ManagerLeaderAssignmentEditor = forwardRef<
       <TableCell className={td}>
         <PriorityBadge priority={assignment.priority} />
       </TableCell>
-      <TableCell
-        className={cn(td, 'min-w-[240px] max-w-xl font-medium text-slate-900 dark:text-slate-100')}
-      >
-        <span className="line-clamp-4 whitespace-pre-wrap break-words">{assignment.content}</span>
+      <TableCell className={cn(td, 'w-[200px] min-w-0 max-w-[200px]')}>
+        <ContentCell content={assignment.content} />
       </TableCell>
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
-        {assignment.targetMetric || '—'}
+        {formatViNumber(assignment.targetMetric) || '—'}
       </TableCell>
       <AssignmentEpic4ReadCells row={assignment} td={td} />
       <TableCell className={cn(td, 'min-w-[140px]')}>

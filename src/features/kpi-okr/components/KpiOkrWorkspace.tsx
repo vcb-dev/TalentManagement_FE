@@ -1005,7 +1005,7 @@ function MemberSelfAssignmentRow({
       <TableCell className={td}>
         <PriorityBadge priority={row.priority} />
       </TableCell>
-      <TableCell className={cn(td, 'min-w-[240px] max-w-xl')}>
+      <TableCell className={cn(td, 'w-[200px] min-w-0 max-w-[200px]')}>
         <ContentCell
           content={row.content}
           badge={
