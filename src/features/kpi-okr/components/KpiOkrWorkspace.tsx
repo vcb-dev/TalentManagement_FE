@@ -62,7 +62,6 @@ import {
   REMOVED_TRAFFIC_MANDATORY_METRICS,
   resolveTemplateCodeForTeam,
 } from '@/features/kpi-okr/catalogHelpers'
-import { LeaderKpiGuidance } from '@/features/kpi-okr/components/LeaderKpiGuidance'
 import {
   parseKpiOkrImportFile,
   type ImportAssignmentItem,
@@ -773,8 +772,8 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                     T{month}/{year}
                   </strong>{' '}
                   cho phép giao KPI/OKR từ ngày {assignmentWindowBounds.startDay} đến ngày{' '}
-                  {assignmentWindowBounds.endDay}. Hiện chưa đến khoảng thời gian này. HR có thể
-                  điều chỉnh qua cấu hình cửa sổ trên backend.
+                  {assignmentWindowBounds.endDay}. Hiện chưa đến khoảng thời gian này. Liên hệ HR để
+                  điều chỉnh nếu cần.
                 </>
               ) : (
                 <>
@@ -783,18 +782,12 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                     T{month}/{year}
                   </strong>{' '}
                   chỉ cho phép giao KPI/OKR từ ngày {assignmentWindowBounds.startDay} đến ngày{' '}
-                  {assignmentWindowBounds.endDay}. Khoảng thời gian đã kết thúc. HR có thể điều
-                  chỉnh qua cấu hình cửa sổ trên backend.
+                  {assignmentWindowBounds.endDay}. Khoảng thời gian đã kết thúc. Liên hệ HR để điều
+                  chỉnh nếu cần.
                 </>
               )}
             </p>
           </div>
-        </div>
-      )}
-
-      {(isKinhDoanhTeam || isTrafficTeamSelected) && (
-        <div className="mb-4">
-          <LeaderKpiGuidance variant={isTrafficTeamSelected ? 'TRAFFIC' : 'KINH_DOANH'} />
         </div>
       )}
 
@@ -897,7 +890,9 @@ function useMemberSelfAssignmentEdit(row: PerformanceAssignment, onSaved: () => 
   /** Giá trị hiển thị: khi focus → raw digits, khi blur → định dạng dấu chấm ngàn */
   const numericDisplayValue = numericFocused
     ? numericRaw
-    : formatViNumber(numericRaw) === '—' ? '' : formatViNumber(numericRaw)
+    : formatViNumber(numericRaw) === '—'
+      ? ''
+      : formatViNumber(numericRaw)
 
   const handleNumericChange = (val: string) => {
     // Bỏ dấu chấm ngàn, chấp nhận digit và một dấu thập phân
@@ -1005,7 +1000,7 @@ function MemberSelfAssignmentRow({
       <TableCell className={td}>
         <PriorityBadge priority={row.priority} />
       </TableCell>
-      <TableCell className={cn(td, 'w-[200px] min-w-0 max-w-[200px]')}>
+      <TableCell className={cn(td, 'min-w-[195px] max-w-[285px]')}>
         <ContentCell
           content={row.content}
           badge={
@@ -1020,7 +1015,7 @@ function MemberSelfAssignmentRow({
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
         {formatViNumber(row.targetMetric) || '—'}
       </TableCell>
-      <TableCell className={cn(td, 'p-2 align-middle')}>
+      <TableCell className={cn(td, 'w-[100px] p-2 align-middle')}>
         <div className="relative">
           <Input
             value={numericDisplayValue}
@@ -1047,7 +1042,7 @@ function MemberSelfAssignmentRow({
           )}
         </div>
       </TableCell>
-      <TableCell className={cn(td, 'p-2 align-middle')}>
+      <TableCell className={cn(td, 'w-[80px] p-2 align-middle')}>
         <Input
           value={numericUnit}
           onChange={(e) => setNumericUnit(e.target.value)}
@@ -1089,7 +1084,12 @@ function MemberSelfAssignmentRow({
           )}
         </div>
       </TableCell>
-      <TableCell className={cn(td, 'whitespace-nowrap text-right')}>
+      <TableCell
+        className={cn(
+          td,
+          'sticky right-0 z-10 whitespace-nowrap bg-white text-right shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-950'
+        )}
+      >
         {!isMockApiEnabled() ? (
           <Button
             type="button"
@@ -1128,7 +1128,7 @@ function ReadOnlyAssignmentRow({
       <TableCell className={td}>
         <PriorityBadge priority={row.priority} />
       </TableCell>
-      <TableCell className={cn(td, 'min-w-[300px] max-w-xl')}>
+      <TableCell className={cn(td, 'min-w-[195px] max-w-[285px]')}>
         <ContentCell
           content={row.content}
           badge={
@@ -1157,7 +1157,12 @@ function ReadOnlyAssignmentRow({
           )}
         </div>
       </TableCell>
-      <TableCell className={td} />
+      <TableCell
+        className={cn(
+          td,
+          'sticky right-0 z-10 bg-white shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-950'
+        )}
+      />
     </TableRow>
   )
 }
@@ -1506,7 +1511,7 @@ function LeaderAssignmentRow({
       <TableCell className={td}>
         <PriorityBadge priority={row.priority} />
       </TableCell>
-      <TableCell className={cn(td, 'min-w-[300px] max-w-xl')}>
+      <TableCell className={cn(td, 'min-w-[195px] max-w-[285px]')}>
         <ContentCell
           content={row.content}
           badge={
@@ -1535,7 +1540,12 @@ function LeaderAssignmentRow({
           )}
         </div>
       </TableCell>
-      <TableCell className={cn(td, 'whitespace-nowrap text-right')}>
+      <TableCell
+        className={cn(
+          td,
+          'sticky right-0 z-10 whitespace-nowrap bg-white text-right shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-950'
+        )}
+      >
         {editable ? (
           <>
             <div className="flex items-center justify-end gap-0.5">
@@ -1802,8 +1812,15 @@ function AssignmentTableSingleUser({
   const tableHeader = (
     <TableHeader>
       <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
-        {ASSIGN_TABLE_HEAD.map((h) => (
-          <TableHead key={h} className={XL_TH}>
+        {ASSIGN_TABLE_HEAD.map((h, i) => (
+          <TableHead
+            key={h}
+            className={cn(
+              XL_TH,
+              i === ASSIGN_TABLE_HEAD.length - 1 &&
+                'sticky right-0 z-20 bg-slate-50/95 backdrop-blur-md shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-900/95'
+            )}
+          >
             {h}
           </TableHead>
         ))}
@@ -3485,9 +3502,7 @@ export function FormPanel({
               3. Form câu hỏi theo tháng
             </h2>
           </div>
-          <p className="text-sm text-slate-500">
-            Khảo sát và ghi nhận ý kiến phản hồi hàng tháng.
-          </p>
+          <p className="text-sm text-slate-500">Khảo sát và ghi nhận ý kiến phản hồi hàng tháng.</p>
         </div>
       </div>
 

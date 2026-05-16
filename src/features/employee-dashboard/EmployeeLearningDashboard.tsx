@@ -613,19 +613,20 @@ export function EmployeeLearningDashboard() {
               aria-labelledby="dash-tab-learning"
               hidden={tab !== 'learning'}
             >
-              {isManagerLearningDash ? (
-                <ManagerLearningOpsZone
-                  reportYear={managerReportPeriod.reportYear}
-                  rangeStartMonth={managerReportPeriod.rangeStartMonth}
-                  rangeEndMonth={managerReportPeriod.rangeEndMonth}
-                />
-              ) : (
-                <DashboardLearningZone
-                  isLoading={isLoading}
-                  currentLevel={levelKey}
-                  currentStars={filledStars}
-                />
-              )}
+              {tab === 'learning' &&
+                (isManagerLearningDash ? (
+                  <ManagerLearningOpsZone
+                    reportYear={managerReportPeriod.reportYear}
+                    rangeStartMonth={managerReportPeriod.rangeStartMonth}
+                    rangeEndMonth={managerReportPeriod.rangeEndMonth}
+                  />
+                ) : (
+                  <DashboardLearningZone
+                    isLoading={isLoading}
+                    currentLevel={levelKey}
+                    currentStars={filledStars}
+                  />
+                ))}
             </div>
             <div
               id="dash-panel-kpi"
@@ -633,14 +634,18 @@ export function EmployeeLearningDashboard() {
               aria-labelledby="dash-tab-kpi"
               hidden={tab !== 'kpi'}
             >
-              {isManagerLearningDash && <VinhDanhSlide className="mb-6" />}
-              <DashboardKpiOkrZone
-                role={role as 'LEADER' | 'MANAGER' | 'MEMBER'}
-                paths={paths}
-                managerReportPeriodFromParent={
-                  isManagerLearningDash ? managerKpiPeriodBridge : null
-                }
-              />
+              {tab === 'kpi' && (
+                <>
+                  {isManagerLearningDash && <VinhDanhSlide className="mb-6" />}
+                  <DashboardKpiOkrZone
+                    role={role as 'LEADER' | 'MANAGER' | 'MEMBER'}
+                    paths={paths}
+                    managerReportPeriodFromParent={
+                      isManagerLearningDash ? managerKpiPeriodBridge : null
+                    }
+                  />
+                </>
+              )}
             </div>
           </div>
         ) : (

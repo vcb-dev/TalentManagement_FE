@@ -56,9 +56,7 @@ function FieldLabel({ children }: { children: string }) {
   return (
     <span className="mb-1.5 flex items-center gap-1.5">
       <span className="h-3 w-0.5 rounded-full bg-slate-300" aria-hidden />
-      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-        {children}
-      </span>
+      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{children}</span>
     </span>
   )
 }
@@ -451,18 +449,18 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
 
               <section className="rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
                 <div className="mb-8 flex items-center gap-3">
-                  <div className="h-8 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
+                  <div className="h-8 w-1.5 rounded-full bg-gradient-to-b from-primary to-violet-600" />
                   <h2 className="text-xl font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
                     Chi tiết hồ sơ
                   </h2>
                 </div>
 
                 <div className="space-y-8">
-                  <div className="rounded-2xl border border-blue-100 bg-blue-50/20 p-6 dark:border-blue-900/20 dark:bg-blue-900/10">
+                  <div className="rounded-2xl border border-slate-200 border-l-4 border-l-primary bg-white p-6 shadow-sm dark:border-slate-800 dark:border-l-primary dark:bg-slate-900/50">
                     <SectionTitle variant="primary">{workSection.title}</SectionTitle>
                     {workReadonlyFields.length > 0 ? (
                       <div className="mb-8">
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-blue-600/60">
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-primary/50">
                           Thông tin đồng bộ (chỉ xem)
                         </p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -471,8 +469,8 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                       </div>
                     ) : null}
                     {workEditableFields.length > 0 ? (
-                      <div className="border-t border-blue-100/50 pt-6 dark:border-blue-800/50">
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-blue-600/60">
+                      <div className="border-t border-slate-100 pt-6 dark:border-slate-800">
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
                           Thông tin có thể cập nhật
                         </p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -486,12 +484,12 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     <div
                       key={section.title}
                       className={cn(
-                        'rounded-2xl border p-6',
+                        'rounded-2xl border border-slate-200 border-l-4 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50',
                         idx % 3 === 0
-                          ? 'border-indigo-100 bg-indigo-50/20 dark:border-indigo-900/20 dark:bg-indigo-900/10'
+                          ? 'border-l-indigo-500'
                           : idx % 3 === 1
-                            ? 'border-violet-100 bg-violet-50/20 dark:border-violet-900/20 dark:bg-violet-900/10'
-                            : 'border-emerald-100 bg-emerald-50/20 dark:border-emerald-900/20 dark:bg-emerald-900/10'
+                            ? 'border-l-violet-500'
+                            : 'border-l-emerald-500'
                       )}
                     >
                       <SectionTitle variant={detailSectionVariants[idx]}>
@@ -507,14 +505,14 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
             </div>
 
             <aside className="space-y-6">
-              <section className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50/50 p-8 shadow-sm dark:border-amber-900/30 dark:from-amber-950/20 dark:to-orange-950/10 relative overflow-hidden">
-                <div className="absolute top-0 right-0 h-24 w-24 bg-amber-500/10 rounded-full -mr-12 -mt-12 blur-xl" />
+              <section className="rounded-3xl border border-primary/20 bg-gradient-to-br from-violet-50 to-indigo-50/50 p-8 shadow-sm dark:border-primary/20 dark:from-violet-950/20 dark:to-indigo-950/10 relative overflow-hidden">
+                <div className="absolute top-0 right-0 h-24 w-24 bg-primary/10 rounded-full -mr-12 -mt-12 blur-xl" />
                 <div className="mb-6 flex items-center gap-4 relative z-10">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-200 dark:shadow-none">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-white shadow-lg shadow-primary/30 dark:shadow-none">
                     <StarEmblem variant="filled" className="h-7 w-7" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700/70">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
                       Lộ trình hiện tại
                     </p>
                     <p className="text-base font-black text-slate-900 dark:text-slate-100 truncate">
@@ -525,25 +523,25 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
 
                 <div className="space-y-6 relative z-10">
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-amber-700/80">
+                    <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-primary/70">
                       <span>Tiến độ cấp độ</span>
-                      <span className="text-amber-600 bg-white px-1.5 py-0.5 rounded-md shadow-sm">
+                      <span className="text-primary bg-white px-1.5 py-0.5 rounded-md shadow-sm">
                         {levelProgressPct}%
                       </span>
                     </div>
-                    <div className="h-3 w-full overflow-hidden rounded-full bg-amber-200/50 dark:bg-amber-900/30 ring-4 ring-amber-100/50">
+                    <div className="h-3 w-full overflow-hidden rounded-full bg-primary/15 dark:bg-primary/20 ring-4 ring-primary/5">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                        className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-400 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(99,102,241,0.4)]"
                         style={{ width: `${levelProgressPct}%` }}
                       />
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 border-t border-amber-200/50 pt-6 dark:border-amber-900/20">
+                  <div className="flex items-center justify-between gap-2 border-t border-primary/15 pt-6 dark:border-primary/20">
                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Sao hiện tại
                     </div>
-                    <div className="text-lg font-black text-amber-600 bg-amber-100/50 px-2 py-0.5 rounded-lg">
+                    <div className="text-lg font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg">
                       {page.currentLevel.currentStarIndex}
                       <span className="text-slate-400 text-xs mx-0.5">/</span>
                       {totalStars}
@@ -558,7 +556,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                         className={cn(
                           'h-7 w-7 transition-all duration-300',
                           i < filledStars
-                            ? 'drop-shadow-[0_2px_4px_rgba(245,158,11,0.4)] hover:scale-110'
+                            ? 'drop-shadow-[0_2px_4px_rgba(99,102,241,0.4)] hover:scale-110'
                             : 'opacity-20 grayscale hover:opacity-40'
                         )}
                         alt={i < filledStars ? `Sao đã đạt ${i + 1}` : `Sao chưa đạt ${i + 1}`}
@@ -570,7 +568,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-10 rounded-xl border-amber-200 bg-white text-xs font-semibold uppercase tracking-wider text-amber-700 shadow-sm transition-all hover:bg-amber-500 hover:text-white hover:border-amber-500 dark:border-amber-900/50 dark:bg-slate-900"
+                      className="h-10 rounded-xl border-primary/30 bg-white text-xs font-semibold uppercase tracking-wider text-primary shadow-sm transition-all hover:bg-primary hover:text-white hover:border-primary dark:border-primary/30 dark:bg-slate-900"
                       asChild
                     >
                       <Link to="/learning-path" search={learningPathSearch}>
@@ -580,7 +578,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-10 rounded-xl border-amber-200 bg-white text-xs font-semibold uppercase tracking-wider text-amber-700 shadow-sm transition-all hover:bg-amber-500 hover:text-white hover:border-amber-500 dark:border-amber-900/50 dark:bg-slate-900"
+                      className="h-10 rounded-xl border-primary/30 bg-white text-xs font-semibold uppercase tracking-wider text-primary shadow-sm transition-all hover:bg-primary hover:text-white hover:border-primary dark:border-primary/30 dark:bg-slate-900"
                       asChild
                     >
                       <Link to="/exam">Kết quả thi</Link>

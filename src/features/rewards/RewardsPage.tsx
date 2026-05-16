@@ -898,9 +898,7 @@ export default function RewardsPage() {
                       <h3 className="font-black text-slate-800 uppercase text-sm">
                         Cấu hình Quy chuẩn
                       </h3>
-                      <p className="text-slate-400 text-xs font-bold">
-                        Thêm/sửa nội dung định mức
-                      </p>
+                      <p className="text-slate-400 text-xs font-bold">Thêm/sửa nội dung định mức</p>
                     </div>
                   </div>
                   <button
@@ -1222,235 +1220,253 @@ export default function RewardsPage() {
         )}
       </div>
 
-      <Dialog open={showActionPanel && !!selectedEmp} onOpenChange={(open) => { if (!open) setShowActionPanel(false) }}>
+      <Dialog
+        open={showActionPanel && !!selectedEmp}
+        onOpenChange={(open) => {
+          if (!open) setShowActionPanel(false)
+        }}
+      >
         <DialogContent className="max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-white/20 shadow-2xl [&>button]:hidden">
-            <div className="bg-white rounded-[2.5rem] w-full shadow-2xl overflow-hidden border border-white/20">
-              <div
-                className={`px-10 py-8 text-white font-black uppercase text-sm tracking-[0.2em] flex justify-between items-center ${actionKind === 'REWARD' ? 'bg-emerald-600' : 'bg-rose-600'}`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                    {actionKind === 'REWARD' ? (
-                      <Award className="h-5 w-5" />
-                    ) : (
-                      <AlertTriangle className="h-5 w-5" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="text-xs opacity-70 mb-0.5">Ghi nhận cho</div>
-                    <div className="text-base">{selectedEmp.name || selectedEmp.fullNameLegal}</div>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowActionPanel(false)}
-                  className="w-10 h-10 rounded-full hover:bg-white/20 text-white"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-
-              <div className="p-10 space-y-8">
-                <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar border-b border-slate-50">
-                  {excelTabs.map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setSelectedRuleCategory(tab)}
-                      className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase whitespace-nowrap border-2 transition-all ${selectedRuleCategory === tab ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="max-h-[50vh] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                  {filteredActionRules.length > 0 ? (
-                    filteredActionRules.map((rule) => (
-                      <button
-                        key={rule.id}
-                        onClick={() => handleToggleRule(rule.id)}
-                        className={`w-full p-6 rounded-[2rem] border-2 text-left transition-all flex items-center justify-between group relative overflow-hidden ${selectedRuleIds.has(rule.id) ? (actionKind === 'REWARD' ? 'border-emerald-500 bg-emerald-50/50' : 'border-rose-500 bg-rose-50/50') : 'border-slate-50 bg-slate-50 hover:border-slate-200'} ${appliedRuleIds.has(rule.id) ? 'opacity-70 pointer-events-none' : ''}`}
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div
-                              className={`font-black text-sm ${selectedRuleIds.has(rule.id) ? (actionKind === 'REWARD' ? 'text-emerald-900' : 'text-rose-900') : 'text-slate-700'}`}
-                            >
-                              {rule.title}
-                            </div>
-                            {appliedRuleIds.has(rule.id) && (
-                              <span className="px-2 py-0.5 bg-slate-200 text-slate-500 text-xs font-black uppercase rounded-full tracking-tighter">
-                                Đã ghi nhận
-                              </span>
-                            )}
-                          </div>
-                          {rule.note && (
-                            <div className="text-xs text-slate-400 italic font-medium">
-                              {rule.note}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <div
-                            className={`font-black text-sm whitespace-nowrap px-4 py-1.5 rounded-full bg-white shadow-sm ${actionKind === 'REWARD' ? 'text-emerald-600' : 'text-rose-600'}`}
-                          >
-                            {rule.amount ? `${Number(rule.amount).toLocaleString()} đ` : 'Chưa có'}
-                          </div>
-                          <div
-                            className={`h-8 w-8 rounded-full border-2 flex items-center justify-center transition-all shadow-inner ${selectedRuleIds.has(rule.id) ? (actionKind === 'REWARD' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-rose-600 border-rose-600 text-white') : 'border-slate-200 bg-white'}`}
-                          >
-                            {selectedRuleIds.has(rule.id) && (
-                              <Check className="h-5 w-5 stroke-[3]" />
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    ))
+          <div className="bg-white rounded-[2.5rem] w-full shadow-2xl overflow-hidden border border-white/20">
+            <div
+              className={`px-10 py-8 text-white font-black uppercase text-sm tracking-[0.2em] flex justify-between items-center ${actionKind === 'REWARD' ? 'bg-emerald-600' : 'bg-rose-600'}`}
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                  {actionKind === 'REWARD' ? (
+                    <Award className="h-5 w-5" />
                   ) : (
-                    <div className="py-24 text-center text-slate-300 italic uppercase text-xs tracking-widest">
-                      Không có dữ liệu trong mục {selectedRuleCategory}
-                    </div>
+                    <AlertTriangle className="h-5 w-5" />
                   )}
                 </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                    Ghi chú chi tiết (Không bắt buộc)
-                  </label>
-                  <textarea
-                    placeholder="Nhập thêm chi tiết về trường hợp này..."
-                    value={customNote}
-                    onChange={(e) => setCustomNote(e.target.value)}
-                    className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-sm focus:border-indigo-500 outline-none transition-all"
-                    rows={2}
-                  />
-                </div>
-
-                <div className="pt-6 flex gap-4">
-                  <button
-                    onClick={() => setShowActionPanel(false)}
-                    className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-3xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
-                  >
-                    Đóng lại
-                  </button>
-                  <button
-                    onClick={handleSubmitActions}
-                    disabled={submitting || selectedRuleIds.size === 0}
-                    className={`flex-[2] py-5 rounded-3xl font-black uppercase text-xs tracking-[0.25em] shadow-2xl transition-all ${submitting || selectedRuleIds.size === 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : actionKind === 'REWARD' ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200' : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-200'}`}
-                  >
-                    {submitting ? 'Đang xử lý...' : `Xác nhận (${selectedRuleIds.size})`}
-                  </button>
+                <div>
+                  <div className="text-xs opacity-70 mb-0.5">Ghi nhận cho</div>
+                  <div className="text-base">{selectedEmp?.name || selectedEmp?.fullNameLegal}</div>
                 </div>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowActionPanel(false)}
+                className="w-10 h-10 rounded-full hover:bg-white/20 text-white"
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </div>
+
+            <div className="p-10 space-y-8">
+              <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar border-b border-slate-50">
+                {excelTabs.map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setSelectedRuleCategory(tab)}
+                    className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase whitespace-nowrap border-2 transition-all ${selectedRuleCategory === tab ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              <div className="max-h-[50vh] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                {filteredActionRules.length > 0 ? (
+                  filteredActionRules.map((rule) => (
+                    <button
+                      key={rule.id}
+                      onClick={() => handleToggleRule(rule.id)}
+                      className={`w-full p-6 rounded-[2rem] border-2 text-left transition-all flex items-center justify-between group relative overflow-hidden ${selectedRuleIds.has(rule.id) ? (actionKind === 'REWARD' ? 'border-emerald-500 bg-emerald-50/50' : 'border-rose-500 bg-rose-50/50') : 'border-slate-50 bg-slate-50 hover:border-slate-200'} ${appliedRuleIds.has(rule.id) ? 'opacity-70 pointer-events-none' : ''}`}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div
+                            className={`font-black text-sm ${selectedRuleIds.has(rule.id) ? (actionKind === 'REWARD' ? 'text-emerald-900' : 'text-rose-900') : 'text-slate-700'}`}
+                          >
+                            {rule.title}
+                          </div>
+                          {appliedRuleIds.has(rule.id) && (
+                            <span className="px-2 py-0.5 bg-slate-200 text-slate-500 text-xs font-black uppercase rounded-full tracking-tighter">
+                              Đã ghi nhận
+                            </span>
+                          )}
+                        </div>
+                        {rule.note && (
+                          <div className="text-xs text-slate-400 italic font-medium">
+                            {rule.note}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div
+                          className={`font-black text-sm whitespace-nowrap px-4 py-1.5 rounded-full bg-white shadow-sm ${actionKind === 'REWARD' ? 'text-emerald-600' : 'text-rose-600'}`}
+                        >
+                          {rule.amount ? `${Number(rule.amount).toLocaleString()} đ` : 'Chưa có'}
+                        </div>
+                        <div
+                          className={`h-8 w-8 rounded-full border-2 flex items-center justify-center transition-all shadow-inner ${selectedRuleIds.has(rule.id) ? (actionKind === 'REWARD' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-rose-600 border-rose-600 text-white') : 'border-slate-200 bg-white'}`}
+                        >
+                          {selectedRuleIds.has(rule.id) && <Check className="h-5 w-5 stroke-[3]" />}
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="py-24 text-center text-slate-300 italic uppercase text-xs tracking-widest">
+                    Không có dữ liệu trong mục {selectedRuleCategory}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                  Ghi chú chi tiết (Không bắt buộc)
+                </label>
+                <textarea
+                  placeholder="Nhập thêm chi tiết về trường hợp này..."
+                  value={customNote}
+                  onChange={(e) => setCustomNote(e.target.value)}
+                  className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-sm focus:border-indigo-500 outline-none transition-all"
+                  rows={2}
+                />
+              </div>
+
+              <div className="pt-6 flex gap-4">
+                <button
+                  onClick={() => setShowActionPanel(false)}
+                  className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-3xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
+                >
+                  Đóng lại
+                </button>
+                <button
+                  onClick={handleSubmitActions}
+                  disabled={submitting || selectedRuleIds.size === 0}
+                  className={`flex-[2] py-5 rounded-3xl font-black uppercase text-xs tracking-[0.25em] shadow-2xl transition-all ${submitting || selectedRuleIds.size === 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : actionKind === 'REWARD' ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200' : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-200'}`}
+                >
+                  {submitting ? 'Đang xử lý...' : `Xác nhận (${selectedRuleIds.size})`}
+                </button>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showRuleModal} onOpenChange={(open) => { if (!open) setShowRuleModal(false) }}>
+      <Dialog
+        open={showRuleModal}
+        onOpenChange={(open) => {
+          if (!open) setShowRuleModal(false)
+        }}
+      >
         <DialogContent className="max-w-lg rounded-3xl p-0 overflow-hidden border-slate-100 shadow-2xl [&>button]:hidden">
-            <div className="bg-white rounded-3xl w-full shadow-2xl overflow-hidden border border-slate-100">
-              <div className="bg-indigo-600 px-8 py-6 text-white font-black uppercase text-sm tracking-widest flex justify-between items-center">
-                <span>{editingRuleId ? 'Cập nhật Quy chuẩn' : 'Thêm quy chuẩn mới'}</span>
-                <Button type="button" variant="ghost" size="icon" onClick={() => setShowRuleModal(false)} className="w-8 h-8 rounded-full hover:bg-white/20 text-white">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <form onSubmit={handleSaveRule} className="p-8 space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <CustomSelect
-                    label="Phân loại Excel"
-                    value={ruleForm.category}
-                    onValueChange={(val) => setRuleForm({ ...ruleForm, category: val })}
-                    options={[
-                      'CHUNG',
-                      'TECH',
-                      'ADS',
-                      'EDITOR',
-                      'HÀNH CHÍNH',
-                      'KẾ TOÁN',
-                      'KINH DOANH',
-                      'LIVESTREAM',
-                      'LOGISTIC',
-                      'MEDIA',
-                      'SẢN XUẤT',
-                      'SALE CSKH',
-                      'TMĐT',
-                      'VẬN ĐƠN',
-                      'CỬA HÀNG',
-                    ]
-                      .sort()
-                      .map((cat) => ({
-                        label: cat === 'TECH' ? 'CÔNG NGHỆ' : cat,
-                        value: cat,
-                      }))}
-                  />
-                  <CustomSelect
-                    label="Loại"
-                    value={ruleForm.type}
-                    onValueChange={(val) => setRuleForm({ ...ruleForm, type: val as any })}
-                    options={[
-                      { label: 'Khen thưởng', value: 'REWARD' },
-                      { label: 'Phạt lỗi', value: 'PENALTY' },
-                    ]}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                    Nội dung quy chuẩn
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={ruleForm.title}
-                    onChange={(e) => setRuleForm({ ...ruleForm, title: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold focus:border-indigo-600 outline-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                    Định mức (VNĐ)
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={ruleForm.amount ? Number(ruleForm.amount).toLocaleString('vi-VN') : ''}
-                    onChange={(e) => {
-                      const rawValue = e.target.value.replace(/\D/g, '')
-                      setRuleForm({ ...ruleForm, amount: rawValue ? Number(rawValue) : 0 })
-                    }}
-                    placeholder="VD: 100.000"
-                    className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-black text-indigo-600 focus:border-indigo-600 outline-none"
-                  />
-                </div>
-                <textarea
-                  placeholder="Ghi chú điều kiện..."
-                  value={ruleForm.note}
-                  onChange={(e) => setRuleForm({ ...ruleForm, note: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm focus:border-indigo-600 outline-none"
-                  rows={3}
-                />
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-indigo-700 transition-all"
-                >
-                  {submitting ? 'Đang lưu...' : 'Lưu quy chuẩn'}
-                </button>
-              </form>
+          <div className="bg-white rounded-3xl w-full shadow-2xl overflow-hidden border border-slate-100">
+            <div className="bg-indigo-600 px-8 py-6 text-white font-black uppercase text-sm tracking-widest flex justify-between items-center">
+              <span>{editingRuleId ? 'Cập nhật Quy chuẩn' : 'Thêm quy chuẩn mới'}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowRuleModal(false)}
+                className="w-8 h-8 rounded-full hover:bg-white/20 text-white"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
+            <form onSubmit={handleSaveRule} className="p-8 space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <CustomSelect
+                  label="Phân loại Excel"
+                  value={ruleForm.category}
+                  onValueChange={(val) => setRuleForm({ ...ruleForm, category: val })}
+                  options={[
+                    'CHUNG',
+                    'TECH',
+                    'ADS',
+                    'EDITOR',
+                    'HÀNH CHÍNH',
+                    'KẾ TOÁN',
+                    'KINH DOANH',
+                    'LIVESTREAM',
+                    'LOGISTIC',
+                    'MEDIA',
+                    'SẢN XUẤT',
+                    'SALE CSKH',
+                    'TMĐT',
+                    'VẬN ĐƠN',
+                    'CỬA HÀNG',
+                  ]
+                    .sort()
+                    .map((cat) => ({
+                      label: cat === 'TECH' ? 'CÔNG NGHỆ' : cat,
+                      value: cat,
+                    }))}
+                />
+                <CustomSelect
+                  label="Loại"
+                  value={ruleForm.type}
+                  onValueChange={(val) => setRuleForm({ ...ruleForm, type: val as any })}
+                  options={[
+                    { label: 'Khen thưởng', value: 'REWARD' },
+                    { label: 'Phạt lỗi', value: 'PENALTY' },
+                  ]}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                  Nội dung quy chuẩn
+                </label>
+                <input
+                  required
+                  type="text"
+                  value={ruleForm.title}
+                  onChange={(e) => setRuleForm({ ...ruleForm, title: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold focus:border-indigo-600 outline-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                  Định mức (VNĐ)
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={ruleForm.amount ? Number(ruleForm.amount).toLocaleString('vi-VN') : ''}
+                  onChange={(e) => {
+                    const rawValue = e.target.value.replace(/\D/g, '')
+                    setRuleForm({ ...ruleForm, amount: rawValue ? Number(rawValue) : 0 })
+                  }}
+                  placeholder="VD: 100.000"
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-black text-indigo-600 focus:border-indigo-600 outline-none"
+                />
+              </div>
+              <textarea
+                placeholder="Ghi chú điều kiện..."
+                value={ruleForm.note}
+                onChange={(e) => setRuleForm({ ...ruleForm, note: e.target.value })}
+                className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm focus:border-indigo-600 outline-none"
+                rows={3}
+              />
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-indigo-700 transition-all"
+              >
+                {submitting ? 'Đang lưu...' : 'Lưu quy chuẩn'}
+              </button>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
 
       <ConfirmDialog
         open={!!deleteConfirmId}
-        onOpenChange={(open) => { if (!open) setDeleteConfirmId(null) }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirmId(null)
+        }}
         title="Xác nhận xóa quy chuẩn?"
         description="Hành động này không thể hoàn tác. Quy chuẩn này sẽ bị xóa vĩnh viễn khỏi hệ thống."
         confirmLabel="Xác nhận xóa"
         destructive
-        onConfirm={() => { if (deleteConfirmId) handleDeleteRule(deleteConfirmId) }}
+        onConfirm={() => {
+          if (deleteConfirmId) handleDeleteRule(deleteConfirmId)
+        }}
       />
     </>
   )

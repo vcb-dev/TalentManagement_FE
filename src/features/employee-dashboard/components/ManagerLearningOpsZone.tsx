@@ -196,6 +196,19 @@ export function ManagerLearningOpsZone({
   const inSingleMonth = rangeStartMonth === rangeEndMonth
   const rangeLabel = monthRangeLabelVi(reportYear, rangeStartMonth, rangeEndMonth)
 
+  // Deduplicate: backend query có thể trả duplicate rows cùng (userId, levelFrom, levelTo).
+  // Group by key, giữ failCount cao nhất để tránh hiển thị nhân đôi.
+  const repeatFails = useMemo(() => {
+    const raw = data?.usersWithAtLeastTwoExamFails ?? []
+    const map = new Map<string, (typeof raw)[number]>()
+    for (const row of raw) {
+      const key = `${row.userId}|${row.levelFrom}|${row.levelTo}`
+      const existing = map.get(key)
+      if (!existing || row.failCount > existing.failCount) map.set(key, row)
+    }
+    return Array.from(map.values())
+  }, [data?.usersWithAtLeastTwoExamFails])
+
   const levelChart = useMemo(() => {
     const src = data?.peopleByCareerLevel ?? {}
     return LEVELS.map((code) => ({
@@ -262,7 +275,12 @@ export function ManagerLearningOpsZone({
           role="alert"
         >
           Không tải được thống kê.{' '}
-          <Button type="button" variant="ghost" className="h-auto p-0 font-semibold text-destructive underline hover:bg-transparent" onClick={() => void refetch()}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-auto p-0 font-semibold text-destructive underline hover:bg-transparent"
+            onClick={() => void refetch()}
+          >
             Thử lại
           </Button>
         </div>
@@ -358,14 +376,14 @@ export function ManagerLearningOpsZone({
             <Skeleton className="h-10 w-full rounded-lg" />
             <Skeleton className="h-10 w-full rounded-lg" />
           </div>
-        ) : (data?.usersWithAtLeastTwoExamFails?.length ?? 0) === 0 ? (
+        ) : repeatFails.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border/80 bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
             Không có bản ghi nào trong kỳ này.
           </p>
         ) : (
           <>
             <div className="divide-y divide-border/60 rounded-xl border border-border/60 md:hidden">
-              {(data?.usersWithAtLeastTwoExamFails ?? []).map((row) => {
+              {repeatFails.map((row) => {
                 const lf = row.levelFrom as LevelCode
                 const lt = row.levelTo as LevelCode
                 const pairLabel = `${LEVEL_LABELS[lf] ?? row.levelFrom} → ${LEVEL_LABELS[lt] ?? row.levelTo}`
@@ -407,7 +425,7 @@ export function ManagerLearningOpsZone({
                   </tr>
                 </thead>
                 <tbody>
-                  {(data?.usersWithAtLeastTwoExamFails ?? []).map((row) => {
+                  {repeatFails.map((row) => {
                     const lf = row.levelFrom as LevelCode
                     const lt = row.levelTo as LevelCode
                     const pairLabel = `${LEVEL_LABELS[lf] ?? row.levelFrom} → ${LEVEL_LABELS[lt] ?? row.levelTo}`

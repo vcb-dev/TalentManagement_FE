@@ -563,8 +563,15 @@ function LeaderEvaluationRow({
                   <Table className="w-full min-w-[1180px]">
                     <TableHeader>
                       <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
-                        {ASSIGN_TABLE_HEAD.map((h) => (
-                          <TableHead key={h} className={XL_TH}>
+                        {ASSIGN_TABLE_HEAD.map((h, i) => (
+                          <TableHead
+                            key={h}
+                            className={cn(
+                              XL_TH,
+                              i === ASSIGN_TABLE_HEAD.length - 1 &&
+                                'sticky right-0 z-20 bg-slate-50/95 backdrop-blur-md shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-900/95'
+                            )}
+                          >
                             {h}
                           </TableHead>
                         ))}
@@ -650,7 +657,7 @@ const ManagerLeaderAssignmentEditor = forwardRef<
       <TableCell className={td}>
         <PriorityBadge priority={assignment.priority} />
       </TableCell>
-      <TableCell className={cn(td, 'w-[200px] min-w-0 max-w-[200px]')}>
+      <TableCell className={cn(td, 'min-w-[195px] max-w-[285px]')}>
         <ContentCell content={assignment.content} />
       </TableCell>
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
@@ -683,7 +690,12 @@ const ManagerLeaderAssignmentEditor = forwardRef<
           />
         </div>
       </TableCell>
-      <TableCell className={cn(td, 'whitespace-nowrap text-right')}>
+      <TableCell
+        className={cn(
+          td,
+          'sticky right-0 z-10 whitespace-nowrap bg-white text-right shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-950'
+        )}
+      >
         <Button
           type="button"
           size="sm"

@@ -25,6 +25,8 @@ export function formatViNumber(value: number | string | null | undefined): strin
  * Cột Nội dung — luôn clamp 2 dòng, badge inline trong text (không thêm chiều cao).
  * "Xem thêm" / "Thu gọn" hiện khi content > 40 ký tự hoặc có badge.
  */
+const CONTENT_PREVIEW_WORDS = 4
+
 export function ContentCell({
   content,
   badge,
@@ -35,23 +37,17 @@ export function ContentCell({
   className?: string
 }) {
   const [expanded, setExpanded] = useState(false)
-  const needsToggle = content.length > 40 || !!badge
+  const words = content.trim().split(/\s+/)
+  const needsToggle = words.length > CONTENT_PREVIEW_WORDS || !!badge
+  const preview =
+    needsToggle && !expanded ? words.slice(0, CONTENT_PREVIEW_WORDS).join(' ') + '…' : content
 
   return (
     <div className={cn('flex min-w-0 flex-col gap-0.5', className)}>
-      {/* Text + badge inline → cùng bị clamp khi collapsed */}
-      <div
-        className={cn(
-          'break-words text-sm font-medium leading-snug text-slate-900 dark:text-slate-100',
-          !expanded && 'line-clamp-2'
-        )}
-      >
-        {content}
-        {badge && !expanded && (
-          <span className="ml-1.5 inline-flex align-middle">{badge}</span>
-        )}
+      <div className="break-words text-sm font-medium leading-snug text-slate-900 dark:text-slate-100">
+        {preview}
+        {badge && !expanded && <span className="ml-1.5 inline-flex align-middle">{badge}</span>}
       </div>
-      {/* Badge tách dòng chỉ khi expanded */}
       {expanded && badge && <div className="mt-0.5">{badge}</div>}
       {needsToggle && (
         <Button
@@ -224,9 +220,9 @@ export function AssignmentEpic4ReadCells({ row, td }: { row: PerformanceAssignme
   const hasImagePreviews = imageUrls.length > 0
   return (
     <>
-      <TableCell className={cn(td, 'max-w-[88px] tabular-nums text-sm')}>{num}</TableCell>
-      <TableCell className={cn(td, 'max-w-[72px] text-xs uppercase')}>
-        {row.numericUnit ?? '—'}
+      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-sm')}>{num}</TableCell>
+      <TableCell className={cn(td, 'text-xs uppercase')}>
+        <div className="w-[64px] truncate">{row.numericUnit ?? '—'}</div>
       </TableCell>
       <TableCell
         className={cn(td, 'max-w-[160px] min-w-[120px] text-xs')}
