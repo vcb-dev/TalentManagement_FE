@@ -27,11 +27,12 @@ apiClient.interceptors.response.use(
     if (status === 401) {
       const token = useAuthStore.getState().accessToken
       const sessionMock = isMockApiEnabled() && token?.startsWith('mock.')
-      if (!sessionMock) {
+      // /auth/me là session-check — 401 là bình thường khi chưa đăng nhập, không redirect
+      const isSessionCheck = error.config?.url?.includes('/auth/me')
+      if (!sessionMock && !isSessionCheck) {
         useAuthStore.getState().logout()
-        const loginPath = '/login'
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith(loginPath)) {
-          window.location.assign(loginPath)
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.assign('/')
         }
       }
     }

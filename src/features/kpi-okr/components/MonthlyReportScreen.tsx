@@ -55,6 +55,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { CustomSelect } from '@/components/shared/CustomSelect'
+import { WorkReportTab } from './WorkReportTab'
 
 function nowYm() {
   const d = new Date()
@@ -569,6 +570,7 @@ export function MonthlyReportScreen() {
   const [month, setMonth] = useState(() => nowYm().month)
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [activeTab, setActiveTab] = useState<'kpi-okr' | 'work-report'>('kpi-okr')
   const detailSectionRef = useRef<HTMLDivElement>(null)
 
   const maxViewYm = getMaxViewableYm()
@@ -892,424 +894,478 @@ export function MonthlyReportScreen() {
         </CardContent>
       </Card>
 
-      {/* HR Counters */}
-      {canSeeTeamWide && selectedDept?.id && hrCounters && (
-        <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Card className="border-emerald-200 bg-emerald-50/50">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-emerald-600">{hrCounters.promoted}</div>
-              <div className="text-xs text-emerald-500">Lên cấp</div>
-            </CardContent>
-          </Card>
-          <Card className="border-amber-200 bg-amber-50/50">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-amber-600">{hrCounters.notLearned}</div>
-              <div className="text-xs text-amber-500">Chưa hoàn thành học</div>
-            </CardContent>
-          </Card>
-          <Card className="border-blue-200 bg-blue-50/50">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">{hrCounters.newJoiners}</div>
-              <div className="text-xs text-blue-500">Mới vào</div>
-            </CardContent>
-          </Card>
-          <Card className="border-rose-200 bg-rose-50/50">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-rose-600">{hrCounters.leavers}</div>
-              <div className="text-xs text-rose-500">Nghỉ việc</div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Export button */}
-      {canSeeTeamWide && summaryRows.length > 0 && (
-        <div className="mb-4 flex justify-end">
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportExcel}>
-            <Download className="h-4 w-4" />
-            Xuất dữ liệu Excel
-          </Button>
-        </div>
-      )}
-
-      {isMockApiEnabled() ? (
-        <div className="mb-4 flex items-center gap-2 text-game-soft-foreground">
-          <BarChart3 className="h-4 w-4 text-amber-700" strokeWidth={2} />
-          <span className="text-sm text-amber-800">
-            Chế độ giả lập đang bật — báo cáo đầy đủ khi kết nối máy chủ thật.
-          </span>
-        </div>
-      ) : null}
-
-      {!selectedTeamId ? (
-        <Card
+      {/* Tab nav */}
+      <div className="mb-6 flex gap-1 rounded-xl border border-slate-200 bg-slate-100/60 p-1 dark:border-slate-800 dark:bg-slate-900/60">
+        <button
+          type="button"
+          onClick={() => setActiveTab('kpi-okr')}
           className={cn(
-            'mt-6 border-dashed border-primary/25 bg-gradient-to-r from-muted/30 via-card to-violet-500/[0.05]',
-            CARD_ENTRANCE
+            'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
+            activeTab === 'kpi-okr'
+              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100'
+              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
           )}
         >
-          <CardContent className="pt-6 text-sm text-muted-foreground">
-            Chọn nhóm để tải báo cáo hàng tháng.
-          </CardContent>
-        </Card>
-      ) : membersQ.isLoading || summariesQ.isLoading || assignmentsQ.isLoading ? (
-        <Card
+          KPI / OKR
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('work-report')}
           className={cn(
-            'mt-6 border border-blue-200/40 bg-gradient-to-r from-blue-50/80 via-card to-cyan-50/75',
-            CARD_ENTRANCE
+            'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
+            activeTab === 'work-report'
+              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100'
+              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
           )}
         >
-          <CardHeader>
-            <CardTitle className="bg-gradient-to-r from-blue-700 to-cyan-700 bg-clip-text text-transparent">
-              Đang tải dữ liệu báo cáo
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-28 w-full" />
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="mt-6 space-y-6">
-          <Card
-            className={cn(
-              'relative overflow-hidden border-amber-200/50 bg-gradient-to-br from-amber-50/70 via-card to-orange-50/70 shadow-lg shadow-amber-500/10',
-              CARD_ENTRANCE
-            )}
-          >
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-400"
-            />
-            <CardHeader>
-              <CardTitle className="bg-gradient-to-r from-amber-700 via-orange-700 to-rose-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
-                Tổng hợp KPI/OKR tháng {month}/{year}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="min-w-0">
-              {summaryRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Chưa có dữ liệu tổng hợp cho kỳ đã chọn. Trưởng nhóm có thể tính lại tổng hợp ở
-                  màn KPI & OKR.
-                </p>
-              ) : (
-                <>
-                  <div className="divide-y divide-amber-200/50 md:hidden">
-                    {summaryRows.map((row) => (
-                      <div key={row.id} className="space-y-2 py-4 first:pt-0">
-                        <p className="font-semibold text-foreground">
-                          {row.assigneeDisplayName?.trim() ||
-                            row.assigneeEmail?.trim() ||
-                            'Thành viên'}
-                        </p>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <span className="text-[10px] font-bold uppercase text-muted-foreground">
-                              KPI đạt
-                            </span>
-                            <p className="font-bold tabular-nums">{row.kpiOkCount}</p>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-bold uppercase text-muted-foreground">
-                              KPI chưa đạt
-                            </span>
-                            <p className="font-bold tabular-nums">{row.kpiNotCount}</p>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-bold uppercase text-muted-foreground">
-                              Loại KPI
-                            </span>
-                            <p className="font-semibold">{row.kpiGrade ?? '—'}</p>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-bold uppercase text-muted-foreground">
-                              OKR đạt
-                            </span>
-                            <p className="font-bold tabular-nums">{row.okrOkCount}</p>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-bold uppercase text-muted-foreground">
-                              OKR chưa đạt
-                            </span>
-                            <p className="font-bold tabular-nums">{row.okrNotCount}</p>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-bold uppercase text-muted-foreground">
-                              Loại OKR
-                            </span>
-                            <p className="font-semibold">{row.okrGrade ?? '—'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="-mx-1 hidden overflow-x-auto px-1 md:block">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-amber-500/10">
-                          <TableHead>Nhân sự</TableHead>
-                          <TableHead>KPI đạt</TableHead>
-                          <TableHead>KPI chưa đạt</TableHead>
-                          <TableHead>Loại KPI</TableHead>
-                          <TableHead>OKR đạt</TableHead>
-                          <TableHead>OKR chưa đạt</TableHead>
-                          <TableHead>Loại OKR</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {summaryRows.map((row) => (
-                          <TableRow key={row.id} className="transition-colors hover:bg-amber-500/5">
-                            <TableCell>
-                              {row.assigneeDisplayName?.trim() ||
-                                row.assigneeEmail?.trim() ||
-                                'Thành viên'}
-                            </TableCell>
-                            <TableCell>{row.kpiOkCount}</TableCell>
-                            <TableCell>{row.kpiNotCount}</TableCell>
-                            <TableCell className="font-semibold">{row.kpiGrade ?? '—'}</TableCell>
-                            <TableCell>{row.okrOkCount}</TableCell>
-                            <TableCell>{row.okrNotCount}</TableCell>
-                            <TableCell className="font-semibold">{row.okrGrade ?? '—'}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </>
-              )}
-              {fixedMetricsProgress.length > 0 && (
-                <div className="mt-4 border-t pt-4">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Tổng hợp chỉ số cố định tháng này
-                  </p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {fixedMetricsProgress.map(({ content, filled, total, sum }) => (
-                      <div
-                        key={content}
-                        className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900"
-                      >
-                        <p
-                          className="mb-1 truncate text-[11px] text-slate-500 dark:text-slate-400"
-                          title={content}
-                        >
-                          {content}
-                        </p>
-                        <p className="text-xl font-bold tabular-nums text-slate-800 dark:text-slate-100">
-                          {sum > 0
-                            ? sum >= 1_000_000
-                              ? `${(sum / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr`
-                              : sum.toLocaleString('vi-VN')
-                            : '—'}
-                        </p>
-                        <p className="mt-1 text-[11px] text-slate-400">
-                          {filled}/{total} người đã nhập
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          Báo cáo tổng kết
+        </button>
+      </div>
 
-          <div ref={detailSectionRef}>
+      {/* Work report tab */}
+      {activeTab === 'work-report' && (
+        <WorkReportTab
+          selectedTeamId={selectedTeamId}
+          year={year}
+          month={month}
+          canSeeTeamWide={canSeeTeamWide}
+        />
+      )}
+
+      {activeTab === 'kpi-okr' && (
+        <>
+          {/* HR Counters */}
+          {canSeeTeamWide && selectedDept?.id && hrCounters && (
+            <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+              <Card className="border-emerald-200 bg-emerald-50/50">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-emerald-600">{hrCounters.promoted}</div>
+                  <div className="text-xs text-emerald-500">Lên cấp</div>
+                </CardContent>
+              </Card>
+              <Card className="border-amber-200 bg-amber-50/50">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-amber-600">{hrCounters.notLearned}</div>
+                  <div className="text-xs text-amber-500">Chưa hoàn thành học</div>
+                </CardContent>
+              </Card>
+              <Card className="border-blue-200 bg-blue-50/50">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-blue-600">{hrCounters.newJoiners}</div>
+                  <div className="text-xs text-blue-500">Mới vào</div>
+                </CardContent>
+              </Card>
+              <Card className="border-rose-200 bg-rose-50/50">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-rose-600">{hrCounters.leavers}</div>
+                  <div className="text-xs text-rose-500">Nghỉ việc</div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Export button */}
+          {canSeeTeamWide && summaryRows.length > 0 && (
+            <div className="mb-4 flex justify-end">
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleExportExcel}>
+                <Download className="h-4 w-4" />
+                Xuất dữ liệu Excel
+              </Button>
+            </div>
+          )}
+
+          {isMockApiEnabled() ? (
+            <div className="mb-4 flex items-center gap-2 text-game-soft-foreground">
+              <BarChart3 className="h-4 w-4 text-amber-700" strokeWidth={2} />
+              <span className="text-sm text-amber-800">
+                Chế độ giả lập đang bật — báo cáo đầy đủ khi kết nối máy chủ thật.
+              </span>
+            </div>
+          ) : null}
+
+          {!selectedTeamId ? (
             <Card
               className={cn(
-                'relative overflow-hidden border-blue-200/55 bg-gradient-to-br from-blue-50/70 via-card to-fuchsia-50/65 shadow-lg shadow-blue-500/10',
+                'mt-6 border-dashed border-primary/25 bg-gradient-to-r from-muted/30 via-card to-violet-500/[0.05]',
                 CARD_ENTRANCE
               )}
             >
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-fuchsia-500"
-              />
-              <CardHeader>
-                <CardTitle className="bg-gradient-to-r from-blue-700 via-indigo-700 to-fuchsia-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
-                  Chi tiết mục tiêu trong tháng
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {canSeeTeamWide ? (
-                  <div className="flex flex-wrap gap-2">
-                    {Array.from(assignmentsByUser.keys()).map((uid) => (
-                      <Button
-                        key={uid}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className={cn(
-                          'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100',
-                          uid === selectedDetailUserId &&
-                            'border-fuchsia-400 bg-gradient-to-r from-fuchsia-600 to-indigo-600 text-white hover:from-fuchsia-700 hover:to-indigo-700'
-                        )}
-                        onClick={() => {
-                          setSelectedUserId(uid)
-                          setTimeout(() => {
-                            detailSectionRef.current?.scrollIntoView({
-                              behavior: 'smooth',
-                              block: 'start',
-                            })
-                          }, 0)
-                        }}
-                      >
-                        <UserRound className="mr-1 h-3.5 w-3.5" />
-                        {teamMemberName(uid)}
-                      </Button>
-                    ))}
-                  </div>
-                ) : null}
-                {detailRows.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Không có mục tiêu KPI/OKR trong kỳ này.
-                  </p>
-                ) : (
-                  <>
-                    <p className="mb-3 text-[13px] text-muted-foreground">
-                      {allowEpic4SelfEdit
-                        ? 'Cập nhật số liệu, minh chứng và tự đánh giá; bấm Lưu từng dòng. Đánh giá của quản lý do trưởng nhóm cập nhật.'
-                        : canSeeTeamWide
-                          ? 'Theo dõi minh chứng, số liệu và tự đánh giá của nhân sự (chỉ xem).'
-                          : 'Bạn xem minh chứng và tự đánh giá ở đây (chỉ xem). Để chỉnh sửa cần quyền cập nhật KPI của bản thân — có thể chỉnh thêm tại mục KPI & OKR trong workspace.'}
-                    </p>
-                    <div className="divide-y divide-blue-100/50 md:hidden dark:divide-blue-900/30">
-                      {detailRows.map((item) =>
-                        allowEpic4SelfEdit ? (
-                          <MonthlyReportDetailEditableMobileCard
-                            key={item.id}
-                            item={item}
-                            onSaved={invalidateMonthlyAssignments}
-                          />
-                        ) : (
-                          <MonthlyReportDetailReadOnlyCard key={item.id} item={item} />
-                        )
-                      )}
-                    </div>
-                    <div className="hidden overflow-x-auto rounded-lg border border-blue-100/50 md:block dark:border-blue-900/30">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-blue-500/10">
-                            <TableHead className="whitespace-nowrap">Ngày xét</TableHead>
-                            <TableHead>Hạng mục</TableHead>
-                            <TableHead className="whitespace-nowrap">Ưu tiên</TableHead>
-                            <TableHead>Nội dung</TableHead>
-                            <TableHead>Chỉ tiêu</TableHead>
-                            <TableHead className="whitespace-nowrap">Số liệu</TableHead>
-                            <TableHead className="whitespace-nowrap">Đơn vị</TableHead>
-                            <TableHead className="min-w-[140px]">Minh chứng</TableHead>
-                            <TableHead className="whitespace-nowrap">Tự đánh giá</TableHead>
-                            <TableHead className="min-w-[120px]">Tự nhận xét</TableHead>
-                            <TableHead className="whitespace-nowrap">QL đánh giá</TableHead>
-                            <TableHead>QL nhận xét</TableHead>
-                            <TableHead className="whitespace-nowrap text-right">Thao tác</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {detailRows.map((item) => (
-                            <TableRow
-                              key={item.id}
-                              className="transition-colors hover:bg-blue-500/5"
-                            >
-                              <TableCell className="whitespace-nowrap tabular-nums text-slate-500">
-                                {formatKpiSetAt(item.kpiSetAt)}
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  className={
-                                    item.kind === 'KPI'
-                                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                                      : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
-                                  }
-                                >
-                                  {item.kind}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="whitespace-nowrap">
-                                <PriorityText priority={item.priority} />
-                              </TableCell>
-                              <TableCell className="max-w-[520px] whitespace-pre-wrap">
-                                {item.content}
-                              </TableCell>
-                              <TableCell className="tabular-nums font-semibold text-primary">
-                                {item.targetMetric?.trim() || '—'}
-                              </TableCell>
-                              {allowEpic4SelfEdit ? (
-                                <MonthlyReportMemberEditableRow
-                                  item={item}
-                                  onSaved={invalidateMonthlyAssignments}
-                                />
-                              ) : (
-                                <>
-                                  <MonthlyReportEpic4ReadCells item={item} />
-                                  <TableCell>
-                                    <EvalBadge status={item.managerEvalStatus} />
-                                  </TableCell>
-                                  <TableCell className="max-w-[280px] text-[12px] italic text-slate-500">
-                                    {item.managerReviewNote?.trim() || '—'}
-                                  </TableCell>
-                                  <TableCell className="text-center text-slate-400">—</TableCell>
-                                </>
-                              )}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </>
-                )}
+              <CardContent className="pt-6 text-sm text-muted-foreground">
+                Chọn nhóm để tải báo cáo hàng tháng.
               </CardContent>
             </Card>
-          </div>
+          ) : membersQ.isLoading || summariesQ.isLoading || assignmentsQ.isLoading ? (
+            <Card
+              className={cn(
+                'mt-6 border border-blue-200/40 bg-gradient-to-r from-blue-50/80 via-card to-cyan-50/75',
+                CARD_ENTRANCE
+              )}
+            >
+              <CardHeader>
+                <CardTitle className="bg-gradient-to-r from-blue-700 to-cyan-700 bg-clip-text text-transparent">
+                  Đang tải dữ liệu báo cáo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-28 w-full" />
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="mt-6 space-y-6">
+              <Card
+                className={cn(
+                  'relative overflow-hidden border-amber-200/50 bg-gradient-to-br from-amber-50/70 via-card to-orange-50/70 shadow-lg shadow-amber-500/10',
+                  CARD_ENTRANCE
+                )}
+              >
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-400"
+                />
+                <CardHeader>
+                  <CardTitle className="bg-gradient-to-r from-amber-700 via-orange-700 to-rose-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
+                    Tổng hợp KPI/OKR tháng {month}/{year}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="min-w-0">
+                  {summaryRows.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Chưa có dữ liệu tổng hợp cho kỳ đã chọn. Trưởng nhóm có thể tính lại tổng hợp
+                      ở màn KPI & OKR.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="divide-y divide-amber-200/50 md:hidden">
+                        {summaryRows.map((row) => (
+                          <div key={row.id} className="space-y-2 py-4 first:pt-0">
+                            <p className="font-semibold text-foreground">
+                              {row.assigneeDisplayName?.trim() ||
+                                row.assigneeEmail?.trim() ||
+                                'Thành viên'}
+                            </p>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div>
+                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                                  KPI đạt
+                                </span>
+                                <p className="font-bold tabular-nums">{row.kpiOkCount}</p>
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                                  KPI chưa đạt
+                                </span>
+                                <p className="font-bold tabular-nums">{row.kpiNotCount}</p>
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                                  Loại KPI
+                                </span>
+                                <p className="font-semibold">{row.kpiGrade ?? '—'}</p>
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                                  OKR đạt
+                                </span>
+                                <p className="font-bold tabular-nums">{row.okrOkCount}</p>
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                                  OKR chưa đạt
+                                </span>
+                                <p className="font-bold tabular-nums">{row.okrNotCount}</p>
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                                  Loại OKR
+                                </span>
+                                <p className="font-semibold">{row.okrGrade ?? '—'}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="-mx-1 hidden overflow-x-auto px-1 md:block">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-amber-500/10">
+                              <TableHead>Nhân sự</TableHead>
+                              <TableHead>KPI đạt</TableHead>
+                              <TableHead>KPI chưa đạt</TableHead>
+                              <TableHead>Loại KPI</TableHead>
+                              <TableHead>OKR đạt</TableHead>
+                              <TableHead>OKR chưa đạt</TableHead>
+                              <TableHead>Loại OKR</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {summaryRows.map((row) => (
+                              <TableRow
+                                key={row.id}
+                                className="transition-colors hover:bg-amber-500/5"
+                              >
+                                <TableCell>
+                                  {row.assigneeDisplayName?.trim() ||
+                                    row.assigneeEmail?.trim() ||
+                                    'Thành viên'}
+                                </TableCell>
+                                <TableCell>{row.kpiOkCount}</TableCell>
+                                <TableCell>{row.kpiNotCount}</TableCell>
+                                <TableCell className="font-semibold">
+                                  {row.kpiGrade ?? '—'}
+                                </TableCell>
+                                <TableCell>{row.okrOkCount}</TableCell>
+                                <TableCell>{row.okrNotCount}</TableCell>
+                                <TableCell className="font-semibold">
+                                  {row.okrGrade ?? '—'}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </>
+                  )}
+                  {fixedMetricsProgress.length > 0 && (
+                    <div className="mt-4 border-t pt-4">
+                      <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Tổng hợp chỉ số cố định tháng này
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {fixedMetricsProgress.map(({ content, filled, total, sum }) => (
+                          <div
+                            key={content}
+                            className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900"
+                          >
+                            <p
+                              className="mb-1 truncate text-[11px] text-slate-500 dark:text-slate-400"
+                              title={content}
+                            >
+                              {content}
+                            </p>
+                            <p className="text-xl font-bold tabular-nums text-slate-800 dark:text-slate-100">
+                              {sum > 0
+                                ? sum >= 1_000_000
+                                  ? `${(sum / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr`
+                                  : sum.toLocaleString('vi-VN')
+                                : '—'}
+                            </p>
+                            <p className="mt-1 text-[11px] text-slate-400">
+                              {filled}/{total} người đã nhập
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-          <Card
-            className={cn(
-              'relative overflow-hidden border-fuchsia-200/55 bg-gradient-to-br from-fuchsia-50/70 via-card to-violet-50/60 shadow-lg shadow-fuchsia-500/10',
-              CARD_ENTRANCE
-            )}
-          >
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500"
-            />
-            <CardHeader>
-              <CardTitle className="bg-gradient-to-r from-fuchsia-700 via-violet-700 to-indigo-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
-                {canSeeTeamWide ? 'Phản hồi từ nhân sự' : 'Form khảo sát tháng này'}
-              </CardTitle>
-              <p className="text-[13px] text-slate-500">
-                {canSeeTeamWide
-                  ? 'Danh sách câu trả lời của từng nhân sự trong nhóm theo kỳ đã chọn.'
-                  : 'Trả lời câu hỏi khảo sát hàng tháng do trưởng nhóm thiết lập. Bấm "Gửi câu trả lời" để lưu.'}
-              </p>
-            </CardHeader>
-            <CardContent>
-              <FormPanel
-                teamId={selectedTeamId}
-                year={year}
-                month={month}
-                canEditTeam={false}
-                currentUserId={userId ?? ''}
-                readOnly={canSeeTeamWide}
-                showQuestionForm={!canSeeTeamWide}
-              />
-            </CardContent>
-          </Card>
+              <div ref={detailSectionRef}>
+                <Card
+                  className={cn(
+                    'relative overflow-hidden border-blue-200/55 bg-gradient-to-br from-blue-50/70 via-card to-fuchsia-50/65 shadow-lg shadow-blue-500/10',
+                    CARD_ENTRANCE
+                  )}
+                >
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-fuchsia-500"
+                  />
+                  <CardHeader>
+                    <CardTitle className="bg-gradient-to-r from-blue-700 via-indigo-700 to-fuchsia-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
+                      Chi tiết mục tiêu trong tháng
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {canSeeTeamWide ? (
+                      <div className="flex flex-wrap gap-2">
+                        {Array.from(assignmentsByUser.keys()).map((uid) => (
+                          <Button
+                            key={uid}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                              'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100',
+                              uid === selectedDetailUserId &&
+                                'border-fuchsia-400 bg-gradient-to-r from-fuchsia-600 to-indigo-600 text-white hover:from-fuchsia-700 hover:to-indigo-700'
+                            )}
+                            onClick={() => {
+                              setSelectedUserId(uid)
+                              setTimeout(() => {
+                                detailSectionRef.current?.scrollIntoView({
+                                  behavior: 'smooth',
+                                  block: 'start',
+                                })
+                              }, 0)
+                            }}
+                          >
+                            <UserRound className="mr-1 h-3.5 w-3.5" />
+                            {teamMemberName(uid)}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : null}
+                    {detailRows.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Không có mục tiêu KPI/OKR trong kỳ này.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="mb-3 text-[13px] text-muted-foreground">
+                          {allowEpic4SelfEdit
+                            ? 'Cập nhật số liệu, minh chứng và tự đánh giá; bấm Lưu từng dòng. Đánh giá của quản lý do trưởng nhóm cập nhật.'
+                            : canSeeTeamWide
+                              ? 'Theo dõi minh chứng, số liệu và tự đánh giá của nhân sự (chỉ xem).'
+                              : 'Bạn xem minh chứng và tự đánh giá ở đây (chỉ xem). Để chỉnh sửa cần quyền cập nhật KPI của bản thân — có thể chỉnh thêm tại mục KPI & OKR trong workspace.'}
+                        </p>
+                        <div className="divide-y divide-blue-100/50 md:hidden dark:divide-blue-900/30">
+                          {detailRows.map((item) =>
+                            allowEpic4SelfEdit ? (
+                              <MonthlyReportDetailEditableMobileCard
+                                key={item.id}
+                                item={item}
+                                onSaved={invalidateMonthlyAssignments}
+                              />
+                            ) : (
+                              <MonthlyReportDetailReadOnlyCard key={item.id} item={item} />
+                            )
+                          )}
+                        </div>
+                        <div className="hidden overflow-x-auto rounded-lg border border-blue-100/50 md:block dark:border-blue-900/30">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-blue-500/10">
+                                <TableHead className="whitespace-nowrap">Ngày xét</TableHead>
+                                <TableHead>Hạng mục</TableHead>
+                                <TableHead className="whitespace-nowrap">Ưu tiên</TableHead>
+                                <TableHead>Nội dung</TableHead>
+                                <TableHead>Chỉ tiêu</TableHead>
+                                <TableHead className="whitespace-nowrap">Số liệu</TableHead>
+                                <TableHead className="whitespace-nowrap">Đơn vị</TableHead>
+                                <TableHead className="min-w-[140px]">Minh chứng</TableHead>
+                                <TableHead className="whitespace-nowrap">Tự đánh giá</TableHead>
+                                <TableHead className="min-w-[120px]">Tự nhận xét</TableHead>
+                                <TableHead className="whitespace-nowrap">QL đánh giá</TableHead>
+                                <TableHead>QL nhận xét</TableHead>
+                                <TableHead className="whitespace-nowrap text-right">
+                                  Thao tác
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {detailRows.map((item) => (
+                                <TableRow
+                                  key={item.id}
+                                  className="transition-colors hover:bg-blue-500/5"
+                                >
+                                  <TableCell className="whitespace-nowrap tabular-nums text-slate-500">
+                                    {formatKpiSetAt(item.kpiSetAt)}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      className={
+                                        item.kind === 'KPI'
+                                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                                          : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
+                                      }
+                                    >
+                                      {item.kind}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="whitespace-nowrap">
+                                    <PriorityText priority={item.priority} />
+                                  </TableCell>
+                                  <TableCell className="max-w-[520px] whitespace-pre-wrap">
+                                    {item.content}
+                                  </TableCell>
+                                  <TableCell className="tabular-nums font-semibold text-primary">
+                                    {item.targetMetric?.trim() || '—'}
+                                  </TableCell>
+                                  {allowEpic4SelfEdit ? (
+                                    <MonthlyReportMemberEditableRow
+                                      item={item}
+                                      onSaved={invalidateMonthlyAssignments}
+                                    />
+                                  ) : (
+                                    <>
+                                      <MonthlyReportEpic4ReadCells item={item} />
+                                      <TableCell>
+                                        <EvalBadge status={item.managerEvalStatus} />
+                                      </TableCell>
+                                      <TableCell className="max-w-[280px] text-[12px] italic text-slate-500">
+                                        {item.managerReviewNote?.trim() || '—'}
+                                      </TableCell>
+                                      <TableCell className="text-center text-slate-400">
+                                        —
+                                      </TableCell>
+                                    </>
+                                  )}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
 
-          <div className="flex items-start gap-2 rounded-xl border border-dashed border-game-accent/25 bg-game-accent/[0.05] p-3 text-xs text-game-muted">
-            <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-game-accent" strokeWidth={2} />
-            <span>
-              Quyền xem báo cáo hàng tháng.
-              {isLeader ? (
-                <> Trưởng nhóm có thể điều phối dữ liệu báo cáo ở màn KPI/OKR nhóm.</>
-              ) : null}
-              {isManager ? (
-                <>
-                  {' '}
-                  Quản lý chỉ xem dữ liệu tổng hợp, chi tiết mục tiêu và phản hồi khảo sát của nhóm.
-                </>
-              ) : null}
-            </span>
-          </div>
-        </div>
+              <Card
+                className={cn(
+                  'relative overflow-hidden border-fuchsia-200/55 bg-gradient-to-br from-fuchsia-50/70 via-card to-violet-50/60 shadow-lg shadow-fuchsia-500/10',
+                  CARD_ENTRANCE
+                )}
+              >
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500"
+                />
+                <CardHeader>
+                  <CardTitle className="bg-gradient-to-r from-fuchsia-700 via-violet-700 to-indigo-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
+                    {canSeeTeamWide ? 'Phản hồi từ nhân sự' : 'Form khảo sát tháng này'}
+                  </CardTitle>
+                  <p className="text-[13px] text-slate-500">
+                    {canSeeTeamWide
+                      ? 'Danh sách câu trả lời của từng nhân sự trong nhóm theo kỳ đã chọn.'
+                      : 'Trả lời câu hỏi khảo sát hàng tháng do trưởng nhóm thiết lập. Bấm "Gửi câu trả lời" để lưu.'}
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <FormPanel
+                    teamId={selectedTeamId}
+                    year={year}
+                    month={month}
+                    canEditTeam={false}
+                    currentUserId={userId ?? ''}
+                    readOnly={canSeeTeamWide}
+                    showQuestionForm={!canSeeTeamWide}
+                  />
+                </CardContent>
+              </Card>
+
+              <div className="flex items-start gap-2 rounded-xl border border-dashed border-game-accent/25 bg-game-accent/[0.05] p-3 text-xs text-game-muted">
+                <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-game-accent" strokeWidth={2} />
+                <span>
+                  Quyền xem báo cáo hàng tháng.
+                  {isLeader ? (
+                    <> Trưởng nhóm có thể điều phối dữ liệu báo cáo ở màn KPI/OKR nhóm.</>
+                  ) : null}
+                  {isManager ? (
+                    <>
+                      {' '}
+                      Quản lý chỉ xem dữ liệu tổng hợp, chi tiết mục tiêu và phản hồi khảo sát của
+                      nhóm.
+                    </>
+                  ) : null}
+                </span>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

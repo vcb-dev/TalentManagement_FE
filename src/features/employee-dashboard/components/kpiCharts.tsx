@@ -4,28 +4,26 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   Line,
   LineChart,
   PolarAngleAxis,
   RadialBar,
   RadialBarChart,
-  ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
   Pie,
   PieChart,
 } from 'recharts'
-import { cn } from '@/lib/utils'
 import {
-  CHART_GRID_LINE,
-  CHART_AXIS_TICK,
-  CHART_LEGEND,
-  ChartGradients,
-  renderActiveDot,
-  renderDot,
-} from './chartStyles'
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
+import { cn } from '@/lib/utils'
+import { ChartGradients, renderActiveDot, renderDot } from './chartStyles'
 import type {
   AssignmentStatusKey,
   GradeDistribution,
@@ -52,6 +50,10 @@ const STATUS_COLOR: Record<AssignmentStatusKey, string> = {
  *  Radial gauge cho 3 card tổng quan
  * ==================================================================== */
 
+const gaugeConfig = {
+  value: { label: 'Tiến độ' },
+} satisfies ChartConfig
+
 export function KpiGauge({
   percent,
   color,
@@ -68,7 +70,7 @@ export function KpiGauge({
   const isFull = clamped >= 100
   return (
     <div className="group relative" style={{ width: size, height: size }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ChartContainer config={gaugeConfig} className="h-full w-full">
         <RadialBarChart
           cx="50%"
           cy="50%"
@@ -80,13 +82,9 @@ export function KpiGauge({
           endAngle={-270}
         >
           <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
-          <RadialBar
-            background={{ fill: 'rgb(226 232 240 / 0.5)' }}
-            dataKey="value"
-            cornerRadius={20}
-          />
+          <RadialBar background={{ fill: 'hsl(var(--muted))' }} dataKey="value" cornerRadius={20} />
         </RadialBarChart>
-      </ResponsiveContainer>
+      </ChartContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center transition-transform duration-300 group-hover:scale-105">
         {isFull ? (
           <span className="text-lg" role="img" aria-label="check">
@@ -119,36 +117,12 @@ export function KpiGauge({
  *  Donut — trạng thái tổng thể KPI+OKR
  * ==================================================================== */
 
-/* ──────────── Custom tooltip dùng chung ──────────── */
-
-function ChartTooltip({
-  active,
-  payload,
-  label,
-  suffix = '',
-}: {
-  active?: boolean
-  payload?: { color: string; name: string; value: number }[]
-  label?: string
-  suffix?: string
-}) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-xl border border-border bg-card/97 px-3 py-2 text-xs shadow-xl backdrop-blur-sm">
-      <p className="mb-1 font-bold text-foreground">{label}</p>
-      {payload.map((entry) => (
-        <div key={entry.name} className="flex items-center gap-2">
-          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: entry.color }} />
-          <span className="text-muted-foreground">{entry.name}:</span>
-          <span className="font-bold tabular-nums text-foreground">
-            {entry.value}
-            {suffix}
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
+const statusChartConfig = {
+  done: { label: 'Hoàn thành', color: '#10b981' },
+  in_progress: { label: 'Đang thực hiện', color: '#3b82f6' },
+  not_started: { label: 'Chưa bắt đầu', color: '#94a3b8' },
+  blocked: { label: 'Bị chặn', color: '#f43f5e' },
+} satisfies ChartConfig
 
 export function StatusDonut({
   breakdown,
@@ -166,6 +140,7 @@ export function StatusDonut({
           name: STATUS_LABEL[key],
           value: breakdown[key],
           color: STATUS_COLOR[key],
+          fill: STATUS_COLOR[key],
         }))
         .filter((x) => x.value > 0),
     [breakdown]
@@ -186,42 +161,56 @@ export function StatusDonut({
   }
 
   return (
-    <div className={cn('h-[220px] w-full', className)}>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Tooltip content={<ChartTooltip suffix=" chỉ tiêu" />} />
-          <Legend {...CHART_LEGEND} />
-          <Pie
-            data={data}
-            dataKey="value"
-            nameKey="name"
-            cx="50%"
-            cy="45%"
-            innerRadius={52}
-            outerRadius={78}
-            paddingAngle={2}
-            stroke="none"
-            onMouseEnter={(_, idx) => setHoverKey(data[idx]?.key ?? null)}
-            onMouseLeave={() => setHoverKey(null)}
-          >
-            {data.map((entry) => (
-              <Cell
-                key={entry.key}
-                fill={entry.color}
-                opacity={hoverKey && hoverKey !== entry.key ? 0.4 : 1}
-                stroke={hoverKey === entry.key ? entry.color : 'none'}
-                strokeWidth={hoverKey === entry.key ? 3 : 0}
-                style={{ transition: 'opacity 0.2s, stroke-width 0.2s' }}
-              />
-            ))}
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
+    <ChartContainer config={statusChartConfig} className={cn('h-[220px] w-full', className)}>
+      <PieChart>
+        <ChartTooltip
+          content={
+            <ChartTooltipContent nameKey="name" formatter={(value) => [`${value} chỉ tiêu`]} />
+          }
+        />
+        <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="45%"
+          innerRadius={52}
+          outerRadius={78}
+          paddingAngle={3}
+          stroke="none"
+          onMouseEnter={(_, idx) => setHoverKey(data[idx]?.key ?? null)}
+          onMouseLeave={() => setHoverKey(null)}
+        >
+          {data.map((entry) => (
+            <Cell
+              key={entry.key}
+              fill={entry.color}
+              opacity={hoverKey && hoverKey !== entry.key ? 0.35 : 1}
+              stroke={hoverKey === entry.key ? 'white' : 'none'}
+              strokeWidth={hoverKey === entry.key ? 2 : 0}
+              style={{
+                transition: 'opacity 0.2s, stroke-width 0.2s',
+                filter: hoverKey === entry.key ? `drop-shadow(0 0 6px ${entry.color}66)` : 'none',
+              }}
+            />
+          ))}
+        </Pie>
+      </PieChart>
+    </ChartContainer>
   )
 }
 
-/** Donut theo đánh giá quản lý (OK / NOT / chưa chấm) — khớp 3 ô thống kê bên dưới. */
+/* ==================================================================== *
+ *  Donut — đánh giá quản lý (OK / NOT / chưa chấm)
+ * ==================================================================== */
+
+const evalChartConfig = {
+  ok: { label: 'Đạt (OK)', color: '#059669' },
+  not: { label: 'Chưa đạt (NOT)', color: '#e11d48' },
+  pending: { label: 'Chưa đánh giá', color: '#94a3b8' },
+} satisfies ChartConfig
+
 export function EvalBreakdownDonut({
   breakdown,
   className,
@@ -234,9 +223,21 @@ export function EvalBreakdownDonut({
     () =>
       (
         [
-          { key: 'ok', name: 'Đạt (OK)', value: breakdown.ok, color: '#059669' },
-          { key: 'not', name: 'Chưa đạt (NOT)', value: breakdown.not, color: '#e11d48' },
-          { key: 'pending', name: 'Chưa đánh giá', value: breakdown.pending, color: '#94a3b8' },
+          { key: 'ok', name: 'Đạt (OK)', value: breakdown.ok, color: '#059669', fill: '#059669' },
+          {
+            key: 'not',
+            name: 'Chưa đạt (NOT)',
+            value: breakdown.not,
+            color: '#e11d48',
+            fill: '#e11d48',
+          },
+          {
+            key: 'pending',
+            name: 'Chưa đánh giá',
+            value: breakdown.pending,
+            color: '#94a3b8',
+            fill: '#94a3b8',
+          },
         ] as const
       ).filter((x) => x.value > 0),
     [breakdown]
@@ -257,38 +258,43 @@ export function EvalBreakdownDonut({
   }
 
   return (
-    <div className={cn('h-[220px] w-full', className)}>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Tooltip content={<ChartTooltip suffix=" chỉ tiêu" />} />
-          <Legend {...CHART_LEGEND} />
-          <Pie
-            data={data}
-            dataKey="value"
-            nameKey="name"
-            cx="50%"
-            cy="45%"
-            innerRadius={52}
-            outerRadius={78}
-            paddingAngle={2}
-            stroke="none"
-            onMouseEnter={(_, idx) => setHoverKey(data[idx]?.key ?? null)}
-            onMouseLeave={() => setHoverKey(null)}
-          >
-            {data.map((entry) => (
-              <Cell
-                key={entry.key}
-                fill={entry.color}
-                opacity={hoverKey && hoverKey !== entry.key ? 0.4 : 1}
-                stroke={hoverKey === entry.key ? entry.color : 'none'}
-                strokeWidth={hoverKey === entry.key ? 3 : 0}
-                style={{ transition: 'opacity 0.2s, stroke-width 0.2s' }}
-              />
-            ))}
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
+    <ChartContainer config={evalChartConfig} className={cn('h-[220px] w-full', className)}>
+      <PieChart>
+        <ChartTooltip
+          content={
+            <ChartTooltipContent nameKey="name" formatter={(value) => [`${value} chỉ tiêu`]} />
+          }
+        />
+        <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="45%"
+          innerRadius={52}
+          outerRadius={78}
+          paddingAngle={3}
+          stroke="none"
+          onMouseEnter={(_, idx) => setHoverKey(data[idx]?.key ?? null)}
+          onMouseLeave={() => setHoverKey(null)}
+        >
+          {data.map((entry) => (
+            <Cell
+              key={entry.key}
+              fill={entry.color}
+              opacity={hoverKey && hoverKey !== entry.key ? 0.35 : 1}
+              stroke={hoverKey === entry.key ? 'white' : 'none'}
+              strokeWidth={hoverKey === entry.key ? 2 : 0}
+              style={{
+                transition: 'opacity 0.2s',
+                filter: hoverKey === entry.key ? `drop-shadow(0 0 6px ${entry.color}66)` : 'none',
+              }}
+            />
+          ))}
+        </Pie>
+      </PieChart>
+    </ChartContainer>
   )
 }
 
@@ -310,6 +316,13 @@ const GRADE_LABEL: Record<keyof GradeDistribution, string> = {
   none: 'Chưa xếp',
 }
 
+const gradeChartConfig = {
+  A: { label: 'Loại A', color: '#10b981' },
+  B: { label: 'Loại B', color: '#f59e0b' },
+  C: { label: 'Loại C', color: '#ef4444' },
+  none: { label: 'Chưa xếp', color: '#cbd5e1' },
+} satisfies ChartConfig
+
 export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: string }) {
   const [hoverKey, setHoverKey] = useState<string | null>(null)
   const data = useMemo(
@@ -320,6 +333,7 @@ export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: st
           name: GRADE_LABEL[key],
           value: dist[key],
           color: GRADE_COLOR[key],
+          fill: GRADE_COLOR[key],
         }))
         .filter((x) => x.value > 0),
     [dist]
@@ -343,46 +357,60 @@ export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: st
           Chưa có tổng hợp
         </div>
       ) : (
-        <div className="h-[180px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Tooltip content={<ChartTooltip suffix=" nhân sự" />} />
-              <Legend {...CHART_LEGEND} wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
-              <Pie
-                data={data}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="45%"
-                innerRadius={38}
-                outerRadius={64}
-                paddingAngle={2}
-                stroke="none"
-                onMouseEnter={(_, idx) => setHoverKey(data[idx]?.key ?? null)}
-                onMouseLeave={() => setHoverKey(null)}
-              >
-                {data.map((entry) => (
-                  <Cell
-                    key={entry.key}
-                    fill={entry.color}
-                    opacity={hoverKey && hoverKey !== entry.key ? 0.4 : 1}
-                    stroke={hoverKey === entry.key ? entry.color : 'none'}
-                    strokeWidth={hoverKey === entry.key ? 3 : 0}
-                    style={{ transition: 'opacity 0.2s, stroke-width 0.2s' }}
-                  />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+        <ChartContainer config={gradeChartConfig} className="h-[180px] w-full">
+          <PieChart>
+            <ChartTooltip
+              content={
+                <ChartTooltipContent nameKey="name" formatter={(value) => [`${value} nhân sự`]} />
+              }
+            />
+            <ChartLegend
+              content={<ChartLegendContent nameKey="name" />}
+              wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
+            />
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="43%"
+              innerRadius={38}
+              outerRadius={62}
+              paddingAngle={3}
+              stroke="none"
+              onMouseEnter={(_, idx) => setHoverKey(data[idx]?.key ?? null)}
+              onMouseLeave={() => setHoverKey(null)}
+            >
+              {data.map((entry) => (
+                <Cell
+                  key={entry.key}
+                  fill={entry.color}
+                  opacity={hoverKey && hoverKey !== entry.key ? 0.35 : 1}
+                  style={{
+                    transition: 'opacity 0.2s',
+                    filter:
+                      hoverKey === entry.key ? `drop-shadow(0 0 5px ${entry.color}55)` : 'none',
+                  }}
+                />
+              ))}
+            </Pie>
+          </PieChart>
+        </ChartContainer>
       )}
     </div>
   )
 }
 
 /* ==================================================================== *
- *  Grouped bar — KPI/OKR đạt/chưa theo nhân sự
+ *  Grouped/stacked bar — KPI/OKR đạt/chưa theo nhân sự
  * ==================================================================== */
+
+const perPersonConfig = {
+  kpiOk: { label: 'KPI đạt', color: 'hsl(var(--primary))' },
+  kpiNot: { label: 'KPI chưa', color: '#c7d2fe' },
+  okrOk: { label: 'OKR đạt', color: '#10b981' },
+  okrNot: { label: 'OKR chưa', color: '#a7f3d0' },
+} satisfies ChartConfig
 
 export function PerPersonBar({ rows }: { rows: PerPersonBarRow[] }) {
   if (!rows.length) {
@@ -394,61 +422,64 @@ export function PerPersonBar({ rows }: { rows: PerPersonBarRow[] }) {
   }
   const data = rows.slice(0, 10)
   return (
-    <div className="h-[300px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 10, right: 16, left: 0, bottom: 8 }} barGap={2}>
-          <CartesianGrid {...CHART_GRID_LINE} />
-          <XAxis
-            dataKey="name"
-            tick={CHART_AXIS_TICK}
-            tickLine={false}
-            axisLine={{ stroke: 'hsl(var(--border))' }}
-            interval={0}
-            angle={-20}
-            textAnchor="end"
-            height={56}
-          />
-          <YAxis allowDecimals={false} tick={CHART_AXIS_TICK} tickLine={false} axisLine={false} />
-          <Tooltip content={<ChartTooltip />} />
-          <Legend {...CHART_LEGEND} />
-          <Bar
-            dataKey="kpiOk"
-            name="KPI đạt"
-            stackId="kpi"
-            fill="url(#gradKpi)"
-            radius={[0, 0, 0, 0]}
-          />
-          <Bar
-            dataKey="kpiNot"
-            name="KPI chưa"
-            stackId="kpi"
-            fill="url(#gradKpiSoft)"
-            radius={[4, 4, 0, 0]}
-          />
-          <Bar
-            dataKey="okrOk"
-            name="OKR đạt"
-            stackId="okr"
-            fill="url(#gradOkr)"
-            radius={[0, 0, 0, 0]}
-          />
-          <Bar
-            dataKey="okrNot"
-            name="OKR chưa"
-            stackId="okr"
-            fill="url(#gradOkrSoft)"
-            radius={[4, 4, 0, 0]}
-          />
-          <ChartGradients />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <ChartContainer config={perPersonConfig} className="h-[300px] w-full">
+      <BarChart data={data} margin={{ top: 10, right: 16, left: 0, bottom: 8 }} barGap={2}>
+        <CartesianGrid vertical={false} className="stroke-border/40" strokeDasharray="4 4" />
+        <XAxis
+          dataKey="name"
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 11 }}
+          interval={0}
+          angle={-20}
+          textAnchor="end"
+          height={56}
+        />
+        <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartLegend content={<ChartLegendContent />} />
+        <Bar
+          dataKey="kpiOk"
+          name="KPI đạt"
+          stackId="kpi"
+          fill="url(#gradKpi)"
+          radius={[0, 0, 0, 0]}
+        />
+        <Bar
+          dataKey="kpiNot"
+          name="KPI chưa"
+          stackId="kpi"
+          fill="url(#gradKpiSoft)"
+          radius={[4, 4, 0, 0]}
+        />
+        <Bar
+          dataKey="okrOk"
+          name="OKR đạt"
+          stackId="okr"
+          fill="url(#gradOkr)"
+          radius={[0, 0, 0, 0]}
+        />
+        <Bar
+          dataKey="okrNot"
+          name="OKR chưa"
+          stackId="okr"
+          fill="url(#gradOkrSoft)"
+          radius={[4, 4, 0, 0]}
+        />
+        <ChartGradients />
+      </BarChart>
+    </ChartContainer>
   )
 }
 
 /* ==================================================================== *
- *  Line — trend % đạt KPI/OKR 3 kỳ
+ *  Line — trend % đạt KPI/OKR
  * ==================================================================== */
+
+const trendConfig = {
+  kpiRate: { label: 'Tiến độ KPI', color: '#6366f1' },
+  okrRate: { label: 'Tiến độ OKR', color: '#10b981' },
+} satisfies ChartConfig
 
 export function TrendLine({ points }: { points: TrendPoint[] }) {
   const hasAny = points.some((p) => p.hasData)
@@ -460,56 +491,39 @@ export function TrendLine({ points }: { points: TrendPoint[] }) {
     )
   }
   return (
-    <div className="h-[220px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
-          <CartesianGrid {...CHART_GRID_LINE} />
-          <XAxis
-            dataKey="label"
-            tick={CHART_AXIS_TICK}
-            tickLine={false}
-            axisLine={{ stroke: 'hsl(var(--border))' }}
-          />
-          <YAxis
-            domain={[0, 100]}
-            tick={CHART_AXIS_TICK}
-            tickLine={false}
-            axisLine={false}
-            unit="%"
-          />
-          <Tooltip content={<ChartTooltip suffix="%" />} />
-          <Legend {...CHART_LEGEND} />
-          <defs>
-            <linearGradient id="kpiLineGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.8" />
-            </linearGradient>
-            <linearGradient id="okrLineGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#10b981" stopOpacity="0.8" />
-            </linearGradient>
-          </defs>
-          <Line
-            type="monotone"
-            dataKey="kpiRate"
-            name="Tiến độ KPI"
-            stroke="#6366f1"
-            strokeWidth={2.5}
-            dot={renderDot}
-            activeDot={renderActiveDot}
-          />
-          <Line
-            type="monotone"
-            dataKey="okrRate"
-            name="Tiến độ OKR"
-            stroke="#10b981"
-            strokeWidth={2.5}
-            dot={renderDot}
-            activeDot={renderActiveDot}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+    <ChartContainer config={trendConfig} className="h-[220px] w-full">
+      <LineChart data={points} margin={{ top: 12, right: 16, left: 0, bottom: 8 }}>
+        <CartesianGrid vertical={false} className="stroke-border/40" strokeDasharray="4 4" />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+        <YAxis
+          domain={[0, 100]}
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 11 }}
+          unit="%"
+        />
+        <ChartTooltip content={<ChartTooltipContent formatter={(v) => [`${v}%`]} />} />
+        <ChartLegend content={<ChartLegendContent />} />
+        <Line
+          type="monotone"
+          dataKey="kpiRate"
+          name="Tiến độ KPI"
+          stroke="var(--color-kpiRate)"
+          strokeWidth={2.5}
+          dot={renderDot}
+          activeDot={renderActiveDot}
+        />
+        <Line
+          type="monotone"
+          dataKey="okrRate"
+          name="Tiến độ OKR"
+          stroke="var(--color-okrRate)"
+          strokeWidth={2.5}
+          dot={renderDot}
+          activeDot={renderActiveDot}
+        />
+      </LineChart>
+    </ChartContainer>
   )
 }
 
@@ -529,7 +543,6 @@ export function TopPriorityList({
   nameFor,
 }: {
   rows: TopPriorityItem[]
-  /** Resolve user id -> tên hiển thị, dùng từ member list. */
   nameFor: (userId: string) => string
 }) {
   if (!rows.length) {

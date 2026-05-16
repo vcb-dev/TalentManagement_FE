@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { PageSkeleton } from '@/components/ui/skeleton'
 
 const MyProfileScreenContainer = lazy(() =>
   import('@/features/profile/components/MyProfileScreen').then((module) => ({
@@ -13,7 +14,7 @@ export const Route = createFileRoute('/_protected/profile')({
 
 function ProfilePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageSkeleton />}>
       <MyProfileScreenContainer />
     </Suspense>
   )

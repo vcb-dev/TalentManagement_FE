@@ -237,7 +237,7 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
               >
                 Hủy
               </Button>
-              <Button type="submit" size="lg" disabled={isSubmitting}>
+              <Button type="submit" size="lg" loading={isSubmitting}>
                 {isSubmitting ? 'Đang tạo…' : 'Tạo tài khoản'}
               </Button>
             </div>

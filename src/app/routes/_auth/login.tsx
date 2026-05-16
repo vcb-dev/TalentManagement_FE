@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { Link, createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -350,6 +350,12 @@ function LoginPage() {
             </div>
           ) : null}
         </div>
+      </div>
+
+      <div className="mt-5 text-center text-sm text-muted-foreground">
+        <Link to="/" className="font-medium text-primary hover:underline">
+          ← Về trang giới thiệu
+        </Link>
       </div>
 
       <div

@@ -274,7 +274,7 @@ export function SessionEvaluationModal({
           <div className="sticky bottom-0 bg-white/80 py-6 backdrop-blur-md">
             <Button
               type="submit"
-              disabled={submitMutation.isPending}
+              loading={submitMutation.isPending}
               className="h-14 w-full rounded-2xl bg-primary text-base font-black shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-95"
             >
               {submitMutation.isPending ? (

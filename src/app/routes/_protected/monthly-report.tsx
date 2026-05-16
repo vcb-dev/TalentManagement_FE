@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { requireMonthlyReportRoute } from '@/lib/routeGuards'
+import { PageSkeleton } from '@/components/ui/skeleton'
 
 const MonthlyReportScreen = lazy(() =>
   import('@/features/kpi-okr').then((module) => ({
@@ -15,7 +16,7 @@ export const Route = createFileRoute('/_protected/monthly-report')({
 
 function MonthlyReportPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageSkeleton />}>
       <MonthlyReportScreen />
     </Suspense>
   )

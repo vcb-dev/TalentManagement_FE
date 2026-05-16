@@ -1,6 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { GuestLandingPage } from '@/features/landing/GuestLandingPage'
+import { AboutUsPage } from '@/features/landing/AboutUsPage'
+import { ensureSessionFromCookie } from '@/features/auth/sessionBootstrap'
 
 export const Route = createFileRoute('/')({
-  component: GuestLandingPage,
+  beforeLoad: async () => {
+    await ensureSessionFromCookie()
+  },
+  component: AboutUsPage,
 })

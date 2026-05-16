@@ -73,6 +73,7 @@ export function CompanyLandingSettingsScreen() {
           <Button
             type="button"
             onClick={() => formRef.current?.submit()}
+            loading={save.isPending}
             disabled={save.isPending || isLoading}
           >
             {save.isPending ? 'Đang lưu…' : 'Lưu lên máy chủ'}

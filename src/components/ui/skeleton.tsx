@@ -141,3 +141,27 @@ export function DashboardSkeleton() {
     </div>
   )
 }
+
+/** Skeleton trang chung — dùng cho Suspense fallback của các lazy route */
+export function PageSkeleton() {
+  return (
+    <div className="mx-auto max-w-5xl animate-in fade-in space-y-5 px-4 py-8 duration-300">
+      <div className="space-y-2">
+        <Skeleton className="h-7 w-56 rounded-lg" />
+        <Skeleton className="h-4 w-80 rounded" />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+      </div>
+      <Skeleton className="h-56 w-full rounded-xl" />
+      <div className="space-y-3">
+        <Skeleton className="h-14 w-full rounded-xl" />
+        <Skeleton className="h-14 w-full rounded-xl" />
+        <Skeleton className="h-14 w-full rounded-xl" />
+        <Skeleton className="h-14 w-full rounded-xl" />
+      </div>
+    </div>
+  )
+}

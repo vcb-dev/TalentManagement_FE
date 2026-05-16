@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/axios'
 import { isMockApiEnabled } from '@/lib/mockEnv'
@@ -39,6 +40,7 @@ export function useLogin() {
 export function useLogout() {
   const qc = useQueryClient()
   const logout = useAuthStore((s) => s.logout)
+  const navigate = useNavigate()
 
   return useMutation({
     mutationFn: async () => {
@@ -51,7 +53,10 @@ export function useLogout() {
         /* Bỏ qua lỗi vì client đã logout xong */
       })
     },
-    onSuccess: () => toast.success('Đã đăng xuất'),
+    onSuccess: () => {
+      toast.success('Đã đăng xuất')
+      navigate({ to: '/' })
+    },
     onError: () => toast.error('Đăng xuất lỗi'),
   })
 }

@@ -250,7 +250,7 @@ export function AutoSeedModal({
                 size="sm"
                 className="gap-2 bg-indigo-600 hover:bg-indigo-700"
                 onClick={handlePreview}
-                disabled={loading}
+                loading={loading}
               >
                 {loading ? 'Đang tải preview...' : 'Xem preview'}
               </Button>

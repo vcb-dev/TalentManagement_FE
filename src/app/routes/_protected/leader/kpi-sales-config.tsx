@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
+import { PageSkeleton } from '@/components/ui/skeleton'
 
 const SalesKpiCatalogScreen = lazy(() =>
   import('@/features/kpi-okr').then((module) => ({
@@ -17,7 +18,7 @@ export const Route = createFileRoute('/_protected/leader/kpi-sales-config')({
 
 function SalesKpiConfigPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageSkeleton />}>
       <SalesKpiCatalogScreen />
     </Suspense>
   )

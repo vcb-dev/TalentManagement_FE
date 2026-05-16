@@ -55,7 +55,6 @@ import { Route as ProtectedManagerKpiOkrLeaderReviewRouteImport } from './routes
 import { Route as ProtectedManagerGradeClassClassIdRouteImport } from './routes/_protected/manager/grade-class/$classId'
 import { Route as ProtectedLearningPathLevelIdStarIdRouteImport } from './routes/_protected/learning-path/$levelId/$starId'
 import { Route as ProtectedLeaderTeamEmployeeIdRouteImport } from './routes/_protected/leader/team/$employeeId'
-import { Route as ProtectedHrAdminSettingsRewardsRouteImport } from './routes/_protected/hr-admin/settings/rewards'
 import { Route as ProtectedHrAdminSettingsKpiWindowsRouteImport } from './routes/_protected/hr-admin/settings/kpi-windows'
 import { Route as ProtectedHrAdminSettingsKpiCatalogAllowlistRouteImport } from './routes/_protected/hr-admin/settings/kpi-catalog-allowlist'
 import { Route as ProtectedHrAdminSettingsCompanyLandingRouteImport } from './routes/_protected/hr-admin/settings/company-landing'
@@ -319,12 +318,6 @@ const ProtectedLeaderTeamEmployeeIdRoute =
     path: '/leader/team/$employeeId',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
-const ProtectedHrAdminSettingsRewardsRoute =
-  ProtectedHrAdminSettingsRewardsRouteImport.update({
-    id: '/hr-admin/settings/rewards',
-    path: '/hr-admin/settings/rewards',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
 const ProtectedHrAdminSettingsKpiWindowsRoute =
   ProtectedHrAdminSettingsKpiWindowsRouteImport.update({
     id: '/hr-admin/settings/kpi-windows',
@@ -424,7 +417,6 @@ export interface FileRoutesByFullPath {
   '/hr-admin/settings/company-landing': typeof ProtectedHrAdminSettingsCompanyLandingRoute
   '/hr-admin/settings/kpi-catalog-allowlist': typeof ProtectedHrAdminSettingsKpiCatalogAllowlistRoute
   '/hr-admin/settings/kpi-windows': typeof ProtectedHrAdminSettingsKpiWindowsRoute
-  '/hr-admin/settings/rewards': typeof ProtectedHrAdminSettingsRewardsRoute
   '/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
   '/manager/grade-class/$classId': typeof ProtectedManagerGradeClassClassIdRouteWithChildren
@@ -480,7 +472,6 @@ export interface FileRoutesByTo {
   '/hr-admin/settings/company-landing': typeof ProtectedHrAdminSettingsCompanyLandingRoute
   '/hr-admin/settings/kpi-catalog-allowlist': typeof ProtectedHrAdminSettingsKpiCatalogAllowlistRoute
   '/hr-admin/settings/kpi-windows': typeof ProtectedHrAdminSettingsKpiWindowsRoute
-  '/hr-admin/settings/rewards': typeof ProtectedHrAdminSettingsRewardsRoute
   '/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
   '/manager/grade-class/$classId': typeof ProtectedManagerGradeClassClassIdRouteWithChildren
@@ -539,7 +530,6 @@ export interface FileRoutesById {
   '/_protected/hr-admin/settings/company-landing': typeof ProtectedHrAdminSettingsCompanyLandingRoute
   '/_protected/hr-admin/settings/kpi-catalog-allowlist': typeof ProtectedHrAdminSettingsKpiCatalogAllowlistRoute
   '/_protected/hr-admin/settings/kpi-windows': typeof ProtectedHrAdminSettingsKpiWindowsRoute
-  '/_protected/hr-admin/settings/rewards': typeof ProtectedHrAdminSettingsRewardsRoute
   '/_protected/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/_protected/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
   '/_protected/manager/grade-class/$classId': typeof ProtectedManagerGradeClassClassIdRouteWithChildren
@@ -597,7 +587,6 @@ export interface FileRouteTypes {
     | '/hr-admin/settings/company-landing'
     | '/hr-admin/settings/kpi-catalog-allowlist'
     | '/hr-admin/settings/kpi-windows'
-    | '/hr-admin/settings/rewards'
     | '/leader/team/$employeeId'
     | '/learning-path/$levelId/$starId'
     | '/manager/grade-class/$classId'
@@ -653,7 +642,6 @@ export interface FileRouteTypes {
     | '/hr-admin/settings/company-landing'
     | '/hr-admin/settings/kpi-catalog-allowlist'
     | '/hr-admin/settings/kpi-windows'
-    | '/hr-admin/settings/rewards'
     | '/leader/team/$employeeId'
     | '/learning-path/$levelId/$starId'
     | '/manager/grade-class/$classId'
@@ -711,7 +699,6 @@ export interface FileRouteTypes {
     | '/_protected/hr-admin/settings/company-landing'
     | '/_protected/hr-admin/settings/kpi-catalog-allowlist'
     | '/_protected/hr-admin/settings/kpi-windows'
-    | '/_protected/hr-admin/settings/rewards'
     | '/_protected/leader/team/$employeeId'
     | '/_protected/learning-path/$levelId/$starId'
     | '/_protected/manager/grade-class/$classId'
@@ -1055,13 +1042,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedLeaderTeamEmployeeIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/hr-admin/settings/rewards': {
-      id: '/_protected/hr-admin/settings/rewards'
-      path: '/hr-admin/settings/rewards'
-      fullPath: '/hr-admin/settings/rewards'
-      preLoaderRoute: typeof ProtectedHrAdminSettingsRewardsRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
     '/_protected/hr-admin/settings/kpi-windows': {
       id: '/_protected/hr-admin/settings/kpi-windows'
       path: '/hr-admin/settings/kpi-windows'
@@ -1196,7 +1176,6 @@ interface ProtectedRouteRouteChildren {
   ProtectedHrAdminSettingsCompanyLandingRoute: typeof ProtectedHrAdminSettingsCompanyLandingRoute
   ProtectedHrAdminSettingsKpiCatalogAllowlistRoute: typeof ProtectedHrAdminSettingsKpiCatalogAllowlistRoute
   ProtectedHrAdminSettingsKpiWindowsRoute: typeof ProtectedHrAdminSettingsKpiWindowsRoute
-  ProtectedHrAdminSettingsRewardsRoute: typeof ProtectedHrAdminSettingsRewardsRoute
   ProtectedLeaderTeamEmployeeIdRoute: typeof ProtectedLeaderTeamEmployeeIdRoute
   ProtectedLearningPathLevelIdStarIdRoute: typeof ProtectedLearningPathLevelIdStarIdRoute
   ProtectedManagerGradeClassClassIdRoute: typeof ProtectedManagerGradeClassClassIdRouteWithChildren
@@ -1255,7 +1234,6 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
     ProtectedHrAdminSettingsKpiCatalogAllowlistRoute,
   ProtectedHrAdminSettingsKpiWindowsRoute:
     ProtectedHrAdminSettingsKpiWindowsRoute,
-  ProtectedHrAdminSettingsRewardsRoute: ProtectedHrAdminSettingsRewardsRoute,
   ProtectedLeaderTeamEmployeeIdRoute: ProtectedLeaderTeamEmployeeIdRoute,
   ProtectedLearningPathLevelIdStarIdRoute:
     ProtectedLearningPathLevelIdStarIdRoute,

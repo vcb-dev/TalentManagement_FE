@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { Bell, ChevronDown, LogOut, UserCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLogout } from '@/features/auth/hooks'
@@ -29,7 +29,6 @@ export interface AppShellProps {
 
 export function AppShell({ children, title }: AppShellProps) {
   const user = useAuthStore((s) => s.user)
-  const navigate = useNavigate()
   const { mutate: logout, isPending: logoutPending } = useLogout()
   const displayName = user?.name ?? 'Người dùng'
   const roleLabel = user ? formatRoleLabelsVi(user) : '—'
@@ -117,10 +116,7 @@ export function AppShell({ children, title }: AppShellProps) {
           <DropdownMenuItem
             disabled={logoutPending}
             className="cursor-pointer gap-2"
-            onClick={() => {
-              logout(undefined)
-              void navigate({ to: '/login' })
-            }}
+            onClick={() => logout(undefined)}
           >
             <LogOut className="h-4 w-4 shrink-0" strokeWidth={2} />
             Đăng xuất

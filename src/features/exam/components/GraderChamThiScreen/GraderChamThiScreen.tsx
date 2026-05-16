@@ -387,7 +387,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
               type="button"
               variant="outline"
               size="sm"
-              disabled={gradeMutation.isPending}
+              loading={gradeMutation.isPending}
               className="whitespace-nowrap rounded-lg px-3.5 py-1.5 text-xs font-medium"
               onClick={() => handleComplete('grading')}
             >
@@ -396,7 +396,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
             <Button
               type="button"
               size="sm"
-              disabled={gradeMutation.isPending}
+              loading={gradeMutation.isPending}
               className="gap-1 whitespace-nowrap rounded-lg px-3.5 py-1.5 text-xs font-bold shadow-sm"
               onClick={() => handleComplete('done')}
             >
@@ -551,7 +551,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                 <div className="mt-5 space-y-2">
                   <Button
                     type="button"
-                    disabled={gradeMutation.isPending}
+                    loading={gradeMutation.isPending}
                     className="w-full rounded-lg py-2 text-sm font-bold"
                     onClick={() => handleComplete('done')}
                   >
@@ -560,7 +560,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={gradeMutation.isPending}
+                    loading={gradeMutation.isPending}
                     className="w-full rounded-lg border-border py-2 text-sm font-medium"
                     onClick={() => handleComplete('grading')}
                   >

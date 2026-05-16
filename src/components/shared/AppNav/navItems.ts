@@ -135,7 +135,6 @@ const HR_ITEMS: AppNavItem[] = [
       if (p.startsWith('/hr-admin/kpi-catalog')) return false
       if (p.startsWith('/hr-admin/settings/kpi-windows')) return false
       if (p.startsWith('/hr-admin/settings/company-landing')) return false
-      if (p.startsWith('/hr-admin/settings/rewards')) return false
       return p === '/hr-admin' || p.startsWith('/hr-admin/')
     },
     search: { page: 1 },
@@ -165,13 +164,6 @@ export const SETTINGS_ITEMS: AppNavItem[] = [
     icon: CalendarRange,
     match: 'prefix',
     permissionId: 'kpi.window_override',
-  },
-  {
-    to: '/hr-admin/settings/rewards',
-    label: 'Quản lý thưởng KPI tháng',
-    icon: Award,
-    match: 'prefix',
-    permissionId: 'reward.threshold_view',
   },
 ]
 
@@ -269,13 +261,6 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
     icon: ShieldCheck,
     match: 'prefix',
     permissionId: 'kpi.leader_review',
-  },
-  {
-    to: '/hr-admin/settings/rewards',
-    label: 'Kết quả thưởng KPI tháng',
-    icon: Award,
-    match: 'prefix',
-    permissionId: 'reward.threshold_view',
   },
 ]
 
@@ -461,7 +446,6 @@ export function groupedSidebarNavItems(
         ...find(HR_ITEMS, '/hr-admin/org'),
         ...find(HR_ITEMS, '/hr-admin/kpi-catalog/SALES_NV'),
         ...find(MANAGER_OPS_ITEMS, '/manager/kpi-okr/leader-review'),
-        ...find(MANAGER_OPS_ITEMS, '/hr-admin/settings/rewards'),
         ...find(HR_ITEMS, '/hr-admin/settings/company-landing'),
         ...ROOM_BOOKING_ITEMS.filter(
           (i) => i.search?.tab === 'requests' || i.search?.tab === 'approvals'
@@ -473,10 +457,7 @@ export function groupedSidebarNavItems(
     {
       id: 'settings',
       label: 'Cài đặt',
-      items: take([
-        ...find(SETTINGS_ITEMS, '/hr-admin/settings/kpi-windows'),
-        ...find(SETTINGS_ITEMS, '/hr-admin/settings/rewards'),
-      ]),
+      items: take([...find(SETTINGS_ITEMS, '/hr-admin/settings/kpi-windows')]),
     },
   ]
 

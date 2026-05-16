@@ -900,7 +900,7 @@ export function RoadmapCrud() {
                     type="submit"
                     form="roadmap-form"
                     className="h-12 min-w-[200px] rounded-2xl bg-primary px-12 font-black text-white shadow-xl shadow-primary/30 transition-all hover:scale-[1.03] active:scale-95"
-                    disabled={createItem.isPending || updateItem.isPending}
+                    loading={createItem.isPending || updateItem.isPending}
                     onClick={() => form.handleSubmit(onSubmit)()}
                   >
                     {createItem.isPending || updateItem.isPending

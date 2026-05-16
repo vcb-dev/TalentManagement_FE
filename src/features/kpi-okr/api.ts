@@ -91,6 +91,44 @@ export type ManagerMetricSummary = {
   teamIds: string[]
   isMandatory: boolean
   isRanking: boolean
+  honorType: string | null
+}
+
+export type VinhDanhConfigSummary = {
+  content: string
+  kind: PerformanceKind
+  priority: number
+  targetMetric: string | null
+  numericUnit: string | null
+  teamIds: string[]
+  effectiveFromYear: number
+  effectiveFromMonth: number
+}
+
+export type VinhDanhHonorIndividual = {
+  user: { id: string; displayName: string | null; email: string | null; avatarUrl: string | null }
+  teamName: string
+  numericValue: number
+  numericUnit: string
+}
+
+export type VinhDanhHonorTeam = {
+  team: { id: string; name: string }
+  totalValue: number
+  numericUnit: string
+  memberCount: number
+}
+
+export type VinhDanhHonorEntry = {
+  content: string
+  topIndividual: VinhDanhHonorIndividual | null
+  topTeam: VinhDanhHonorTeam | null
+}
+
+export type VinhDanhHonorBoardResponse = {
+  year: number
+  month: number
+  entries: VinhDanhHonorEntry[]
 }
 
 export const performanceApi = {
@@ -116,6 +154,60 @@ export const performanceApi = {
     if (isMockApiEnabled()) return [] as ManagerMetricSummary[]
     const res = await apiClient.get<ManagerMetricSummary[]>(
       `/performance/assignments/manager-summary`,
+      { params: { year, month } }
+    )
+    return res.data
+  },
+
+  getVinhDanhConfigs: async (year: number, month: number) => {
+    if (isMockApiEnabled()) return [] as VinhDanhConfigSummary[]
+    const res = await apiClient.get<VinhDanhConfigSummary[]>(`/performance/vinh-danh-configs`, {
+      params: { year, month },
+    })
+    return res.data
+  },
+
+  createVinhDanhConfig: async (body: {
+    content: string
+    kind: PerformanceKind
+    priority?: number
+    targetMetric?: string | null
+    numericUnit?: string | null
+    teamIds: string[]
+    effectiveFromYear: number
+    effectiveFromMonth: number
+  }) => {
+    const res = await apiClient.post<{ ok: boolean }>(`/performance/vinh-danh-configs`, body)
+    return res.data
+  },
+
+  updateVinhDanhConfig: async (body: {
+    oldContent: string
+    newContent?: string | null
+    kind?: PerformanceKind
+    priority?: number
+    targetMetric?: string | null
+    numericUnit?: string | null
+    effectiveFromYear?: number
+    effectiveFromMonth?: number
+    addTeamIds?: string[]
+    removeTeamIds?: string[]
+    keepTeamIds?: string[]
+  }) => {
+    const res = await apiClient.put<{ ok: boolean }>(`/performance/vinh-danh-configs`, body)
+    return res.data
+  },
+
+  deleteVinhDanhConfig: async (body: { content: string; teamIds: string[] }) => {
+    const res = await apiClient.delete<{ ok: boolean }>(`/performance/vinh-danh-configs`, {
+      data: body,
+    })
+    return res.data
+  },
+
+  getVinhDanhHonorBoard: async (year: number, month: number) => {
+    const res = await apiClient.get<VinhDanhHonorBoardResponse>(
+      `/performance/vinh-danh-honor-board`,
       { params: { year, month } }
     )
     return res.data
@@ -925,4 +1017,171 @@ export type CatalogItem = {
     bonusPercent: number | null
     bonusAmount: number | null
   }>
+}
+
+// ─── WorkReport: Báo cáo tổng kết công việc hàng tháng ───────────────────────
+
+export type WorkReportStatus =
+  | 'draft'
+  | 'submitted'
+  | 'late_pending'
+  | 'late_approved'
+  | 'late_submitted'
+  | 'reviewed'
+
+export type WorkReport = {
+  id: string
+  userId: string
+  teamId: string
+  year: number
+  month: number
+  status: WorkReportStatus
+  isLate: boolean
+  part1KpiNarrative: string | null
+  part1Situation: string | null
+  part1Cause: string | null
+  part1Solution: string | null
+  part2SelfRating: string | null
+  part2SelfComment: string | null
+  part2LeaderRating: string | null
+  part2LeaderComment: string | null
+  reviewedByUserId: string | null
+  reviewedAt: string | null
+  part3NextMonthPlan: string | null
+  fileUrl: string | null
+  fileOriginalName: string | null
+  fileMimeType: string | null
+  aiSummary: string | null
+  aiSummarizedAt: string | null
+  submittedAt: string | null
+  createdAt: string
+  updatedAt: string
+  questionnairePart4: Array<{
+    questionId: string
+    prompt: string
+    sortOrder: number
+    answerText: string
+  }>
+}
+
+export type WorkReportLateRequest = {
+  id: string
+  workReportId: string
+  reason: string
+  status: 'pending' | 'approved' | 'rejected'
+  reviewNote: string | null
+  createdAt: string
+  workReport: { year: number; month: number; teamId: string }
+  requestedBy: {
+    id: string
+    displayName: string | null
+    email: string | null
+    employeeCode: string | null
+  }
+}
+
+export type UpsertWorkReportBody = {
+  teamId: string
+  year: number
+  month: number
+  part1KpiNarrative?: string | null
+  part1Situation?: string | null
+  part1Cause?: string | null
+  part1Solution?: string | null
+  part2SelfRating?: string | null
+  part2SelfComment?: string | null
+  part3NextMonthPlan?: string | null
+  fileUrl?: string | null
+  fileOriginalName?: string | null
+  fileMimeType?: string | null
+}
+
+export const workReportApi = {
+  getMyWorkReport: async (year: number, month: number): Promise<WorkReport | null> => {
+    if (isMockApiEnabled()) return null
+    const res = await apiClient.get<WorkReport | null>('/performance/work-reports/me', {
+      params: { year, month },
+    })
+    return res.data
+  },
+
+  upsertMyWorkReport: async (body: UpsertWorkReportBody): Promise<WorkReport> => {
+    const res = await apiClient.put<WorkReport>('/performance/work-reports/me', body)
+    return res.data
+  },
+
+  submitWorkReport: async (reportId: string): Promise<WorkReport> => {
+    const res = await apiClient.post<WorkReport>(`/performance/work-reports/${reportId}/submit`)
+    return res.data
+  },
+
+  uploadWorkReportFile: async (
+    file: File
+  ): Promise<{ url: string; originalName: string; mimeType: string }> => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await apiClient.post<{ url: string; originalName: string; mimeType: string }>(
+      '/performance/work-reports/file',
+      fd,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    return res.data
+  },
+
+  requestLateWorkReport: async (reportId: string, reason: string): Promise<WorkReport> => {
+    const res = await apiClient.post<WorkReport>(
+      `/performance/work-reports/${reportId}/late-request`,
+      { reason }
+    )
+    return res.data
+  },
+
+  listPendingLateRequests: async (): Promise<WorkReportLateRequest[]> => {
+    if (isMockApiEnabled()) return []
+    const res = await apiClient.get<WorkReportLateRequest[]>(
+      '/performance/work-reports/late-requests'
+    )
+    return res.data
+  },
+
+  reviewLateRequest: async (
+    requestId: string,
+    approved: boolean,
+    note?: string
+  ): Promise<{ id: string; status: string; approved: boolean }> => {
+    const res = await apiClient.patch(`/performance/work-reports/late-requests/${requestId}`, {
+      approved,
+      note,
+    })
+    return res.data
+  },
+
+  reviewWorkReport: async (
+    reportId: string,
+    body: { part2LeaderRating?: string | null; part2LeaderComment?: string | null }
+  ): Promise<WorkReport> => {
+    const res = await apiClient.patch<WorkReport>(
+      `/performance/work-reports/${reportId}/review`,
+      body
+    )
+    return res.data
+  },
+
+  listTeamWorkReports: async (
+    teamId: string,
+    year: number,
+    month: number
+  ): Promise<WorkReport[]> => {
+    if (isMockApiEnabled()) return []
+    const res = await apiClient.get<WorkReport[]>(`/performance/teams/${teamId}/work-reports`, {
+      params: { year, month },
+    })
+    return res.data
+  },
+
+  listUserWorkReportHistory: async (userId: string): Promise<WorkReport[]> => {
+    if (isMockApiEnabled()) return []
+    const res = await apiClient.get<WorkReport[]>(`/performance/users/${userId}/work-reports`)
+    return res.data
+  },
 }

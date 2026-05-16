@@ -64,6 +64,7 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
   )
   const [dirty, setDirty] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
   const loadFromServer = useCallback(async () => {
     setLoading(true)
@@ -117,6 +118,7 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
     for (const id of selected) {
       if (id.startsWith('data.')) dataScopeFlags[id] = true
     }
+    setSaving(true)
     try {
       await permissionApi.saveAssignment({
         userId: employee.id,
@@ -131,10 +133,11 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
         const me = await authApi.me()
         useAuthStore.getState().setSession(me.user, me.accessToken ?? null)
       }
-      // Lưu xong thì đóng màn chi tiết, quay về danh sách nhân viên.
       void navigate({ to: '/permissions' })
     } catch (e) {
       toast.error(getApiErrorMessage(e) || 'Không lưu được')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -189,6 +192,7 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
               size="sm"
               onClick={() => void onSave()}
               disabled={loading || !dirty}
+              loading={saving}
             >
               Lưu
             </Button>

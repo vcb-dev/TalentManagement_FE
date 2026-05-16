@@ -987,7 +987,14 @@ function MemberSelfAssignmentRow({
       <TableCell
         className={cn(td, 'min-w-[240px] max-w-xl font-medium text-slate-900 dark:text-slate-100')}
       >
-        {row.content}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {row.content}
+          {row.category === 'VINH_DANH' && (
+            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+              🏆 Vinh danh
+            </span>
+          )}
+        </div>
       </TableCell>
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
         {row.targetMetric || '—'}
@@ -1100,7 +1107,14 @@ function ReadOnlyAssignmentRow({
       <TableCell
         className={cn(td, 'min-w-[300px] max-w-xl font-medium text-slate-900 dark:text-slate-100')}
       >
-        {row.content}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {row.content}
+          {row.category === 'VINH_DANH' && (
+            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+              🏆 Vinh danh
+            </span>
+          )}
+        </div>
       </TableCell>
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
         {row.targetMetric || '—'}
@@ -1141,6 +1155,11 @@ function ReadOnlyAssignmentMobileCard({
       </div>
       <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">
         {row.content}
+        {row.category === 'VINH_DANH' && (
+          <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+            🏆 Vinh danh
+          </span>
+        )}
       </p>
       <p className="text-sm font-semibold tabular-nums text-primary">
         Chỉ tiêu: {row.targetMetric || '—'}
@@ -1197,6 +1216,11 @@ function MemberSelfAssignmentMobileCard({
       </div>
       <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">
         {row.content}
+        {row.category === 'VINH_DANH' && (
+          <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+            🏆 Vinh danh
+          </span>
+        )}
       </p>
       <p className="text-sm font-semibold tabular-nums text-primary">
         Chỉ tiêu: {row.targetMetric || '—'}
@@ -1455,7 +1479,14 @@ function LeaderAssignmentRow({
       <TableCell
         className={cn(td, 'min-w-[300px] max-w-xl font-medium text-slate-900 dark:text-slate-100')}
       >
-        {row.content}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {row.content}
+          {row.category === 'VINH_DANH' && (
+            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+              🏆 Vinh danh
+            </span>
+          )}
+        </div>
       </TableCell>
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
         {row.targetMetric || '—'}
@@ -2392,7 +2423,7 @@ function ManagerCascadeAddForm({
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Hủy
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" loading={isSubmitting}>
               {isSubmitting ? 'Đang thêm…' : 'Thêm cho toàn team'}
             </Button>
           </DialogFooter>

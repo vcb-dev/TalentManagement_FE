@@ -52,6 +52,14 @@ function formatDepartment(departmentId: string): string {
 
 const quartOut = '[transition-timing-function:cubic-bezier(0.25,1,0.48,1)]'
 
+const LEVEL_FRAMES: Record<LevelCode, string> = {
+  tap_su: '/khung_avatar/khung_avatar_tap_su.png',
+  biet_viec: '/khung_avatar/khung_avatar_biet_viec.png',
+  duoc_viec: '/khung_avatar/khung_avatar_duoc_viec.png',
+  dong_gop_ket_qua: '/khung_avatar/khung_avatar_ket_qua.png',
+  tuong: '/khung_avatar/khung_avatar_tuong.png',
+}
+
 function parseLevelFromStaff(staffLevel: StaffLevel | undefined): LevelCode | null {
   if (staffLevel === 'PROBATION') return 'tap_su'
   if (staffLevel === 'PROFICIENT') return 'biet_viec'
@@ -325,17 +333,25 @@ export function EmployeeLearningDashboard() {
                 )}
               >
                 {user && (
-                  <div className="relative">
-                    <div
-                      className="pointer-events-none absolute inset-0 scale-110 rounded-full bg-gradient-to-tr from-primary/40 via-accent/30 to-primary-600/45 opacity-90 blur-xl"
-                      aria-hidden
-                    />
-                    <EmployeeAvatar
-                      name={avatarName}
-                      photoUrl={resolvePublicAssetUrl(user?.portraitRef || apiUser?.portraitRef)}
-                      className="relative z-10 h-24 w-24 text-xl ring-[3px] ring-white/90 shadow-[0_12px_40px_-12px_hsl(var(--primary)/0.45)] ring-offset-[3px] ring-offset-[hsl(var(--accent)/0.08)]"
-                    />
-                    <span className="absolute -bottom-1 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/40 bg-gradient-to-r from-primary to-accent px-3 py-0.5 text-[0.55rem] font-black uppercase tracking-wide text-primary-foreground shadow-[0_6px_20px_hsl(var(--primary)/0.4)]">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="relative flex h-36 w-36 items-center justify-center">
+                      <div
+                        className="pointer-events-none absolute inset-4 rounded-full bg-gradient-to-tr from-primary/40 via-accent/30 to-primary-600/45 opacity-90 blur-xl"
+                        aria-hidden
+                      />
+                      <EmployeeAvatar
+                        name={avatarName}
+                        photoUrl={resolvePublicAssetUrl(user?.portraitRef || apiUser?.portraitRef)}
+                        className="relative z-10 h-24 w-24 text-xl shadow-[0_12px_40px_-12px_hsl(var(--primary)/0.45)]"
+                      />
+                      <img
+                        src={LEVEL_FRAMES[levelKey]}
+                        alt=""
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0 z-20 h-full w-full object-contain"
+                      />
+                    </div>
+                    <span className="whitespace-nowrap rounded-full border border-white/40 bg-gradient-to-r from-primary to-accent px-3 py-0.5 text-[0.55rem] font-black uppercase tracking-wide text-primary-foreground shadow-[0_6px_20px_hsl(var(--primary)/0.4)]">
                       {levelLabel}
                     </span>
                   </div>

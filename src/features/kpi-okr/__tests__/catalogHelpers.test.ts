@@ -15,16 +15,16 @@ describe('isMandatoryMetric', () => {
     expect(isMandatoryMetric('Doanh thu lên đơn', 'SALES_NV')).toBe(true)
   })
 
-  it('SALES_NV: "Số đơn chốt" là bắt buộc', () => {
-    expect(isMandatoryMetric('Số đơn chốt', 'SALES_NV')).toBe(true)
+  it('SALES_NV: "Số đơn hàng chốt được (có cọc, XN ĐT)" là bắt buộc', () => {
+    expect(isMandatoryMetric('Số đơn hàng chốt được (có cọc, XN ĐT)', 'SALES_NV')).toBe(true)
   })
 
   it('SALES_NV: "Giá trị đơn hàng lớn nhất trong tháng" KHÔNG bắt buộc', () => {
     expect(isMandatoryMetric('Giá trị đơn hàng lớn nhất trong tháng', 'SALES_NV')).toBe(false)
   })
 
-  it('TRAFFIC_TEAM_NV: "Tổng view traffic team" là bắt buộc', () => {
-    expect(isMandatoryMetric('Tổng view traffic team', 'TRAFFIC_TEAM_NV')).toBe(true)
+  it('TRAFFIC_TEAM_NV: "Traffic cá nhân tháng" là bắt buộc', () => {
+    expect(isMandatoryMetric('Traffic cá nhân tháng', 'TRAFFIC_TEAM_NV')).toBe(true)
   })
 
   it('TRAFFIC_TEAM_NV: "Doanh thu cá nhân tháng" là bắt buộc', () => {
@@ -49,8 +49,8 @@ describe('isMandatoryMetric', () => {
     expect(MANDATORY_METRICS_BY_TEMPLATE['SALES_NV']).toHaveLength(2)
   })
 
-  it('MANDATORY_METRICS_BY_TEMPLATE.TRAFFIC_TEAM_NV có 4 phần tử', () => {
-    expect(MANDATORY_METRICS_BY_TEMPLATE['TRAFFIC_TEAM_NV']).toHaveLength(4)
+  it('MANDATORY_METRICS_BY_TEMPLATE.TRAFFIC_TEAM_NV có 2 phần tử', () => {
+    expect(MANDATORY_METRICS_BY_TEMPLATE['TRAFFIC_TEAM_NV']).toHaveLength(2)
   })
 })
 

@@ -1,15 +1,4 @@
-import { useMemo, useState } from 'react'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip as RTooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
-import { Users } from 'lucide-react'
+import { TrendingDown, TrendingUp, Users } from 'lucide-react'
 import { useLearningOpsSummary } from '@/features/dashboard/hooks'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -24,11 +13,11 @@ export type ManagerHrSnapshotCardsProps = {
 const HR_HINT =
   'Tổng: không tính trạng thái đã nghỉ / inactive trên hồ sơ HR. Off: theo ngày nghỉ trong dữ liệu đồng bộ; thiếu ngày thì ước lượng theo lần cập nhật gần nhất. Mới: ngày vào làm (startDateWork) nằm trong kỳ đã chọn.'
 
-type HrRow = { key: string; short: string; value: number; fill: string }
+function pct(part: number, total: number): string {
+  if (!total) return '—'
+  return `${((part / total) * 100).toFixed(1)}%`
+}
 
-/**
- * Tổng / off / mới — biểu đồ cột ngang gọn, chi tiết ở tooltip (i).
- */
 export function ManagerHrSnapshotCards({
   reportYear,
   rangeStartMonth,
@@ -42,35 +31,10 @@ export function ManagerHrSnapshotCards({
   )
 
   const inSingleMonth = rangeStartMonth === rangeEndMonth
-  const offLabel = inSingleMonth ? 'Off (tháng)' : 'Off (kỳ)'
-  const newLabel = inSingleMonth ? 'Mới (tháng)' : 'Mới (kỳ)'
-
-  const barData: HrRow[] = useMemo(
-    () => [
-      {
-        key: 'headcount',
-        short: 'Tổng ĐL',
-        value: data?.totalHeadcount ?? 0,
-        fill: 'hsl(262 83% 52%)',
-      },
-      {
-        key: 'off',
-        short: offLabel,
-        value: data?.offboardedInPeriod ?? 0,
-        fill: 'hsl(350 70% 48%)',
-      },
-      {
-        key: 'new',
-        short: newLabel,
-        value: data?.newHiresInPeriod ?? 0,
-        fill: 'hsl(160 55% 40%)',
-      },
-    ],
-    [data?.totalHeadcount, data?.offboardedInPeriod, data?.newHiresInPeriod, offLabel, newLabel]
-  )
-
-  const [hoverKey, setHoverKey] = useState<string | null>(null)
-  const maxVal = Math.max(1, ...barData.map((d) => d.value))
+  const periodSuffix = inSingleMonth ? 'trong tháng' : 'trong kỳ'
+  const total = data?.totalHeadcount ?? 0
+  const off = data?.offboardedInPeriod ?? 0
+  const newHires = data?.newHiresInPeriod ?? 0
 
   return (
     <div className="space-y-3">
@@ -86,12 +50,9 @@ export function ManagerHrSnapshotCards({
         </div>
       ) : null}
 
-      <div
-        className={cn(
-          'overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-card via-card to-primary/[0.06] p-4 shadow-[var(--shadow-game-float)] sm:p-5'
-        )}
-      >
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-card via-card to-primary/[0.06] p-4 shadow-[var(--shadow-game-float)] sm:p-5">
+        {/* Header */}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-violet-600/15 text-indigo-700 dark:text-indigo-300">
             <Users className="h-4 w-4" strokeWidth={2} aria-hidden />
           </div>
@@ -106,72 +67,77 @@ export function ManagerHrSnapshotCards({
         </div>
 
         {isLoading && !data ? (
-          <Skeleton className="h-40 w-full rounded-xl" />
+          <div className="grid grid-cols-3 gap-3">
+            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-xl" />
+          </div>
         ) : (
-          <div className="h-40 w-full min-w-0 sm:h-44">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                layout="vertical"
-                data={barData}
-                margin={{ top: 4, right: 8, left: 4, bottom: 4 }}
-                barCategoryGap="22%"
-                onMouseMove={(s) => {
-                  const idx = s?.activeTooltipIndex
-                  if (typeof idx === 'number' && idx >= 0 && idx < barData.length) {
-                    setHoverKey(barData[idx]?.key ?? null)
-                  }
-                }}
-                onMouseLeave={() => setHoverKey(null)}
+          <div className="grid grid-cols-3 gap-3">
+            {/* Tổng đầu lượng */}
+            <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-violet-500/10 to-indigo-600/5 p-3 ring-1 ring-indigo-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-indigo-500/40 sm:p-4">
+              <div
+                className="absolute -right-3 -top-3 h-16 w-16 rounded-full bg-indigo-500/8 blur-xl"
+                aria-hidden
+              />
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600/80 dark:text-indigo-400">
+                Tổng đầu lượng
+              </p>
+              <p
+                className={cn(
+                  'font-black tabular-nums text-foreground',
+                  total >= 1000 ? 'text-2xl' : 'text-3xl'
+                )}
               >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  className="stroke-border/50"
-                  horizontal
-                  vertical={false}
-                />
-                <XAxis
-                  type="number"
-                  allowDecimals={false}
-                  domain={[0, maxVal]}
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="short"
-                  width={inSingleMonth ? 72 : 88}
-                  tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <RTooltip
-                  cursor={{ fill: 'hsl(var(--primary) / 0.07)' }}
-                  contentStyle={{
-                    borderRadius: '12px',
-                    border: '1px solid hsl(var(--border))',
-                    background: 'hsl(var(--card))',
-                    fontSize: '12px',
-                  }}
-                  formatter={(v) => [String(v), 'Số lượng']}
-                />
-                <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={28}>
-                  {barData.map((row) => (
-                    <Cell
-                      key={row.key}
-                      fill={row.fill}
-                      opacity={hoverKey && hoverKey !== row.key ? 0.3 : 1}
-                      style={{ transition: 'opacity 0.2s' }}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                {total.toLocaleString('vi-VN')}
+              </p>
+              <p className="mt-1 text-[10px] text-muted-foreground">nhân sự đang làm việc</p>
+            </div>
+
+            {/* Off */}
+            <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-rose-500/10 to-red-600/5 p-3 ring-1 ring-rose-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-rose-500/40 sm:p-4">
+              <div
+                className="absolute -right-3 -top-3 h-16 w-16 rounded-full bg-rose-500/8 blur-xl"
+                aria-hidden
+              />
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600/80 dark:text-rose-400">
+                  Nghỉ việc {periodSuffix}
+                </p>
+                <TrendingDown className="h-3.5 w-3.5 text-rose-500/70" aria-hidden />
+              </div>
+              <p className="text-3xl font-black tabular-nums text-foreground">
+                {off.toLocaleString('vi-VN')}
+              </p>
+              <p className="mt-1 text-[10px] font-medium text-rose-600/70 dark:text-rose-400">
+                {pct(off, total)} tổng
+              </p>
+            </div>
+
+            {/* Mới */}
+            <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-600/5 p-3 ring-1 ring-emerald-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-emerald-500/40 sm:p-4">
+              <div
+                className="absolute -right-3 -top-3 h-16 w-16 rounded-full bg-emerald-500/8 blur-xl"
+                aria-hidden
+              />
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/80 dark:text-emerald-400">
+                  Tuyển mới {periodSuffix}
+                </p>
+                <TrendingUp className="h-3.5 w-3.5 text-emerald-500/70" aria-hidden />
+              </div>
+              <p className="text-3xl font-black tabular-nums text-foreground">
+                {newHires.toLocaleString('vi-VN')}
+              </p>
+              <p className="mt-1 text-[10px] font-medium text-emerald-600/70 dark:text-emerald-400">
+                {pct(newHires, total)} tổng
+              </p>
+            </div>
           </div>
         )}
 
         {isFetching && data ? (
-          <p className="mt-2 text-center text-[10px] text-muted-foreground">Đang cập nhật…</p>
+          <p className="mt-3 text-center text-[10px] text-muted-foreground">Đang cập nhật…</p>
         ) : null}
       </div>
     </div>

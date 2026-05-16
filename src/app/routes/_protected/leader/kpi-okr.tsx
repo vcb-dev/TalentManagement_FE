@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
 import { useAuthStore } from '@/stores/auth.store'
+import { PageSkeleton } from '@/components/ui/skeleton'
 
 const LeaderKpiOkrScreen = lazy(() =>
   import('@/features/kpi-okr').then((module) => ({
@@ -25,7 +26,7 @@ export const Route = createFileRoute('/_protected/leader/kpi-okr')({
 function LeaderKpiOkrPage() {
   const role = useAuthStore((s) => s.user?.role)
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageSkeleton />}>
       {role === 'MANAGER' ? <ManagerKpiOkrScreen /> : <LeaderKpiOkrScreen />}
     </Suspense>
   )

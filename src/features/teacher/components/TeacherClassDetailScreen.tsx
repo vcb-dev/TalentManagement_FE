@@ -632,7 +632,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         <Button
                           type="submit"
                           className="h-12 rounded-xl bg-primary px-10 font-bold text-white shadow-xl shadow-primary/20 hover:bg-primary/90"
-                          disabled={createSchedule.isPending || updateSchedule.isPending}
+                          loading={createSchedule.isPending || updateSchedule.isPending}
                         >
                           {editingScheduleId ? 'CẬP NHẬT' : 'LƯU BUỔI HỌC'}
                         </Button>

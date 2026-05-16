@@ -1,17 +1,5 @@
 import { useMemo, useState } from 'react'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip as RTooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from 'recharts'
 import { AlertTriangle, GraduationCap, LineChart } from 'lucide-react'
 import { useLearningOpsSummary } from '@/features/dashboard/hooks'
 import { InfoHint } from '@/components/shared/InfoHint'
@@ -19,6 +7,14 @@ import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { LEVEL_LABELS, LEVELS, type LevelCode } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
 
 const quartOut = '[transition-timing-function:cubic-bezier(0.25,1,0.48,1)]'
 
@@ -38,7 +34,13 @@ const LEVELS_HINT = 'Số người theo cấp bậc nghề nghiệp hiện lưu 
 const FAIL_TABLE_HINT =
   'Trong kỳ đã chọn: từ 2 lượt trượt trở lên cho cùng một cặp cấp (ví dụ Tập sự → Biết việc). Tính theo lớp thi / mô tả kỳ thi (Chờ học lại / Chia tay).'
 
-/* ──────────── Ops bar chart với hover highlight ──────────── */
+/* ──────────── Ops bar chart ──────────── */
+const opsChartConfig = {
+  classes: { label: 'Lớp mới', color: 'hsl(199 90% 48%)' },
+  up: { label: 'Lên cấp', color: 'hsl(160 55% 40%)' },
+  fail: { label: 'Rớt thi', color: 'hsl(32 90% 50%)' },
+} satisfies ChartConfig
+
 function OpsBarChart({
   opsBar,
 }: {
@@ -46,60 +48,59 @@ function OpsBarChart({
 }) {
   const [hoverKey, setHoverKey] = useState<string | null>(null)
   return (
-    <div className="h-48 w-full min-w-0 sm:h-52">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={opsBar}
-          margin={{ top: 8, right: 4, left: 0, bottom: 0 }}
-          barCategoryGap="24%"
-          onMouseMove={(s) => {
-            const idx = s?.activeTooltipIndex
-            if (typeof idx === 'number' && idx >= 0) setHoverKey(opsBar[idx]?.key ?? null)
-          }}
-          onMouseLeave={() => setHoverKey(null)}
-        >
-          <CartesianGrid strokeDasharray="3 3" className="stroke-border/60" vertical={false} />
-          <XAxis
-            dataKey="name"
-            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            allowDecimals={false}
-            domain={[0, Math.max(1, ...opsBar.map((d) => d.value))]}
-            tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-            axisLine={false}
-            tickLine={false}
-            width={32}
-          />
-          <RTooltip
-            cursor={{ fill: 'hsl(var(--primary) / 0.08)' }}
-            contentStyle={{
-              borderRadius: '12px',
-              border: '1px solid hsl(var(--border))',
-              background: 'hsl(var(--card))',
-              fontSize: '12px',
-            }}
-            formatter={(v) => [String(v), 'Số lượng']}
-          />
-          <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={52}>
-            {opsBar.map((row) => (
-              <Cell
-                key={row.key}
-                fill={row.fill}
-                opacity={hoverKey && hoverKey !== row.key ? 0.4 : 1}
-                style={{ transition: 'opacity 0.2s' }}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <ChartContainer config={opsChartConfig} className="h-48 w-full sm:h-52">
+      <BarChart
+        data={opsBar}
+        margin={{ top: 8, right: 4, left: 0, bottom: 0 }}
+        barCategoryGap="28%"
+        onMouseMove={(s) => {
+          const idx = s?.activeTooltipIndex
+          if (typeof idx === 'number' && idx >= 0) setHoverKey(opsBar[idx]?.key ?? null)
+        }}
+        onMouseLeave={() => setHoverKey(null)}
+      >
+        <CartesianGrid vertical={false} className="stroke-border/40" strokeDasharray="4 4" />
+        <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+        <YAxis
+          allowDecimals={false}
+          domain={[0, Math.max(1, ...opsBar.map((d) => d.value))]}
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 10 }}
+          width={32}
+        />
+        <ChartTooltip
+          cursor={{ fill: 'hsl(var(--primary) / 0.07)' }}
+          content={<ChartTooltipContent formatter={(v) => [`${v} lượt`]} />}
+        />
+        <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={52}>
+          {opsBar.map((row) => (
+            <Cell
+              key={row.key}
+              fill={row.fill}
+              opacity={hoverKey && hoverKey !== row.key ? 0.35 : 1}
+              style={{
+                transition: 'opacity 0.2s',
+                filter: hoverKey === row.key ? `drop-shadow(0 4px 10px ${row.fill}55)` : 'none',
+              }}
+            />
+          ))}
+        </Bar>
+      </BarChart>
+    </ChartContainer>
   )
 }
 
-/* ──────────── Level pie chart với hover highlight ──────────── */
+/* ──────────── Level pie chart ──────────── */
+function buildLevelConfig(colors: Record<string, string>): ChartConfig {
+  return Object.fromEntries(
+    Object.entries(LEVEL_LABELS).map(([code, label]) => [
+      code,
+      { label, color: colors[code] ?? 'hsl(var(--primary))' },
+    ])
+  ) as ChartConfig
+}
+
 function LevelPieChart({
   pieData,
   colors,
@@ -108,63 +109,63 @@ function LevelPieChart({
   colors: Record<string, string>
 }) {
   const [hoverKey, setHoverKey] = useState<string | null>(null)
+  const config = useMemo(() => buildLevelConfig(colors), [colors])
+  const total = pieData.reduce((s, d) => s + d.value, 0)
+
   return (
-    <div className="h-64 w-full min-w-0 sm:h-72">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-          <Pie
-            data={pieData}
-            dataKey="value"
-            nameKey="name"
-            cx="50%"
-            cy="46%"
-            innerRadius="52%"
-            outerRadius="78%"
-            paddingAngle={2}
-            stroke="hsl(var(--card))"
-            strokeWidth={2}
-            onMouseEnter={(_, idx) => setHoverKey(pieData[idx]?.code ?? null)}
-            onMouseLeave={() => setHoverKey(null)}
-          >
-            {pieData.map((entry) => (
-              <Cell
-                key={entry.code}
-                fill={colors[entry.code] ?? 'hsl(var(--primary))'}
-                opacity={hoverKey && hoverKey !== entry.code ? 0.4 : 1}
-                stroke={
+    <ChartContainer config={config} className="h-64 w-full sm:h-72">
+      <PieChart margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+        <Pie
+          data={pieData}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="44%"
+          innerRadius="50%"
+          outerRadius="74%"
+          paddingAngle={3}
+          stroke="hsl(var(--card))"
+          strokeWidth={2}
+          onMouseEnter={(_, idx) => setHoverKey(pieData[idx]?.code ?? null)}
+          onMouseLeave={() => setHoverKey(null)}
+        >
+          {pieData.map((entry) => (
+            <Cell
+              key={entry.code}
+              fill={colors[entry.code] ?? 'hsl(var(--primary))'}
+              opacity={hoverKey && hoverKey !== entry.code ? 0.35 : 1}
+              stroke={hoverKey === entry.code ? 'white' : 'hsl(var(--card))'}
+              strokeWidth={hoverKey === entry.code ? 3 : 2}
+              style={{
+                transition: 'opacity 0.2s',
+                filter:
                   hoverKey === entry.code
-                    ? (colors[entry.code] ?? 'hsl(var(--primary))')
-                    : 'hsl(var(--card))'
-                }
-                strokeWidth={hoverKey === entry.code ? 4 : 2}
-                style={{ transition: 'opacity 0.2s, stroke-width 0.2s' }}
-              />
-            ))}
-          </Pie>
-          <RTooltip
-            contentStyle={{
-              borderRadius: '12px',
-              border: '1px solid hsl(var(--border))',
-              background: 'hsl(var(--card))',
-              fontSize: '12px',
-            }}
-            formatter={(value) => {
-              const v = Number(value ?? 0)
-              const total = pieData.reduce((s, d) => s + d.value, 0)
-              const pct = total > 0 ? Math.round((v / total) * 100) : 0
-              return [`${v} · ${pct}%`, 'Số người']
-            }}
-          />
-          <Legend
-            verticalAlign="bottom"
-            align="center"
-            layout="horizontal"
-            wrapperStyle={{ fontSize: '11px', paddingTop: 8 }}
-            iconType="circle"
-          />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
+                    ? `drop-shadow(0 0 8px ${colors[entry.code] ?? 'hsl(var(--primary))'}66)`
+                    : 'none',
+              }}
+            />
+          ))}
+        </Pie>
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              nameKey="name"
+              formatter={(value) => {
+                const v = Number(value ?? 0)
+                const pct = total > 0 ? Math.round((v / total) * 100) : 0
+                return [`${v} người · ${pct}%`]
+              }}
+            />
+          }
+        />
+        <ChartLegend
+          content={<ChartLegendContent nameKey="name" />}
+          verticalAlign="bottom"
+          align="center"
+          wrapperStyle={{ fontSize: '11px', paddingTop: 8 }}
+        />
+      </PieChart>
+    </ChartContainer>
   )
 }
 
@@ -204,7 +205,6 @@ export function ManagerLearningOpsZone({
   }, [data?.peopleByCareerLevel])
 
   const pieData = useMemo(() => levelChart.filter((d) => d.value > 0), [levelChart])
-
   const hasAnyLevel = pieData.length > 0
 
   const opsBar = useMemo(
@@ -217,7 +217,7 @@ export function ManagerLearningOpsZone({
       },
       {
         key: 'up',
-        name: inSingleMonth ? 'Lên cấp' : 'Lên cấp',
+        name: 'Lên cấp',
         value: data?.levelUpCount ?? 0,
         fill: 'hsl(160 55% 40%)',
       },
@@ -413,7 +413,7 @@ export function ManagerLearningOpsZone({
                     return (
                       <tr
                         key={`${row.userId}-${row.levelFrom}-${row.levelTo}`}
-                        className="border-b border-border/50 last:border-0 odd:bg-background/40"
+                        className="border-b border-border/50 last:border-0 odd:bg-background/40 transition-colors hover:bg-muted/20"
                       >
                         <td className="px-3 py-2.5 font-semibold text-foreground sm:px-4">
                           {row.fullName?.trim() || '—'}
