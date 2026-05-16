@@ -43,12 +43,14 @@ import {
   ASSIGN_TABLE_HEAD,
   AssignmentEpic4ReadCells,
   AssignmentEpic4ReadStack,
+  ContentCell,
   EvalStatusBadge,
   KindBadge,
   PriorityBadge,
   XL_TH,
   XL_BORDER,
   formatKpiSetAt,
+  formatViNumber,
   periodLabel,
   xlTd,
 } from '@/features/kpi-okr/components/kpiAssignmentTableShared'
@@ -875,6 +877,7 @@ function useMemberSelfAssignmentEdit(row: PerformanceAssignment, onSaved: () => 
   const [selfEvalStatus, setSelfEvalStatus] = useState(row.selfEvalStatus ?? '')
   const [selfReviewNote, setSelfReviewNote] = useState(row.selfReviewNote ?? '')
   const [saving, setSaving] = useState(false)
+  const [numericFocused, setNumericFocused] = useState(false)
 
   useEffect(() => {
     setEvidence(row.evidence ?? '')
@@ -891,11 +894,23 @@ function useMemberSelfAssignmentEdit(row: PerformanceAssignment, onSaved: () => 
     row.selfReviewNote,
   ])
 
+  /** Giá trị hiển thị: khi focus → raw digits, khi blur → định dạng dấu chấm ngàn */
+  const numericDisplayValue = numericFocused
+    ? numericRaw
+    : formatViNumber(numericRaw) === '—' ? '' : formatViNumber(numericRaw)
+
+  const handleNumericChange = (val: string) => {
+    // Bỏ dấu chấm ngàn, chấp nhận digit và một dấu thập phân
+    const stripped = val.replace(/\./g, '').replace(',', '.')
+    setNumericRaw(stripped)
+  }
+
   const save = async () => {
     const nTrim = numericRaw.trim()
     let numericValue: number | null = null
     if (nTrim.length > 0) {
-      const n = Number(nTrim.replace(',', '.'))
+      // Strip dấu chấm ngàn trước khi parse
+      const n = Number(nTrim.replace(/\./g, '').replace(',', '.'))
       if (!Number.isFinite(n)) {
         toast.error('Số liệu không hợp lệ.')
         return
@@ -931,7 +946,10 @@ function useMemberSelfAssignmentEdit(row: PerformanceAssignment, onSaved: () => 
     evidence,
     setEvidence,
     numericRaw,
-    setNumericRaw,
+    numericDisplayValue,
+    handleNumericChange,
+    numericFocused,
+    setNumericFocused,
     numericUnit,
     setNumericUnit,
     selfEvalStatus,
@@ -956,8 +974,11 @@ function MemberSelfAssignmentRow({
   const {
     evidence,
     setEvidence,
+    numericDisplayValue,
+    handleNumericChange,
+    numericFocused,
+    setNumericFocused,
     numericRaw,
-    setNumericRaw,
     numericUnit,
     setNumericUnit,
     selfEvalStatus,
@@ -984,26 +1005,29 @@ function MemberSelfAssignmentRow({
       <TableCell className={td}>
         <PriorityBadge priority={row.priority} />
       </TableCell>
-      <TableCell
-        className={cn(td, 'min-w-[240px] max-w-xl font-medium text-slate-900 dark:text-slate-100')}
-      >
-        <div className="flex flex-wrap items-center gap-1.5">
-          {row.content}
-          {row.category === 'VINH_DANH' && (
-            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
-              🏆 Vinh danh
-            </span>
-          )}
-        </div>
+      <TableCell className={cn(td, 'min-w-[240px] max-w-xl')}>
+        <ContentCell
+          content={row.content}
+          badge={
+            row.category === 'VINH_DANH' ? (
+              <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                🏆 Vinh danh
+              </span>
+            ) : undefined
+          }
+        />
       </TableCell>
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
-        {row.targetMetric || '—'}
+        {formatViNumber(row.targetMetric) || '—'}
       </TableCell>
       <TableCell className={cn(td, 'p-2 align-middle')}>
         <div className="relative">
           <Input
-            value={numericRaw}
-            onChange={(e) => setNumericRaw(e.target.value)}
+            value={numericDisplayValue}
+            onChange={(e) => handleNumericChange(e.target.value)}
+            onFocus={() => setNumericFocused(true)}
+            onBlur={() => setNumericFocused(false)}
+            inputMode="numeric"
             className={cn(
               XL_INPUT,
               isMandatory &&
@@ -1104,20 +1128,20 @@ function ReadOnlyAssignmentRow({
       <TableCell className={td}>
         <PriorityBadge priority={row.priority} />
       </TableCell>
-      <TableCell
-        className={cn(td, 'min-w-[300px] max-w-xl font-medium text-slate-900 dark:text-slate-100')}
-      >
-        <div className="flex flex-wrap items-center gap-1.5">
-          {row.content}
-          {row.category === 'VINH_DANH' && (
-            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
-              🏆 Vinh danh
-            </span>
-          )}
-        </div>
+      <TableCell className={cn(td, 'min-w-[300px] max-w-xl')}>
+        <ContentCell
+          content={row.content}
+          badge={
+            row.category === 'VINH_DANH' ? (
+              <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                🏆 Vinh danh
+              </span>
+            ) : undefined
+          }
+        />
       </TableCell>
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
-        {row.targetMetric || '—'}
+        {formatViNumber(row.targetMetric) || '—'}
       </TableCell>
       <AssignmentEpic4ReadCells row={row} td={td} />
       <TableCell className={td}>
@@ -1190,7 +1214,10 @@ function MemberSelfAssignmentMobileCard({
     evidence,
     setEvidence,
     numericRaw,
-    setNumericRaw,
+    numericDisplayValue,
+    handleNumericChange,
+    numericFocused,
+    setNumericFocused,
     numericUnit,
     setNumericUnit,
     selfEvalStatus,
@@ -1223,7 +1250,7 @@ function MemberSelfAssignmentMobileCard({
         )}
       </p>
       <p className="text-sm font-semibold tabular-nums text-primary">
-        Chỉ tiêu: {row.targetMetric || '—'}
+        Chỉ tiêu: {formatViNumber(row.targetMetric) || '—'}
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
@@ -1236,8 +1263,11 @@ function MemberSelfAssignmentMobileCard({
             Số liệu{isMandatory && <span className="ml-0.5">*</span>}
           </span>
           <Input
-            value={numericRaw}
-            onChange={(e) => setNumericRaw(e.target.value)}
+            value={numericDisplayValue}
+            onChange={(e) => handleNumericChange(e.target.value)}
+            onFocus={() => setNumericFocused(true)}
+            onBlur={() => setNumericFocused(false)}
+            inputMode="numeric"
             className={cn(
               XL_INPUT,
               isMandatory && !numericRaw.trim() && 'border-destructive ring-1 ring-destructive/30'
@@ -1476,20 +1506,20 @@ function LeaderAssignmentRow({
       <TableCell className={td}>
         <PriorityBadge priority={row.priority} />
       </TableCell>
-      <TableCell
-        className={cn(td, 'min-w-[300px] max-w-xl font-medium text-slate-900 dark:text-slate-100')}
-      >
-        <div className="flex flex-wrap items-center gap-1.5">
-          {row.content}
-          {row.category === 'VINH_DANH' && (
-            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
-              🏆 Vinh danh
-            </span>
-          )}
-        </div>
+      <TableCell className={cn(td, 'min-w-[300px] max-w-xl')}>
+        <ContentCell
+          content={row.content}
+          badge={
+            row.category === 'VINH_DANH' ? (
+              <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                🏆 Vinh danh
+              </span>
+            ) : undefined
+          }
+        />
       </TableCell>
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
-        {row.targetMetric || '—'}
+        {formatViNumber(row.targetMetric) || '—'}
       </TableCell>
       <AssignmentEpic4ReadCells row={row} td={td} />
       <TableCell className={td}>

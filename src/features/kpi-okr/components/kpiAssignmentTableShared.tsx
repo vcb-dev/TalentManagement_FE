@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { TableCell } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import type { PerformanceAssignment } from '@/features/kpi-okr/api'
@@ -7,6 +9,56 @@ import {
   evidenceImageUrlsFromText,
   evidenceTextWithoutUploadPaths,
 } from '@/features/kpi-okr/components/KpiEvidenceInput'
+
+/** Format số với dấu chấm ngàn theo chuẩn vi-VN. Chuỗi không phải số trả về nguyên gốc. */
+export function formatViNumber(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '—'
+  const str = String(value).trim()
+  if (!str || str === '—') return '—'
+  const raw = str.replace(/\./g, '').replace(',', '.')
+  const n = parseFloat(raw)
+  if (!Number.isFinite(n)) return str
+  return n.toLocaleString('vi-VN')
+}
+
+/**
+ * Cột Nội dung — giới hạn 2 dòng, có nút "Xem thêm" / "Thu gọn".
+ * Dùng cho cả editable row lẫn read-only row.
+ */
+export function ContentCell({
+  content,
+  badge,
+  className,
+}: {
+  content: string
+  badge?: React.ReactNode
+  className?: string
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const isLong = content.length > 80
+
+  return (
+    <div className={cn('flex flex-col gap-1', className)}>
+      <div className="flex flex-wrap items-start gap-1.5">
+        <span className={cn('font-medium text-slate-900 dark:text-slate-100', !expanded && isLong && 'line-clamp-2')}>
+          {content}
+        </span>
+        {badge}
+      </div>
+      {isLong && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-auto self-start px-0 py-0.5 text-xs font-semibold text-primary hover:bg-transparent hover:text-primary/80"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? 'Thu gọn ↑' : 'Xem thêm ↓'}
+        </Button>
+      )}
+    </div>
+  )
+}
 
 export function formatKpiSetAt(iso: string | null | undefined): string {
   if (!iso) return '—'
@@ -125,8 +177,7 @@ export function PriorityBadge({ priority }: { priority: number }) {
 /** Evidence / số liệu / tự đánh giá — read-only (leader / viewer / quản lý xem trưởng nhóm). */
 /** Stack layout (mobile) — cùng nội dung với AssignmentEpic4ReadCells */
 export function AssignmentEpic4ReadStack({ row }: { row: PerformanceAssignment }) {
-  const num =
-    row.numericValue !== undefined && row.numericValue !== null ? String(row.numericValue) : '—'
+  const num = formatViNumber(row.numericValue)
   const displayEv = evidenceTextWithoutUploadPaths(row.evidence)
   const imageUrls = evidenceImageUrlsFromText(row.evidence)
   const hasImagePreviews = imageUrls.length > 0
@@ -159,8 +210,7 @@ export function AssignmentEpic4ReadStack({ row }: { row: PerformanceAssignment }
 }
 
 export function AssignmentEpic4ReadCells({ row, td }: { row: PerformanceAssignment; td: string }) {
-  const num =
-    row.numericValue !== undefined && row.numericValue !== null ? String(row.numericValue) : '—'
+  const num = formatViNumber(row.numericValue)
   const displayEv = evidenceTextWithoutUploadPaths(row.evidence)
   const imageUrls = evidenceImageUrlsFromText(row.evidence)
   const hasImagePreviews = imageUrls.length > 0
