@@ -519,7 +519,7 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
                   </ul>
                 </>
               )}
-              <div className="relative mt-6 flex flex-col gap-2 rounded-xl border border-accent/25 bg-gradient-to-r from-card/95 to-accent/5 p-3 text-[0.6875rem] font-semibold leading-snug text-muted-foreground shadow-sm backdrop-blur-sm">
+              <div className="relative mt-6 flex flex-col gap-2 rounded-xl border border-accent/25 bg-gradient-to-r from-card/95 to-accent/5 p-3 text-xs font-semibold leading-snug text-muted-foreground shadow-sm backdrop-blur-sm">
                 <p>
                   Cập nhật minh chứng, checklist sao theo từng cấp — toàn bộ nằm ở lộ trình học.
                 </p>

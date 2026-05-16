@@ -308,7 +308,7 @@ export function ExamResultsSchedule({
                 <div className="absolute right-0 top-0 p-4">
                   <span
                     className={cn(
-                      'rounded-full px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-wider',
+                      'rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider',
                       isOptional
                         ? 'bg-secondary text-secondary-foreground'
                         : 'bg-primary-100 text-primary-700'
@@ -492,34 +492,34 @@ export function ExamResultsSchedule({
                 <tr className="bg-muted/60 text-muted-foreground">
                   {membersInClass ? (
                     <>
-                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                         Họ tên
                       </th>
-                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                         Email
                       </th>
-                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                         Kết quả gần nhất
                       </th>
                     </>
                   ) : (
                     <>
-                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                         Tên kỳ thi
                       </th>
-                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                         Ngày hoàn thành
                       </th>
-                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                         Điểm số
                       </th>
-                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                         Trạng thái
                       </th>
-                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                         Kết quả
                       </th>
-                      <th className="px-6 py-4 text-[0.6875rem] font-bold uppercase tracking-wider">
+                      <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider">
                         Thao tác
                       </th>
                     </>
@@ -595,7 +595,7 @@ export function ExamResultsSchedule({
                           {res.isSubmission ? (
                             <span
                               className={cn(
-                                'rounded-full px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-wider',
+                                'rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider',
                                 isDone
                                   ? 'bg-success-muted text-success'
                                   : 'bg-warning-muted text-warning'
@@ -604,7 +604,7 @@ export function ExamResultsSchedule({
                               {isDone ? 'Đã chấm' : 'Chờ chấm'}
                             </span>
                           ) : (
-                            <span className="rounded-full bg-success-muted px-3 py-1 text-[0.6875rem] font-bold text-success">
+                            <span className="rounded-full bg-success-muted px-3 py-1 text-xs font-bold text-success">
                               HOÀN THÀNH
                             </span>
                           )}

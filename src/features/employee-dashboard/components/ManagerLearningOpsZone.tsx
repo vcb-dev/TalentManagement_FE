@@ -289,7 +289,7 @@ export function ManagerLearningOpsZone({
               <LineChart className="h-4 w-4" strokeWidth={2} aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[0.7rem] font-bold uppercase tracking-wider text-primary">
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">
                 Chỉ số theo kỳ
               </p>
             </div>
@@ -316,7 +316,7 @@ export function ManagerLearningOpsZone({
               <GraduationCap className="h-4 w-4" strokeWidth={2} aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[0.7rem] font-bold uppercase tracking-wider text-primary">
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">
                 Phân bổ cấp độ
               </p>
             </div>

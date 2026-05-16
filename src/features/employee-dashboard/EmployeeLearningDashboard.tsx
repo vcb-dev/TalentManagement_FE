@@ -351,7 +351,7 @@ export function EmployeeLearningDashboard() {
                         className="pointer-events-none absolute inset-0 z-20 h-full w-full object-contain"
                       />
                     </div>
-                    <span className="whitespace-nowrap rounded-full border border-white/40 bg-gradient-to-r from-primary to-accent px-3 py-0.5 text-[0.55rem] font-black uppercase tracking-wide text-primary-foreground shadow-[0_6px_20px_hsl(var(--primary)/0.4)]">
+                    <span className="whitespace-nowrap rounded-full border border-white/40 bg-gradient-to-r from-primary to-accent px-3 py-0.5 text-xs font-black uppercase tracking-wide text-primary-foreground shadow-[0_6px_20px_hsl(var(--primary)/0.4)]">
                       {levelLabel}
                     </span>
                   </div>
@@ -409,7 +409,7 @@ export function EmployeeLearningDashboard() {
                 <h2 className="text-xs font-bold uppercase tracking-widest text-primary">
                   Thông tin
                 </h2>
-                <span className="rounded-full border border-amber-500/30 bg-tier-gold-muted/80 px-2 py-0.5 text-[0.55rem] font-black tabular-nums text-tier-gold shadow-sm">
+                <span className="rounded-full border border-amber-500/30 bg-tier-gold-muted/80 px-2 py-0.5 text-xs font-black tabular-nums text-tier-gold shadow-sm">
                   XP · {starPct + 24}%
                 </span>
               </div>
@@ -429,7 +429,7 @@ export function EmployeeLearningDashboard() {
                       idx % 2 === 0 ? 'sm:border-r sm:border-border/40 sm:pr-4' : ''
                     )}
                   >
-                    <dt className="text-[0.55rem] font-bold uppercase tracking-wider text-muted-foreground">
+                    <dt className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       {label}
                     </dt>
                     <dd className="mt-0.5 break-words text-sm font-bold text-foreground">
@@ -519,7 +519,7 @@ export function EmployeeLearningDashboard() {
                         >
                           <AchievementIcon className="h-4 w-4" strokeWidth={2.5} aria-hidden />
                         </div>
-                        <span className="rounded-full bg-background/70 px-2 py-0.5 text-[0.55rem] font-black uppercase tracking-tight text-foreground shadow-sm backdrop-blur-sm">
+                        <span className="rounded-full bg-background/70 px-2 py-0.5 text-xs font-black uppercase tracking-tight text-foreground shadow-sm backdrop-blur-sm">
                           {achievement.badge?.trim() ||
                             (achievement.score != null ? `+${achievement.score}` : 'Nổi bật')}
                         </span>
