@@ -178,7 +178,7 @@ export function PromotionCelebrationModal({
             </div>
 
             {/* Celebration text */}
-            <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.25em] text-yellow-400/80">
+            <p className="mb-0.5 text-xs font-bold uppercase tracking-[0.25em] text-yellow-400/80">
               🎉 Chúc mừng 🎉
             </p>
             <h2 className="mb-1 text-xl font-black text-white">{displayName}</h2>
@@ -187,7 +187,7 @@ export function PromotionCelebrationModal({
             {/* Level transition */}
             <div className="mx-auto mb-5 flex items-center justify-center gap-2">
               <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 backdrop-blur">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-white/40">Từ</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-white/40">Từ</p>
                 <p className="mt-0.5 text-xs font-bold text-white/60">{fromLabel}</p>
               </div>
 
@@ -201,7 +201,7 @@ export function PromotionCelebrationModal({
                   'border-white/20 bg-gradient-to-br from-white/10 to-white/5'
                 )}
               >
-                <p className="text-[9px] font-bold uppercase tracking-wider text-white/40">Lên</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-white/40">Lên</p>
                 <p className={cn('mt-0.5 text-xs font-black', theme.accent)}>{toLabel}</p>
               </div>
             </div>
@@ -215,7 +215,7 @@ export function PromotionCelebrationModal({
               <div className="mb-5 rounded-xl border border-white/10 bg-white/5 p-3.5 text-left backdrop-blur">
                 <div className="mb-2.5 flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-white/60" />
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-white/50">
+                  <p className="text-xs font-bold uppercase tracking-wider text-white/50">
                     Lộ trình học tiếp theo
                   </p>
                 </div>
@@ -228,14 +228,14 @@ export function PromotionCelebrationModal({
                           {item.objectives.slice(0, 2).map((obj, j) => (
                             <li
                               key={j}
-                              className="flex items-start gap-1.5 text-[10px] text-white/60"
+                              className="flex items-start gap-1.5 text-xs text-white/60"
                             >
                               <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-white/30" />
                               {obj}
                             </li>
                           ))}
                           {item.objectives.length > 2 && (
-                            <li className="text-[10px] text-white/40">
+                            <li className="text-xs text-white/40">
                               +{item.objectives.length - 2} mục khác
                             </li>
                           )}

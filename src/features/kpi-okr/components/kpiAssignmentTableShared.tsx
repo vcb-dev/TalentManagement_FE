@@ -23,13 +23,13 @@ export function periodLabel(row: PerformanceAssignment): string {
 export const XL_BORDER = 'border border-slate-200/60 dark:border-slate-800/50'
 export const XL_TH = cn(
   XL_BORDER,
-  'sticky top-0 z-10 whitespace-nowrap bg-slate-50/80 px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500 shadow-sm backdrop-blur-md dark:bg-slate-900/90 dark:text-slate-400'
+  'sticky top-0 z-10 whitespace-nowrap bg-slate-50/80 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500 shadow-sm backdrop-blur-md dark:bg-slate-900/90 dark:text-slate-400'
 )
 
 export function xlTd(stripe: boolean) {
   return cn(
     XL_BORDER,
-    'px-4 py-3 align-middle text-[13px] leading-relaxed',
+    'px-4 py-3 align-middle text-sm leading-relaxed',
     stripe ? 'bg-slate-50/30 dark:bg-slate-900/20' : 'bg-transparent'
   )
 }
@@ -57,7 +57,7 @@ export function EvalStatusBadge({ status }: { status: string | null | undefined 
     <Badge
       variant="outline"
       className={cn(
-        'h-5 px-1.5 text-[10px] font-bold shadow-none rounded-md',
+        'h-5 px-1.5 text-xs font-bold shadow-none rounded-md',
         isOk
           ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
           : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300'
@@ -73,7 +73,7 @@ export function KindBadge({ kind }: { kind: PerformanceAssignment['kind'] }) {
     <Badge
       variant="outline"
       className={cn(
-        'h-5 px-1.5 text-[10px] font-black uppercase tracking-widest shadow-none rounded-md',
+        'h-5 px-1.5 text-xs font-black uppercase tracking-widest shadow-none rounded-md',
         kind === 'KPI'
           ? 'border-indigo-400/30 bg-indigo-500/10 text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300'
           : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-600 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
@@ -113,7 +113,7 @@ export function PriorityBadge({ priority }: { priority: number }) {
     <Badge
       variant="outline"
       className={cn(
-        'h-5 px-1.5 text-[10px] font-black shadow-none whitespace-nowrap rounded-md uppercase tracking-wider',
+        'h-5 px-1.5 text-xs font-black shadow-none whitespace-nowrap rounded-md uppercase tracking-wider',
         config.className
       )}
     >
@@ -131,7 +131,7 @@ export function AssignmentEpic4ReadStack({ row }: { row: PerformanceAssignment }
   const imageUrls = evidenceImageUrlsFromText(row.evidence)
   const hasImagePreviews = imageUrls.length > 0
   return (
-    <div className="space-y-2 text-[13px]">
+    <div className="space-y-2 text-sm">
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         <span>
           <span className="font-semibold text-muted-foreground">Số liệu: </span>
@@ -151,7 +151,7 @@ export function AssignmentEpic4ReadStack({ row }: { row: PerformanceAssignment }
         maxHeightClass="h-16 max-w-[min(100%,280px)]"
       />
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] font-bold uppercase text-muted-foreground">Tự đánh giá:</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Tự đánh giá:</span>
         <EvalStatusBadge status={row.selfEvalStatus ?? null} />
       </div>
     </div>
@@ -166,7 +166,7 @@ export function AssignmentEpic4ReadCells({ row, td }: { row: PerformanceAssignme
   const hasImagePreviews = imageUrls.length > 0
   return (
     <>
-      <TableCell className={cn(td, 'max-w-[88px] tabular-nums text-[13px]')}>{num}</TableCell>
+      <TableCell className={cn(td, 'max-w-[88px] tabular-nums text-sm')}>{num}</TableCell>
       <TableCell className={cn(td, 'max-w-[72px] text-xs uppercase')}>
         {row.numericUnit ?? '—'}
       </TableCell>

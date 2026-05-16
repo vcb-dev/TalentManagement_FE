@@ -539,7 +539,7 @@ export default function RewardsPage() {
                           <TrendingUp className="h-6 w-6" />
                         </div>
                         <div>
-                          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                          <p className="text-xs font-black text-emerald-600 uppercase tracking-widest">
                             Khen thưởng
                           </p>
                           <h3 className="text-xl font-black text-emerald-900">
@@ -552,7 +552,7 @@ export default function RewardsPage() {
                           <AlertTriangle className="h-6 w-6" />
                         </div>
                         <div>
-                          <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">
+                          <p className="text-xs font-black text-rose-600 uppercase tracking-widest">
                             Vi phạm/Phạt
                           </p>
                           <h3 className="text-xl font-black text-rose-900">
@@ -570,7 +570,7 @@ export default function RewardsPage() {
                         </div>
                         <div>
                           <p
-                            className={`text-[10px] font-black uppercase tracking-widest ${myNetBalance >= 0 ? 'text-indigo-600' : 'text-amber-600'}`}
+                            className={`text-xs font-black uppercase tracking-widest ${myNetBalance >= 0 ? 'text-indigo-600' : 'text-amber-600'}`}
                           >
                             Tổng tích lũy
                           </p>
@@ -592,7 +592,7 @@ export default function RewardsPage() {
                         </h3>
                       </div>
                       <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-900 text-white text-[10px] font-black uppercase">
+                        <thead className="bg-slate-900 text-white text-xs font-black uppercase">
                           <tr>
                             <th className="py-5 px-8">Nội dung</th>
                             <th className="py-5 px-6">Số tiền</th>
@@ -607,7 +607,7 @@ export default function RewardsPage() {
                                 <td className="py-5 px-8">
                                   <div className="font-bold text-slate-800">{rec.title}</div>
                                   <div
-                                    className={`text-[10px] font-black uppercase mt-0.5 ${rec.kind === 'REWARD' ? 'text-emerald-500' : 'text-rose-500'}`}
+                                    className={`text-xs font-black uppercase mt-0.5 ${rec.kind === 'REWARD' ? 'text-emerald-500' : 'text-rose-500'}`}
                                   >
                                     {rec.kind === 'REWARD' ? 'Khen thưởng' : 'Phạt vi phạm'}
                                   </div>
@@ -649,7 +649,7 @@ export default function RewardsPage() {
                           <h3 className="font-black text-slate-800 uppercase text-xs tracking-widest">
                             Quy chuẩn nội bộ Team
                           </h3>
-                          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                          <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">
                             Khung quy định thưởng phạt áp dụng
                           </p>
                         </div>
@@ -661,7 +661,7 @@ export default function RewardsPage() {
                         <button
                           key={tab}
                           onClick={() => setSelectedRuleCategory(tab)}
-                          className={`px-6 py-3 rounded-2xl text-[11px] font-black uppercase transition-all whitespace-nowrap border-2 ${selectedRuleCategory === tab ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl' : 'bg-white text-slate-400 border-slate-50 hover:border-indigo-100 shadow-sm'}`}
+                          className={`px-6 py-3 rounded-2xl text-xs font-black uppercase transition-all whitespace-nowrap border-2 ${selectedRuleCategory === tab ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl' : 'bg-white text-slate-400 border-slate-50 hover:border-indigo-100 shadow-sm'}`}
                         >
                           {tab}
                         </button>
@@ -712,9 +712,9 @@ export default function RewardsPage() {
 
                             {isTableExp && (
                               <div className="overflow-x-auto animate-fade-in">
-                                <table className="w-full text-left text-[13px]">
+                                <table className="w-full text-left text-sm">
                                   <thead>
-                                    <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase border-b">
+                                    <tr className="bg-slate-50 text-xs font-black text-slate-400 uppercase border-b">
                                       <th className="py-4 px-8">Quy chuẩn</th>
                                       <th className="py-4 px-6 text-right">Định mức</th>
                                     </tr>
@@ -731,7 +731,7 @@ export default function RewardsPage() {
                                               {rule.title}
                                             </div>
                                             {rule.note && (
-                                              <div className="text-[11px] text-slate-400 italic mt-0.5">
+                                              <div className="text-xs text-slate-400 italic mt-0.5">
                                                 {rule.note}
                                               </div>
                                             )}
@@ -752,7 +752,7 @@ export default function RewardsPage() {
                                   <div className="p-4 bg-slate-50/50 border-t flex justify-center">
                                     <button
                                       onClick={() => setFullView(!isFullView)}
-                                      className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm ${isFullView ? 'bg-white text-slate-500 hover:bg-slate-100' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'}`}
+                                      className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm ${isFullView ? 'bg-white text-slate-500 hover:bg-slate-100' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'}`}
                                     >
                                       {isFullView
                                         ? 'Thu gọn'
@@ -761,7 +761,7 @@ export default function RewardsPage() {
                                   </div>
                                 )}
                                 {allItems.length === 0 && (
-                                  <div className="py-20 text-center text-slate-300 italic font-medium uppercase tracking-widest text-[10px]">
+                                  <div className="py-20 text-center text-slate-300 italic font-medium uppercase tracking-widest text-xs">
                                     Trống dữ liệu bộ phận {selectedRuleCategory}
                                   </div>
                                 )}
@@ -801,7 +801,7 @@ export default function RewardsPage() {
                     ]}
                   />
 
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden lg:block ml-auto">
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest hidden lg:block ml-auto">
                     Chọn Team → Chọn thành viên
                   </p>
                 </div>
@@ -832,7 +832,7 @@ export default function RewardsPage() {
                               <h4 className="font-black text-slate-800 text-sm uppercase">
                                 {group.name}
                               </h4>
-                              <p className="text-[10px] text-slate-400 font-bold">
+                              <p className="text-xs text-slate-400 font-bold">
                                 {group.members.length} thành viên
                               </p>
                             </div>
@@ -857,7 +857,7 @@ export default function RewardsPage() {
                                     <div className="font-black text-slate-800 text-sm leading-tight mb-1">
                                       {emp.name || emp.fullNameLegal || 'Không rõ tên'}
                                     </div>
-                                    <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1.5">
+                                    <div className="text-xs text-slate-400 font-bold flex items-center gap-1.5">
                                       <div className="w-1 h-1 rounded-full bg-slate-300" />
                                       {emp.email}
                                     </div>
@@ -865,13 +865,13 @@ export default function RewardsPage() {
                                   <div className="flex gap-2">
                                     <button
                                       onClick={() => handleOpenAction(emp, 'REWARD')}
-                                      className="flex-1 py-2.5 bg-emerald-50 text-emerald-700 rounded-2xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all shadow-sm hover:shadow-emerald-100"
+                                      className="flex-1 py-2.5 bg-emerald-50 text-emerald-700 rounded-2xl text-xs font-black uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all shadow-sm hover:shadow-emerald-100"
                                     >
                                       Thưởng
                                     </button>
                                     <button
                                       onClick={() => handleOpenAction(emp, 'PENALTY')}
-                                      className="flex-1 py-2.5 bg-rose-50 text-rose-700 rounded-2xl text-[10px] font-black uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all shadow-sm hover:shadow-rose-100"
+                                      className="flex-1 py-2.5 bg-rose-50 text-rose-700 rounded-2xl text-xs font-black uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all shadow-sm hover:shadow-rose-100"
                                     >
                                       Phạt
                                     </button>
@@ -895,7 +895,7 @@ export default function RewardsPage() {
                       <h3 className="font-black text-slate-800 uppercase text-sm">
                         Cấu hình Quy chuẩn
                       </h3>
-                      <p className="text-slate-400 text-[10px] font-bold">
+                      <p className="text-slate-400 text-xs font-bold">
                         Thêm/sửa nội dung định mức
                       </p>
                     </div>
@@ -923,7 +923,7 @@ export default function RewardsPage() {
                     <button
                       key={tab}
                       onClick={() => setSelectedRuleCategory(tab)}
-                      className={`px-6 py-3 rounded-2xl text-[11px] font-black uppercase transition-all whitespace-nowrap border-2 ${selectedRuleCategory === tab ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl' : 'bg-white text-slate-400 border-slate-50 hover:border-indigo-100 shadow-sm'}`}
+                      className={`px-6 py-3 rounded-2xl text-xs font-black uppercase transition-all whitespace-nowrap border-2 ${selectedRuleCategory === tab ? 'bg-indigo-600 text-white border-indigo-600 shadow-xl' : 'bg-white text-slate-400 border-slate-50 hover:border-indigo-100 shadow-sm'}`}
                     >
                       {tab}
                     </button>
@@ -969,9 +969,9 @@ export default function RewardsPage() {
 
                         {isTableExp && (
                           <div className="overflow-x-auto animate-fade-in">
-                            <table className="w-full text-left text-[13px]">
+                            <table className="w-full text-left text-sm">
                               <thead>
-                                <tr className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase border-b">
+                                <tr className="bg-slate-50 text-xs font-black text-slate-400 uppercase border-b">
                                   <th className="py-4 px-8">Quy chuẩn</th>
                                   <th className="py-4 px-6">Định mức</th>
                                   <th className="py-4 px-8 text-center">Tác vụ</th>
@@ -989,7 +989,7 @@ export default function RewardsPage() {
                                           {rule.title}
                                         </div>
                                         {rule.note && (
-                                          <div className="text-[11px] text-slate-400 italic mt-0.5">
+                                          <div className="text-xs text-slate-400 italic mt-0.5">
                                             {rule.note}
                                           </div>
                                         )}
@@ -1037,7 +1037,7 @@ export default function RewardsPage() {
                               <div className="p-4 bg-slate-50/50 border-t flex justify-center">
                                 <button
                                   onClick={() => setFullView(!isFullView)}
-                                  className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm ${isFullView ? 'bg-white text-slate-500 hover:bg-slate-100' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'}`}
+                                  className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm ${isFullView ? 'bg-white text-slate-500 hover:bg-slate-100' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'}`}
                                 >
                                   {isFullView
                                     ? 'Thu gọn danh sách'
@@ -1046,7 +1046,7 @@ export default function RewardsPage() {
                               </div>
                             )}
                             {allItems.length === 0 && (
-                              <div className="py-20 text-center text-slate-300 italic font-medium uppercase tracking-widest text-[10px]">
+                              <div className="py-20 text-center text-slate-300 italic font-medium uppercase tracking-widest text-xs">
                                 Trống dữ liệu bộ phận {selectedRuleCategory}
                               </div>
                             )}
@@ -1091,15 +1091,15 @@ export default function RewardsPage() {
                     ]}
                   />
 
-                  <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-auto">
+                  <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest ml-auto">
                     <History className="h-4 w-4" />
                     Tổng: {allRecords.length}
                   </div>
                 </div>
 
                 <div className="bg-white border rounded-3xl shadow-xl overflow-hidden">
-                  <table className="w-full text-left text-[13px]">
-                    <thead className="bg-slate-900 text-white text-[10px] font-black uppercase">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-900 text-white text-xs font-black uppercase">
                       <tr>
                         <th className="py-5 px-8">Nhân sự</th>
                         <th className="py-5 px-6">Loại</th>
@@ -1131,13 +1131,13 @@ export default function RewardsPage() {
                               <tr key={rec.id} className="hover:bg-slate-50 transition-colors">
                                 <td className="py-5 px-8 font-bold">
                                   {rec.user.fullNameLegal}
-                                  <div className="text-[10px] text-indigo-500 font-black uppercase mt-0.5">
+                                  <div className="text-xs text-indigo-500 font-black uppercase mt-0.5">
                                     {rec.user.team?.name}
                                   </div>
                                 </td>
                                 <td className="py-5 px-6">
                                   <span
-                                    className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${rec.kind === 'REWARD' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-700'}`}
+                                    className={`px-3 py-1 rounded-full text-xs font-black uppercase ${rec.kind === 'REWARD' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-700'}`}
                                   >
                                     {rec.kind === 'REWARD' ? 'Thưởng' : 'Phạt'}
                                   </span>
@@ -1145,7 +1145,7 @@ export default function RewardsPage() {
                                 <td className="py-5 px-6 font-medium text-slate-700">
                                   {rec.title}
                                   {rec.note && (
-                                    <div className="text-[11px] text-slate-400 italic mt-0.5 font-medium">
+                                    <div className="text-xs text-slate-400 italic mt-0.5 font-medium">
                                       {rec.note}
                                     </div>
                                   )}
@@ -1164,7 +1164,7 @@ export default function RewardsPage() {
                               <tr>
                                 <td
                                   colSpan={5}
-                                  className="py-20 text-center text-slate-300 italic font-medium uppercase tracking-widest text-[10px]"
+                                  className="py-20 text-center text-slate-300 italic font-medium uppercase tracking-widest text-xs"
                                 >
                                   Không tìm thấy dữ liệu phù hợp
                                 </td>
@@ -1175,7 +1175,7 @@ export default function RewardsPage() {
                               <tr>
                                 <td colSpan={5} className="py-6 px-8 bg-slate-50/50">
                                   <div className="flex items-center justify-between">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
                                       Trang {historyPage} / {totalPages}
                                     </p>
                                     <div className="flex gap-1">
@@ -1190,7 +1190,7 @@ export default function RewardsPage() {
                                         <button
                                           key={i}
                                           onClick={() => setHistoryPage(i + 1)}
-                                          className={`w-8 h-8 rounded-xl text-[10px] font-black transition-all shadow-sm ${historyPage === i + 1 ? 'bg-indigo-600 text-white shadow-indigo-100' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100'}`}
+                                          className={`w-8 h-8 rounded-xl text-xs font-black transition-all shadow-sm ${historyPage === i + 1 ? 'bg-indigo-600 text-white shadow-indigo-100' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-100'}`}
                                         >
                                           {i + 1}
                                         </button>
@@ -1240,7 +1240,7 @@ export default function RewardsPage() {
                     )}
                   </div>
                   <div>
-                    <div className="text-[10px] opacity-70 mb-0.5">Ghi nhận cho</div>
+                    <div className="text-xs opacity-70 mb-0.5">Ghi nhận cho</div>
                     <div className="text-base">{selectedEmp.name || selectedEmp.fullNameLegal}</div>
                   </div>
                 </div>
@@ -1258,7 +1258,7 @@ export default function RewardsPage() {
                     <button
                       key={tab}
                       onClick={() => setSelectedRuleCategory(tab)}
-                      className={`px-5 py-2.5 rounded-2xl text-[11px] font-black uppercase whitespace-nowrap border-2 transition-all ${selectedRuleCategory === tab ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
+                      className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase whitespace-nowrap border-2 transition-all ${selectedRuleCategory === tab ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
                     >
                       {tab}
                     </button>
@@ -1281,13 +1281,13 @@ export default function RewardsPage() {
                               {rule.title}
                             </div>
                             {appliedRuleIds.has(rule.id) && (
-                              <span className="px-2 py-0.5 bg-slate-200 text-slate-500 text-[9px] font-black uppercase rounded-full tracking-tighter">
+                              <span className="px-2 py-0.5 bg-slate-200 text-slate-500 text-xs font-black uppercase rounded-full tracking-tighter">
                                 Đã ghi nhận
                               </span>
                             )}
                           </div>
                           {rule.note && (
-                            <div className="text-[11px] text-slate-400 italic font-medium">
+                            <div className="text-xs text-slate-400 italic font-medium">
                               {rule.note}
                             </div>
                           )}
@@ -1309,14 +1309,14 @@ export default function RewardsPage() {
                       </button>
                     ))
                   ) : (
-                    <div className="py-24 text-center text-slate-300 italic uppercase text-[10px] tracking-widest">
+                    <div className="py-24 text-center text-slate-300 italic uppercase text-xs tracking-widest">
                       Không có dữ liệu trong mục {selectedRuleCategory}
                     </div>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
                     Ghi chú chi tiết (Không bắt buộc)
                   </label>
                   <textarea
@@ -1331,14 +1331,14 @@ export default function RewardsPage() {
                 <div className="pt-6 flex gap-4">
                   <button
                     onClick={() => setShowActionPanel(false)}
-                    className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-3xl font-black uppercase text-[11px] tracking-widest hover:bg-slate-200 transition-all"
+                    className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-3xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
                   >
                     Đóng lại
                   </button>
                   <button
                     onClick={handleSubmitActions}
                     disabled={submitting || selectedRuleIds.size === 0}
-                    className={`flex-[2] py-5 rounded-3xl font-black uppercase text-[11px] tracking-[0.25em] shadow-2xl transition-all ${submitting || selectedRuleIds.size === 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : actionKind === 'REWARD' ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200' : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-200'}`}
+                    className={`flex-[2] py-5 rounded-3xl font-black uppercase text-xs tracking-[0.25em] shadow-2xl transition-all ${submitting || selectedRuleIds.size === 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : actionKind === 'REWARD' ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200' : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-200'}`}
                   >
                     {submitting ? 'Đang xử lý...' : `Xác nhận (${selectedRuleIds.size})`}
                   </button>
@@ -1401,7 +1401,7 @@ export default function RewardsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
                     Nội dung quy chuẩn
                   </label>
                   <input
@@ -1413,7 +1413,7 @@ export default function RewardsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
                     Định mức (VNĐ)
                   </label>
                   <input
@@ -1466,13 +1466,13 @@ export default function RewardsPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setDeleteConfirmId(null)}
-                  className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-slate-200 transition-all"
+                  className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   onClick={() => deleteConfirmId && handleDeleteRule(deleteConfirmId)}
-                  className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl shadow-rose-200 hover:bg-rose-700 transition-all"
+                  className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-rose-200 hover:bg-rose-700 transition-all"
                 >
                   Xác nhận xóa
                 </button>

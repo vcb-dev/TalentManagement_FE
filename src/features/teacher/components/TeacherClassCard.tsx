@@ -98,14 +98,14 @@ export function TeacherClassCard({
         <div className="flex min-w-0 flex-col items-end gap-1.5">
           <Badge
             className={cn(
-              'max-w-[10rem] truncate px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+              'max-w-[10rem] truncate px-2.5 py-1 text-xs font-bold uppercase tracking-wider',
               BADGE_CLASSES[c.accent] || BADGE_CLASSES.primary
             )}
             variant="muted"
           >
             {c.periodBadge}
           </Badge>
-          <Badge className="inline-flex items-center gap-1.5 border-border/50 bg-muted/40 px-2.5 py-1 text-[10px] font-bold text-muted-foreground backdrop-blur-sm">
+          <Badge className="inline-flex items-center gap-1.5 border-border/50 bg-muted/40 px-2.5 py-1 text-xs font-bold text-muted-foreground backdrop-blur-sm">
             <Users className="size-3" strokeWidth={2.5} aria-hidden />
             {c.memberCount} HV
           </Badge>
@@ -116,24 +116,24 @@ export function TeacherClassCard({
         <h3 className="line-clamp-1 text-[15px] font-bold leading-tight text-foreground group-hover:text-primary transition-colors">
           {c.title}
         </h3>
-        <p className="mt-1 text-[11px] font-medium text-muted-foreground/80 uppercase tracking-widest">
+        <p className="mt-1 text-xs font-medium text-muted-foreground/80 uppercase tracking-widest">
           Lớp phụ trách
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Badge className="inline-flex h-6 items-center gap-1.5 rounded-lg border-primary/20 bg-primary/5 px-2 text-[10px] font-bold text-primary">
+          <Badge className="inline-flex h-6 items-center gap-1.5 rounded-lg border-primary/20 bg-primary/5 px-2 text-xs font-bold text-primary">
             <MetaIcon className="size-3" strokeWidth={2.5} aria-hidden />
             {TRACK_LABELS[c.track] || c.track}
           </Badge>
           <span className="text-xs font-bold text-muted-foreground/30">/</span>
-          <span className="text-[11px] font-semibold text-muted-foreground line-clamp-1">
+          <span className="text-xs font-semibold text-muted-foreground line-clamp-1">
             {c.examLine}
           </span>
         </div>
       </div>
 
       <div className="mb-6 space-y-2">
-        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
+        <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider">
           <span className="text-muted-foreground">Sĩ số lớp</span>
           <span className="text-primary">{progressPct}%</span>
         </div>

@@ -455,38 +455,38 @@ function ExamResultPage() {
               </div>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                  <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
                     Đúng lý thuyết
                   </span>
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-black text-foreground">40</span>
                     <span className="text-sm font-bold text-primary">%</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
                     Trình bày chính xác, đầy đủ kiến thức chuyên môn liên quan.
                   </p>
                 </div>
                 <div className="flex flex-col gap-1.5 border-primary/10 sm:border-l sm:pl-6">
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                  <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
                     Ví dụ thực tế
                   </span>
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-black text-foreground">50</span>
                     <span className="text-sm font-bold text-primary">%</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
                     Có ví dụ minh họa cụ thể, sát với thực tiễn công việc tại VCB.
                   </p>
                 </div>
                 <div className="flex flex-col gap-1.5 border-primary/10 sm:border-l sm:pl-6">
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                  <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
                     Trình bày
                   </span>
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-black text-foreground">10</span>
                     <span className="text-sm font-bold text-primary">%</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="text-xs leading-relaxed text-muted-foreground">
                     Cách trình bày mạch lạc, rõ ràng, dễ hiểu và chuyên nghiệp.
                   </p>
                 </div>

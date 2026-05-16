@@ -106,7 +106,7 @@ export function ViewEvaluationsModal({
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex flex-col items-end mr-4">
-              <span className="text-[10px] font-black uppercase text-slate-400">
+              <span className="text-xs font-black uppercase text-slate-400">
                 Số lượng phản hồi
               </span>
               <span className="text-lg font-black text-blue-600">{evals?.length || 0}</span>
@@ -152,7 +152,7 @@ export function ViewEvaluationsModal({
                     <span className="text-4xl font-black leading-none">
                       {overallAvg.toFixed(1)}
                     </span>
-                    <span className="text-[10px] font-black uppercase tracking-widest mt-1 opacity-60">
+                    <span className="text-xs font-black uppercase tracking-widest mt-1 opacity-60">
                       Trung bình
                     </span>
                   </div>
@@ -184,12 +184,12 @@ export function ViewEvaluationsModal({
                       className="group rounded-2xl border border-slate-100 bg-white p-5 transition-all hover:border-blue-200 hover:shadow-xl hover:shadow-blue-900/5"
                     >
                       <div className="flex items-center justify-between mb-4">
-                        <span className="text-[13px] font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
+                        <span className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
                           {a.text}
                         </span>
                         <div
                           className={cn(
-                            'px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider',
+                            'px-2.5 py-0.5 rounded-lg text-xs font-black uppercase tracking-wider',
                             getScoreColor(a.avg)
                           )}
                         >
@@ -249,10 +249,10 @@ function StudentFeedbackCard({ evaluation: e }: { evaluation: any }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-slate-900 truncate">{e.user.fullNameLegal}</p>
-          <p className="text-[11px] text-slate-400 truncate">{e.user.email}</p>
+          <p className="text-xs text-slate-400 truncate">{e.user.email}</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1 rounded-full bg-blue-600 text-white text-[11px] font-black shadow-md shadow-blue-200">
+          <div className="px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-black shadow-md shadow-blue-200">
             {e.totalScore?.toFixed(1) || '0.0'}
           </div>
           <div className={cn('transition-transform duration-300', isOpen ? 'rotate-180' : '')}>
@@ -278,11 +278,11 @@ function StudentFeedbackCard({ evaluation: e }: { evaluation: any }) {
                   key={q.id}
                   className="rounded-xl bg-white px-3 py-2.5 border border-slate-100 shadow-sm"
                 >
-                  <p className="text-[9px] font-bold text-slate-400 truncate uppercase tracking-tight">
+                  <p className="text-xs font-bold text-slate-400 truncate uppercase tracking-tight">
                     {q.text}
                   </p>
                   <p
-                    className={cn('text-[10px] font-black mt-1', getScoreColor(val).split(' ')[0])}
+                    className={cn('text-xs font-black mt-1', getScoreColor(val).split(' ')[0])}
                   >
                     {getScoreLabel(val)}
                   </p>
@@ -294,7 +294,7 @@ function StudentFeedbackCard({ evaluation: e }: { evaluation: any }) {
           <div className="space-y-5 divide-y divide-slate-100">
             {e.feedbackLacking && (
               <div className="pt-2">
-                <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-wider">
+                <p className="text-xs font-black uppercase text-slate-400 mb-2 tracking-wider">
                   Thiếu sót & Ứng dụng
                 </p>
                 <div className="rounded-2xl bg-white p-4 border border-slate-100/50 italic text-sm text-slate-600 leading-relaxed">
@@ -304,7 +304,7 @@ function StudentFeedbackCard({ evaluation: e }: { evaluation: any }) {
             )}
             {e.feedbackImprove && (
               <div className="pt-5">
-                <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-wider">
+                <p className="text-xs font-black uppercase text-slate-400 mb-2 tracking-wider">
                   Cần cải thiện
                 </p>
                 <div className="rounded-2xl bg-white p-4 border border-slate-100/50 italic text-sm text-slate-600 leading-relaxed">
@@ -314,7 +314,7 @@ function StudentFeedbackCard({ evaluation: e }: { evaluation: any }) {
             )}
             {e.feedbackFree && (
               <div className="pt-5">
-                <p className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-wider">
+                <p className="text-xs font-black uppercase text-slate-400 mb-2 tracking-wider">
                   Phản hồi khác
                 </p>
                 <div className="rounded-2xl bg-white p-4 border border-slate-100/50 italic text-sm text-slate-600 leading-relaxed">

@@ -50,7 +50,7 @@ function formatDateIsoVi(dateIso: string): string {
 function renderExamStatus(examDate: string | null | undefined) {
   if (!examDate) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 shadow-sm">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 shadow-sm">
         <AlertCircle className="h-3 w-3" />
         Chưa xếp lịch
       </span>
@@ -63,7 +63,7 @@ function renderExamStatus(examDate: string | null | undefined) {
 
   if (now < start) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 shadow-sm">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 shadow-sm">
         <Calendar className="h-3 w-3" />
         Sắp diễn ra
       </span>
@@ -72,7 +72,7 @@ function renderExamStatus(examDate: string | null | undefined) {
 
   if (now >= start && now <= end) {
     return (
-      <span className="relative inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 shadow-sm">
+      <span className="relative inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 shadow-sm">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
@@ -83,7 +83,7 @@ function renderExamStatus(examDate: string | null | undefined) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-500 shadow-sm opacity-80">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-500 shadow-sm opacity-80">
       <CheckCircle2 className="h-3 w-3" />
       Đã kết thúc
     </span>
@@ -131,7 +131,7 @@ export function ManagedClassesExamTable({ classes, isLoading }: ManagedClassesEx
               <div className="space-y-0.5">
                 <span className="font-medium text-foreground">{formatExamViShort(c.examDate)}</span>
                 {c.examDate && c.teacher?.name ? (
-                  <p className="text-[11px] text-muted-foreground">Chấm: {c.teacher.name}</p>
+                  <p className="text-xs text-muted-foreground">Chấm: {c.teacher.name}</p>
                 ) : null}
               </div>
             )
@@ -244,31 +244,31 @@ export function ManagedClassesExamTable({ classes, isLoading }: ManagedClassesEx
         <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
           <thead>
             <tr className="bg-muted/30 border-b border-border/50">
-              <th className="px-5 py-4 font-bold text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+              <th className="px-5 py-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">
                 Tên lớp
               </th>
-              <th className="px-5 py-4 font-bold text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+              <th className="px-5 py-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">
                 Giáo viên
               </th>
-              <th className="px-5 py-4 font-bold text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+              <th className="px-5 py-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">
                 Trạng thái
               </th>
-              <th className="px-5 py-4 font-bold text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+              <th className="px-5 py-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">
                 Ngày học
               </th>
-              <th className="px-5 py-4 font-bold text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+              <th className="px-5 py-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">
                 Giờ học
               </th>
-              <th className="px-5 py-4 font-bold text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+              <th className="px-5 py-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">
                 Nội dung
               </th>
-              <th className="px-5 py-4 font-bold text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+              <th className="px-5 py-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">
                 Địa điểm
               </th>
-              <th className="px-5 py-4 font-bold text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+              <th className="px-5 py-4 font-bold text-xs uppercase tracking-wider text-muted-foreground">
                 Kỳ thi dự kiến
               </th>
-              <th className="px-5 py-4 text-right font-bold text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+              <th className="px-5 py-4 text-right font-bold text-xs uppercase tracking-wider text-muted-foreground">
                 Thao tác
               </th>
             </tr>
@@ -294,7 +294,7 @@ export function ManagedClassesExamTable({ classes, isLoading }: ManagedClassesEx
                   <div className="space-y-0.5">
                     <span className="font-medium text-foreground">{examText}</span>
                     {c.examDate && c.teacher?.name ? (
-                      <p className="text-[11px] text-muted-foreground">Chấm: {c.teacher.name}</p>
+                      <p className="text-xs text-muted-foreground">Chấm: {c.teacher.name}</p>
                     ) : null}
                   </div>
                 )

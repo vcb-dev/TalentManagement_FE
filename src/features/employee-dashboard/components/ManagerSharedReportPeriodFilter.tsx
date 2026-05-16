@@ -59,10 +59,10 @@ export function ManagerSharedReportPeriodFilter({ value, onChange, className }: 
       aria-label="Kỳ báo cáo dùng chung"
     >
       <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           Kỳ báo cáo (cùng năm)
         </span>
-        <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-semibold tabular-nums text-foreground">
+        <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground">
           {rangeStartMonth === rangeEndMonth
             ? `Tháng ${rangeStartMonth}/${reportYear}`
             : `Từ tháng ${rangeStartMonth} đến tháng ${rangeEndMonth}/${reportYear}`}
@@ -70,7 +70,7 @@ export function ManagerSharedReportPeriodFilter({ value, onChange, className }: 
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="space-y-1">
-          <span className="text-[10px] font-semibold text-muted-foreground">Năm</span>
+          <span className="text-xs font-semibold text-muted-foreground">Năm</span>
           <Input
             type="number"
             min={2020}
@@ -84,7 +84,7 @@ export function ManagerSharedReportPeriodFilter({ value, onChange, className }: 
           />
         </div>
         <div className="space-y-1">
-          <span className="text-[10px] font-semibold text-muted-foreground">Từ tháng</span>
+          <span className="text-xs font-semibold text-muted-foreground">Từ tháng</span>
           <Select value={String(rangeStartMonth)} onValueChange={(v) => setFromMonth(Number(v))}>
             <SelectTrigger className="h-10 rounded-xl border-border bg-background text-sm">
               <SelectValue />
@@ -99,7 +99,7 @@ export function ManagerSharedReportPeriodFilter({ value, onChange, className }: 
           </Select>
         </div>
         <div className="space-y-1">
-          <span className="text-[10px] font-semibold text-muted-foreground">Đến tháng</span>
+          <span className="text-xs font-semibold text-muted-foreground">Đến tháng</span>
           <Select value={String(rangeEndMonth)} onValueChange={(v) => setToMonth(Number(v))}>
             <SelectTrigger className="h-10 rounded-xl border-border bg-background text-sm">
               <SelectValue />

@@ -44,7 +44,7 @@ export interface MyProfileScreenProps {
 }
 
 const inputEditable =
-  'border-slate-200 bg-white text-[13px] text-slate-700 shadow-sm transition-all focus:border-primary focus:ring-4 focus:ring-primary/10'
+  'border-slate-200 bg-white text-sm text-slate-700 shadow-sm transition-all focus:border-primary focus:ring-4 focus:ring-primary/10'
 
 const fieldControlClass =
   'h-10 w-full rounded-xl border px-3 py-2 leading-snug outline-none transition-all'
@@ -56,7 +56,7 @@ function FieldLabel({ children }: { children: string }) {
   return (
     <span className="mb-1.5 flex items-center gap-1.5">
       <span className="h-3 w-0.5 rounded-full bg-slate-300" aria-hidden />
-      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
         {children}
       </span>
     </span>
@@ -149,7 +149,7 @@ function ProfileReadonlyInfo({ label, value }: { label: string; value: string })
       )}
     >
       <FieldLabel>{label}</FieldLabel>
-      <p className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">{value || '—'}</p>
+      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{value || '—'}</p>
     </div>
   )
 }
@@ -188,7 +188,7 @@ function renderField(
         name={key}
         label={field.label}
         className={cn('space-y-1.5', fieldBoxClass)}
-        labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
         datePickerClassName={cn(fieldControlClass, '[color-scheme:light]', inputEditable)}
         customLabel={<FieldLabel>{field.label}</FieldLabel>}
       />
@@ -203,9 +203,9 @@ function renderField(
         name={key}
         label={field.label}
         className={cn('space-y-1.5 sm:col-span-2 lg:col-span-2', fieldBoxClass)}
-        labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
         textareaClassName={cn(
-          'min-h-[80px] w-full resize-y rounded-lg border px-3 py-2 text-[13px] leading-relaxed outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
+          'min-h-[80px] w-full resize-y rounded-lg border px-3 py-2 text-sm leading-relaxed outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
           inputEditable
         )}
         customLabel={<FieldLabel>{field.label}</FieldLabel>}
@@ -222,7 +222,7 @@ function renderField(
       type="text"
       autoComplete="off"
       className={cn('space-y-1.5', fieldBoxClass)}
-      labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+      labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
       inputClassName={cn(fieldControlClass, inputEditable)}
       customLabel={<FieldLabel>{field.label}</FieldLabel>}
     />
@@ -315,11 +315,11 @@ function ProfileIdentityCard({
         <div className="flex flex-wrap items-center gap-2">
           <Badge
             variant="outline"
-            className="h-6 border-indigo-400/30 bg-indigo-500/10 px-2 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
+            className="h-6 border-indigo-400/30 bg-indigo-500/10 px-2 text-xs font-black uppercase tracking-widest text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
           >
             {ROLE_LABEL_VI[role]}
           </Badge>
-          <div className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+          <div className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
             <Building2 className="h-3 w-3" />
             <span>
               {u.departmentName?.trim() || '—'} · {u.teamGroup?.trim() || '—'}
@@ -327,7 +327,7 @@ function ProfileIdentityCard({
           </div>
           <Badge
             variant="outline"
-            className="h-6 border-fuchsia-400/30 bg-fuchsia-500/10 px-2 text-[10px] font-black uppercase tracking-widest text-fuchsia-600 dark:border-fuchsia-900/50 dark:bg-fuchsia-950/30 dark:text-fuchsia-300"
+            className="h-6 border-fuchsia-400/30 bg-fuchsia-500/10 px-2 text-xs font-black uppercase tracking-widest text-fuchsia-600 dark:border-fuchsia-900/50 dark:bg-fuchsia-950/30 dark:text-fuchsia-300"
           >
             Cấp độ: {currentLevelTitle}
           </Badge>
@@ -462,7 +462,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     <SectionTitle variant="primary">{workSection.title}</SectionTitle>
                     {workReadonlyFields.length > 0 ? (
                       <div className="mb-8">
-                        <p className="mb-4 text-[11px] font-black uppercase tracking-widest text-blue-600/60">
+                        <p className="mb-4 text-xs font-black uppercase tracking-widest text-blue-600/60">
                           Thông tin đồng bộ (chỉ xem)
                         </p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -472,7 +472,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     ) : null}
                     {workEditableFields.length > 0 ? (
                       <div className="border-t border-blue-100/50 pt-6 dark:border-blue-800/50">
-                        <p className="mb-4 text-[11px] font-black uppercase tracking-widest text-blue-600/60">
+                        <p className="mb-4 text-xs font-black uppercase tracking-widest text-blue-600/60">
                           Thông tin có thể cập nhật
                         </p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -514,7 +514,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     <StarEmblem variant="filled" className="h-7 w-7" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700/70">
+                    <p className="text-xs font-black uppercase tracking-widest text-amber-700/70">
                       Lộ trình hiện tại
                     </p>
                     <p className="text-base font-black text-slate-900 dark:text-slate-100 truncate">
@@ -525,7 +525,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
 
                 <div className="space-y-6 relative z-10">
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-amber-700/80">
+                    <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-amber-700/80">
                       <span>Tiến độ cấp độ</span>
                       <span className="text-amber-600 bg-white px-1.5 py-0.5 rounded-md shadow-sm">
                         {levelProgressPct}%
@@ -540,7 +540,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                   </div>
 
                   <div className="flex items-center justify-between gap-2 border-t border-amber-200/50 pt-6 dark:border-amber-900/20">
-                    <div className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+                    <div className="text-xs font-black uppercase tracking-widest text-slate-500">
                       Sao hiện tại
                     </div>
                     <div className="text-lg font-black text-amber-600 bg-amber-100/50 px-2 py-0.5 rounded-lg">
@@ -590,7 +590,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
               </section>
 
               <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
-                <p className="text-center text-[11px] leading-relaxed text-slate-400 font-medium italic">
+                <p className="text-center text-xs leading-relaxed text-slate-400 font-medium italic">
                   * Thông tin được đồng bộ tự động từ hệ thống HRM và Lark. Các trường bị khóa không
                   thể chỉnh sửa trực tiếp tại đây.
                 </p>
@@ -640,7 +640,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
         {isLoading ? (
           <div className="flex flex-col items-center gap-4">
             <RefreshCw className="h-8 w-8 animate-spin text-primary/40" />
-            <span className="font-bold tracking-widest text-[11px] uppercase">Đang tải hồ sơ…</span>
+            <span className="font-bold tracking-widest text-xs uppercase">Đang tải hồ sơ…</span>
           </div>
         ) : (
           'Không có dữ liệu'

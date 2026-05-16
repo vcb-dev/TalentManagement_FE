@@ -235,7 +235,7 @@ export function GraderPhanLopScreen({
                     <h2 className="text-base font-bold text-foreground">
                       Nhận xét tổng kết kỳ thi
                     </h2>
-                    <span className="rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
+                    <span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-bold uppercase tracking-widest text-primary">
                       Bắt buộc
                     </span>
                   </div>
@@ -283,7 +283,7 @@ export function GraderPhanLopScreen({
                     className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/[0.06]"
                     aria-hidden
                   />
-                  <p className="mb-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  <p className="mb-6 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Thông tin thí sinh
                   </p>
                   <div className="flex items-center gap-4">
@@ -297,7 +297,7 @@ export function GraderPhanLopScreen({
                         {initials}
                       </div>
                       <div
-                        className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-success text-[10px] font-bold text-white"
+                        className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-success text-xs font-bold text-white"
                         aria-hidden
                       >
                         ✓
@@ -312,13 +312,13 @@ export function GraderPhanLopScreen({
                   </div>
                   <div className="mt-6 flex justify-between gap-4 border-t border-border pt-6">
                     <div>
-                      <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">
+                      <p className="mb-1 text-xs font-bold uppercase text-muted-foreground">
                         Cấp / sao (mục tiêu)
                       </p>
                       <p className="text-sm font-bold text-foreground">{levelBadge}</p>
                     </div>
                     <div className="text-right">
-                      <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">
+                      <p className="mb-1 text-xs font-bold uppercase text-muted-foreground">
                         Lớp thi
                       </p>
                       <p className="text-sm font-bold text-primary">{className}</p>
@@ -339,7 +339,7 @@ export function GraderPhanLopScreen({
                   />
                   <div className="relative mb-6 flex items-start justify-between gap-3">
                     <div>
-                      <h4 className="mb-1 text-[10px] font-bold uppercase tracking-widest text-primary-100/90">
+                      <h4 className="mb-1 text-xs font-bold uppercase tracking-widest text-primary-100/90">
                         Tổng kết chấm bài
                       </h4>
                       <p className="text-xl font-black tracking-tight">Xếp loại: {tierLabel}</p>
@@ -358,13 +358,13 @@ export function GraderPhanLopScreen({
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <p className="mt-2 text-[11px] font-medium text-primary-100/75">
+                      <p className="mt-2 text-xs font-medium text-primary-100/75">
                         Không đạt: {fail} mục
                       </p>
                     </div>
                     <div className="mt-6 grid grid-cols-2 gap-4">
                       <div className="rounded-xl bg-white/5 p-3">
-                        <p className="text-[10px] font-bold uppercase text-primary-100/80">
+                        <p className="text-xs font-bold uppercase text-primary-100/80">
                           Mục tiêu đạt
                         </p>
                         <p className="text-xl font-bold">
@@ -372,7 +372,7 @@ export function GraderPhanLopScreen({
                         </p>
                       </div>
                       <div className="rounded-xl bg-white/5 p-3">
-                        <p className="text-[10px] font-bold uppercase text-primary-100/80">
+                        <p className="text-xs font-bold uppercase text-primary-100/80">
                           Điểm thưởng
                         </p>
                         <p className="text-xl font-bold">+{bonusPts}</p>

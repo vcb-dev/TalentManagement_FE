@@ -139,7 +139,7 @@ function ClassSchedulesList({
 
   return (
     <div className="mt-3 w-full space-y-2">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-left px-1">
+      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-left px-1">
         Các buổi thi đã lên lịch:
       </p>
       <div className="flex flex-col gap-1.5 w-full">
@@ -153,14 +153,14 @@ function ClassSchedulesList({
             >
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-bold text-foreground truncate">{s.topic}</span>
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {s.dateIso} · {s.startTime} - {s.endTime}
                 </span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span
                   className={cn(
-                    'text-[10px] font-bold px-1.5 py-0.5 rounded',
+                    'text-xs font-bold px-1.5 py-0.5 rounded',
                     hasQuestions ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                   )}
                 >
@@ -169,7 +169,7 @@ function ClassSchedulesList({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 px-2 text-[11px] font-bold bg-white border shadow-sm hover:bg-primary/5 hover:text-primary"
+                  className="h-7 px-2 text-xs font-bold bg-white border shadow-sm hover:bg-primary/5 hover:text-primary"
                   onClick={() => onEditExam(s.id)}
                 >
                   {hasQuestions ? 'Sửa đề' : 'Tạo đề'}
@@ -483,7 +483,7 @@ export function ManagerClassExamsScreen() {
                   >
                     <div>
                       <p className="font-bold text-foreground">{item.className}</p>
-                      <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-primary">
+                      <p className="mt-1 text-xs font-bold uppercase tracking-wider text-primary">
                         {item.topic}
                       </p>
                     </div>
@@ -501,7 +501,7 @@ export function ManagerClassExamsScreen() {
                     <div>
                       <span
                         className={cn(
-                          'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold',
+                          'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
                           classUi.badgeClass
                         )}
                       >
@@ -514,7 +514,7 @@ export function ManagerClassExamsScreen() {
                           <p className="font-semibold text-emerald-600">
                             {sessionBank?.questions.length ?? 0} câu hỏi
                           </p>
-                          <p className="text-[11px] font-medium text-muted-foreground">
+                          <p className="text-xs font-medium text-muted-foreground">
                             Thời gian: {sessionBank?.duration || 60} phút
                           </p>
                         </div>
@@ -522,7 +522,7 @@ export function ManagerClassExamsScreen() {
                         <div>
                           <p className="italic text-muted-foreground">Chưa có đề riêng</p>
                           {classBank ? (
-                            <p className="text-[10px] font-medium text-amber-600">
+                            <p className="text-xs font-medium text-amber-600">
                               (Đã có đề mẫu lớp)
                             </p>
                           ) : null}
@@ -629,7 +629,7 @@ export function ManagerClassExamsScreen() {
                         <td className="px-3 py-4">
                           <div className="flex flex-col gap-0.5">
                             <span className="font-bold text-foreground">{item.className}</span>
-                            <span className="text-[11px] text-primary font-bold uppercase tracking-wider">
+                            <span className="text-xs text-primary font-bold uppercase tracking-wider">
                               {item.topic}
                             </span>
                           </div>
@@ -637,7 +637,7 @@ export function ManagerClassExamsScreen() {
                         <td className="px-3 py-4">
                           <div className="flex flex-col gap-0.5">
                             <span className="font-semibold text-foreground">{item.dateIso}</span>
-                            <span className="text-[11px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               {item.startTime} - {item.endTime}
                             </span>
                           </div>
@@ -646,7 +646,7 @@ export function ManagerClassExamsScreen() {
                         <td className="px-3 py-4">
                           <span
                             className={cn(
-                              'inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold',
+                              'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
                               classUi.badgeClass
                             )}
                           >
@@ -659,7 +659,7 @@ export function ManagerClassExamsScreen() {
                               <span className="text-emerald-600 font-semibold">
                                 {sessionBank?.questions.length ?? 0} câu hỏi
                               </span>
-                              <span className="text-[11px] text-muted-foreground font-medium">
+                              <span className="text-xs text-muted-foreground font-medium">
                                 Thời gian: {sessionBank?.duration || 60} phút
                               </span>
                             </div>
@@ -667,7 +667,7 @@ export function ManagerClassExamsScreen() {
                             <div className="flex flex-col gap-0.5">
                               <span className="text-muted-foreground italic">Chưa có đề riêng</span>
                               {classBank && (
-                                <span className="text-[10px] text-amber-600 font-medium">
+                                <span className="text-xs text-amber-600 font-medium">
                                   (Đã có đề mẫu lớp)
                                 </span>
                               )}

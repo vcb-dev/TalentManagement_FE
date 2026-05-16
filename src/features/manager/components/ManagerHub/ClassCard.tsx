@@ -102,7 +102,7 @@ export function ClassCard({ row, onEdit, onDelete }: ClassCardProps) {
             {!isCollapsed && (
               <span
                 className={cn(
-                  'mb-1 inline-block w-fit rounded-full px-2.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider',
+                  'mb-1 inline-block w-fit rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider',
                   st.className
                 )}
               >
@@ -117,7 +117,7 @@ export function ClassCard({ row, onEdit, onDelete }: ClassCardProps) {
             >
               {row.name}
               {isCollapsed && (
-                <span className="ml-3 text-[10px] opacity-80 font-normal">
+                <span className="ml-3 text-xs opacity-80 font-normal">
                   ({row.memberCount} thành viên)
                 </span>
               )}
@@ -127,7 +127,7 @@ export function ClassCard({ row, onEdit, onDelete }: ClassCardProps) {
             {isCollapsed && (
               <span
                 className={cn(
-                  'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
+                  'rounded-full px-2 py-0.5 text-xs font-bold uppercase',
                   st.className
                 )}
               >
@@ -209,7 +209,7 @@ export function ClassCard({ row, onEdit, onDelete }: ClassCardProps) {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-auto w-full py-1 text-[10px] font-bold text-primary hover:bg-primary/5"
+                      className="h-auto w-full py-1 text-xs font-bold text-primary hover:bg-primary/5"
                       onClick={() => setIsExpandedMembers(!isExpandedMembers)}
                     >
                       {isExpandedMembers

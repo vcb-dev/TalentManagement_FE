@@ -105,10 +105,10 @@ export function CatalogEditorScreen() {
       <div className="grid min-w-0 gap-4 lg:grid-cols-[240px_1fr] lg:gap-6">
         {/* Sidebar: cuộn ngang trên mobile, cột trên lg */}
         <div className="min-w-0 space-y-1">
-          <Label className="hidden px-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 lg:block">
+          <Label className="hidden px-1 text-xs font-extrabold uppercase tracking-widest text-slate-400 lg:block">
             Danh sách danh mục
           </Label>
-          <Label className="mb-1 block px-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 lg:hidden">
+          <Label className="mb-1 block px-1 text-xs font-extrabold uppercase tracking-widest text-slate-400 lg:hidden">
             Chọn danh mục
           </Label>
           <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0">
@@ -159,7 +159,7 @@ export function CatalogEditorScreen() {
                       <span className="text-base font-bold text-slate-900 dark:text-slate-100 sm:text-lg">
                         {catalog.name}
                       </span>
-                      <Badge variant="outline" className="h-5 font-mono text-[10px]">
+                      <Badge variant="outline" className="h-5 font-mono text-xs">
                         {catalog.code}
                       </Badge>
                     </div>
@@ -169,7 +169,7 @@ export function CatalogEditorScreen() {
                       </p>
                     )}
                   </div>
-                  <div className="shrink-0 text-[11px] text-slate-400 sm:text-xs">
+                  <div className="shrink-0 text-xs text-slate-400 sm:text-xs">
                     {catalog.items?.length ?? 0} items
                     {' · '}
                     {(catalog.revenueTiers?.length ?? 0) > 0
@@ -246,7 +246,7 @@ export function CatalogEditorScreen() {
                             <Badge
                               variant="outline"
                               className={cn(
-                                'h-4 px-1 text-[9px] font-bold',
+                                'h-4 px-1 text-xs font-bold',
                                 categoryBadgeClass(item.category)
                               )}
                             >
@@ -254,7 +254,7 @@ export function CatalogEditorScreen() {
                             </Badge>
                           </td>
                           <td className="py-2 pr-2">
-                            <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold">
+                            <Badge variant="outline" className="h-4 px-1 text-xs font-bold">
                               {item.kind}
                             </Badge>
                           </td>
@@ -296,7 +296,7 @@ export function CatalogEditorScreen() {
                   {(itemsByStage[currentStage] ?? []).map((item, idx) => (
                     <li key={item.id} className="space-y-2 px-4 py-3">
                       <div className="flex items-start justify-between gap-2">
-                        <span className="tabular-nums text-[11px] text-slate-400">#{idx + 1}</span>
+                        <span className="tabular-nums text-xs text-slate-400">#{idx + 1}</span>
                         <div className="flex shrink-0 gap-0.5">
                           <EditItemButton
                             item={item}
@@ -320,13 +320,13 @@ export function CatalogEditorScreen() {
                         <Badge
                           variant="outline"
                           className={cn(
-                            'h-5 px-1.5 text-[9px] font-bold',
+                            'h-5 px-1.5 text-xs font-bold',
                             categoryBadgeClass(item.category)
                           )}
                         >
                           {categoryLabel(item.category).replace(/^[A-E]\.\s/, '')}
                         </Badge>
-                        <Badge variant="outline" className="h-5 px-1.5 text-[9px] font-bold">
+                        <Badge variant="outline" className="h-5 px-1.5 text-xs font-bold">
                           {item.kind}
                         </Badge>
                       </div>
@@ -478,7 +478,7 @@ function AddItemButton({
         <Button
           variant="outline"
           size="sm"
-          className="h-8 w-full gap-1 text-[11px] sm:h-7 sm:w-auto"
+          className="h-8 w-full gap-1 text-xs sm:h-7 sm:w-auto"
         >
           <Plus className="h-3 w-3" />
           Thêm item
@@ -507,7 +507,7 @@ function AddItemButton({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-[11px]">Nội dung</Label>
+            <Label className="text-xs">Nội dung</Label>
             <Textarea
               {...register('content')}
               className="h-20 text-xs"
@@ -525,7 +525,7 @@ function AddItemButton({
               ]}
             />
             <div className="space-y-1">
-              <Label className="text-[11px]">Ưu tiên</Label>
+              <Label className="text-xs">Ưu tiên</Label>
               <input
                 type="number"
                 {...register('priority', { valueAsNumber: true })}
@@ -533,7 +533,7 @@ function AddItemButton({
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">Thứ tự</Label>
+              <Label className="text-xs">Thứ tự</Label>
               <input
                 type="number"
                 {...register('sortOrder', { valueAsNumber: true })}
@@ -543,15 +543,15 @@ function AddItemButton({
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div className="space-y-1">
-              <Label className="text-[11px]">Chỉ tiêu/Tháng</Label>
+              <Label className="text-xs">Chỉ tiêu/Tháng</Label>
               <Input {...register('monthlyTarget')} className="h-8 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">Số mục tiêu</Label>
+              <Label className="text-xs">Số mục tiêu</Label>
               <Input {...register('numericTarget')} className="h-8 text-xs" type="number" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">Đơn vị</Label>
+              <Label className="text-xs">Đơn vị</Label>
               <Input {...register('numericUnit')} className="h-8 text-xs" />
             </div>
           </div>
@@ -617,20 +617,20 @@ function EditItemButton({ item, onSaved }: { item: any; onSaved: () => void }) {
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-3">
           <div className="space-y-1">
-            <Label className="text-[11px]">Nội dung</Label>
+            <Label className="text-xs">Nội dung</Label>
             <Textarea {...register('content')} className="h-20 text-xs" />
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div className="space-y-1">
-              <Label className="text-[11px]">Chỉ tiêu/Tháng</Label>
+              <Label className="text-xs">Chỉ tiêu/Tháng</Label>
               <Input {...register('monthlyTarget')} className="h-8 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">Số mục tiêu</Label>
+              <Label className="text-xs">Số mục tiêu</Label>
               <Input {...register('numericTarget')} className="h-8 text-xs" type="number" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px]">Đơn vị</Label>
+              <Label className="text-xs">Đơn vị</Label>
               <Input {...register('numericUnit')} className="h-8 text-xs" />
             </div>
           </div>

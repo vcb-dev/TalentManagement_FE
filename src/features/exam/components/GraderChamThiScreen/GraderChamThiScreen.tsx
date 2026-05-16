@@ -98,7 +98,7 @@ function GraderQuestionItem({
           {questionText}
         </p>
         {!isGraded && answer?.trim() && (
-          <span className="text-[10px] font-black text-red-600 animate-pulse uppercase tracking-wider shrink-0">
+          <span className="text-xs font-black text-red-600 animate-pulse uppercase tracking-wider shrink-0">
             ⚠️ Chưa chấm
           </span>
         )}
@@ -106,7 +106,7 @@ function GraderQuestionItem({
 
       <div
         className={cn(
-          'mb-4 min-h-[44px] whitespace-pre-wrap rounded-lg border border-border p-3 text-[13px] leading-relaxed',
+          'mb-4 min-h-[44px] whitespace-pre-wrap rounded-lg border border-border p-3 text-sm leading-relaxed',
           answer?.trim()
             ? 'bg-muted/30 text-foreground'
             : 'bg-muted/10 italic text-muted-foreground'
@@ -378,7 +378,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
               Chấm thi: <span className="font-bold text-foreground">{submission.fullName}</span>
               {submission.learningClass?.name && ` · Lớp ${submission.learningClass.name}`}
             </p>
-            <span className="shrink-0 rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+            <span className="shrink-0 rounded-md border border-border bg-card px-2 py-0.5 text-xs font-bold text-muted-foreground">
               Vai trò: {roleLabel}
             </span>
           </div>

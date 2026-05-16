@@ -363,7 +363,7 @@ export function GraderClassByQuestionScreen({
             </h1>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+              <p className="text-xs text-slate-500 uppercase font-bold tracking-widest">
                 Chế độ: Chấm theo câu hỏi
               </p>
             </div>
@@ -451,7 +451,7 @@ export function GraderClassByQuestionScreen({
                                   {sub.fullName}
                                 </span>
                                 {!grade.isGraded && (
-                                  <span className="text-[10px] font-black text-red-600 animate-pulse uppercase tracking-wider">
+                                  <span className="text-xs font-black text-red-600 animate-pulse uppercase tracking-wider">
                                     ⚠️ Chưa chấm bài này
                                   </span>
                                 )}
@@ -482,7 +482,7 @@ export function GraderClassByQuestionScreen({
 
                           <div
                             className={cn(
-                              'mb-6 whitespace-pre-wrap rounded-2xl border-2 p-4 text-[13px] leading-relaxed transition-colors',
+                              'mb-6 whitespace-pre-wrap rounded-2xl border-2 p-4 text-sm leading-relaxed transition-colors',
                               answer.trim()
                                 ? 'border-slate-50 bg-slate-50/50 text-slate-700'
                                 : 'border-dashed border-slate-100 text-slate-400 italic bg-transparent'
@@ -503,7 +503,7 @@ export function GraderClassByQuestionScreen({
                             )}
                           >
                             <div className="mb-3 flex items-center justify-between">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                 Đánh giá câu trả lời
                               </span>
                               {grade.isGraded && (
@@ -548,14 +548,14 @@ export function GraderClassByQuestionScreen({
 
                           {/* Per-Question Feedback */}
                           <div className="mt-5 space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">
                               Nhận xét chi tiết cho câu hỏi này
                             </label>
                             <Textarea
                               placeholder="Nhập góp ý hoặc lý do trừ điểm cho câu trả lời này..."
                               value={grade.note || ''}
                               onChange={(e) => handleNoteChange(sub.id, q.id, e.target.value)}
-                              className="min-h-[80px] text-[13px] resize-none rounded-2xl border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-primary/20 transition-all"
+                              className="min-h-[80px] text-sm resize-none rounded-2xl border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-primary/20 transition-all"
                             />
                           </div>
                         </div>

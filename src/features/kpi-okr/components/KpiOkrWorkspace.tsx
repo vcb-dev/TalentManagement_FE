@@ -584,7 +584,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
             <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {!isManagerReadOnly && !isManagerVariant && (
                 <div className="space-y-1.5">
-                  <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                     Phòng ban
                   </Label>
                   <Select
@@ -611,7 +611,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                 </div>
               )}
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Nhóm
                 </Label>
                 <Select
@@ -631,7 +631,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                           {(isManagerReadOnly || isManagerVariant) &&
                           'deptName' in t &&
                           t.deptName ? (
-                            <span className="ml-1 text-[11px] text-slate-400">· {t.deptName}</span>
+                            <span className="ml-1 text-xs text-slate-400">· {t.deptName}</span>
                           ) : null}
                         </SelectItem>
                       )
@@ -640,7 +640,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Tháng
                 </Label>
                 <Select
@@ -668,7 +668,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Năm
                 </Label>
                 <Input
@@ -705,13 +705,13 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
               <div className="flex flex-col gap-1">
                 <Badge
                   variant="outline"
-                  className="h-5 rounded-md border-blue-100 bg-blue-50 text-[10px] font-bold text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
+                  className="h-5 rounded-md border-blue-100 bg-blue-50 text-xs font-bold text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
                 >
                   KỲ CHỌN: T{month}/{year}
                 </Badge>
                 <Badge
                   variant="outline"
-                  className="h-5 rounded-md border-fuchsia-100 bg-fuchsia-50 text-[10px] font-bold text-fuchsia-600 dark:border-fuchsia-900/30 dark:bg-fuchsia-900/20 dark:text-fuchsia-400"
+                  className="h-5 rounded-md border-fuchsia-100 bg-fuchsia-50 text-xs font-bold text-fuchsia-600 dark:border-fuchsia-900/30 dark:bg-fuchsia-900/20 dark:text-fuchsia-400"
                 >
                   KQ TRƯỚC: T{prevMonth}/{prevYear}
                 </Badge>
@@ -763,7 +763,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
                 ? 'Cửa sổ giao mục tiêu chưa mở'
                 : 'Cửa sổ giao mục tiêu đã đóng'}
             </p>
-            <p className="mt-1 text-[13px] opacity-90">
+            <p className="mt-1 text-sm opacity-90">
               {assignmentWindowPhase === 'before' ? (
                 <>
                   Kỳ{' '}
@@ -858,11 +858,11 @@ function memberMetaForDisplay(members: TeamMemberRow[], userId: string): string 
 }
 
 const XL_INPUT = cn(
-  'box-border h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-[13px] text-slate-700 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
+  'box-border h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
   'placeholder:text-slate-400'
 )
 const XL_TEXTAREA = cn(
-  'box-border min-h-[80px] w-full min-w-[200px] max-w-[420px] resize-y rounded-lg border border-slate-200 bg-white p-3 text-[13px] text-slate-700 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
+  'box-border min-h-[80px] w-full min-w-[200px] max-w-[420px] resize-y rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
   'placeholder:text-slate-400'
 )
 
@@ -990,7 +990,7 @@ function MemberSelfAssignmentRow({
         <div className="flex flex-wrap items-center gap-1.5">
           {row.content}
           {row.category === 'VINH_DANH' && (
-            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
               🏆 Vinh danh
             </span>
           )}
@@ -1015,7 +1015,7 @@ function MemberSelfAssignmentRow({
           />
           {isMandatory && (
             <span
-              className="pointer-events-none absolute -right-1 -top-1 text-[10px] font-bold text-destructive"
+              className="pointer-events-none absolute -right-1 -top-1 text-xs font-bold text-destructive"
               title="Chỉ số bắt buộc nhập"
             >
               *
@@ -1057,7 +1057,7 @@ function MemberSelfAssignmentRow({
           <EvalStatusBadge status={row.managerEvalStatus} />
           {row.managerReviewNote && (
             <div
-              className="text-[10px] text-slate-500 italic max-w-[150px] truncate"
+              className="text-xs text-slate-500 italic max-w-[150px] truncate"
               title={row.managerReviewNote}
             >
               {row.managerReviewNote}
@@ -1110,7 +1110,7 @@ function ReadOnlyAssignmentRow({
         <div className="flex flex-wrap items-center gap-1.5">
           {row.content}
           {row.category === 'VINH_DANH' && (
-            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
               🏆 Vinh danh
             </span>
           )}
@@ -1125,7 +1125,7 @@ function ReadOnlyAssignmentRow({
           <EvalStatusBadge status={row.managerEvalStatus} />
           {row.managerReviewNote && (
             <div
-              className="text-[10px] text-slate-500 italic max-w-[150px] truncate"
+              className="text-xs text-slate-500 italic max-w-[150px] truncate"
               title={row.managerReviewNote}
             >
               {row.managerReviewNote}
@@ -1156,7 +1156,7 @@ function ReadOnlyAssignmentMobileCard({
       <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">
         {row.content}
         {row.category === 'VINH_DANH' && (
-          <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+          <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
             🏆 Vinh danh
           </span>
         )}
@@ -1166,7 +1166,7 @@ function ReadOnlyAssignmentMobileCard({
       </p>
       <AssignmentEpic4ReadStack row={row} />
       <div className="flex flex-col gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <span className="text-[10px] font-bold uppercase text-muted-foreground">Đánh giá QL</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Đánh giá QL</span>
         <EvalStatusBadge status={row.managerEvalStatus} />
         {row.managerReviewNote ? (
           <p className="break-words text-xs italic text-slate-500">{row.managerReviewNote}</p>
@@ -1209,7 +1209,7 @@ function MemberSelfAssignmentMobileCard({
         <KindBadge kind={row.kind} />
         <PriorityBadge priority={row.priority} />
         {isMandatory && (
-          <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
+          <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-bold text-destructive">
             Bắt buộc nhập
           </span>
         )}
@@ -1217,7 +1217,7 @@ function MemberSelfAssignmentMobileCard({
       <p className="break-words text-sm font-medium text-slate-900 dark:text-slate-100">
         {row.content}
         {row.category === 'VINH_DANH' && (
-          <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+          <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
             🏆 Vinh danh
           </span>
         )}
@@ -1229,7 +1229,7 @@ function MemberSelfAssignmentMobileCard({
         <div className="space-y-1">
           <span
             className={cn(
-              'text-[10px] font-bold uppercase',
+              'text-xs font-bold uppercase',
               isMandatory ? 'text-destructive' : 'text-muted-foreground'
             )}
           >
@@ -1247,7 +1247,7 @@ function MemberSelfAssignmentMobileCard({
           />
         </div>
         <div className="space-y-1">
-          <span className="text-[10px] font-bold uppercase text-muted-foreground">Đơn vị</span>
+          <span className="text-xs font-bold uppercase text-muted-foreground">Đơn vị</span>
           <Input
             value={numericUnit}
             onChange={(e) => setNumericUnit(e.target.value)}
@@ -1257,11 +1257,11 @@ function MemberSelfAssignmentMobileCard({
         </div>
       </div>
       <div className="space-y-1">
-        <span className="text-[10px] font-bold uppercase text-muted-foreground">Minh chứng</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Minh chứng</span>
         <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={saving} />
       </div>
       <div className="space-y-2">
-        <span className="text-[10px] font-bold uppercase text-muted-foreground">Tự đánh giá</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Tự đánh giá</span>
         <CustomSelect
           value={selfEvalStatus || '__none'}
           onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
@@ -1280,7 +1280,7 @@ function MemberSelfAssignmentMobileCard({
         />
       </div>
       <div className="flex flex-col gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <span className="text-[10px] font-bold uppercase text-muted-foreground">Đánh giá QL</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Đánh giá QL</span>
         <EvalStatusBadge status={row.managerEvalStatus} />
         {row.managerReviewNote ? (
           <p className="break-words text-xs italic text-slate-500">{row.managerReviewNote}</p>
@@ -1482,7 +1482,7 @@ function LeaderAssignmentRow({
         <div className="flex flex-wrap items-center gap-1.5">
           {row.content}
           {row.category === 'VINH_DANH' && (
-            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
               🏆 Vinh danh
             </span>
           )}
@@ -1497,7 +1497,7 @@ function LeaderAssignmentRow({
           <EvalStatusBadge status={row.managerEvalStatus} />
           {row.managerReviewNote && (
             <div
-              className="text-[10px] text-slate-500 italic max-w-[150px] truncate"
+              className="text-xs text-slate-500 italic max-w-[150px] truncate"
               title={row.managerReviewNote}
             >
               {row.managerReviewNote}
@@ -2053,7 +2053,7 @@ function UserAssignmentWorkbench({
                 {tabMeta ? (
                   <span
                     className={cn(
-                      'truncate text-[11px]',
+                      'truncate text-xs',
                       active
                         ? isPlanning
                           ? 'text-blue-100/90'
@@ -2068,7 +2068,7 @@ function UserAssignmentWorkbench({
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <span
                     className={cn(
-                      'inline-flex h-5 items-center rounded-md px-2 text-[10px] font-bold uppercase tracking-wide',
+                      'inline-flex h-5 items-center rounded-md px-2 text-xs font-bold uppercase tracking-wide',
                       active
                         ? 'bg-white/20 text-white'
                         : isPlanning
@@ -2081,7 +2081,7 @@ function UserAssignmentWorkbench({
                   {prioritizeUserId && uid === prioritizeUserId ? (
                     <span
                       className={cn(
-                        'inline-flex h-5 items-center rounded-md px-2 text-[10px] font-bold uppercase tracking-wide',
+                        'inline-flex h-5 items-center rounded-md px-2 text-xs font-bold uppercase tracking-wide',
                         active
                           ? 'bg-white/20 text-white'
                           : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
@@ -2206,7 +2206,7 @@ function WorkReportPanel({
                 1. Mục tiêu KPI/OKR tháng này — T{month}/{year}
               </h2>
             </div>
-            <p className="text-[13px] text-slate-500">
+            <p className="text-sm text-slate-500">
               Lập mục tiêu cho team; nhân viên có thể cập nhật Evidence, số liệu và tự đánh giá các
               chỉ tiêu của chính mình trong kỳ này (Epic 4).
             </p>
@@ -2216,13 +2216,13 @@ function WorkReportPanel({
               {members.slice(0, 5).map((m, i) => (
                 <div
                   key={i}
-                  className="inline-block h-7 w-7 rounded-full bg-slate-200 ring-2 ring-white dark:bg-slate-800 dark:ring-slate-950 flex items-center justify-center text-[10px] font-bold text-slate-600"
+                  className="inline-block h-7 w-7 rounded-full bg-slate-200 ring-2 ring-white dark:bg-slate-800 dark:ring-slate-950 flex items-center justify-center text-xs font-bold text-slate-600"
                 >
                   {(m.displayName || '?').charAt(0)}
                 </div>
               ))}
               {members.length > 5 && (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 ring-2 ring-white dark:bg-slate-800 dark:ring-slate-950 text-[10px] font-medium text-slate-500">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 ring-2 ring-white dark:bg-slate-800 dark:ring-slate-950 text-xs font-medium text-slate-500">
                   +{members.length - 5}
                 </div>
               )}
@@ -2274,7 +2274,7 @@ function WorkReportPanel({
                 2. Kết quả & đánh giá tháng trước — T{prevMonth}/{prevYear}
               </h2>
             </div>
-            <p className="text-[13px] text-slate-500">
+            <p className="text-sm text-slate-500">
               Evidence / số liệu / tự đánh giá của nhân viên và đánh giá QL cho kỳ trước (Epic 4).
             </p>
           </div>
@@ -2632,7 +2632,7 @@ function MiniCreateForm({
             <DialogTitle className="text-xl font-bold tracking-tight">
               Tạo hạng mục KPI/OKR mới
             </DialogTitle>
-            <DialogDescription className="text-[13px]">
+            <DialogDescription className="text-sm">
               Kỳ T{month}/{year}: thêm nhiều dòng mục tiêu; mỗi dòng áp dụng cho tất cả nhân sự đã
               chọn (tối đa 300 bản ghi mỗi lần).
             </DialogDescription>
@@ -2650,7 +2650,7 @@ function MiniCreateForm({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 gap-1.5 rounded-lg border-dashed text-[13px] font-semibold"
+                className="h-9 gap-1.5 rounded-lg border-dashed text-sm font-semibold"
                 disabled={!members.length || isMockApiEnabled()}
                 onClick={() => importFileRef.current?.click()}
               >
@@ -2661,19 +2661,19 @@ function MiniCreateForm({
                 <a
                   href={`${import.meta.env.BASE_URL}templates/kpi-okr-import-mau.xlsx`}
                   download="kpi-okr-import-mau.xlsx"
-                  className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-primary underline-offset-2 hover:underline dark:border-slate-600 dark:bg-slate-900"
+                  className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-primary underline-offset-2 hover:underline dark:border-slate-600 dark:bg-slate-900"
                 >
                   Tải Excel mẫu
                 </a>
                 <a
                   href={`${import.meta.env.BASE_URL}templates/kpi-okr-import-mau.csv`}
                   download="kpi-okr-import-mau.csv"
-                  className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 underline-offset-2 hover:underline dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+                  className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 underline-offset-2 hover:underline dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
                 >
                   Tải CSV mẫu
                 </a>
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
                 Hàng đầu: tiêu đề (Nhân sự, Hạng mục, Thứ tự ưu tiên, Nội dung KPI/OKRs, …). Mỗi
                 dòng một mục — gắn với kỳ{' '}
                 <strong className="font-semibold text-slate-700 dark:text-slate-200">
@@ -2683,7 +2683,7 @@ function MiniCreateForm({
               </span>
             </div>
             {importPreview ? (
-              <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] dark:border-slate-600 dark:bg-slate-950">
+              <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-600 dark:bg-slate-950">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-slate-700 dark:text-slate-200">
                     <span className="font-semibold">{importPreview.fileLabel}</span>
@@ -2717,7 +2717,7 @@ function MiniCreateForm({
                   </Button>
                 </div>
                 {importPreview.errors.length > 0 ? (
-                  <ul className="max-h-28 overflow-y-auto rounded-md border border-amber-200/80 bg-amber-50/50 px-2 py-1.5 text-[11px] text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+                  <ul className="max-h-28 overflow-y-auto rounded-md border border-amber-200/80 bg-amber-50/50 px-2 py-1.5 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
                     {importPreview.errors.slice(0, 20).map((err) => (
                       <li key={`${err.row}-${err.message.slice(0, 24)}`}>
                         Dòng {err.row}: {err.message}
@@ -2745,7 +2745,7 @@ function MiniCreateForm({
                 render={({ field }) => (
                   <FormItem className="space-y-1.5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <FormLabel className="text-[11px] font-bold uppercase tracking-wider text-slate-500 !mt-0">
+                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-slate-500 !mt-0">
                         Nhân sự nhận việc <span className="text-destructive">*</span>
                       </FormLabel>
                       <div className="flex gap-2">
@@ -2753,7 +2753,7 @@ function MiniCreateForm({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 rounded-lg px-2 text-[11px] font-semibold text-primary"
+                          className="h-7 rounded-lg px-2 text-xs font-semibold text-primary"
                           onClick={() => field.onChange(members.map((m) => m.userId))}
                         >
                           Chọn tất cả
@@ -2762,7 +2762,7 @@ function MiniCreateForm({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 rounded-lg px-2 text-[11px] font-semibold text-slate-500"
+                          className="h-7 rounded-lg px-2 text-xs font-semibold text-slate-500"
                           onClick={() => field.onChange([])}
                         >
                           Bỏ chọn
@@ -2772,7 +2772,7 @@ function MiniCreateForm({
                     <FormControl>
                       <div
                         className={cn(
-                          'box-border w-full min-w-0 max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 text-[13px] outline-none transition-all',
+                          'box-border w-full min-w-0 max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 text-sm outline-none transition-all',
                           'focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10',
                           'dark:border-slate-700 dark:bg-slate-950 space-y-0.5'
                         )}
@@ -2814,21 +2814,21 @@ function MiniCreateForm({
                 name="reviewerName"
                 label="Người đánh giá (tùy chọn)"
                 className="max-w-xl space-y-1.5"
-                labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
                 inputClassName={cn(XL_INPUT, 'h-10 rounded-xl')}
                 placeholder="Họ tên trưởng nhóm"
               />
 
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     Danh sách mục tiêu
                   </Label>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-9 gap-1.5 rounded-lg text-[13px] font-semibold"
+                    className="h-9 gap-1.5 rounded-lg text-sm font-semibold"
                     onClick={() => append(miniCreateEmptyLine())}
                   >
                     <Plus className="h-4 w-4" />
@@ -2867,7 +2867,7 @@ function MiniCreateForm({
                           required
                           rules={{ required: true }}
                           className="space-y-1.5"
-                          labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                          labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
                         >
                           <SelectItem value="KPI">KPI</SelectItem>
                           <SelectItem value="OKR">OKR</SelectItem>
@@ -2879,7 +2879,7 @@ function MiniCreateForm({
                           required
                           rules={{ required: true, min: 0, max: 99 }}
                           className="space-y-1.5"
-                          labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                          labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
                         >
                           <SelectItem value="0">Không xếp (0)</SelectItem>
                           <SelectItem value="1">Ưu tiên 1 - Cao</SelectItem>
@@ -2891,7 +2891,7 @@ function MiniCreateForm({
                           name={`lines.${index}.kpiSetAt`}
                           label="Ngày xét KPI/OKR"
                           className="space-y-1.5"
-                          labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                          labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
                           datePickerClassName={cn(XL_INPUT, 'h-10 rounded-xl')}
                           lockToMonth={{ year, month }}
                         />
@@ -2900,7 +2900,7 @@ function MiniCreateForm({
                           name={`lines.${index}.targetMetric`}
                           label="Chỉ số mục tiêu"
                           className="space-y-1.5 md:col-span-1"
-                          labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                          labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
                           inputClassName={cn(XL_INPUT, 'h-10 rounded-xl tabular-nums')}
                           placeholder="VD: 60"
                         />
@@ -2912,7 +2912,7 @@ function MiniCreateForm({
                             required
                             rules={{ required: true, maxLength: 500 }}
                             className="space-y-1.5"
-                            labelClassName="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                            labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
                             maxLength={500}
                             textareaClassName={cn(
                               XL_TEXTAREA,
@@ -3113,13 +3113,13 @@ function SummaryPanel({
             <div key={r.id} className="space-y-3 py-4 first:pt-0">
               <div>
                 <div className="font-bold text-slate-900 dark:text-slate-100">{rowName(r)}</div>
-                <div className="text-[11px] text-slate-500">
+                <div className="text-xs text-slate-500">
                   {r.assigneeEmployeeCode?.trim() || r.assigneeEmail?.trim() || '—'}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 rounded-lg border border-amber-100/80 bg-amber-50/25 p-3 dark:border-amber-900/30 dark:bg-amber-950/20">
                 <div>
-                  <p className="text-[10px] font-bold uppercase text-amber-800 dark:text-amber-300">
+                  <p className="text-xs font-bold uppercase text-amber-800 dark:text-amber-300">
                     KPI đạt
                   </p>
                   <p className="text-lg font-bold tabular-nums text-slate-800 dark:text-slate-200">
@@ -3127,7 +3127,7 @@ function SummaryPanel({
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase text-amber-800 dark:text-amber-300">
+                  <p className="text-xs font-bold uppercase text-amber-800 dark:text-amber-300">
                     KPI chưa
                   </p>
                   <p className="text-lg font-bold tabular-nums text-slate-800 dark:text-slate-200">
@@ -3135,17 +3135,17 @@ function SummaryPanel({
                   </p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-[10px] font-bold uppercase text-amber-800 dark:text-amber-300">
+                  <p className="text-xs font-bold uppercase text-amber-800 dark:text-amber-300">
                     Xếp loại KPI
                   </p>
-                  <span className="mt-1 inline-flex h-6 items-center rounded-md bg-amber-100 px-2 text-[11px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                  <span className="mt-1 inline-flex h-6 items-center rounded-md bg-amber-100 px-2 text-xs font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                     {r.kpiGrade || '—'}
                   </span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 rounded-lg border border-blue-100/80 bg-blue-50/25 p-3 dark:border-blue-900/30 dark:bg-blue-950/20">
                 <div>
-                  <p className="text-[10px] font-bold uppercase text-blue-800 dark:text-blue-300">
+                  <p className="text-xs font-bold uppercase text-blue-800 dark:text-blue-300">
                     OKR đạt
                   </p>
                   <p className="text-lg font-bold tabular-nums text-slate-800 dark:text-slate-200">
@@ -3153,7 +3153,7 @@ function SummaryPanel({
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase text-blue-800 dark:text-blue-300">
+                  <p className="text-xs font-bold uppercase text-blue-800 dark:text-blue-300">
                     OKR chưa
                   </p>
                   <p className="text-lg font-bold tabular-nums text-slate-800 dark:text-slate-200">
@@ -3161,10 +3161,10 @@ function SummaryPanel({
                   </p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-[10px] font-bold uppercase text-blue-800 dark:text-blue-300">
+                  <p className="text-xs font-bold uppercase text-blue-800 dark:text-blue-300">
                     Xếp loại OKR
                   </p>
-                  <span className="mt-1 inline-flex h-6 items-center rounded-md bg-blue-100 px-2 text-[11px] font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                  <span className="mt-1 inline-flex h-6 items-center rounded-md bg-blue-100 px-2 text-xs font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                     {r.okrGrade || '—'}
                   </span>
                 </div>
@@ -3176,17 +3176,17 @@ function SummaryPanel({
           <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
-                <TableHead className="w-[200px] text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <TableHead className="w-[200px] text-xs font-bold uppercase tracking-wider text-slate-500">
                   Nhân sự
                 </TableHead>
                 <TableHead
-                  className="bg-amber-50/50 text-center text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:bg-amber-900/10"
+                  className="bg-amber-50/50 text-center text-xs font-bold uppercase tracking-wider text-amber-700 dark:bg-amber-900/10"
                   colSpan={3}
                 >
                   KPI
                 </TableHead>
                 <TableHead
-                  className="bg-blue-50/50 text-center text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:bg-blue-900/10"
+                  className="bg-blue-50/50 text-center text-xs font-bold uppercase tracking-wider text-blue-700 dark:bg-blue-900/10"
                   colSpan={3}
                 >
                   OKR
@@ -3194,22 +3194,22 @@ function SummaryPanel({
               </TableRow>
               <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
                 <TableHead />
-                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-400">
+                <TableHead className="text-center text-xs font-bold uppercase text-slate-400">
                   Đạt
                 </TableHead>
-                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-400">
+                <TableHead className="text-center text-xs font-bold uppercase text-slate-400">
                   Chưa
                 </TableHead>
-                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-400">
+                <TableHead className="text-center text-xs font-bold uppercase text-slate-400">
                   Xếp loại
                 </TableHead>
-                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-400">
+                <TableHead className="text-center text-xs font-bold uppercase text-slate-400">
                   Đạt
                 </TableHead>
-                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-400">
+                <TableHead className="text-center text-xs font-bold uppercase text-slate-400">
                   Chưa
                 </TableHead>
-                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-400">
+                <TableHead className="text-center text-xs font-bold uppercase text-slate-400">
                   Xếp loại
                 </TableHead>
               </TableRow>
@@ -3222,7 +3222,7 @@ function SummaryPanel({
                 >
                   <TableCell className="py-4">
                     <div className="font-bold text-slate-900 dark:text-slate-100">{rowName(r)}</div>
-                    <div className="text-[11px] text-slate-500">
+                    <div className="text-xs text-slate-500">
                       {r.assigneeEmployeeCode?.trim() || r.assigneeEmail?.trim() || '—'}
                     </div>
                   </TableCell>
@@ -3233,7 +3233,7 @@ function SummaryPanel({
                     {r.kpiNotCount}
                   </TableCell>
                   <TableCell className="bg-amber-50/20 text-center dark:bg-amber-900/5">
-                    <span className="inline-flex h-6 items-center rounded-md bg-amber-100 px-2 text-[11px] font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                    <span className="inline-flex h-6 items-center rounded-md bg-amber-100 px-2 text-xs font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                       {r.kpiGrade || '—'}
                     </span>
                   </TableCell>
@@ -3244,7 +3244,7 @@ function SummaryPanel({
                     {r.okrNotCount}
                   </TableCell>
                   <TableCell className="bg-blue-50/20 text-center dark:bg-blue-900/5">
-                    <span className="inline-flex h-6 items-center rounded-md bg-blue-100 px-2 text-[11px] font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    <span className="inline-flex h-6 items-center rounded-md bg-blue-100 px-2 text-xs font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                       {r.okrGrade || '—'}
                     </span>
                   </TableCell>
@@ -3455,7 +3455,7 @@ export function FormPanel({
               3. Form câu hỏi theo tháng
             </h2>
           </div>
-          <p className="text-[13px] text-slate-500">
+          <p className="text-sm text-slate-500">
             Khảo sát và ghi nhận ý kiến phản hồi hàng tháng.
           </p>
         </div>
@@ -3537,7 +3537,7 @@ export function FormPanel({
                             <p className="text-sm font-bold text-foreground">Câu {i + 1}</p>
                             <Badge
                               variant="outline"
-                              className="rounded-md px-2 py-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                              className="rounded-md px-2 py-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                             >
                               Tự luận
                             </Badge>
@@ -3694,13 +3694,13 @@ export function FormPanel({
                         lưu cho cả team.
                       </p>
                     </div>
-                    <ol className="flex shrink-0 gap-1 rounded-xl border border-border/80 bg-background/80 p-1 text-[11px] font-semibold text-muted-foreground shadow-sm dark:bg-slate-950/60">
+                    <ol className="flex shrink-0 gap-1 rounded-xl border border-border/80 bg-background/80 p-1 text-xs font-semibold text-muted-foreground shadow-sm dark:bg-slate-950/60">
                       {(['Chọn nguồn', 'Xem trước', 'Lưu'] as const).map((label, i) => (
                         <li
                           key={label}
                           className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 sm:px-3"
                         >
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] text-primary">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-xs text-primary">
                             {i + 1}
                           </span>
                           <span className="hidden sm:inline">{label}</span>
@@ -3866,7 +3866,7 @@ export function FormPanel({
                               placeholder="Nhập nội dung câu hỏi…"
                               className="mb-2 w-full rounded-lg text-sm focus-visible:border-primary focus-visible:ring-primary/20"
                             />
-                            <p className="text-[11px] text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                               Trả lời dạng văn bản — bắt buộc khi nhân sự gửi khảo sát.
                             </p>
                           </div>
@@ -3901,7 +3901,7 @@ export function FormPanel({
                         </Badge>
                       </div>
                       {validDraftCount > 0 ? (
-                        <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
+                        <span className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
                           Đúng thứ tự này sẽ hiện cho nhân sự
                         </span>
                       ) : null}
@@ -3920,7 +3920,7 @@ export function FormPanel({
                               key={`${q.id}-prev`}
                               className="rounded-lg border border-border/80 bg-card px-3 py-2.5"
                             >
-                              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                                 Câu {idx + 1}
                               </p>
                               <p
@@ -3971,7 +3971,7 @@ export function FormPanel({
                         </>
                       )}
                     </Button>
-                    <p className="text-center text-[11px] text-muted-foreground">
+                    <p className="text-center text-xs text-muted-foreground">
                       Sau khi lưu, nhân sự thấy form cập nhật ở cột «Trả lời khảo sát» bên trái.
                     </p>
                   </div>
@@ -4011,7 +4011,7 @@ export function FormPanel({
                               key={qs.id}
                               className="rounded-lg bg-slate-50/80 p-3 dark:bg-slate-800/40"
                             >
-                              <div className="text-[11px] font-bold text-slate-400 uppercase">
+                              <div className="text-xs font-bold text-slate-400 uppercase">
                                 {qs.prompt}
                               </div>
                               <div className="mt-1 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">

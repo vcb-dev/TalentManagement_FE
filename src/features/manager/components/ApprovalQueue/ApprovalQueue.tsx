@@ -178,7 +178,7 @@ export function ApprovalQueue({
                 </div>
                 <div>
                   <div className="text-2xl font-black text-foreground">{pendingCount}</div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Chờ xử lý
                   </div>
                 </div>
@@ -191,7 +191,7 @@ export function ApprovalQueue({
                 </div>
                 <div>
                   <div className="text-2xl font-black text-foreground">{stats.levelUps}</div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Thăng cấp bậc
                   </div>
                 </div>
@@ -204,7 +204,7 @@ export function ApprovalQueue({
                 </div>
                 <div>
                   <div className="text-2xl font-black text-foreground">{stats.starUps}</div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Thăng cấp sao
                   </div>
                 </div>
@@ -230,7 +230,7 @@ export function ApprovalQueue({
             <div className="flex items-center gap-2 rounded-[18px] bg-muted/40 px-3 py-1">
               <ShieldCheck className="h-4 w-4 text-muted-foreground/60" />
               <Select value={levelFilter} onValueChange={setLevelFilter}>
-                <SelectTrigger className="h-9 w-[130px] border-none bg-transparent p-0 text-[13px] font-bold shadow-none focus:ring-0">
+                <SelectTrigger className="h-9 w-[130px] border-none bg-transparent p-0 text-sm font-bold shadow-none focus:ring-0">
                   <SelectValue placeholder="Cấp bậc" />
                 </SelectTrigger>
                 <SelectContent>
@@ -245,7 +245,7 @@ export function ApprovalQueue({
             <div className="flex items-center gap-2 rounded-[18px] bg-muted/40 px-3 py-1">
               <Users className="h-4 w-4 text-muted-foreground/60" />
               <Select value={teamFilter} onValueChange={setTeamFilter}>
-                <SelectTrigger className="h-9 w-[150px] border-none bg-transparent p-0 text-[13px] font-bold shadow-none focus:ring-0">
+                <SelectTrigger className="h-9 w-[150px] border-none bg-transparent p-0 text-sm font-bold shadow-none focus:ring-0">
                   <SelectValue placeholder="Tất cả Team" />
                 </SelectTrigger>
                 <SelectContent>
@@ -338,7 +338,7 @@ export function ApprovalQueue({
                               ) : (
                                 <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
                               )}
-                              <span className="text-[11px] font-black uppercase tracking-wider">
+                              <span className="text-xs font-black uppercase tracking-wider">
                                 {isLevelUp ? 'Thăng cấp bậc' : 'Thăng sao'}
                               </span>
                             </div>
@@ -348,7 +348,7 @@ export function ApprovalQueue({
                         {/* Middle: Path Visualization */}
                         <div className="flex items-center justify-center rounded-2xl bg-muted/30 py-4 px-6 border border-border/40">
                           <div className="flex flex-1 flex-col items-center gap-1">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
                               Hiện tại
                             </span>
                             <div className="flex flex-wrap justify-center gap-1.5">
@@ -356,7 +356,7 @@ export function ApprovalQueue({
                                 <span
                                   key={i}
                                   className={cn(
-                                    'rounded-lg px-2 py-1 text-[11px] font-black ring-1 ring-inset',
+                                    'rounded-lg px-2 py-1 text-xs font-black ring-1 ring-inset',
                                     b.tone === 'info' &&
                                       'bg-blue-50 text-blue-700 ring-blue-700/10',
                                     b.tone === 'warning' &&
@@ -380,10 +380,10 @@ export function ApprovalQueue({
                           </div>
 
                           <div className="flex flex-1 flex-col items-center gap-1">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-primary/60">
+                            <span className="text-xs font-bold uppercase tracking-widest text-primary/60">
                               Mục tiêu
                             </span>
-                            <span className="rounded-lg bg-primary/10 px-3 py-1 text-[11px] font-black text-primary ring-1 ring-primary/20">
+                            <span className="rounded-lg bg-primary/10 px-3 py-1 text-xs font-black text-primary ring-1 ring-primary/20">
                               {action.label.replace('Lên ', '')}
                             </span>
                           </div>
@@ -416,7 +416,7 @@ export function ApprovalQueue({
                               </Button>
                             </>
                           ) : (
-                            <div className="flex h-12 w-full items-center justify-center rounded-2xl bg-muted/50 text-[13px] font-black text-muted-foreground italic border border-border/60">
+                            <div className="flex h-12 w-full items-center justify-center rounded-2xl bg-muted/50 text-sm font-black text-muted-foreground italic border border-border/60">
                               {p.stateLabel ?? 'Đang chờ xử lý'}
                             </div>
                           )}
@@ -480,7 +480,7 @@ export function ApprovalQueue({
                             </span>
                             <span
                               className={cn(
-                                'inline-flex rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter',
+                                'inline-flex rounded-full px-2 py-0.5 text-xs font-black uppercase tracking-tighter',
                                 row.graderVerdict === 'pass'
                                   ? 'bg-emerald-100 text-emerald-700'
                                   : 'bg-rose-100 text-rose-700'

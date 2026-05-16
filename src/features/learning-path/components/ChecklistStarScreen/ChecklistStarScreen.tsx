@@ -386,7 +386,7 @@ export function ChecklistStarScreen({
           </div>
         ) : (
           <div className="mx-auto max-w-[1400px]">
-            <nav className="mb-6 flex flex-wrap items-center gap-2 text-[13px]">
+            <nav className="mb-6 flex flex-wrap items-center gap-2 text-sm">
               <span className="font-bold uppercase tracking-widest text-gray-500">{levelName}</span>
               <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden />
               <span className="font-bold uppercase tracking-widest text-primary-600">
@@ -404,7 +404,7 @@ export function ChecklistStarScreen({
               <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0 space-y-2">
                   <div className="mb-2 flex flex-wrap items-center gap-3">
-                    <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-tighter text-white">
+                    <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs font-bold uppercase tracking-tighter text-white">
                       Level 1
                     </span>
                     <BannerStars filled={Math.min(doneCount, 5)} total={5} />
@@ -418,7 +418,7 @@ export function ChecklistStarScreen({
                 </div>
                 <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-white/10 bg-white/10 px-6 py-4 backdrop-blur-md">
                   <div className="text-right">
-                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-white/60">
+                    <span className="block text-xs font-semibold uppercase tracking-wide text-white/60">
                       Tiến độ
                     </span>
                     <span className="text-[36px] font-bold leading-none tabular-nums text-white">
@@ -441,7 +441,7 @@ export function ChecklistStarScreen({
               <div className="space-y-4 lg:col-span-7">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-lg font-bold text-gray-900">Danh sách nhiệm vụ</h2>
-                  <span className="rounded-full bg-primary-100 px-3 py-1 text-[12px] font-semibold text-primary-700">
+                  <span className="rounded-full bg-primary-100 px-3 py-1 text-xs font-semibold text-primary-700">
                     Ấn vào để xem chi tiết
                   </span>
                 </div>
@@ -571,7 +571,7 @@ export function ChecklistStarScreen({
                             <p className="text-sm font-bold text-primary-700">
                               {selectedFile ? `Đã chọn: ${selectedFile.name}` : 'Tải tệp lên'}
                             </p>
-                            <p className="mt-1 text-[13px] text-primary-600/80">
+                            <p className="mt-1 text-sm text-primary-600/80">
                               {selectedFile
                                 ? 'Nhấn để chọn file khác'
                                 : 'Hoặc nhấn để chọn từ máy tính (Tối đa 25MB)'}
@@ -588,7 +588,7 @@ export function ChecklistStarScreen({
                             control={evidenceForm.control}
                             name="note"
                             label="Mô tả"
-                            labelClassName="mb-2 block text-[11px] font-bold uppercase tracking-widest text-gray-500"
+                            labelClassName="mb-2 block text-xs font-bold uppercase tracking-widest text-gray-500"
                             id="evidence-note"
                             rows={4}
                             placeholder="Mô tả ngắn gọn về tài liệu bạn nộp…"
@@ -627,7 +627,7 @@ export function ChecklistStarScreen({
                         'mb-4 font-bold text-primary-600',
                         selectedObjective
                           ? 'text-base uppercase tracking-normal'
-                          : 'text-[11px] uppercase tracking-widest'
+                          : 'text-xs uppercase tracking-widest'
                       )}
                     >
                       {selectedObjective ? selectedObjective.objective : 'Bài đã nộp gần nhất'}
@@ -666,7 +666,7 @@ export function ChecklistStarScreen({
                               control={evidenceForm.control}
                               name="note"
                               label="Mô tả minh chứng"
-                              labelClassName="mb-1 block text-[11px] font-bold uppercase tracking-widest text-gray-500"
+                              labelClassName="mb-1 block text-xs font-bold uppercase tracking-widest text-gray-500"
                               id="evidence-note"
                               rows={3}
                               placeholder="Mô tả..."
@@ -692,7 +692,7 @@ export function ChecklistStarScreen({
 
                     {selectedObjective && (
                       <div className="mt-6 border-t border-gray-100 pt-4">
-                        <h5 className="mb-3 text-[11px] font-bold uppercase tracking-widest text-gray-500">
+                        <h5 className="mb-3 text-xs font-bold uppercase tracking-widest text-gray-500">
                           Lịch sử bài nộp
                         </h5>
                       </div>
@@ -703,7 +703,7 @@ export function ChecklistStarScreen({
                         {(submissions ?? []).slice(0, 5).map((s) => (
                           <li key={s.id} className="py-3 first:pt-0 last:pb-0">
                             <div className="font-semibold text-gray-900">{s.fileName}</div>
-                            <div className="mt-0.5 text-[13px] text-gray-500">
+                            <div className="mt-0.5 text-sm text-gray-500">
                               {new Date(s.createdAt).toLocaleDateString('vi-VN')} ·{' '}
                               <span className="font-medium text-primary-600">
                                 {s.status === 'ACCEPTED'
@@ -729,7 +729,7 @@ export function ChecklistStarScreen({
                         )}
                         <p className="text-sm font-medium text-gray-600">Chưa có bài nộp</p>
                         {!selectedObjective && (
-                          <p className="mt-1 text-[13px] text-gray-500">
+                          <p className="mt-1 text-sm text-gray-500">
                             Các bài nộp của bạn sẽ xuất hiện tại đây sau khi được hệ thống ghi nhận.
                           </p>
                         )}
@@ -908,7 +908,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
               <div className="flex items-start gap-3">
                 <span
                   className={cn(
-                    'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-colors',
+                    'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors',
                     isSelected
                       ? 'bg-primary-600 text-white'
                       : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
@@ -927,10 +927,10 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
                   </p>
 
                   {isSelected && hasMeta && (
-                    <div className="mt-3 grid grid-cols-1 gap-4 border-t border-gray-100 pt-3 text-[13px] text-gray-800 sm:grid-cols-2">
+                    <div className="mt-3 grid grid-cols-1 gap-4 border-t border-gray-100 pt-3 text-sm text-gray-800 sm:grid-cols-2">
                       {material.daoTao && (
                         <div className="flex flex-col gap-1">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
                             Đào tạo
                           </span>
                           <span className="line-clamp-2">
@@ -940,7 +940,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
                       )}
                       {material.slide && (
                         <div className="flex flex-col gap-1">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
                             Slide
                           </span>
                           <span className="line-clamp-2">
@@ -950,7 +950,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
                       )}
                       {material.taiLieu && (
                         <div className="flex flex-col gap-1">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
                             Tài liệu
                           </span>
                           <span className="line-clamp-2">
@@ -960,7 +960,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
                       )}
                       {material.raw && (
                         <div className="flex flex-col gap-1">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
                             Link khác
                           </span>
                           <span className="line-clamp-2">{renderTextWithLinks(material.raw)}</span>
@@ -968,7 +968,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
                       )}
                       {obj.trainer && (
                         <div className="flex flex-col gap-1">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
                             Trainer
                           </span>
                           <span className="line-clamp-2 font-medium text-primary-700">
@@ -978,7 +978,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
                       )}
                       {obj.assessment && (
                         <div className="col-span-full flex flex-col gap-1">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
                             Đánh giá
                           </span>
                           <span className="line-clamp-3 italic text-gray-600">
@@ -995,7 +995,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
         })}
       </div>
     ) : (
-      <div className="text-[13px] text-gray-500 italic px-2">{objective}</div>
+      <div className="text-sm text-gray-500 italic px-2">{objective}</div>
     )
 
   if (kind === 'locked') {
@@ -1037,7 +1037,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
           >
             <div
               className={cn(
-                'mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 text-[11px] font-bold transition-colors',
+                'mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 text-xs font-bold transition-colors',
                 expanded
                   ? 'border-primary-600 bg-primary-600 text-white'
                   : 'border-success bg-success text-white'
@@ -1130,7 +1130,7 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
             <div className="flex items-center gap-2">
               <span
                 className={cn(
-                  'shrink-0 rounded px-2 py-0.5 text-[10px] font-black uppercase tracking-wide transition-all',
+                  'shrink-0 rounded px-2 py-0.5 text-xs font-black uppercase tracking-wide transition-all',
                   expanded
                     ? 'bg-primary-100/80 text-primary-700 opacity-100'
                     : 'bg-gray-100 text-gray-400 opacity-0 group-hover:opacity-100'

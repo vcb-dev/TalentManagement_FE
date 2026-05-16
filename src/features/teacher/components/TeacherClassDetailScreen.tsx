@@ -335,14 +335,14 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       <div className="flex-1 overflow-y-auto px-4 py-10 sm:px-10 lg:px-16">
         <div className="mx-auto max-w-7xl">
           {/* Version Indicator - To confirm update */}
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-slate-900/5 px-3 py-1 text-[10px] font-bold tracking-tighter text-slate-500 ring-1 ring-slate-900/10">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-slate-900/5 px-3 py-1 text-xs font-bold tracking-tighter text-slate-500 ring-1 ring-slate-900/10">
             PREMIUM UI V2.0 — ACTIVE
           </div>
 
           <div className="mb-12 space-y-6">
             <Link
               to="/teacher/classes"
-              className="group inline-flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 transition-all hover:text-primary"
+              className="group inline-flex items-center gap-3 text-xs font-black uppercase tracking-[0.2em] text-slate-400 transition-all hover:text-primary"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200 transition-all group-hover:bg-primary group-hover:text-white group-hover:ring-primary">
                 <ArrowLeft className="h-4 w-4" />
@@ -356,7 +356,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                   {title}
                 </h1>
                 <div className="flex flex-wrap items-center gap-4">
-                  <div className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-1.5 text-[11px] font-black text-white shadow-lg shadow-emerald-500/20">
+                  <div className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-1.5 text-xs font-black text-white shadow-lg shadow-emerald-500/20">
                     <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                     ĐANG GIẢNG DẠY
                   </div>
@@ -372,7 +372,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     variant="ghost"
                     size="sm"
                     className={cn(
-                      'h-full rounded-xl px-4 text-[11px] font-black uppercase tracking-widest transition-all',
+                      'h-full rounded-xl px-4 text-xs font-black uppercase tracking-widest transition-all',
                       viewMode === 'cards'
                         ? 'bg-primary text-white shadow-lg'
                         : 'text-slate-400 hover:bg-slate-50'
@@ -385,7 +385,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     variant="ghost"
                     size="sm"
                     className={cn(
-                      'h-full rounded-xl px-4 text-[11px] font-black uppercase tracking-widest transition-all',
+                      'h-full rounded-xl px-4 text-xs font-black uppercase tracking-widest transition-all',
                       viewMode === 'table'
                         ? 'bg-primary text-white shadow-lg'
                         : 'text-slate-400 hover:bg-slate-50'
@@ -395,7 +395,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     Dạng bảng
                   </Button>
                 </div>
-                <Button className="h-11 rounded-2xl bg-primary px-6 text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95">
+                <Button className="h-11 rounded-2xl bg-primary px-6 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95">
                   Xuất báo cáo
                 </Button>
               </div>
@@ -419,7 +419,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
             </Form>
             {/* Filter buttons - already simplified to 1 item, so we can hide or keep as label */}
             <div className="flex h-14 items-center rounded-3xl border border-slate-200 bg-white p-1.5 shadow-sm">
-              <div className="px-6 text-[11px] font-black uppercase tracking-widest text-slate-900">
+              <div className="px-6 text-xs font-black uppercase tracking-widest text-slate-900">
                 Tất cả học viên
               </div>
             </div>
@@ -460,7 +460,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                   <Button
                     variant="ghost"
                     className={cn(
-                      'h-11 rounded-xl px-6 text-[11px] font-black uppercase tracking-widest transition-all',
+                      'h-11 rounded-xl px-6 text-xs font-black uppercase tracking-widest transition-all',
                       !activeScheduleId
                         ? 'bg-primary text-white shadow-lg shadow-primary/20'
                         : 'text-slate-400 hover:bg-slate-100'
@@ -476,7 +476,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         key={s.id}
                         variant="ghost"
                         className={cn(
-                          'h-11 rounded-xl px-6 text-[11px] font-black uppercase tracking-widest transition-all',
+                          'h-11 rounded-xl px-6 text-xs font-black uppercase tracking-widest transition-all',
                           isActive
                             ? 'bg-primary text-white shadow-lg shadow-primary/20'
                             : 'text-slate-400 hover:bg-slate-100'
@@ -557,7 +557,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
                       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                         <div className="space-y-3">
-                          <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                          <label className="text-xs font-black uppercase tracking-widest text-slate-400">
                             Thời gian bắt đầu
                           </label>
                           <div className="flex items-center gap-2">
@@ -584,7 +584,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         </div>
 
                         <div className="space-y-3">
-                          <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                          <label className="text-xs font-black uppercase tracking-widest text-slate-400">
                             Thời gian kết thúc
                           </label>
                           <div className="flex items-center gap-2">
@@ -682,18 +682,18 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         />
                         <div className="min-w-0">
                           <p className="text-sm font-black text-primary">{m.name}</p>
-                          <p className="break-all text-[10px] font-medium text-muted-foreground/80">
+                          <p className="break-all text-xs font-medium text-muted-foreground/80">
                             {m.email}
                           </p>
                         </div>
                       </div>
                       {!activeScheduleId ? (
                         <div className="space-y-1">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          <p className="text-xs font-black uppercase tracking-widest text-slate-400">
                             Kết quả cuối khóa
                           </p>
                           {m.examResult ? (
-                            <Badge className="rounded-lg border-0 bg-emerald-100/80 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                            <Badge className="rounded-lg border-0 bg-emerald-100/80 px-2.5 py-1 text-xs font-bold text-emerald-700">
                               {m.examResult}
                             </Badge>
                           ) : (
@@ -703,18 +703,18 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                       ) : (
                         <>
                           <div className="space-y-1">
-                            <p className="text-[11px] font-black text-foreground">
+                            <p className="text-xs font-black text-foreground">
                               {currentSchedule?.dateIso}
                             </p>
-                            <p className="text-[10px] font-bold text-muted-foreground/60">
+                            <p className="text-xs font-bold text-muted-foreground/60">
                               {currentSchedule?.startTime} - {currentSchedule?.endTime}
                             </p>
                           </div>
-                          <p className="break-words text-[11px] font-bold text-muted-foreground">
+                          <p className="break-words text-xs font-bold text-muted-foreground">
                             {currentSchedule?.topic}
                           </p>
                           <div className="space-y-1">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <p className="text-xs font-black uppercase tracking-widest text-slate-400">
                               Điểm danh
                             </p>
                             <Select
@@ -728,7 +728,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                             >
                               <SelectTrigger
                                 className={cn(
-                                  'h-10 w-full max-w-full rounded-full border-0 font-black text-[10px] uppercase tracking-widest shadow-sm',
+                                  'h-10 w-full max-w-full rounded-full border-0 font-black text-xs uppercase tracking-widest shadow-sm',
                                   sessionData.attendance === 'PRESENT' &&
                                     'bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20',
                                   sessionData.attendance === 'ABSENT' &&
@@ -791,15 +791,15 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                 <table className="w-full min-w-[600px] border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/50">
-                      <th className="px-8 py-6 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400">
+                      <th className="px-8 py-6 text-xs font-black uppercase tracking-[0.15em] text-slate-400">
                         Học viên
                       </th>
                       {!activeScheduleId ? (
                         <>
-                          <th className="px-8 py-6 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400">
+                          <th className="px-8 py-6 text-xs font-black uppercase tracking-[0.15em] text-slate-400">
                             Thông tin Email
                           </th>
-                          <th className="px-8 py-6 text-[11px] font-black uppercase tracking-[0.15em] text-slate-400">
+                          <th className="px-8 py-6 text-xs font-black uppercase tracking-[0.15em] text-slate-400">
                             Kết quả cuối khóa
                           </th>
                         </>
@@ -855,7 +855,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                                 <p className="text-sm font-black text-primary transition-colors group-hover:text-primary-600">
                                   {m.name}
                                 </p>
-                                <p className="text-[10px] font-medium text-muted-foreground/80">
+                                <p className="text-xs font-medium text-muted-foreground/80">
                                   {m.email}
                                 </p>
                               </div>
@@ -868,7 +868,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                               </td>
                               <td className="px-6 py-4">
                                 {m.examResult ? (
-                                  <Badge className="rounded-lg bg-emerald-100/80 text-emerald-700 border-0 px-2.5 py-1 text-[11px] font-bold">
+                                  <Badge className="rounded-lg bg-emerald-100/80 text-emerald-700 border-0 px-2.5 py-1 text-xs font-bold">
                                     {m.examResult}
                                   </Badge>
                                 ) : (
@@ -880,16 +880,16 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                             <>
                               <td className="px-6 py-4">
                                 <div className="space-y-0.5">
-                                  <p className="text-[11px] font-black text-foreground">
+                                  <p className="text-xs font-black text-foreground">
                                     {currentSchedule?.dateIso}
                                   </p>
-                                  <p className="text-[10px] font-bold text-muted-foreground/60">
+                                  <p className="text-xs font-bold text-muted-foreground/60">
                                     {currentSchedule?.startTime} - {currentSchedule?.endTime}
                                   </p>
                                 </div>
                               </td>
                               <td className="px-6 py-4">
-                                <p className="max-w-[200px] truncate text-[11px] font-bold text-muted-foreground">
+                                <p className="max-w-[200px] truncate text-xs font-bold text-muted-foreground">
                                   {currentSchedule?.topic}
                                 </p>
                               </td>
@@ -906,7 +906,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                                   >
                                     <SelectTrigger
                                       className={cn(
-                                        'h-9 w-[135px] rounded-full border-0 font-black text-[10px] uppercase tracking-widest transition-all shadow-sm',
+                                        'h-9 w-[135px] rounded-full border-0 font-black text-xs uppercase tracking-widest transition-all shadow-sm',
                                         sessionData.attendance === 'PRESENT' &&
                                           'bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20',
                                         sessionData.attendance === 'ABSENT' &&
@@ -977,7 +977,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                   <Button
                     variant="default"
                     size="sm"
-                    className="h-9 rounded-xl bg-primary px-4 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-95"
+                    className="h-9 rounded-xl bg-primary px-4 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-95"
                     onClick={() => {
                       if (activeScheduleId) {
                         if (!selectedSchedule?.evaluatedUserIds?.length) {

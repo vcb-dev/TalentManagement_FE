@@ -259,7 +259,7 @@ export function ManagerExamScheduleScreen() {
               <Users className="h-5.5 w-5.5" strokeWidth={2.5} />
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
                 Bộ lọc
               </p>
               <p className="text-xs font-bold text-foreground">Tìm kiếm & Lọc</p>
@@ -284,7 +284,7 @@ export function ManagerExamScheduleScreen() {
 
             <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch">
               <div className="flex w-full min-w-0 flex-1 flex-col gap-2 rounded-2xl border border-border/40 bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:px-4 sm:py-1.5">
-                <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                <span className="shrink-0 text-xs font-black uppercase tracking-wider text-muted-foreground">
                   Từ ngày
                 </span>
                 <DatePicker
@@ -295,7 +295,7 @@ export function ManagerExamScheduleScreen() {
                 />
               </div>
               <div className="flex w-full min-w-0 flex-1 flex-col gap-2 rounded-2xl border border-border/40 bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:px-4 sm:py-1.5">
-                <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                <span className="shrink-0 text-xs font-black uppercase tracking-wider text-muted-foreground">
                   Đến ngày
                 </span>
                 <DatePicker
@@ -312,7 +312,7 @@ export function ManagerExamScheduleScreen() {
             <Button
               type="button"
               variant="ghost"
-              className="h-12 w-full shrink-0 rounded-[18px] px-6 font-black text-[10px] uppercase tracking-widest text-rose-500 transition-all hover:bg-rose-50 hover:text-rose-600 sm:w-auto"
+              className="h-12 w-full shrink-0 rounded-[18px] px-6 font-black text-xs uppercase tracking-widest text-rose-500 transition-all hover:bg-rose-50 hover:text-rose-600 sm:w-auto"
               onClick={() => {
                 setStartDate('')
                 setEndDate('')
@@ -357,17 +357,17 @@ export function ManagerExamScheduleScreen() {
                         {formatViDate(e.dateIso)} lúc {e.startTime}
                       </p>
                       {isPast ? (
-                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">
                           Đã kết thúc
                         </span>
                       ) : (
-                        <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-600">
+                        <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-600">
                           Sắp diễn ra
                         </span>
                       )}
                     </div>
                     <div className="rounded-lg bg-muted/40 px-3 py-2">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                         Người chấm
                       </p>
                       <p className="mt-0.5 break-words text-sm font-bold text-foreground">
@@ -449,7 +449,7 @@ export function ManagerExamScheduleScreen() {
                       <tr key={e.id} className="border-b transition-colors hover:bg-muted/20">
                         <td className="px-5 py-5">
                           <p className="font-bold text-foreground leading-tight">{e.className}</p>
-                          <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                          <span className="mt-1 flex items-center gap-1 text-xs font-medium text-muted-foreground">
                             {e.topic}
                           </span>
                         </td>
@@ -464,11 +464,11 @@ export function ManagerExamScheduleScreen() {
                               {formatViDate(e.dateIso)} lúc {e.startTime}
                             </p>
                             {isPast ? (
-                              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">
                                 Đã kết thúc
                               </span>
                             ) : (
-                              <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-600">
+                              <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-600">
                                 Sắp diễn ra
                               </span>
                             )}
@@ -485,7 +485,7 @@ export function ManagerExamScheduleScreen() {
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="h-8 gap-1.5 rounded-lg border-primary/20 text-[11px] font-bold text-primary hover:bg-primary/5"
+                              className="h-8 gap-1.5 rounded-lg border-primary/20 text-xs font-bold text-primary hover:bg-primary/5"
                               onClick={() => setSelectedClassIdForScores(e.classId)}
                             >
                               <Users className="h-3.5 w-3.5" />
@@ -497,7 +497,7 @@ export function ManagerExamScheduleScreen() {
                                   type="button"
                                   size="sm"
                                   variant="outline"
-                                  className="h-8 gap-1.5 rounded-lg text-[11px] font-bold"
+                                  className="h-8 gap-1.5 rounded-lg text-xs font-bold"
                                   onClick={() => openExamModal(e.classId, e.id)}
                                 >
                                   <Edit3 className="h-3.5 w-3.5" />
@@ -656,7 +656,7 @@ export function ManagerExamScheduleScreen() {
                                     }}
                                   >
                                     <span className="font-bold text-xs">{opt.name}</span>
-                                    <span className="text-[10px] opacity-60">{opt.email}</span>
+                                    <span className="text-xs opacity-60">{opt.email}</span>
                                   </Button>
                                 ))
                               )}

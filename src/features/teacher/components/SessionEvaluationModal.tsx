@@ -174,7 +174,7 @@ export function SessionEvaluationModal({
             type="button"
             onClick={() => setValue(name as any, opt.v)}
             className={cn(
-              'h-9 rounded-full border px-4 text-[10px] font-black uppercase tracking-tight transition-all',
+              'h-9 rounded-full border px-4 text-xs font-black uppercase tracking-tight transition-all',
               value === opt.v
                 ? `${opt.color} border-current ring-2 ring-offset-1 ring-primary/10 scale-105 shadow-sm`
                 : 'border-slate-200 bg-white text-slate-400 hover:bg-slate-50'
@@ -227,7 +227,7 @@ export function SessionEvaluationModal({
                 key={q.id}
                 className="flex flex-col gap-4 rounded-[24px] border border-slate-100 bg-slate-50/20 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/30"
               >
-                <Label className="text-[13px] font-bold leading-relaxed text-slate-700">
+                <Label className="text-sm font-bold leading-relaxed text-slate-700">
                   {q.text}
                 </Label>
                 {renderLikert(q.id)}
@@ -236,7 +236,7 @@ export function SessionEvaluationModal({
 
             {/* Numbered Free Text Questions 12-14 */}
             <div className="flex flex-col gap-4 rounded-[24px] border border-slate-100 bg-slate-50/20 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/30">
-              <Label className="text-[13px] font-bold leading-relaxed text-slate-700">
+              <Label className="text-sm font-bold leading-relaxed text-slate-700">
                 12. Sau khi tiếp thu những kiến thức hôm nay, bạn nhận thấy mình còn thiếu sót điều
                 gì nhất? Và bạn sẽ ứng dụng những kiến thức đó vào công việc của mình như thế nào?
               </Label>
@@ -248,7 +248,7 @@ export function SessionEvaluationModal({
             </div>
 
             <div className="flex flex-col gap-4 rounded-[24px] border border-slate-100 bg-slate-50/20 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/30">
-              <Label className="text-[13px] font-bold leading-relaxed text-slate-700">
+              <Label className="text-sm font-bold leading-relaxed text-slate-700">
                 13. Buổi học cần cải thiện điều gì để tốt hơn trong tương lai?
               </Label>
               <Textarea
@@ -259,7 +259,7 @@ export function SessionEvaluationModal({
             </div>
 
             <div className="flex flex-col gap-4 rounded-[24px] border border-slate-100 bg-slate-50/20 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/30">
-              <Label className="text-[13px] font-bold leading-relaxed text-slate-700">
+              <Label className="text-sm font-bold leading-relaxed text-slate-700">
                 14. Phản hồi tự do: Điều gì bạn thích nhất trong buổi học này? Bạn nghĩ gì về các
                 chủ đề được giảng dạy? Có gì bạn muốn được đào tạo thêm?
               </Label>

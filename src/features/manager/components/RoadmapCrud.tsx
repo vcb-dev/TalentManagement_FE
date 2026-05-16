@@ -183,7 +183,7 @@ export function RoadmapCrud() {
                 return (
                   <div
                     key={m.id || idx}
-                    className="group inline-flex items-center gap-1.5 text-[11px] font-bold transition-all"
+                    className="group inline-flex items-center gap-1.5 text-xs font-bold transition-all"
                   >
                     {isLink ? (
                       <a
@@ -199,7 +199,7 @@ export function RoadmapCrud() {
                           </span>
                         </div>
                         {m.name && m.name.toLowerCase() !== 'slide' && (
-                          <span className="text-[10px] opacity-80 leading-tight pl-4 font-normal italic">
+                          <span className="text-xs opacity-80 leading-tight pl-4 font-normal italic">
                             {m.name}
                           </span>
                         )}
@@ -512,7 +512,7 @@ export function RoadmapCrud() {
                       )}
                     >
                       <div className="space-y-2">
-                        <FormLabel className="text-[11px] font-bold uppercase text-muted-foreground ml-1">
+                        <FormLabel className="text-xs font-bold uppercase text-muted-foreground ml-1">
                           Cấp độ hiện tại
                         </FormLabel>
                         <Select value={levelStart} onValueChange={handleLevelStartChange}>
@@ -535,7 +535,7 @@ export function RoadmapCrud() {
 
                       {levelStart !== 'tuong' && (
                         <div className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-300">
-                          <FormLabel className="text-[11px] font-bold uppercase text-muted-foreground ml-1">
+                          <FormLabel className="text-xs font-bold uppercase text-muted-foreground ml-1">
                             Cấp độ tiếp theo
                           </FormLabel>
                           <div className="relative group">
@@ -582,7 +582,7 @@ export function RoadmapCrud() {
                           <FormItem>
                             <FormLabel
                               className={safeCn(
-                                'text-[11px] font-bold uppercase transition-colors ml-1',
+                                'text-xs font-bold uppercase transition-colors ml-1',
                                 fieldState.error
                                   ? 'text-red-600 font-black'
                                   : 'text-muted-foreground'
@@ -611,7 +611,7 @@ export function RoadmapCrud() {
                                 />
                               </div>
                             </FormControl>
-                            <FormMessage className="text-[10px]" />
+                            <FormMessage className="text-xs" />
                           </FormItem>
                         )}
                       />
@@ -621,7 +621,7 @@ export function RoadmapCrud() {
                         name="assessment"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-[11px] font-bold uppercase text-muted-foreground ml-1">
+                            <FormLabel className="text-xs font-bold uppercase text-muted-foreground ml-1">
                               Hình thức đánh giá
                             </FormLabel>
                             <FormControl>
@@ -643,7 +643,7 @@ export function RoadmapCrud() {
                       {/* Multiple Objectives Section */}
                       <div className="md:col-span-2 space-y-4">
                         <div className="flex items-center justify-between">
-                          <FormLabel className="text-[11px] font-bold uppercase text-muted-foreground ml-1">
+                          <FormLabel className="text-xs font-bold uppercase text-muted-foreground ml-1">
                             Mục tiêu chi tiết (Objective)
                           </FormLabel>
                           <Button
@@ -686,7 +686,7 @@ export function RoadmapCrud() {
                                   <Target className="h-3 w-3" />
                                 </div>
                                 {form.formState.errors.objective && obj.text.trim() === '' && (
-                                  <p className="mt-1.5 ml-1 text-[10px] font-bold text-red-500">
+                                  <p className="mt-1.5 ml-1 text-xs font-bold text-red-500">
                                     Vui lòng nhập mục tiêu này hoặc xóa nếu không cần thiết
                                   </p>
                                 )}
@@ -782,7 +782,7 @@ export function RoadmapCrud() {
                           <FormItem className="search-dropdown-container relative max-w-md">
                             <FormLabel
                               className={safeCn(
-                                'text-[11px] font-bold uppercase transition-colors ml-1',
+                                'text-xs font-bold uppercase transition-colors ml-1',
                                 fieldState.error
                                   ? 'text-red-600 font-black'
                                   : 'text-muted-foreground'
@@ -869,7 +869,7 @@ export function RoadmapCrud() {
                                 </Popover>
                               </div>
                             </FormControl>
-                            <FormMessage className="text-[10px]" />
+                            <FormMessage className="text-xs" />
                           </FormItem>
                         )}
                       />
@@ -883,7 +883,7 @@ export function RoadmapCrud() {
             <div className="shrink-0 z-10 relative border-t border-primary/5 bg-white px-8 py-5 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
               <div className="flex flex-col gap-3">
                 {Object.keys(form.formState.errors).length > 0 && (
-                  <div className="text-right text-[11px] font-bold text-red-500 animate-pulse">
+                  <div className="text-right text-xs font-bold text-red-500 animate-pulse">
                     * Vui lòng kiểm tra lại các trường thông tin còn thiếu
                   </div>
                 )}
@@ -964,7 +964,7 @@ export function RoadmapCrud() {
                         <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">
                           {group.label}
                         </h2>
-                        <span className="px-2 py-0.5 rounded-full bg-primary/10 text-[9px] font-black text-primary uppercase tracking-widest mt-0.5">
+                        <span className="px-2 py-0.5 rounded-full bg-primary/10 text-xs font-black text-primary uppercase tracking-widest mt-0.5">
                           Lộ trình
                         </span>
                       </div>
@@ -991,7 +991,7 @@ export function RoadmapCrud() {
                               </div>
                               <h3 className="text-md font-bold text-gray-800">{displayTopic}</h3>
                             </div>
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                               {topicItems.length} đầu mục
                             </span>
                           </div>
@@ -1008,42 +1008,42 @@ export function RoadmapCrud() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[2fr_1.2fr_1fr_0.8fr] gap-4 flex-1">
                                   {/* Objective */}
                                   <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black text-primary/40 tracking-wider flex items-center gap-1.5">
+                                    <label className="text-xs uppercase font-black text-primary/40 tracking-wider flex items-center gap-1.5">
                                       <Target className="h-3 w-3" /> Mục tiêu
                                     </label>
-                                    <p className="text-[13px] font-semibold text-gray-900 leading-snug">
+                                    <p className="text-sm font-semibold text-gray-900 leading-snug">
                                       {item.objective}
                                     </p>
                                   </div>
                                   {/* Materials */}
                                   <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black text-gray-400 tracking-wider flex items-center gap-1.5">
+                                    <label className="text-xs uppercase font-black text-gray-400 tracking-wider flex items-center gap-1.5">
                                       <Files className="h-3 w-3" /> Tài liệu
                                     </label>
-                                    <div className="text-[12px]">
+                                    <div className="text-xs">
                                       {parseAndRenderMaterial(item.materialRef)}
                                     </div>
                                   </div>
                                   {/* Trainer */}
                                   <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black text-gray-400 tracking-wider flex items-center gap-1.5">
+                                    <label className="text-xs uppercase font-black text-gray-400 tracking-wider flex items-center gap-1.5">
                                       <GraduationCap className="h-3 w-3" /> Phụ trách
                                     </label>
                                     <div className="flex items-center gap-2">
-                                      <div className="h-5 w-5 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center text-[9px] font-bold">
+                                      <div className="h-5 w-5 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center text-xs font-bold">
                                         {item.trainer?.[0] || '?'}
                                       </div>
-                                      <p className="text-[12px] font-medium text-gray-700">
+                                      <p className="text-xs font-medium text-gray-700">
                                         {item.trainer || '-'}
                                       </p>
                                     </div>
                                   </div>
                                   {/* Assessment */}
                                   <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black text-gray-400 tracking-wider flex items-center gap-1.5">
+                                    <label className="text-xs uppercase font-black text-gray-400 tracking-wider flex items-center gap-1.5">
                                       <ClipboardCheck className="h-3 w-3" /> Đánh giá
                                     </label>
-                                    <p className="text-[12px] font-medium text-gray-700">
+                                    <p className="text-xs font-medium text-gray-700">
                                       {item.assessment || '-'}
                                     </p>
                                   </div>

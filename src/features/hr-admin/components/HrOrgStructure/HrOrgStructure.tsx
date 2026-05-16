@@ -697,7 +697,7 @@ export function HrOrgStructure() {
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card className="border-primary/30 bg-gradient-to-br from-primary/15 via-card to-card shadow-sm">
             <CardContent className="px-2.5 py-2 sm:p-6">
-              <p className="text-[10px] font-medium leading-tight text-primary sm:text-xs">
+              <p className="text-xs font-medium leading-tight text-primary sm:text-xs">
                 Phòng ban
               </p>
               <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground drop-shadow-sm sm:mt-0 sm:text-2xl">
@@ -707,7 +707,7 @@ export function HrOrgStructure() {
           </Card>
           <Card className="border-accent/40 bg-gradient-to-br from-accent/15 via-card to-card shadow-sm">
             <CardContent className="px-2.5 py-2 sm:p-6">
-              <p className="text-[10px] font-medium leading-tight text-accent sm:text-xs">Nhóm</p>
+              <p className="text-xs font-medium leading-tight text-accent sm:text-xs">Nhóm</p>
               <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground drop-shadow-sm sm:mt-0 sm:text-2xl">
                 {summary.teamCount}
               </p>
@@ -715,7 +715,7 @@ export function HrOrgStructure() {
           </Card>
           <Card className="border-blue-500/35 bg-gradient-to-br from-blue-500/15 via-card to-card shadow-sm">
             <CardContent className="px-2.5 py-2 sm:p-6">
-              <p className="text-[10px] font-medium leading-tight text-blue-700 dark:text-blue-300 sm:text-xs">
+              <p className="text-xs font-medium leading-tight text-blue-700 dark:text-blue-300 sm:text-xs">
                 Thành viên (gộp nhóm)
               </p>
               <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground drop-shadow-sm sm:mt-0 sm:text-2xl">
@@ -907,7 +907,7 @@ export function HrOrgStructure() {
                         {dept.code ? (
                           <Badge
                             variant="outline"
-                            className="border-primary/30 bg-primary/5 font-mono text-[11px] font-normal uppercase tracking-wide text-primary"
+                            className="border-primary/30 bg-primary/5 font-mono text-xs font-normal uppercase tracking-wide text-primary"
                           >
                             {dept.code}
                           </Badge>
@@ -1229,7 +1229,7 @@ function TeamCardMobile({
           {team.isTrafficTeam && (
             <Badge
               variant="outline"
-              className="border-sky-200 bg-sky-50 text-[10px] font-bold text-sky-600 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400"
+              className="border-sky-200 bg-sky-50 text-xs font-bold text-sky-600 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400"
             >
               Traffic
             </Badge>
@@ -1318,7 +1318,7 @@ function FragmentTeamRow({
           {team.isTrafficTeam && (
             <Badge
               variant="outline"
-              className="border-sky-200 bg-sky-50 text-[10px] font-bold text-sky-600 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400"
+              className="border-sky-200 bg-sky-50 text-xs font-bold text-sky-600 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400"
             >
               Traffic
             </Badge>
@@ -1842,11 +1842,11 @@ function EligibleUserRowItem({
           {row.email ? <span className="truncate">{row.email}</span> : null}
         </div>
         {row.currentTeamName ? (
-          <div className="mt-0.5 text-[11px] text-amber-600 dark:text-amber-400">
+          <div className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
             Đang thuộc nhóm: {row.currentTeamName} (sẽ chuyển sang nhóm mới)
           </div>
         ) : (
-          <div className="mt-0.5 text-[11px] text-muted-foreground">Chưa thuộc nhóm nào</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">Chưa thuộc nhóm nào</div>
         )}
       </div>
       <Button

@@ -56,7 +56,7 @@ export function TeacherClassMemberCard({
         </div>
         <Badge
           className={cn(
-            'max-w-[9rem] truncate px-2 py-0.5 text-center text-[10px] font-bold sm:text-[11px]',
+            'max-w-[9rem] truncate px-2 py-0.5 text-center text-xs font-bold sm:text-xs',
             hasResult
               ? 'bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200'
               : 'bg-muted text-muted-foreground'

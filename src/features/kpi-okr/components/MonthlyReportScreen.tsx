@@ -84,7 +84,7 @@ function EvalBadge({ status }: { status: string | null | undefined }) {
     <Badge
       variant="outline"
       className={cn(
-        'h-5 px-1.5 text-[10px] font-bold shadow-none rounded-md',
+        'h-5 px-1.5 text-xs font-bold shadow-none rounded-md',
         isOk
           ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
           : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300'
@@ -101,11 +101,11 @@ function MonthlyReportEpic4ReadCells({ item }: { item: PerformanceAssignment }) 
   const ev = item.evidence?.trim()
   return (
     <>
-      <TableCell className="whitespace-nowrap tabular-nums text-[13px]">{num}</TableCell>
-      <TableCell className="text-[11px] uppercase text-slate-600">
+      <TableCell className="whitespace-nowrap tabular-nums text-sm">{num}</TableCell>
+      <TableCell className="text-xs uppercase text-slate-600">
         {item.numericUnit ?? '—'}
       </TableCell>
-      <TableCell className="max-w-[180px] text-[12px]" title={ev ?? ''}>
+      <TableCell className="max-w-[180px] text-xs" title={ev ?? ''}>
         {ev ? (
           <span className="line-clamp-3 whitespace-pre-wrap break-all">{ev}</span>
         ) : (
@@ -116,7 +116,7 @@ function MonthlyReportEpic4ReadCells({ item }: { item: PerformanceAssignment }) 
       <TableCell>
         <EvalBadge status={item.selfEvalStatus} />
       </TableCell>
-      <TableCell className="max-w-[200px] text-[12px] text-slate-600">
+      <TableCell className="max-w-[200px] text-xs text-slate-600">
         {item.selfReviewNote?.trim() ? (
           <span className="line-clamp-2 italic">{item.selfReviewNote.trim()}</span>
         ) : (
@@ -154,13 +154,13 @@ function MonthlyReportEpic4EditableStack({
   disabled?: boolean
 }) {
   const inputCls =
-    'h-8 min-w-[72px] rounded-md border border-slate-200 bg-white px-2 text-[12px] dark:border-slate-700 dark:bg-slate-950'
+    'h-8 min-w-[72px] rounded-md border border-slate-200 bg-white px-2 text-xs dark:border-slate-700 dark:bg-slate-950'
 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <Label className="text-[10px] font-bold uppercase text-muted-foreground">Số liệu</Label>
+          <Label className="text-xs font-bold uppercase text-muted-foreground">Số liệu</Label>
           <Input
             value={numericRaw}
             onChange={(e) => setNumericRaw(e.target.value)}
@@ -170,7 +170,7 @@ function MonthlyReportEpic4EditableStack({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-[10px] font-bold uppercase text-muted-foreground">Đơn vị</Label>
+          <Label className="text-xs font-bold uppercase text-muted-foreground">Đơn vị</Label>
           <Input
             value={numericUnit}
             onChange={(e) => setNumericUnit(e.target.value)}
@@ -181,7 +181,7 @@ function MonthlyReportEpic4EditableStack({
         </div>
       </div>
       <div className="space-y-1">
-        <Label className="text-[10px] font-bold uppercase text-muted-foreground">Minh chứng</Label>
+        <Label className="text-xs font-bold uppercase text-muted-foreground">Minh chứng</Label>
         <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={disabled} />
       </div>
       <CustomSelect
@@ -196,13 +196,13 @@ function MonthlyReportEpic4EditableStack({
         disabled={disabled}
       />
       <div className="space-y-1">
-        <Label className="text-[10px] font-bold uppercase text-muted-foreground">Tự nhận xét</Label>
+        <Label className="text-xs font-bold uppercase text-muted-foreground">Tự nhận xét</Label>
         <Textarea
           value={selfReviewNote}
           onChange={(e) => setSelfReviewNote(e.target.value)}
           rows={2}
           disabled={disabled}
-          className="min-h-[52px] resize-y rounded-md border border-slate-200 bg-white p-2 text-[12px] dark:border-slate-700 dark:bg-slate-950"
+          className="min-h-[52px] resize-y rounded-md border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950"
           placeholder="Tự nhận xét"
         />
       </div>
@@ -310,7 +310,7 @@ function MonthlyReportEpic4EditableCells({
   disabled?: boolean
 }) {
   const inputCls =
-    'h-8 min-w-[72px] rounded-md border border-slate-200 bg-white px-2 text-[12px] dark:border-slate-700 dark:bg-slate-950'
+    'h-8 min-w-[72px] rounded-md border border-slate-200 bg-white px-2 text-xs dark:border-slate-700 dark:bg-slate-950'
 
   return (
     <>
@@ -353,7 +353,7 @@ function MonthlyReportEpic4EditableCells({
           onChange={(e) => setSelfReviewNote(e.target.value)}
           rows={2}
           disabled={disabled}
-          className="min-h-[52px] resize-y rounded-md border border-slate-200 bg-white p-2 text-[12px] dark:border-slate-700 dark:bg-slate-950"
+          className="min-h-[52px] resize-y rounded-md border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950"
           placeholder="Tự nhận xét"
         />
       </TableCell>
@@ -401,7 +401,7 @@ function MonthlyReportMemberEditableRow({
       <TableCell>
         <EvalBadge status={item.managerEvalStatus} />
       </TableCell>
-      <TableCell className="max-w-[280px] text-[12px] italic text-slate-500">
+      <TableCell className="max-w-[280px] text-xs italic text-slate-500">
         {item.managerReviewNote?.trim() || '—'}
       </TableCell>
       <TableCell className="align-top whitespace-nowrap p-2">
@@ -441,7 +441,7 @@ function MonthlyReportDetailReadOnlyCard({ item }: { item: PerformanceAssignment
       </p>
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div>
-          <span className="text-[10px] font-bold uppercase text-muted-foreground">Số liệu</span>
+          <span className="text-xs font-bold uppercase text-muted-foreground">Số liệu</span>
           <p className="tabular-nums">
             {item.numericValue !== undefined && item.numericValue !== null
               ? String(item.numericValue)
@@ -449,12 +449,12 @@ function MonthlyReportDetailReadOnlyCard({ item }: { item: PerformanceAssignment
           </p>
         </div>
         <div>
-          <span className="text-[10px] font-bold uppercase text-muted-foreground">Đơn vị</span>
-          <p className="text-[11px] uppercase text-slate-600">{item.numericUnit ?? '—'}</p>
+          <span className="text-xs font-bold uppercase text-muted-foreground">Đơn vị</span>
+          <p className="text-xs uppercase text-slate-600">{item.numericUnit ?? '—'}</p>
         </div>
       </div>
       <div>
-        <span className="text-[10px] font-bold uppercase text-muted-foreground">Minh chứng</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Minh chứng</span>
         {item.evidence?.trim() ? (
           <p className="break-all text-xs">{item.evidence.trim()}</p>
         ) : (
@@ -463,13 +463,13 @@ function MonthlyReportDetailReadOnlyCard({ item }: { item: PerformanceAssignment
         <EvidenceImagePreviews evidence={item.evidence} maxHeightClass="h-16 max-w-full" />
       </div>
       <div>
-        <span className="text-[10px] font-bold uppercase text-muted-foreground">Tự đánh giá</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Tự đánh giá</span>
         <div className="mt-1">
           <EvalBadge status={item.selfEvalStatus} />
         </div>
       </div>
       <div>
-        <span className="text-[10px] font-bold uppercase text-muted-foreground">Tự nhận xét</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Tự nhận xét</span>
         <p className="text-xs text-slate-600">
           {item.selfReviewNote?.trim() ? (
             <span className="italic">{item.selfReviewNote.trim()}</span>
@@ -479,13 +479,13 @@ function MonthlyReportDetailReadOnlyCard({ item }: { item: PerformanceAssignment
         </p>
       </div>
       <div>
-        <span className="text-[10px] font-bold uppercase text-muted-foreground">QL đánh giá</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">QL đánh giá</span>
         <div className="mt-1">
           <EvalBadge status={item.managerEvalStatus} />
         </div>
       </div>
       <div>
-        <span className="text-[10px] font-bold uppercase text-muted-foreground">QL nhận xét</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">QL nhận xét</span>
         <p className="break-words text-xs italic text-slate-500">
           {item.managerReviewNote?.trim() || '—'}
         </p>
@@ -535,13 +535,13 @@ function MonthlyReportDetailEditableMobileCard({
         disabled={edit.saving}
       />
       <div>
-        <span className="text-[10px] font-bold uppercase text-muted-foreground">QL đánh giá</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">QL đánh giá</span>
         <div className="mt-1">
           <EvalBadge status={item.managerEvalStatus} />
         </div>
       </div>
       <div>
-        <span className="text-[10px] font-bold uppercase text-muted-foreground">QL nhận xét</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">QL nhận xét</span>
         <p className="text-xs italic text-slate-500">{item.managerReviewNote?.trim() || '—'}</p>
       </div>
       <Button
@@ -760,7 +760,7 @@ export function MonthlyReportScreen() {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
             <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Phòng ban
                 </Label>
                 <Select
@@ -784,7 +784,7 @@ export function MonthlyReportScreen() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Nhóm
                 </Label>
                 <Select
@@ -805,7 +805,7 @@ export function MonthlyReportScreen() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Tháng
                 </Label>
                 <Select
@@ -833,7 +833,7 @@ export function MonthlyReportScreen() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Năm
                 </Label>
                 <Input
@@ -872,19 +872,19 @@ export function MonthlyReportScreen() {
               <div className="flex flex-col gap-1">
                 <Badge
                   variant="outline"
-                  className="h-5 rounded-md border-blue-100 bg-blue-50 text-[10px] font-bold text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
+                  className="h-5 rounded-md border-blue-100 bg-blue-50 text-xs font-bold text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
                 >
                   KỲ: T{month}/{year}
                 </Badge>
                 <Badge
                   variant="outline"
-                  className="h-5 rounded-md border-cyan-100 bg-cyan-50 text-[10px] font-bold text-cyan-600 dark:border-cyan-900/30 dark:bg-cyan-900/20 dark:text-cyan-400"
+                  className="h-5 rounded-md border-cyan-100 bg-cyan-50 text-xs font-bold text-cyan-600 dark:border-cyan-900/30 dark:bg-cyan-900/20 dark:text-cyan-400"
                 >
                   TỔNG MỤC TIÊU: {assignmentsData.length}
                 </Badge>
                 <Badge
                   variant="outline"
-                  className="h-5 rounded-md border-emerald-100 bg-emerald-50 text-[10px] font-bold text-emerald-600 dark:border-emerald-900/30 dark:bg-emerald-900/20 dark:text-emerald-400"
+                  className="h-5 rounded-md border-emerald-100 bg-emerald-50 text-xs font-bold text-emerald-600 dark:border-emerald-900/30 dark:bg-emerald-900/20 dark:text-emerald-400"
                 >
                   ĐẠT (OK): {okCount}
                 </Badge>
@@ -1047,37 +1047,37 @@ export function MonthlyReportScreen() {
                             </p>
                             <div className="grid grid-cols-2 gap-3 text-sm">
                               <div>
-                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                                <span className="text-xs font-bold uppercase text-muted-foreground">
                                   KPI đạt
                                 </span>
                                 <p className="font-bold tabular-nums">{row.kpiOkCount}</p>
                               </div>
                               <div>
-                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                                <span className="text-xs font-bold uppercase text-muted-foreground">
                                   KPI chưa đạt
                                 </span>
                                 <p className="font-bold tabular-nums">{row.kpiNotCount}</p>
                               </div>
                               <div>
-                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                                <span className="text-xs font-bold uppercase text-muted-foreground">
                                   Loại KPI
                                 </span>
                                 <p className="font-semibold">{row.kpiGrade ?? '—'}</p>
                               </div>
                               <div>
-                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                                <span className="text-xs font-bold uppercase text-muted-foreground">
                                   OKR đạt
                                 </span>
                                 <p className="font-bold tabular-nums">{row.okrOkCount}</p>
                               </div>
                               <div>
-                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                                <span className="text-xs font-bold uppercase text-muted-foreground">
                                   OKR chưa đạt
                                 </span>
                                 <p className="font-bold tabular-nums">{row.okrNotCount}</p>
                               </div>
                               <div>
-                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                                <span className="text-xs font-bold uppercase text-muted-foreground">
                                   Loại OKR
                                 </span>
                                 <p className="font-semibold">{row.okrGrade ?? '—'}</p>
@@ -1129,7 +1129,7 @@ export function MonthlyReportScreen() {
                   )}
                   {fixedMetricsProgress.length > 0 && (
                     <div className="mt-4 border-t pt-4">
-                      <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                         Tổng hợp chỉ số cố định tháng này
                       </p>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1139,7 +1139,7 @@ export function MonthlyReportScreen() {
                             className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900"
                           >
                             <p
-                              className="mb-1 truncate text-[11px] text-slate-500 dark:text-slate-400"
+                              className="mb-1 truncate text-xs text-slate-500 dark:text-slate-400"
                               title={content}
                             >
                               {content}
@@ -1151,7 +1151,7 @@ export function MonthlyReportScreen() {
                                   : sum.toLocaleString('vi-VN')
                                 : '—'}
                             </p>
-                            <p className="mt-1 text-[11px] text-slate-400">
+                            <p className="mt-1 text-xs text-slate-400">
                               {filled}/{total} người đã nhập
                             </p>
                           </div>
@@ -1214,7 +1214,7 @@ export function MonthlyReportScreen() {
                       </p>
                     ) : (
                       <>
-                        <p className="mb-3 text-[13px] text-muted-foreground">
+                        <p className="mb-3 text-sm text-muted-foreground">
                           {allowEpic4SelfEdit
                             ? 'Cập nhật số liệu, minh chứng và tự đánh giá; bấm Lưu từng dòng. Đánh giá của quản lý do trưởng nhóm cập nhật.'
                             : canSeeTeamWide
@@ -1295,7 +1295,7 @@ export function MonthlyReportScreen() {
                                       <TableCell>
                                         <EvalBadge status={item.managerEvalStatus} />
                                       </TableCell>
-                                      <TableCell className="max-w-[280px] text-[12px] italic text-slate-500">
+                                      <TableCell className="max-w-[280px] text-xs italic text-slate-500">
                                         {item.managerReviewNote?.trim() || '—'}
                                       </TableCell>
                                       <TableCell className="text-center text-slate-400">
@@ -1328,7 +1328,7 @@ export function MonthlyReportScreen() {
                   <CardTitle className="bg-gradient-to-r from-fuchsia-700 via-violet-700 to-indigo-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
                     {canSeeTeamWide ? 'Phản hồi từ nhân sự' : 'Form khảo sát tháng này'}
                   </CardTitle>
-                  <p className="text-[13px] text-slate-500">
+                  <p className="text-sm text-slate-500">
                     {canSeeTeamWide
                       ? 'Danh sách câu trả lời của từng nhân sự trong nhóm theo kỳ đã chọn.'
                       : 'Trả lời câu hỏi khảo sát hàng tháng do trưởng nhóm thiết lập. Bấm "Gửi câu trả lời" để lưu.'}

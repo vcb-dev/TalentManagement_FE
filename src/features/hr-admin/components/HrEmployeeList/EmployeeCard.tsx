@@ -187,7 +187,7 @@ export function EmployeeCard({
         <div className="flex min-w-0 flex-col items-end gap-1 sm:gap-1.5">
           <span
             className={cn(
-              'max-w-[6rem] truncate rounded-md px-1.5 py-0.5 text-center text-[9px] font-bold tracking-tight sm:max-w-[9rem] sm:px-2 sm:text-[10px] md:max-w-[10rem]',
+              'max-w-[6rem] truncate rounded-md px-1.5 py-0.5 text-center text-xs font-bold tracking-tight sm:max-w-[9rem] sm:px-2 sm:text-xs md:max-w-[10rem]',
               tone.chip
             )}
             title={tierLine}
@@ -198,7 +198,7 @@ export function EmployeeCard({
             {employee.currentStar > 0 ? (
               <StarRow filled={employee.currentStar} align="end" compact />
             ) : (
-              <p className="text-right text-[10px] italic text-muted-foreground">
+              <p className="text-right text-xs italic text-muted-foreground">
                 {inactive ? '—' : 'Chưa có sao'}
               </p>
             )}
@@ -220,7 +220,7 @@ export function EmployeeCard({
         <p
           className={cn(
             'mt-0.5 font-semibold text-foreground/80',
-            compact ? 'text-[10px] sm:text-xs' : 'text-xs'
+            compact ? 'text-xs sm:text-xs' : 'text-xs'
           )}
         >
           {positionLabel}
@@ -228,12 +228,12 @@ export function EmployeeCard({
         <div
           className={cn(
             'mt-1.5 flex flex-wrap items-center gap-1 sm:gap-1.5',
-            compact ? 'text-[9px] sm:text-[11px]' : 'text-[11px]'
+            compact ? 'text-xs sm:text-xs' : 'text-xs'
           )}
         >
           <span
             className={cn(
-              'inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold',
+              'inline-flex rounded-full px-2 py-0.5 text-xs font-bold',
               roleBadgeClass(employee.role)
             )}
           >
@@ -326,7 +326,7 @@ export function EmployeeCard({
         )}
       </div>
       {!inactive && !compact ? (
-        <p className="mt-2 text-center text-[11px] font-medium text-muted-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        <p className="mt-2 text-center text-xs font-medium text-muted-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           Bấm để xem thông tin tóm tắt
         </p>
       ) : null}

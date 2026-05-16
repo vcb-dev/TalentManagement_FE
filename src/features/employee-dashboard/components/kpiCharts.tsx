@@ -100,11 +100,11 @@ export function KpiGauge({
           {isFull ? '100' : clamped}%
         </span>
         {isFull ? (
-          <span className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+          <span className="mt-0.5 text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
             Hoàn thành
           </span>
         ) : label ? (
-          <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <span className="mt-0.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             {label}
           </span>
         ) : null}
@@ -343,11 +343,11 @@ export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: st
   return (
     <div className="flex flex-col">
       <div className="mb-2 flex items-center gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           {title}
         </span>
         {total > 0 ? (
-          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-foreground">
+          <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-bold tabular-nums text-foreground">
             {total}
           </span>
         ) : null}
@@ -574,7 +574,7 @@ export function TopPriorityList({
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    'inline-flex h-5 items-center rounded-md px-1.5 text-[10px] font-black uppercase tracking-wider',
+                    'inline-flex h-5 items-center rounded-md px-1.5 text-xs font-black uppercase tracking-wider',
                     row.kind === 'KPI'
                       ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
                       : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
@@ -582,14 +582,14 @@ export function TopPriorityList({
                 >
                   {row.kind}
                 </span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   <span className={cn('h-1.5 w-1.5 rounded-full', prio.dot)} aria-hidden />
                   {prio.label}
                 </span>
                 {row.evalStatus ? (
                   <span
                     className={cn(
-                      'rounded-md px-1.5 py-0.5 text-[10px] font-bold',
+                      'rounded-md px-1.5 py-0.5 text-xs font-bold',
                       row.evalStatus === 'OK'
                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
                         : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
@@ -599,7 +599,7 @@ export function TopPriorityList({
                   </span>
                 ) : null}
               </div>
-              <span className="text-[11px] font-medium text-muted-foreground">
+              <span className="text-xs font-medium text-muted-foreground">
                 {nameFor(row.assigneeUserId)}
               </span>
             </div>
@@ -618,7 +618,7 @@ export function TopPriorityList({
                 {pct}%
               </span>
               {row.targetMetric?.trim() ? (
-                <span className="hidden text-[11px] font-medium text-muted-foreground sm:inline">
+                <span className="hidden text-xs font-medium text-muted-foreground sm:inline">
                   Chỉ tiêu: <b className="text-foreground">{row.targetMetric}</b>
                 </span>
               ) : null}
