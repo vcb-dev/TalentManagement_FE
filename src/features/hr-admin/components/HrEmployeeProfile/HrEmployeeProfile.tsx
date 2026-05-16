@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { FormProvider, type Control, useForm, useWatch } from 'react-hook-form'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
@@ -251,16 +252,23 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
     updateEmployee.mutate({ id: employee.id, patch })
   }
 
+  const [confirmAction, setConfirmAction] = useState<'deactivate' | 'reactivate' | null>(null)
+
   const handleDeactivateProfile = () => {
     if (!canDeactivate) return
-    if (!window.confirm('Vô hiệu hóa tài khoản nhân viên này?')) return
-    deactivateEmployee.mutate(employee.id)
+    setConfirmAction('deactivate')
   }
 
   const handleReactivateProfile = () => {
     if (!canEdit) return
-    if (!window.confirm('Kích hoạt lại tài khoản nhân viên này?')) return
-    updateEmployee.mutate({ id: employee.id, patch: { status: 'ACTIVE' } })
+    setConfirmAction('reactivate')
+  }
+
+  const handleConfirmAction = () => {
+    if (confirmAction === 'deactivate') deactivateEmployee.mutate(employee.id)
+    else if (confirmAction === 'reactivate')
+      updateEmployee.mutate({ id: employee.id, patch: { status: 'ACTIVE' } })
+    setConfirmAction(null)
   }
 
   const empCode = `VCB-${shortId(employee.id).toUpperCase()}`
@@ -294,6 +302,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
   const hasAnyTeam = Boolean(teamName.trim())
 
   return (
+    <>
     <FormProvider {...editForm}>
       <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-indigo-50/60 via-sky-50/40 to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
         <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 pb-6 pt-6 md:px-6 lg:flex-row lg:items-start lg:gap-8 lg:pt-8">
@@ -528,6 +537,20 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
         </div>
       </div>
     </FormProvider>
+    <ConfirmDialog
+      open={confirmAction !== null}
+      onOpenChange={(open) => { if (!open) setConfirmAction(null) }}
+      title={confirmAction === 'deactivate' ? 'Vô hiệu hóa tài khoản?' : 'Kích hoạt lại tài khoản?'}
+      description={
+        confirmAction === 'deactivate'
+          ? 'Nhân viên sẽ không thể đăng nhập sau khi bị vô hiệu hóa.'
+          : 'Nhân viên sẽ được khôi phục quyền đăng nhập.'
+      }
+      confirmLabel={confirmAction === 'deactivate' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+      destructive={confirmAction === 'deactivate'}
+      onConfirm={handleConfirmAction}
+    />
+    </>
   )
 }
 

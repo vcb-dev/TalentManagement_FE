@@ -7,6 +7,7 @@ import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { LEVEL_LABELS, LEVELS, type LevelCode } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
 import {
   ChartContainer,
   ChartLegend,
@@ -261,9 +262,9 @@ export function ManagerLearningOpsZone({
           role="alert"
         >
           Không tải được thống kê.{' '}
-          <button type="button" className="font-semibold underline" onClick={() => void refetch()}>
+          <Button type="button" variant="ghost" className="h-auto p-0 font-semibold text-destructive underline hover:bg-transparent" onClick={() => void refetch()}>
             Thử lại
-          </button>
+          </Button>
         </div>
       ) : null}
 

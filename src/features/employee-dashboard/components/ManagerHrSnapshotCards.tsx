@@ -3,6 +3,7 @@ import { useLearningOpsSummary } from '@/features/dashboard/hooks'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { InfoHint } from '@/components/shared/InfoHint'
+import { Button } from '@/components/ui/button'
 
 export type ManagerHrSnapshotCardsProps = {
   reportYear: number
@@ -44,9 +45,9 @@ export function ManagerHrSnapshotCards({
           role="alert"
         >
           Không tải được thống kê nhân sự.{' '}
-          <button type="button" className="font-semibold underline" onClick={() => void refetch()}>
+          <Button type="button" variant="ghost" className="h-auto p-0 font-semibold text-destructive underline hover:bg-transparent" onClick={() => void refetch()}>
             Thử lại
-          </button>
+          </Button>
         </div>
       ) : null}
 

@@ -47,19 +47,24 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
     [fromUrl]
   )
 
+  const [confirmPending, setConfirmPending] = useState<{
+    type: 'deactivate' | 'reactivate'
+    id: string
+  } | null>(null)
+
   const { data, isLoading } = useEmployees(filters)
   const deactivate = useDeactivateEmployee()
   const update = useUpdateEmployee()
   const navigate = useNavigate()
 
-  const handleDeactivate = (id: string) => {
-    if (!window.confirm('Vô hiệu hóa tài khoản nhân viên này?')) return
-    deactivate.mutate(id)
-  }
-
-  const handleReactivate = (id: string) => {
-    if (!window.confirm('Kích hoạt lại tài khoản nhân viên này?')) return
-    update.mutate({ id, patch: { status: 'ACTIVE' } })
+  const handleConfirmPending = () => {
+    if (!confirmPending) return
+    if (confirmPending.type === 'deactivate') {
+      deactivate.mutate(confirmPending.id)
+    } else {
+      update.mutate({ id: confirmPending.id, patch: { status: 'ACTIVE' } })
+    }
+    setConfirmPending(null)
   }
 
   const total = data?.total ?? 0
@@ -83,8 +88,11 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
         params: { employeeId: id },
         search: { mode: 'edit' },
       }),
-    onDeactivate: handleDeactivate,
-    onReactivate: handleReactivate,
+    onDeactivate: (id: string) => setConfirmPending({ type: 'deactivate', id }),
+    onReactivate: (id: string) => setConfirmPending({ type: 'reactivate', id }),
+    confirmPending,
+    onConfirmPending: handleConfirmPending,
+    onCancelPending: () => setConfirmPending(null),
     filters,
     setFilters,
   }

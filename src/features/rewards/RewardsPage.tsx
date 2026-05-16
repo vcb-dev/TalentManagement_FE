@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { createPortal } from 'react-dom'
 import { apiClient } from '@/lib/axios'
 import { useAuthStore } from '@/stores/auth.store'
 import { toast } from 'sonner'
@@ -23,8 +22,12 @@ import {
   History,
   AlertTriangle,
   TrendingUp,
+  X,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/shared/CustomSelect'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
+import { Button } from '@/components/ui/button'
 
 type Rule = {
   id: string
@@ -1219,15 +1222,9 @@ export default function RewardsPage() {
         )}
       </div>
 
-      {showActionPanel &&
-        selectedEmp &&
-        createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 overflow-y-auto">
-            <div
-              className="fixed inset-0 bg-slate-900/80 backdrop-blur-md"
-              onClick={() => setShowActionPanel(false)}
-            />
-            <div className="bg-white rounded-[2.5rem] w-full max-w-2xl shadow-2xl overflow-hidden border border-white/20 animate-scale-in relative z-10 my-auto">
+      <Dialog open={showActionPanel && !!selectedEmp} onOpenChange={(open) => { if (!open) setShowActionPanel(false) }}>
+        <DialogContent className="max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-white/20 shadow-2xl [&>button]:hidden">
+            <div className="bg-white rounded-[2.5rem] w-full shadow-2xl overflow-hidden border border-white/20">
               <div
                 className={`px-10 py-8 text-white font-black uppercase text-sm tracking-[0.2em] flex justify-between items-center ${actionKind === 'REWARD' ? 'bg-emerald-600' : 'bg-rose-600'}`}
               >
@@ -1244,12 +1241,15 @@ export default function RewardsPage() {
                     <div className="text-base">{selectedEmp.name || selectedEmp.fullNameLegal}</div>
                   </div>
                 </div>
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setShowActionPanel(false)}
-                  className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/20 transition-all text-xl"
+                  className="w-10 h-10 rounded-full hover:bg-white/20 text-white"
                 >
-                  ✕
-                </button>
+                  <X className="h-5 w-5" />
+                </Button>
               </div>
 
               <div className="p-10 space-y-8">
@@ -1345,21 +1345,17 @@ export default function RewardsPage() {
                 </div>
               </div>
             </div>
-          </div>,
-          document.body
-        )}
+        </DialogContent>
+      </Dialog>
 
-      {showRuleModal &&
-        createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 overflow-y-auto">
-            <div
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
-              onClick={() => setShowRuleModal(false)}
-            />
-            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100 animate-scale-in relative z-10 my-auto">
+      <Dialog open={showRuleModal} onOpenChange={(open) => { if (!open) setShowRuleModal(false) }}>
+        <DialogContent className="max-w-lg rounded-3xl p-0 overflow-hidden border-slate-100 shadow-2xl [&>button]:hidden">
+            <div className="bg-white rounded-3xl w-full shadow-2xl overflow-hidden border border-slate-100">
               <div className="bg-indigo-600 px-8 py-6 text-white font-black uppercase text-sm tracking-widest flex justify-between items-center">
                 <span>{editingRuleId ? 'Cập nhật Quy chuẩn' : 'Thêm quy chuẩn mới'}</span>
-                <button onClick={() => setShowRuleModal(false)}>✕</button>
+                <Button type="button" variant="ghost" size="icon" onClick={() => setShowRuleModal(false)} className="w-8 h-8 rounded-full hover:bg-white/20 text-white">
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
               <form onSubmit={handleSaveRule} className="p-8 space-y-5">
                 <div className="grid grid-cols-2 gap-4">
@@ -1444,43 +1440,18 @@ export default function RewardsPage() {
                 </button>
               </form>
             </div>
-          </div>,
-          document.body
-        )}
+        </DialogContent>
+      </Dialog>
 
-      {deleteConfirmId &&
-        createPortal(
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
-              onClick={() => setDeleteConfirmId(null)}
-            />
-            <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl overflow-hidden border border-slate-100 animate-scale-in relative z-10 p-8 text-center">
-              <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Trash2 className="h-10 w-10 text-rose-500" />
-              </div>
-              <h3 className="text-xl font-black text-slate-800 mb-2 uppercase">Xác nhận xóa?</h3>
-              <p className="text-slate-500 text-sm mb-8 font-medium">
-                Hành động này không thể hoàn tác. Quy chuẩn này sẽ bị xóa vĩnh viễn khỏi hệ thống.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setDeleteConfirmId(null)}
-                  className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  onClick={() => deleteConfirmId && handleDeleteRule(deleteConfirmId)}
-                  className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-rose-200 hover:bg-rose-700 transition-all"
-                >
-                  Xác nhận xóa
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+      <ConfirmDialog
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => { if (!open) setDeleteConfirmId(null) }}
+        title="Xác nhận xóa quy chuẩn?"
+        description="Hành động này không thể hoàn tác. Quy chuẩn này sẽ bị xóa vĩnh viễn khỏi hệ thống."
+        confirmLabel="Xác nhận xóa"
+        destructive
+        onConfirm={() => { if (deleteConfirmId) handleDeleteRule(deleteConfirmId) }}
+      />
     </>
   )
 }

@@ -23,6 +23,7 @@ import { InputFieldController } from '@/components/ui/form-controllers'
 import { usePermission } from '@/hooks/usePermission'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import type { Role } from '@/types/auth'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { EmployeeCard } from './EmployeeCard'
 import { EmployeeDetailSheet } from './EmployeeDetailSheet'
 
@@ -78,6 +79,9 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     onEdit,
     onDeactivate,
     onReactivate,
+    confirmPending,
+    onConfirmPending,
+    onCancelPending,
     filters,
     setFilters,
   } = table
@@ -282,21 +286,21 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
                   ? routeSearch.role === undefined
                   : routeSearch.role === tab.value
               return (
-                <button
+                <Button
                   key={tab.value}
                   type="button"
                   role="tab"
                   aria-selected={selected}
+                  variant={selected ? 'default' : 'ghost'}
+                  size="sm"
                   className={cn(
-                    'rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors sm:px-3 sm:text-sm',
-                    selected
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    'rounded-lg px-2.5 py-2 text-xs font-semibold sm:px-3 sm:text-sm',
+                    !selected && 'text-muted-foreground'
                   )}
                   onClick={() => applyRoleTab(tab.value)}
                 >
                   {tab.label}
-                </button>
+                </Button>
               )
             })}
           </div>
@@ -406,6 +410,20 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         onReactivate={onReactivate}
         canDeactivate={canDeactivate}
         canReactivate={canEdit}
+      />
+
+      <ConfirmDialog
+        open={confirmPending !== null}
+        onOpenChange={(open) => { if (!open) onCancelPending() }}
+        title={confirmPending?.type === 'deactivate' ? 'Vô hiệu hóa tài khoản?' : 'Kích hoạt lại tài khoản?'}
+        description={
+          confirmPending?.type === 'deactivate'
+            ? 'Nhân viên sẽ không thể đăng nhập sau khi bị vô hiệu hóa.'
+            : 'Nhân viên sẽ được khôi phục quyền đăng nhập.'
+        }
+        confirmLabel={confirmPending?.type === 'deactivate' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+        destructive={confirmPending?.type === 'deactivate'}
+        onConfirm={onConfirmPending}
       />
 
       {viewMode === 'cards' && (employees.length > 0 || pagination.total > 0) && !selectedId ? (
