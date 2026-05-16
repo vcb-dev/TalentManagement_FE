@@ -222,7 +222,7 @@ export function MemberClassesPanel() {
             <div className="flex items-center gap-4">
               <div className="h-10 w-1 bg-primary rounded-full" />
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-primary/60">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/60">
                   Đang tham gia
                 </p>
                 <p className="text-lg font-black text-slate-900">{cls.name}</p>
@@ -271,7 +271,7 @@ export function MemberClassesPanel() {
               cls.schedules.map((s) => (
                 <div key={s.id} className="space-y-3 p-4">
                   <div>
-                    <p className="text-xs font-black text-slate-900">
+                    <p className="text-xs font-bold text-slate-900">
                       {formatDateIsoVi(s.dateIso)}
                     </p>
                     <p className="text-xs font-bold text-slate-400">
@@ -289,7 +289,7 @@ export function MemberClassesPanel() {
                   </p>
                   <Badge
                     className={cn(
-                      'h-7 rounded-lg px-3 text-xs font-black uppercase tracking-tight border-0 shadow-sm',
+                      'h-7 rounded-lg px-3 text-xs font-semibold uppercase tracking-tight border-0 shadow-sm',
                       s.attendance === 'PRESENT'
                         ? 'bg-emerald-500/10 text-emerald-600'
                         : s.attendance === 'LATE'
@@ -311,7 +311,7 @@ export function MemberClassesPanel() {
                     {s.attendance === 'PRESENT' || s.attendance === 'LATE' ? (
                       <Button
                         className={cn(
-                          'h-10 w-full rounded-xl px-5 text-xs font-black uppercase tracking-widest shadow-lg transition-all',
+                          'h-10 w-full rounded-xl px-5 text-xs font-semibold uppercase tracking-wide shadow-lg transition-all',
                           s.isEvaluated
                             ? 'bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600'
                             : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
@@ -345,22 +345,22 @@ export function MemberClassesPanel() {
             <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-50 bg-slate-50/30">
-                  <th className="px-8 py-4 text-xs font-black uppercase tracking-widest text-slate-400">
+                  <th className="px-8 py-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Thời gian
                   </th>
-                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400">
+                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Giảng viên
                   </th>
-                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400">
+                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Nội dung
                   </th>
-                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-slate-400">
+                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Địa điểm
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-black uppercase tracking-widest text-slate-400">
+                  <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Trạng thái
                   </th>
-                  <th className="px-8 py-4 text-right text-xs font-black uppercase tracking-widest text-slate-400">
+                  <th className="px-8 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Hành động
                   </th>
                 </tr>
@@ -379,7 +379,7 @@ export function MemberClassesPanel() {
                     <tr key={s.id} className="group transition-colors hover:bg-slate-50/50">
                       <td className="px-8 py-5">
                         <div className="space-y-1">
-                          <p className="text-xs font-black text-slate-900">
+                          <p className="text-xs font-bold text-slate-900">
                             {formatDateIsoVi(s.dateIso)}
                           </p>
                           <p className="text-xs font-bold text-slate-400">
@@ -403,7 +403,7 @@ export function MemberClassesPanel() {
                       <td className="px-6 py-5 text-center">
                         <Badge
                           className={cn(
-                            'h-7 rounded-lg border-0 px-3 text-xs font-black uppercase tracking-tight shadow-sm',
+                            'h-7 rounded-lg border-0 px-3 text-xs font-semibold uppercase tracking-tight shadow-sm',
                             s.attendance === 'PRESENT'
                               ? 'bg-emerald-500/10 text-emerald-600'
                               : s.attendance === 'LATE'
@@ -426,7 +426,7 @@ export function MemberClassesPanel() {
                         {s.attendance === 'PRESENT' || s.attendance === 'LATE' ? (
                           <Button
                             className={cn(
-                              'h-9 rounded-xl px-5 text-xs font-black uppercase tracking-widest shadow-lg transition-all',
+                              'h-9 rounded-xl px-5 text-xs font-semibold uppercase tracking-wide shadow-lg transition-all',
                               s.isEvaluated
                                 ? 'bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600'
                                 : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
@@ -495,13 +495,13 @@ export function MemberClassesPanel() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
-                  <TableHead className="h-10 px-4 text-xs font-black uppercase tracking-widest text-slate-400">
+                  <TableHead className="h-10 px-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Họ tên
                   </TableHead>
-                  <TableHead className="h-10 px-4 text-xs font-black uppercase tracking-widest text-slate-400">
+                  <TableHead className="h-10 px-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Email
                   </TableHead>
-                  <TableHead className="h-10 px-4 text-xs font-black uppercase tracking-widest text-slate-400">
+                  <TableHead className="h-10 px-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Vị trí
                   </TableHead>
                 </TableRow>

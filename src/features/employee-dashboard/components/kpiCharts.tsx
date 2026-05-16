@@ -40,10 +40,10 @@ const STATUS_LABEL: Record<AssignmentStatusKey, string> = {
 }
 
 const STATUS_COLOR: Record<AssignmentStatusKey, string> = {
-  done: '#10b981',
-  in_progress: '#3b82f6',
-  not_started: '#94a3b8',
-  blocked: '#f43f5e',
+  done: 'hsl(160 84% 39%)',
+  in_progress: 'hsl(217 91% 60%)',
+  not_started: 'hsl(215 20% 65%)',
+  blocked: 'hsl(351 95% 60%)',
 }
 
 /* ==================================================================== *
@@ -118,10 +118,10 @@ export function KpiGauge({
  * ==================================================================== */
 
 const statusChartConfig = {
-  done: { label: 'Hoàn thành', color: '#10b981' },
-  in_progress: { label: 'Đang thực hiện', color: '#3b82f6' },
-  not_started: { label: 'Chưa bắt đầu', color: '#94a3b8' },
-  blocked: { label: 'Bị chặn', color: '#f43f5e' },
+  done: { label: 'Hoàn thành', color: 'hsl(160 84% 39%)' },
+  in_progress: { label: 'Đang thực hiện', color: 'hsl(217 91% 60%)' },
+  not_started: { label: 'Chưa bắt đầu', color: 'hsl(215 20% 65%)' },
+  blocked: { label: 'Bị chặn', color: 'hsl(351 95% 60%)' },
 } satisfies ChartConfig
 
 export function StatusDonut({
@@ -206,9 +206,9 @@ export function StatusDonut({
  * ==================================================================== */
 
 const evalChartConfig = {
-  ok: { label: 'Đạt (OK)', color: '#059669' },
-  not: { label: 'Chưa đạt (NOT)', color: '#e11d48' },
-  pending: { label: 'Chưa đánh giá', color: '#94a3b8' },
+  ok: { label: 'Đạt (OK)', color: 'hsl(161 94% 30%)' },
+  not: { label: 'Chưa đạt (NOT)', color: 'hsl(347 77% 50%)' },
+  pending: { label: 'Chưa đánh giá', color: 'hsl(215 20% 65%)' },
 } satisfies ChartConfig
 
 export function EvalBreakdownDonut({
@@ -223,20 +223,20 @@ export function EvalBreakdownDonut({
     () =>
       (
         [
-          { key: 'ok', name: 'Đạt (OK)', value: breakdown.ok, color: '#059669', fill: '#059669' },
+          { key: 'ok', name: 'Đạt (OK)', value: breakdown.ok, color: 'hsl(161 94% 30%)', fill: 'hsl(161 94% 30%)' },
           {
             key: 'not',
             name: 'Chưa đạt (NOT)',
             value: breakdown.not,
-            color: '#e11d48',
-            fill: '#e11d48',
+            color: 'hsl(347 77% 50%)',
+            fill: 'hsl(347 77% 50%)',
           },
           {
             key: 'pending',
             name: 'Chưa đánh giá',
             value: breakdown.pending,
-            color: '#94a3b8',
-            fill: '#94a3b8',
+            color: 'hsl(215 20% 65%)',
+            fill: 'hsl(215 20% 65%)',
           },
         ] as const
       ).filter((x) => x.value > 0),
@@ -303,10 +303,10 @@ export function EvalBreakdownDonut({
  * ==================================================================== */
 
 const GRADE_COLOR: Record<keyof GradeDistribution, string> = {
-  A: '#10b981',
-  B: '#f59e0b',
-  C: '#ef4444',
-  none: '#cbd5e1',
+  A: 'hsl(160 84% 39%)',
+  B: 'hsl(38 92% 50%)',
+  C: 'hsl(0 84% 60%)',
+  none: 'hsl(215 25% 75%)',
 }
 
 const GRADE_LABEL: Record<keyof GradeDistribution, string> = {
@@ -317,10 +317,10 @@ const GRADE_LABEL: Record<keyof GradeDistribution, string> = {
 }
 
 const gradeChartConfig = {
-  A: { label: 'Loại A', color: '#10b981' },
-  B: { label: 'Loại B', color: '#f59e0b' },
-  C: { label: 'Loại C', color: '#ef4444' },
-  none: { label: 'Chưa xếp', color: '#cbd5e1' },
+  A: { label: 'Loại A', color: 'hsl(160 84% 39%)' },
+  B: { label: 'Loại B', color: 'hsl(38 92% 50%)' },
+  C: { label: 'Loại C', color: 'hsl(0 84% 60%)' },
+  none: { label: 'Chưa xếp', color: 'hsl(215 25% 75%)' },
 } satisfies ChartConfig
 
 export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: string }) {
@@ -407,9 +407,9 @@ export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: st
 
 const perPersonConfig = {
   kpiOk: { label: 'KPI đạt', color: 'hsl(var(--primary))' },
-  kpiNot: { label: 'KPI chưa', color: '#c7d2fe' },
-  okrOk: { label: 'OKR đạt', color: '#10b981' },
-  okrNot: { label: 'OKR chưa', color: '#a7f3d0' },
+  kpiNot: { label: 'KPI chưa', color: 'hsl(239 100% 87%)' },
+  okrOk: { label: 'OKR đạt', color: 'hsl(160 84% 39%)' },
+  okrNot: { label: 'OKR chưa', color: 'hsl(152 76% 80%)' },
 } satisfies ChartConfig
 
 export function PerPersonBar({ rows }: { rows: PerPersonBarRow[] }) {
@@ -477,8 +477,8 @@ export function PerPersonBar({ rows }: { rows: PerPersonBarRow[] }) {
  * ==================================================================== */
 
 const trendConfig = {
-  kpiRate: { label: 'Tiến độ KPI', color: '#6366f1' },
-  okrRate: { label: 'Tiến độ OKR', color: '#10b981' },
+  kpiRate: { label: 'Tiến độ KPI', color: 'hsl(239 84% 67%)' },
+  okrRate: { label: 'Tiến độ OKR', color: 'hsl(160 84% 39%)' },
 } satisfies ChartConfig
 
 export function TrendLine({ points }: { points: TrendPoint[] }) {

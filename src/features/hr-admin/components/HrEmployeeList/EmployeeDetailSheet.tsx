@@ -187,13 +187,13 @@ export function EmployeeDetailSheet({
 
         <div className="mb-8 grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.08] to-indigo-500/[0.06] p-4">
-            <span className="mb-1 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Cấp sao
             </span>
             <span className="text-xl font-bold text-indigo-600">{employee.currentStar}/6</span>
           </div>
           <div className="rounded-xl border border-cyan-300/35 bg-gradient-to-br from-cyan-500/[0.08] to-blue-500/[0.06] p-4">
-            <span className="mb-1 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground">
               Tiến độ
             </span>
             <span className="text-xl font-bold text-cyan-700">{xpPct}%</span>
@@ -201,7 +201,7 @@ export function EmployeeDetailSheet({
         </div>
 
         <div className="mb-8">
-          <h4 className="mb-3 text-xs font-bold uppercase tracking-widest text-indigo-700/80">
+          <h4 className="mb-3 text-xs font-bold uppercase tracking-wide text-indigo-700/80">
             Thông tin từ API
           </h4>
           <div className="grid grid-cols-1 gap-2.5">
@@ -231,7 +231,7 @@ export function EmployeeDetailSheet({
         </div>
 
         <div className="mb-8">
-          <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <h4 className="mb-4 text-xs font-bold uppercase tracking-wide text-muted-foreground">
             Hoạt động gần đây
           </h4>
           <div className="space-y-4">

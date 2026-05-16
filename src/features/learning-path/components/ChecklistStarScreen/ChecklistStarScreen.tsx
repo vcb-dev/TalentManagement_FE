@@ -387,9 +387,9 @@ export function ChecklistStarScreen({
         ) : (
           <div className="mx-auto max-w-[1400px]">
             <nav className="mb-6 flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-bold uppercase tracking-widest text-gray-500">{levelName}</span>
+              <span className="font-bold uppercase tracking-wide text-gray-500">{levelName}</span>
               <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden />
-              <span className="font-bold uppercase tracking-widest text-primary-600">
+              <span className="font-bold uppercase tracking-wide text-primary-600">
                 Toàn bộ lộ trình
               </span>
             </nav>
@@ -588,7 +588,7 @@ export function ChecklistStarScreen({
                             control={evidenceForm.control}
                             name="note"
                             label="Mô tả"
-                            labelClassName="mb-2 block text-xs font-bold uppercase tracking-widest text-gray-500"
+                            labelClassName="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-500"
                             id="evidence-note"
                             rows={4}
                             placeholder="Mô tả ngắn gọn về tài liệu bạn nộp…"
@@ -627,7 +627,7 @@ export function ChecklistStarScreen({
                         'mb-4 font-bold text-primary-600',
                         selectedObjective
                           ? 'text-base uppercase tracking-normal'
-                          : 'text-xs uppercase tracking-widest'
+                          : 'text-xs uppercase tracking-wide'
                       )}
                     >
                       {selectedObjective ? selectedObjective.objective : 'Bài đã nộp gần nhất'}
@@ -666,7 +666,7 @@ export function ChecklistStarScreen({
                               control={evidenceForm.control}
                               name="note"
                               label="Mô tả minh chứng"
-                              labelClassName="mb-1 block text-xs font-bold uppercase tracking-widest text-gray-500"
+                              labelClassName="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500"
                               id="evidence-note"
                               rows={3}
                               placeholder="Mô tả..."
@@ -692,7 +692,7 @@ export function ChecklistStarScreen({
 
                     {selectedObjective && (
                       <div className="mt-6 border-t border-gray-100 pt-4">
-                        <h5 className="mb-3 text-xs font-bold uppercase tracking-widest text-gray-500">
+                        <h5 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">
                           Lịch sử bài nộp
                         </h5>
                       </div>

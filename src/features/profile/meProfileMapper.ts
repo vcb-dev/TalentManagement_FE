@@ -118,8 +118,8 @@ function milestoneBadge(status: MeLearningPathMilestone['status']): {
     case 'done':
       return {
         badge: 'Hoàn thành',
-        badgeClass: 'bg-[#DCFCE7] text-[#166534]',
-        cardClass: 'border-[#86EFAC] bg-[#F0FDF4]',
+        badgeClass: 'bg-emerald-100 text-emerald-800',
+        cardClass: 'border-emerald-300 bg-emerald-50',
       }
     case 'in_progress':
       return {
@@ -147,14 +147,14 @@ function examCardStyle(outcome: MeExamAttempt['outcome']): {
     case 'DAT':
       return {
         badge: OUTCOME_LABEL[outcome],
-        badgeClass: 'bg-[#DCFCE7] text-[#166534]',
-        cardClass: 'border-[#86EFAC] bg-[#F0FDF4]',
+        badgeClass: 'bg-emerald-100 text-emerald-800',
+        cardClass: 'border-emerald-300 bg-emerald-50',
         badgeIconKey: 'check',
       }
     case 'BAO_LUU':
       return {
         badge: OUTCOME_LABEL[outcome],
-        badgeClass: 'bg-[#FEF3C7] text-[#92400E]',
+        badgeClass: 'bg-amber-100 text-amber-800',
         cardClass: 'border-amber-200/80 bg-amber-50/90',
         badgeIconKey: 'alertTriangle',
       }
@@ -253,12 +253,12 @@ export function mapMeAggregatedToPage(
     {
       label: 'Đạt',
       value: String(ex.DAT ?? 0),
-      valueClass: 'text-[#166534]',
+      valueClass: 'text-emerald-800',
     },
     {
       label: 'Bảo lưu',
       value: String(ex.BAO_LUU ?? 0),
-      valueClass: 'text-[#92400E]',
+      valueClass: 'text-amber-800',
     },
     {
       label: 'Chờ học lại',
@@ -302,7 +302,7 @@ export function mapMeAggregatedToPage(
       badgeClass: isCurrent
         ? 'bg-primary/15 text-primary'
         : isPast
-          ? 'bg-[#DCFCE7] text-[#166534]'
+          ? 'bg-emerald-100 text-emerald-800'
           : 'border border-border bg-muted text-muted-foreground',
       cardClass: isCurrent
         ? 'border-primary/30 bg-primary/5'
@@ -360,7 +360,7 @@ export function mapMeAggregatedToPage(
         iconKey: 'check',
         label: 'Mốc hoàn thành',
         value: totalMilestones ? `${doneM}/${totalMilestones}` : '—',
-        valueClass: 'text-[#166534]',
+        valueClass: 'text-emerald-800',
       },
       {
         iconKey: 'circleDot',
@@ -404,7 +404,7 @@ export function mapMeAggregatedToPage(
       {
         label: 'Mốc hoàn thành',
         value: totalMilestones ? `${Math.round((doneM / totalMilestones) * 100)}%` : '—',
-        valueClass: 'text-[#166534]',
+        valueClass: 'text-emerald-800',
       },
       {
         label: 'Sao trong cấp',

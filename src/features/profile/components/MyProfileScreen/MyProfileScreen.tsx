@@ -88,7 +88,7 @@ function SectionTitle({
       >
         {icon || <Building2 className="h-4 w-4" />}
       </div>
-      <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
+      <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
         {children}
       </h3>
     </div>
@@ -315,7 +315,7 @@ function ProfileIdentityCard({
         <div className="flex flex-wrap items-center gap-2">
           <Badge
             variant="outline"
-            className="h-6 border-indigo-400/30 bg-indigo-500/10 px-2 text-xs font-black uppercase tracking-widest text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
+            className="h-6 border-indigo-400/30 bg-indigo-500/10 px-2 text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
           >
             {ROLE_LABEL_VI[role]}
           </Badge>
@@ -327,7 +327,7 @@ function ProfileIdentityCard({
           </div>
           <Badge
             variant="outline"
-            className="h-6 border-fuchsia-400/30 bg-fuchsia-500/10 px-2 text-xs font-black uppercase tracking-widest text-fuchsia-600 dark:border-fuchsia-900/50 dark:bg-fuchsia-950/30 dark:text-fuchsia-300"
+            className="h-6 border-fuchsia-400/30 bg-fuchsia-500/10 px-2 text-xs font-semibold uppercase tracking-wide text-fuchsia-600 dark:border-fuchsia-900/50 dark:bg-fuchsia-950/30 dark:text-fuchsia-300"
           >
             Cấp độ: {currentLevelTitle}
           </Badge>
@@ -452,7 +452,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
               <section className="rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
                 <div className="mb-8 flex items-center gap-3">
                   <div className="h-8 w-1.5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
-                  <h2 className="text-xl font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
+                  <h2 className="text-xl font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
                     Chi tiết hồ sơ
                   </h2>
                 </div>
@@ -462,7 +462,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     <SectionTitle variant="primary">{workSection.title}</SectionTitle>
                     {workReadonlyFields.length > 0 ? (
                       <div className="mb-8">
-                        <p className="mb-4 text-xs font-black uppercase tracking-widest text-blue-600/60">
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-blue-600/60">
                           Thông tin đồng bộ (chỉ xem)
                         </p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -472,7 +472,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     ) : null}
                     {workEditableFields.length > 0 ? (
                       <div className="border-t border-blue-100/50 pt-6 dark:border-blue-800/50">
-                        <p className="mb-4 text-xs font-black uppercase tracking-widest text-blue-600/60">
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-blue-600/60">
                           Thông tin có thể cập nhật
                         </p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -514,7 +514,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     <StarEmblem variant="filled" className="h-7 w-7" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-black uppercase tracking-widest text-amber-700/70">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700/70">
                       Lộ trình hiện tại
                     </p>
                     <p className="text-base font-black text-slate-900 dark:text-slate-100 truncate">
@@ -525,7 +525,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
 
                 <div className="space-y-6 relative z-10">
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-amber-700/80">
+                    <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-amber-700/80">
                       <span>Tiến độ cấp độ</span>
                       <span className="text-amber-600 bg-white px-1.5 py-0.5 rounded-md shadow-sm">
                         {levelProgressPct}%
@@ -540,7 +540,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                   </div>
 
                   <div className="flex items-center justify-between gap-2 border-t border-amber-200/50 pt-6 dark:border-amber-900/20">
-                    <div className="text-xs font-black uppercase tracking-widest text-slate-500">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Sao hiện tại
                     </div>
                     <div className="text-lg font-black text-amber-600 bg-amber-100/50 px-2 py-0.5 rounded-lg">
@@ -570,7 +570,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-10 rounded-xl border-amber-200 bg-white text-xs font-black uppercase tracking-wider text-amber-700 shadow-sm transition-all hover:bg-amber-500 hover:text-white hover:border-amber-500 dark:border-amber-900/50 dark:bg-slate-900"
+                      className="h-10 rounded-xl border-amber-200 bg-white text-xs font-semibold uppercase tracking-wider text-amber-700 shadow-sm transition-all hover:bg-amber-500 hover:text-white hover:border-amber-500 dark:border-amber-900/50 dark:bg-slate-900"
                       asChild
                     >
                       <Link to="/learning-path" search={learningPathSearch}>
@@ -580,7 +580,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-10 rounded-xl border-amber-200 bg-white text-xs font-black uppercase tracking-wider text-amber-700 shadow-sm transition-all hover:bg-amber-500 hover:text-white hover:border-amber-500 dark:border-amber-900/50 dark:bg-slate-900"
+                      className="h-10 rounded-xl border-amber-200 bg-white text-xs font-semibold uppercase tracking-wider text-amber-700 shadow-sm transition-all hover:bg-amber-500 hover:text-white hover:border-amber-500 dark:border-amber-900/50 dark:bg-slate-900"
                       asChild
                     >
                       <Link to="/exam">Kết quả thi</Link>
@@ -640,7 +640,7 @@ export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
         {isLoading ? (
           <div className="flex flex-col items-center gap-4">
             <RefreshCw className="h-8 w-8 animate-spin text-primary/40" />
-            <span className="font-bold tracking-widest text-xs uppercase">Đang tải hồ sơ…</span>
+            <span className="font-bold tracking-wide text-xs uppercase">Đang tải hồ sơ…</span>
           </div>
         ) : (
           'Không có dữ liệu'

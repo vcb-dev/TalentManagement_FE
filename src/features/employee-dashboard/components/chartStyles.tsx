@@ -18,16 +18,16 @@ export function ChartGradients() {
         <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
       </linearGradient>
       <linearGradient id="gradOkr" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#10b981" stopOpacity={0.9} />
-        <stop offset="100%" stopColor="#059669" stopOpacity={0.5} />
+        <stop offset="0%" stopColor="hsl(160 84% 39%)" stopOpacity={0.9} />
+        <stop offset="100%" stopColor="hsl(161 94% 30%)" stopOpacity={0.5} />
       </linearGradient>
       <linearGradient id="gradKpiSoft" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#6366f1" stopOpacity={0.35} />
-        <stop offset="100%" stopColor="#c7d2fe" stopOpacity={0.12} />
+        <stop offset="0%" stopColor="hsl(239 84% 67%)" stopOpacity={0.35} />
+        <stop offset="100%" stopColor="hsl(239 100% 87%)" stopOpacity={0.12} />
       </linearGradient>
       <linearGradient id="gradOkrSoft" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
-        <stop offset="100%" stopColor="#a7f3d0" stopOpacity={0.12} />
+        <stop offset="0%" stopColor="hsl(160 84% 39%)" stopOpacity={0.35} />
+        <stop offset="100%" stopColor="hsl(152 76% 80%)" stopOpacity={0.12} />
       </linearGradient>
     </defs>
   )
