@@ -35,7 +35,11 @@ import {
 } from '@/features/manager/hooks'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 import { ClassMembersScoresModal } from '@/features/manager/components/ClassMembersScoresModal'
-import { addMinutesToHm, getExamDurationMinutes } from '@/lib/examScheduleTime'
+import {
+  addMinutesToHm,
+  extractDurationMinutes,
+  getExamDurationMinutes,
+} from '@/lib/examScheduleTime'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
 type QuestionItem = { id: string; stem: string; options: string[] }
@@ -134,23 +138,43 @@ function formatScheduleWindow(
     endTime?: string | null
     examQuestions?: unknown
   },
-  scheduleBank?: QuestionBankPayload | null
+  scheduleBank?: QuestionBankPayload | null,
+  classExamQuestions?: unknown
 ): string {
-  const dur = scheduleBank
-    ? scheduleBank.duration || 60
-    : getExamDurationMinutes(schedule.examQuestions, schedule.startTime, schedule.endTime ?? null)
+  const dur =
+    extractDurationMinutes(scheduleBank) ??
+    getExamDurationMinutes(
+      schedule.examQuestions,
+      schedule.startTime,
+      schedule.endTime ?? null,
+      classExamQuestions
+    )
   const endHm = addMinutesToHm(schedule.startTime, dur)
   return `${schedule.dateIso} · ${schedule.startTime} – ${endHm}`
 }
 
 function examHmRangeDisplay(
-  item: { startTime: string; endTime?: string | null; examQuestions?: unknown },
+  item: {
+    startTime: string
+    endTime?: string | null
+    examQuestions?: unknown
+    classExamQuestions?: unknown
+  },
   sessionBank?: QuestionBankPayload | null
 ): string {
-  const dur = sessionBank
-    ? sessionBank.duration || 60
-    : getExamDurationMinutes(item.examQuestions, item.startTime, item.endTime ?? null)
+  const dur =
+    extractDurationMinutes(sessionBank) ??
+    getExamDurationMinutes(
+      item.examQuestions,
+      item.startTime,
+      item.endTime ?? null,
+      item.classExamQuestions
+    )
   return `${item.startTime} – ${addMinutesToHm(item.startTime, dur)}`
+}
+
+function examDurationLabelMinutes(sessionBank: QuestionBankPayload | null | undefined): number {
+  return extractDurationMinutes(sessionBank) ?? 60
 }
 
 function ClassSchedulesList({
@@ -555,7 +579,7 @@ export function ManagerClassExamsScreen() {
                             {sessionBank?.questions.length ?? 0} câu hỏi
                           </p>
                           <p className="text-xs font-medium text-muted-foreground">
-                            Thời gian: {sessionBank?.duration || 60} phút
+                            Thời gian: {examDurationLabelMinutes(sessionBank)} phút
                           </p>
                         </div>
                       ) : (
@@ -698,7 +722,7 @@ export function ManagerClassExamsScreen() {
                                 {sessionBank?.questions.length ?? 0} câu hỏi
                               </span>
                               <span className="text-xs text-muted-foreground font-medium">
-                                Thời gian: {sessionBank?.duration || 60} phút
+                                Thời gian: {examDurationLabelMinutes(sessionBank)} phút
                               </span>
                             </div>
                           ) : (

@@ -66,20 +66,49 @@ export function mergeScheduleExamQuestions(
   return fromAllExams ?? fromClassScheduleEmbed ?? null
 }
 
+function examPayloadHasQuestions(examQuestions: unknown): boolean {
+  let parsed: unknown = examQuestions
+  if (typeof parsed === 'string') {
+    const t = parsed.trim()
+    if (!t) return false
+    try {
+      parsed = JSON.parse(t) as unknown
+    } catch {
+      return false
+    }
+  }
+  if (typeof parsed !== 'object' || parsed === null) return false
+  const q = (parsed as { questions?: unknown }).questions
+  return Array.isArray(q) && q.length > 0
+}
+
 /**
- * Thời lượng phút ưu tiên: đề đã gán (examQuestions.duration) → khoảng end-start → mặc định.
+ * Thời lượng phút ưu tiên: đề schedule → đề mẫu lớp (gộp merge) → khoảng end-start **chỉ khi chưa có đề** (tránh `endTime` là suất dài cả buổi).
  */
 export function getExamDurationMinutes(
   examQuestions: unknown,
   startTime: string,
-  fallbackEndHm?: string | null
+  fallbackEndHm?: string | null,
+  classLevelExamQuestions?: unknown
 ): number {
-  const extracted = extractDurationMinutes(examQuestions)
+  const merged = mergeScheduleExamQuestions(examQuestions, classLevelExamQuestions)
+  const extracted =
+    extractDurationMinutes(examQuestions) ??
+    extractDurationMinutes(classLevelExamQuestions) ??
+    extractDurationMinutes(merged)
+
   if (extracted != null) return extracted
-  if (fallbackEndHm) {
+
+  const hasQs =
+    examPayloadHasQuestions(examQuestions) ||
+    examPayloadHasQuestions(classLevelExamQuestions) ||
+    examPayloadHasQuestions(merged)
+
+  if (!hasQs && fallbackEndHm) {
     const inferred = inferDurationMinutesFromStartEnd(startTime, fallbackEndHm)
     if (inferred != null && inferred > 0) return inferred
   }
+
   return 120
 }
 
@@ -88,9 +117,15 @@ export function examEpochBounds(e: {
   startTime: string
   endTime?: string | null
   examQuestions?: unknown
+  classExamQuestions?: unknown
 }): { startMs: number; endMs: number } {
   const startMs = new Date(`${e.dateIso}T${e.startTime}:00`).getTime()
-  const dur = getExamDurationMinutes(e.examQuestions, e.startTime, e.endTime ?? null)
+  const dur = getExamDurationMinutes(
+    e.examQuestions,
+    e.startTime,
+    e.endTime ?? null,
+    e.classExamQuestions
+  )
   const endMs = startMs + dur * 60_000
   return { startMs, endMs }
 }
@@ -99,7 +134,13 @@ export type ExamLiveStatus = 'upcoming' | 'live' | 'past'
 
 export function examLiveStatus(
   nowMs: number,
-  e: { dateIso: string; startTime: string; endTime?: string | null; examQuestions?: unknown }
+  e: {
+    dateIso: string
+    startTime: string
+    endTime?: string | null
+    examQuestions?: unknown
+    classExamQuestions?: unknown
+  }
 ): ExamLiveStatus {
   const { startMs, endMs } = examEpochBounds(e)
   if (nowMs < startMs) return 'upcoming'

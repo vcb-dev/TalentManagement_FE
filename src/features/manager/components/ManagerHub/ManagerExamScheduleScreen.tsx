@@ -98,9 +98,10 @@ export function ManagerExamScheduleScreen() {
   }, [classes])
 
   function toExamTimelineRow(e: (typeof exams)[number]) {
+    const cls = (classes as ManagerClassRow[]).find((c) => c.id === e.classId)
     const mergedQs = mergeScheduleExamQuestions(
-      e.examQuestions,
-      scheduleExamQuestionsFromClasses.get(e.id)
+      mergeScheduleExamQuestions(e.examQuestions, scheduleExamQuestionsFromClasses.get(e.id)),
+      cls?.examQuestions ?? null
     )
     return {
       dateIso: e.dateIso,
@@ -242,8 +243,11 @@ export function ManagerExamScheduleScreen() {
     const mergedQs =
       existing != null
         ? mergeScheduleExamQuestions(
-            existing.examQuestions,
-            scheduleExamQuestionsFromClasses.get(existing.id)
+            mergeScheduleExamQuestions(
+              existing.examQuestions,
+              scheduleExamQuestionsFromClasses.get(existing.id)
+            ),
+            modalClass?.examQuestions ?? null
           )
         : null
     const durationMin =
