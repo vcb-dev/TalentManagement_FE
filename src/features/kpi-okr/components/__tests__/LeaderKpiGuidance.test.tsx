@@ -17,17 +17,15 @@ describe('LeaderKpiGuidance — dữ liệu bảng hướng dẫn', () => {
   it('SALES_NV mandatory metrics gồm đúng 2 KPI chính', () => {
     const salesMandatory = MANDATORY_METRICS_BY_TEMPLATE['SALES_NV']
     expect(salesMandatory).toContain('Doanh thu lên đơn')
-    expect(salesMandatory).toContain('Số đơn chốt')
+    expect(salesMandatory).toContain('Số đơn hàng chốt được (có cọc, XN ĐT)')
     expect(salesMandatory).toHaveLength(2)
   })
 
-  it('TRAFFIC_TEAM_NV mandatory metrics gồm đúng 4 KPI', () => {
+  it('TRAFFIC_TEAM_NV mandatory metrics gồm đúng 2 KPI (sau khi loại bỏ team metric)', () => {
     const trafficMandatory = MANDATORY_METRICS_BY_TEMPLATE['TRAFFIC_TEAM_NV']
-    expect(trafficMandatory).toContain('Tổng view traffic team')
-    expect(trafficMandatory).toContain('Doanh thu team traffic')
     expect(trafficMandatory).toContain('Traffic cá nhân tháng')
     expect(trafficMandatory).toContain('Doanh thu cá nhân tháng')
-    expect(trafficMandatory).toHaveLength(4)
+    expect(trafficMandatory).toHaveLength(2)
   })
 
   it('TRAFFIC_TEAM_IDS_FALLBACK có đúng 8 team (theo PDF BOD)', () => {
