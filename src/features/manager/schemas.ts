@@ -191,5 +191,6 @@ export const managerSubmissionApiSchema = z.object({
   status: z.enum(['PENDING', 'ACCEPTED', 'REJECTED', 'GRADED']),
   score: z.number().nullish(),
   managerComment: z.string().nullish(),
+  hostComment: z.string().nullish(),
   createdAt: z.string().datetime(),
 })

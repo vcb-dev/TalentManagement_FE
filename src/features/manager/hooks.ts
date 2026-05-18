@@ -436,8 +436,20 @@ export const useManagerSubmissions = () => {
 export const useUpdateSubmissionStatus = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: { id: string; status: string; score?: number; managerComment?: string }) =>
-      managerApi.updateSubmissionStatus(input.id, input.status, input.score, input.managerComment),
+    mutationFn: (input: {
+      id: string
+      status: string
+      score?: number
+      managerComment?: string
+      hostComment?: string
+    }) =>
+      managerApi.updateSubmissionStatus(
+        input.id,
+        input.status,
+        input.score,
+        input.managerComment,
+        input.hostComment
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['manager', 'learning-submissions'] })
       toast.success('Cập nhật trạng thái thành công')

@@ -7,6 +7,7 @@ import {
   ClipboardList,
   DoorOpen,
   FileUp,
+  Headphones,
   Home,
   KeyRound,
   LayoutGrid,
@@ -22,6 +23,10 @@ import {
   Building2,
   Award,
 } from 'lucide-react'
+
+/** URL của CSKH Quality Dashboard (scraper_server.js). Mặc định localhost:5555. */
+const CSKH_DASHBOARD_URL: string =
+  (import.meta as any).env?.VITE_CSKH_DASHBOARD_URL || 'http://localhost:5555'
 
 export type NavMatchMode = 'exact' | 'prefix' | 'custom'
 
@@ -214,6 +219,16 @@ const BOD_ITEMS: AppNavItem[] = [
     permissionId: 'admin.permissions.assign',
   },
 ]
+
+/** CSKH Quality — external dashboard (scraper_server.js trên máy office). */
+export const CSKH_QUALITY_ITEM: AppNavItem = {
+  to: CSKH_DASHBOARD_URL,
+  label: 'CSKH Quality',
+  icon: Headphones,
+  match: 'exact',
+  openNewTab: true,
+  permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+}
 
 const MANAGER_OPS_ITEMS: AppNavItem[] = [
   {
@@ -477,6 +492,7 @@ export function groupedSidebarNavItems(
         ),
         ...find(MANAGER_OPS_ITEMS, '/permissions'),
         ...find(BOD_ITEMS, '/permissions'),
+        CSKH_QUALITY_ITEM,
       ]),
     },
     {
@@ -519,6 +535,7 @@ export function mergeCompactHeaderNavItems(
   push(LEADER_KPI_ITEMS)
   push(MANAGER_OPS_ITEMS)
   push(TEACHER_HEADER_ITEMS)
+  push([CSKH_QUALITY_ITEM])
   return out
 }
 

@@ -14,6 +14,13 @@ import {
   Eye,
   Info,
   ExternalLink,
+  CheckCircle2,
+  UserCheck,
+  MessageSquareQuote,
+  AlertCircle,
+  Trophy,
+  XCircle,
+  BookOpen,
 } from 'lucide-react'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { StarEmblem } from '@/components/icons/StarEmblem'
@@ -789,63 +796,137 @@ export function ChecklistStarScreen({
                           onOpenChange={(open) => !open && setSelectedSubmission(null)}
                         >
                           <DialogContent className="sm:max-w-[520px] overflow-hidden">
-                            <DialogHeader>
-                              <DialogTitle>Kết quả chấm điểm</DialogTitle>
-                              <DialogDescription>
-                                Chi tiết điểm số và nhận xét từ quản lý.
+                            <DialogHeader className="pb-2 border-b border-slate-100">
+                              <DialogTitle className="text-xl font-black tracking-tight text-slate-800 flex items-center gap-2">
+                                <Trophy className="h-5 w-5 text-amber-500" />
+                                Thành tích Lộ trình
+                              </DialogTitle>
+                              <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                Phản hồi chi tiết từ Ban điều hành
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                              <div className="flex flex-col gap-2">
-                                <span className="text-sm font-semibold">Điểm số:</span>
-                                <span className="text-2xl font-black text-blue-600">
-                                  {displaySubmission?.score ?? 'Chưa có'}
-                                </span>
+                            {/* Score & Status Summary Card */}
+                            <div
+                              className={cn(
+                                'relative overflow-hidden rounded-[28px] p-8 text-center border-2 transition-all duration-500',
+                                (displaySubmission?.score || 0) >= 60
+                                  ? 'bg-emerald-50/50 border-emerald-100 shadow-emerald-100/20'
+                                  : 'bg-rose-50/50 border-rose-100 shadow-rose-100/20'
+                              )}
+                            >
+                              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                                {(displaySubmission?.score || 0) >= 60 ? (
+                                  <Trophy className="h-24 w-24" />
+                                ) : (
+                                  <XCircle className="h-24 w-24" />
+                                )}
                               </div>
-                              <div className="flex flex-col gap-2">
-                                <span className="text-sm font-semibold">Nhận xét:</span>
-                                <p className="text-sm italic p-3 bg-gray-50 rounded-lg border whitespace-pre-wrap text-slate-600 leading-relaxed">
-                                  {displaySubmission?.managerComment
-                                    ? `"${displaySubmission.managerComment}"`
-                                    : 'Không có nhận xét.'}
+
+                              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2 block">
+                                Kết quả tổng kết
+                              </span>
+
+                              <div className="flex flex-col items-center">
+                                <div
+                                  className={cn(
+                                    'text-7xl font-black tabular-nums tracking-tighter mb-2',
+                                    (displaySubmission?.score || 0) >= 60
+                                      ? 'text-emerald-600'
+                                      : 'text-rose-600'
+                                  )}
+                                >
+                                  {displaySubmission?.score ?? '--'}
+                                </div>
+
+                                <div
+                                  className={cn(
+                                    'flex items-center gap-2 px-5 py-2 rounded-full text-sm font-black uppercase tracking-widest border shadow-sm',
+                                    (displaySubmission?.score || 0) >= 60
+                                      ? 'bg-emerald-500 text-white border-emerald-400'
+                                      : 'bg-rose-500 text-white border-rose-400'
+                                  )}
+                                >
+                                  {(displaySubmission?.score || 0) >= 60 ? (
+                                    <>
+                                      <CheckCircle2 className="h-4 w-4" /> Đạt yêu cầu
+                                    </>
+                                  ) : (
+                                    <>
+                                      <AlertCircle className="h-4 w-4" /> Thi lại
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            {/* Feedback Grid */}
+                            <div className="space-y-4 pt-4">
+                              {/* Manager Feedback */}
+                              <div className="group relative overflow-hidden rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                                    <UserCheck className="h-4 w-4 text-primary" />
+                                  </div>
+                                  <span className="text-[11px] font-black uppercase tracking-widest text-primary/70">
+                                    Nhận xét Quản lý
+                                  </span>
+                                </div>
+                                <p className="text-sm font-medium leading-relaxed text-slate-600 whitespace-pre-wrap pl-1 border-l-2 border-primary/20 italic">
+                                  {displaySubmission?.managerComment ||
+                                    'Quản lý chưa để lại nhận xét chi tiết.'}
                                 </p>
                               </div>
 
-                              {displaySubmission?.fileName && (
-                                <div className="flex flex-col gap-2 border-t border-dashed border-slate-200 pt-4">
-                                  <span className="text-sm font-semibold text-slate-800">
-                                    File minh chứng đã nộp:
-                                  </span>
-                                  <div className="flex items-center justify-between bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 gap-3">
-                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                      <Paperclip className="h-4 w-4 text-indigo-600 shrink-0" />
-                                      <span
-                                        className="text-sm font-extrabold text-indigo-900 truncate flex-1"
-                                        title={displaySubmission.fileName}
-                                      >
-                                        {displaySubmission.fileName}
-                                      </span>
-                                    </div>
-                                    {displaySubmission.url && (
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        className="h-9 gap-1.5 rounded-xl font-bold bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hover:shadow transition-all shrink-0 flex items-center"
-                                        onClick={() => {
-                                          const fullUrl = resolvePublicAssetUrl(
-                                            displaySubmission.url!
-                                          )
-                                          if (fullUrl) window.open(fullUrl, '_blank')
-                                        }}
-                                      >
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                        <span>Xem file</span>
-                                      </Button>
-                                    )}
+                              {/* Host Feedback */}
+                              <div className="group relative overflow-hidden rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className="h-8 w-8 rounded-xl bg-purple-100 flex items-center justify-center">
+                                    <MessageSquareQuote className="h-4 w-4 text-purple-700" />
                                   </div>
+                                  <span className="text-[11px] font-black uppercase tracking-widest text-purple-700/70">
+                                    Nhận xét Host
+                                  </span>
                                 </div>
-                              )}
+                                <p className="text-sm font-medium leading-relaxed text-slate-600 whitespace-pre-wrap pl-1 border-l-2 border-purple-200 italic">
+                                  {displaySubmission?.hostComment ||
+                                    'Host chưa để lại nhận xét chi tiết.'}
+                                </p>
+                              </div>
                             </div>
+
+                            {displaySubmission?.fileName && (
+                              <div className="flex flex-col gap-2 border-t border-dashed border-slate-200 pt-4">
+                                <span className="text-sm font-semibold text-slate-800">
+                                  File minh chứng đã nộp:
+                                </span>
+                                <div className="flex items-center justify-between bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 gap-3">
+                                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <Paperclip className="h-4 w-4 text-indigo-600 shrink-0" />
+                                    <span
+                                      className="text-sm font-extrabold text-indigo-900 truncate flex-1"
+                                      title={displaySubmission.fileName}
+                                    >
+                                      {displaySubmission.fileName}
+                                    </span>
+                                  </div>
+                                  {displaySubmission.url && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      className="h-9 gap-1.5 rounded-xl font-bold bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hover:shadow transition-all shrink-0 flex items-center"
+                                      onClick={() => {
+                                        const fullUrl = resolvePublicAssetUrl(
+                                          displaySubmission.url!
+                                        )
+                                        if (fullUrl) window.open(fullUrl, '_blank')
+                                      }}
+                                    >
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                      <span>Xem file</span>
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </DialogContent>
                         </Dialog>
                       </>

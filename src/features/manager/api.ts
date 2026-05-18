@@ -397,12 +397,14 @@ export const managerApi = {
     id: string,
     status: string,
     score?: number,
-    managerComment?: string
+    managerComment?: string,
+    hostComment?: string
   ) => {
     const res = await apiClient.patch<unknown>(`/learning/admin/submissions/${id}`, {
       status,
       score,
       managerComment,
+      hostComment,
     })
     return res.data
   },
