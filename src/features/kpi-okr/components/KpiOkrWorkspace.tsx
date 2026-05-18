@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useForm, useFieldArray, useWatch } from 'react-hook-form'
+import { useForm, useFieldArray, useWatch, Controller } from 'react-hook-form'
 import {
   AlignLeft,
   CheckCircle2,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { CustomSelect } from '@/components/shared/CustomSelect'
 import { cn } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/axios'
 import { CARD_ENTRANCE, SECTION_FADE_UP } from '@/lib/cardMotion'
 import { useAuthStore } from '@/stores/auth.store'
 import { resolveEffectivePermissionSet } from '@/features/permissions/resolveEffective'
@@ -2378,6 +2379,7 @@ function ManagerCascadeAddForm({
     register,
     handleSubmit,
     reset,
+    control,
     formState: { isSubmitting },
   } = useForm<{
     kind: 'KPI' | 'OKR'
@@ -2430,24 +2432,38 @@ function ManagerCascadeAddForm({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Loại</Label>
-              <select
-                {...register('kind')}
-                className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm"
-              >
-                <option value="KPI">KPI</option>
-                <option value="OKR">OKR</option>
-              </select>
+              <Controller
+                name="kind"
+                control={control}
+                render={({ field }) => (
+                  <CustomSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    options={[
+                      { label: 'KPI', value: 'KPI' },
+                      { label: 'OKR', value: 'OKR' },
+                    ]}
+                  />
+                )}
+              />
             </div>
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Ưu tiên</Label>
-              <select
-                {...register('priority', { valueAsNumber: true })}
-                className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm"
-              >
-                <option value={1}>P1 — Cao</option>
-                <option value={2}>P2 — Trung bình</option>
-                <option value={3}>P3 — Thấp</option>
-              </select>
+              <Controller
+                name="priority"
+                control={control}
+                render={({ field }) => (
+                  <CustomSelect
+                    value={String(field.value)}
+                    onValueChange={(val) => field.onChange(Number(val))}
+                    options={[
+                      { label: 'P1 — Cao', value: '1' },
+                      { label: 'P2 — Trung bình', value: '2' },
+                      { label: 'P3 — Thấp', value: '3' },
+                    ]}
+                  />
+                )}
+              />
             </div>
           </div>
           <div className="space-y-1">
@@ -3024,7 +3040,7 @@ function SummaryPanel({
   onRecalculated: () => void
   /** Leader: đưa dòng user này lên đầu. Member: chỉ hiển thị dòng của user này. */
   prioritizeAssigneeUserId?: string
-  viewerVariant: 'leader' | 'member'
+  viewerVariant: 'leader' | 'member' | 'manager'
 }) {
   const [recalcBusy, setRecalcBusy] = useState(false)
   const displayRows = useMemo(() => {

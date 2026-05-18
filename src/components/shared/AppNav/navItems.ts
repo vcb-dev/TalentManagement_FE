@@ -7,6 +7,7 @@ import {
   ClipboardList,
   DoorOpen,
   FileUp,
+  Headphones,
   Home,
   KeyRound,
   LayoutGrid,
@@ -197,6 +198,15 @@ const BOD_ITEMS: AppNavItem[] = [
     permissionId: 'admin.permissions.assign',
   },
 ]
+
+/** CSKH Quality — nhúng dashboard scraper trong app (`/cskh-quality`). */
+export const CSKH_QUALITY_ITEM: AppNavItem = {
+  to: '/cskh-quality',
+  label: 'CSKH Quality',
+  icon: Headphones,
+  match: 'prefix',
+  permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+}
 
 const MANAGER_OPS_ITEMS: AppNavItem[] = [
   {
@@ -452,6 +462,7 @@ export function groupedSidebarNavItems(
         ),
         ...find(MANAGER_OPS_ITEMS, '/permissions'),
         ...find(BOD_ITEMS, '/permissions'),
+        CSKH_QUALITY_ITEM,
       ]),
     },
     {
@@ -490,6 +501,7 @@ export function mergeCompactHeaderNavItems(
   push(LEADER_KPI_ITEMS)
   push(MANAGER_OPS_ITEMS)
   push(TEACHER_HEADER_ITEMS)
+  push([CSKH_QUALITY_ITEM])
   return out
 }
 

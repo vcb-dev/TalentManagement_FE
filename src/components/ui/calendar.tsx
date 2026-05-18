@@ -54,6 +54,8 @@ export function Calendar({
           'text-slate-200 dark:text-slate-800 opacity-20 cursor-not-allowed pointer-events-none grayscale',
         day_range_middle: 'aria-selected:bg-accent aria-selected:text-accent-foreground',
         day_hidden: 'invisible',
+        selected:
+          'bg-primary! text-primary-foreground! hover:bg-primary! hover:text-primary-foreground! focus:bg-primary! focus:text-primary-foreground!',
         ...classNames,
       }}
       {...props}

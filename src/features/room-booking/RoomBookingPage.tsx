@@ -26,6 +26,7 @@ import {
   deleteBooking,
   approveBooking,
   rejectBooking,
+  finishBooking,
   type MeetingBooking,
   type BookedSlot,
 } from './api'
@@ -75,14 +76,22 @@ function BookingStatusBadge({
   const { date: td, time: ct } = vnTime
   const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
 
-  if (b.status === 'approved' && isPast)
+  if (b.status === 'approved' && b.timeStatus === 'ongoing')
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-tight text-indigo-700 animate-pulse">
+        <span className="h-1.5 w-1.5 rounded-full bg-indigo-600"></span>
+        Đang họp
+      </span>
+    )
+
+  if (b.status === 'approved' && (isPast || b.timeStatus === 'done'))
     return (
       <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-tight text-blue-700">
         ✓ Đã họp xong
       </span>
     )
 
-  if (b.status === 'pending' && isPast)
+  if (b.status === 'pending' && (isPast || b.timeStatus === 'done'))
     return (
       <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-tight text-slate-500">
         Quá hạn
@@ -126,10 +135,12 @@ type BookingRowActionsProps = {
   isPrivileged: boolean
   processingId: string | null
   handleApprove: (id: string) => void
-  setRejectId: (id: string) => void
+  handleRejectId: (id: string) => void
   handleEdit: (b: MeetingBooking) => void
   handleDelete: (id: string) => void
+  handleFinish: (id: string) => void
   variant?: 'table' | 'mobile'
+  vnTime: { date: string; time: string }
 }
 
 function BookingRowActions({
@@ -138,17 +149,48 @@ function BookingRowActions({
   isPrivileged,
   processingId,
   handleApprove,
-  setRejectId,
+  handleRejectId,
   handleEdit,
   handleDelete,
+  handleFinish,
   variant = 'table',
+  vnTime,
 }: BookingRowActionsProps) {
   const mobile = variant === 'mobile'
   const btnWrap = mobile ? 'w-full justify-center' : ''
+  const isOwner = b.userId === user?.id
+
+  // 1. TÍNH TOÁN TRẠNG THÁI QUÁ HẠN (GIỐNG BADGE)
+  const { date: td, time: ct } = vnTime
+  const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
+  const isOverdueOrDone = isPast || b.timeStatus === 'done'
+
+  // QUÁ HẠN THÌ TUYỆT ĐỐI KHÔNG HIỂN THỊ NÚT NÀO
+  if (isOverdueOrDone) {
+    return null
+  }
 
   return (
     <div className={mobile ? 'flex w-full flex-col gap-2' : 'flex items-center justify-end gap-2'}>
-      {isPrivileged && b.status === 'pending' && (
+      {/* NÚT ĐÃ HỌP XONG: Chỉ hiện khi ĐANG HỌP và là lịch ĐÃ DUYỆT */}
+      {b.status === 'approved' && b.timeStatus === 'ongoing' && (isOwner || isPrivileged) && (
+        <button
+          type="button"
+          onClick={() => handleFinish(b.id)}
+          disabled={!!processingId}
+          className={`flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-indigo-200 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50 ${btnWrap}`}
+        >
+          {processingId === b.id ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <CheckCircle2 className="h-3 w-3" />
+          )}
+          <span>ĐÃ HỌP XONG</span>
+        </button>
+      )}
+
+      {/* NÚT DUYỆT/TỪ CHỐI DÀNH CHO ADMIN: Chỉ hiện khi CHỜ DUYỆT và CHƯA HỌP */}
+      {isPrivileged && b.status === 'pending' && b.timeStatus !== 'ongoing' && (
         <>
           <button
             type="button"
@@ -165,7 +207,7 @@ function BookingRowActions({
           </button>
           <button
             type="button"
-            onClick={() => setRejectId(b.id)}
+            onClick={() => handleRejectId(b.id)}
             disabled={!!processingId}
             className={`group flex items-center gap-2 rounded-xl border-2 border-rose-100 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wide text-rose-600 transition-all hover:border-rose-200 hover:bg-rose-50 active:scale-95 disabled:opacity-50 ${btnWrap}`}
           >
@@ -180,7 +222,7 @@ function BookingRowActions({
             type="button"
             onClick={() => handleEdit(b)}
             disabled={!!processingId}
-            className={`flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-primary transition-all hover:bg-primary hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
+            className={`flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary transition-all hover:bg-primary hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
           >
             <span>ĐỔI LỊCH</span>
           </button>
@@ -188,7 +230,7 @@ function BookingRowActions({
             type="button"
             onClick={() => handleDelete(b.id)}
             disabled={!!processingId}
-            className={`flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-rose-600 transition-all hover:bg-rose-600 hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
+            className={`flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600 transition-all hover:bg-rose-600 hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
           >
             {processingId === b.id ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -210,10 +252,10 @@ const BookingCardMobile = memo(
     isPrivileged,
     processingId,
     handleApprove,
-    setRejectId,
+    handleRejectId,
     handleEdit,
     handleDelete,
-    variant = 'mobile',
+    handleFinish,
     vnTime,
   }: {
     b: MeetingBooking
@@ -221,9 +263,10 @@ const BookingCardMobile = memo(
     isPrivileged: boolean
     processingId: string | null
     handleApprove: (id: string) => void
-    setRejectId: (id: string) => void
+    handleRejectId: (id: string) => void
     handleEdit: (b: MeetingBooking) => void
     handleDelete: (id: string) => void
+    handleFinish: (id: string) => void
     variant?: 'table' | 'mobile'
     vnTime: { date: string; time: string }
   }) => {
@@ -276,10 +319,12 @@ const BookingCardMobile = memo(
           isPrivileged={isPrivileged}
           processingId={processingId}
           handleApprove={handleApprove}
-          setRejectId={setRejectId}
+          handleRejectId={handleRejectId}
           handleEdit={handleEdit}
           handleDelete={handleDelete}
+          handleFinish={handleFinish}
           variant="mobile"
+          vnTime={vnTime}
         />
       </div>
     )
@@ -293,9 +338,10 @@ const BookingRow = memo(
     isPrivileged,
     processingId,
     handleApprove,
-    setRejectId,
+    handleRejectId,
     handleEdit,
     handleDelete,
+    handleFinish,
     vnTime,
   }: {
     b: MeetingBooking
@@ -303,9 +349,10 @@ const BookingRow = memo(
     isPrivileged: boolean
     processingId: string | null
     handleApprove: (id: string) => void
-    setRejectId: (id: string) => void
+    handleRejectId: (id: string) => void
     handleEdit: (b: MeetingBooking) => void
     handleDelete: (id: string) => void
+    handleFinish: (id: string) => void
     variant?: 'table' | 'mobile'
     vnTime: { date: string; time: string }
   }) => {
@@ -333,10 +380,12 @@ const BookingRow = memo(
             isPrivileged={isPrivileged}
             processingId={processingId}
             handleApprove={handleApprove}
-            setRejectId={setRejectId}
+            handleRejectId={handleRejectId}
             handleEdit={handleEdit}
             handleDelete={handleDelete}
+            handleFinish={handleFinish}
             variant="table"
+            vnTime={vnTime}
           />
         </td>
       </tr>
@@ -365,14 +414,15 @@ export default function RoomBookingPage() {
   const [isEmergency, setIsEmergency] = useState(false)
   const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([])
 
-  const [filter, setFilter] = useState<'all' | 'today' | 'mine' | 'requests'>(
-    search.tab === 'requests' ? 'requests' : 'all'
-  )
+  const [filter, setFilter] = useState<'today' | 'tomorrow' | 'team' | 'mine' | 'requests'>('today')
+  const [selectedRoom, setSelectedRoom] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [processingId, setProcessingId] = useState<string | null>(null)
 
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [finishConfirmId, setFinishConfirmId] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   const prevBookingsCount = useRef(0)
 
@@ -458,11 +508,24 @@ export default function RoomBookingPage() {
     onSettled: () => setProcessingId(null),
   })
 
+  const finishMut = useMutation({
+    mutationFn: finishBooking,
+    onMutate: (id) => setProcessingId(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['room-bookings'] })
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
+      setError(msg)
+    },
+    onSettled: () => setProcessingId(null),
+  })
+
   useEffect(() => {
     if (search.tab === 'requests') {
       setFilter('requests')
     } else {
-      setFilter('all')
+      setFilter('today')
     }
     setPage(1)
   }, [search.tab])
@@ -481,16 +544,20 @@ export default function RoomBookingPage() {
   }, [showModal, room, date])
 
   const filtered = useMemo(() => {
-    const { date: todayDate, time: nowTime } = vnTime
-    const isBookingCompleted = (b: MeetingBooking) =>
-      b.status === 'approved' &&
-      (b.date < todayDate || (b.date === todayDate && b.timeTo <= nowTime))
+    const { date: todayDate, time: currentTime } = vnTime
 
-    return bookings.filter((b) => {
-      if (filter === ('requests' as any)) return b.status === 'pending'
+    // Calculate Tomorrow Date
+    const tomorrow = new Date(todayDate)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowDate = tomorrow.toISOString().split('T')[0]
+
+    let result = bookings.filter((b) => {
+      // Step 1: Base tab filters
+      if (filter === 'requests') return b.status === 'pending'
       if (filter === 'mine') return b.userId === user?.id
-      if (filter === 'today') {
-        if (b.userId === user?.id) return true
+      if (filter === 'today') return b.date === todayDate
+      if (filter === 'tomorrow') return b.date === tomorrowDate
+      if (filter === 'team') {
         const userTeam = (user?.team ?? '').trim().toLowerCase()
         const bookingTeam = (b.team ?? '').trim().toLowerCase()
         return (
@@ -501,11 +568,43 @@ export default function RoomBookingPage() {
             userTeam.includes(bookingTeam))
         )
       }
-      // Tab 'all' (Toàn bộ): ẩn các booking đã họp xong
-      if (isBookingCompleted(b)) return false
       return true
     })
-  }, [bookings, filter, user?.id, user?.team, vnTime])
+
+    // Step 2: Room filter
+    if (selectedRoom !== 'all') {
+      result = result.filter((b) => b.room === selectedRoom)
+    }
+
+    // Step 3: Sorting (Đang họp -> Sắp tới -> Đã xong/Từ chối)
+    const getPriority = (b: MeetingBooking) => {
+      const isPast = b.date < todayDate || (b.date === todayDate && b.timeTo <= currentTime)
+      const isDone = b.timeStatus === 'done' || (b.status === 'approved' && isPast)
+      const isOverdue = b.status === 'pending' && isPast
+      const isRejected = b.status === 'rejected'
+
+      // Bét bảng (Rank 3): Đã họp xong, Quá hạn hoặc Bị từ chối
+      if (isDone || isOverdue || isRejected) return 3
+
+      // Top 1 (Rank 1): Đang diễn ra
+      if (b.status === 'approved' && b.timeStatus === 'ongoing') return 1
+
+      // Top 2 (Rank 2): Sắp tới (Chờ duyệt hoặc Đã duyệt)
+      return 2
+    }
+
+    return result.sort((a, b) => {
+      const pA = getPriority(a)
+      const pB = getPriority(b)
+
+      // Nếu khác nhóm ưu tiên -> hiển thị theo nhóm
+      if (pA !== pB) return pA - pB
+
+      // Nếu cùng nhóm -> Xếp theo thời gian (Ca sớm lên trước)
+      if (a.date !== b.date) return a.date.localeCompare(b.date)
+      return a.timeFrom.localeCompare(b.timeFrom)
+    })
+  }, [bookings, filter, selectedRoom, user?.id, user?.team, vnTime])
 
   const totalPages = useMemo(() => Math.ceil(filtered.length / PAGE_SIZE), [filtered.length])
   const pageData = useMemo(
@@ -577,8 +676,23 @@ export default function RoomBookingPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Bạn có chắc chắn muốn hủy lịch họp này?')) return
-    deleteMut.mutate(id)
+    setDeleteConfirmId(id)
+  }
+
+  async function executeDelete() {
+    if (!deleteConfirmId) return
+    deleteMut.mutate(deleteConfirmId)
+    setDeleteConfirmId(null)
+  }
+
+  async function handleFinish(id: string) {
+    setFinishConfirmId(id)
+  }
+
+  async function executeFinish() {
+    if (!finishConfirmId) return
+    finishMut.mutate(finishConfirmId)
+    setFinishConfirmId(null)
   }
 
   function handleEdit(b: MeetingBooking) {
@@ -674,7 +788,7 @@ export default function RoomBookingPage() {
               </div>
             )}
             <div className="flex items-center gap-4">
-              <span className="text-xs font-medium text-muted-foreground">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                 Tổng: {filtered.length} bản ghi
               </span>
               <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 shadow-sm">
@@ -682,7 +796,9 @@ export default function RoomBookingPage() {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                 </span>
-                <span className="text-xs font-semibold text-emerald-700 uppercase">LIVE</span>
+                <span className="text-[9px] font-black tracking-tighter text-emerald-700 uppercase">
+                  LIVE
+                </span>
               </div>
             </div>
           </div>
@@ -753,9 +869,10 @@ export default function RoomBookingPage() {
                       isPrivileged={isPrivileged}
                       processingId={processingId}
                       handleApprove={handleApprove}
-                      setRejectId={setRejectId}
+                      handleRejectId={setRejectId}
                       handleEdit={handleEdit}
                       handleDelete={handleDelete}
+                      handleFinish={handleFinish}
                       vnTime={vnTime}
                     />
                   ))
@@ -795,9 +912,10 @@ export default function RoomBookingPage() {
                   isPrivileged={isPrivileged}
                   processingId={processingId}
                   handleApprove={handleApprove}
-                  setRejectId={setRejectId}
+                  handleRejectId={setRejectId}
                   handleEdit={handleEdit}
                   handleDelete={handleDelete}
+                  handleFinish={handleFinish}
                   vnTime={vnTime}
                 />
               ))
@@ -1176,6 +1294,86 @@ export default function RoomBookingPage() {
               >
                 Xác nhận
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {finishConfirmId && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+          onClick={() => setFinishConfirmId(null)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
+          <div
+            className="relative w-full max-w-md bg-card p-10 rounded-[3rem] shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center space-y-6">
+              <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="h-10 w-10 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black uppercase tracking-tight mb-2">
+                  Kết thúc họp sớm
+                </h3>
+                <p className="text-muted-foreground text-sm leading-relaxed px-4">
+                  Bạn xác nhận đã họp xong và muốn giải phóng phòng cho người khác?
+                </p>
+              </div>
+              <div className="flex w-full gap-4 pt-4">
+                <button
+                  onClick={() => setFinishConfirmId(null)}
+                  className="flex-1 py-4 font-bold text-muted-foreground uppercase hover:bg-muted/50 rounded-2xl transition-all"
+                >
+                  Quay lại
+                </button>
+                <button
+                  onClick={executeFinish}
+                  className="flex-1 py-4 bg-indigo-600 text-white font-black rounded-2xl uppercase shadow-lg shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                  XÁC NHẬN
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmId && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+          onClick={() => setDeleteConfirmId(null)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
+          <div
+            className="relative w-full max-w-md bg-card p-10 rounded-[3rem] shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center space-y-6">
+              <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center">
+                <AlertCircle className="h-10 w-10 text-rose-500" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black uppercase tracking-tight mb-2">Hủy lịch họp</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed px-4">
+                  Bạn có chắc chắn muốn hủy lịch họp này không? Hành động này không thể khôi phục.
+                </p>
+              </div>
+              <div className="flex w-full gap-4 pt-4">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="flex-1 py-4 font-bold text-muted-foreground uppercase hover:bg-muted/50 rounded-2xl transition-all"
+                >
+                  Quay lại
+                </button>
+                <button
+                  onClick={executeDelete}
+                  className="flex-1 py-4 bg-rose-500 text-white font-black rounded-2xl uppercase shadow-lg shadow-rose-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                  XÁC NHẬN HỦY
+                </button>
+              </div>
             </div>
           </div>
         </div>

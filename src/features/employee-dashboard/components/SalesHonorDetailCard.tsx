@@ -8,6 +8,8 @@ import {
 } from '@/features/kpi-okr/api'
 import { cn } from '@/lib/utils'
 
+import { CustomSelect } from '@/components/shared/CustomSelect'
+
 function formatNumber(value: number, unit: string): string {
   const isVnd = unit.toUpperCase() === 'VND'
   const formatted = isVnd
@@ -75,26 +77,21 @@ export function SalesHonorDetailCard({ className }: Props) {
             Vinh danh Phòng Kinh doanh
           </h3>
         </div>
-        <label className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-2 py-1 text-sm">
-          <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden />
-          <select
-            className="bg-transparent text-sm outline-none"
+        <div className="w-[170px]">
+          <CustomSelect
             value={`${ym.year}-${ym.month}`}
-            onChange={(e) => {
-              const parts = e.target.value.split('-')
+            onValueChange={(val) => {
+              const parts = val.split('-')
               const y = Number(parts[0])
               const m = Number(parts[1])
               if (y && m) setYm({ year: y, month: m })
             }}
-            aria-label="Chọn tháng"
-          >
-            {options.map((o) => (
-              <option key={`${o.year}-${o.month}`} value={`${o.year}-${o.month}`}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={options.map((o) => ({
+              label: o.label,
+              value: `${o.year}-${o.month}`,
+            }))}
+          />
+        </div>
       </header>
 
       {loading && !data ? (

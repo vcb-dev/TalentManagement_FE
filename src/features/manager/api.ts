@@ -393,8 +393,19 @@ export const managerApi = {
       'GET /learning/admin/submissions'
     )
   },
-  updateSubmissionStatus: async (id: string, status: 'ACCEPTED' | 'REJECTED') => {
-    const res = await apiClient.patch<unknown>(`/learning/admin/submissions/${id}`, { status })
+  updateSubmissionStatus: async (
+    id: string,
+    status: string,
+    score?: number,
+    managerComment?: string,
+    hostComment?: string
+  ) => {
+    const res = await apiClient.patch<unknown>(`/learning/admin/submissions/${id}`, {
+      status,
+      score,
+      managerComment,
+      hostComment,
+    })
     return res.data
   },
 }
