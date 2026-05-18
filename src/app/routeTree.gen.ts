@@ -21,6 +21,7 @@ import { Route as ProtectedLearningScheduleRouteImport } from './routes/_protect
 import { Route as ProtectedLearningClassesRouteImport } from './routes/_protected/learning-classes'
 import { Route as ProtectedKpiOkrRouteImport } from './routes/_protected/kpi-okr'
 import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
+import { Route as ProtectedCskhQualityRouteImport } from './routes/_protected/cskh-quality'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as ProtectedPermissionsIndexRouteImport } from './routes/_protected/permissions/index'
 import { Route as ProtectedLearningPathIndexRouteImport } from './routes/_protected/learning-path/index'
@@ -123,6 +124,11 @@ const ProtectedKpiOkrRoute = ProtectedKpiOkrRouteImport.update({
 const ProtectedDashboardRoute = ProtectedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedCskhQualityRoute = ProtectedCskhQualityRouteImport.update({
+  id: '/cskh-quality',
+  path: '/cskh-quality',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -377,6 +383,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about-us': typeof AboutUsRoute
   '/login': typeof AuthLoginRoute
+  '/cskh-quality': typeof ProtectedCskhQualityRoute
   '/dashboard': typeof ProtectedDashboardRoute
   '/kpi-okr': typeof ProtectedKpiOkrRoute
   '/learning-classes': typeof ProtectedLearningClassesRoute
@@ -432,6 +439,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about-us': typeof AboutUsRoute
   '/login': typeof AuthLoginRoute
+  '/cskh-quality': typeof ProtectedCskhQualityRoute
   '/dashboard': typeof ProtectedDashboardRoute
   '/kpi-okr': typeof ProtectedKpiOkrRoute
   '/learning-classes': typeof ProtectedLearningClassesRoute
@@ -490,6 +498,7 @@ export interface FileRoutesById {
   '/_protected': typeof ProtectedRouteRouteWithChildren
   '/about-us': typeof AboutUsRoute
   '/_auth/login': typeof AuthLoginRoute
+  '/_protected/cskh-quality': typeof ProtectedCskhQualityRoute
   '/_protected/dashboard': typeof ProtectedDashboardRoute
   '/_protected/kpi-okr': typeof ProtectedKpiOkrRoute
   '/_protected/learning-classes': typeof ProtectedLearningClassesRoute
@@ -547,6 +556,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about-us'
     | '/login'
+    | '/cskh-quality'
     | '/dashboard'
     | '/kpi-okr'
     | '/learning-classes'
@@ -602,6 +612,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about-us'
     | '/login'
+    | '/cskh-quality'
     | '/dashboard'
     | '/kpi-okr'
     | '/learning-classes'
@@ -659,6 +670,7 @@ export interface FileRouteTypes {
     | '/_protected'
     | '/about-us'
     | '/_auth/login'
+    | '/_protected/cskh-quality'
     | '/_protected/dashboard'
     | '/_protected/kpi-okr'
     | '/_protected/learning-classes'
@@ -802,6 +814,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof ProtectedDashboardRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/cskh-quality': {
+      id: '/_protected/cskh-quality'
+      path: '/cskh-quality'
+      fullPath: '/cskh-quality'
+      preLoaderRoute: typeof ProtectedCskhQualityRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_auth/login': {
@@ -1136,6 +1155,7 @@ const ProtectedManagerGradeClassClassIdRouteWithChildren =
   )
 
 interface ProtectedRouteRouteChildren {
+  ProtectedCskhQualityRoute: typeof ProtectedCskhQualityRoute
   ProtectedDashboardRoute: typeof ProtectedDashboardRoute
   ProtectedKpiOkrRoute: typeof ProtectedKpiOkrRoute
   ProtectedLearningClassesRoute: typeof ProtectedLearningClassesRoute
@@ -1188,6 +1208,7 @@ interface ProtectedRouteRouteChildren {
 }
 
 const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
+  ProtectedCskhQualityRoute: ProtectedCskhQualityRoute,
   ProtectedDashboardRoute: ProtectedDashboardRoute,
   ProtectedKpiOkrRoute: ProtectedKpiOkrRoute,
   ProtectedLearningClassesRoute: ProtectedLearningClassesRoute,

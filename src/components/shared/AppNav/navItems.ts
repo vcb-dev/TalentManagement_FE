@@ -24,10 +24,6 @@ import {
   Award,
 } from 'lucide-react'
 
-/** URL của CSKH Quality Dashboard (scraper_server.js). Mặc định localhost:5555. */
-const CSKH_DASHBOARD_URL: string =
-  (import.meta as any).env?.VITE_CSKH_DASHBOARD_URL || 'http://localhost:5555'
-
 export type NavMatchMode = 'exact' | 'prefix' | 'custom'
 
 export type AppNavItem = {
@@ -220,13 +216,12 @@ const BOD_ITEMS: AppNavItem[] = [
   },
 ]
 
-/** CSKH Quality — external dashboard (scraper_server.js trên máy office). */
+/** CSKH Quality — nhúng dashboard scraper trong app (`/cskh-quality`). */
 export const CSKH_QUALITY_ITEM: AppNavItem = {
-  to: CSKH_DASHBOARD_URL,
+  to: '/cskh-quality',
   label: 'CSKH Quality',
   icon: Headphones,
-  match: 'exact',
-  openNewTab: true,
+  match: 'prefix',
   permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
 }
 
