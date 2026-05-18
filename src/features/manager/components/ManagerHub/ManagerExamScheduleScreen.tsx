@@ -30,6 +30,12 @@ import {
   useUpdateManagerClass,
 } from '@/features/manager/hooks'
 import { formatViDate } from '@/lib/date'
+import {
+  addMinutesToHm,
+  examLiveStatus,
+  getExamDurationMinutes,
+  mergeScheduleExamQuestions,
+} from '@/lib/examScheduleTime'
 import { useAuthStore } from '@/stores/auth.store'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 import { ClassMembersScoresModal } from '@/features/manager/components/ClassMembersScoresModal'
@@ -57,9 +63,17 @@ function clampTwoDigit(value: string, min: number, max: number): string {
   return pad2(Math.min(max, Math.max(min, parsed)))
 }
 
-function examScheduleIsPast(e: { dateIso: string; startTime: string }): boolean {
-  const examTime = new Date(`${e.dateIso}T${e.startTime}:00`).getTime()
-  return examTime < Date.now()
+function examBadgeForSchedule(e: Parameters<typeof examLiveStatus>[1]) {
+  const s = examLiveStatus(Date.now(), e)
+  if (s === 'upcoming')
+    return { label: 'Sắp diễn ra', className: 'bg-blue-100 text-blue-700', muted: false }
+  if (s === 'live')
+    return {
+      label: 'Đang diễn ra',
+      className: 'bg-emerald-100 text-emerald-800',
+      muted: false,
+    }
+  return { label: 'Đã kết thúc', className: 'bg-slate-100 text-slate-500', muted: true }
 }
 
 export function ManagerExamScheduleScreen() {
@@ -70,6 +84,31 @@ export function ManagerExamScheduleScreen() {
   const { data: exams = [], isLoading: loadingExams } = useAllExams()
   const { data: classes = [] } = useManagerClasses()
 
+  /** `/all-exams` đôi khi không/chậm có examQuestions trong khi GET /classes (schedules nhúng) đã có — gộp để hiển thị đúng duration. */
+  const scheduleExamQuestionsFromClasses = useMemo(() => {
+    const m = new Map<string, unknown>()
+    for (const c of classes as ManagerClassRow[]) {
+      for (const s of c.schedules ?? []) {
+        if (s?.id && (s as { examQuestions?: unknown }).examQuestions != null) {
+          m.set(s.id, (s as { examQuestions: unknown }).examQuestions)
+        }
+      }
+    }
+    return m
+  }, [classes])
+
+  function toExamTimelineRow(e: (typeof exams)[number]) {
+    const mergedQs = mergeScheduleExamQuestions(
+      e.examQuestions,
+      scheduleExamQuestionsFromClasses.get(e.id)
+    )
+    return {
+      dateIso: e.dateIso,
+      startTime: e.startTime,
+      endTime: e.endTime,
+      examQuestions: mergedQs,
+    }
+  }
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -199,10 +238,24 @@ export function ManagerExamScheduleScreen() {
       return
     }
 
+    const existing = editingScheduleId ? exams.find((ev) => ev.id === editingScheduleId) : undefined
+    const mergedQs =
+      existing != null
+        ? mergeScheduleExamQuestions(
+            existing.examQuestions,
+            scheduleExamQuestionsFromClasses.get(existing.id)
+          )
+        : null
+    const durationMin =
+      existing != null
+        ? getExamDurationMinutes(mergedQs, existing.startTime, existing.endTime)
+        : 120
+    const startHm = `${examHour}:${examMinute}`
+
     const payload = {
       dateIso: examDate,
-      startTime: `${examHour}:${examMinute}`,
-      endTime: `${pad2((parseInt(examHour) + 2) % 24)}:${examMinute}`, // default 2 hours
+      startTime: startHm,
+      endTime: addMinutesToHm(startHm, durationMin),
       topic: topic || 'Kỳ thi năng lực',
       isExam: true,
       examTeacherUserId: finalTeacher?.userId,
@@ -338,7 +391,10 @@ export function ManagerExamScheduleScreen() {
               </div>
             ) : (
               filteredExams.map((e) => {
-                const isPast = examScheduleIsPast(e)
+                const t = toExamTimelineRow(e)
+                const badge = examBadgeForSchedule(t)
+                const durMin = getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)
+                const endHm = addMinutesToHm(t.startTime, durMin)
                 return (
                   <div key={e.id} className="space-y-3 bg-card p-4">
                     <div className="min-w-0">
@@ -351,20 +407,22 @@ export function ManagerExamScheduleScreen() {
                       <p
                         className={cn(
                           'text-sm font-black tabular-nums',
-                          isPast ? 'text-muted-foreground' : 'text-foreground'
+                          badge.muted ? 'text-muted-foreground' : 'text-foreground'
                         )}
                       >
-                        {formatViDate(e.dateIso)} lúc {e.startTime}
+                        {formatViDate(e.dateIso)} · {e.startTime} – {endHm}
+                        <span className="ml-1 font-bold text-muted-foreground">
+                          ({durMin} phút)
+                        </span>
                       </p>
-                      {isPast ? (
-                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">
-                          Đã kết thúc
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-600">
-                          Sắp diễn ra
-                        </span>
-                      )}
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold',
+                          badge.className
+                        )}
+                      >
+                        {badge.label}
+                      </span>
                     </div>
                     <div className="rounded-lg bg-muted/40 px-3 py-2">
                       <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
@@ -443,7 +501,10 @@ export function ManagerExamScheduleScreen() {
                   </tr>
                 ) : (
                   filteredExams.map((e) => {
-                    const isPast = examScheduleIsPast(e)
+                    const t = toExamTimelineRow(e)
+                    const badge = examBadgeForSchedule(t)
+                    const durMin = getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)
+                    const endHm = addMinutesToHm(t.startTime, durMin)
 
                     return (
                       <tr key={e.id} className="border-b transition-colors hover:bg-muted/20">
@@ -458,20 +519,22 @@ export function ManagerExamScheduleScreen() {
                             <p
                               className={cn(
                                 'font-black tabular-nums text-sm',
-                                isPast ? 'text-muted-foreground' : 'text-foreground'
+                                badge.muted ? 'text-muted-foreground' : 'text-foreground'
                               )}
                             >
-                              {formatViDate(e.dateIso)} lúc {e.startTime}
+                              {formatViDate(e.dateIso)} · {e.startTime} – {endHm}
+                              <span className="ml-1 font-bold text-muted-foreground">
+                                ({durMin} phút)
+                              </span>
                             </p>
-                            {isPast ? (
-                              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">
-                                Đã kết thúc
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-600">
-                                Sắp diễn ra
-                              </span>
-                            )}
+                            <span
+                              className={cn(
+                                'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold',
+                                badge.className
+                              )}
+                            >
+                              {badge.label}
+                            </span>
                           </div>
                         </td>
                         <td className="px-5 py-5">
