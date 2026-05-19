@@ -11,7 +11,6 @@ import {
 } from '@/components/shared/PageHeader'
 import { useMyDashboard } from '@/features/dashboard/hooks'
 import { DashboardKpiOkrZone } from '@/features/employee-dashboard/components/DashboardKpiOkrZone'
-import { SalesHonorBanner } from '@/features/employee-dashboard/components/SalesHonorBanner'
 import { VinhDanhSlide } from '@/features/employee-dashboard/components/VinhDanhSlide'
 import { DashboardLearningZone } from '@/features/employee-dashboard/components/DashboardLearningZone'
 import { ManagerHrSnapshotCards } from '@/features/employee-dashboard/components/ManagerHrSnapshotCards'
@@ -276,7 +275,7 @@ export function EmployeeLearningDashboard() {
       />
 
       <div className="page-shell relative z-[1] space-y-6 pb-10">
-        <SalesHonorBanner />
+        <VinhDanhSlide />
         <section className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
             <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-gradient-to-r from-primary/[0.12] to-accent/[0.1] px-3 py-0.5 text-xs font-bold uppercase tracking-widest text-primary shadow-sm">
