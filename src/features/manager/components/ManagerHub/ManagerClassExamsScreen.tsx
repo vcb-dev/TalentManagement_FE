@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { CheckSquare, Circle, FileUp, ListPlus, Loader2, Trash2, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -23,7 +24,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { managerApi } from '@/features/manager/api'
 import { managerClassApiSchema } from '@/features/manager/schemas'
+import { managerKeys } from '@/features/manager/queryKeys'
 import {
   useClassSchedules,
   useManagerClasses,
@@ -32,6 +35,11 @@ import {
 } from '@/features/manager/hooks'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 import { ClassMembersScoresModal } from '@/features/manager/components/ClassMembersScoresModal'
+import {
+  addMinutesToHm,
+  extractDurationMinutes,
+  getExamDurationMinutes,
+} from '@/lib/examScheduleTime'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
 type QuestionItem = { id: string; stem: string; options: string[] }
@@ -123,6 +131,52 @@ function composeToQuestionItems(compose: ComposeQuestion[]): QuestionItem[] {
     .filter((q) => q.stem.length > 0)
 }
 
+function formatScheduleWindow(
+  schedule: {
+    dateIso: string
+    startTime: string
+    endTime?: string | null
+    examQuestions?: unknown
+  },
+  scheduleBank?: QuestionBankPayload | null,
+  classExamQuestions?: unknown
+): string {
+  const dur =
+    extractDurationMinutes(scheduleBank) ??
+    getExamDurationMinutes(
+      schedule.examQuestions,
+      schedule.startTime,
+      schedule.endTime ?? null,
+      classExamQuestions
+    )
+  const endHm = addMinutesToHm(schedule.startTime, dur)
+  return `${schedule.dateIso} · ${schedule.startTime} – ${endHm}`
+}
+
+function examHmRangeDisplay(
+  item: {
+    startTime: string
+    endTime?: string | null
+    examQuestions?: unknown
+    classExamQuestions?: unknown
+  },
+  sessionBank?: QuestionBankPayload | null
+): string {
+  const dur =
+    extractDurationMinutes(sessionBank) ??
+    getExamDurationMinutes(
+      item.examQuestions,
+      item.startTime,
+      item.endTime ?? null,
+      item.classExamQuestions
+    )
+  return `${item.startTime} – ${addMinutesToHm(item.startTime, dur)}`
+}
+
+function examDurationLabelMinutes(sessionBank: QuestionBankPayload | null | undefined): number {
+  return extractDurationMinutes(sessionBank) ?? 60
+}
+
 function ClassSchedulesList({
   classId,
   onEditExam,
@@ -154,7 +208,7 @@ function ClassSchedulesList({
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-bold text-foreground truncate">{s.topic}</span>
                 <span className="text-xs text-muted-foreground">
-                  {s.dateIso} · {s.startTime} - {s.endTime}
+                  {formatScheduleWindow(s, bank)}
                 </span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -206,6 +260,7 @@ export function ManagerClassExamsScreen() {
     )
   }, [rawClasses])
 
+  const qc = useQueryClient()
   const saveQuestionsMutation = useSaveExamQuestions()
   const saveScheduleQuestionsMutation = useSaveScheduleExamQuestions()
 
@@ -383,6 +438,15 @@ export function ManagerClassExamsScreen() {
         scheduleId: selectedScheduleId,
         questions: payload,
       })
+      const schedRow = schedules.find((s) => s.id === selectedScheduleId)
+      if (schedRow) {
+        await managerApi.updateClassSchedule(assignmentModalClassId, selectedScheduleId, {
+          endTime: addMinutesToHm(schedRow.startTime, payload.duration),
+        })
+        void qc.invalidateQueries({ queryKey: managerKeys.classSchedules(assignmentModalClassId) })
+        void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
+        void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
+      }
     } else {
       await saveQuestionsMutation.mutateAsync({
         classId: assignmentModalClassId,
@@ -491,7 +555,7 @@ export function ManagerClassExamsScreen() {
                       <p className="text-xs font-semibold text-muted-foreground">Ngày / giờ thi</p>
                       <p className="font-semibold text-foreground">{item.dateIso}</p>
                       <p className="text-xs text-muted-foreground">
-                        {item.startTime} - {item.endTime}
+                        {examHmRangeDisplay(item, sessionBank)}
                       </p>
                     </div>
                     <p className="text-sm">
@@ -515,16 +579,14 @@ export function ManagerClassExamsScreen() {
                             {sessionBank?.questions.length ?? 0} câu hỏi
                           </p>
                           <p className="text-xs font-medium text-muted-foreground">
-                            Thời gian: {sessionBank?.duration || 60} phút
+                            Thời gian: {examDurationLabelMinutes(sessionBank)} phút
                           </p>
                         </div>
                       ) : (
                         <div>
                           <p className="italic text-muted-foreground">Chưa có đề riêng</p>
                           {classBank ? (
-                            <p className="text-xs font-medium text-amber-600">
-                              (Đã có đề mẫu lớp)
-                            </p>
+                            <p className="text-xs font-medium text-amber-600">(Đã có đề mẫu lớp)</p>
                           ) : null}
                         </div>
                       )}
@@ -638,7 +700,7 @@ export function ManagerClassExamsScreen() {
                           <div className="flex flex-col gap-0.5">
                             <span className="font-semibold text-foreground">{item.dateIso}</span>
                             <span className="text-xs text-muted-foreground">
-                              {item.startTime} - {item.endTime}
+                              {examHmRangeDisplay(item, sessionBank)}
                             </span>
                           </div>
                         </td>
@@ -660,7 +722,7 @@ export function ManagerClassExamsScreen() {
                                 {sessionBank?.questions.length ?? 0} câu hỏi
                               </span>
                               <span className="text-xs text-muted-foreground font-medium">
-                                Thời gian: {sessionBank?.duration || 60} phút
+                                Thời gian: {examDurationLabelMinutes(sessionBank)} phút
                               </span>
                             </div>
                           ) : (

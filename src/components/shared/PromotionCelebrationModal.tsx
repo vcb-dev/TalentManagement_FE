@@ -10,6 +10,8 @@ import { ConfettiCelebration } from '@/components/shared/ConfettiCelebration'
 import { Button } from '@/components/ui/button'
 import { LEVEL_LABELS, type LevelCode } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/axios'
+import { isMockApiEnabled } from '@/lib/mockEnv'
 
 interface PromotionCelebrationModalProps {
   /** Level trước (null nếu chưa có) */
@@ -63,6 +65,187 @@ const DEFAULT_THEME = {
   accent: 'text-emerald-400',
 }
 
+/** Sao / emoji trong tên có thể làm TTS “kẹt” hoặc đọc sai — chỉ giữ phần tên chính */
+function cleanDisplayNameForSpeech(displayName: string): string {
+  const trimmed = displayName.trim()
+  if (!trimmed) return ''
+  const beforeSuffix = trimmed.split(/\s+[—\-–]\s*/)[0] ?? trimmed
+  return beforeSuffix.trim().replace(/\s+/g, ' ')
+}
+
+async function ensureSpeechVoices(timeoutMs = 1800): Promise<SpeechSynthesisVoice[]> {
+  const syn = window.speechSynthesis
+  const current = syn.getVoices()
+  if (current.length > 0) return current
+
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      syn.removeEventListener('voiceschanged', onReady)
+      resolve(syn.getVoices())
+    }
+    const onReady = () => finish()
+    syn.addEventListener('voiceschanged', onReady)
+    window.setTimeout(finish, timeoutMs)
+  })
+}
+
+function pickVietnameseVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
+  const vi = voices.filter(
+    (v) =>
+      v.lang.toLowerCase().startsWith('vi') ||
+      /vietnamese|viet.?nam/i.test(`${v.name} ${v.voiceURI ?? ''}`)
+  )
+  if (vi.length === 0) return undefined
+
+  /** Ưu tiên Việt Neural / Edge / Apple — hạn chế giọng Google tiếng Việt mặc định của Chrome khi có lựa chọn khác. */
+  const score = (v: SpeechSynthesisVoice) => {
+    const n = `${v.name} ${v.voiceURI ?? ''}`.toLowerCase()
+    let s = 0
+    if (n.includes('hoaimy') || n.includes('hoài my') || n.includes('hoai my')) s += 110
+    if (n.includes('namminh') || n.includes('nam minh')) s += 105
+    if (n.includes('microsoft') && (n.includes('neural') || n.includes('online'))) s += 95
+    if (n.includes('microsoft') && /vi|viet/.test(n)) s += 70
+    if (n.includes('com.apple') && (n.includes('premium') || n.includes('enhanced'))) s += 88
+    if (n.includes('com.apple') && /vi|viet|linh/.test(n)) s += 65
+    if (n.includes('samsung') && /vi|viet/.test(n)) s += 55
+    if (/(neural|natural|premium|enhanced|wavnet)/.test(n)) s += 45
+    if (n.includes('edge') && /vi|viet/.test(n)) s += 40
+    if (n.includes('google') && /vi|vietnamese|viet/.test(n)) s -= 50
+    if (n.includes('google') && !/vi|vietnamese|viet/.test(n)) s -= 80
+    return s
+  }
+
+  return [...vi].sort((a, b) => score(b) - score(a))[0]
+}
+
+/** MP3 từ ElevenLabs qua backend (nếu đang phát) — revoke khi đóng modal hoặc kết thúc. */
+let promotionCloudObjectUrl: string | null = null
+let promotionCloudAudio: HTMLAudioElement | null = null
+
+export function cancelPromotionCongratsPlayback(): void {
+  if (typeof window === 'undefined') return
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel()
+  }
+  if (promotionCloudAudio) {
+    promotionCloudAudio.pause()
+    promotionCloudAudio = null
+  }
+  if (promotionCloudObjectUrl) {
+    URL.revokeObjectURL(promotionCloudObjectUrl)
+    promotionCloudObjectUrl = null
+  }
+}
+
+function speakPromotionViaBrowser(text: string): void {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return
+
+  const run = async () => {
+    const syn = window.speechSynthesis
+    syn.cancel()
+    try {
+      syn.resume()
+    } catch {
+      /* ignore */
+    }
+
+    const voices = await ensureSpeechVoices()
+    const u = new SpeechSynthesisUtterance(text)
+
+    const v = pickVietnameseVoice(voices)
+    if (v) u.voice = v
+    u.lang = 'vi-VN'
+    u.rate = 0.92
+    u.pitch = 1.08
+    u.volume = 1
+
+    syn.speak(u)
+  }
+
+  void run()
+}
+
+async function tryPlayCloudPromotionTts(text: string): Promise<boolean> {
+  try {
+    const res = await apiClient.post<ArrayBuffer>(
+      '/tts/promotion',
+      { text },
+      {
+        responseType: 'arraybuffer',
+        timeout: 45_000,
+      }
+    )
+    const buf = res.data as ArrayBuffer
+    /** Backend có thể trả audio/mpeg, application/octet-stream; Safari đôi khi không có content-type trong CORS subset. Chỉ cần 200 + nhị phân đủ dài là coi là MP3. */
+    const len = buf?.byteLength ?? 0
+    if (len < 256) {
+      return false
+    }
+    const ct = String(res.headers['content-type'] ?? '').toLowerCase()
+    if (len < 4096 && (ct.includes('json') || ct.includes('text/plain'))) {
+      return false
+    }
+
+    const blob = new Blob([buf], { type: 'audio/mpeg' })
+    const url = URL.createObjectURL(blob)
+    cancelPromotionCongratsPlayback()
+    promotionCloudObjectUrl = url
+    const audio = new Audio(url)
+    promotionCloudAudio = audio
+    audio.onended = () => {
+      cancelPromotionCongratsPlayback()
+    }
+    try {
+      await audio.play()
+    } catch {
+      cancelPromotionCongratsPlayback()
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Ưu tiên **ElevenLabs** (MP3 qua BE `POST /tts/promotion`); nếu thiếu cấu hình hoặc lỗi thì dùng Web Speech.
+ */
+export function speakPromotionCongrats(params: {
+  displayName: string
+  /** Cùng cấp ⇒ coi là mốc thăng sao (nhánh STAR_UP của manager). */
+  fromLevel: LevelCode | null
+  toLevel: LevelCode
+  toLabel: string
+}) {
+  if (typeof window === 'undefined') return
+
+  const { displayName, fromLevel, toLevel, toLabel } = params
+  const rawName = cleanDisplayNameForSpeech(displayName)
+  const name = rawName || 'đồng nghiệp'
+
+  const isStarMilestone = fromLevel != null && fromLevel === toLevel
+
+  const text = isStarMilestone
+    ? `Xin chúc mừng ${name}. Bạn vừa đạt mốc sao tiếp theo tại trình độ ${toLabel}. Rất đáng tự hào, chúc bạn luôn thành công.`
+    : `Xin chúc mừng ${name}. Thật ấn tượng, bạn đã thăng cấp thành công lên trình độ ${toLabel}. Mong bạn tiếp tục phát triển.`
+
+  const run = async () => {
+    cancelPromotionCongratsPlayback()
+
+    if (!isMockApiEnabled()) {
+      const ok = await tryPlayCloudPromotionTts(text)
+      if (ok) return
+    }
+
+    speakPromotionViaBrowser(text)
+  }
+
+  void run()
+}
+
 export function PromotionCelebrationModal({
   fromLevel,
   toLevel,
@@ -90,70 +273,20 @@ export function PromotionCelebrationModal({
     }
   }, [])
 
-  // TỰ ĐỘNG PHÁT GIỌNG NÓI CHÚC MỪNG SIÊU TRUYỀN CẢM, THƯỚT THA NHẸ NHÀNG
+  /** Tự động đọc khi modal mở (ElevenLabs hoặc trình duyệt; autoplay có thể bị chặn đến khi user thao tác tab). */
   useEffect(() => {
-    if (!window.speechSynthesis) return
-
-    const speakCongratulation = () => {
-      window.speechSynthesis.cancel()
-
-      const message = `Chúc mừng ${displayName} đã xuất sắc thăng cấp thành công lên trình độ ${toLabel}`
-      const msg = new SpeechSynthesisUtterance(message)
-
-      const voices = window.speechSynthesis.getVoices()
-
-      // Ưu tiên giọng đỉnh cao:
-      // 1. Hoài My (Microsoft Edge Neural - Nữ nhẹ nhàng thướt tha số 1 thế giới)
-      // 2. Linh (Apple iOS/macOS Premium - Rất dịu dàng tự nhiên)
-      // 3. Các giọng Việt Nam chất lượng cao khác
-      const optimalVoice =
-        voices.find((v) => v.name.includes('HoaiMy') || v.voiceURI.includes('HoaiMy')) ||
-        voices.find((v) => v.name.includes('Linh')) ||
-        voices.find(
-          (v) =>
-            (v.lang.includes('vi') || v.lang.includes('VN')) &&
-            (v.name.includes('Natural') || v.name.includes('Neural') || v.name.includes('Premium'))
-        ) ||
-        voices.find((v) => v.lang.includes('vi') || v.lang.includes('VN'))
-
-      if (optimalVoice) {
-        msg.voice = optimalVoice
-      }
-      msg.lang = 'vi-VN'
-
-      // TỐI ƯU THÔNG SỐ ĐỂ THÀNH GIỌNG "THƯỚT THA, NHẸ NHÀNG":
-      msg.rate = 0.82 // Đọc chậm rãi, từ tốn, trang trọng (mặc định 1.0 là quá nhanh, robot)
-      msg.pitch = 1.06 // Tông cao hơn xíu tạo độ ngọt ngào, thân thiện
-      msg.volume = 0.95
-
-      window.speechSynthesis.speak(msg)
-    }
-
-    // Để hiệu ứng pháo hoa nổ đẹp đẽ 1.2 giây trước khi cất tiếng nói cho sang trọng
-    const tSpeak = setTimeout(() => {
-      const voices = window.speechSynthesis.getVoices()
-      if (voices.length > 0) {
-        speakCongratulation()
-      } else {
-        window.speechSynthesis.onvoiceschanged = () => {
-          speakCongratulation()
-          window.speechSynthesis.onvoiceschanged = null
-        }
-      }
-    }, 1200)
-
+    if (typeof window === 'undefined') return
+    const t = window.setTimeout(() => {
+      speakPromotionCongrats({ displayName, fromLevel, toLevel, toLabel })
+    }, 650)
     return () => {
-      clearTimeout(tSpeak)
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel()
-      }
+      window.clearTimeout(t)
+      cancelPromotionCongratsPlayback()
     }
-  }, [displayName, toLabel])
+  }, [displayName, fromLevel, toLevel, toLabel])
 
   const handleClose = useCallback(() => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel() // Tắt giọng nói ngay khi bấm đóng
-    }
+    cancelPromotionCongratsPlayback()
     setVisible(false)
     setTimeout(onDismiss, 350)
   }, [onDismiss])
@@ -309,6 +442,7 @@ export function PromotionCelebrationModal({
 
             {/* CTA */}
             <Button
+              type="button"
               onClick={handleClose}
               className={cn(
                 'h-12 w-full rounded-2xl bg-gradient-to-r text-sm font-bold text-white shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-95',
