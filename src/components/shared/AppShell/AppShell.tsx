@@ -17,6 +17,7 @@ import { MobileHeaderNav } from '@/components/shared/AppNav/MobileHeaderNav'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { Sidebar } from '@/components/shared/Sidebar'
+import { AssistantWidget } from '@/components/shared/AssistantWidget'
 import { defaultEntryPathFromSession } from '@/lib/routeGuards'
 import { formatRoleLabelsVi } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
@@ -200,6 +201,7 @@ export function AppShell({ children, title }: AppShellProps) {
           </div>
         </main>
       </div>
+      <AssistantWidget />
     </div>
   )
 }

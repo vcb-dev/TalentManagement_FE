@@ -16,6 +16,7 @@ import {
   TextareaController,
 } from '@/components/ui/form-controllers'
 import { cn } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/axios'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
@@ -374,7 +375,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
           })
         }
       },
-      onError: () => toast.error('Không tải được ảnh. Thử lại sau.'),
+      onError: (err) => toast.error(getApiErrorMessage(err)),
     })
   }
 
