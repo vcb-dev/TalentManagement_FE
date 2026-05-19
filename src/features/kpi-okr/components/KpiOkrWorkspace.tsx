@@ -234,8 +234,8 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     [selectedTeamId, prevYear, prevMonth]
   )
   const sumKey = useMemo(
-    () => ['kpi-summaries', selectedTeamId, prevYear, prevMonth] as const,
-    [selectedTeamId, prevYear, prevMonth]
+    () => ['kpi-summaries', selectedTeamId, year, month] as const,
+    [selectedTeamId, year, month]
   )
   const membersKpiKey = useMemo(
     () => ['team-members-kpi', selectedTeamId] as const,
@@ -278,7 +278,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     queryKey: sumKey,
     queryFn: () =>
       selectedTeamId
-        ? performanceApi.listSummaries(selectedTeamId, prevYear, prevMonth)
+        ? performanceApi.listSummaries(selectedTeamId, year, month)
         : Promise.resolve([] as PerformanceSummaryRow[]),
     enabled: Boolean(selectedTeamId) && !isMockApiEnabled(),
   })
@@ -538,11 +538,22 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     assignKey,
   ])
 
+  const autoRecalcTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: assignKey })
     void qc.invalidateQueries({ queryKey: assignPrevKey })
     void qc.invalidateQueries({ queryKey: sumKey })
-  }, [qc, assignKey, assignPrevKey, sumKey])
+    // Tự động tính lại tổng hợp sau 1.5s debounce — gộp nhiều lần save liên tiếp thành 1 lần gọi.
+    if (selectedTeamId && !isMockApiEnabled()) {
+      if (autoRecalcTimerRef.current) clearTimeout(autoRecalcTimerRef.current)
+      autoRecalcTimerRef.current = setTimeout(() => {
+        void performanceApi
+          .recalculateSummaries(selectedTeamId, year, month)
+          .then(() => void qc.invalidateQueries({ queryKey: sumKey }))
+      }, 1500)
+    }
+  }, [qc, assignKey, assignPrevKey, sumKey, selectedTeamId, prevYear, prevMonth])
 
   const mockHint = isMockApiEnabled()
 
@@ -819,8 +830,8 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           rows={summariesQ.data ?? []}
           loading={summariesQ.isLoading}
           teamId={selectedTeamId}
-          year={prevYear}
-          month={prevMonth}
+          year={year}
+          month={month}
           canRecalculate={canEditTeam}
           onRecalculated={refresh}
           prioritizeAssigneeUserId={user?.id}

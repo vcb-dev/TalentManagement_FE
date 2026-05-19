@@ -39,7 +39,7 @@ import {
   KpiGauge,
   PerPersonBar,
   EvalBreakdownDonut,
-  TopPriorityList,
+  MemberKpiPanel,
   TrendLine,
 } from './kpiCharts'
 
@@ -212,7 +212,6 @@ export function DashboardKpiOkrZone({
     evalBreakdown,
     kpiGradeDist,
     okrGradeDist,
-    topPriority,
     perPerson,
     trend,
     members,
@@ -339,9 +338,7 @@ export function DashboardKpiOkrZone({
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
                       {t.deptName ? (
-                        <span className="ml-1 text-xs text-muted-foreground">
-                          · {t.deptName}
-                        </span>
+                        <span className="ml-1 text-xs text-muted-foreground">· {t.deptName}</span>
                       ) : null}
                     </SelectItem>
                   ))}
@@ -392,9 +389,7 @@ export function DashboardKpiOkrZone({
                     />
                   </div>
                   <div className="space-y-1">
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      Từ tháng
-                    </span>
+                    <span className="text-xs font-semibold text-muted-foreground">Từ tháng</span>
                     <Select
                       value={String(rangeStartMonth)}
                       onValueChange={(v) => setFromMonth(Number(v))}
@@ -412,9 +407,7 @@ export function DashboardKpiOkrZone({
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      Đến tháng
-                    </span>
+                    <span className="text-xs font-semibold text-muted-foreground">Đến tháng</span>
                     <Select
                       value={String(rangeEndMonth)}
                       onValueChange={(v) => setToMonth(Number(v))}
@@ -586,16 +579,20 @@ export function DashboardKpiOkrZone({
               <div className="grid grid-cols-1 gap-8 xl:grid-cols-5">
                 <div className="xl:col-span-3">
                   <div className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Ưu tiên cao nhất
+                    Thành viên trong team
                   </div>
                   {isLoading ? (
                     <div className="space-y-2">
-                      <Skeleton className="h-20 w-full rounded-xl" />
-                      <Skeleton className="h-20 w-full rounded-xl" />
-                      <Skeleton className="h-20 w-full rounded-xl" />
+                      <Skeleton className="h-14 w-full rounded-xl" />
+                      <Skeleton className="h-14 w-full rounded-xl" />
+                      <Skeleton className="h-14 w-full rounded-xl" />
                     </div>
                   ) : (
-                    <TopPriorityList rows={topPriority} nameFor={nameFor} />
+                    <MemberKpiPanel
+                      assignments={data.assignments}
+                      members={data.members}
+                      nameFor={nameFor}
+                    />
                   )}
                 </div>
                 <div className="rounded-2xl border border-border bg-card p-4 shadow-sm xl:col-span-2">
@@ -671,63 +668,6 @@ export function DashboardKpiOkrZone({
                 </div>
               </div>
             )}
-
-            {/* 6. Cá nhân — đặt cuối để không lẫn với KPI team */}
-            <div
-              className={cn(
-                'relative overflow-hidden rounded-3xl border border-dashed border-primary/25 bg-gradient-to-br from-card to-primary/[0.04] p-6 shadow-sm md:p-8',
-                CARD_ENTRANCE_HOVER
-              )}
-              style={staggerStyle(isMember ? 5 : 6)}
-            >
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Cá nhân bạn
-                </span>
-                <h3 className="text-lg font-bold text-foreground md:text-xl">
-                  Lộ trình học & thăng hạng
-                </h3>
-              </div>
-              <div
-                className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/[0.07]"
-                aria-hidden
-              />
-              <div className="relative max-w-2xl">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="inline-block rounded-full bg-primary/12 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
-                    Tiến tới cấp độ tiếp theo
-                  </span>
-                  <span className="shrink-0 text-xs font-bold tabular-nums text-primary">
-                    {starPct}%
-                  </span>
-                </div>
-                <div className="mb-1 h-2 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${starPct}%` }}
-                  />
-                </div>
-                <div className="mt-6 flex items-center gap-4 rounded-2xl border border-border bg-card/80 p-4">
-                  <Trophy
-                    className="h-10 w-10 shrink-0 text-primary"
-                    strokeWidth={1.75}
-                    aria-hidden
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-foreground">
-                      {maxStars === 0
-                        ? 'Cấp độ này chưa áp dụng hệ thống sao.'
-                        : starsToGo === 0
-                          ? `Đã đạt đủ ${maxStars}/${maxStars} sao — đủ điều kiện xét thăng hạng.`
-                          : `Còn ${starsToGo}/${maxStars} sao để thăng cấp`}
-                    </p>
-                    <p className="mt-0.5 text-xs font-medium uppercase tracking-tighter text-muted-foreground">
-                      Hoàn thành KPI/OKR và khảo sát để tích sao
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </>
       )}

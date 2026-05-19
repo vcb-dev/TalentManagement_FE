@@ -185,6 +185,47 @@ function aggregatePerPersonAcrossMonths(
     .sort((a, b) => b.totalRate - a.totalRate)
 }
 
+// Fallback khi summaries chưa được tính: dùng thẳng assignments.
+// kpiNot/okrNot ở đây là "đã đánh giá NOT", không bao gồm "chưa chấm".
+function aggregatePerPersonFromAssignments(
+  assignments: PerformanceAssignment[],
+  membersById: Map<string, TeamMemberRow>
+): PerPersonBarRow[] {
+  const byUser = new Map<
+    string,
+    { kpiOk: number; kpiNot: number; okrOk: number; okrNot: number; name: string }
+  >()
+  for (const a of assignments) {
+    const prev = byUser.get(a.assigneeUserId)
+    const member = membersById.get(a.assigneeUserId)
+    const name = member?.displayName?.trim() || member?.email?.trim() || prev?.name || 'Thành viên'
+    const ev = (a.managerEvalStatus ?? '').trim().toUpperCase()
+    byUser.set(a.assigneeUserId, {
+      kpiOk: (prev?.kpiOk ?? 0) + (a.kind === 'KPI' && ev === 'OK' ? 1 : 0),
+      kpiNot: (prev?.kpiNot ?? 0) + (a.kind === 'KPI' && ev === 'NOT' ? 1 : 0),
+      okrOk: (prev?.okrOk ?? 0) + (a.kind === 'OKR' && ev === 'OK' ? 1 : 0),
+      okrNot: (prev?.okrNot ?? 0) + (a.kind === 'OKR' && ev === 'NOT' ? 1 : 0),
+      name,
+    })
+  }
+  return [...byUser.entries()]
+    .map(([userId, v]) => {
+      const total = v.kpiOk + v.kpiNot + v.okrOk + v.okrNot
+      const ok = v.kpiOk + v.okrOk
+      const totalRate = total > 0 ? Math.round((ok / total) * 100) : 0
+      return {
+        userId,
+        name: v.name,
+        kpiOk: v.kpiOk,
+        kpiNot: v.kpiNot,
+        okrOk: v.okrOk,
+        okrNot: v.okrNot,
+        totalRate,
+      }
+    })
+    .sort((a, b) => b.totalRate - a.totalRate)
+}
+
 function computeTopPriority(assignments: PerformanceAssignment[], limit = 6): TopPriorityItem[] {
   return [...assignments]
     .sort((a, b) => {
@@ -369,7 +410,10 @@ export function useKpiDashboardData(params: {
 
     /* ---------- Top priority + Per-person (cộng dồn tháng) ---------- */
     const topPriority = computeTopPriority(assignments, 6)
-    const perPerson = aggregatePerPersonAcrossMonths(summaries, membersById)
+    const perPerson =
+      summaries.length > 0
+        ? aggregatePerPersonAcrossMonths(summaries, membersById)
+        : aggregatePerPersonFromAssignments(assignments, membersById)
 
     /* ---------- Trend — mỗi tháng trong kỳ ---------- */
     const trend: TrendPoint[] = months.map((m, idx) => {

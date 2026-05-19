@@ -413,11 +413,6 @@ function IndividualSlide({
           <ChevronRight className="h-6 w-6" />
         </button>
       </div>
-
-      {/* Live KPI badge */}
-      <div className="absolute bottom-4 right-5 hidden items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold text-white/90 ring-1 ring-white/20 backdrop-blur-md sm:flex">
-        <Eye className="h-3.5 w-3.5" /> Live KPI
-      </div>
     </div>
   )
 }

@@ -1,4 +1,7 @@
 import { useMemo, useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
+import type { PerformanceAssignment } from '@/features/kpi-okr/api'
+import type { TeamMemberRow } from '@/features/organization/api'
 import {
   Bar,
   BarChart,
@@ -23,7 +26,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import { cn } from '@/lib/utils'
-import { ChartGradients, renderActiveDot, renderDot } from './chartStyles'
+import { renderActiveDot, renderDot } from './chartStyles'
 import type {
   AssignmentStatusKey,
   GradeDistribution,
@@ -223,7 +226,13 @@ export function EvalBreakdownDonut({
     () =>
       (
         [
-          { key: 'ok', name: 'Đạt (OK)', value: breakdown.ok, color: 'hsl(161 94% 30%)', fill: 'hsl(161 94% 30%)' },
+          {
+            key: 'ok',
+            name: 'Đạt (OK)',
+            value: breakdown.ok,
+            color: 'hsl(161 94% 30%)',
+            fill: 'hsl(161 94% 30%)',
+          },
           {
             key: 'not',
             name: 'Chưa đạt (NOT)',
@@ -407,16 +416,16 @@ export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: st
 
 const perPersonConfig = {
   kpiOk: { label: 'KPI đạt', color: 'hsl(var(--primary))' },
-  kpiNot: { label: 'KPI chưa', color: 'hsl(239 100% 87%)' },
+  kpiNot: { label: 'KPI chưa', color: 'hsl(0 84% 60%)' },
   okrOk: { label: 'OKR đạt', color: 'hsl(160 84% 39%)' },
-  okrNot: { label: 'OKR chưa', color: 'hsl(152 76% 80%)' },
+  okrNot: { label: 'OKR chưa', color: 'hsl(38 92% 50%)' },
 } satisfies ChartConfig
 
 export function PerPersonBar({ rows }: { rows: PerPersonBarRow[] }) {
   if (!rows.length) {
     return (
       <div className="flex h-[260px] items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">
-        Chưa có bản tổng hợp — Leader cần bấm "Tính lại tổng hợp" ở màn KPI/OKR.
+        Không có dữ liệu KPI/OKR trong kỳ này.
       </div>
     )
   }
@@ -442,31 +451,34 @@ export function PerPersonBar({ rows }: { rows: PerPersonBarRow[] }) {
           dataKey="kpiOk"
           name="KPI đạt"
           stackId="kpi"
-          fill="url(#gradKpi)"
+          fill="hsl(var(--primary))"
+          fillOpacity={0.9}
           radius={[0, 0, 0, 0]}
         />
         <Bar
           dataKey="kpiNot"
           name="KPI chưa"
           stackId="kpi"
-          fill="url(#gradKpiSoft)"
+          fill="hsl(0 84% 60%)"
+          fillOpacity={0.75}
           radius={[4, 4, 0, 0]}
         />
         <Bar
           dataKey="okrOk"
           name="OKR đạt"
           stackId="okr"
-          fill="url(#gradOkr)"
+          fill="hsl(160 84% 39%)"
+          fillOpacity={0.9}
           radius={[0, 0, 0, 0]}
         />
         <Bar
           dataKey="okrNot"
           name="OKR chưa"
           stackId="okr"
-          fill="url(#gradOkrSoft)"
+          fill="hsl(38 92% 50%)"
+          fillOpacity={0.75}
           radius={[4, 4, 0, 0]}
         />
-        <ChartGradients />
       </BarChart>
     </ChartContainer>
   )
@@ -627,5 +639,192 @@ export function TopPriorityList({
         )
       })}
     </ul>
+  )
+}
+
+/* ==================================================================== *
+ *  Member KPI panel — list members + expandable KPI/OKR per member
+ * ==================================================================== */
+
+export function MemberKpiPanel({
+  assignments,
+  members,
+  nameFor,
+}: {
+  assignments: PerformanceAssignment[]
+  members: TeamMemberRow[]
+  nameFor: (userId: string) => string
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  const memberStats = useMemo(() => {
+    const map = new Map<string, { total: number; ok: number; not: number }>()
+    for (const a of assignments) {
+      const s = map.get(a.assigneeUserId) ?? { total: 0, ok: 0, not: 0 }
+      s.total++
+      const ev = (a.managerEvalStatus ?? '').trim().toUpperCase()
+      if (ev === 'OK') s.ok++
+      else if (ev === 'NOT') s.not++
+      map.set(a.assigneeUserId, s)
+    }
+    return map
+  }, [assignments])
+
+  const rows = useMemo(
+    () =>
+      members
+        .filter((m) => m.status !== 'INACTIVE')
+        .map((m) => ({
+          userId: m.userId,
+          name: nameFor(m.userId),
+          stats: memberStats.get(m.userId) ?? { total: 0, ok: 0, not: 0 },
+        }))
+        .sort((a, b) => b.stats.total - a.stats.total || a.name.localeCompare(b.name)),
+    [members, memberStats, nameFor]
+  )
+
+  const selectedItems = useMemo(
+    () =>
+      assignments
+        .filter((a) => a.assigneeUserId === selectedId)
+        .sort((a, b) => {
+          const pa = a.priority === 0 ? 99 : a.priority
+          const pb = b.priority === 0 ? 99 : b.priority
+          return pa - pb
+        }),
+    [assignments, selectedId]
+  )
+
+  if (!rows.length) {
+    return (
+      <div className="flex h-[220px] items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">
+        Không có thành viên nào trong team.
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {rows.map((row) => {
+        const isOpen = selectedId === row.userId
+        const { total, ok, not } = row.stats
+        const okPct = total > 0 ? Math.round((ok / total) * 100) : 0
+        const initials = row.name
+          .split(' ')
+          .filter(Boolean)
+          .slice(-2)
+          .map((w) => w[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2)
+
+        return (
+          <div
+            key={row.userId}
+            className={cn(
+              'rounded-xl border transition-all duration-200',
+              isOpen ? 'border-primary/30 bg-card shadow-sm' : 'border-border bg-card/60'
+            )}
+          >
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/40"
+              onClick={() => setSelectedId(isOpen ? null : row.userId)}
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                {initials || '?'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">{row.name}</p>
+                <p className="text-[11px] text-muted-foreground">{total} KPI/OKR</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {ok > 0 && (
+                  <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                    ✓ {ok}
+                  </span>
+                )}
+                {not > 0 && (
+                  <span className="rounded-md bg-rose-50 px-1.5 py-0.5 text-[11px] font-bold text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">
+                    ✗ {not}
+                  </span>
+                )}
+                {total > 0 && (
+                  <span className="w-9 text-right text-xs font-bold tabular-nums text-muted-foreground">
+                    {okPct}%
+                  </span>
+                )}
+                {isOpen ? (
+                  <ChevronUp className="h-4 w-4 text-primary" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground/60" />
+                )}
+              </div>
+            </button>
+
+            {isOpen && (
+              <div className="border-t border-border/50 px-3 pb-3 pt-2">
+                {selectedItems.length === 0 ? (
+                  <p className="py-3 text-center text-xs text-muted-foreground">
+                    Chưa có chỉ tiêu nào được giao.
+                  </p>
+                ) : (
+                  <ul className="mt-1 space-y-1.5">
+                    {selectedItems.map((a) => {
+                      const prio = priorityLabel(a.priority)
+                      const ev = (a.managerEvalStatus ?? '').trim().toUpperCase()
+                      const evalStatus = ev === 'OK' ? 'OK' : ev === 'NOT' ? 'NOT' : null
+                      return (
+                        <li
+                          key={a.id}
+                          className="rounded-lg border border-border/70 bg-background/60 p-2.5"
+                        >
+                          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                            <span
+                              className={cn(
+                                'inline-flex h-4 items-center rounded px-1 text-[10px] font-black uppercase',
+                                a.kind === 'KPI'
+                                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
+                                  : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                              )}
+                            >
+                              {a.kind}
+                            </span>
+                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              <span className={cn('h-1.5 w-1.5 rounded-full', prio.dot)} />
+                              {prio.label}
+                            </span>
+                            {evalStatus && (
+                              <span
+                                className={cn(
+                                  'rounded px-1 py-0.5 text-[10px] font-bold',
+                                  evalStatus === 'OK'
+                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40'
+                                    : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40'
+                                )}
+                              >
+                                {evalStatus}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mb-1.5 line-clamp-1 text-xs font-semibold text-foreground">
+                            {a.content}
+                          </p>
+                          {a.targetMetric?.trim() ? (
+                            <p className="text-[10px] text-muted-foreground">
+                              Chỉ tiêu: <b className="text-foreground">{a.targetMetric}</b>
+                            </p>
+                          ) : null}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
   )
 }

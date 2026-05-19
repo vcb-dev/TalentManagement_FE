@@ -311,7 +311,7 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
   },
   {
     to: '/leader/kpi-okr',
-    label: 'Vinh danh & Xếp hạng',
+    label: 'Set KPI/OKR cho team',
     icon: Target,
     match: 'prefix',
     permissionIdsAny: ['kpi.team_view', 'kpi.team_edit'],

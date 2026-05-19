@@ -8,11 +8,9 @@
   useImperativeHandle,
 } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Select,
@@ -31,16 +29,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { TextareaController, SelectController } from '@/components/ui/form-controllers'
-import { Form } from '@/components/ui/form'
 import {
   performanceApi,
   type LeaderEvaluationRow,
@@ -62,14 +50,7 @@ import {
 import { useHrOrgTree } from '@/features/hr-admin/useHrOrgTree'
 import { useAuthStore } from '@/stores/auth.store'
 import type { UserSession } from '@/types/auth'
-import {
-  ChevronDown,
-  ChevronRight,
-  ChevronsDownUp,
-  ChevronsUpDown,
-  PencilIcon,
-  Save,
-} from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Save } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 
@@ -121,9 +102,6 @@ export function LeaderReviewScreen() {
       .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
   }, [treeReady, divisions, user])
 
-  const fixedTeamOnly = treeReady && managedTeams.length === 1
-  const fixedTeamLabel = fixedTeamOnly ? managedTeams[0]?.name : null
-
   useEffect(() => {
     if (!treeReady || managedTeams.length === 0) return
     setTeamId((prev) => {
@@ -137,6 +115,8 @@ export function LeaderReviewScreen() {
 
   const relaxed = leaderReviewDivisionScopeRelaxed(user)
 
+  const autoRecalcTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const invalidateLeaderReview = useCallback(() => {
     void queryClient.invalidateQueries({
       queryKey: ['performance', 'leader-evaluations', teamId, year, month],
@@ -144,6 +124,19 @@ export function LeaderReviewScreen() {
     void queryClient.invalidateQueries({
       queryKey: ['performance', 'assignments', 'leader-review', teamId, year, month],
     })
+    void queryClient.invalidateQueries({
+      queryKey: ['kpi-summaries', teamId, year, month],
+    })
+    if (teamId && !isMockApiEnabled()) {
+      if (autoRecalcTimerRef.current) clearTimeout(autoRecalcTimerRef.current)
+      autoRecalcTimerRef.current = setTimeout(() => {
+        void performanceApi
+          .recalculateSummaries(teamId, year, month)
+          .then(() =>
+            queryClient.invalidateQueries({ queryKey: ['kpi-summaries', teamId, year, month] })
+          )
+      }, 1500)
+    }
   }, [queryClient, teamId, year, month])
 
   const { data, isLoading, isError } = useQuery({
@@ -185,34 +178,28 @@ export function LeaderReviewScreen() {
         </h1>
         <p className="mt-1 text-sm text-slate-500">
           Trưởng nhóm tự điền kết quả và tự đánh giá trên workspace KPI; quản lý chấm OK/NOT từng
-          chỉ tiêu kỳ đã chọn, và có thể lưu thêm đánh giá tổng hợp (A/B/C).
+          chỉ tiêu kỳ đã chọn.
         </p>
       </div>
 
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-wrap items-end gap-4 justify-between">
+          <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Nhóm</Label>
-              {fixedTeamOnly ? (
-                <div className="flex h-9 min-w-[220px] items-center rounded-lg border border-transparent px-1 text-sm font-medium text-slate-800 dark:text-slate-200">
-                  {fixedTeamLabel ?? '—'}
-                </div>
-              ) : (
-                <Select value={teamId} onValueChange={setTeamId}>
-                  <SelectTrigger className="w-[260px] h-9 rounded-lg">
-                    <SelectValue placeholder="Chọn nhóm" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {managedTeams.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {relaxed && t.divisionName ? `${t.divisionName} — ${t.name}` : t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              <Select value={teamId} onValueChange={setTeamId}>
+                <SelectTrigger className="w-[220px] h-9 rounded-lg">
+                  <SelectValue placeholder="Chọn nhóm" />
+                </SelectTrigger>
+                <SelectContent>
+                  {managedTeams.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {relaxed && t.divisionName ? `${t.divisionName} — ${t.name}` : t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
@@ -251,7 +238,7 @@ export function LeaderReviewScreen() {
               type="button"
               variant="outline"
               size="sm"
-              className="gap-1.5 self-end"
+              className="ml-auto gap-1.5 self-end"
               onClick={() => setExpandAll((v) => !v)}
             >
               {expandAll ? (
@@ -305,8 +292,6 @@ export function LeaderReviewScreen() {
             <LeaderEvaluationRow
               key={leader.userId}
               leader={leader}
-              year={year}
-              month={month}
               assignmentRows={assignmentsByLeader.get(leader.userId) ?? []}
               assignmentsLoading={assignmentsQ.isLoading}
               assignmentsFetchError={assignmentsQ.isError}
@@ -323,8 +308,6 @@ export function LeaderReviewScreen() {
 
 function LeaderEvaluationRow({
   leader,
-  year,
-  month,
   assignmentRows,
   assignmentsLoading,
   assignmentsFetchError,
@@ -333,8 +316,6 @@ function LeaderEvaluationRow({
   forceExpand,
 }: {
   leader: LeaderEvaluationRow
-  year: number
-  month: number
   assignmentRows: PerformanceAssignment[]
   assignmentsLoading: boolean
   assignmentsFetchError: boolean
@@ -342,7 +323,6 @@ function LeaderEvaluationRow({
   onSaved: () => void
   forceExpand?: boolean
 }) {
-  const [open, setOpen] = useState(false)
   const [assignmentsOpen, setAssignmentsOpen] = useState(false)
   const [savingAll, setSavingAll] = useState(false)
   const rowRefs = useRef<Map<string, AssignmentEditorHandle>>(new Map())
@@ -365,35 +345,8 @@ function LeaderEvaluationRow({
     onSaved()
   }
 
-  const form = useForm({
-    defaultValues: {
-      overallComment: leader.evaluation?.overallComment ?? '',
-      managerScoreLabel: leader.evaluation?.managerScoreLabel ?? '__none',
-    },
-  })
-
-  const { control, handleSubmit, reset } = form
-
-  const onSubmit = handleSubmit(async (values) => {
-    try {
-      await performanceApi.patchLeaderEvaluation(leader.userId, year, month, {
-        overallComment: values.overallComment || null,
-        managerScoreLabel:
-          values.managerScoreLabel && values.managerScoreLabel !== '__none'
-            ? values.managerScoreLabel
-            : null,
-      })
-      toast.success(`Đã lưu đánh giá tổng hợp — ${leader.displayName ?? ''}`)
-      setOpen(false)
-      onSaved()
-    } catch {
-      toast.error('Không lưu được đánh giá')
-    }
-  })
-
   const kpiTotal = leader.kpiOkCount + leader.kpiNotCount
   const okrTotal = leader.okrOkCount + leader.okrNotCount
-  const evalScore = leader.evaluation?.managerScoreLabel
 
   return (
     <Card className="group transition-all hover:shadow-sm">
@@ -415,21 +368,6 @@ function LeaderEvaluationRow({
                 <span>
                   OKR: {leader.okrOkCount}/{okrTotal || 0}
                 </span>
-                {evalScore && (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      'h-4 text-xs font-extrabold px-1',
-                      evalScore === 'A'
-                        ? 'border-emerald-200 text-emerald-600'
-                        : evalScore === 'B'
-                          ? 'border-amber-200 text-amber-600'
-                          : 'border-rose-200 text-rose-600'
-                    )}
-                  >
-                    {evalScore}
-                  </Badge>
-                )}
               </div>
             </div>
           </div>
@@ -462,70 +400,6 @@ function LeaderEvaluationRow({
                 {savingAll ? 'Đang lưu…' : 'Lưu tất cả'}
               </Button>
             ) : null}
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => {
-                    reset({
-                      overallComment: leader.evaluation?.overallComment ?? '',
-                      managerScoreLabel: leader.evaluation?.managerScoreLabel ?? '__none',
-                    })
-                  }}
-                >
-                  <PencilIcon className="h-3.5 w-3.5" />
-                  {leader.evaluation?.managerScoreLabel ? 'Sửa A/B/C' : 'Đánh giá tổng hợp'}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    Đánh giá tổng hợp — T{month}/{year}
-                  </DialogTitle>
-                  <DialogDescription>
-                    Xếp loại tổng quan và nhận xét chung cho <strong>{leader.displayName}</strong>{' '}
-                    (bổ sung, không thay thế chấm OK/NOT từng chỉ tiêu).
-                  </DialogDescription>
-                </DialogHeader>
-                <Form {...form}>
-                  <form onSubmit={onSubmit} className="space-y-4">
-                    <SelectController
-                      control={control}
-                      name="managerScoreLabel"
-                      label="Xếp loại"
-                      className="space-y-1.5 text-xs font-medium"
-                    >
-                      <SelectItem value="__none">—</SelectItem>
-                      <SelectItem value="A">A — Xuất sắc</SelectItem>
-                      <SelectItem value="B">B — Khá</SelectItem>
-                      <SelectItem value="C">C — Cần cải thiện</SelectItem>
-                    </SelectController>
-                    <TextareaController
-                      control={control}
-                      name="overallComment"
-                      label="Nhận xét chung"
-                      placeholder="Nhận xét tổng quan về trưởng nhóm..."
-                      className="space-y-1.5 text-xs font-medium"
-                    />
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setOpen(false)}
-                      >
-                        Huỷ
-                      </Button>
-                      <Button type="submit" size="sm">
-                        Lưu
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
           </div>
         </div>
 
@@ -569,7 +443,9 @@ function LeaderEvaluationRow({
                             className={cn(
                               XL_TH,
                               i === ASSIGN_TABLE_HEAD.length - 1 &&
-                                'sticky right-0 z-20 bg-slate-50/95 backdrop-blur-md shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-900/95'
+                                'sticky right-0 z-20 w-[76px] bg-slate-50/95 backdrop-blur-md shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-900/95',
+                              i === ASSIGN_TABLE_HEAD.length - 2 &&
+                                'sticky right-[76px] z-20 bg-slate-50/95 backdrop-blur-md shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-900/95'
                             )}
                           >
                             {h}
@@ -664,7 +540,13 @@ const ManagerLeaderAssignmentEditor = forwardRef<
         {formatViNumber(assignment.targetMetric) || '—'}
       </TableCell>
       <AssignmentEpic4ReadCells row={assignment} td={td} />
-      <TableCell className={cn(td, 'min-w-[140px]')}>
+      <TableCell
+        className={cn(
+          td,
+          'sticky right-[104px] z-10 min-w-[140px] bg-white shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-950',
+          rowStripe && 'bg-slate-50 dark:bg-slate-900'
+        )}
+      >
         <div className="flex flex-col gap-2">
           <Select
             value={status || '__none'}
@@ -693,7 +575,7 @@ const ManagerLeaderAssignmentEditor = forwardRef<
       <TableCell
         className={cn(
           td,
-          'sticky right-0 z-10 whitespace-nowrap bg-white text-right shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-950'
+          'sticky right-0 z-10 w-[76px] whitespace-nowrap bg-white text-right shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-950'
         )}
       >
         <Button

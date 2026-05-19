@@ -45,7 +45,12 @@ export function ManagerHrSnapshotCards({
           role="alert"
         >
           Không tải được thống kê nhân sự.{' '}
-          <Button type="button" variant="ghost" className="h-auto p-0 font-semibold text-destructive underline hover:bg-transparent" onClick={() => void refetch()}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-auto p-0 font-semibold text-destructive underline hover:bg-transparent"
+            onClick={() => void refetch()}
+          >
             Thử lại
           </Button>
         </div>
@@ -75,14 +80,14 @@ export function ManagerHrSnapshotCards({
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-3">
-            {/* Tổng đầu lượng */}
+            {/* Tổng nhân sự */}
             <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-violet-500/10 to-indigo-600/5 p-3 ring-1 ring-indigo-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-indigo-500/40 sm:p-4">
               <div
                 className="absolute -right-3 -top-3 h-16 w-16 rounded-full bg-indigo-500/8 blur-xl"
                 aria-hidden
               />
               <p className="mb-1 text-xs font-bold uppercase tracking-wider text-indigo-600/80 dark:text-indigo-400">
-                Tổng đầu lượng
+                Tổng nhân sự
               </p>
               <p
                 className={cn(

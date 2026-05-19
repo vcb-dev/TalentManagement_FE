@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Plus, Search, Trash2, ChevronDown, Settings2, Trophy } from 'lucide-react'
@@ -39,12 +39,34 @@ type TeamInfo = { id: string; name: string; deptId: string; deptName: string }
 
 type MetricEntry = VinhDanhConfigSummary & { teamIds: Set<string> }
 
+type RowDraft = {
+  rowId: number
+  content: string
+  kind: PerformanceKind
+  priority: number
+  targetMetric: string
+  numericUnit: string
+}
+
 const PRIORITY_OPTIONS = [
   { value: 1, label: 'P1 — Cao' },
   { value: 2, label: 'P2 — Trung bình' },
   { value: 3, label: 'P3 — Thấp' },
   { value: 4, label: 'P4 — Tùy chọn' },
 ]
+
+let _rowIdSeq = 0
+function makeRow(overrides?: Partial<RowDraft>): RowDraft {
+  return {
+    rowId: ++_rowIdSeq,
+    content: '',
+    kind: 'KPI',
+    priority: 2,
+    targetMetric: '',
+    numericUnit: '',
+    ...overrides,
+  }
+}
 
 // ─── Add / Edit dialog ───────────────────────────────────────────────────────
 
@@ -62,17 +84,29 @@ function AddEditDialog({
   onSaved: () => void
 }) {
   const now = new Date()
-  const [content, setContent] = useState(initial?.content ?? '')
-  const [kind, setKind] = useState<PerformanceKind>(initial?.kind ?? 'KPI')
-  const [priority, setPriority] = useState(initial?.priority ?? 2)
-  const [targetMetric, setTargetMetric] = useState(initial?.targetMetric ?? '')
-  const [numericUnit, setNumericUnit] = useState(initial?.numericUnit ?? '')
+  const isEdit = Boolean(initial)
+
+  const [rows, setRows] = useState<RowDraft[]>(() =>
+    isEdit
+      ? [
+          makeRow({
+            content: initial!.content,
+            kind: initial!.kind,
+            priority: initial!.priority,
+            targetMetric: initial!.targetMetric ?? '',
+            numericUnit: initial!.numericUnit ?? '',
+          }),
+        ]
+      : [makeRow()]
+  )
+
   const [effYear, setEffYear] = useState(initial?.effectiveFromYear ?? now.getFullYear())
   const [effMonth, setEffMonth] = useState(initial?.effectiveFromMonth ?? now.getMonth() + 1)
   const [selectedTeamIds, setSelectedTeamIds] = useState<Set<string>>(
     () => new Set(initial?.teamIds ?? [])
   )
   const [saving, setSaving] = useState(false)
+  const [teamSearch, setTeamSearch] = useState('')
   const [deptOpen, setDeptOpen] = useState<Set<string>>(
     () => new Set(allTeams.map((t) => t.deptId))
   )
@@ -85,6 +119,26 @@ function AddEditDialog({
     }
     return map
   }, [allTeams])
+
+  const filteredTeamsByDept = useMemo(() => {
+    const q = teamSearch.trim().toLowerCase()
+    if (!q) return teamsByDept
+    const filtered = new Map<string, { deptName: string; teams: TeamInfo[] }>()
+    for (const [deptId, { deptName, teams }] of teamsByDept.entries()) {
+      const matchDept = deptName.toLowerCase().includes(q)
+      const matchedTeams = matchDept ? teams : teams.filter((t) => t.name.toLowerCase().includes(q))
+      if (matchedTeams.length > 0) filtered.set(deptId, { deptName, teams: matchedTeams })
+    }
+    return filtered
+  }, [teamsByDept, teamSearch])
+
+  const updateRow = (rowId: number, patch: Partial<Omit<RowDraft, 'rowId'>>) =>
+    setRows((prev) => prev.map((r) => (r.rowId === rowId ? { ...r, ...patch } : r)))
+
+  const addRow = () => setRows((prev) => [...prev, makeRow()])
+
+  const removeRow = (rowId: number) =>
+    setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.rowId !== rowId) : prev))
 
   const toggleTeam = (id: string) =>
     setSelectedTeamIds((prev) => {
@@ -111,8 +165,9 @@ function AddEditDialog({
     })
 
   const handleSave = async () => {
-    if (!content.trim()) {
-      toast.error('Vui lòng nhập nội dung chỉ số')
+    const validRows = rows.filter((r) => r.content.trim())
+    if (!validRows.length) {
+      toast.error('Vui lòng nhập nội dung cho ít nhất 1 chỉ số')
       return
     }
     if (!selectedTeamIds.size) {
@@ -121,18 +176,19 @@ function AddEditDialog({
     }
     setSaving(true)
     try {
-      if (initial) {
+      if (isEdit && initial) {
+        const row = rows[0]!
         const prevIds = initial.teamIds
         const addTeamIds = [...selectedTeamIds].filter((id) => !prevIds.has(id))
         const removeTeamIds = [...prevIds].filter((id) => !selectedTeamIds.has(id))
         const keepTeamIds = [...selectedTeamIds].filter((id) => prevIds.has(id))
         await performanceApi.updateVinhDanhConfig({
           oldContent: initial.content,
-          newContent: content.trim() !== initial.content ? content.trim() : undefined,
-          kind,
-          priority,
-          targetMetric: targetMetric || null,
-          numericUnit: numericUnit || null,
+          newContent: row.content.trim() !== initial.content ? row.content.trim() : undefined,
+          kind: row.kind,
+          priority: row.priority,
+          targetMetric: row.targetMetric || null,
+          numericUnit: row.numericUnit || null,
           effectiveFromYear: effYear,
           effectiveFromMonth: effMonth,
           addTeamIds,
@@ -141,17 +197,23 @@ function AddEditDialog({
         })
         toast.success('Đã cập nhật chỉ số vinh danh.')
       } else {
-        await performanceApi.createVinhDanhConfig({
-          content: content.trim(),
-          kind,
-          priority,
-          targetMetric: targetMetric || null,
-          numericUnit: numericUnit || null,
-          teamIds: [...selectedTeamIds],
-          effectiveFromYear: effYear,
-          effectiveFromMonth: effMonth,
-        })
-        toast.success(`Đã thêm chỉ số vinh danh cho ${selectedTeamIds.size} team.`)
+        await Promise.all(
+          validRows.map((row) =>
+            performanceApi.createVinhDanhConfig({
+              content: row.content.trim(),
+              kind: row.kind,
+              priority: row.priority,
+              targetMetric: row.targetMetric || null,
+              numericUnit: row.numericUnit || null,
+              teamIds: [...selectedTeamIds],
+              effectiveFromYear: effYear,
+              effectiveFromMonth: effMonth,
+            })
+          )
+        )
+        toast.success(
+          `Đã thêm ${validRows.length} chỉ số vinh danh cho ${selectedTeamIds.size} team.`
+        )
       }
       onSaved()
       onClose()
@@ -169,80 +231,135 @@ function AddEditDialog({
         if (!o) onClose()
       }}
     >
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {initial ? 'Sửa chỉ số vinh danh' : 'Thêm chỉ số vinh danh mới'}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? 'Sửa chỉ số vinh danh' : 'Thêm chỉ số vinh danh mới'}</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            {initial
+            {isEdit
               ? 'Cập nhật nội dung và team áp dụng. Áp dụng cho cả trưởng nhóm và thành viên.'
               : 'Chỉ số sẽ được tạo cho trưởng nhóm và tất cả thành viên active trong team đã chọn.'}
           </p>
         </DialogHeader>
 
         <div className="space-y-4 py-1">
-          {/* Content */}
-          <div className="space-y-1.5">
-            <Label>
-              Nội dung <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              placeholder="Tên chỉ số / mục tiêu"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-            />
-          </div>
+          {/* Rows */}
+          <div className="space-y-2">
+            {!isEdit && (
+              <div className="flex items-center justify-between">
+                <Label>
+                  Danh sách chỉ số <span className="text-destructive">*</span>
+                </Label>
+                <span className="text-xs text-muted-foreground">{rows.length} dòng</span>
+              </div>
+            )}
 
-          {/* Kind + Priority */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Loại</Label>
-              <Select value={kind} onValueChange={(v) => setKind(v as PerformanceKind)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="KPI">KPI</SelectItem>
-                  <SelectItem value="OKR">OKR</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Ưu tiên</Label>
-              <Select value={String(priority)} onValueChange={(v) => setPriority(parseInt(v))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRIORITY_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={String(o.value)}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+            {rows.map((row, idx) => (
+              <div
+                key={row.rowId}
+                className={cn(
+                  'rounded-xl border bg-slate-50 dark:bg-slate-900/50 p-3 space-y-2.5',
+                  !isEdit && 'relative pr-9'
+                )}
+              >
+                {!isEdit && (
+                  <div className="absolute right-2 top-2 flex items-center gap-0.5">
+                    <span className="text-[10px] font-bold text-slate-400">#{idx + 1}</span>
+                    {rows.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeRow(row.rowId)}
+                        className="ml-1 rounded p-0.5 text-slate-300 hover:bg-rose-50 hover:text-rose-500 transition-colors"
+                        title="Xoá dòng này"
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
 
-          {/* Target + Unit */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Chỉ tiêu</Label>
-              <Input
-                placeholder="VD: 100,000,000"
-                value={targetMetric}
-                onChange={(e) => setTargetMetric(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Đơn vị</Label>
-              <Input
-                placeholder="VD: VND, views"
-                value={numericUnit}
-                onChange={(e) => setNumericUnit(e.target.value)}
-              />
-            </div>
+                {/* Content */}
+                {isEdit && (
+                  <Label className="text-xs text-muted-foreground">
+                    Nội dung <span className="text-destructive">*</span>
+                  </Label>
+                )}
+                <Input
+                  placeholder="Tên chỉ số / mục tiêu"
+                  value={row.content}
+                  onChange={(e) => updateRow(row.rowId, { content: e.target.value })}
+                />
+
+                {/* Kind + Priority */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Select
+                    value={row.kind}
+                    onValueChange={(v) => updateRow(row.rowId, { kind: v as PerformanceKind })}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="KPI">KPI</SelectItem>
+                      <SelectItem value="OKR">OKR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={String(row.priority)}
+                    onValueChange={(v) => updateRow(row.rowId, { priority: parseInt(v) })}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRIORITY_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={String(o.value)}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Target + Unit */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    className="h-8 text-xs"
+                    placeholder="Chỉ tiêu (VD: 100,000,000)"
+                    value={row.targetMetric}
+                    onChange={(e) => updateRow(row.rowId, { targetMetric: e.target.value })}
+                  />
+                  <Input
+                    className="h-8 text-xs"
+                    placeholder="Đơn vị (VD: VND)"
+                    value={row.numericUnit}
+                    onChange={(e) => updateRow(row.rowId, { numericUnit: e.target.value })}
+                  />
+                </div>
+              </div>
+            ))}
+
+            {!isEdit && (
+              <button
+                type="button"
+                onClick={addRow}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-2 text-xs font-medium text-slate-500 hover:border-primary hover:bg-primary/5 hover:text-primary transition-colors dark:border-slate-700"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Thêm dòng
+              </button>
+            )}
           </div>
 
           {/* Effective from */}
@@ -296,57 +413,80 @@ function AddEditDialog({
             <p className="text-xs text-slate-400">
               Áp dụng cho cả trưởng nhóm và thành viên trong team đã chọn
             </p>
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <Input
+                className="h-8 pl-8 text-xs"
+                placeholder="Tìm phòng / team..."
+                value={teamSearch}
+                onChange={(e) => setTeamSearch(e.target.value)}
+              />
+            </div>
+
             <div className="max-h-52 overflow-y-auto rounded-lg border divide-y bg-white dark:bg-slate-950">
-              {[...teamsByDept.entries()].map(([deptId, { deptName, teams }]) => {
-                const allSel = teams.every((t) => selectedTeamIds.has(t.id))
-                const someSel = !allSel && teams.some((t) => selectedTeamIds.has(t.id))
-                const isOpen = deptOpen.has(deptId)
-                return (
-                  <div key={deptId}>
-                    <div className="flex items-center gap-0 bg-slate-50 dark:bg-slate-900">
-                      <div
-                        className="flex flex-1 items-center gap-2.5 px-3 py-2.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
-                        onClick={() => toggleDept(deptId)}
-                      >
-                        <Checkbox
-                          checked={allSel ? true : someSel ? 'indeterminate' : false}
-                          onCheckedChange={() => toggleDept(deptId)}
-                        />
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                          {deptName}
-                        </span>
-                        <span className="ml-auto text-xs text-slate-400">
-                          {teams.filter((t) => selectedTeamIds.has(t.id)).length}/{teams.length}
-                        </span>
-                      </div>
-                      <button
-                        className="px-2 py-2.5 text-slate-400 hover:text-slate-600"
-                        onClick={() => toggleDeptOpen(deptId)}
-                      >
-                        <ChevronDown
-                          className={cn('h-3.5 w-3.5 transition-transform', isOpen && 'rotate-180')}
-                        />
-                      </button>
-                    </div>
-                    {isOpen &&
-                      teams.map((t) => (
+              {filteredTeamsByDept.size === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400">
+                  Không tìm thấy team nào.
+                </div>
+              ) : (
+                [...filteredTeamsByDept.entries()].map(([deptId, { deptName, teams }]) => {
+                  const allSel = teams.every((t) => selectedTeamIds.has(t.id))
+                  const someSel = !allSel && teams.some((t) => selectedTeamIds.has(t.id))
+                  const isOpen = teamSearch.trim() ? true : deptOpen.has(deptId)
+                  return (
+                    <div key={deptId}>
+                      <div className="flex items-center gap-0 bg-slate-50 dark:bg-slate-900">
                         <div
-                          key={t.id}
-                          className="flex items-center gap-2.5 px-3 py-2 pl-9 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50"
-                          onClick={() => toggleTeam(t.id)}
+                          className="flex flex-1 items-center gap-2.5 px-3 py-2.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
+                          onClick={() => toggleDept(deptId)}
                         >
                           <Checkbox
-                            checked={selectedTeamIds.has(t.id)}
-                            onCheckedChange={() => toggleTeam(t.id)}
+                            checked={allSel ? true : someSel ? 'indeterminate' : false}
+                            onCheckedChange={() => toggleDept(deptId)}
                           />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">
-                            {t.name}
+                          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                            {deptName}
+                          </span>
+                          <span className="ml-auto text-xs text-slate-400">
+                            {teams.filter((t) => selectedTeamIds.has(t.id)).length}/{teams.length}
                           </span>
                         </div>
-                      ))}
-                  </div>
-                )
-              })}
+                        {!teamSearch.trim() && (
+                          <button
+                            className="px-2 py-2.5 text-slate-400 hover:text-slate-600"
+                            onClick={() => toggleDeptOpen(deptId)}
+                          >
+                            <ChevronDown
+                              className={cn(
+                                'h-3.5 w-3.5 transition-transform',
+                                isOpen && 'rotate-180'
+                              )}
+                            />
+                          </button>
+                        )}
+                      </div>
+                      {isOpen &&
+                        teams.map((t) => (
+                          <div
+                            key={t.id}
+                            className="flex items-center gap-2.5 px-3 py-2 pl-9 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                            onClick={() => toggleTeam(t.id)}
+                          >
+                            <Checkbox
+                              checked={selectedTeamIds.has(t.id)}
+                              onCheckedChange={() => toggleTeam(t.id)}
+                            />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">
+                              {t.name}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  )
+                })
+              )}
             </div>
           </div>
         </div>
@@ -356,7 +496,11 @@ function AddEditDialog({
             Hủy
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Đang lưu...' : initial ? 'Lưu thay đổi' : 'Thêm cho team đã chọn'}
+            {saving
+              ? 'Đang lưu...'
+              : isEdit
+                ? 'Lưu thay đổi'
+                : `Thêm ${rows.filter((r) => r.content.trim()).length || ''} chỉ số cho team đã chọn`}
           </Button>
         </DialogFooter>
       </DialogContent>

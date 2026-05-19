@@ -1,6 +1,6 @@
-﻿import { useMemo, useState } from 'react'
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from 'recharts'
-import { AlertTriangle, GraduationCap, LineChart } from 'lucide-react'
+﻿import { useMemo } from 'react'
+import { ResponsiveContainer, Treemap } from 'recharts'
+import { AlertTriangle, GraduationCap } from 'lucide-react'
 import { useLearningOpsSummary } from '@/features/dashboard/hooks'
 import { InfoHint } from '@/components/shared/InfoHint'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
@@ -8,14 +8,6 @@ import { LEVEL_LABELS, LEVELS, type LevelCode } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
 
 const quartOut = '[transition-timing-function:cubic-bezier(0.25,1,0.48,1)]'
 
@@ -27,146 +19,178 @@ const LEVEL_PIE_COLORS: Record<LevelCode, string> = {
   tuong: 'hsl(350 70% 52%)',
 }
 
-const OPS_HINT =
-  'Lớp: theo thời điểm tạo lớp trên hệ thống. Lên cấp: số người (không trùng) thăng cấp. Rớt thi: số người (không trùng) có kết quả Chờ học lại hoặc Chia tay.'
-
 const LEVELS_HINT = 'Số người theo cấp bậc nghề nghiệp hiện lưu trên hồ sơ (snapshot).'
 
 const FAIL_TABLE_HINT =
   'Trong kỳ đã chọn: từ 2 lượt trượt trở lên cho cùng một cặp cấp (ví dụ Tập sự → Biết việc). Tính theo lớp thi / mô tả kỳ thi (Chờ học lại / Chia tay).'
 
-/* ──────────── Ops bar chart ──────────── */
-const opsChartConfig = {
-  classes: { label: 'Lớp mới', color: 'hsl(199 90% 48%)' },
-  up: { label: 'Lên cấp', color: 'hsl(160 55% 40%)' },
-  fail: { label: 'Rớt thi', color: 'hsl(32 90% 50%)' },
-} satisfies ChartConfig
+/* ──────────── Treemap chart ──────────── */
+const TREEMAP_MIN_SIZE = 16
 
-function OpsBarChart({
-  opsBar,
-}: {
-  opsBar: { key: string; name: string; value: number; fill: string }[]
-}) {
-  const [hoverKey, setHoverKey] = useState<string | null>(null)
+type TreemapCellProps = {
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  depth?: number
+  name?: string
+  count?: number
+  fill?: string
+  pct?: number
+}
+
+function TreemapCell({
+  x = 0,
+  y = 0,
+  width = 0,
+  height = 0,
+  depth = 1,
+  name = '',
+  count = 0,
+  fill = '#999',
+  pct = 0,
+}: TreemapCellProps) {
+  if (depth === 0) return null
+  const active = count > 0
+  const pad = 3
+  const iw = Math.max(0, width - pad * 2)
+  const ih = Math.max(0, height - pad * 2)
+  const canShowFull = iw > 65 && ih > 50
+  const canShowNameCount = iw > 38 && ih > 32
+  const canShowNameOnly = iw > 22 && ih > 22
+
   return (
-    <ChartContainer config={opsChartConfig} className="h-48 w-full sm:h-52">
-      <BarChart
-        data={opsBar}
-        margin={{ top: 8, right: 4, left: 0, bottom: 0 }}
-        barCategoryGap="28%"
-        onMouseMove={(s) => {
-          const idx = s?.activeTooltipIndex
-          if (typeof idx === 'number' && idx >= 0) setHoverKey(opsBar[idx]?.key ?? null)
-        }}
-        onMouseLeave={() => setHoverKey(null)}
-      >
-        <CartesianGrid vertical={false} className="stroke-border/40" strokeDasharray="4 4" />
-        <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-        <YAxis
-          allowDecimals={false}
-          domain={[0, Math.max(1, ...opsBar.map((d) => d.value))]}
-          tickLine={false}
-          axisLine={false}
-          tick={{ fontSize: 10 }}
-          width={32}
-        />
-        <ChartTooltip
-          cursor={{ fill: 'hsl(var(--primary) / 0.07)' }}
-          content={<ChartTooltipContent formatter={(v) => [`${v} lượt`]} />}
-        />
-        <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={52}>
-          {opsBar.map((row) => (
-            <Cell
-              key={row.key}
-              fill={row.fill}
-              opacity={hoverKey && hoverKey !== row.key ? 0.35 : 1}
-              style={{
-                transition: 'opacity 0.2s',
-                filter: hoverKey === row.key ? `drop-shadow(0 4px 10px ${row.fill}55)` : 'none',
-              }}
-            />
-          ))}
-        </Bar>
-      </BarChart>
-    </ChartContainer>
+    <g style={{ opacity: active ? 1 : 0.45 }}>
+      <rect x={x + pad} y={y + pad} width={iw} height={ih} rx={10} ry={10} fill={fill} />
+      <rect
+        x={x + pad}
+        y={y + pad}
+        width={iw}
+        height={Math.min(ih, 24)}
+        rx={10}
+        ry={10}
+        fill="rgba(255,255,255,0.1)"
+      />
+      {canShowFull ? (
+        <>
+          <text
+            x={x + width / 2}
+            y={y + height / 2 - 12}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="white"
+            fontSize={Math.min(24, iw / 3.2)}
+            fontWeight="900"
+          >
+            {count}
+          </text>
+          <text
+            x={x + width / 2}
+            y={y + height / 2 + 7}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="rgba(255,255,255,0.9)"
+            fontSize={Math.min(11, iw / 6.5)}
+            fontWeight="600"
+          >
+            {name}
+          </text>
+          <text
+            x={x + width / 2}
+            y={y + height / 2 + 22}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="rgba(255,255,255,0.65)"
+            fontSize={10}
+            fontWeight="700"
+          >
+            {active ? `${pct}%` : '0 người'}
+          </text>
+        </>
+      ) : canShowNameCount ? (
+        <>
+          <text
+            x={x + width / 2}
+            y={y + height / 2 - 7}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="white"
+            fontSize={Math.min(13, iw / 4)}
+            fontWeight="900"
+          >
+            {count}
+          </text>
+          <text
+            x={x + width / 2}
+            y={y + height / 2 + 8}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="rgba(255,255,255,0.85)"
+            fontSize={Math.min(9, iw / 6)}
+            fontWeight="600"
+          >
+            {name}
+          </text>
+        </>
+      ) : canShowNameOnly ? (
+        <text
+          x={x + width / 2}
+          y={y + height / 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="rgba(255,255,255,0.9)"
+          fontSize={Math.min(9, iw / 5)}
+          fontWeight="700"
+        >
+          {name}
+        </text>
+      ) : null}
+    </g>
   )
 }
 
-/* ──────────── Level pie chart ──────────── */
-function buildLevelConfig(colors: Record<string, string>): ChartConfig {
-  return Object.fromEntries(
-    Object.entries(LEVEL_LABELS).map(([code, label]) => [
-      code,
-      { label, color: colors[code] ?? 'hsl(var(--primary))' },
-    ])
-  ) as ChartConfig
-}
-
-function LevelPieChart({
-  pieData,
-  colors,
+function LevelBarChart({
+  levelData,
 }: {
-  pieData: { code: string; name: string; value: number }[]
-  colors: Record<string, string>
+  levelData: { code: string; name: string; value: number }[]
 }) {
-  const [hoverKey, setHoverKey] = useState<string | null>(null)
-  const config = useMemo(() => buildLevelConfig(colors), [colors])
-  const total = pieData.reduce((s, d) => s + d.value, 0)
+  const total = levelData.reduce((s, d) => s + d.value, 0)
+
+  const treemapData = useMemo(
+    () =>
+      levelData.map((entry) => ({
+        name: entry.name,
+        code: entry.code,
+        count: entry.value,
+        pct: total > 0 ? Math.round((entry.value / total) * 100) : 0,
+        size: Math.max(entry.value, TREEMAP_MIN_SIZE),
+        fill: LEVEL_PIE_COLORS[entry.code as LevelCode] ?? 'hsl(var(--primary))',
+      })),
+    [levelData, total]
+  )
 
   return (
-    <ChartContainer config={config} className="h-64 w-full sm:h-72">
-      <PieChart margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
-        <Pie
-          data={pieData}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"
-          cy="44%"
-          innerRadius="50%"
-          outerRadius="74%"
-          paddingAngle={3}
-          stroke="hsl(var(--card))"
-          strokeWidth={2}
-          onMouseEnter={(_, idx) => setHoverKey(pieData[idx]?.code ?? null)}
-          onMouseLeave={() => setHoverKey(null)}
-        >
-          {pieData.map((entry) => (
-            <Cell
-              key={entry.code}
-              fill={colors[entry.code] ?? 'hsl(var(--primary))'}
-              opacity={hoverKey && hoverKey !== entry.code ? 0.35 : 1}
-              stroke={hoverKey === entry.code ? 'white' : 'hsl(var(--card))'}
-              strokeWidth={hoverKey === entry.code ? 3 : 2}
-              style={{
-                transition: 'opacity 0.2s',
-                filter:
-                  hoverKey === entry.code
-                    ? `drop-shadow(0 0 8px ${colors[entry.code] ?? 'hsl(var(--primary))'}66)`
-                    : 'none',
-              }}
-            />
-          ))}
-        </Pie>
-        <ChartTooltip
-          content={
-            <ChartTooltipContent
-              nameKey="name"
-              formatter={(value) => {
-                const v = Number(value ?? 0)
-                const pct = total > 0 ? Math.round((v / total) * 100) : 0
-                return [`${v} người · ${pct}%`]
-              }}
-            />
-          }
-        />
-        <ChartLegend
-          content={<ChartLegendContent nameKey="name" />}
-          verticalAlign="bottom"
-          align="center"
-          wrapperStyle={{ fontSize: '11px', paddingTop: 8 }}
-        />
-      </PieChart>
-    </ChartContainer>
+    <div className="space-y-4">
+      <div className="h-52 w-full sm:h-60">
+        <ResponsiveContainer width="100%" height="100%">
+          <Treemap
+            data={treemapData}
+            dataKey="size"
+            aspectRatio={16 / 7}
+            isAnimationActive
+            animationDuration={900}
+            animationEasing="ease-out"
+            content={<TreemapCell />}
+          />
+        </ResponsiveContainer>
+      </div>
+
+      <div className="flex items-center justify-end border-t border-border/40 pt-2.5">
+        <span className="text-xs text-muted-foreground">Tổng cộng</span>
+        <span className="ml-2 text-sm font-black tabular-nums text-foreground">{total}</span>
+        <span className="ml-0.5 text-xs text-muted-foreground">người</span>
+      </div>
+    </div>
   )
 }
 
@@ -193,7 +217,6 @@ export function ManagerLearningOpsZone({
     { enabled: true }
   )
 
-  const inSingleMonth = rangeStartMonth === rangeEndMonth
   const rangeLabel = monthRangeLabelVi(reportYear, rangeStartMonth, rangeEndMonth)
 
   // Deduplicate: backend query có thể trả duplicate rows cùng (userId, levelFrom, levelTo).
@@ -218,32 +241,7 @@ export function ManagerLearningOpsZone({
     }))
   }, [data?.peopleByCareerLevel])
 
-  const pieData = useMemo(() => levelChart.filter((d) => d.value > 0), [levelChart])
-  const hasAnyLevel = pieData.length > 0
-
-  const opsBar = useMemo(
-    () => [
-      {
-        key: 'classes',
-        name: inSingleMonth ? 'Lớp' : 'Lớp mới',
-        value: data?.classesCreatedInPeriod ?? 0,
-        fill: 'hsl(199 90% 48%)',
-      },
-      {
-        key: 'up',
-        name: 'Lên cấp',
-        value: data?.levelUpCount ?? 0,
-        fill: 'hsl(160 55% 40%)',
-      },
-      {
-        key: 'fail',
-        name: 'Rớt thi',
-        value: data?.examNotPassedCount ?? 0,
-        fill: 'hsl(32 90% 50%)',
-      },
-    ],
-    [data?.classesCreatedInPeriod, data?.examNotPassedCount, data?.levelUpCount, inSingleMonth]
-  )
+  const hasAnyLevel = levelChart.some((d) => d.value > 0)
 
   return (
     <div className="space-y-5">
@@ -288,73 +286,40 @@ export function ManagerLearningOpsZone({
 
       <div
         className={cn(
-          'grid grid-cols-1 gap-4 lg:grid-cols-2',
+          'overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-4 shadow-[var(--shadow-card)] sm:p-5',
+          quartOut,
+          CARD_ENTRANCE_HOVER,
+          'transition-all duration-300 hover:border-primary/20',
           'motion-safe:animate-[dash-fade-up_0.6s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none'
         )}
-        style={{ animationDelay: '40ms' }}
+        style={{ animationDelay: '40ms', ...staggerStyle(0, 50) }}
       >
-        <div
-          className={cn(
-            'overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-4 shadow-[var(--shadow-card)] sm:p-5',
-            quartOut,
-            CARD_ENTRANCE_HOVER,
-            'transition-all duration-300 hover:border-primary/20'
-          )}
-          style={staggerStyle(0, 50)}
-        >
-          <div className="mb-3 flex items-start gap-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-700 dark:text-sky-400">
-              <LineChart className="h-4 w-4" strokeWidth={2} aria-hidden />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                Chỉ số theo kỳ
-              </p>
-            </div>
-            <InfoHint text={OPS_HINT} label="Cách tính chỉ số lớp, lên cấp, rớt thi" />
+        <div className="mb-3 flex items-start gap-2">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/10 text-primary">
+            <GraduationCap className="h-4 w-4" strokeWidth={2} aria-hidden />
           </div>
-          {isLoading && !data ? (
-            <Skeleton className="h-48 w-full rounded-xl" />
-          ) : (
-            <OpsBarChart opsBar={opsBar} />
-          )}
-        </div>
-
-        <div
-          className={cn(
-            'overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-4 shadow-[var(--shadow-card)] sm:p-5',
-            quartOut,
-            CARD_ENTRANCE_HOVER,
-            'transition-all duration-300 hover:border-primary/20'
-          )}
-          style={staggerStyle(1, 50)}
-        >
-          <div className="mb-2 flex items-start gap-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/10 text-primary">
-              <GraduationCap className="h-4 w-4" strokeWidth={2} aria-hidden />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                Phân bổ cấp độ
-              </p>
-            </div>
-            <InfoHint text={LEVELS_HINT} label="Cách tính phân bổ cấp độ" />
-          </div>
-          {isLoading && !data ? (
-            <Skeleton className="h-64 w-full rounded-xl" />
-          ) : !hasAnyLevel ? (
-            <p className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-border/80 bg-muted/25 px-4 text-center text-sm text-muted-foreground">
-              Chưa có dữ liệu cấp độ trong kỳ này.
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-primary">
+              Phân bổ nhân sự theo cấp bậc
             </p>
-          ) : (
-            <LevelPieChart pieData={pieData} colors={LEVEL_PIE_COLORS} />
-          )}
+          </div>
+          <InfoHint text={LEVELS_HINT} label="Cách tính phân bổ cấp độ" />
         </div>
+        {isLoading && !data ? (
+          <Skeleton className="h-56 w-full rounded-xl" />
+        ) : !hasAnyLevel ? (
+          <p className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-border/80 bg-muted/25 px-4 text-center text-sm text-muted-foreground">
+            Chưa có dữ liệu cấp độ trong kỳ này.
+          </p>
+        ) : (
+          <LevelBarChart levelData={levelChart} />
+        )}
       </div>
 
+      {/* TODO: bỏ hidden khi muốn hiển thị lại */}
       <section
         className={cn(
-          'overflow-hidden rounded-2xl border border-amber-500/20 bg-card/95 p-4 shadow-[var(--shadow-card)] sm:p-5',
+          'hidden overflow-hidden rounded-2xl border border-amber-500/20 bg-card/95 p-4 shadow-[var(--shadow-card)] sm:p-5',
           'motion-safe:animate-[dash-fade-up_0.5s_ease-out_both] motion-reduce:animate-none'
         )}
         style={{ animationDelay: '100ms' }}
