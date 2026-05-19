@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Filter,
   History,
-  Inbox,
   LayoutList,
   Medal,
   RefreshCw,
@@ -15,7 +14,6 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
-  TrendingUp,
   UserCheck,
   Users,
 } from 'lucide-react'
@@ -72,7 +70,6 @@ export function ApprovalQueue({
   const [levelFilter, setLevelFilter] = React.useState<string>('all')
   const [teamFilter, setTeamFilter] = React.useState<string>('all')
 
-  const pendingCount = page?.pendingCount ?? 0
   const hasPromotions = !!page && page.promotions.length > 0
   const hasGrader = !!page && page.graderReviews.length > 0
 
@@ -110,37 +107,6 @@ export function ApprovalQueue({
   }, [filteredPromotions, visibleCount])
 
   const showQueueEmpty = !!page && filteredPromotions.length === 0 && !hasGrader
-
-  const stats = React.useMemo(() => {
-    if (!page) {
-      return {
-        probationCount: 0,
-        bietViecCount: 0,
-        duocViecCount: 0,
-        dongGopCount: 0,
-        tuongCount: 0,
-      }
-    }
-    let probationCount = 0
-    let bietViecCount = 0
-    let duocViecCount = 0
-    let dongGopCount = 0
-    let tuongCount = 0
-
-    page.promotions.forEach((p) => {
-      const label = p.badges.find((b) =>
-        ['Tập sự', 'Biết việc', 'Được việc', 'Đóng góp kết quả', 'Tướng'].includes(b.label)
-      )?.label
-
-      if (label === 'Tập sự') probationCount++
-      else if (label === 'Biết việc') bietViecCount++
-      else if (label === 'Được việc') duocViecCount++
-      else if (label === 'Đóng góp kết quả') dongGopCount++
-      else if (label === 'Tướng') tuongCount++
-    })
-
-    return { probationCount, bietViecCount, duocViecCount, dongGopCount, tuongCount }
-  }, [page])
 
   const onGraderConfirm = (id: string) => {
     toast.success('Đã xác nhận kết quả chấm')
@@ -198,99 +164,6 @@ export function ApprovalQueue({
                 <History className="h-4 w-4" />
                 Lịch sử duyệt
               </Link>
-            </div>
-          </div>
-
-          {/* Quick Stats Grid */}
-          <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3">
-            {/* Card 1: Tổng Nhân sự */}
-            <div className="group rounded-[24px] border border-primary/5 bg-white/60 p-5 shadow-sm transition-all hover:shadow-md dark:bg-card/20">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition-transform group-hover:scale-110">
-                  <Users className="h-6 w-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-foreground">{pendingCount}</div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Chờ xử lý
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2: Tập sự */}
-            <div className="group rounded-[24px] border border-slate-500/5 bg-white/60 p-5 shadow-sm transition-all hover:shadow-md dark:bg-card/20">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-500/10 text-slate-600 transition-transform group-hover:scale-110">
-                  <Inbox className="h-6 w-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-foreground">{stats.probationCount}</div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Số lượng tập sự
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3: Biết việc */}
-            <div className="group rounded-[24px] border border-emerald-500/5 bg-white/60 p-5 shadow-sm transition-all hover:shadow-md dark:bg-card/20">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 transition-transform group-hover:scale-110">
-                  <TrendingUp className="h-6 w-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-foreground">{stats.bietViecCount}</div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Số lượng biết việc
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 4: Được việc */}
-            <div className="group rounded-[24px] border border-amber-500/5 bg-white/60 p-5 shadow-sm transition-all hover:shadow-md dark:bg-card/20">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 transition-transform group-hover:scale-110">
-                  <ShieldCheck className="h-6 w-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-foreground">{stats.duocViecCount}</div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Số lượng được việc
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 5: Đóng góp kết quả */}
-            <div className="group rounded-[24px] border border-violet-500/5 bg-white/60 p-5 shadow-sm transition-all hover:shadow-md dark:bg-card/20">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-600 transition-transform group-hover:scale-110">
-                  <Medal className="h-6 w-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-foreground">{stats.dongGopCount}</div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Đóng góp kết quả
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 6: Tướng */}
-            <div className="group rounded-[24px] border border-rose-500/5 bg-white/60 p-5 shadow-sm transition-all hover:shadow-md dark:bg-card/20">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 transition-transform group-hover:scale-110">
-                  <Award className="h-6 w-6" />
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-foreground">{stats.tuongCount}</div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Số lượng tướng
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
