@@ -60,10 +60,14 @@ export const DEFAULT_COMPANY_LANDING_CONTENT: CompanyLandingContent = {
       {
         label: 'NHÀ SẢN XUẤT',
         desc: 'Hợp tác chiến lược để đảm bảo chất lượng & sản lượng.',
+        imageSrc: '/Image_VCB/san_xuat.jpg',
+        imageAlt: 'Nhà sản xuất Viễn Chí Bảo — đồ da thủ công',
       },
       {
         label: 'XƯỞNG THỦ CÔNG',
         desc: 'Không gian chế tác chuyên nghiệp, chuẩn quốc tế.',
+        imageSrc: '/Image_VCB/do_da.jpg',
+        imageAlt: 'Xưởng thủ công Viễn Chí Bảo — chế tác đồ da',
       },
     ],
     artisanBanner: {
@@ -97,10 +101,14 @@ export const DEFAULT_COMPANY_LANDING_CONTENT: CompanyLandingContent = {
       {
         label: 'CÔNG NGHỆ SỐ',
         desc: 'AI, dữ liệu thị trường và hệ thống sản xuất nội dung số tốc độ cao.',
+        imageSrc: '/Image_VCB/cong-nghe-so-toan-cau.jpg',
+        imageAlt: 'Viễn Chí Bảo — Công nghệ số và AI',
       },
       {
         label: 'THỊ TRƯỜNG TOÀN CẦU',
         desc: 'Thương mại điện tử xuyên biên giới, hiện diện trên đa nền tảng.',
+        imageSrc: '/Image_VCB/toan-cau-hoa-thi-truong-tai-chinh-la-gi.jpg',
+        imageAlt: 'Viễn Chí Bảo — Thị trường toàn cầu',
       },
     ],
   },
