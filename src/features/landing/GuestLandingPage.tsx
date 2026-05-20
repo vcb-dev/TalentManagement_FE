@@ -189,7 +189,9 @@ export function GuestLandingPage() {
               Giới thiệu
             </Link>
             <Button size="sm" className="shadow-sm" asChild>
-              <Link to="/login">Đăng nhập</Link>
+              <Link to="/login" preload={false}>
+                Đăng nhập
+              </Link>
             </Button>
           </div>
         </div>
@@ -245,7 +247,7 @@ export function GuestLandingPage() {
                 className="flex flex-wrap items-center gap-3"
               >
                 <Button size="lg" className="shadow-md" asChild>
-                  <Link to="/login">
+                  <Link to="/login" preload={false}>
                     Bắt đầu
                     <ChevronRight className="h-4 w-4" aria-hidden />
                   </Link>
@@ -428,7 +430,7 @@ export function GuestLandingPage() {
                         className="border-0 bg-white font-semibold text-primary shadow-md hover:bg-gray-50"
                         asChild
                       >
-                        <Link to="/login">
+                        <Link to="/login" preload={false}>
                           Đăng nhập ngay
                           <ChevronRight className="h-4 w-4" aria-hidden />
                         </Link>

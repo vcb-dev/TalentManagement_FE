@@ -258,7 +258,7 @@ export function AboutUsPage() {
               </Button>
             ) : (
               <Button size="sm" className="shadow-sm" asChild>
-                <Link to="/login">
+                <Link to="/login" preload={false}>
                   <LogIn className="h-4 w-4" aria-hidden />
                   Đăng nhập {appName}
                 </Link>
@@ -333,7 +333,7 @@ export function AboutUsPage() {
                     className="bg-white/80 backdrop-blur-sm"
                     asChild
                   >
-                    <Link to="/login">
+                    <Link to="/login" preload={false}>
                       <LogIn className="h-4 w-4" aria-hidden />
                       Đăng nhập {appName}
                     </Link>
@@ -938,7 +938,7 @@ export function AboutUsPage() {
                         className="border-0 bg-white font-semibold text-primary shadow-md hover:bg-slate-50"
                         asChild
                       >
-                        <Link to="/login">
+                        <Link to="/login" preload={false}>
                           Truy cập {appName}
                           <ChevronRight className="h-4 w-4" aria-hidden />
                         </Link>
