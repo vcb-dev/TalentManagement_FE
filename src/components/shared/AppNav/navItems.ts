@@ -75,6 +75,7 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     icon: BarChart3,
     match: 'prefix',
     permissionId: 'report.view',
+    hiddenForRoles: ['MANAGER'],
   },
   {
     to: '/exam',
@@ -322,6 +323,7 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
     icon: BarChart3,
     match: 'prefix',
     permissionId: 'report.view',
+    hiddenForRoles: ['MANAGER'],
   },
 ]
 

@@ -19,6 +19,7 @@ export function isDateFormField(key: MeUserDisplayKey): boolean {
 
 /** Công việc & tổ chức — chỉ xem, không PATCH / chỉnh trên form. */
 export const USER_WORK_ORG_READONLY_KEYS = [
+  'jobTitle',
   'employmentStatus',
   'startDateWork',
   'employeeCodePrimary',

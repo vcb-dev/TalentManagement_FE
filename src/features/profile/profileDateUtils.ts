@@ -3,6 +3,13 @@ export function parseStoredDateToInputValue(s: string | null | undefined): strin
   if (s == null) return ''
   const t = String(s).trim()
   if (!t) return ''
+  // Unix timestamp dạng milliseconds (13 chữ số) hoặc seconds (10 chữ số) — từ Lark sync
+  if (/^\d{10,13}$/.test(t)) {
+    const n = Number(t)
+    const ms = t.length <= 10 ? n * 1000 : n
+    const dt = new Date(ms)
+    if (!Number.isNaN(dt.getTime())) return dt.toISOString().slice(0, 10)
+  }
   if (/^\d{4}-\d{2}-\d{2}/.test(t)) return t.slice(0, 10)
   const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
   if (m) {
