@@ -60,7 +60,7 @@ export const DEFAULT_COMPANY_LANDING_CONTENT: CompanyLandingContent = {
       {
         label: 'NHÀ SẢN XUẤT',
         desc: 'Hợp tác chiến lược để đảm bảo chất lượng & sản lượng.',
-        imageSrc: '/Image_VCB/san_xuat.jpg',
+        imageSrc: '/Image_VCB/a.jpg',
         imageAlt: 'Nhà sản xuất Viễn Chí Bảo — đồ da thủ công',
       },
       {
