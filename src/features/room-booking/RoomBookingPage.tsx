@@ -1,20 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearch } from '@tanstack/react-router'
-import {
-  Plus,
-  MapPin,
-  Calendar,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  X,
-  Bell,
-  Info,
-  Volume2,
-  LogOut,
-  Loader2,
-} from 'lucide-react'
+import { Plus, Clock, CheckCircle2, AlertCircle, X, Volume2, Loader2 } from 'lucide-react'
 import { CustomSelect } from '@/components/shared/CustomSelect'
 import { DatePicker } from '@/components/ui/date-picker'
 import { useAuthStore } from '@/stores/auth.store'
@@ -31,23 +19,17 @@ import {
   type BookedSlot,
 } from './api'
 import { useVnTime, getVnNow } from '@/hooks/useVnTime'
-
-const ROOMS = [
-  {
-    id: 'Tầng 5',
-    name: 'Phòng họp Tầng 5',
-    floor: 'Phòng lớn - Sức chứa 20 người',
-    color: 'from-violet-500 to-purple-600',
-  },
-  {
-    id: 'Tầng 6',
-    name: 'Phòng họp Tầng 6',
-    floor: 'Phòng nhỏ - Sức chứa 8 người',
-    color: 'from-teal-400 to-emerald-500',
-  },
-]
-
-const PAGE_SIZE = 6
+import { RoomScheduleTimeline } from './RoomScheduleTimeline'
+import { RoomBookingDetailModal } from './RoomBookingDetailModal'
+import { RoomBookingPendingPanel, RoomBookingRecentPanel } from './RoomBookingSidebar'
+import { RoomBookingMinutesTable } from './RoomBookingMinutesTable'
+import {
+  LEGEND_ITEMS,
+  MEETING_ROOMS,
+  STATUS_FILTER_OPTIONS,
+  type StatusFilter,
+} from './roomBookingConstants'
+import { formatDateLongVi, formatDateVi } from './roomBookingTimeUtils'
 
 // Chị Google nói
 function speak(text: string) {
@@ -414,15 +396,15 @@ export default function RoomBookingPage() {
   const [isEmergency, setIsEmergency] = useState(false)
   const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([])
 
-  const [filter, setFilter] = useState<'today' | 'tomorrow' | 'team' | 'mine' | 'requests'>('today')
-  const [selectedRoom, setSelectedRoom] = useState<string>('all')
-  const [page, setPage] = useState(1)
+  const [viewDate, setViewDate] = useState(() => getVnNow().date)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [processingId, setProcessingId] = useState<string | null>(null)
 
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [finishConfirmId, setFinishConfirmId] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [detailBooking, setDetailBooking] = useState<MeetingBooking | null>(null)
 
   const prevBookingsCount = useRef(0)
 
@@ -523,11 +505,8 @@ export default function RoomBookingPage() {
 
   useEffect(() => {
     if (search.tab === 'requests') {
-      setFilter('requests')
-    } else {
-      setFilter('today')
+      setViewDate(getVnNow().date)
     }
-    setPage(1)
   }, [search.tab])
 
   useEffect(() => {
@@ -543,74 +522,61 @@ export default function RoomBookingPage() {
       .catch(() => setBookedSlots([]))
   }, [showModal, room, date])
 
-  const filtered = useMemo(() => {
-    const { date: todayDate, time: currentTime } = vnTime
-
-    // Calculate Tomorrow Date
-    const tomorrow = new Date(todayDate)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowDate = tomorrow.toISOString().split('T')[0]
-
-    let result = bookings.filter((b) => {
-      // Step 1: Base tab filters
-      if (filter === 'requests') return b.status === 'pending'
-      if (filter === 'mine') return b.userId === user?.id
-      if (filter === 'today') return b.date === todayDate
-      if (filter === 'tomorrow') return b.date === tomorrowDate
-      if (filter === 'team') {
-        const userTeam = (user?.team ?? '').trim().toLowerCase()
-        const bookingTeam = (b.team ?? '').trim().toLowerCase()
-        return (
-          !!bookingTeam &&
-          !!userTeam &&
-          (bookingTeam === userTeam ||
-            bookingTeam.includes(userTeam) ||
-            userTeam.includes(bookingTeam))
-        )
-      }
-      return true
-    })
-
-    // Step 2: Room filter
-    if (selectedRoom !== 'all') {
-      result = result.filter((b) => b.room === selectedRoom)
+  useEffect(() => {
+    if (!showModal) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
     }
+  }, [showModal])
 
-    // Step 3: Sorting (Đang họp -> Sắp tới -> Đã xong/Từ chối)
-    const getPriority = (b: MeetingBooking) => {
-      const isPast = b.date < todayDate || (b.date === todayDate && b.timeTo <= currentTime)
-      const isDone = b.timeStatus === 'done' || (b.status === 'approved' && isPast)
-      const isOverdue = b.status === 'pending' && isPast
-      const isRejected = b.status === 'rejected'
-
-      // Bét bảng (Rank 3): Đã họp xong, Quá hạn hoặc Bị từ chối
-      if (isDone || isOverdue || isRejected) return 3
-
-      // Top 1 (Rank 1): Đang diễn ra
-      if (b.status === 'approved' && b.timeStatus === 'ongoing') return 1
-
-      // Top 2 (Rank 2): Sắp tới (Chờ duyệt hoặc Đã duyệt)
-      return 2
+  const dayBookings = useMemo(() => {
+    let result = bookings.filter((b) => b.date === viewDate && b.status !== 'rejected')
+    if (statusFilter === 'ongoing') {
+      result = result.filter((b) => b.status === 'approved' && b.timeStatus === 'ongoing')
+    } else if (statusFilter === 'approved') {
+      result = result.filter((b) => b.status === 'approved')
+    } else if (statusFilter === 'pending') {
+      result = result.filter((b) => b.status === 'pending')
     }
+    return result.sort((a, b) => a.timeFrom.localeCompare(b.timeFrom))
+  }, [bookings, viewDate, statusFilter])
 
-    return result.sort((a, b) => {
-      const pA = getPriority(a)
-      const pB = getPriority(b)
+  const stats = useMemo(() => {
+    const day = bookings.filter((b) => b.date === viewDate && b.status !== 'rejected')
+    const ongoing = day.filter((b) => b.status === 'approved' && b.timeStatus === 'ongoing')
+    const pending = day.filter((b) => b.status === 'pending')
+    const busyRooms = new Set(ongoing.map((b) => b.room)).size
+    return {
+      total: MEETING_ROOMS.length,
+      ongoing: ongoing.length,
+      pending: pending.length,
+      available: Math.max(0, MEETING_ROOMS.length - busyRooms),
+    }
+  }, [bookings, viewDate])
 
-      // Nếu khác nhóm ưu tiên -> hiển thị theo nhóm
-      if (pA !== pB) return pA - pB
+  const pendingRequests = useMemo(() => {
+    const { date: td, time: ct } = vnTime
+    return bookings
+      .filter((b) => {
+        if (b.status !== 'pending') return false
+        const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
+        return !isPast
+      })
+      .sort((a, b) => a.date.localeCompare(b.date) || a.timeFrom.localeCompare(b.timeFrom))
+  }, [bookings, vnTime])
 
-      // Nếu cùng nhóm -> Xếp theo thời gian (Ca sớm lên trước)
-      if (a.date !== b.date) return a.date.localeCompare(b.date)
-      return a.timeFrom.localeCompare(b.timeFrom)
-    })
-  }, [bookings, filter, selectedRoom, user?.id, user?.team, vnTime])
-
-  const totalPages = useMemo(() => Math.ceil(filtered.length / PAGE_SIZE), [filtered.length])
-  const pageData = useMemo(
-    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [filtered, page]
+  const recentItems = useMemo(
+    () =>
+      [...bookings]
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .slice(0, 8),
+    [bookings]
   )
+
+  const isTodayView = viewDate === vnTime.date
+  const dateLabel = isTodayView ? `Hôm nay, ${formatDateVi(viewDate)}` : formatDateLongVi(viewDate)
 
   function resetForm() {
     setEditingId(null)
@@ -696,6 +662,7 @@ export default function RoomBookingPage() {
   }
 
   function handleEdit(b: MeetingBooking) {
+    setDetailBooking(null)
     setEditingId(b.id)
     setRoom(b.room)
     setDate(b.date)
@@ -704,6 +671,23 @@ export default function RoomBookingPage() {
     setReason(b.reason)
     setNote(b.note || '')
     setIsEmergency(b.isEmergency)
+    setShowModal(true)
+  }
+
+  function canManageBooking(b: MeetingBooking): boolean {
+    if (b.userId !== user?.id) return false
+    if (b.status === 'rejected') return false
+    const { date: td, time: ct } = vnTime
+    const isPast = b.date < td || (b.date === td && b.timeTo <= ct)
+    return !isPast && b.timeStatus !== 'done'
+  }
+
+  function openEmptySlot(roomId: string, timeFrom: string, timeTo: string) {
+    resetForm()
+    setRoom(roomId)
+    setDate(viewDate < vnTime.date ? vnTime.date : viewDate)
+    setTimeFrom(timeFrom)
+    setTimeTo(timeTo)
     setShowModal(true)
   }
 
@@ -761,507 +745,420 @@ export default function RoomBookingPage() {
           </div>
         )}
 
-        {/* Bảng lịch họp */}
-        <div className="rounded-[2.5rem] border border-border bg-card/50 shadow-sm backdrop-blur-xl overflow-hidden">
-          <div className="flex flex-col gap-4 border-b border-border/50 p-6 sm:flex-row sm:items-center sm:justify-between bg-muted/20">
-            {search.tab === 'requests' ? (
-              <div className="flex items-center gap-2">
-                <div className="h-6 w-1 bg-rose-500 rounded-full" />
-                <h2 className="text-sm font-black uppercase tracking-wider text-rose-600">
-                  Duyệt yêu cầu đổi lịch
-                </h2>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_300px]">
+          <div className="space-y-4 min-w-0">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-center">
+                <p className="text-2xl font-bold text-primary">{stats.total}</p>
+                <p className="text-xs text-muted-foreground">Tổng phòng</p>
               </div>
-            ) : (
-              <div className="flex items-center gap-2 p-1 rounded-2xl bg-background/50 border border-border/40 w-fit">
-                {(['all', 'today', 'mine'] as const).map((f) => (
+              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-center">
+                <p className="text-2xl font-bold text-indigo-600">{stats.ongoing}</p>
+                <p className="text-xs text-muted-foreground">Đang họp</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-center">
+                <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
+                <p className="text-xs text-muted-foreground">Chờ duyệt</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-center">
+                <p className="text-2xl font-bold text-emerald-600">{stats.available}</p>
+                <p className="text-xs text-muted-foreground">Còn trống</p>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <DatePicker
+                  value={viewDate}
+                  onChange={setViewDate}
+                  displayLabel={dateLabel}
+                  className="h-9 w-auto min-w-[200px] justify-start rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm font-semibold shadow-none hover:border-primary/40 hover:bg-muted/50 active:scale-100"
+                />
+                {!isTodayView && (
                   <button
-                    key={f}
-                    onClick={() => {
-                      setFilter(f)
-                      setPage(1)
-                    }}
-                    className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${filter === f ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:bg-secondary'}`}
+                    type="button"
+                    onClick={() => setViewDate(vnTime.date)}
+                    className="rounded-lg border border-primary/30 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/5"
                   >
-                    {f === 'all' ? 'Toàn bộ' : f === 'today' ? 'Team mình' : 'Của tôi'}
+                    Hôm nay
                   </button>
+                )}
+                <CustomSelect
+                  value={statusFilter}
+                  onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+                  options={STATUS_FILTER_OPTIONS.map((o) => ({
+                    label: o.label,
+                    value: o.value,
+                  }))}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                {LEGEND_ITEMS.map((item) => (
+                  <span key={item.key} className="inline-flex items-center gap-1.5">
+                    <span className={`h-2.5 w-2.5 rounded-full ${item.className}`} />
+                    {item.label}
+                  </span>
                 ))}
               </div>
-            )}
-            <div className="flex items-center gap-4">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                Tổng: {filtered.length} bản ghi
-              </span>
-              <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 shadow-sm">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                </span>
-                <span className="text-[9px] font-black tracking-tighter text-emerald-700 uppercase">
-                  LIVE
-                </span>
-              </div>
             </div>
-          </div>
-
-          {/* Table */}
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="bg-muted/30">
-                <tr>
-                  {['Phòng', 'Người đặt / Team', 'Ngày', 'Giờ', 'Lý do', 'Trạng thái', ''].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                      >
-                        {h}
-                      </th>
-                    )
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50 bg-white/30">
-                {isFetching && bookings.length === 0 ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i} className="animate-pulse">
-                      <td className="px-6 py-5">
-                        <div className="h-4 w-20 rounded bg-muted" />
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="h-4 w-32 rounded bg-muted" />
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="h-4 w-24 rounded bg-muted" />
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="h-4 w-16 rounded bg-muted" />
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="h-4 w-40 rounded bg-muted" />
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="h-6 w-20 rounded-full bg-muted" />
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="ml-auto h-8 w-24 rounded-xl bg-muted" />
-                      </td>
-                    </tr>
-                  ))
-                ) : pageData.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-20 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="rounded-full bg-muted p-4">
-                          <AlertCircle className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Không tìm thấy lịch đặt nào
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  pageData.map((b) => (
-                    <BookingRow
-                      key={b.id}
-                      b={b}
-                      user={user}
-                      isPrivileged={isPrivileged}
-                      processingId={processingId}
-                      handleApprove={handleApprove}
-                      handleRejectId={setRejectId}
-                      handleEdit={handleEdit}
-                      handleDelete={handleDelete}
-                      handleFinish={handleFinish}
-                      vnTime={vnTime}
-                    />
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="divide-y divide-border/50 bg-card sm:hidden">
             {isFetching && bookings.length === 0 ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="animate-pulse space-y-3 p-4">
-                  <div className="h-4 w-32 rounded bg-muted" />
-                  <div className="h-4 w-48 rounded bg-muted" />
-                  <div className="h-4 w-40 rounded bg-muted" />
-                  <div className="h-10 w-full rounded-xl bg-muted" />
-                </div>
-              ))
-            ) : pageData.length === 0 ? (
-              <div className="px-6 py-20 text-center">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="rounded-full bg-muted p-4">
-                    <AlertCircle className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Không tìm thấy lịch đặt nào
-                  </p>
-                </div>
+              <div className="flex justify-center py-16">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-              pageData.map((b) => (
-                <BookingCardMobile
-                  key={b.id}
-                  b={b}
-                  user={user}
-                  isPrivileged={isPrivileged}
-                  processingId={processingId}
-                  handleApprove={handleApprove}
-                  handleRejectId={setRejectId}
-                  handleEdit={handleEdit}
-                  handleDelete={handleDelete}
-                  handleFinish={handleFinish}
-                  vnTime={vnTime}
-                />
-              ))
+              <RoomScheduleTimeline
+                viewDate={viewDate}
+                bookings={dayBookings}
+                vnTime={vnTime}
+                onEmptySlotClick={openEmptySlot}
+                onBookingClick={setDetailBooking}
+              />
             )}
+            <RoomBookingMinutesTable
+              items={bookings}
+              vnTime={vnTime}
+              currentUserId={user?.id}
+              showAllUsers={isPrivileged}
+            />
           </div>
-
-          {/* Phân trang */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-border/50 bg-muted/10 px-6 py-4">
-              <div className="text-xs font-medium text-muted-foreground">
-                Trang {page} / {totalPages}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  disabled={page === 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background transition-all hover:bg-secondary disabled:opacity-30"
-                >
-                  <Clock className="h-4 w-4 rotate-180" />
-                </button>
-                {Array.from({ length: totalPages }).map((_, i) => {
-                  const p = i + 1
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-all ${
-                        page === p
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'border border-border bg-background hover:bg-secondary'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  )
-                })}
-                <button
-                  disabled={page === totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background transition-all hover:bg-secondary disabled:opacity-30"
-                >
-                  <Clock className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
+          <aside className="space-y-4 min-w-0 xl:sticky xl:top-4 xl:self-start">
+            {isPrivileged && (
+              <RoomBookingPendingPanel
+                items={pendingRequests}
+                processingId={processingId}
+                onApprove={handleApprove}
+                onReject={setRejectId}
+              />
+            )}
+            <RoomBookingRecentPanel items={recentItems} onItemClick={setDetailBooking} />
+          </aside>
         </div>
       </div>
 
-      {/* Form Đặt phòng */}
-      {showModal && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          onClick={() => {
-            setShowModal(false)
-            resetForm()
-          }}
-        >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
+      <RoomBookingDetailModal
+        booking={detailBooking}
+        vnTime={vnTime}
+        onClose={() => setDetailBooking(null)}
+        onEdit={handleEdit}
+        onDelete={(id) => {
+          setDetailBooking(null)
+          handleDelete(id)
+        }}
+        canManage={detailBooking ? canManageBooking(detailBooking) : false}
+        currentUserId={user?.id}
+      />
+
+      {/* Form Đặt phòng — portal + căn giữa viewport, cuộn khi form dài */}
+      {showModal &&
+        createPortal(
           <div
-            className="relative w-full max-w-xl bg-card rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="room-booking-form-title"
           >
-            <div className="h-2 w-full bg-primary" />
-            <div className="p-8 sm:p-10">
-              <div className="mb-8 flex justify-between items-center">
-                <h2 className="text-3xl font-black uppercase">
-                  {editingId ? 'Đổi lịch họp' : 'Đặt phòng họp'}
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowModal(false)
-                    resetForm()
-                  }}
-                  className="p-2 hover:bg-secondary rounded-xl"
-                >
-                  <X />
-                </button>
-              </div>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {error && (
-                  <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-600 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <AlertCircle className="h-5 w-5 shrink-0" />
-                    <span className="text-sm leading-snug">{error}</span>
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/40 backdrop-blur-md"
+              aria-label="Đóng"
+              onClick={() => {
+                setShowModal(false)
+                resetForm()
+              }}
+            />
+            <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+              <div
+                className="relative z-10 my-auto w-full max-w-xl max-h-[min(90vh,720px)] overflow-y-auto rounded-[2.5rem] border border-white/10 bg-card shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="sticky top-0 z-10 h-2 w-full bg-primary" />
+                <div className="p-6 sm:p-8">
+                  <div className="mb-6 flex items-center justify-between gap-4">
+                    <h2
+                      id="room-booking-form-title"
+                      className="text-2xl font-black uppercase sm:text-3xl"
+                    >
+                      {editingId ? 'Đổi lịch họp' : 'Đặt phòng họp'}
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setShowModal(false)
+                        resetForm()
+                      }}
+                      className="p-2 hover:bg-secondary rounded-xl"
+                    >
+                      <X />
+                    </button>
                   </div>
-                )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase ml-1">Chọn phòng</label>
-                    <CustomSelect
-                      value={room}
-                      onValueChange={(val) => setRoom(val)}
-                      options={[
-                        { label: 'Tầng 5', value: 'Tầng 5' },
-                        { label: 'Tầng 6', value: 'Tầng 6' },
-                      ]}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase ml-1 flex items-center gap-1">
-                      Ngày
-                    </label>
-                    <DatePicker
-                      value={date}
-                      onChange={setDate}
-                      className="h-14 rounded-2xl bg-muted/40 font-semibold text-center"
-                    />
-                  </div>
-                </div>
-                {/* Hiển thị khung giờ khả dụng */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold uppercase ml-1 flex items-center gap-2 text-primary">
-                      <Clock className="h-4 w-4" />
-                      Khung giờ trống còn lại
-                    </label>
-                    <span className="text-xs text-muted-foreground">Click để chọn nhanh</span>
-                  </div>
-                  <div className="flex flex-wrap gap-3 py-2 min-h-[40px]">
-                    {(() => {
-                      const { date: today, time: nowTime } = getVnNow()
-                      let startSearch = '08:00'
-                      if (date === today) {
-                        startSearch = nowTime > '08:00' ? nowTime : '08:00'
-                      }
-
-                      // Hàm chuẩn hóa thời gian về dạng 2 chữ số (VD: 9:30 -> 09:30) để so sánh chuỗi
-                      const padTime = (t: string) => {
-                        if (!t) return '00:00'
-                        const [h, m] = t.split(':')
-                        return `${(h || '0').padStart(2, '0')}:${(m || '0').padStart(2, '0')}`
-                      }
-
-                      // Tạo danh sách các khoảng trống
-                      const sorted = [...bookedSlots]
-                        .map((s) => ({
-                          ...s,
-                          timeFrom: padTime(s.timeFrom),
-                          timeTo: padTime(s.timeTo),
-                        }))
-                        .sort((a, b) => a.timeFrom.localeCompare(b.timeFrom))
-
-                      const gaps: string[] = []
-                      let lastEnd = padTime(startSearch)
-
-                      for (const slot of sorted) {
-                        if (slot.timeFrom > lastEnd) {
-                          gaps.push(`${lastEnd} – ${slot.timeFrom}`)
-                        }
-                        if (slot.timeTo > lastEnd) {
-                          lastEnd = slot.timeTo
-                        }
-                      }
-                      if (lastEnd < '22:00') {
-                        gaps.push(`${lastEnd} – 22:00`)
-                      }
-
-                      if (gaps.length === 0)
-                        return (
-                          <div className="m-auto flex flex-col items-center gap-2">
-                            <AlertCircle className="h-5 w-5 text-muted-foreground" />
-                            <span className="text-xs font-black text-muted-foreground uppercase">
-                              Hết lịch trống hôm nay
-                            </span>
-                          </div>
-                        )
-
-                      return gaps.map((g, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => {
-                            const parts = g.split(' – ')
-                            const f = parts[0] || ''
-                            const t = parts[1] || ''
-                            setTimeFrom(f)
-                            setTimeTo(t)
-                          }}
-                          className="px-5 py-3 bg-white border-2 border-primary/20 rounded-2xl text-sm font-black text-primary hover:bg-primary hover:text-white hover:border-primary transition-all shadow-md hover:shadow-primary/20 active:scale-95"
-                        >
-                          {g.replace(/:/g, 'h')}
-                        </button>
-                      ))
-                    })()}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase ml-1 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Từ
-                    </label>
-                    <div className="flex items-center justify-center w-full p-3.5 bg-muted/40 rounded-2xl border border-border focus-within:border-primary focus-within:bg-white transition-all shadow-sm">
-                      <input
-                        type="text"
-                        placeholder="hh"
-                        value={timeFrom ? timeFrom.split(':')[0] : ''}
-                        onChange={(e) => {
-                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
-                          if (parseInt(v) > 23) v = '23'
-                          const m = timeFrom ? timeFrom.split(':')[1] || '' : ''
-                          if (!v && !m) setTimeFrom('')
-                          else setTimeFrom(`${v}:${m}`)
-                          if (v.length === 2) {
-                            document.getElementById('min-input-from')?.focus()
-                          }
-                        }}
-                        onBlur={(e) => {
-                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
-                          if (v && v.length === 1) v = '0' + v
-                          const m = timeFrom ? timeFrom.split(':')[1] || '' : ''
-                          if (!v && !m) setTimeFrom('')
-                          else setTimeFrom(`${v}:${m}`)
-                        }}
-                        className="w-12 text-right bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
-                      />
-                      <span className="font-black text-foreground mx-1 pb-1 text-xl">:</span>
-                      <input
-                        id="min-input-from"
-                        type="text"
-                        placeholder="mm"
-                        value={timeFrom ? timeFrom.split(':')[1] || '' : ''}
-                        onChange={(e) => {
-                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
-                          if (parseInt(v) > 59) v = '59'
-                          const h = timeFrom ? timeFrom.split(':')[0] || '00' : '00'
-                          if (!h && !v) setTimeFrom('')
-                          else setTimeFrom(`${h}:${v}`)
-                        }}
-                        onBlur={(e) => {
-                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
-                          if (v && v.length === 1) v = '0' + v
-                          const h = timeFrom ? timeFrom.split(':')[0] || '00' : '00'
-                          if (!h && !v) setTimeFrom('')
-                          else setTimeFrom(`${h}:${v}`)
-                        }}
-                        className="w-12 text-left bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase ml-1 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Đến
-                    </label>
-                    <div className="flex items-center justify-center w-full p-3.5 bg-muted/40 rounded-2xl border border-border focus-within:border-primary focus-within:bg-white transition-all shadow-sm">
-                      <input
-                        type="text"
-                        placeholder="hh"
-                        value={timeTo ? timeTo.split(':')[0] : ''}
-                        onChange={(e) => {
-                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
-                          if (parseInt(v) > 23) v = '23'
-                          const m = timeTo ? timeTo.split(':')[1] || '' : ''
-                          if (!v && !m) setTimeTo('')
-                          else setTimeTo(`${v}:${m}`)
-                          if (v.length === 2) {
-                            document.getElementById('min-input-to')?.focus()
-                          }
-                        }}
-                        onBlur={(e) => {
-                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
-                          if (v && v.length === 1) v = '0' + v
-                          const m = timeTo ? timeTo.split(':')[1] || '' : ''
-                          if (!v && !m) setTimeTo('')
-                          else setTimeTo(`${v}:${m}`)
-                        }}
-                        className="w-12 text-right bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
-                      />
-                      <span className="font-black text-foreground mx-1 pb-1 text-xl">:</span>
-                      <input
-                        id="min-input-to"
-                        type="text"
-                        placeholder="mm"
-                        value={timeTo ? timeTo.split(':')[1] || '' : ''}
-                        onChange={(e) => {
-                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
-                          if (parseInt(v) > 59) v = '59'
-                          const h = timeTo ? timeTo.split(':')[0] || '00' : '00'
-                          if (!h && !v) setTimeTo('')
-                          else setTimeTo(`${h}:${v}`)
-                        }}
-                        onBlur={(e) => {
-                          let v = e.target.value.replace(/\D/g, '').slice(0, 2)
-                          if (v && v.length === 1) v = '0' + v
-                          const h = timeTo ? timeTo.split(':')[0] || '00' : '00'
-                          if (!h && !v) setTimeTo('')
-                          else setTimeTo(`${h}:${v}`)
-                        }}
-                        className="w-12 text-left bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase ml-1">Lý do</label>
-                  <textarea
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    required
-                    rows={2}
-                    className="w-full p-4 bg-muted/40 rounded-2xl border border-border font-medium outline-none resize-none focus:border-primary transition-all"
-                  />
-                </div>
-                {(user?.role === 'MANAGER' || user?.role === 'BOD') && (
-                  <label className="flex items-center gap-4 bg-amber-50 p-4 rounded-2xl cursor-pointer ring-1 ring-amber-100 hover:bg-amber-100 transition-all">
-                    <input
-                      type="checkbox"
-                      checked={isEmergency}
-                      onChange={(e) => setIsEmergency(e.target.checked)}
-                      className="accent-amber-600 w-5 h-5"
-                    />
-                    <span className="text-xs font-semibold text-amber-700 uppercase">
-                      🚨 Đặt khẩn cấp (Ghi đè lịch trùng)
-                    </span>
-                  </label>
-                )}
-                <div className="flex gap-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowModal(false)
-                      resetForm()
-                    }}
-                    className="flex-1 py-4 font-bold uppercase text-muted-foreground hover:text-foreground transition-all"
-                  >
-                    Đóng
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={createMut.isPending || updateMut.isPending}
-                    className="flex-1 py-4 bg-primary text-white font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
-                  >
-                    {createMut.isPending || updateMut.isPending ? (
-                      <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                    ) : editingId ? (
-                      'Cập nhật'
-                    ) : (
-                      'Xác nhận'
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    {error && (
+                      <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-600 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <AlertCircle className="h-5 w-5 shrink-0" />
+                        <span className="text-sm leading-snug">{error}</span>
+                      </div>
                     )}
-                  </button>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold uppercase ml-1">Chọn phòng</label>
+                        <CustomSelect
+                          value={room}
+                          onValueChange={(val) => setRoom(val)}
+                          options={[
+                            { label: 'Tầng 5', value: 'Tầng 5' },
+                            { label: 'Tầng 6', value: 'Tầng 6' },
+                          ]}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold uppercase ml-1 flex items-center gap-1">
+                          Ngày
+                        </label>
+                        <DatePicker
+                          value={date}
+                          onChange={setDate}
+                          min={vnTime.date}
+                          className="h-14 rounded-2xl bg-muted/40 font-semibold text-center"
+                        />
+                      </div>
+                    </div>
+                    {/* Hiển thị khung giờ khả dụng */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold uppercase ml-1 flex items-center gap-2 text-primary">
+                          <Clock className="h-4 w-4" />
+                          Khung giờ trống còn lại
+                        </label>
+                        <span className="text-xs text-muted-foreground">Click để chọn nhanh</span>
+                      </div>
+                      <div className="flex flex-wrap gap-3 py-2 min-h-[40px]">
+                        {(() => {
+                          const { date: today, time: nowTime } = getVnNow()
+                          let startSearch = '08:00'
+                          if (date === today) {
+                            startSearch = nowTime > '08:00' ? nowTime : '08:00'
+                          }
+
+                          // Hàm chuẩn hóa thời gian về dạng 2 chữ số (VD: 9:30 -> 09:30) để so sánh chuỗi
+                          const padTime = (t: string) => {
+                            if (!t) return '00:00'
+                            const [h, m] = t.split(':')
+                            return `${(h || '0').padStart(2, '0')}:${(m || '0').padStart(2, '0')}`
+                          }
+
+                          // Tạo danh sách các khoảng trống
+                          const sorted = [...bookedSlots]
+                            .map((s) => ({
+                              ...s,
+                              timeFrom: padTime(s.timeFrom),
+                              timeTo: padTime(s.timeTo),
+                            }))
+                            .sort((a, b) => a.timeFrom.localeCompare(b.timeFrom))
+
+                          const gaps: string[] = []
+                          let lastEnd = padTime(startSearch)
+
+                          for (const slot of sorted) {
+                            if (slot.timeFrom > lastEnd) {
+                              gaps.push(`${lastEnd} – ${slot.timeFrom}`)
+                            }
+                            if (slot.timeTo > lastEnd) {
+                              lastEnd = slot.timeTo
+                            }
+                          }
+                          if (lastEnd < '22:00') {
+                            gaps.push(`${lastEnd} – 22:00`)
+                          }
+
+                          if (gaps.length === 0)
+                            return (
+                              <div className="m-auto flex flex-col items-center gap-2">
+                                <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                                <span className="text-xs font-black text-muted-foreground uppercase">
+                                  Hết lịch trống hôm nay
+                                </span>
+                              </div>
+                            )
+
+                          return gaps.map((g, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => {
+                                const parts = g.split(' – ')
+                                const f = parts[0] || ''
+                                const t = parts[1] || ''
+                                setTimeFrom(f)
+                                setTimeTo(t)
+                              }}
+                              className="px-5 py-3 bg-white border-2 border-primary/20 rounded-2xl text-sm font-black text-primary hover:bg-primary hover:text-white hover:border-primary transition-all shadow-md hover:shadow-primary/20 active:scale-95"
+                            >
+                              {g.replace(/:/g, 'h')}
+                            </button>
+                          ))
+                        })()}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold uppercase ml-1 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> Từ
+                        </label>
+                        <div className="flex items-center justify-center w-full p-3.5 bg-muted/40 rounded-2xl border border-border focus-within:border-primary focus-within:bg-white transition-all shadow-sm">
+                          <input
+                            type="text"
+                            placeholder="hh"
+                            value={timeFrom ? timeFrom.split(':')[0] : ''}
+                            onChange={(e) => {
+                              let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                              if (parseInt(v) > 23) v = '23'
+                              const m = timeFrom ? timeFrom.split(':')[1] || '' : ''
+                              if (!v && !m) setTimeFrom('')
+                              else setTimeFrom(`${v}:${m}`)
+                              if (v.length === 2) {
+                                document.getElementById('min-input-from')?.focus()
+                              }
+                            }}
+                            onBlur={(e) => {
+                              let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                              if (v && v.length === 1) v = '0' + v
+                              const m = timeFrom ? timeFrom.split(':')[1] || '' : ''
+                              if (!v && !m) setTimeFrom('')
+                              else setTimeFrom(`${v}:${m}`)
+                            }}
+                            className="w-12 text-right bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
+                          />
+                          <span className="font-black text-foreground mx-1 pb-1 text-xl">:</span>
+                          <input
+                            id="min-input-from"
+                            type="text"
+                            placeholder="mm"
+                            value={timeFrom ? timeFrom.split(':')[1] || '' : ''}
+                            onChange={(e) => {
+                              let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                              if (parseInt(v) > 59) v = '59'
+                              const h = timeFrom ? timeFrom.split(':')[0] || '00' : '00'
+                              if (!h && !v) setTimeFrom('')
+                              else setTimeFrom(`${h}:${v}`)
+                            }}
+                            onBlur={(e) => {
+                              let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                              if (v && v.length === 1) v = '0' + v
+                              const h = timeFrom ? timeFrom.split(':')[0] || '00' : '00'
+                              if (!h && !v) setTimeFrom('')
+                              else setTimeFrom(`${h}:${v}`)
+                            }}
+                            className="w-12 text-left bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold uppercase ml-1 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> Đến
+                        </label>
+                        <div className="flex items-center justify-center w-full p-3.5 bg-muted/40 rounded-2xl border border-border focus-within:border-primary focus-within:bg-white transition-all shadow-sm">
+                          <input
+                            type="text"
+                            placeholder="hh"
+                            value={timeTo ? timeTo.split(':')[0] : ''}
+                            onChange={(e) => {
+                              let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                              if (parseInt(v) > 23) v = '23'
+                              const m = timeTo ? timeTo.split(':')[1] || '' : ''
+                              if (!v && !m) setTimeTo('')
+                              else setTimeTo(`${v}:${m}`)
+                              if (v.length === 2) {
+                                document.getElementById('min-input-to')?.focus()
+                              }
+                            }}
+                            onBlur={(e) => {
+                              let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                              if (v && v.length === 1) v = '0' + v
+                              const m = timeTo ? timeTo.split(':')[1] || '' : ''
+                              if (!v && !m) setTimeTo('')
+                              else setTimeTo(`${v}:${m}`)
+                            }}
+                            className="w-12 text-right bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
+                          />
+                          <span className="font-black text-foreground mx-1 pb-1 text-xl">:</span>
+                          <input
+                            id="min-input-to"
+                            type="text"
+                            placeholder="mm"
+                            value={timeTo ? timeTo.split(':')[1] || '' : ''}
+                            onChange={(e) => {
+                              let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                              if (parseInt(v) > 59) v = '59'
+                              const h = timeTo ? timeTo.split(':')[0] || '00' : '00'
+                              if (!h && !v) setTimeTo('')
+                              else setTimeTo(`${h}:${v}`)
+                            }}
+                            onBlur={(e) => {
+                              let v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                              if (v && v.length === 1) v = '0' + v
+                              const h = timeTo ? timeTo.split(':')[0] || '00' : '00'
+                              if (!h && !v) setTimeTo('')
+                              else setTimeTo(`${h}:${v}`)
+                            }}
+                            className="w-12 text-left bg-transparent outline-none font-black text-foreground placeholder:text-muted-foreground/30 placeholder:font-bold text-lg"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold uppercase ml-1">Lý do</label>
+                      <textarea
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        required
+                        rows={2}
+                        className="w-full p-4 bg-muted/40 rounded-2xl border border-border font-medium outline-none resize-none focus:border-primary transition-all"
+                      />
+                    </div>
+                    {(user?.role === 'MANAGER' || user?.role === 'BOD') && (
+                      <label className="flex items-center gap-4 bg-amber-50 p-4 rounded-2xl cursor-pointer ring-1 ring-amber-100 hover:bg-amber-100 transition-all">
+                        <input
+                          type="checkbox"
+                          checked={isEmergency}
+                          onChange={(e) => setIsEmergency(e.target.checked)}
+                          className="accent-amber-600 w-5 h-5"
+                        />
+                        <span className="text-xs font-semibold text-amber-700 uppercase">
+                          🚨 Đặt khẩn cấp (Ghi đè lịch trùng)
+                        </span>
+                      </label>
+                    )}
+                    <div className="flex gap-4 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowModal(false)
+                          resetForm()
+                        }}
+                        className="flex-1 py-4 font-bold uppercase text-muted-foreground hover:text-foreground transition-all"
+                      >
+                        Đóng
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={createMut.isPending || updateMut.isPending}
+                        className="flex-1 py-4 bg-primary text-white font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                      >
+                        {createMut.isPending || updateMut.isPending ? (
+                          <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                        ) : editingId ? (
+                          'Cập nhật'
+                        ) : (
+                          'Xác nhận'
+                        )}
+                      </button>
+                    </div>
+                  </form>
                 </div>
-              </form>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {rejectId && (
         <div

@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/axios'
+import { uploadFileToBE } from '@/lib/fileUploadUtils'
 
 export interface MeetingBooking {
   id: string
@@ -17,6 +18,9 @@ export interface MeetingBooking {
   createdAt: string
   updatedAt: string
   timeStatus?: 'upcoming' | 'ongoing' | 'done'
+  minutesFileUrl?: string | null
+  minutesFileName?: string | null
+  minutesUploadedAt?: string | null
   user?: { email: string; fullNameLegal: string }
 }
 
@@ -92,4 +96,8 @@ export async function updateBooking(
 export async function finishBooking(id: string): Promise<MeetingBooking> {
   const { data } = await apiClient.patch<MeetingBooking>(`/room-booking/${id}/finish`)
   return data
+}
+
+export async function uploadMeetingMinutes(id: string, file: File): Promise<MeetingBooking> {
+  return uploadFileToBE<MeetingBooking>(`/room-booking/${id}/minutes`, file)
 }
