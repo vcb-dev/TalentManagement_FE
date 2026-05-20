@@ -1,5 +1,14 @@
 ﻿import { useMemo } from 'react'
-import { ResponsiveContainer, Treemap } from 'recharts'
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Cell,
+} from 'recharts'
 import { AlertTriangle, GraduationCap } from 'lucide-react'
 import { useLearningOpsSummary } from '@/features/dashboard/hooks'
 import { InfoHint } from '@/components/shared/InfoHint'
@@ -24,130 +33,7 @@ const LEVELS_HINT = 'Số người theo cấp bậc nghề nghiệp hiện lưu 
 const FAIL_TABLE_HINT =
   'Trong kỳ đã chọn: từ 2 lượt trượt trở lên cho cùng một cặp cấp (ví dụ Tập sự → Biết việc). Tính theo lớp thi / mô tả kỳ thi (Chờ học lại / Chia tay).'
 
-/* ──────────── Treemap chart ──────────── */
-const TREEMAP_MIN_SIZE = 16
-
-type TreemapCellProps = {
-  x?: number
-  y?: number
-  width?: number
-  height?: number
-  depth?: number
-  name?: string
-  count?: number
-  fill?: string
-  pct?: number
-}
-
-function TreemapCell({
-  x = 0,
-  y = 0,
-  width = 0,
-  height = 0,
-  depth = 1,
-  name = '',
-  count = 0,
-  fill = '#999',
-  pct = 0,
-}: TreemapCellProps) {
-  if (depth === 0) return null
-  const active = count > 0
-  const pad = 3
-  const iw = Math.max(0, width - pad * 2)
-  const ih = Math.max(0, height - pad * 2)
-  const canShowFull = iw > 65 && ih > 50
-  const canShowNameCount = iw > 38 && ih > 32
-  const canShowNameOnly = iw > 22 && ih > 22
-
-  return (
-    <g style={{ opacity: active ? 1 : 0.45 }}>
-      <rect x={x + pad} y={y + pad} width={iw} height={ih} rx={10} ry={10} fill={fill} />
-      <rect
-        x={x + pad}
-        y={y + pad}
-        width={iw}
-        height={Math.min(ih, 24)}
-        rx={10}
-        ry={10}
-        fill="rgba(255,255,255,0.1)"
-      />
-      {canShowFull ? (
-        <>
-          <text
-            x={x + width / 2}
-            y={y + height / 2 - 12}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="white"
-            fontSize={Math.min(24, iw / 3.2)}
-            fontWeight="900"
-          >
-            {count}
-          </text>
-          <text
-            x={x + width / 2}
-            y={y + height / 2 + 7}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="rgba(255,255,255,0.9)"
-            fontSize={Math.min(11, iw / 6.5)}
-            fontWeight="600"
-          >
-            {name}
-          </text>
-          <text
-            x={x + width / 2}
-            y={y + height / 2 + 22}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="rgba(255,255,255,0.65)"
-            fontSize={10}
-            fontWeight="700"
-          >
-            {active ? `${pct}%` : '0 người'}
-          </text>
-        </>
-      ) : canShowNameCount ? (
-        <>
-          <text
-            x={x + width / 2}
-            y={y + height / 2 - 7}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="white"
-            fontSize={Math.min(13, iw / 4)}
-            fontWeight="900"
-          >
-            {count}
-          </text>
-          <text
-            x={x + width / 2}
-            y={y + height / 2 + 8}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="rgba(255,255,255,0.85)"
-            fontSize={Math.min(9, iw / 6)}
-            fontWeight="600"
-          >
-            {name}
-          </text>
-        </>
-      ) : canShowNameOnly ? (
-        <text
-          x={x + width / 2}
-          y={y + height / 2}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill="rgba(255,255,255,0.9)"
-          fontSize={Math.min(9, iw / 5)}
-          fontWeight="700"
-        >
-          {name}
-        </text>
-      ) : null}
-    </g>
-  )
-}
+/* ──────────── Bar chart ──────────── */
 
 function LevelBarChart({
   levelData,
@@ -156,32 +42,63 @@ function LevelBarChart({
 }) {
   const total = levelData.reduce((s, d) => s + d.value, 0)
 
-  const treemapData = useMemo(
+  const chartData = useMemo(
     () =>
       levelData.map((entry) => ({
         name: entry.name,
         code: entry.code,
-        count: entry.value,
+        value: entry.value,
         pct: total > 0 ? Math.round((entry.value / total) * 100) : 0,
-        size: Math.max(entry.value, TREEMAP_MIN_SIZE),
         fill: LEVEL_PIE_COLORS[entry.code as LevelCode] ?? 'hsl(var(--primary))',
       })),
     [levelData, total]
   )
 
+  const yAxisMax = Math.max(1, ...chartData.map((d) => d.value))
+
   return (
     <div className="space-y-4">
       <div className="h-52 w-full sm:h-60">
         <ResponsiveContainer width="100%" height="100%">
-          <Treemap
-            data={treemapData}
-            dataKey="size"
-            aspectRatio={16 / 7}
-            isAnimationActive
-            animationDuration={900}
-            animationEasing="ease-out"
-            content={<TreemapCell />}
-          />
+          <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="name"
+              tick={{ fontSize: 12, fontWeight: 600 }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              allowDecimals={false}
+              domain={[0, yAxisMax]}
+              tick={{ fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              width={32}
+            />
+            <Tooltip
+              cursor={{ fill: 'hsl(var(--muted)/0.3)', rx: 8 }}
+              contentStyle={{
+                borderRadius: 12,
+                border: '1px solid hsl(var(--border))',
+                background: 'hsl(var(--card))',
+                fontSize: 13,
+              }}
+              formatter={(value: number) => [`${value} người`, 'Số lượng']}
+            />
+            <Bar
+              dataKey="value"
+              radius={[8, 8, 0, 0]}
+              maxBarSize={64}
+              isAnimationActive
+              animationDuration={700}
+              animationEasing="ease-out"
+            >
+              {chartData.map((entry) => (
+                <Cell key={entry.code} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       </div>
 
