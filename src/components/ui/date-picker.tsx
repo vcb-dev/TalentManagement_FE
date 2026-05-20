@@ -27,6 +27,8 @@ type DatePickerProps = {
    * chặn chuyển sang tháng/năm khác qua dropdown.
    */
   lockToMonth?: LockToMonth
+  /** Nhãn hiển thị trên nút (vd. "Hôm nay, 19/05/2026") thay cho dd/MM/yyyy */
+  displayLabel?: string
 }
 
 function parseDateString(value?: string): Date | undefined {
@@ -45,6 +47,7 @@ export function DatePicker({
   min,
   max,
   lockToMonth,
+  displayLabel,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
   const selectedDate = parseDateString(value)
@@ -63,15 +66,21 @@ export function DatePicker({
   const minDate = lockedFirstDay ?? parseDateString(min)
   const maxDate = lockedLastDay ?? parseDateString(max)
 
+  const isBeforeMin = React.useCallback(
+    (date: Date) => Boolean(minDate && startOfDay(date) < startOfDay(minDate)),
+    [minDate]
+  )
+
   const isDayDisabled = React.useCallback(
     (date: Date) => {
-      const d = startOfDay(date)
-      if (minDate && d < startOfDay(minDate)) return true
-      if (maxDate && d > startOfDay(maxDate)) return true
+      if (isBeforeMin(date)) return true
+      if (maxDate && startOfDay(date) > startOfDay(maxDate)) return true
       return false
     },
-    [minDate, maxDate]
+    [isBeforeMin, maxDate]
   )
+
+  const isDayHidden = React.useCallback((date: Date) => isBeforeMin(date), [isBeforeMin])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -90,7 +99,8 @@ export function DatePicker({
           <CalendarIcon
             className={cn('mr-2 h-4 w-4', selectedDate ? 'text-primary' : 'text-slate-400')}
           />
-          {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: vi }) : placeholder}
+          {displayLabel ??
+            (selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: vi }) : placeholder)}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -102,9 +112,9 @@ export function DatePicker({
         <Calendar
           mode="single"
           selected={selectedDate}
-          defaultMonth={selectedDate ?? lockedFirstDay}
+          defaultMonth={selectedDate ?? lockedFirstDay ?? minDate}
           month={lockToMonth ? lockedFirstDay : undefined}
-          startMonth={lockedFirstDay}
+          startMonth={lockedFirstDay ?? minDate}
           endMonth={lockedLastDay}
           disableNavigation={Boolean(lockToMonth)}
           captionLayout={lockToMonth ? 'label' : 'dropdown'}
@@ -113,6 +123,7 @@ export function DatePicker({
             setOpen(false)
           }}
           disabled={isDayDisabled}
+          hidden={minDate ? isDayHidden : undefined}
         />
       </PopoverContent>
     </Popover>
