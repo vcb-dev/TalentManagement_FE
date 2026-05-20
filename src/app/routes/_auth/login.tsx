@@ -32,8 +32,8 @@ export const Route = createFileRoute('/_auth/login')({
   beforeLoad: async ({ search }) => {
     if (search.oauth === 'success' || search.oauth === 'error') return
     await ensureSessionFromCookie()
-    const { accessToken, user } = useAuthStore.getState()
-    if (user || accessToken) {
+    const { user } = useAuthStore.getState()
+    if (user) {
       const target = defaultEntryPathFromSession(user ?? undefined)
       if (target === '/hr-admin')
         throw redirect({ to: '/hr-admin', search: { page: 1, pageSize: 15 } })
@@ -101,6 +101,9 @@ function LoginPage() {
           setSession(null as any, search.token)
         }
         const d = await authApi.me()
+        if (!d.user) {
+          throw new Error('Không lấy được phiên sau OAuth')
+        }
         setSession(d.user, d.accessToken ?? search.token ?? null)
         onAuthSuccess()
       } catch (err) {

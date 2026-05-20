@@ -15,10 +15,13 @@ export async function ensureSessionFromCookie(): Promise<void> {
     sessionBootstrapInflight = authApi
       .me()
       .then((d) => {
-        useAuthStore.getState().setSession(d.user, d.accessToken ?? null)
+        if (d.user) {
+          useAuthStore.getState().setSession(d.user, d.accessToken ?? null)
+        } else {
+          useAuthStore.getState().logout()
+        }
       })
       .catch(() => {
-        /* Chưa đăng nhập — xóa token cũ để tránh gửi Authorization lỗi */
         useAuthStore.getState().logout()
       })
       .finally(() => {

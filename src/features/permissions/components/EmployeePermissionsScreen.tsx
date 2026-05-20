@@ -132,7 +132,9 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
       setDirty(false)
       if (employee.id === currentUserId) {
         const me = await authApi.me()
-        useAuthStore.getState().setSession(me.user, me.accessToken ?? null)
+        if (me.user) {
+          useAuthStore.getState().setSession(me.user, me.accessToken ?? null)
+        }
       }
       void navigate({ to: '/permissions' })
     } catch (e) {
