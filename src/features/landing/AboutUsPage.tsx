@@ -516,6 +516,24 @@ export function AboutUsPage() {
                             />
                           </div>
                         </div>
+                      ) : (item.imageSrc ??
+                        DEFAULT_COMPANY_LANDING_CONTENT.ecosystem.items[i]?.imageSrc) ? (
+                        <div className="aspect-[3/4] w-full overflow-hidden rounded-2xl bg-slate-100 shadow-lg ring-4 ring-white transition-transform duration-500 group-hover:-translate-y-1">
+                          <img
+                            src={landingPublicImgSrc(
+                              (item.imageSrc ??
+                                DEFAULT_COMPANY_LANDING_CONTENT.ecosystem.items[i]?.imageSrc)!
+                            )}
+                            alt={
+                              item.imageAlt ??
+                              DEFAULT_COMPANY_LANDING_CONTENT.ecosystem.items[i]?.imageAlt ??
+                              item.label
+                            }
+                            className="h-full w-full object-cover object-center"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        </div>
                       ) : (
                         <ImageFrame
                           aspect="aspect-[3/4]"
@@ -621,6 +639,24 @@ export function AboutUsPage() {
                           <img
                             src={landingPublicImgSrc(c.strategy.traditionalImageSrc)}
                             alt={c.strategy.traditionalImageAlt}
+                            className="h-full w-full object-cover object-center"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        </div>
+                      ) : (p.imageSrc ??
+                        DEFAULT_COMPANY_LANDING_CONTENT.strategy.pillars[i]?.imageSrc) ? (
+                        <div className="aspect-[3/4] w-full overflow-hidden rounded-2xl bg-slate-100 shadow-lg ring-4 ring-white transition-transform duration-500 group-hover:-translate-y-1">
+                          <img
+                            src={landingPublicImgSrc(
+                              (p.imageSrc ??
+                                DEFAULT_COMPANY_LANDING_CONTENT.strategy.pillars[i]?.imageSrc)!
+                            )}
+                            alt={
+                              p.imageAlt ??
+                              DEFAULT_COMPANY_LANDING_CONTENT.strategy.pillars[i]?.imageAlt ??
+                              p.label
+                            }
                             className="h-full w-full object-cover object-center"
                             loading="lazy"
                             decoding="async"

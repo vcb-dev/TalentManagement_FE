@@ -21,11 +21,15 @@ export interface LandingLeaderEntry {
 export interface LandingEcosystemItem {
   label: string
   desc: string
+  imageSrc?: string
+  imageAlt?: string
 }
 
 export interface LandingStrategicPillar {
   label: string
   desc: string
+  imageSrc?: string
+  imageAlt?: string
 }
 
 export interface LandingBrandPillar {
