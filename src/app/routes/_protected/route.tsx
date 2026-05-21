@@ -6,8 +6,8 @@ import { useAuthStore } from '@/stores/auth.store'
 export const Route = createFileRoute('/_protected')({
   beforeLoad: async () => {
     await ensureSessionFromCookie()
-    const { user, accessToken } = useAuthStore.getState()
-    if (!user && !accessToken) {
+    const { user } = useAuthStore.getState()
+    if (!user) {
       const path = typeof window !== 'undefined' ? window.location.pathname : '/'
       throw redirect({ to: '/login', search: { redirect: path } })
     }

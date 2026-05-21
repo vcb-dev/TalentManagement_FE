@@ -20,6 +20,23 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config
 })
 
+function requestUrl(config: InternalAxiosRequestConfig | undefined): string {
+  const raw = config?.url ?? ''
+  if (raw.startsWith('http')) return raw
+  const base = config?.baseURL?.replace(/\/$/, '') ?? ''
+  return `${base}${raw.startsWith('/') ? raw : `/${raw}`}`
+}
+
+/** GET /auth/me — 401 khi chưa đăng nhập là bình thường. */
+function isAuthSessionCheck(config: InternalAxiosRequestConfig | undefined): boolean {
+  return requestUrl(config).includes('/auth/me')
+}
+
+/** Trang công khai — không full-reload khi 401 (tránh hủy load chunk /login). */
+function isGuestPath(pathname: string): boolean {
+  return pathname === '/' || pathname === '/about-us' || pathname.startsWith('/login')
+}
+
 apiClient.interceptors.response.use(
   (res) => res,
   (error: AxiosError<ApiError>) => {
@@ -27,12 +44,16 @@ apiClient.interceptors.response.use(
     if (status === 401) {
       const token = useAuthStore.getState().accessToken
       const sessionMock = isMockApiEnabled() && token?.startsWith('mock.')
-      // /auth/me là session-check — 401 là bình thường khi chưa đăng nhập, không redirect
-      const isSessionCheck = error.config?.url?.includes('/auth/me')
-      if (!sessionMock && !isSessionCheck) {
+      const isSessionCheck = isAuthSessionCheck(error.config)
+      const isPublicLanding = requestUrl(error.config).includes('/company-landing/public')
+
+      if (!sessionMock && !isSessionCheck && !isPublicLanding) {
         useAuthStore.getState().logout()
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-          window.location.assign('/')
+        if (typeof window !== 'undefined') {
+          const path = window.location.pathname
+          if (!isGuestPath(path) && !path.startsWith('/login')) {
+            window.location.assign('/login')
+          }
         }
       }
     }

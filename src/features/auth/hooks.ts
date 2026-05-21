@@ -26,8 +26,11 @@ export function useLogin() {
   return useMutation({
     mutationFn: authApi.login,
     onSuccess: (data) => {
+      if (!data.user) {
+        toast.error('Đăng nhập thất bại')
+        return
+      }
       setSession(data.user, data.accessToken ?? null)
-      // Seed the query cache immediately with the login response
       qc.setQueryData(authKeys.me(), data)
       toast.success('Đăng nhập thành công')
     },

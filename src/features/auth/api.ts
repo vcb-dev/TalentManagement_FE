@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { apiClient } from '@/lib/axios'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { safeParse } from '@/lib/utils'
@@ -51,9 +52,18 @@ export const authApi = {
     if (isMockApiEnabled()) {
       const token = useAuthStore.getState().accessToken
       if (token?.startsWith('mock.')) return mockMe()
+      return { user: null, accessToken: null }
     }
-    const res = await apiClient.get<unknown>('/auth/me')
-    return safeParse(meResponseSchema, res.data, 'GET /auth/me')
+    try {
+      const res = await apiClient.get<unknown>('/auth/me')
+      return safeParse(meResponseSchema, res.data, 'GET /auth/me')
+    } catch (err) {
+      // BE cũ trả 401 khi chưa đăng nhập — coi như không có phiên (tương thích tới khi deploy BE mới)
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        return { user: null, accessToken: null }
+      }
+      throw err
+    }
   },
 
   login: async (body: LoginRequest) => {
