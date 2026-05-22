@@ -3,6 +3,7 @@ export type AssistantChatRole = 'user' | 'assistant'
 export type AssistantChatMessage = {
   role: AssistantChatRole
   content: string
+  pending?: boolean
 }
 
 export type AssistantSource = {

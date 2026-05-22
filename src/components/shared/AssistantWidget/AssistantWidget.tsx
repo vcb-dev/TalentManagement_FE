@@ -19,10 +19,11 @@ function formatAssistantContent(text: string) {
 }
 
 const SUGGESTIONS = [
-  'Đăng nhập hệ thống như thế nào?',
-  'Phân tích bài Được việc của tôi',
-  'Đặt phòng tầng 5 lúc 9h sáng',
+  'Menu nào tôi được dùng?',
+  'Lớp học của tôi là gì?',
   'Điểm thi lớp của tôi?',
+  'Hướng dẫn Chia lớp (Manager)',
+  'Đặt phòng tầng 5 lúc 9h sáng',
 ]
 
 export function AssistantWidget() {
@@ -34,7 +35,7 @@ export function AssistantWidget() {
     {
       role: 'assistant',
       content:
-        'Xin chào! Mình là trợ lý Talent Management. Hỏi mình về đăng nhập, thi, lộ trình học, menu theo quyền — mình chỉ hỗ trợ trong phạm vi HRM nhé.',
+        'Xin chào! Mình là trợ lý Talent Management. Hỏi mình về menu trên app, thi cử, lộ trình học, đặt phòng, quản lý lớp — mình trả lời theo **tên mục trên màn hình** và dữ liệu thật của bạn nhé.',
     },
   ])
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -61,8 +62,16 @@ export function AssistantWidget() {
       if (!trimmed || loading) return
 
       const userMsg: AssistantChatMessage = { role: 'user', content: trimmed }
-      const history = messages.filter((m) => m.role === 'user' || m.role === 'assistant')
-      setMessages((prev) => [...prev, userMsg])
+      const history = messages.filter(
+        (m) => (m.role === 'user' || m.role === 'assistant') && !m.pending
+      )
+      const pendingAssistant: AssistantChatMessage = {
+        role: 'assistant',
+        content: '',
+        pending: true,
+      }
+
+      setMessages((prev) => [...prev, userMsg, pendingAssistant])
       setInput('')
       setLoading(true)
       scrollToBottom()
@@ -70,20 +79,38 @@ export function AssistantWidget() {
       try {
         const res = await postAssistantChat({
           message: trimmed,
-          history: history.slice(-16),
+          history: history.slice(-10),
           bookingDraft,
         })
         setBookingDraft(res.bookingDraft ?? null)
-        setMessages((prev) => [...prev, { role: 'assistant', content: res.reply }])
+        setMessages((prev) => {
+          const next = [...prev]
+          const pendingIdx = next.findIndex((m) => m.pending)
+          const assistantMsg: AssistantChatMessage = {
+            role: 'assistant',
+            content: res.reply,
+          }
+          if (pendingIdx >= 0) {
+            next[pendingIdx] = assistantMsg
+            return next
+          }
+          return [...next, assistantMsg]
+        })
       } catch (err) {
         toast.error(getApiErrorMessage(err))
-        setMessages((prev) => [
-          ...prev,
-          {
+        setMessages((prev) => {
+          const next = [...prev]
+          const pendingIdx = next.findIndex((m) => m.pending)
+          const errMsg: AssistantChatMessage = {
             role: 'assistant',
             content: 'Đã có lỗi khi gọi trợ lý. Thử lại sau hoặc liên hệ IT.',
-          },
-        ])
+          }
+          if (pendingIdx >= 0) {
+            next[pendingIdx] = errMsg
+            return next
+          }
+          return [...next, errMsg]
+        })
       } finally {
         setLoading(false)
         scrollToBottom()
@@ -146,15 +173,16 @@ export function AssistantWidget() {
                     : 'mr-auto bg-muted text-foreground'
                 )}
               >
-                <p className="whitespace-pre-wrap">{formatAssistantContent(m.content)}</p>
+                {m.pending ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Đang trả lời…</span>
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap">{formatAssistantContent(m.content)}</p>
+                )}
               </div>
             ))}
-            {loading && (
-              <div className="mr-auto flex items-center gap-2 rounded-2xl bg-muted px-3 py-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Đang trả lời…
-              </div>
-            )}
             <div ref={bottomRef} className="h-px shrink-0" aria-hidden />
           </div>
 
