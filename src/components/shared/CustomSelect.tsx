@@ -14,6 +14,7 @@ interface CustomSelectProps {
   placeholder?: string
   label?: string
   className?: string
+  disabled?: boolean
 }
 
 export const CustomSelect = ({
@@ -23,6 +24,7 @@ export const CustomSelect = ({
   placeholder = 'Chọn một mục...',
   label,
   className,
+  disabled,
 }: CustomSelectProps) => {
   return (
     <div className={cn('space-y-2', className)}>
@@ -31,7 +33,7 @@ export const CustomSelect = ({
           {label}
         </label>
       )}
-      <Select.Root value={value} onValueChange={onValueChange}>
+      <Select.Root value={value} onValueChange={onValueChange} disabled={disabled}>
         <Select.Trigger
           className={cn(
             'flex items-center justify-between w-full px-5 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold text-slate-700 outline-none transition-all focus:border-indigo-600 focus:bg-white hover:bg-slate-100/50',

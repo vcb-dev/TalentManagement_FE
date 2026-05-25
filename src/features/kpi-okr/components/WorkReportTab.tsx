@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
@@ -13,7 +13,15 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
-import { workReportApi, type WorkReport, type WorkReportStatus } from '../api'
+import {
+  performanceApi,
+  workReportApi,
+  type PerformanceWindowConfig,
+  type WorkReport,
+  type WorkReportStatus,
+} from '../api'
+import { RichTextEditor } from '@/components/ui/RichTextEditor'
+import { generateWorkReportTemplate } from '../utils/workReportTemplate'
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -50,106 +58,46 @@ function StatusBadge({ status }: { status: WorkReportStatus }) {
 
 // ─── Deadline helpers ─────────────────────────────────────────────────────────
 
-function getDeadline(year: number, month: number) {
+function getDeadline(year: number, month: number, deadlineDay = 10) {
   const nextMonth = month === 12 ? 1 : month + 1
   const nextYear = month === 12 ? year + 1 : year
-  return new Date(nextYear, nextMonth - 1, 10, 23, 59, 59)
+  return new Date(nextYear, nextMonth - 1, deadlineDay, 23, 59, 59)
 }
 
-function isDeadlinePassed(year: number, month: number) {
-  return new Date() > getDeadline(year, month)
+function isDeadlinePassed(year: number, month: number, deadlineDay = 10) {
+  return new Date() > getDeadline(year, month, deadlineDay)
 }
 
-function formatDeadline(year: number, month: number) {
-  const d = getDeadline(year, month)
-  return `10/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+function formatDeadline(year: number, month: number, deadlineDay = 10) {
+  const d = getDeadline(year, month, deadlineDay)
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
 }
 
-// ─── Template download ────────────────────────────────────────────────────────
-
-function downloadTemplate(year: number, month: number) {
-  const content = [
-    `BÁO CÁO TỔNG KẾT CÔNG VIỆC THÁNG ${month}/${year}`,
-    '='.repeat(50),
-    '',
-    'Họ và tên    : ___________________________________',
-    'Phòng/Nhóm   : ___________________________________',
-    'Kỳ báo cáo   : Tháng ' + month + '/' + year,
-    '',
-    '─'.repeat(50),
-    'PHẦN 1 — KẾT QUẢ KPI/OKR & ĐÁNH GIÁ CHI TIẾT',
-    '─'.repeat(50),
-    '',
-    '1.1 Tổng hợp KPI/OKR tháng',
-    '(Điền kết quả đạt được so với chỉ tiêu đặt ra)',
-    '',
-    '',
-    '',
-    '1.2 Thực trạng',
-    '(Mô tả tình trạng thực tế, so sánh với kế hoạch)',
-    '',
-    '',
-    '',
-    '1.3 Nguyên nhân (khi chưa đạt mục tiêu)',
-    '(Phân tích nguyên nhân chủ quan và khách quan)',
-    '',
-    '',
-    '',
-    '1.4 Giải pháp',
-    '(Đề xuất biện pháp khắc phục, cải thiện)',
-    '',
-    '',
-    '',
-    '─'.repeat(50),
-    'PHẦN 2 — TỰ ĐÁNH GIÁ',
-    '─'.repeat(50),
-    '',
-    '2.1 Tự xếp loại  :  [ ] A    [ ] B    [ ] C    [ ] D',
-    '',
-    '2.2 Nhận xét bản thân',
-    '(Tự nhận xét về hiệu suất và thái độ làm việc)',
-    '',
-    '',
-    '',
-    '─'.repeat(50),
-    'PHẦN 3 — KẾ HOẠCH THÁNG TỚI',
-    '─'.repeat(50),
-    '',
-    '(Mô tả mục tiêu và kế hoạch triển khai tháng ' +
-      (month === 12 ? 1 : month + 1) +
-      '/' +
-      (month === 12 ? year + 1 : year) +
-      ')',
-    '',
-    '',
-    '',
-    '─'.repeat(50),
-    'PHẦN 4 — TRẢ LỜI CÂU HỎI (do trưởng nhóm đặt)',
-    '─'.repeat(50),
-    '',
-    '(Phần này sẽ được hệ thống tự điền từ form khảo sát hàng tháng)',
-    '',
-    '═'.repeat(50),
-    `Ngày nộp: ___/___/${year}          Chữ ký: ________________`,
-  ].join('\n')
-
-  const blob = new Blob(['﻿' + content], { type: 'text/plain;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `mau-bao-cao-T${month}-${year}.txt`
-  a.click()
-  URL.revokeObjectURL(url)
+function resolveReportDeadlineDay(
+  configs: PerformanceWindowConfig[] | undefined,
+  teamId: string,
+  year: number,
+  month: number
+) {
+  const specific = configs?.find(
+    (cfg) => cfg.teamId === teamId && cfg.year === year && cfg.month === month
+  )
+  const global = configs?.find(
+    (cfg) => cfg.teamId === null && cfg.year === year && cfg.month === month
+  )
+  return specific?.reportDeadlineDay ?? global?.reportDeadlineDay ?? 10
 }
 
-// ─── Section collapse component ───────────────────────────────────────────────
+// ─── Section collapse ─────────────────────────────────────────────────────────
 
 function Section({
   title,
+  required,
   children,
   defaultOpen = true,
 }: {
   title: string
+  required?: boolean
   children: React.ReactNode
   defaultOpen?: boolean
 }) {
@@ -161,7 +109,14 @@ function Section({
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between px-4 py-3 text-left"
       >
-        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</span>
+        <span className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
+          {title}
+          {required && (
+            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+              Bắt buộc
+            </span>
+          )}
+        </span>
         {open ? (
           <ChevronUp className="h-4 w-4 text-slate-400" />
         ) : (
@@ -177,43 +132,94 @@ function Section({
   )
 }
 
-// ─── Textarea field ───────────────────────────────────────────────────────────
+// ─── Rich field wrapper ───────────────────────────────────────────────────────
 
-function Field({
+function RichField({
   label,
   value,
   onChange,
   placeholder,
   readOnly,
-  rows = 4,
+  minHeight = 140,
 }: {
   label: string
   value: string
   onChange?: (v: string) => void
   placeholder?: string
   readOnly?: boolean
-  rows?: number
+  minHeight?: number
 }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{label}</label>
-      <textarea
-        rows={rows}
+      <RichTextEditor
         value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-        readOnly={readOnly}
+        onChange={onChange}
         placeholder={readOnly ? undefined : placeholder}
-        className={cn(
-          'w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition',
-          'dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100',
-          readOnly
-            ? 'cursor-default bg-slate-50 dark:bg-slate-900/60'
-            : 'focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:border-blue-500'
-        )}
+        readOnly={readOnly}
+        minHeight={minHeight}
+        imageUploadUrl="/performance/work-reports/evidence-image"
       />
     </div>
   )
 }
+
+// ─── Form state type ──────────────────────────────────────────────────────────
+
+type FormState = {
+  // Legacy plain-text fields
+  part1KpiNarrative: string
+  part1Situation: string
+  part1Cause: string
+  part1Solution: string
+  part2SelfRating: string
+  part2SelfComment: string
+  part3NextMonthPlan: string
+  // Rich-text sections (HTML from Tiptap)
+  partWorkDone: string
+  partOutputResult: string
+  partOkr: string
+  partIssues: string
+  partEvidence: string
+  // File upload
+  fileUrl: string | null
+  fileOriginalName: string | null
+  fileMimeType: string | null
+}
+
+function makeForm(report: WorkReport | null | undefined): FormState {
+  return {
+    part1KpiNarrative: report?.part1KpiNarrative ?? '',
+    part1Situation: report?.part1Situation ?? '',
+    part1Cause: report?.part1Cause ?? '',
+    part1Solution: report?.part1Solution ?? '',
+    part2SelfRating: report?.part2SelfRating ?? '',
+    part2SelfComment: report?.part2SelfComment ?? '',
+    part3NextMonthPlan: report?.part3NextMonthPlan ?? '',
+    partWorkDone: report?.partWorkDone ?? '',
+    partOutputResult: report?.partOutputResult ?? '',
+    partOkr: report?.partOkr ?? '',
+    partIssues: report?.partIssues ?? '',
+    partEvidence: report?.partEvidence ?? '',
+    fileUrl: report?.fileUrl ?? null,
+    fileOriginalName: report?.fileOriginalName ?? null,
+    fileMimeType: report?.fileMimeType ?? null,
+  }
+}
+
+// ─── Required sections banner ─────────────────────────────────────────────────
+
+const REQUIRED_SECTIONS = [
+  'Công việc đã làm',
+  'Kết quả đầu ra',
+  'Nguyên nhân',
+  'KPI',
+  'Minh chứng',
+  'Đề xuất',
+  'OKR',
+  'Vấn đề',
+  'Kế hoạch tháng sau',
+]
 
 // ─── Member view ──────────────────────────────────────────────────────────────
 
@@ -236,44 +242,26 @@ function MemberReportForm({
     queryKey: ['work-report-me', year, month],
     queryFn: () => workReportApi.getMyWorkReport(year, month),
   })
+  const windowConfigsQ = useQuery({
+    queryKey: ['performance', 'window-configs'],
+    queryFn: () => performanceApi.listWindowConfigs(),
+    staleTime: 60_000,
+  })
   const report = reportQ.data
 
-  const [form, setForm] = useState<{
-    part1KpiNarrative: string
-    part1Situation: string
-    part1Cause: string
-    part1Solution: string
-    part2SelfRating: string
-    part2SelfComment: string
-    part3NextMonthPlan: string
-    fileUrl: string | null
-    fileOriginalName: string | null
-    fileMimeType: string | null
-  }>({
-    part1KpiNarrative: report?.part1KpiNarrative ?? '',
-    part1Situation: report?.part1Situation ?? '',
-    part1Cause: report?.part1Cause ?? '',
-    part1Solution: report?.part1Solution ?? '',
-    part2SelfRating: report?.part2SelfRating ?? '',
-    part2SelfComment: report?.part2SelfComment ?? '',
-    part3NextMonthPlan: report?.part3NextMonthPlan ?? '',
-    fileUrl: report?.fileUrl ?? null,
-    fileOriginalName: report?.fileOriginalName ?? null,
-    fileMimeType: report?.fileMimeType ?? null,
-  })
+  const [form, setForm] = useState<FormState>(() => makeForm(report))
+  const set =
+    <K extends keyof FormState>(key: K) =>
+    (v: FormState[K]) =>
+      setForm((f) => ({ ...f, [key]: v }))
 
   const isReadOnly = !!report && !['draft', 'late_approved'].includes(report.status)
-  const deadlinePassed = isDeadlinePassed(year, month)
+  const reportDeadlineDay = resolveReportDeadlineDay(windowConfigsQ.data, teamId, year, month)
+  const deadlinePassed = isDeadlinePassed(year, month, reportDeadlineDay)
   const canSubmit = !isReadOnly && (!deadlinePassed || report?.status === 'late_approved')
 
   const saveMut = useMutation({
-    mutationFn: () =>
-      workReportApi.upsertMyWorkReport({
-        teamId,
-        year,
-        month,
-        ...form,
-      }),
+    mutationFn: () => workReportApi.upsertMyWorkReport({ teamId, year, month, ...form }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['work-report-me', year, month] }),
   })
 
@@ -309,25 +297,12 @@ function MemberReportForm({
     },
   })
 
-  // Sync form state when report loads
-  if (report && !saveMut.isPending) {
-    const synced = {
-      part1KpiNarrative: report.part1KpiNarrative ?? '',
-      part1Situation: report.part1Situation ?? '',
-      part1Cause: report.part1Cause ?? '',
-      part1Solution: report.part1Solution ?? '',
-      part2SelfRating: report.part2SelfRating ?? '',
-      part2SelfComment: report.part2SelfComment ?? '',
-      part3NextMonthPlan: report.part3NextMonthPlan ?? '',
-      fileUrl: report.fileUrl ?? null,
-      fileOriginalName: report.fileOriginalName ?? null,
-      fileMimeType: report.fileMimeType ?? null,
+  const reportSyncKey = report ? `${report.id}:${report.updatedAt}` : `empty:${year}:${month}`
+  useEffect(() => {
+    if (!saveMut.isPending) {
+      setForm(makeForm(report))
     }
-    // Only sync when there's no local change pending
-    if (!saveMut.isSuccess) {
-      Object.assign(form, synced)
-    }
-  }
+  }, [reportSyncKey, saveMut.isPending])
 
   if (reportQ.isLoading) {
     return <div className="py-8 text-center text-sm text-slate-400">Đang tải...</div>
@@ -335,6 +310,24 @@ function MemberReportForm({
 
   return (
     <div className="space-y-4">
+      {/* Required sections notice */}
+      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          Các mục bắt buộc trong báo cáo
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {REQUIRED_SECTIONS.map((s) => (
+            <span
+              key={s}
+              className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+            >
+              <CheckCircle2 className="h-3 w-3" />
+              {s}
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* Deadline banner */}
       <div
         className={cn(
@@ -347,13 +340,13 @@ function MemberReportForm({
         <Clock className="h-4 w-4 shrink-0" />
         <span>
           {deadlinePassed
-            ? `Đã quá hạn nộp báo cáo T${month}/${year} (${formatDeadline(year, month)})`
-            : `Hạn nộp báo cáo T${month}/${year}: ${formatDeadline(year, month)}`}
+            ? `Đã quá hạn nộp báo cáo T${month}/${year} (${formatDeadline(year, month, reportDeadlineDay)})`
+            : `Hạn nộp báo cáo T${month}/${year}: ${formatDeadline(year, month, reportDeadlineDay)}`}
         </span>
         {report && <StatusBadge status={report.status as WorkReportStatus} />}
       </div>
 
-      {/* Input mode toggle — only when not read-only */}
+      {/* Input mode toggle */}
       {!isReadOnly && (
         <div className="flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
           <button
@@ -386,113 +379,175 @@ function MemberReportForm({
       )}
 
       {/* Upload mode */}
-      {(inputMode === 'upload' || form.fileUrl) && !isReadOnly && (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/50 p-6 dark:border-slate-700">
-          {/* Download template hint */}
-          <div className="mb-4 flex items-center justify-between rounded-md border border-blue-100 bg-blue-50 px-3 py-2 dark:border-blue-900/40 dark:bg-blue-950/30">
-            <p className="text-xs text-blue-700 dark:text-blue-300">
-              Chưa có file mẫu? Tải về để biết cách điền đúng format.
-            </p>
+      {inputMode === 'upload' && !isReadOnly && (
+        <div className="space-y-3">
+          {/* Template download hint */}
+          <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-900/40 dark:bg-blue-950/30">
+            <div>
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                Tải file mẫu Word (.docx)
+              </p>
+              <p className="mt-0.5 text-xs text-blue-600 dark:text-blue-400">
+                Đã có sẵn 9 mục bắt buộc — chỉ cần điền câu trả lời rồi upload lại
+              </p>
+            </div>
             <button
               type="button"
-              onClick={() => downloadTemplate(year, month)}
-              className="ml-3 inline-flex shrink-0 items-center gap-1.5 rounded-md border border-blue-200 bg-white px-2.5 py-1 text-xs font-medium text-blue-700 transition hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-300"
+              onClick={() => generateWorkReportTemplate(year, month)}
+              className="ml-4 inline-flex shrink-0 items-center gap-2 rounded-md border border-blue-300 bg-white px-3 py-2 text-sm font-medium text-blue-700 shadow-sm transition hover:bg-blue-50 dark:border-blue-700 dark:bg-slate-900 dark:text-blue-300"
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-4 w-4" />
               Tải file mẫu
             </button>
           </div>
 
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".pdf,.docx"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) uploadMut.mutate(file)
-            }}
-          />
-          {form.fileUrl ? (
-            <div className="flex items-center justify-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-              <FileText className="h-5 w-5 text-blue-500" />
-              <span>{form.fileOriginalName ?? 'File đã upload'}</span>
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="ml-2 text-xs text-blue-600 underline"
-              >
-                Thay thế
-              </button>
-            </div>
-          ) : (
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="text-sm text-blue-600 hover:underline"
-                disabled={uploadMut.isPending}
-              >
-                {uploadMut.isPending ? 'Đang upload...' : 'Chọn file PDF hoặc DOCX (tối đa 20MB)'}
-              </button>
-            </div>
-          )}
+          {/* Upload zone */}
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/50 p-6 dark:border-slate-700">
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".pdf,.docx"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) uploadMut.mutate(file)
+              }}
+            />
+            {form.fileUrl ? (
+              <div className="flex items-center justify-center gap-3 text-sm text-slate-700 dark:text-slate-300">
+                <FileText className="h-5 w-5 shrink-0 text-blue-500" />
+                <span className="truncate">{form.fileOriginalName ?? 'File đã upload'}</span>
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="shrink-0 text-xs text-blue-600 underline"
+                >
+                  Thay thế
+                </button>
+              </div>
+            ) : (
+              <div className="text-center">
+                <Upload className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="text-sm font-medium text-blue-600 hover:underline"
+                  disabled={uploadMut.isPending}
+                >
+                  {uploadMut.isPending ? 'Đang upload...' : 'Chọn file PDF hoặc DOCX'}
+                </button>
+                <p className="mt-1 text-xs text-slate-400">Kích thước tối đa 20MB</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Write mode sections */}
+      {/* Write mode — rich text sections */}
       {(inputMode === 'write' || isReadOnly) && (
         <div className="space-y-3">
-          {!isReadOnly && (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => downloadTemplate(year, month)}
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Tải file mẫu tham khảo
-              </button>
-            </div>
-          )}
-          <Section title="Phần 1 — Kết quả KPI/OKR & Đánh giá chi tiết">
-            <div className="space-y-3">
-              <Field
-                label="Tổng hợp KPI/OKR tháng"
-                value={form.part1KpiNarrative}
-                onChange={(v) => setForm((f) => ({ ...f, part1KpiNarrative: v }))}
-                placeholder="Tóm tắt kết quả KPI/OKR tháng này..."
-                readOnly={isReadOnly}
-                rows={4}
-              />
-              <Field
-                label="Thực trạng"
-                value={form.part1Situation}
-                onChange={(v) => setForm((f) => ({ ...f, part1Situation: v }))}
-                placeholder="Mô tả thực trạng công việc..."
-                readOnly={isReadOnly}
-                rows={3}
-              />
-              <Field
-                label="Nguyên nhân"
-                value={form.part1Cause}
-                onChange={(v) => setForm((f) => ({ ...f, part1Cause: v }))}
-                placeholder="Phân tích nguyên nhân..."
-                readOnly={isReadOnly}
-                rows={3}
-              />
-              <Field
-                label="Giải pháp"
-                value={form.part1Solution}
-                onChange={(v) => setForm((f) => ({ ...f, part1Solution: v }))}
-                placeholder="Đề xuất giải pháp..."
-                readOnly={isReadOnly}
-                rows={3}
-              />
-            </div>
+          {/* ── Section 1: Công việc đã làm ── */}
+          <Section title="Công việc đã làm" required>
+            <RichField
+              label="Mô tả các công việc đã thực hiện trong tháng"
+              value={form.partWorkDone}
+              onChange={set('partWorkDone')}
+              placeholder="Liệt kê các công việc đã làm trong tháng này..."
+              readOnly={isReadOnly}
+            />
           </Section>
 
-          <Section title="Phần 2 — Đánh giá bản thân">
+          {/* ── Section 2: Kết quả đầu ra ── */}
+          <Section title="Kết quả đầu ra" required>
+            <RichField
+              label="Kết quả cụ thể đạt được"
+              value={form.partOutputResult}
+              onChange={set('partOutputResult')}
+              placeholder="Mô tả kết quả đầu ra (sản phẩm, chỉ số, deliverables)..."
+              readOnly={isReadOnly}
+            />
+          </Section>
+
+          {/* ── Section 3: KPI ── */}
+          <Section title="KPI" required>
+            <RichField
+              label="Tổng hợp kết quả KPI tháng"
+              value={form.part1KpiNarrative}
+              onChange={set('part1KpiNarrative')}
+              placeholder="Tóm tắt kết quả KPI so với chỉ tiêu đặt ra, các chỉ số đạt/không đạt..."
+              readOnly={isReadOnly}
+            />
+          </Section>
+
+          {/* ── Section 4: OKR ── */}
+          <Section title="OKR" required>
+            <RichField
+              label="Kết quả OKR tháng"
+              value={form.partOkr}
+              onChange={set('partOkr')}
+              placeholder="Mô tả tiến độ các Objectives & Key Results..."
+              readOnly={isReadOnly}
+            />
+          </Section>
+
+          {/* ── Section 5: Nguyên nhân ── */}
+          <Section title="Nguyên nhân" required>
+            <RichField
+              label="Phân tích nguyên nhân (khi chưa đạt mục tiêu)"
+              value={form.part1Cause}
+              onChange={set('part1Cause')}
+              placeholder="Phân tích nguyên nhân chủ quan và khách quan..."
+              readOnly={isReadOnly}
+            />
+          </Section>
+
+          {/* ── Section 6: Vấn đề ── */}
+          <Section title="Vấn đề" required>
+            <RichField
+              label="Các vấn đề gặp phải"
+              value={form.partIssues}
+              onChange={set('partIssues')}
+              placeholder="Nêu các vướng mắc, khó khăn trong tháng và mức độ ảnh hưởng..."
+              readOnly={isReadOnly}
+            />
+          </Section>
+
+          {/* ── Section 7: Minh chứng ── */}
+          <Section title="Minh chứng" required>
+            <RichField
+              label="Bằng chứng, tài liệu đính kèm"
+              value={form.partEvidence}
+              onChange={set('partEvidence')}
+              placeholder="Chèn ảnh chụp màn hình, số liệu, link tài liệu minh chứng... (dùng nút ảnh trong toolbar)"
+              readOnly={isReadOnly}
+              minHeight={180}
+            />
+          </Section>
+
+          {/* ── Section 8: Đề xuất ── */}
+          <Section title="Đề xuất" required>
+            <RichField
+              label="Đề xuất giải pháp / cải tiến"
+              value={form.part1Solution}
+              onChange={set('part1Solution')}
+              placeholder="Đề xuất các biện pháp khắc phục, cải thiện, hoặc ý kiến với cấp trên..."
+              readOnly={isReadOnly}
+            />
+          </Section>
+
+          {/* ── Section 9: Kế hoạch tháng sau ── */}
+          <Section title="Kế hoạch tháng sau" required>
+            <RichField
+              label={`Mục tiêu và kế hoạch triển khai tháng ${month === 12 ? 1 : month + 1}/${month === 12 ? year + 1 : year}`}
+              value={form.part3NextMonthPlan}
+              onChange={set('part3NextMonthPlan')}
+              placeholder="Liệt kê các mục tiêu và kế hoạch hành động tháng tới..."
+              readOnly={isReadOnly}
+            />
+          </Section>
+
+          {/* ── Section 10: Tự đánh giá ── */}
+          <Section title="Tự đánh giá" defaultOpen={false}>
             <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
@@ -500,7 +555,7 @@ function MemberReportForm({
                 </label>
                 <select
                   value={form.part2SelfRating}
-                  onChange={(e) => setForm((f) => ({ ...f, part2SelfRating: e.target.value }))}
+                  onChange={(e) => set('part2SelfRating')(e.target.value)}
                   disabled={isReadOnly}
                   className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
                 >
@@ -511,20 +566,20 @@ function MemberReportForm({
                   <option value="D">D — Chưa đạt</option>
                 </select>
               </div>
-              <Field
+              <RichField
                 label="Nhận xét bản thân"
                 value={form.part2SelfComment}
-                onChange={(v) => setForm((f) => ({ ...f, part2SelfComment: v }))}
-                placeholder="Nhận xét về kết quả công việc của bạn..."
+                onChange={set('part2SelfComment')}
+                placeholder="Nhận xét về kết quả công việc và thái độ làm việc của bạn..."
                 readOnly={isReadOnly}
-                rows={3}
+                minHeight={100}
               />
             </div>
           </Section>
 
-          {/* Phần 2 — Leader evaluation (read-only for member, only visible after reviewed) */}
+          {/* Leader evaluation — visible after reviewed */}
           {report?.status === 'reviewed' && (
-            <Section title="Phần 2 — Đánh giá của Leader" defaultOpen={false}>
+            <Section title="Đánh giá của Leader" defaultOpen={false}>
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-slate-500">Xếp loại:</span>
@@ -532,30 +587,19 @@ function MemberReportForm({
                     {report.part2LeaderRating ?? '—'}
                   </span>
                 </div>
-                <Field
+                <RichField
                   label="Nhận xét của Leader"
                   value={report.part2LeaderComment ?? ''}
                   readOnly
-                  rows={3}
+                  minHeight={80}
                 />
               </div>
             </Section>
           )}
 
-          <Section title="Phần 3 — Kế hoạch tháng tới">
-            <Field
-              label="Kế hoạch công việc tháng tiếp theo"
-              value={form.part3NextMonthPlan}
-              onChange={(v) => setForm((f) => ({ ...f, part3NextMonthPlan: v }))}
-              placeholder="Liệt kê các mục tiêu và kế hoạch tháng tới..."
-              readOnly={isReadOnly}
-              rows={4}
-            />
-          </Section>
-
-          {/* Phần 4 — Q&A from questionnaire (read-only) */}
+          {/* Q&A from questionnaire (read-only) */}
           {report?.questionnairePart4 && report.questionnairePart4.length > 0 && (
-            <Section title="Phần 4 — Trả lời câu hỏi của Leader" defaultOpen={false}>
+            <Section title="Trả lời câu hỏi của Leader" defaultOpen={false}>
               <div className="space-y-3">
                 {report.questionnairePart4.map((q) => (
                   <div key={q.questionId} className="space-y-1">
@@ -725,7 +769,12 @@ function LeaderTeamReports({
               {reports.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/40">
                   <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">
-                    {r.userId.slice(0, 8)}...
+                    <div>
+                      <p>{r.user?.displayName ?? r.user?.email ?? r.userId.slice(0, 8)}</p>
+                      {r.user?.employeeCode && (
+                        <p className="text-xs font-normal text-slate-400">{r.user.employeeCode}</p>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={r.status as WorkReportStatus} />
@@ -755,7 +804,7 @@ function LeaderTeamReports({
         </div>
       )}
 
-      {/* Review modal/panel */}
+      {/* Review modal */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-2xl dark:bg-slate-950">
@@ -773,7 +822,6 @@ function LeaderTeamReports({
             </div>
 
             <div className="space-y-4 p-6">
-              {/* Read-only content */}
               {selected.fileUrl ? (
                 <a
                   href={selected.fileUrl}
@@ -786,25 +834,28 @@ function LeaderTeamReports({
                 </a>
               ) : (
                 <div className="space-y-3">
-                  {selected.part1KpiNarrative && (
-                    <div>
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Phần 1 — KPI/OKR
-                      </p>
-                      <p className="whitespace-pre-wrap rounded bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
-                        {selected.part1KpiNarrative}
-                      </p>
-                    </div>
-                  )}
-                  {selected.part3NextMonthPlan && (
-                    <div>
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Phần 3 — Kế hoạch tháng tới
-                      </p>
-                      <p className="whitespace-pre-wrap rounded bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900">
-                        {selected.part3NextMonthPlan}
-                      </p>
-                    </div>
+                  {[
+                    { label: 'Công việc đã làm', html: selected.partWorkDone },
+                    { label: 'Kết quả đầu ra', html: selected.partOutputResult },
+                    { label: 'KPI', html: selected.part1KpiNarrative },
+                    { label: 'OKR', html: selected.partOkr },
+                    { label: 'Nguyên nhân', html: selected.part1Cause },
+                    { label: 'Vấn đề', html: selected.partIssues },
+                    { label: 'Minh chứng', html: selected.partEvidence },
+                    { label: 'Đề xuất', html: selected.part1Solution },
+                    { label: 'Kế hoạch tháng sau', html: selected.part3NextMonthPlan },
+                  ].map(({ label, html }) =>
+                    html ? (
+                      <div key={label}>
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          {label}
+                        </p>
+                        <div
+                          className="prose prose-sm max-w-none rounded bg-slate-50 px-3 py-2 text-sm dark:bg-slate-900"
+                          dangerouslySetInnerHTML={{ __html: html }}
+                        />
+                      </div>
+                    ) : null
                   )}
                 </div>
               )}
@@ -813,7 +864,7 @@ function LeaderTeamReports({
               {['submitted', 'late_submitted', 'reviewed'].includes(selected.status) && (
                 <div className="space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                    Phần 2 — Đánh giá của bạn
+                    Đánh giá của bạn
                   </p>
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-slate-600">Xếp loại</label>
@@ -830,13 +881,20 @@ function LeaderTeamReports({
                       <option value="D">D — Chưa đạt</option>
                     </select>
                   </div>
-                  <Field
-                    label="Nhận xét"
-                    value={leaderComment}
-                    onChange={selected.status !== 'reviewed' ? setLeaderComment : undefined}
-                    readOnly={selected.status === 'reviewed'}
-                    rows={3}
-                  />
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-600">Nhận xét</label>
+                    <textarea
+                      rows={3}
+                      value={leaderComment}
+                      onChange={
+                        selected.status !== 'reviewed'
+                          ? (e) => setLeaderComment(e.target.value)
+                          : undefined
+                      }
+                      readOnly={selected.status === 'reviewed'}
+                      className="w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-900"
+                    />
+                  </div>
                   {selected.status !== 'reviewed' && (
                     <button
                       type="button"
@@ -886,7 +944,6 @@ export function WorkReportTab({
 
   return (
     <div className="space-y-4">
-      {/* Sub-tab for leader/manager */}
       {canSeeTeamWide && (
         <div className="flex gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900/50">
           <button

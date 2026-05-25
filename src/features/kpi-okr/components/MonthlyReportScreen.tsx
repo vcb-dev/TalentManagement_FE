@@ -1,12 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart3, Calendar, Download, RefreshCw, UserRound } from 'lucide-react'
 import {
-  PAGE_HEADER_DESCRIPTION,
-  PAGE_HEADER_GRADIENT,
-  PAGE_HEADER_SURFACE,
-  PAGE_HEADER_TITLE,
-} from '@/components/shared/PageHeader'
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  RefreshCw,
+  Search,
+  TrendingUp,
+  Users,
+  UserRound,
+  Target,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,40 +25,26 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { CARD_ENTRANCE } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
-import { getApiErrorMessage } from '@/lib/axios'
 import { performanceApi, type PerformanceAssignment } from '@/features/kpi-okr/api'
 import {
   clampKpiPeriod,
   getMaxViewableYm,
   isKpiPeriodSelectable,
 } from '@/features/kpi-okr/kpiPeriodLimits'
-import {
-  isMandatoryMetric,
-  isTrafficTeam,
-  MANDATORY_METRICS_BY_TEMPLATE,
-} from '@/features/kpi-okr/catalogHelpers'
+import { isTrafficTeam, MANDATORY_METRICS_BY_TEMPLATE } from '@/features/kpi-okr/catalogHelpers'
 import { FormPanel } from '@/features/kpi-okr/components/KpiOkrWorkspace'
+import { useMonthlyReportSelfEdit } from '@/features/kpi-okr/components/hooks/useMonthlyReportSelfEdit'
 import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
 import { organizationApi } from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { useAuthStore } from '@/stores/auth.store'
 import { resolveEffectivePermissionSet } from '@/features/permissions/resolveEffective'
-import { toast } from 'sonner'
 import { Textarea } from '@/components/ui/textarea'
 import {
   EvidenceImagePreviews,
   KpiEvidenceInput,
 } from '@/features/kpi-okr/components/KpiEvidenceInput'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { CustomSelect } from '@/components/shared/CustomSelect'
 import { WorkReportTab } from './WorkReportTab'
 
@@ -92,38 +83,6 @@ function EvalBadge({ status }: { status: string | null | undefined }) {
     >
       {v}
     </Badge>
-  )
-}
-
-function MonthlyReportEpic4ReadCells({ item }: { item: PerformanceAssignment }) {
-  const num =
-    item.numericValue !== undefined && item.numericValue !== null ? String(item.numericValue) : '—'
-  const ev = item.evidence?.trim()
-  return (
-    <>
-      <TableCell className="whitespace-nowrap tabular-nums text-sm">{num}</TableCell>
-      <TableCell className="text-xs uppercase text-slate-600">
-        {item.numericUnit ?? '—'}
-      </TableCell>
-      <TableCell className="max-w-[180px] text-xs" title={ev ?? ''}>
-        {ev ? (
-          <span className="line-clamp-3 whitespace-pre-wrap break-all">{ev}</span>
-        ) : (
-          <span className="text-slate-400">—</span>
-        )}
-        <EvidenceImagePreviews evidence={item.evidence} maxHeightClass="h-12 max-w-[88px]" />
-      </TableCell>
-      <TableCell>
-        <EvalBadge status={item.selfEvalStatus} />
-      </TableCell>
-      <TableCell className="max-w-[200px] text-xs text-slate-600">
-        {item.selfReviewNote?.trim() ? (
-          <span className="line-clamp-2 italic">{item.selfReviewNote.trim()}</span>
-        ) : (
-          <span className="text-slate-400">—</span>
-        )}
-      </TableCell>
-    </>
   )
 }
 
@@ -210,164 +169,18 @@ function MonthlyReportEpic4EditableStack({
   )
 }
 
-function useMonthlyReportSelfEdit(item: PerformanceAssignment, onSaved: () => void) {
-  const [evidence, setEvidence] = useState(item.evidence ?? '')
-  const [numericRaw, setNumericRaw] = useState(
-    item.numericValue != null ? String(item.numericValue) : ''
-  )
-  const [numericUnit, setNumericUnit] = useState(item.numericUnit ?? '')
-  const [selfEvalStatus, setSelfEvalStatus] = useState(item.selfEvalStatus ?? '')
-  const [selfReviewNote, setSelfReviewNote] = useState(item.selfReviewNote ?? '')
-  const [saving, setSaving] = useState(false)
+// ─── Expandable editable row (member) ────────────────────────────────────────
 
-  useEffect(() => {
-    setEvidence(item.evidence ?? '')
-    setNumericRaw(item.numericValue != null ? String(item.numericValue) : '')
-    setNumericUnit(item.numericUnit ?? '')
-    setSelfEvalStatus(item.selfEvalStatus ?? '')
-    setSelfReviewNote(item.selfReviewNote ?? '')
-  }, [
-    item.id,
-    item.evidence,
-    item.numericValue,
-    item.numericUnit,
-    item.selfEvalStatus,
-    item.selfReviewNote,
-  ])
-
-  const save = async () => {
-    const nTrim = numericRaw.trim()
-    let numericValue: number | null = null
-    if (nTrim.length > 0) {
-      const n = Number(nTrim.replace(',', '.'))
-      if (!Number.isFinite(n)) {
-        toast.error('Số liệu không hợp lệ.')
-        return
-      }
-      numericValue = n
-    }
-    if (item.status === 'done' && !evidence.trim()) {
-      toast.warning('Trạng thái Hoàn thành nhưng minh chứng đang trống.')
-    }
-    setSaving(true)
-    try {
-      await performanceApi.patchAssignmentSelf(item.id, {
-        evidence: evidence.trim() ? evidence.trim() : null,
-        numericValue,
-        numericUnit: numericUnit.trim() ? numericUnit.trim().toUpperCase() : null,
-        selfEvalStatus: selfEvalStatus.trim() ? selfEvalStatus.trim() : null,
-        selfReviewNote: selfReviewNote.trim() ? selfReviewNote.trim() : null,
-      })
-      toast.success('Đã lưu.')
-      onSaved()
-    } catch (e) {
-      toast.error(getApiErrorMessage(e))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return {
-    evidence,
-    setEvidence,
-    numericRaw,
-    setNumericRaw,
-    numericUnit,
-    setNumericUnit,
-    selfEvalStatus,
-    setSelfEvalStatus,
-    selfReviewNote,
-    setSelfReviewNote,
-    saving,
-    save,
-  }
-}
-
-/** Epic 4 — ô nhập (member); nút Lưu đặt sau cột QL (parent render). */
-function MonthlyReportEpic4EditableCells({
-  evidence,
-  setEvidence,
-  numericRaw,
-  setNumericRaw,
-  numericUnit,
-  setNumericUnit,
-  selfEvalStatus,
-  setSelfEvalStatus,
-  selfReviewNote,
-  setSelfReviewNote,
-  disabled,
-}: {
-  evidence: string
-  setEvidence: (v: string) => void
-  numericRaw: string
-  setNumericRaw: (v: string) => void
-  numericUnit: string
-  setNumericUnit: (v: string) => void
-  selfEvalStatus: string
-  setSelfEvalStatus: (v: string) => void
-  selfReviewNote: string
-  setSelfReviewNote: (v: string) => void
-  disabled?: boolean
-}) {
-  const inputCls =
-    'h-8 min-w-[72px] rounded-md border border-slate-200 bg-white px-2 text-xs dark:border-slate-700 dark:bg-slate-950'
-
-  return (
-    <>
-      <TableCell className="align-top p-2">
-        <Input
-          value={numericRaw}
-          onChange={(e) => setNumericRaw(e.target.value)}
-          className={inputCls}
-          placeholder="—"
-          disabled={disabled}
-        />
-      </TableCell>
-      <TableCell className="align-top p-2">
-        <Input
-          value={numericUnit}
-          onChange={(e) => setNumericUnit(e.target.value)}
-          className={inputCls}
-          placeholder="Đơn vị"
-          disabled={disabled}
-        />
-      </TableCell>
-      <TableCell className="max-w-[220px] align-top p-2">
-        <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={disabled} />
-      </TableCell>
-      <TableCell className="align-top p-2">
-        <CustomSelect
-          value={selfEvalStatus || '__none'}
-          onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
-          options={[
-            { label: '—', value: '__none' },
-            { label: 'OK', value: 'OK' },
-            { label: 'NOT', value: 'NOT' },
-          ]}
-          disabled={disabled}
-        />
-      </TableCell>
-      <TableCell className="max-w-[200px] align-top p-2">
-        <Textarea
-          value={selfReviewNote}
-          onChange={(e) => setSelfReviewNote(e.target.value)}
-          rows={2}
-          disabled={disabled}
-          className="min-h-[52px] resize-y rounded-md border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950"
-          placeholder="Tự nhận xét"
-        />
-      </TableCell>
-    </>
-  )
-}
-
-function MonthlyReportMemberEditableRow({
+function MonthlyReportMemberExpandableRow({
   item,
   onSaved,
+  colCount,
 }: {
   item: PerformanceAssignment
   onSaved: () => void
+  colCount: number
 }) {
+  const [open, setOpen] = useState(false)
   const {
     evidence,
     setEvidence,
@@ -383,39 +196,277 @@ function MonthlyReportMemberEditableRow({
     save,
   } = useMonthlyReportSelfEdit(item, onSaved)
 
+  const inputCls =
+    'h-8 rounded-md border border-slate-200 bg-white px-2 text-xs dark:border-slate-700 dark:bg-slate-950'
+
   return (
-    <>
-      <MonthlyReportEpic4EditableCells
-        evidence={evidence}
-        setEvidence={setEvidence}
-        numericRaw={numericRaw}
-        setNumericRaw={setNumericRaw}
-        numericUnit={numericUnit}
-        setNumericUnit={setNumericUnit}
-        selfEvalStatus={selfEvalStatus}
-        setSelfEvalStatus={setSelfEvalStatus}
-        selfReviewNote={selfReviewNote}
-        setSelfReviewNote={setSelfReviewNote}
-        disabled={saving}
-      />
-      <TableCell>
-        <EvalBadge status={item.managerEvalStatus} />
-      </TableCell>
-      <TableCell className="max-w-[280px] text-xs italic text-slate-500">
-        {item.managerReviewNote?.trim() || '—'}
-      </TableCell>
-      <TableCell className="align-top whitespace-nowrap p-2">
-        <Button
-          type="button"
-          size="sm"
-          className="h-8 text-xs"
-          disabled={saving}
-          onClick={() => void save()}
-        >
-          {saving ? '…' : 'Lưu'}
-        </Button>
-      </TableCell>
-    </>
+    <Fragment>
+      {/* ── Compact main row ── */}
+      <tr className="border-b last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+        <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-slate-500">
+          {formatKpiSetAt(item.kpiSetAt)}
+        </td>
+        <td className="px-3 py-2.5">
+          <Badge
+            className={
+              item.kind === 'KPI'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
+            }
+          >
+            {item.kind}
+          </Badge>
+        </td>
+        <td className="whitespace-nowrap px-3 py-2.5">
+          <PriorityText priority={item.priority} />
+        </td>
+        <td className="px-3 py-2.5 max-w-[280px] whitespace-pre-wrap text-sm">{item.content}</td>
+        <td className="whitespace-nowrap px-3 py-2.5 tabular-nums font-semibold text-primary">
+          {item.targetMetric?.trim() || '—'}
+        </td>
+        <td className="whitespace-nowrap px-3 py-2.5 text-xs text-slate-600 tabular-nums">
+          {item.numericValue != null
+            ? `${item.numericValue}${item.numericUnit ? ' ' + item.numericUnit : ''}`
+            : '—'}
+        </td>
+        <td className="px-3 py-2.5">
+          <EvalBadge status={item.selfEvalStatus} />
+        </td>
+        <td className="px-3 py-2.5">
+          <EvalBadge status={item.managerEvalStatus} />
+        </td>
+        <td className="whitespace-nowrap px-2 py-2.5 text-right">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
+              open
+                ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
+            )}
+          >
+            {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {open ? 'Thu gọn' : 'Chi tiết'}
+          </button>
+        </td>
+      </tr>
+
+      {/* ── Expanded detail panel ── */}
+      {open && (
+        <tr className="border-b bg-slate-50/70 dark:bg-slate-900/40">
+          <td colSpan={colCount} className="px-4 py-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {/* Left: Số liệu + Tự đánh giá + Tự nhận xét */}
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Số liệu
+                    </label>
+                    <Input
+                      value={numericRaw}
+                      onChange={(e) => setNumericRaw(e.target.value)}
+                      className={cn(inputCls, 'w-28')}
+                      placeholder="—"
+                      disabled={saving}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Đơn vị
+                    </label>
+                    <Input
+                      value={numericUnit}
+                      onChange={(e) => setNumericUnit(e.target.value)}
+                      className={cn(inputCls, 'w-24')}
+                      placeholder="VNĐ, %..."
+                      disabled={saving}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Tự đánh giá
+                    </label>
+                    <CustomSelect
+                      value={selfEvalStatus || '__none'}
+                      onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
+                      options={[
+                        { label: '—', value: '__none' },
+                        { label: 'OK', value: 'OK' },
+                        { label: 'NOT', value: 'NOT' },
+                      ]}
+                      disabled={saving}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Tự nhận xét
+                  </label>
+                  <Textarea
+                    value={selfReviewNote}
+                    onChange={(e) => setSelfReviewNote(e.target.value)}
+                    rows={4}
+                    disabled={saving}
+                    placeholder="Nhận xét về kết quả thực hiện mục tiêu này..."
+                    className="w-full resize-y rounded-md border border-slate-200 bg-white p-2.5 text-sm dark:border-slate-700 dark:bg-slate-950"
+                  />
+                </div>
+
+                {item.managerReviewNote?.trim() && (
+                  <div className="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      QL nhận xét
+                    </p>
+                    <p className="text-sm italic text-slate-600 dark:text-slate-400">
+                      {item.managerReviewNote}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Minh chứng */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Minh chứng
+                </label>
+                <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={saving} />
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Button
+                type="button"
+                size="sm"
+                disabled={saving}
+                onClick={() => void save().then(() => setOpen(false))}
+                className="px-6"
+              >
+                {saving ? 'Đang lưu...' : 'Lưu'}
+              </Button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </Fragment>
+  )
+}
+
+// ─── Expandable read-only row ─────────────────────────────────────────────────
+
+function MonthlyReportReadOnlyExpandableRow({
+  item,
+  colCount,
+}: {
+  item: PerformanceAssignment
+  colCount: number
+}) {
+  const [open, setOpen] = useState(false)
+  const num =
+    item.numericValue != null
+      ? `${item.numericValue}${item.numericUnit ? ' ' + item.numericUnit : ''}`
+      : '—'
+
+  return (
+    <Fragment>
+      <tr className="border-b last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+        <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-slate-500">
+          {formatKpiSetAt(item.kpiSetAt)}
+        </td>
+        <td className="px-3 py-2.5">
+          <Badge
+            className={
+              item.kind === 'KPI'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
+            }
+          >
+            {item.kind}
+          </Badge>
+        </td>
+        <td className="whitespace-nowrap px-3 py-2.5">
+          <PriorityText priority={item.priority} />
+        </td>
+        <td className="px-3 py-2.5 max-w-[280px] whitespace-pre-wrap text-sm">{item.content}</td>
+        <td className="whitespace-nowrap px-3 py-2.5 tabular-nums font-semibold text-primary">
+          {item.targetMetric?.trim() || '—'}
+        </td>
+        <td className="whitespace-nowrap px-3 py-2.5 text-xs text-slate-600 tabular-nums">{num}</td>
+        <td className="px-3 py-2.5">
+          <EvalBadge status={item.selfEvalStatus} />
+        </td>
+        <td className="px-3 py-2.5">
+          <EvalBadge status={item.managerEvalStatus} />
+        </td>
+        <td className="whitespace-nowrap px-2 py-2.5 text-right">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
+              open
+                ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
+            )}
+          >
+            {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {open ? 'Thu gọn' : 'Chi tiết'}
+          </button>
+        </td>
+      </tr>
+
+      {open && (
+        <tr className="border-b bg-slate-50/70 dark:bg-slate-900/40">
+          <td colSpan={colCount} className="px-4 py-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="space-y-3">
+                {item.selfReviewNote?.trim() && (
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Tự nhận xét
+                    </p>
+                    <p className="text-sm italic text-slate-700 dark:text-slate-300">
+                      {item.selfReviewNote}
+                    </p>
+                  </div>
+                )}
+                {item.managerReviewNote?.trim() && (
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      QL nhận xét
+                    </p>
+                    <p className="text-sm italic text-slate-600 dark:text-slate-400">
+                      {item.managerReviewNote}
+                    </p>
+                  </div>
+                )}
+                {!item.selfReviewNote?.trim() && !item.managerReviewNote?.trim() && (
+                  <p className="text-sm text-slate-400">Chưa có nhận xét</p>
+                )}
+              </div>
+              <div>
+                {item.evidence?.trim() && (
+                  <>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Minh chứng
+                    </p>
+                    <p className="whitespace-pre-wrap text-xs text-slate-600 dark:text-slate-400">
+                      {item.evidence}
+                    </p>
+                    <EvidenceImagePreviews
+                      evidence={item.evidence}
+                      maxHeightClass="h-16 max-w-[120px]"
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </Fragment>
   )
 }
 
@@ -571,7 +622,8 @@ export function MonthlyReportScreen() {
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
   const [activeTab, setActiveTab] = useState<'kpi-okr' | 'work-report'>('kpi-okr')
-  const detailSectionRef = useRef<HTMLDivElement>(null)
+  const [summaryExpanded, setSummaryExpanded] = useState(true)
+  const [detailExpanded, setDetailExpanded] = useState(true)
 
   const maxViewYm = getMaxViewableYm()
 
@@ -645,6 +697,13 @@ export function MonthlyReportScreen() {
     () => departments.flatMap((d) => d.teams).find((t) => t.id === selectedTeamId) ?? null,
     [departments, selectedTeamId]
   )
+  useEffect(() => {
+    if (!selectedTeamId) return
+    window.localStorage.setItem(
+      'assistant.kpiContext',
+      JSON.stringify({ teamId: selectedTeamId, year, month })
+    )
+  }, [selectedTeamId, year, month])
   const isTrafficTeamReport = isTrafficTeam(
     selectedTeamId || null,
     null,
@@ -720,206 +779,150 @@ export function MonthlyReportScreen() {
   }
 
   return (
-    <div className="relative isolate mx-auto max-w-[1400px] px-3 py-6 md:px-4">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl"
-      >
-        <div className="absolute -left-20 -top-14 h-72 w-72 rounded-full bg-fuchsia-500/20 blur-3xl motion-safe:animate-[dash-glow-orb_9s_ease-in-out_infinite] motion-reduce:animate-none" />
-        <div className="absolute -right-20 top-20 h-80 w-80 rounded-full bg-cyan-500/18 blur-3xl motion-safe:animate-[dash-glow-orb_12s_ease-in-out_infinite_1s] motion-reduce:animate-none" />
-        <div className="absolute bottom-8 left-1/3 h-60 w-60 -translate-x-1/2 rounded-full bg-indigo-500/15 blur-3xl motion-safe:animate-[dash-glow-orb_14s_ease-in-out_infinite_0.2s] motion-reduce:animate-none" />
-      </div>
-      <div
-        className={cn(
-          'mb-6 border border-primary/15 bg-gradient-to-br from-primary/[0.08] via-card to-violet-500/[0.06] shadow-[var(--shadow-card)]',
-          PAGE_HEADER_SURFACE
-        )}
-      >
-        <h1 className={PAGE_HEADER_TITLE}>
-          <span className={PAGE_HEADER_GRADIENT}>
-            {canSeeTeamWide ? 'Báo cáo hàng tháng (nhóm)' : 'Báo cáo hàng tháng'}
-          </span>
-        </h1>
-        <p className={PAGE_HEADER_DESCRIPTION}>
-          {isManager
-            ? 'Tổng hợp KPI/OKR, chi tiết mục tiêu từng nhân sự và form khảo sát hàng tháng của nhóm đã chọn.'
-            : isLeader
-              ? 'Tổng hợp báo cáo theo tháng của các thành viên trong nhóm kèm danh sách phản hồi khảo sát.'
-              : 'Theo dõi báo cáo tiến độ KPI/OKR và trả lời form khảo sát của trưởng nhóm theo từng tháng.'}
-        </p>
+    <div className="mx-auto max-w-[1400px] px-3 py-6 md:px-4">
+      {/* ── Page header: title + actions ── */}
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-[1.75rem]">
+            Báo cáo{' '}
+            <span className="text-indigo-600 dark:text-indigo-400">
+              T{month}/{year}
+            </span>
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {canSeeTeamWide
+              ? `${selectedDept?.name ?? 'Tất cả phòng ban'} · ${assignmentsData.length} mục tiêu · ${summaryRows.length} nhân sự`
+              : 'Theo dõi tiến độ KPI/OKR cá nhân'}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 pt-0.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-lg"
+            onClick={() => {
+              void treeQ.refetch()
+              void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
+              void membersQ.refetch()
+              void summariesQ.refetch()
+              void assignmentsQ.refetch()
+            }}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Làm mới
+          </Button>
+          {canSeeTeamWide && summaryRows.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-lg"
+              onClick={handleExportExcel}
+            >
+              <Download className="h-3.5 w-3.5" />
+              Excel
+            </Button>
+          )}
+        </div>
       </div>
 
-      <Card
-        className={cn(
-          'mb-8 border-slate-200 bg-white/50 shadow-sm backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/50',
-          CARD_ENTRANCE
-        )}
-        style={{ animationDelay: '50ms' }}
-      >
-        <CardContent className="p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
-            <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Phòng ban
-                </Label>
-                <Select
-                  value={selectedDept?.id ?? '__none'}
-                  onValueChange={(value) => {
-                    const dept = departments.find((d) => d.id === value)
-                    setSelectedTeamId(dept?.teams[0]?.id ?? '')
-                  }}
-                >
-                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                    <SelectValue placeholder="Chọn phòng ban" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none">— Chọn —</SelectItem>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Nhóm
-                </Label>
-                <Select
-                  value={selectedTeamId || '__none'}
-                  onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
-                >
-                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                    <SelectValue placeholder="Chọn nhóm" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none">— Chọn nhóm —</SelectItem>
-                    {teamsInDept.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Tháng
-                </Label>
-                <Select
-                  value={String(month)}
-                  onValueChange={(value) => {
-                    const next = clampKpiPeriod(year, Number(value))
-                    setYear(next.year)
-                    setMonth(next.month)
-                  }}
-                >
-                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                      <SelectItem
-                        key={m}
-                        value={String(m)}
-                        disabled={!isKpiPeriodSelectable(year, m)}
-                      >
-                        Tháng {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Năm
-                </Label>
-                <Input
-                  type="number"
-                  value={year}
-                  min={2020}
-                  max={maxViewYm.year}
-                  className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-                  onChange={(e) => {
-                    const v = Number(e.target.value)
-                    if (!Number.isFinite(v)) return
-                    const next = clampKpiPeriod(v, month)
-                    setYear(next.year)
-                    setMonth(next.month)
-                  }}
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-3 lg:border-l lg:pl-6 lg:border-slate-100 dark:lg:border-slate-800">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-10 w-10 shrink-0 rounded-xl border-slate-200 transition-all hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800"
-                onClick={() => {
-                  void treeQ.refetch()
-                  void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
-                  void membersQ.refetch()
-                  void summariesQ.refetch()
-                  void assignmentsQ.refetch()
-                }}
-              >
-                <RefreshCw className="h-4 w-4 text-slate-500" />
-                <span className="sr-only">Làm mới</span>
-              </Button>
-              <div className="flex flex-col gap-1">
-                <Badge
-                  variant="outline"
-                  className="h-5 rounded-md border-blue-100 bg-blue-50 text-xs font-bold text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
-                >
-                  KỲ: T{month}/{year}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="h-5 rounded-md border-cyan-100 bg-cyan-50 text-xs font-bold text-cyan-600 dark:border-cyan-900/30 dark:bg-cyan-900/20 dark:text-cyan-400"
-                >
-                  TỔNG MỤC TIÊU: {assignmentsData.length}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="h-5 rounded-md border-emerald-100 bg-emerald-50 text-xs font-bold text-emerald-600 dark:border-emerald-900/30 dark:bg-emerald-900/20 dark:text-emerald-400"
-                >
-                  ĐẠT (OK): {okCount}
-                </Badge>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* ── Control toolbar: filters + view switcher ── */}
+      <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/60">
+        {/* Phòng ban */}
+        <Select
+          value={selectedDept?.id ?? '__none'}
+          onValueChange={(value) => {
+            const dept = departments.find((d) => d.id === value)
+            setSelectedTeamId(dept?.teams[0]?.id ?? '')
+          }}
+        >
+          <SelectTrigger className="h-8 w-[160px] rounded-lg border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800 [&>span]:truncate [&>span]:whitespace-nowrap">
+            <SelectValue placeholder="Phòng ban" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">Tất cả</SelectItem>
+            {departments.map((d) => (
+              <SelectItem key={d.id} value={d.id}>
+                {d.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      {/* Tab nav */}
-      <div className="mb-6 flex gap-1 rounded-xl border border-slate-200 bg-slate-100/60 p-1 dark:border-slate-800 dark:bg-slate-900/60">
-        <button
-          type="button"
-          onClick={() => setActiveTab('kpi-okr')}
-          className={cn(
-            'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-            activeTab === 'kpi-okr'
-              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-          )}
+        {/* Nhóm */}
+        <Select
+          value={selectedTeamId || '__none'}
+          onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
         >
-          KPI / OKR
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('work-report')}
-          className={cn(
-            'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all',
-            activeTab === 'work-report'
-              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-          )}
+          <SelectTrigger className="h-8 w-[145px] rounded-lg border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800 [&>span]:truncate [&>span]:whitespace-nowrap">
+            <SelectValue placeholder="Nhóm" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">Tất cả</SelectItem>
+            {teamsInDept.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="h-4 w-px bg-slate-300 dark:bg-slate-700" />
+
+        {/* Tháng */}
+        <Select
+          value={String(month)}
+          onValueChange={(value) => {
+            const next = clampKpiPeriod(year, Number(value))
+            setYear(next.year)
+            setMonth(next.month)
+          }}
         >
-          Báo cáo tổng kết
-        </button>
+          <SelectTrigger className="h-8 w-[112px] rounded-lg border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <SelectItem key={m} value={String(m)} disabled={!isKpiPeriodSelectable(year, m)}>
+                Tháng {m}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Năm */}
+        <Input
+          type="number"
+          value={year}
+          min={2020}
+          max={maxViewYm.year}
+          className="h-8 w-[90px] rounded-lg border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800"
+          onChange={(e) => {
+            const v = Number(e.target.value)
+            if (!Number.isFinite(v)) return
+            const next = clampKpiPeriod(v, month)
+            setYear(next.year)
+            setMonth(next.month)
+          }}
+        />
+
+        {/* Tab switcher — flush right */}
+        <div className="ml-auto flex rounded-lg bg-white p-0.5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+          {(['kpi-okr', 'work-report'] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                'rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all',
+                activeTab === tab
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              )}
+            >
+              {tab === 'kpi-okr' ? 'KPI/OKR' : 'Tổng kết'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Work report tab */}
@@ -934,294 +937,265 @@ export function MonthlyReportScreen() {
 
       {activeTab === 'kpi-okr' && (
         <>
-          {/* HR Counters */}
+          {/* ── Modern SaaS metric cards (Linear-style) ── */}
           {canSeeTeamWide && selectedDept?.id && hrCounters && (
-            <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <Card className="border-emerald-200 bg-emerald-50/50">
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-emerald-600">{hrCounters.promoted}</div>
-                  <div className="text-xs text-emerald-500">Lên cấp</div>
-                </CardContent>
-              </Card>
-              <Card className="border-amber-200 bg-amber-50/50">
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-amber-600">{hrCounters.notLearned}</div>
-                  <div className="text-xs text-amber-500">Chưa hoàn thành học</div>
-                </CardContent>
-              </Card>
-              <Card className="border-blue-200 bg-blue-50/50">
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-blue-600">{hrCounters.newJoiners}</div>
-                  <div className="text-xs text-blue-500">Mới vào</div>
-                </CardContent>
-              </Card>
-              <Card className="border-rose-200 bg-rose-50/50">
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-rose-600">{hrCounters.leavers}</div>
-                  <div className="text-xs text-rose-500">Nghỉ việc</div>
-                </CardContent>
-              </Card>
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                {
+                  label: 'Lên cấp',
+                  value: hrCounters.promoted,
+                  color: 'emerald',
+                  Icon: TrendingUp,
+                },
+                {
+                  label: 'Chưa học xong',
+                  value: hrCounters.notLearned,
+                  color: 'amber',
+                  Icon: Calendar,
+                },
+                { label: 'Mới vào', value: hrCounters.newJoiners, color: 'blue', Icon: Users },
+                { label: 'Nghỉ việc', value: hrCounters.leavers, color: 'rose', Icon: UserRound },
+              ].map(({ label, value, color, Icon }) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <div
+                    className={cn(
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                      color === 'emerald' &&
+                        'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+                      color === 'amber' &&
+                        'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+                      color === 'blue' &&
+                        'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+                      color === 'rose' &&
+                        'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                      {value}
+                    </div>
+                    <div className="text-xs text-slate-500">{label}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
-          {/* Export button */}
-          {canSeeTeamWide && summaryRows.length > 0 && (
-            <div className="mb-4 flex justify-end">
-              <Button variant="outline" size="sm" className="gap-2" onClick={handleExportExcel}>
-                <Download className="h-4 w-4" />
-                Xuất dữ liệu Excel
-              </Button>
-            </div>
-          )}
-
-          {isMockApiEnabled() ? (
-            <div className="mb-4 flex items-center gap-2 text-game-soft-foreground">
-              <BarChart3 className="h-4 w-4 text-amber-700" strokeWidth={2} />
-              <span className="text-sm text-amber-800">
-                Chế độ giả lập đang bật — báo cáo đầy đủ khi kết nối máy chủ thật.
-              </span>
-            </div>
-          ) : null}
-
+          {/* ── KPI Summary: collapsible table (Linear-style expand/collapse) ── */}
           {!selectedTeamId ? (
-            <Card
-              className={cn(
-                'mt-6 border-dashed border-primary/25 bg-gradient-to-r from-muted/30 via-card to-violet-500/[0.05]',
-                CARD_ENTRANCE
-              )}
-            >
-              <CardContent className="pt-6 text-sm text-muted-foreground">
-                Chọn nhóm để tải báo cáo hàng tháng.
+            <Card className="border-dashed border-slate-300 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-900/50">
+              <CardContent className="py-10 text-center text-sm text-slate-500">
+                Chọn nhóm để xem báo cáo.
               </CardContent>
             </Card>
           ) : membersQ.isLoading || summariesQ.isLoading || assignmentsQ.isLoading ? (
-            <Card
-              className={cn(
-                'mt-6 border border-blue-200/40 bg-gradient-to-r from-blue-50/80 via-card to-cyan-50/75',
-                CARD_ENTRANCE
-              )}
-            >
-              <CardHeader>
-                <CardTitle className="bg-gradient-to-r from-blue-700 to-cyan-700 bg-clip-text text-transparent">
-                  Đang tải dữ liệu báo cáo
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
+            <Card>
+              <CardContent className="space-y-3 py-8">
                 <Skeleton className="h-8 w-full" />
                 <Skeleton className="h-8 w-full" />
                 <Skeleton className="h-28 w-full" />
               </CardContent>
             </Card>
           ) : (
-            <div className="mt-6 space-y-6">
-              <Card
-                className={cn(
-                  'relative overflow-hidden border-amber-200/50 bg-gradient-to-br from-amber-50/70 via-card to-orange-50/70 shadow-lg shadow-amber-500/10',
-                  CARD_ENTRANCE
-                )}
-              >
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-400"
-                />
-                <CardHeader>
-                  <CardTitle className="bg-gradient-to-r from-amber-700 via-orange-700 to-rose-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
-                    Tổng hợp KPI/OKR tháng {month}/{year}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="min-w-0">
-                  {summaryRows.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Chưa có dữ liệu tổng hợp cho kỳ đã chọn. Trưởng nhóm có thể tính lại tổng hợp
-                      ở màn KPI & OKR.
-                    </p>
-                  ) : (
-                    <>
-                      <div className="divide-y divide-amber-200/50 md:hidden">
-                        {summaryRows.map((row) => (
-                          <div key={row.id} className="space-y-2 py-4 first:pt-0">
-                            <p className="font-semibold text-foreground">
-                              {row.assigneeDisplayName?.trim() ||
-                                row.assigneeEmail?.trim() ||
-                                'Thành viên'}
-                            </p>
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                              <div>
-                                <span className="text-xs font-bold uppercase text-muted-foreground">
-                                  KPI đạt
-                                </span>
-                                <p className="font-bold tabular-nums">{row.kpiOkCount}</p>
-                              </div>
-                              <div>
-                                <span className="text-xs font-bold uppercase text-muted-foreground">
-                                  KPI chưa đạt
-                                </span>
-                                <p className="font-bold tabular-nums">{row.kpiNotCount}</p>
-                              </div>
-                              <div>
-                                <span className="text-xs font-bold uppercase text-muted-foreground">
-                                  Loại KPI
-                                </span>
-                                <p className="font-semibold">{row.kpiGrade ?? '—'}</p>
-                              </div>
-                              <div>
-                                <span className="text-xs font-bold uppercase text-muted-foreground">
-                                  OKR đạt
-                                </span>
-                                <p className="font-bold tabular-nums">{row.okrOkCount}</p>
-                              </div>
-                              <div>
-                                <span className="text-xs font-bold uppercase text-muted-foreground">
-                                  OKR chưa đạt
-                                </span>
-                                <p className="font-bold tabular-nums">{row.okrNotCount}</p>
-                              </div>
-                              <div>
-                                <span className="text-xs font-bold uppercase text-muted-foreground">
-                                  Loại OKR
-                                </span>
-                                <p className="font-semibold">{row.okrGrade ?? '—'}</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="-mx-1 hidden overflow-x-auto px-1 md:block">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-amber-500/10">
-                              <TableHead>Nhân sự</TableHead>
-                              <TableHead>KPI đạt</TableHead>
-                              <TableHead>KPI chưa đạt</TableHead>
-                              <TableHead>Loại KPI</TableHead>
-                              <TableHead>OKR đạt</TableHead>
-                              <TableHead>OKR chưa đạt</TableHead>
-                              <TableHead>Loại OKR</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {summaryRows.map((row) => (
-                              <TableRow
-                                key={row.id}
-                                className="transition-colors hover:bg-amber-500/5"
-                              >
-                                <TableCell>
-                                  {row.assigneeDisplayName?.trim() ||
-                                    row.assigneeEmail?.trim() ||
-                                    'Thành viên'}
-                                </TableCell>
-                                <TableCell>{row.kpiOkCount}</TableCell>
-                                <TableCell>{row.kpiNotCount}</TableCell>
-                                <TableCell className="font-semibold">
-                                  {row.kpiGrade ?? '—'}
-                                </TableCell>
-                                <TableCell>{row.okrOkCount}</TableCell>
-                                <TableCell>{row.okrNotCount}</TableCell>
-                                <TableCell className="font-semibold">
-                                  {row.okrGrade ?? '—'}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </>
-                  )}
-                  {fixedMetricsProgress.length > 0 && (
-                    <div className="mt-4 border-t pt-4">
-                      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        Tổng hợp chỉ số cố định tháng này
-                      </p>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        {fixedMetricsProgress.map(({ content, filled, total, sum }) => (
-                          <div
-                            key={content}
-                            className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900"
-                          >
-                            <p
-                              className="mb-1 truncate text-xs text-slate-500 dark:text-slate-400"
-                              title={content}
-                            >
-                              {content}
-                            </p>
-                            <p className="text-xl font-bold tabular-nums text-slate-800 dark:text-slate-100">
-                              {sum > 0
-                                ? sum >= 1_000_000
-                                  ? `${(sum / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr`
-                                  : sum.toLocaleString('vi-VN')
-                                : '—'}
-                            </p>
-                            <p className="mt-1 text-xs text-slate-400">
-                              {filled}/{total} người đã nhập
-                            </p>
-                          </div>
-                        ))}
-                      </div>
+            <div className="space-y-6">
+              {/* Summary + Detail: single unified card, expandable sections */}
+              <Card className="overflow-hidden border-slate-200 dark:border-slate-800">
+                {/* Section 1: KPI Summary — always visible, compact */}
+                <button
+                  type="button"
+                  onClick={() => setSummaryExpanded(!summaryExpanded)}
+                  className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                      <Target className="h-4 w-4" />
                     </div>
-                  )}
-                </CardContent>
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        Tổng hợp KPI/OKR
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        {summaryRows.length} nhân sự · {okCount} mục đạt (OK) ·{' '}
+                        {assignmentsData.length} mục tiêu
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="text-xs">{summaryRows.length}</Badge>
+                    {summaryExpanded ? (
+                      <ChevronUp className="h-4 w-4 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                    )}
+                  </div>
+                </button>
+                {summaryExpanded && summaryRows.length > 0 && (
+                  <div className="border-t">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b bg-slate-50/80 dark:bg-slate-800/50">
+                            <th className="px-4 py-2.5 text-left font-semibold text-slate-500">
+                              Nhân sự
+                            </th>
+                            <th className="px-3 py-2.5 text-center font-semibold text-slate-500">
+                              KPI đạt
+                            </th>
+                            <th className="px-3 py-2.5 text-center font-semibold text-slate-500">
+                              KPI chưa
+                            </th>
+                            <th className="px-3 py-2.5 text-center font-semibold text-slate-500">
+                              Loại
+                            </th>
+                            <th className="px-3 py-2.5 text-center font-semibold text-slate-500">
+                              OKR đạt
+                            </th>
+                            <th className="px-3 py-2.5 text-center font-semibold text-slate-500">
+                              OKR chưa
+                            </th>
+                            <th className="px-3 py-2.5 text-center font-semibold text-slate-500">
+                              Loại
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {summaryRows.map((row) => (
+                            <tr
+                              key={row.id}
+                              className="border-b last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                            >
+                              <td className="px-4 py-2.5 font-medium text-slate-800 dark:text-slate-200">
+                                {row.assigneeDisplayName?.trim() ||
+                                  row.assigneeEmail?.trim() ||
+                                  'Thành viên'}
+                              </td>
+                              <td className="px-3 py-2.5 text-center tabular-nums">
+                                {row.kpiOkCount}
+                              </td>
+                              <td className="px-3 py-2.5 text-center tabular-nums">
+                                {row.kpiNotCount}
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-semibold">
+                                {row.kpiGrade ?? '—'}
+                              </td>
+                              <td className="px-3 py-2.5 text-center tabular-nums">
+                                {row.okrOkCount}
+                              </td>
+                              <td className="px-3 py-2.5 text-center tabular-nums">
+                                {row.okrNotCount}
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-semibold">
+                                {row.okrGrade ?? '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {fixedMetricsProgress.length > 0 && (
+                      <div className="border-t px-4 py-3">
+                        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Chỉ số cố định
+                        </p>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {fixedMetricsProgress.map(({ content, filled, total, sum }) => (
+                            <div
+                              key={content}
+                              className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/50"
+                            >
+                              <span
+                                className="truncate text-xs text-slate-600 dark:text-slate-400"
+                                title={content}
+                              >
+                                {content}
+                              </span>
+                              <span className="ml-2 shrink-0 text-xs tabular-nums text-slate-500">
+                                {sum > 0 ? sum.toLocaleString('vi-VN') : '—'} · {filled}/{total}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {summaryExpanded && summaryRows.length === 0 && (
+                  <div className="border-t px-4 py-6 text-center text-xs text-slate-400">
+                    Chưa có dữ liệu tổng hợp. Trưởng nhóm tính lại ở màn KPI & OKR.
+                  </div>
+                )}
               </Card>
 
-              <div ref={detailSectionRef}>
-                <Card
-                  className={cn(
-                    'relative overflow-hidden border-blue-200/55 bg-gradient-to-br from-blue-50/70 via-card to-fuchsia-50/65 shadow-lg shadow-blue-500/10',
-                    CARD_ENTRANCE
-                  )}
+              {/* Section 2: Detail — collapsible */}
+              <Card className="overflow-hidden border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setDetailExpanded(!detailExpanded)}
+                  className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
                 >
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-fuchsia-500"
-                  />
-                  <CardHeader>
-                    <CardTitle className="bg-gradient-to-r from-blue-700 via-indigo-700 to-fuchsia-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
-                      Chi tiết mục tiêu trong tháng
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {canSeeTeamWide ? (
-                      <div className="flex flex-wrap gap-2">
-                        {Array.from(assignmentsByUser.keys()).map((uid) => (
-                          <Button
-                            key={uid}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className={cn(
-                              'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100',
-                              uid === selectedDetailUserId &&
-                                'border-fuchsia-400 bg-gradient-to-r from-fuchsia-600 to-indigo-600 text-white hover:from-fuchsia-700 hover:to-indigo-700'
-                            )}
-                            onClick={() => {
-                              setSelectedUserId(uid)
-                              setTimeout(() => {
-                                detailSectionRef.current?.scrollIntoView({
-                                  behavior: 'smooth',
-                                  block: 'start',
-                                })
-                              }, 0)
-                            }}
-                          >
-                            <UserRound className="mr-1 h-3.5 w-3.5" />
-                            {teamMemberName(uid)}
-                          </Button>
-                        ))}
-                      </div>
-                    ) : null}
-                    {detailRows.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        Không có mục tiêu KPI/OKR trong kỳ này.
-                      </p>
-                    ) : (
-                      <>
-                        <p className="mb-3 text-sm text-muted-foreground">
-                          {allowEpic4SelfEdit
-                            ? 'Cập nhật số liệu, minh chứng và tự đánh giá; bấm Lưu từng dòng. Đánh giá của quản lý do trưởng nhóm cập nhật.'
-                            : canSeeTeamWide
-                              ? 'Theo dõi minh chứng, số liệu và tự đánh giá của nhân sự (chỉ xem).'
-                              : 'Bạn xem minh chứng và tự đánh giá ở đây (chỉ xem). Để chỉnh sửa cần quyền cập nhật KPI của bản thân — có thể chỉnh thêm tại mục KPI & OKR trong workspace.'}
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                      <Search className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        Chi tiết mục tiêu
+                      </h3>
+                      {selectedDetailUserId && (
+                        <p className="text-xs text-slate-500">
+                          {teamMemberName(selectedDetailUserId)} · {detailRows.length} mục tiêu
                         </p>
-                        <div className="divide-y divide-blue-100/50 md:hidden dark:divide-blue-900/30">
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="text-xs">{detailRows.length}</Badge>
+                    {detailExpanded ? (
+                      <ChevronUp className="h-4 w-4 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                    )}
+                  </div>
+                </button>
+
+                {detailExpanded && (
+                  <>
+                    {/* Member selector tabs — clean horizontal tabs, not pills */}
+                    {canSeeTeamWide && (
+                      <div className="border-t">
+                        <div className="flex overflow-x-auto gap-0 border-b border-slate-200 dark:border-slate-800">
+                          {Array.from(assignmentsByUser.keys()).map((uid) => (
+                            <button
+                              key={uid}
+                              type="button"
+                              onClick={() => setSelectedUserId(uid)}
+                              className={cn(
+                                'shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
+                                uid === selectedDetailUserId
+                                  ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
+                                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:border-slate-600'
+                              )}
+                            >
+                              {teamMemberName(uid)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {detailRows.length === 0 ? (
+                      <div className="border-t px-4 py-6 text-center text-xs text-slate-400">
+                        Không có mục tiêu KPI/OKR trong kỳ này.
+                      </div>
+                    ) : (
+                      <div>
+                        {/* Mobile: card stack */}
+                        <div className="divide-y divide-slate-100 md:hidden dark:divide-slate-800">
                           {detailRows.map((item) =>
                             allowEpic4SelfEdit ? (
                               <MonthlyReportDetailEditableMobileCard
@@ -1234,104 +1208,73 @@ export function MonthlyReportScreen() {
                             )
                           )}
                         </div>
-                        <div className="hidden overflow-x-auto rounded-lg border border-blue-100/50 md:block dark:border-blue-900/30">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-blue-500/10">
-                                <TableHead className="whitespace-nowrap">Ngày xét</TableHead>
-                                <TableHead>Hạng mục</TableHead>
-                                <TableHead className="whitespace-nowrap">Ưu tiên</TableHead>
-                                <TableHead>Nội dung</TableHead>
-                                <TableHead>Chỉ tiêu</TableHead>
-                                <TableHead className="whitespace-nowrap">Số liệu</TableHead>
-                                <TableHead className="whitespace-nowrap">Đơn vị</TableHead>
-                                <TableHead className="min-w-[140px]">Minh chứng</TableHead>
-                                <TableHead className="whitespace-nowrap">Tự đánh giá</TableHead>
-                                <TableHead className="min-w-[120px]">Tự nhận xét</TableHead>
-                                <TableHead className="whitespace-nowrap">QL đánh giá</TableHead>
-                                <TableHead>QL nhận xét</TableHead>
-                                <TableHead className="whitespace-nowrap text-right">
-                                  Thao tác
-                                </TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {detailRows.map((item) => (
-                                <TableRow
-                                  key={item.id}
-                                  className="transition-colors hover:bg-blue-500/5"
-                                >
-                                  <TableCell className="whitespace-nowrap tabular-nums text-slate-500">
-                                    {formatKpiSetAt(item.kpiSetAt)}
-                                  </TableCell>
-                                  <TableCell>
-                                    <Badge
-                                      className={
-                                        item.kind === 'KPI'
-                                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                                          : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
-                                      }
-                                    >
-                                      {item.kind}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="whitespace-nowrap">
-                                    <PriorityText priority={item.priority} />
-                                  </TableCell>
-                                  <TableCell className="max-w-[520px] whitespace-pre-wrap">
-                                    {item.content}
-                                  </TableCell>
-                                  <TableCell className="tabular-nums font-semibold text-primary">
-                                    {item.targetMetric?.trim() || '—'}
-                                  </TableCell>
-                                  {allowEpic4SelfEdit ? (
-                                    <MonthlyReportMemberEditableRow
-                                      item={item}
-                                      onSaved={invalidateMonthlyAssignments}
-                                    />
-                                  ) : (
-                                    <>
-                                      <MonthlyReportEpic4ReadCells item={item} />
-                                      <TableCell>
-                                        <EvalBadge status={item.managerEvalStatus} />
-                                      </TableCell>
-                                      <TableCell className="max-w-[280px] text-xs italic text-slate-500">
-                                        {item.managerReviewNote?.trim() || '—'}
-                                      </TableCell>
-                                      <TableCell className="text-center text-slate-400">
-                                        —
-                                      </TableCell>
-                                    </>
-                                  )}
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                        {/* Desktop: expandable row table — no horizontal scroll */}
+                        <div className="hidden md:block">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b bg-slate-50 dark:bg-slate-800/50">
+                                <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
+                                  Ngày xét
+                                </th>
+                                <th className="px-3 py-3 text-left font-semibold text-slate-500">
+                                  Hạng mục
+                                </th>
+                                <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
+                                  Ưu tiên
+                                </th>
+                                <th className="px-3 py-3 text-left font-semibold text-slate-500">
+                                  Nội dung
+                                </th>
+                                <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
+                                  Chỉ tiêu
+                                </th>
+                                <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
+                                  Kết quả
+                                </th>
+                                <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
+                                  Tự ĐG
+                                </th>
+                                <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
+                                  QL ĐG
+                                </th>
+                                <th className="px-3 py-3 text-right font-semibold text-slate-500"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {detailRows.map((item) =>
+                                allowEpic4SelfEdit ? (
+                                  <MonthlyReportMemberExpandableRow
+                                    key={item.id}
+                                    item={item}
+                                    onSaved={invalidateMonthlyAssignments}
+                                    colCount={9}
+                                  />
+                                ) : (
+                                  <MonthlyReportReadOnlyExpandableRow
+                                    key={item.id}
+                                    item={item}
+                                    colCount={9}
+                                  />
+                                )
+                              )}
+                            </tbody>
+                          </table>
                         </div>
-                      </>
+                      </div>
                     )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card
-                className={cn(
-                  'relative overflow-hidden border-fuchsia-200/55 bg-gradient-to-br from-fuchsia-50/70 via-card to-violet-50/60 shadow-lg shadow-fuchsia-500/10',
-                  CARD_ENTRANCE
+                  </>
                 )}
-              >
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500"
-                />
+              </Card>
+
+              <Card className="overflow-hidden border-slate-200 dark:border-slate-800">
                 <CardHeader>
-                  <CardTitle className="bg-gradient-to-r from-fuchsia-700 via-violet-700 to-indigo-700 bg-clip-text text-xl md:text-2xl font-bold text-transparent">
+                  <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
                     {canSeeTeamWide ? 'Phản hồi từ nhân sự' : 'Form khảo sát tháng này'}
                   </CardTitle>
                   <p className="text-sm text-slate-500">
                     {canSeeTeamWide
                       ? 'Danh sách câu trả lời của từng nhân sự trong nhóm theo kỳ đã chọn.'
-                      : 'Trả lời câu hỏi khảo sát hàng tháng do trưởng nhóm thiết lập. Bấm "Gửi câu trả lời" để lưu.'}
+                      : 'Trả lời câu hỏi khảo sát hàng tháng do trưởng nhóm thiết lập.'}
                   </p>
                 </CardHeader>
                 <CardContent>

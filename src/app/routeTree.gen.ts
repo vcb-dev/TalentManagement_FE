@@ -38,8 +38,10 @@ import { Route as ProtectedManagerExamScheduleRouteImport } from './routes/_prot
 import { Route as ProtectedManagerClassesRouteImport } from './routes/_protected/manager/classes'
 import { Route as ProtectedManagerClassExamsRouteImport } from './routes/_protected/manager/class-exams'
 import { Route as ProtectedManagerApprovalsRouteImport } from './routes/_protected/manager/approvals'
+import { Route as ProtectedLeaderVinhDanhRouteImport } from './routes/_protected/leader/vinh-danh'
 import { Route as ProtectedLeaderKpiSalesConfigRouteImport } from './routes/_protected/leader/kpi-sales-config'
 import { Route as ProtectedLeaderKpiOkrRouteImport } from './routes/_protected/leader/kpi-okr'
+import { Route as ProtectedLeaderKpiApprovalRouteImport } from './routes/_protected/leader/kpi-approval'
 import { Route as ProtectedHrAdminOrgRouteImport } from './routes/_protected/hr-admin/org'
 import { Route as ProtectedHrAdminNewRouteImport } from './routes/_protected/hr-admin/new'
 import { Route as ProtectedHrAdminEmployeeIdRouteImport } from './routes/_protected/hr-admin/$employeeId'
@@ -221,6 +223,11 @@ const ProtectedManagerApprovalsRoute =
     path: '/manager/approvals',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
+const ProtectedLeaderVinhDanhRoute = ProtectedLeaderVinhDanhRouteImport.update({
+  id: '/leader/vinh-danh',
+  path: '/leader/vinh-danh',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 const ProtectedLeaderKpiSalesConfigRoute =
   ProtectedLeaderKpiSalesConfigRouteImport.update({
     id: '/leader/kpi-sales-config',
@@ -232,6 +239,12 @@ const ProtectedLeaderKpiOkrRoute = ProtectedLeaderKpiOkrRouteImport.update({
   path: '/leader/kpi-okr',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProtectedLeaderKpiApprovalRoute =
+  ProtectedLeaderKpiApprovalRouteImport.update({
+    id: '/leader/kpi-approval',
+    path: '/leader/kpi-approval',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
 const ProtectedHrAdminOrgRoute = ProtectedHrAdminOrgRouteImport.update({
   id: '/hr-admin/org',
   path: '/hr-admin/org',
@@ -399,8 +412,10 @@ export interface FileRoutesByFullPath {
   '/hr-admin/$employeeId': typeof ProtectedHrAdminEmployeeIdRoute
   '/hr-admin/new': typeof ProtectedHrAdminNewRoute
   '/hr-admin/org': typeof ProtectedHrAdminOrgRoute
+  '/leader/kpi-approval': typeof ProtectedLeaderKpiApprovalRoute
   '/leader/kpi-okr': typeof ProtectedLeaderKpiOkrRoute
   '/leader/kpi-sales-config': typeof ProtectedLeaderKpiSalesConfigRoute
+  '/leader/vinh-danh': typeof ProtectedLeaderVinhDanhRoute
   '/manager/approvals': typeof ProtectedManagerApprovalsRoute
   '/manager/class-exams': typeof ProtectedManagerClassExamsRoute
   '/manager/classes': typeof ProtectedManagerClassesRoute
@@ -455,8 +470,10 @@ export interface FileRoutesByTo {
   '/hr-admin/$employeeId': typeof ProtectedHrAdminEmployeeIdRoute
   '/hr-admin/new': typeof ProtectedHrAdminNewRoute
   '/hr-admin/org': typeof ProtectedHrAdminOrgRoute
+  '/leader/kpi-approval': typeof ProtectedLeaderKpiApprovalRoute
   '/leader/kpi-okr': typeof ProtectedLeaderKpiOkrRoute
   '/leader/kpi-sales-config': typeof ProtectedLeaderKpiSalesConfigRoute
+  '/leader/vinh-danh': typeof ProtectedLeaderVinhDanhRoute
   '/manager/approvals': typeof ProtectedManagerApprovalsRoute
   '/manager/class-exams': typeof ProtectedManagerClassExamsRoute
   '/manager/classes': typeof ProtectedManagerClassesRoute
@@ -514,8 +531,10 @@ export interface FileRoutesById {
   '/_protected/hr-admin/$employeeId': typeof ProtectedHrAdminEmployeeIdRoute
   '/_protected/hr-admin/new': typeof ProtectedHrAdminNewRoute
   '/_protected/hr-admin/org': typeof ProtectedHrAdminOrgRoute
+  '/_protected/leader/kpi-approval': typeof ProtectedLeaderKpiApprovalRoute
   '/_protected/leader/kpi-okr': typeof ProtectedLeaderKpiOkrRoute
   '/_protected/leader/kpi-sales-config': typeof ProtectedLeaderKpiSalesConfigRoute
+  '/_protected/leader/vinh-danh': typeof ProtectedLeaderVinhDanhRoute
   '/_protected/manager/approvals': typeof ProtectedManagerApprovalsRoute
   '/_protected/manager/class-exams': typeof ProtectedManagerClassExamsRoute
   '/_protected/manager/classes': typeof ProtectedManagerClassesRoute
@@ -572,8 +591,10 @@ export interface FileRouteTypes {
     | '/hr-admin/$employeeId'
     | '/hr-admin/new'
     | '/hr-admin/org'
+    | '/leader/kpi-approval'
     | '/leader/kpi-okr'
     | '/leader/kpi-sales-config'
+    | '/leader/vinh-danh'
     | '/manager/approvals'
     | '/manager/class-exams'
     | '/manager/classes'
@@ -628,8 +649,10 @@ export interface FileRouteTypes {
     | '/hr-admin/$employeeId'
     | '/hr-admin/new'
     | '/hr-admin/org'
+    | '/leader/kpi-approval'
     | '/leader/kpi-okr'
     | '/leader/kpi-sales-config'
+    | '/leader/vinh-danh'
     | '/manager/approvals'
     | '/manager/class-exams'
     | '/manager/classes'
@@ -686,8 +709,10 @@ export interface FileRouteTypes {
     | '/_protected/hr-admin/$employeeId'
     | '/_protected/hr-admin/new'
     | '/_protected/hr-admin/org'
+    | '/_protected/leader/kpi-approval'
     | '/_protected/leader/kpi-okr'
     | '/_protected/leader/kpi-sales-config'
+    | '/_protected/leader/vinh-danh'
     | '/_protected/manager/approvals'
     | '/_protected/manager/class-exams'
     | '/_protected/manager/classes'
@@ -935,6 +960,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedManagerApprovalsRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/leader/vinh-danh': {
+      id: '/_protected/leader/vinh-danh'
+      path: '/leader/vinh-danh'
+      fullPath: '/leader/vinh-danh'
+      preLoaderRoute: typeof ProtectedLeaderVinhDanhRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/leader/kpi-sales-config': {
       id: '/_protected/leader/kpi-sales-config'
       path: '/leader/kpi-sales-config'
@@ -947,6 +979,13 @@ declare module '@tanstack/react-router' {
       path: '/leader/kpi-okr'
       fullPath: '/leader/kpi-okr'
       preLoaderRoute: typeof ProtectedLeaderKpiOkrRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/leader/kpi-approval': {
+      id: '/_protected/leader/kpi-approval'
+      path: '/leader/kpi-approval'
+      fullPath: '/leader/kpi-approval'
+      preLoaderRoute: typeof ProtectedLeaderKpiApprovalRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/hr-admin/org': {
@@ -1171,8 +1210,10 @@ interface ProtectedRouteRouteChildren {
   ProtectedHrAdminEmployeeIdRoute: typeof ProtectedHrAdminEmployeeIdRoute
   ProtectedHrAdminNewRoute: typeof ProtectedHrAdminNewRoute
   ProtectedHrAdminOrgRoute: typeof ProtectedHrAdminOrgRoute
+  ProtectedLeaderKpiApprovalRoute: typeof ProtectedLeaderKpiApprovalRoute
   ProtectedLeaderKpiOkrRoute: typeof ProtectedLeaderKpiOkrRoute
   ProtectedLeaderKpiSalesConfigRoute: typeof ProtectedLeaderKpiSalesConfigRoute
+  ProtectedLeaderVinhDanhRoute: typeof ProtectedLeaderVinhDanhRoute
   ProtectedManagerApprovalsRoute: typeof ProtectedManagerApprovalsRoute
   ProtectedManagerClassExamsRoute: typeof ProtectedManagerClassExamsRoute
   ProtectedManagerClassesRoute: typeof ProtectedManagerClassesRoute
@@ -1224,8 +1265,10 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedHrAdminEmployeeIdRoute: ProtectedHrAdminEmployeeIdRoute,
   ProtectedHrAdminNewRoute: ProtectedHrAdminNewRoute,
   ProtectedHrAdminOrgRoute: ProtectedHrAdminOrgRoute,
+  ProtectedLeaderKpiApprovalRoute: ProtectedLeaderKpiApprovalRoute,
   ProtectedLeaderKpiOkrRoute: ProtectedLeaderKpiOkrRoute,
   ProtectedLeaderKpiSalesConfigRoute: ProtectedLeaderKpiSalesConfigRoute,
+  ProtectedLeaderVinhDanhRoute: ProtectedLeaderVinhDanhRoute,
   ProtectedManagerApprovalsRoute: ProtectedManagerApprovalsRoute,
   ProtectedManagerClassExamsRoute: ProtectedManagerClassExamsRoute,
   ProtectedManagerClassesRoute: ProtectedManagerClassesRoute,

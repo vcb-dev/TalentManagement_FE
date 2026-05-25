@@ -2,6 +2,22 @@ import { apiClient } from '@/lib/axios'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { useAuthStore } from '@/stores/auth.store'
 
+export type ApprovalRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export type ApprovalRequest = {
+  id: string
+  teamId: string
+  teamName?: string
+  year: number
+  month: number
+  status: ApprovalRequestStatus
+  submittedByUserId: string
+  approvedByUserId: string | null
+  note: string | null
+  submittedAt: string
+  resolvedAt: string | null
+}
+
 export type PerformanceKind = 'KPI' | 'OKR'
 export type PerformanceStatus = 'not_started' | 'in_progress' | 'done' | 'blocked'
 export type PerformanceGradeLetter = 'A' | 'B' | 'C'
@@ -30,6 +46,7 @@ export type PerformanceAssignment = {
   reviewerName?: string | null
   managerEvalStatus?: string | null
   managerReviewNote?: string | null
+  assigneeDisplayName?: string | null
   createdByUserId: string | null
   createdAt: string
   updatedAt: string
@@ -841,6 +858,66 @@ export const performanceApi = {
     const res = await apiClient.patch(`/performance/revenue-tiers/${id}`, body)
     return res.data
   },
+
+  // ─── KPI Approval (Traffic Teams) ─────────────────────────────────────────
+
+  getApprovalRequest: async (
+    teamId: string,
+    year: number,
+    month: number
+  ): Promise<ApprovalRequest | null> => {
+    if (isMockApiEnabled()) return null
+    const res = await apiClient.get<ApprovalRequest | null>(
+      `/performance/teams/${teamId}/approval-request`,
+      { params: { year, month } }
+    )
+    return res.data
+  },
+
+  submitForApproval: async (
+    teamId: string,
+    year: number,
+    month: number
+  ): Promise<ApprovalRequest> => {
+    if (isMockApiEnabled()) throw new Error('Mock: không gửi duyệt qua API')
+    const res = await apiClient.post<ApprovalRequest>(
+      `/performance/teams/${teamId}/approval-request`,
+      { year, month }
+    )
+    return res.data
+  },
+
+  listApprovalRequests: async (params?: {
+    status?: string
+    year?: number
+    month?: number
+  }): Promise<ApprovalRequest[]> => {
+    if (isMockApiEnabled()) return []
+    const res = await apiClient.get<ApprovalRequest[]>(
+      '/performance/manager/kpi-approval-requests',
+      {
+        params,
+      }
+    )
+    return res.data
+  },
+
+  approveRequest: async (id: string): Promise<ApprovalRequest> => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.patch<ApprovalRequest>(
+      `/performance/approval-requests/${id}/approve`
+    )
+    return res.data
+  },
+
+  rejectRequest: async (id: string, note?: string | null): Promise<ApprovalRequest> => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.patch<ApprovalRequest>(
+      `/performance/approval-requests/${id}/reject`,
+      { note }
+    )
+    return res.data
+  },
 }
 
 export type PerformanceWindowConfig = {
@@ -852,6 +929,7 @@ export type PerformanceWindowConfig = {
   assignEndDay: number
   answerStartDay: number
   answerEndDay: number
+  reportDeadlineDay?: number
 }
 
 export type AutoSeedResponse = {
@@ -1032,6 +1110,12 @@ export type WorkReportStatus =
 export type WorkReport = {
   id: string
   userId: string
+  user?: {
+    id: string
+    displayName: string | null
+    email: string | null
+    employeeCode: string | null
+  } | null
   teamId: string
   year: number
   month: number
@@ -1062,6 +1146,12 @@ export type WorkReport = {
     sortOrder: number
     answerText: string
   }>
+  // Rich text sections (HTML) — 9 tiêu chí bắt buộc
+  partWorkDone: string | null
+  partOutputResult: string | null
+  partOkr: string | null
+  partIssues: string | null
+  partEvidence: string | null
 }
 
 export type WorkReportLateRequest = {
@@ -1094,6 +1184,11 @@ export type UpsertWorkReportBody = {
   fileUrl?: string | null
   fileOriginalName?: string | null
   fileMimeType?: string | null
+  partWorkDone?: string | null
+  partOutputResult?: string | null
+  partOkr?: string | null
+  partIssues?: string | null
+  partEvidence?: string | null
 }
 
 export const workReportApi = {

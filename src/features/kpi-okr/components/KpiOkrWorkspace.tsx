@@ -5,6 +5,7 @@ import {
   AlignLeft,
   CheckCircle2,
   ClipboardList,
+  Download,
   Eye,
   FileUp,
   ListOrdered,
@@ -21,10 +22,11 @@ import {
 import { CustomSelect } from '@/components/shared/CustomSelect'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
-import { CARD_ENTRANCE, SECTION_FADE_UP } from '@/lib/cardMotion'
+import { CARD_ENTRANCE } from '@/lib/cardMotion'
 import { useAuthStore } from '@/stores/auth.store'
 import { resolveEffectivePermissionSet } from '@/features/permissions/resolveEffective'
 import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
+import { useKpiOkrAutoSeed } from '@/features/kpi-okr/components/hooks/useKpiOkrAutoSeed'
 import {
   performanceApi,
   type PerformanceAssignment,
@@ -59,8 +61,6 @@ import {
   isCatalogEnabledDepartment,
   isMandatoryMetric,
   isTrafficTeam,
-  MANDATORY_METRICS_BY_TEMPLATE,
-  REMOVED_TRAFFIC_MANDATORY_METRICS,
   resolveTemplateCodeForTeam,
 } from '@/features/kpi-okr/catalogHelpers'
 import {
@@ -359,11 +359,51 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     return null
   }, [departments, selectedTeamId])
 
+  useEffect(() => {
+    if (!selectedTeamId) return
+    window.localStorage.setItem(
+      'assistant.kpiContext',
+      JSON.stringify({ teamId: selectedTeamId, year, month })
+    )
+  }, [selectedTeamId, year, month])
+
   const isTrafficTeamSelected = isTrafficTeam(
     selectedTeamId,
     catalogAllowlistQ.data?.trafficTeamIds ?? null,
     selectedTeamForSeed?.name ?? null
   )
+
+  const approvalKey = ['kpi-approval-request', selectedTeamId, year, month] as const
+  const approvalQ = useQuery({
+    queryKey: approvalKey,
+    queryFn: () => performanceApi.getApprovalRequest(selectedTeamId!, year, month),
+    enabled:
+      Boolean(selectedTeamId) &&
+      isTrafficTeamSelected &&
+      variant === 'leader' &&
+      !isMockApiEnabled(),
+    staleTime: 30_000,
+  })
+  const approvalRequest = approvalQ.data ?? null
+  const isApprovalLocked =
+    isTrafficTeamSelected &&
+    variant === 'leader' &&
+    (approvalRequest?.status === 'pending' || approvalRequest?.status === 'approved')
+
+  const [submittingApproval, setSubmittingApproval] = useState(false)
+  const handleSubmitForApproval = useCallback(async () => {
+    if (!selectedTeamId) return
+    setSubmittingApproval(true)
+    try {
+      await performanceApi.submitForApproval(selectedTeamId, year, month)
+      void qc.invalidateQueries({ queryKey: approvalKey })
+      toast.success('Đã gửi duyệt KPI/OKR thành công')
+    } catch (err: unknown) {
+      toast.error('Gửi duyệt thất bại: ' + getApiErrorMessage(err))
+    } finally {
+      setSubmittingApproval(false)
+    }
+  }, [selectedTeamId, year, month, qc, approvalKey])
 
   const selectedTemplateCode = useMemo(() => {
     if (isTrafficTeamSelected) return 'TRAFFIC_TEAM_NV'
@@ -371,15 +411,8 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     return 'SALES_NV'
   }, [isTrafficTeamSelected, selectedTeamForSeed])
 
-  const mandatoryList = useMemo(
-    () => MANDATORY_METRICS_BY_TEMPLATE[selectedTemplateCode] ?? [],
-    [selectedTemplateCode]
-  )
-
-  const periodKey = `${selectedTeamId}|${year}|${month}`
-  const autoSeedDoneRef = useRef<Set<string>>(new Set())
-  const cleanupDoneRef = useRef<Set<string>>(new Set())
-  const templateSeedDoneRef = useRef<Set<string>>(new Set())
+  const assignmentsThisMonth = assignmentsQ.data ?? []
+  const loadingThis = assignmentsQ.isLoading
 
   // Template chỉ số tùy chỉnh do manager cấu hình — dùng để auto-seed tháng mới
   const templateQ = useQuery({
@@ -389,154 +422,20 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     staleTime: 60_000,
   })
 
-  const assignmentsThisMonth = assignmentsQ.data ?? []
-  const loadingThis = assignmentsQ.isLoading
-
-  // Seed mandatory metrics if missing
-  useEffect(() => {
-    if (
-      !selectedTeamId ||
-      loadingThis ||
-      !canEditTeam ||
-      isMockApiEnabled() ||
-      !(isKinhDoanhTeam || isTrafficTeamSelected) ||
-      !mandatoryList.length ||
-      autoSeedDoneRef.current.has(periodKey)
-    )
-      return
-
-    const presentContents = new Set(assignmentsThisMonth.map((a) => a.content))
-    const missing = mandatoryList.filter((m) => !presentContents.has(m))
-    if (!missing.length) return
-
-    autoSeedDoneRef.current.add(periodKey)
-    void Promise.all(
-      missing.map((content) =>
-        performanceApi.cascadeAddAssignment(selectedTeamId, {
-          year,
-          month,
-          content,
-          kind: 'KPI',
-          priority: 1,
-          category: 'KPI_BONUS',
-        })
-      )
-    )
-      .then(() => {
-        void qc.invalidateQueries({ queryKey: assignKey })
-      })
-      .catch((err: unknown) => {
-        autoSeedDoneRef.current.delete(periodKey)
-        toast.error('Không thể khởi tạo chỉ số cố định: ' + getApiErrorMessage(err))
-      })
-  }, [
+  // Auto-seed mandatory + cleanup + template metrics (extracted to custom hook)
+  useKpiOkrAutoSeed({
     selectedTeamId,
     year,
     month,
     loadingThis,
     assignmentsThisMonth,
-    mandatoryList,
     isKinhDoanhTeam,
     isTrafficTeamSelected,
     canEditTeam,
-    periodKey,
-    qc,
+    selectedTemplateCode,
     assignKey,
-  ])
-
-  // Cleanup removed mandatory metrics
-  useEffect(() => {
-    if (
-      !selectedTeamId ||
-      loadingThis ||
-      !canEditTeam ||
-      isMockApiEnabled() ||
-      !isTrafficTeamSelected ||
-      cleanupDoneRef.current.has(periodKey)
-    )
-      return
-
-    const presentContents = new Set(assignmentsThisMonth.map((a) => a.content))
-    const toRemove = (REMOVED_TRAFFIC_MANDATORY_METRICS as readonly string[]).filter((m) =>
-      presentContents.has(m)
-    )
-    if (!toRemove.length) return
-
-    cleanupDoneRef.current.add(periodKey)
-    void Promise.all(
-      toRemove.map((content) =>
-        performanceApi.cascadeDeleteByContent(selectedTeamId, { year, month, content })
-      )
-    )
-      .then(() => {
-        void qc.invalidateQueries({ queryKey: assignKey })
-      })
-      .catch(() => {
-        cleanupDoneRef.current.delete(periodKey)
-      })
-  }, [
-    selectedTeamId,
-    year,
-    month,
-    loadingThis,
-    assignmentsThisMonth,
-    isTrafficTeamSelected,
-    canEditTeam,
-    periodKey,
-    qc,
-    assignKey,
-  ])
-
-  // Seed template metrics (custom metrics configured by manager) for any team type
-  useEffect(() => {
-    const templates = templateQ.data ?? []
-    if (
-      !selectedTeamId ||
-      loadingThis ||
-      !canEditTeam ||
-      isMockApiEnabled() ||
-      templateQ.isLoading ||
-      !templates.length ||
-      templateSeedDoneRef.current.has(periodKey)
-    )
-      return
-
-    const presentContents = new Set(assignmentsThisMonth.map((a) => a.content))
-    const missing = templates.filter((t) => !presentContents.has(t.content))
-    if (!missing.length) return
-
-    templateSeedDoneRef.current.add(periodKey)
-    void Promise.all(
-      missing.map((tmpl) =>
-        performanceApi.cascadeAddAssignment(selectedTeamId, {
-          year,
-          month,
-          content: tmpl.content,
-          kind: tmpl.kind as 'KPI' | 'OKR',
-          priority: tmpl.priority,
-          category: tmpl.category,
-          targetMetric: tmpl.targetMetric,
-          numericUnit: tmpl.numericUnit,
-        })
-      )
-    )
-      .then(() => void qc.invalidateQueries({ queryKey: assignKey }))
-      .catch(() => {
-        templateSeedDoneRef.current.delete(periodKey)
-      })
-  }, [
-    selectedTeamId,
-    year,
-    month,
-    loadingThis,
-    templateQ.isLoading,
-    templateQ.data,
-    assignmentsThisMonth,
-    canEditTeam,
-    periodKey,
-    qc,
-    assignKey,
-  ])
+    templateQ,
+  })
 
   const autoRecalcTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -559,207 +458,148 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
 
   return (
     <div className="relative isolate mx-auto max-w-[1400px] px-3 py-6 md:px-4">
+      {/* ── Ambient background glow ── */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl"
       >
-        <div className="absolute -left-20 -top-16 h-72 w-72 rounded-full bg-primary/22 blur-3xl motion-safe:animate-[dash-glow-orb_9s_ease-in-out_infinite] motion-reduce:animate-none" />
-        <div className="absolute -right-16 top-24 h-80 w-80 rounded-full bg-accent/20 blur-3xl motion-safe:animate-[dash-glow-orb_11s_ease-in-out_infinite_1.2s] motion-reduce:animate-none" />
-        <div className="absolute bottom-8 left-1/3 h-56 w-56 -translate-x-1/2 rounded-full bg-violet-500/16 blur-3xl motion-safe:animate-[dash-glow-orb_14s_ease-in-out_infinite_0.4s] motion-reduce:animate-none" />
+        <div className="absolute -left-20 -top-16 h-72 w-72 rounded-full bg-primary/22 blur-3xl" />
+        <div className="absolute -right-16 top-24 h-80 w-80 rounded-full bg-accent/20 blur-3xl" />
+        <div className="absolute bottom-8 left-1/3 h-56 w-56 -translate-x-1/2 rounded-full bg-violet-500/16 blur-3xl" />
       </div>
 
-      <div
-        className={cn(
-          'mb-8 border-none bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 px-4 py-5 text-white shadow-2xl rounded-3xl relative overflow-hidden sm:px-6 sm:py-6 md:p-8',
-          SECTION_FADE_UP
-        )}
-      >
-        <div className="absolute right-0 top-0 h-full w-1/3 bg-white/10 [mask-image:linear-gradient(to_left,white,transparent)]" />
-        <div className="relative z-10 min-w-0">
-          <h1 className="text-2xl font-black tracking-tight mb-2 sm:text-3xl md:text-4xl">
-            {title}
-          </h1>
-          <p className="text-blue-50/80 max-w-2xl text-sm font-medium sm:text-base">
-            {description}
-          </p>
+      {/* ── Unified toolbar (Linear-style): title + filters + context in one clean bar ── */}
+      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:gap-4">
+        {/* Title */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400">
+            <TrendingUp className="h-4.5 w-4.5" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-base font-bold text-slate-900 dark:text-slate-100 truncate">
+              {title}
+            </h1>
+            <p className="text-xs text-slate-500 truncate">{description}</p>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="hidden h-8 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
+
+        {/* Filters — compact inline */}
+        <div className="flex flex-wrap items-center gap-2">
+          {!isManagerReadOnly && !isManagerVariant && (
+            <Select
+              value={selectedDept?.id ?? '__none'}
+              disabled={isMemberView}
+              onValueChange={(value) => {
+                const d = departments.find((x) => x.id === value)
+                setSelectedTeamId(d?.teams[0]?.id ?? '')
+              }}
+            >
+              <SelectTrigger className="h-9 w-[145px] rounded-lg border-0 bg-slate-100 text-sm hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 [&>span]:truncate [&>span]:whitespace-nowrap">
+                <SelectValue placeholder="Phòng ban" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">Tất cả</SelectItem>
+                {departments.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Select
+            value={selectedTeamId || '__none'}
+            disabled={isMemberView}
+            onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
+          >
+            <SelectTrigger className="h-9 w-[135px] rounded-lg border-0 bg-slate-100 text-sm hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 [&>span]:truncate [&>span]:whitespace-nowrap">
+              <SelectValue placeholder="Nhóm" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">Tất cả</SelectItem>
+              {(isManagerReadOnly || isManagerVariant ? allTeamsFlat : teamsInDept).map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                  {(isManagerReadOnly || isManagerVariant) && 'deptName' in t && t.deptName && (
+                    <span className="ml-1 text-xs text-slate-400">· {t.deptName}</span>
+                  )}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={String(month)}
+            onValueChange={(value) => {
+              const next = clampKpiPeriod(year, Number(value))
+              setYear(next.year)
+              setMonth(next.month)
+            }}
+          >
+            <SelectTrigger className="h-9 w-[105px] rounded-lg border-0 bg-slate-100 text-sm hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <SelectItem key={m} value={String(m)} disabled={!isKpiPeriodSelectable(year, m)}>
+                  Tháng {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            type="number"
+            value={year}
+            min={2020}
+            max={maxViewYm.year}
+            className="h-9 w-[90px] rounded-lg border-0 bg-slate-100 text-sm hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700"
+            onChange={(e) => {
+              const v = Number(e.target.value)
+              if (!Number.isFinite(v)) return
+              const next = clampKpiPeriod(v, month)
+              setYear(next.year)
+              setMonth(next.month)
+            }}
+          />
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Badge pills + refresh */}
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className="h-6 rounded-md border-blue-200 bg-blue-50 text-xs font-semibold text-blue-600 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+          >
+            T{month}/{year}
+          </Badge>
+          {selectedTeamId && (
+            <Badge
+              variant="outline"
+              className="h-6 rounded-md border-slate-200 bg-slate-50 text-xs dark:border-slate-700 dark:bg-slate-800"
+            >
+              {assignmentsThisMonth.length} mục tiêu
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+            onClick={() => {
+              void treeQ.refetch()
+              void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
+              refresh()
+            }}
+          >
+            <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
+          </Button>
         </div>
       </div>
 
-      <Card
-        className={cn(
-          'mb-8 border-slate-200 bg-white/50 shadow-sm backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/50',
-          CARD_ENTRANCE
-        )}
-        style={{ animationDelay: '50ms' }}
-      >
-        <CardContent className="min-w-0 p-4 sm:p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
-            <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {!isManagerReadOnly && !isManagerVariant && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Phòng ban
-                  </Label>
-                  <Select
-                    value={selectedDept?.id ?? '__none'}
-                    disabled={isMemberView}
-                    onValueChange={(value) => {
-                      const d = departments.find((x) => x.id === value)
-                      const tid = d?.teams[0]?.id ?? ''
-                      setSelectedTeamId(tid)
-                    }}
-                  >
-                    <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                      <SelectValue placeholder="Chọn phòng ban" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">— Chọn —</SelectItem>
-                      {departments.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Nhóm
-                </Label>
-                <Select
-                  value={selectedTeamId || '__none'}
-                  disabled={isMemberView}
-                  onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
-                >
-                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                    <SelectValue placeholder="Chọn nhóm" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none">— Chọn nhóm —</SelectItem>
-                    {(isManagerReadOnly || isManagerVariant ? allTeamsFlat : teamsInDept).map(
-                      (t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                          {(isManagerReadOnly || isManagerVariant) &&
-                          'deptName' in t &&
-                          t.deptName ? (
-                            <span className="ml-1 text-xs text-slate-400">· {t.deptName}</span>
-                          ) : null}
-                        </SelectItem>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Tháng
-                </Label>
-                <Select
-                  value={String(month)}
-                  onValueChange={(value) => {
-                    const next = clampKpiPeriod(year, Number(value))
-                    setYear(next.year)
-                    setMonth(next.month)
-                  }}
-                >
-                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                      <SelectItem
-                        key={m}
-                        value={String(m)}
-                        disabled={!isKpiPeriodSelectable(year, m)}
-                      >
-                        Tháng {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Năm
-                </Label>
-                <Input
-                  type="number"
-                  value={year}
-                  min={2020}
-                  max={maxViewYm.year}
-                  className="h-10 rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-                  onChange={(e) => {
-                    const v = Number(e.target.value)
-                    if (!Number.isFinite(v)) return
-                    const next = clampKpiPeriod(v, month)
-                    setYear(next.year)
-                    setMonth(next.month)
-                  }}
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-3 lg:border-l lg:pl-6 lg:border-slate-100 dark:lg:border-slate-800">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-10 w-10 shrink-0 rounded-xl border-slate-200 transition-all hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800"
-                onClick={() => {
-                  void treeQ.refetch()
-                  void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
-                  refresh()
-                }}
-              >
-                <RefreshCw className="h-4 w-4 text-slate-500" />
-                <span className="sr-only">Làm mới</span>
-              </Button>
-              <div className="flex flex-col gap-1">
-                <Badge
-                  variant="outline"
-                  className="h-5 rounded-md border-blue-100 bg-blue-50 text-xs font-bold text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
-                >
-                  KỲ CHỌN: T{month}/{year}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="h-5 rounded-md border-fuchsia-100 bg-fuchsia-50 text-xs font-bold text-fuchsia-600 dark:border-fuchsia-900/30 dark:bg-fuchsia-900/20 dark:text-fuchsia-400"
-                >
-                  KQ TRƯỚC: T{prevMonth}/{prevYear}
-                </Badge>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card
-        className={cn(
-          'mb-6 overflow-hidden border-teal-500/20 bg-gradient-to-r from-teal-500/[0.07] via-card to-violet-500/[0.06] shadow-md shadow-teal-500/5 backdrop-blur-sm transition-shadow duration-300 motion-safe:hover:shadow-lg motion-safe:hover:shadow-teal-500/10',
-          CARD_ENTRANCE
-        )}
-        style={{ animationDelay: '120ms' }}
-      >
-        <CardContent className="relative pt-6 text-sm text-muted-foreground">
-          <div
-            aria-hidden
-            className="absolute inset-y-3 left-0 w-1 rounded-full bg-gradient-to-b from-teal-500 via-primary to-violet-500 opacity-80"
-          />
-          <div className="pl-4">
-            <span className="font-medium text-foreground">Luồng theo tháng:</span> nhập{' '}
-            <strong className="text-foreground">
-              tháng {month}/{year}
-            </strong>{' '}
-            để lập mục tiêu tháng này; cập nhật kết quả tại kỳ{' '}
-            <strong className="text-foreground">
-              tháng {prevMonth}/{prevYear}
-            </strong>
-            .
-          </div>
-        </CardContent>
-      </Card>
-
+      {/* ── Context: mock hint, window lock, approval status ── */}
       {mockHint && (
         <p className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
           Đang bật chế độ giả lập — không tải được dữ liệu KPI từ máy chủ. Tắt giả lập để dùng đầy
@@ -803,6 +643,91 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         </div>
       )}
 
+      {isTrafficTeamSelected && variant === 'leader' && selectedTeamId && (
+        <>
+          {/* Status banner — informational only, no action button here */}
+          <div className="mb-4">
+            {approvalRequest?.status === 'pending' && (
+              <div className="flex items-center gap-3 rounded-xl border border-yellow-400/50 bg-yellow-50 px-4 py-3 dark:border-yellow-700/40 dark:bg-yellow-950/30">
+                <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-yellow-400" />
+                <div className="flex-1 text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                  KPI/OKR tháng {month}/{year} đang chờ Manager duyệt — không thể chỉnh sửa.
+                </div>
+              </div>
+            )}
+            {approvalRequest?.status === 'approved' && (
+              <div className="flex items-center gap-3 rounded-xl border border-green-400/50 bg-green-50 px-4 py-3 dark:border-green-700/40 dark:bg-green-950/30">
+                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <div className="flex-1 text-sm font-medium text-green-800 dark:text-green-200">
+                  KPI/OKR tháng {month}/{year} đã được duyệt.
+                </div>
+              </div>
+            )}
+            {approvalRequest?.status === 'rejected' && (
+              <div className="rounded-xl border border-red-400/50 bg-red-50 px-4 py-3 dark:border-red-700/40 dark:bg-red-950/30">
+                <div className="flex items-center gap-3">
+                  <X className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  <div className="flex-1 text-sm font-medium text-red-800 dark:text-red-200">
+                    KPI/OKR tháng {month}/{year} bị từ chối — bạn có thể chỉnh sửa và gửi lại.
+                  </div>
+                </div>
+                {approvalRequest.note && (
+                  <p className="mt-1.5 pl-7 text-xs text-red-700 dark:text-red-300">
+                    Lý do: {approvalRequest.note}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Sticky bottom bar — modern SaaS pattern: context + action together */}
+          {(!approvalRequest || approvalRequest.status === 'rejected') && assignmentWindowOpen && (
+            <div className="sticky bottom-0 z-40 -mx-3 md:-mx-4">
+              <div className="mx-3 mb-3 md:mx-4 md:mb-4 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95 sm:px-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  {/* Left: context */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                      <ClipboardList className="h-4.5 w-4.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                        Gửi duyệt KPI/OKR —{' '}
+                        {selectedTeamForSeed?.name ?? `Team ${selectedTeamId.slice(0, 8)}`}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Tháng {month}/{year} · {assignmentsThisMonth.length} mục tiêu · Gửi lên
+                        Manager phụ trách
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right: action button */}
+                  <Button
+                    onClick={() => void handleSubmitForApproval()}
+                    disabled={submittingApproval || !assignmentsThisMonth.length}
+                    size="default"
+                    className="shrink-0 gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 shadow-md shadow-blue-500/25 transition-all hover:shadow-lg hover:shadow-blue-500/30 disabled:opacity-50"
+                  >
+                    {submittingApproval ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Đang gửi...
+                      </>
+                    ) : (
+                      <>
+                        <FileUp className="h-4 w-4" />
+                        Gửi duyệt
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
       <div className="space-y-6">
         <WorkReportPanel
           assignmentsThisMonth={visibleAssignmentsThisMonth}
@@ -811,7 +736,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           loadingPrev={assignmentsPrevQ.isLoading}
           members={visibleMembers}
           membersLoading={membersForTeamQ.isLoading}
-          canEditTeam={canEditTeam}
+          canEditTeam={canEditTeam && !isApprovalLocked}
           isMemberView={isMemberView}
           selectedTeamId={selectedTeamId}
           year={year}
@@ -820,7 +745,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           prevMonth={prevMonth}
           currentUserId={user?.id}
           onRefresh={refresh}
-          assignmentWindowOpen={assignmentWindowOpen}
+          assignmentWindowOpen={assignmentWindowOpen && !isApprovalLocked}
           assignmentWindowBounds={assignmentWindowBounds}
           canMemberEditSelfResults={canMemberEditSelfResults}
           templateCode={selectedTemplateCode}
@@ -2700,181 +2625,135 @@ function MiniCreateForm({
           Thêm mục tiêu KPI/OKR
         </Button>
       </DialogTrigger>
-      <DialogContent className="flex max-h-[90vh] max-w-[min(1200px,95vw)] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-[min(1200px,95vw)]">
-        <div className="max-h-[90vh] overflow-y-auto px-6 pb-4 pt-6">
-          <DialogHeader className="pb-4">
-            <DialogTitle className="text-xl font-bold tracking-tight">
-              Tạo hạng mục KPI/OKR mới
-            </DialogTitle>
-            <DialogDescription className="text-sm">
-              Kỳ T{month}/{year}: thêm nhiều dòng mục tiêu; mỗi dòng áp dụng cho tất cả nhân sự đã
-              chọn (tối đa 300 bản ghi mỗi lần).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/40">
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                ref={importFileRef}
-                type="file"
-                accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                className="sr-only"
-                onChange={onImportFileChange}
-              />
+      <DialogContent className="flex max-h-[90vh] max-w-[min(960px,95vw)] flex-col gap-0 overflow-hidden rounded-2xl p-0">
+        {/* ── Header row 1: title + subtitle (X close button auto-positioned by DialogContent at right-4 top-4) ── */}
+        <div className="shrink-0 px-6 pb-0 pt-5 pr-14">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            Tạo hạng mục KPI/OKR
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Kỳ T{month}/{year} · Mỗi dòng áp dụng cho tất cả nhân sự đã chọn
+          </p>
+        </div>
+
+        {/* ── Header row 2: import action bar ── */}
+        <div className="shrink-0 border-b border-slate-200 px-6 py-3 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+              className="sr-only"
+              onChange={onImportFileChange}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 gap-2 rounded-lg px-4 text-sm font-medium"
+              disabled={!members.length || isMockApiEnabled()}
+              onClick={() => importFileRef.current?.click()}
+            >
+              <FileUp className="h-4 w-4" />
+              Import Excel
+            </Button>
+            <a
+              href={`${import.meta.env.BASE_URL}templates/kpi-okr-import-mau.xlsx`}
+              download
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Tải file mẫu
+            </a>
+            <span className="text-xs text-slate-400">(.xlsx / .csv)</span>
+          </div>
+
+          {/* Import preview */}
+          {importPreview && (
+            <div className="mt-2.5 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs dark:border-blue-800 dark:bg-blue-950/30">
+              <span>
+                <span className="font-semibold">{importPreview.fileLabel}</span>
+                {' — '}
+                <span className="tabular-nums font-bold text-blue-700 dark:text-blue-400">
+                  {importPreview.items.length}
+                </span>{' '}
+                dòng hợp lệ
+                {importPreview.errors.length > 0 && (
+                  <span className="text-amber-600"> · {importPreview.errors.length} lỗi</span>
+                )}
+              </span>
               <Button
                 type="button"
-                variant="outline"
                 size="sm"
-                className="h-9 gap-1.5 rounded-lg border-dashed text-sm font-semibold"
-                disabled={!members.length || isMockApiEnabled()}
-                onClick={() => importFileRef.current?.click()}
+                className="h-7 rounded-lg text-xs font-bold"
+                disabled={!importPreview.items.length || importSubmitting || isMockApiEnabled()}
+                onClick={() => void submitImportFromFile()}
               >
-                <FileUp className="h-4 w-4" />
-                Import Excel / CSV
+                {importSubmitting ? <RefreshCw className="mr-1 h-3 w-3 animate-spin" /> : null}
+                {importSubmitting ? 'Đang import…' : `Tạo ${importPreview.items.length} mục`}
               </Button>
-              <span className="inline-flex flex-wrap items-center gap-2">
-                <a
-                  href={`${import.meta.env.BASE_URL}templates/kpi-okr-import-mau.xlsx`}
-                  download="kpi-okr-import-mau.xlsx"
-                  className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-primary underline-offset-2 hover:underline dark:border-slate-600 dark:bg-slate-900"
-                >
-                  Tải Excel mẫu
-                </a>
-                <a
-                  href={`${import.meta.env.BASE_URL}templates/kpi-okr-import-mau.csv`}
-                  download="kpi-okr-import-mau.csv"
-                  className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 underline-offset-2 hover:underline dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
-                >
-                  Tải CSV mẫu
-                </a>
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Hàng đầu: tiêu đề (Nhân sự, Hạng mục, Thứ tự ưu tiên, Nội dung KPI/OKRs, …). Mỗi
-                dòng một mục — gắn với kỳ{' '}
-                <strong className="font-semibold text-slate-700 dark:text-slate-200">
-                  T{month}/{year}
-                </strong>{' '}
-                đang chọn.
-              </span>
             </div>
-            {importPreview ? (
-              <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-600 dark:bg-slate-950">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-slate-700 dark:text-slate-200">
-                    <span className="font-semibold">{importPreview.fileLabel}</span>
-                    {' — '}
-                    <span className="tabular-nums text-primary">
-                      {importPreview.items.length}
-                    </span>{' '}
-                    dòng hợp lệ
-                    {importPreview.errors.length > 0 ? (
-                      <span className="text-amber-700 dark:text-amber-400">
-                        {' '}
-                        · {importPreview.errors.length} dòng bỏ qua
-                      </span>
-                    ) : null}
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-8 rounded-lg font-bold"
-                    disabled={!importPreview.items.length || importSubmitting || isMockApiEnabled()}
-                    onClick={() => void submitImportFromFile()}
-                  >
-                    {importSubmitting ? (
-                      <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    ) : null}
-                    {importSubmitting
-                      ? 'Đang import…'
-                      : importPreview.items.length > 0
-                        ? `Tạo ${importPreview.items.length} mục từ file`
-                        : 'Không có dòng hợp lệ'}
-                  </Button>
-                </div>
-                {importPreview.errors.length > 0 ? (
-                  <ul className="max-h-28 overflow-y-auto rounded-md border border-amber-200/80 bg-amber-50/50 px-2 py-1.5 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
-                    {importPreview.errors.slice(0, 20).map((err) => (
-                      <li key={`${err.row}-${err.message.slice(0, 24)}`}>
-                        Dòng {err.row}: {err.message}
-                      </li>
-                    ))}
-                    {importPreview.errors.length > 20 ? (
-                      <li className="text-amber-800/80">
-                        … và {importPreview.errors.length - 20} lỗi khác
-                      </li>
-                    ) : null}
-                  </ul>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-          <Form {...form}>
-            <form className="flex flex-col gap-4 pt-4" onSubmit={onSubmit}>
+          )}
+        </div>
+
+        <Form {...form}>
+          <form className="flex flex-1 flex-col overflow-hidden" onSubmit={onSubmit}>
+            {/* ── Body: scrollable form area ── */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+              {/* Assignees — compact horizontal checkboxes */}
               <FormField
                 control={control}
                 name="assigneeUserIds"
                 rules={{
-                  validate: (v) =>
-                    (Array.isArray(v) && v.length > 0) || 'Chọn ít nhất một nhân sự nhận việc',
+                  validate: (v) => (Array.isArray(v) && v.length > 0) || 'Chọn ít nhất một nhân sự',
                 }}
                 render={({ field }) => (
-                  <FormItem className="space-y-1.5">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-slate-500 !mt-0">
+                  <FormItem>
+                    <div className="flex items-center justify-between mb-2">
+                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-slate-500 m-0">
                         Nhân sự nhận việc <span className="text-destructive">*</span>
                       </FormLabel>
-                      <div className="flex gap-2">
-                        <Button
+                      <div className="flex gap-1">
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 rounded-lg px-2 text-xs font-semibold text-primary"
                           onClick={() => field.onChange(members.map((m) => m.userId))}
+                          className="text-xs font-medium text-primary hover:underline"
                         >
-                          Chọn tất cả
-                        </Button>
-                        <Button
+                          Tất cả
+                        </button>
+                        <span className="text-slate-300">·</span>
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 rounded-lg px-2 text-xs font-semibold text-slate-500"
                           onClick={() => field.onChange([])}
+                          className="text-xs font-medium text-slate-500 hover:underline"
                         >
                           Bỏ chọn
-                        </Button>
+                        </button>
                       </div>
                     </div>
                     <FormControl>
-                      <div
-                        className={cn(
-                          'box-border w-full min-w-0 max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 text-sm outline-none transition-all',
-                          'focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10',
-                          'dark:border-slate-700 dark:bg-slate-950 space-y-0.5'
-                        )}
-                      >
+                      <div className="flex flex-wrap gap-1.5">
                         {members.map((m) => {
                           const checked = field.value.includes(m.userId)
                           return (
-                            <label
+                            <button
                               key={m.userId}
-                              className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/80"
+                              type="button"
+                              onClick={() => {
+                                if (checked)
+                                  field.onChange(field.value.filter((id) => id !== m.userId))
+                                else field.onChange([...field.value, m.userId])
+                              }}
+                              className={cn(
+                                'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-all',
+                                checked
+                                  ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600'
+                              )}
                             >
-                              <Checkbox
-                                checked={checked}
-                                onCheckedChange={(c) => {
-                                  const on = c === true
-                                  if (on) {
-                                    if (!field.value.includes(m.userId)) {
-                                      field.onChange([...field.value, m.userId])
-                                    }
-                                  } else {
-                                    field.onChange(field.value.filter((id) => id !== m.userId))
-                                  }
-                                }}
-                              />
-                              <span className="text-sm text-slate-800 dark:text-slate-100">
-                                {(m.displayName ?? m.email ?? 'chưa có tên').slice(0, 48)}
-                              </span>
-                            </label>
+                              {checked && <CheckCircle2 className="h-3 w-3" />}
+                              {(m.displayName ?? m.email ?? '?').slice(0, 32)}
+                            </button>
                           )
                         })}
                       </div>
@@ -2883,18 +2762,21 @@ function MiniCreateForm({
                   </FormItem>
                 )}
               />
+
+              {/* Reviewer — compact read-only */}
               <InputController
                 control={control}
                 name="reviewerName"
-                label="Người đánh giá (tùy chọn)"
-                className="max-w-xl space-y-1.5"
+                label="Người đánh giá"
+                className="max-w-sm space-y-1"
                 labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-                inputClassName={cn(XL_INPUT, 'h-10 rounded-xl')}
-                placeholder="Họ tên trưởng nhóm"
+                inputClassName="h-9 rounded-lg border-slate-200 bg-slate-50 text-sm cursor-default dark:border-slate-700 dark:bg-slate-800"
+                readOnly
               />
 
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              {/* ── Goals table — Airtable-style inline editing ── */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
                   <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     Danh sách mục tiêu
                   </Label>
@@ -2902,120 +2784,151 @@ function MiniCreateForm({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-9 gap-1.5 rounded-lg text-sm font-semibold"
+                    className="h-8 gap-1 rounded-lg text-xs"
                     onClick={() => append(miniCreateEmptyLine())}
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3.5 w-3.5" />
                     Thêm dòng
                   </Button>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  {fields.map((fieldRow, index) => (
-                    <div
-                      key={fieldRow.id}
-                      className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 dark:border-slate-700 dark:bg-slate-900/30"
-                    >
-                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                          Mục {index + 1}
-                        </span>
-                        {fields.length > 1 ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 gap-1 text-destructive hover:text-destructive"
-                            onClick={() => remove(index)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Xóa dòng
-                          </Button>
-                        ) : null}
-                      </div>
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        <SelectController
-                          control={control}
-                          name={`lines.${index}.kind`}
-                          label="Hạng mục"
-                          required
-                          rules={{ required: true }}
-                          className="space-y-1.5"
-                          labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+                <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-slate-50 dark:bg-slate-800/50">
+                        <th className="w-10 px-3 py-2.5 text-left text-xs font-semibold text-slate-500">
+                          #
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">
+                          Hạng mục
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">
+                          Ưu tiên
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">
+                          Ngày xét
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">
+                          Chỉ tiêu
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">
+                          Nội dung
+                        </th>
+                        <th className="w-10 px-2 py-2.5" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fields.map((fieldRow, index) => (
+                        <tr
+                          key={fieldRow.id}
+                          className="border-b last:border-0 transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
                         >
-                          <SelectItem value="KPI">KPI</SelectItem>
-                          <SelectItem value="OKR">OKR</SelectItem>
-                        </SelectController>
-                        <SelectController
-                          control={control}
-                          name={`lines.${index}.priority`}
-                          label="Thứ tự ưu tiên"
-                          required
-                          rules={{ required: true, min: 0, max: 99 }}
-                          className="space-y-1.5"
-                          labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-                        >
-                          <SelectItem value="0">Không xếp (0)</SelectItem>
-                          <SelectItem value="1">Ưu tiên 1 - Cao</SelectItem>
-                          <SelectItem value="2">Ưu tiên 2 - Trung bình</SelectItem>
-                          <SelectItem value="3">Ưu tiên 3 - Thấp</SelectItem>
-                        </SelectController>
-                        <DateController
-                          control={control}
-                          name={`lines.${index}.kpiSetAt`}
-                          label="Ngày xét KPI/OKR"
-                          className="space-y-1.5"
-                          labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-                          datePickerClassName={cn(XL_INPUT, 'h-10 rounded-xl')}
-                          lockToMonth={{ year, month }}
-                        />
-                        <InputController
-                          control={control}
-                          name={`lines.${index}.targetMetric`}
-                          label="Chỉ số mục tiêu"
-                          className="space-y-1.5 md:col-span-1"
-                          labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-                          inputClassName={cn(XL_INPUT, 'h-10 rounded-xl tabular-nums')}
-                          placeholder="VD: 60"
-                        />
-                        <div className="md:col-span-2 lg:col-span-3">
-                          <TextareaController
-                            control={control}
-                            name={`lines.${index}.content`}
-                            label="Nội dung KPI/OKR"
-                            required
-                            rules={{ required: true, maxLength: 500 }}
-                            className="space-y-1.5"
-                            labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-                            maxLength={500}
-                            textareaClassName={cn(
-                              XL_TEXTAREA,
-                              'max-w-none min-h-[88px] rounded-xl'
+                          <td className="px-3 py-2 text-xs font-medium text-slate-400 tabular-nums">
+                            {index + 1}
+                          </td>
+                          <td className="px-2 py-2">
+                            <SelectController
+                              control={control}
+                              name={`lines.${index}.kind`}
+                              label=""
+                              required
+                              rules={{ required: true }}
+                            >
+                              <SelectItem value="KPI">KPI</SelectItem>
+                              <SelectItem value="OKR">OKR</SelectItem>
+                            </SelectController>
+                          </td>
+                          <td className="px-2 py-2">
+                            <SelectController
+                              control={control}
+                              name={`lines.${index}.priority`}
+                              label=""
+                              required
+                              rules={{ required: true, min: 0, max: 99 }}
+                            >
+                              <SelectItem value="1">P1 - Cao</SelectItem>
+                              <SelectItem value="2">P2 - TB</SelectItem>
+                              <SelectItem value="3">P3 - Thấp</SelectItem>
+                            </SelectController>
+                          </td>
+                          <td className="px-2 py-2">
+                            <DateController
+                              control={control}
+                              name={`lines.${index}.kpiSetAt`}
+                              label=""
+                              datePickerClassName="h-9 rounded-lg border-slate-200 text-sm w-[140px] dark:border-slate-700"
+                              lockToMonth={{ year, month }}
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <InputController
+                              control={control}
+                              name={`lines.${index}.targetMetric`}
+                              label=""
+                              inputClassName="h-9 w-[80px] rounded-lg border-slate-200 text-sm tabular-nums dark:border-slate-700"
+                              placeholder="60"
+                            />
+                          </td>
+                          <td className="px-2 py-2 min-w-[220px]">
+                            <TextareaController
+                              control={control}
+                              name={`lines.${index}.content`}
+                              label=""
+                              required
+                              rules={{ required: true, maxLength: 500 }}
+                              maxLength={500}
+                              textareaClassName="min-h-[36px] resize-none rounded-lg border-slate-200 p-2 text-sm dark:border-slate-700 w-full"
+                              placeholder="Mô tả mục tiêu..."
+                            />
+                          </td>
+                          <td className="px-1 py-2">
+                            {fields.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 rounded-lg text-slate-400 hover:text-destructive"
+                                onClick={() => remove(index)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             )}
-                            placeholder="Mô tả cụ thể mục tiêu cần đạt được..."
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
+                <p className="mt-1.5 text-xs text-slate-400">
+                  {fields.length} dòng × {selectedAssigneeCount} nhân sự ={' '}
+                  <strong className="text-slate-600 dark:text-slate-300">{totalCreates}</strong> mục
+                  tiêu
+                </p>
               </div>
+            </div>
 
-              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+            {/* ── Footer: actions ── */}
+            <div className="shrink-0 flex items-center justify-between border-t border-slate-200 px-6 py-3 dark:border-slate-800">
+              <p className="text-xs text-slate-400">Tối đa 300 bản ghi mỗi lần</p>
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={() => setOpen(false)}
-                  className="rounded-xl px-6 font-bold text-slate-500 hover:bg-slate-100"
+                  className="h-9 rounded-lg text-sm"
                 >
-                  Hủy bỏ
+                  Hủy
                 </Button>
                 <Button
                   type="submit"
                   disabled={isSubmitting || !members.length}
-                  className="rounded-xl bg-primary px-8 font-bold shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5"
+                  className="h-9 gap-1.5 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-700"
                 >
-                  {isSubmitting ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isSubmitting ? (
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
                   {isSubmitting
                     ? 'Đang tạo...'
                     : totalCreates > 1
@@ -3023,9 +2936,9 @@ function MiniCreateForm({
                       : 'Tạo mục tiêu'}
                 </Button>
               </div>
-            </form>
-          </Form>
-        </div>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )
