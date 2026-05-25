@@ -19,6 +19,7 @@ import {
   fetchInboxMessages,
   fetchRunningCskhJob,
   linkAuditInbox,
+  resolveInboxMessageMedia,
   runAudit,
   sendInboxMessage,
   syncInboxFromGraph,
@@ -115,11 +116,13 @@ function resolveCustomerPicture(
 }
 
 function MessageBubbleContent({
+  messageId,
   text,
   attachmentUrl,
   messageType,
   isStaff,
 }: {
+  messageId?: string
   text?: string | null
   attachmentUrl?: string | null
   messageType?: string | null
@@ -127,7 +130,56 @@ function MessageBubbleContent({
 }) {
   const [imageFailed, setImageFailed] = useState(false)
   const [videoFailed, setVideoFailed] = useState(false)
-  const media = resolveMessageMedia({ text, attachmentUrl, messageType })
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(attachmentUrl ?? null)
+  const [resolvedType, setResolvedType] = useState<string | null>(messageType ?? null)
+  const [resolvedText, setResolvedText] = useState<string | null | undefined>(text)
+  const [resolving, setResolving] = useState(false)
+  const resolveAttempted = useRef(false)
+
+  useEffect(() => {
+    setResolvedUrl(attachmentUrl ?? null)
+    setResolvedType(messageType ?? null)
+    setResolvedText(text)
+    setImageFailed(false)
+    setVideoFailed(false)
+    resolveAttempted.current = false
+  }, [messageId, attachmentUrl, messageType, text])
+
+  const media = resolveMessageMedia({
+    text: resolvedText,
+    attachmentUrl: resolvedUrl,
+    messageType: resolvedType,
+  })
+  const needsResolve =
+    Boolean(messageId) &&
+    !resolvedUrl &&
+    (media.messageType === 'image' ||
+      media.messageType === 'video' ||
+      resolvedText === '[Ảnh]' ||
+      resolvedText === '[Video]' ||
+      resolvedText === '[attachment]')
+
+  useEffect(() => {
+    if (!needsResolve || resolveAttempted.current) return
+    resolveAttempted.current = true
+    let cancelled = false
+    setResolving(true)
+    resolveInboxMessageMedia(messageId!)
+      .then((row) => {
+        if (cancelled) return
+        if (row.attachmentUrl) setResolvedUrl(row.attachmentUrl)
+        if (row.messageType) setResolvedType(row.messageType)
+        setResolvedText(row.text)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setResolving(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [messageId, needsResolve])
+
   const proxied = media.attachmentUrl ? cskhMediaSrc(media.attachmentUrl) : undefined
   const showImage = media.messageType === 'image' && proxied && !imageFailed
   const showVideo = media.messageType === 'video' && proxied && !videoFailed
@@ -160,13 +212,15 @@ function MessageBubbleContent({
       ) : null}
       {!showImage && !showVideo && !media.displayText ? (
         <p className={`text-sm italic ${isStaff ? 'text-blue-100' : 'text-slate-400'}`}>
-          {media.messageType === 'video'
-            ? '[Video]'
-            : media.messageType === 'image'
-              ? '[Ảnh]'
-              : media.messageType === 'sticker'
-                ? '[Sticker]'
-                : '[Tệp đính kèm]'}
+          {resolving
+            ? 'Đang tải ảnh…'
+            : media.messageType === 'video'
+              ? '[Video]'
+              : media.messageType === 'image'
+                ? '[Ảnh]'
+                : media.messageType === 'sticker'
+                  ? '[Sticker]'
+                  : '[Tệp đính kèm]'}
         </p>
       ) : null}
     </div>
@@ -186,6 +240,7 @@ function LiveBubble({ msg }: { msg: CskhInboxMessage }) {
         }`}
       >
         <MessageBubbleContent
+          messageId={msg.id}
           text={msg.text}
           attachmentUrl={msg.attachmentUrl}
           messageType={msg.messageType}
