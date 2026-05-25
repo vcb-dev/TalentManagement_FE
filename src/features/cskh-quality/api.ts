@@ -231,6 +231,8 @@ export interface CskhInboxMessage {
   direction: 'inbound' | 'outbound'
   senderType: 'customer' | 'staff'
   text: string
+  messageType?: 'text' | 'image' | 'sticker' | string
+  attachmentUrl?: string | null
   sentAt: string
   status: 'sent' | 'pending' | 'failed'
 }

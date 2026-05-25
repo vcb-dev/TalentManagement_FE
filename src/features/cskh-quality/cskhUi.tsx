@@ -3,6 +3,16 @@ import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+/** Facebook CDN — proxy qua BE vì img tag không gửi JWT. */
+export function cskhAvatarSrc(pictureUrl?: string | null): string | undefined {
+  if (!pictureUrl?.startsWith('http')) return undefined
+  if (/fbcdn|fbsbx|facebook\.com|fb\.com/i.test(pictureUrl)) {
+    const base = (import.meta.env.VITE_API_URL || 'http://localhost:3003').replace(/\/$/, '')
+    return `${base}/cskh/media/avatar?url=${encodeURIComponent(pictureUrl)}`
+  }
+  return pictureUrl
+}
+
 export function avatarGradient(name: string) {
   const palettes = [
     'from-violet-500 via-purple-500 to-fuchsia-500',
@@ -26,13 +36,15 @@ export function CskhPageAvatar({
 }) {
   const [failed, setFailed] = useState(false)
   const letter = (name.charAt(0) || 'P').toUpperCase()
-  const showImage = pictureUrl && !failed
+  const imgSrc = cskhAvatarSrc(pictureUrl)
+  const showImage = imgSrc && !failed
 
   if (showImage) {
     return (
       <img
-        src={pictureUrl}
+        src={imgSrc}
         alt=""
+        referrerPolicy="no-referrer"
         className={cn(
           'h-10 w-10 shrink-0 rounded-xl object-cover ring-1 ring-slate-200/80',
           className

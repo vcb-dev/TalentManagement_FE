@@ -194,3 +194,29 @@ export function lastMessagePreview(row: CskhAuditRow): string {
   const last = transcript[transcript.length - 1]
   return (last?.text || '').trim() || '—'
 }
+
+/** Tin hệ thống Facebook — lọc khi hiển thị transcript cũ. */
+export function isNoiseMessageText(text?: string | null): boolean {
+  const t = (text || '').trim()
+  if (!t) return false
+  return [
+    /đã trả lời một quảng cáo/i,
+    /replied to (?:your|an?) ad/i,
+    /^Chào\s+.+\!\s*Chúng tôi có thể giúp gì cho bạn\??$/i,
+    /Bạn đang phản hồi bình luận/i,
+    /You(?:'re| are) responding to a comment/i,
+    /facebook\.com\/.*comment_id=/i,
+  ].some((p) => p.test(t))
+}
+
+export type DisplayTranscriptLine = {
+  sender?: string
+  text?: string
+  timestamp?: string
+  imageUrl?: string | null
+  type?: string
+}
+
+export function filterDisplayTranscript(lines: DisplayTranscriptLine[]): DisplayTranscriptLine[] {
+  return lines.filter((line) => !isNoiseMessageText(line.text))
+}

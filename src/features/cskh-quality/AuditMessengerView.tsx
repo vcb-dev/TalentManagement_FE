@@ -35,12 +35,15 @@ import {
   lastMessagePreview,
   parseBulletLines,
   parseAuditActionItems,
+  filterDisplayTranscript,
+  isNoiseMessageText,
   scoreColor,
   vietnamTodayIso,
 } from './auditHelpers'
 import {
   ChatThreadHeader,
   CskhPageAvatar,
+  cskhAvatarSrc,
   CskhAuditProgressBanner,
   CskhAuditProgressPanel,
   CskhEmptyState,
@@ -112,7 +115,45 @@ function resolveCustomerPicture(
   )
 }
 
+function MessageBubbleContent({
+  text,
+  imageUrl,
+  isStaff,
+}: {
+  text?: string
+  imageUrl?: string | null
+  isStaff?: boolean
+}) {
+  const [failed, setFailed] = useState(false)
+  const showImage = imageUrl && !failed
+  const cleanText =
+    text && text !== '[Ảnh]' && text !== '[attachment]' && !/^image\//i.test(text) ? text : null
+
+  return (
+    <div className="space-y-2">
+      {showImage ? (
+        <a href={imageUrl} target="_blank" rel="noreferrer" className="block">
+          <img
+            src={cskhAvatarSrc(imageUrl) ?? imageUrl}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="max-h-64 max-w-full rounded-xl object-cover"
+            onError={() => setFailed(true)}
+          />
+        </a>
+      ) : null}
+      {cleanText ? <p className="whitespace-pre-wrap break-words">{cleanText}</p> : null}
+      {!showImage && !cleanText ? (
+        <p className={`text-sm italic ${isStaff ? 'text-blue-100' : 'text-slate-400'}`}>
+          [Tệp đính kèm]
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
 function LiveBubble({ msg }: { msg: CskhInboxMessage }) {
+  if (isNoiseMessageText(msg.text)) return null
   const isStaff = msg.direction === 'outbound' || msg.senderType === 'staff'
   return (
     <motion.div
@@ -127,7 +168,7 @@ function LiveBubble({ msg }: { msg: CskhInboxMessage }) {
             : 'rounded-bl-md border border-white/70 bg-white/95 text-slate-800'
         }`}
       >
-        <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+        <MessageBubbleContent text={msg.text} imageUrl={msg.attachmentUrl} isStaff={isStaff} />
         <p className={`mt-1 text-[10px] ${isStaff ? 'text-blue-100' : 'text-slate-400'}`}>
           {new Date(msg.sentAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
           {msg.status === 'pending' && ' · đang gửi'}
@@ -138,7 +179,18 @@ function LiveBubble({ msg }: { msg: CskhInboxMessage }) {
   )
 }
 
-function ChatBubble({ sender, text, time }: { sender?: string; text?: string; time?: string }) {
+function ChatBubble({
+  sender,
+  text,
+  time,
+  imageUrl,
+}: {
+  sender?: string
+  text?: string
+  time?: string
+  imageUrl?: string | null
+}) {
+  if (isNoiseMessageText(text)) return null
   const isStaff = sender === 'Staff'
   return (
     <motion.div
@@ -153,7 +205,7 @@ function ChatBubble({ sender, text, time }: { sender?: string; text?: string; ti
             : 'rounded-bl-md border border-white/70 bg-white/95 text-slate-800 backdrop-blur-sm'
         }`}
       >
-        <p className="whitespace-pre-wrap break-words">{text || '—'}</p>
+        <MessageBubbleContent text={text} imageUrl={imageUrl} isStaff={isStaff} />
         {time ? (
           <p className={`mt-1 text-[10px] ${isStaff ? 'text-blue-100' : 'text-slate-400'}`}>
             {time}
@@ -436,7 +488,18 @@ export function AuditMessengerView({
         ? `Audit ${auditDayLabel}…`
         : ''
   const canRun = !!auditDate && !isRunning
-  const transcript = selected && Array.isArray(selected.transcript) ? selected.transcript : []
+  const transcript = useMemo(() => {
+    if (!selected || !Array.isArray(selected.transcript)) return []
+    return filterDisplayTranscript(
+      selected.transcript as Array<{
+        sender?: string
+        text?: string
+        timestamp?: string
+        imageUrl?: string | null
+        type?: string
+      }>
+    )
+  }, [selected])
 
   const inboxLive = useCskhInboxStream(true)
 
@@ -502,7 +565,9 @@ export function AuditMessengerView({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [transcript.length, liveMsgQuery.data?.messages.length, selected?.id])
 
-  const liveMessages = liveMsgQuery.data?.messages ?? []
+  const liveMessages = (liveMsgQuery.data?.messages ?? []).filter(
+    (msg) => !isNoiseMessageText(msg.text)
+  )
 
   return (
     <div className="space-y-0">
@@ -743,6 +808,7 @@ export function AuditMessengerView({
                             key={`audit-${idx}`}
                             sender={line.sender}
                             text={line.text}
+                            imageUrl={line.imageUrl}
                             time={
                               line.timestamp
                                 ? new Date(line.timestamp).toLocaleTimeString('vi-VN', {
@@ -770,6 +836,7 @@ export function AuditMessengerView({
                               key={`audit-copy-${idx}`}
                               sender={line.sender}
                               text={line.text}
+                              imageUrl={line.imageUrl}
                               time={
                                 line.timestamp
                                   ? new Date(line.timestamp).toLocaleTimeString('vi-VN', {
