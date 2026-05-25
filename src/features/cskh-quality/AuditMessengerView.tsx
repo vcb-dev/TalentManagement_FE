@@ -34,8 +34,7 @@ import {
   formatAuditDateLabel,
   lastMessagePreview,
   parseBulletLines,
-  parseSuggestedReplies,
-  parseViolations,
+  parseAuditActionItems,
   scoreColor,
   vietnamTodayIso,
 } from './auditHelpers'
@@ -188,6 +187,38 @@ function CopyReplyButton({ text }: { text: string }) {
   )
 }
 
+function SuggestedReplyBox({
+  text,
+  onUseReply,
+}: {
+  text: string
+  onUseReply?: (text: string) => void
+}) {
+  if (!text.trim()) return null
+  return (
+    <div className="group mt-2 rounded-lg border border-emerald-200/80 bg-gradient-to-r from-emerald-50/90 to-teal-50/80 p-2.5">
+      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+        Gợi ý trả lời
+      </p>
+      <div className="flex items-start gap-2">
+        <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+        <p className="min-w-0 flex-1 whitespace-pre-wrap text-sm text-slate-800">{text}</p>
+        {onUseReply ? (
+          <button
+            type="button"
+            title="Dùng gợi ý"
+            onClick={() => onUseReply(text)}
+            className="shrink-0 rounded-lg bg-emerald-600 px-2 py-1 text-[10px] font-semibold text-white"
+          >
+            Dùng
+          </button>
+        ) : null}
+        <CopyReplyButton text={text} />
+      </div>
+    </div>
+  )
+}
+
 function AiAnalysisPanel({
   row,
   onUseReply,
@@ -197,8 +228,9 @@ function AiAnalysisPanel({
 }) {
   const meta = row.metadata
   const feedbackLines = parseBulletLines(row.feedback)
-  const suggestions = parseSuggestedReplies(row)
-  const violations = parseViolations(row)
+  const actionItems = parseAuditActionItems(row)
+  const itemsWithReply = actionItems.filter((item) => item.suggestedReply.trim())
+  const itemsWithoutReply = actionItems.filter((item) => !item.suggestedReply.trim())
 
   return (
     <div className="flex h-full flex-col">
@@ -246,53 +278,52 @@ function AiAnalysisPanel({
           )}
         </section>
 
-        {violations.length > 0 && (
+        {itemsWithReply.length > 0 && (
           <section>
-            <p className="text-xs font-semibold uppercase tracking-wide text-rose-500">Vi phạm</p>
-            <ul className="mt-2 space-y-2 text-sm text-rose-700">
-              {violations.map((v, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="font-bold text-rose-400">+</span>
-                  <span>{v}</span>
+            <p className="text-xs font-semibold uppercase tracking-wide text-rose-500">
+              Vi phạm &amp; cách sửa
+            </p>
+            <ul className="mt-2 space-y-3">
+              {itemsWithReply.map((item, i) => (
+                <li key={i} className="rounded-xl border border-rose-100/80 bg-white p-3 shadow-sm">
+                  <div className="flex gap-2 text-sm text-rose-800">
+                    <span className="shrink-0 font-bold text-rose-400">{i + 1}.</span>
+                    <span className="font-medium leading-relaxed">{item.issue}</span>
+                  </div>
+                  <SuggestedReplyBox text={item.suggestedReply} onUseReply={onUseReply} />
                 </li>
               ))}
             </ul>
           </section>
         )}
 
-        <section>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-            Gợi ý trả lời
-          </p>
-          {suggestions.length ? (
-            <ul className="mt-2 space-y-2">
-              {suggestions.map((reply, i) => (
-                <li
-                  key={i}
-                  className="group flex items-start gap-2 rounded-xl border border-emerald-200/70 bg-gradient-to-r from-emerald-50/90 to-teal-50/90 p-3 text-sm text-slate-800 shadow-sm"
-                >
-                  <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                  <p className="min-w-0 flex-1 whitespace-pre-wrap">{reply}</p>
-                  {onUseReply ? (
-                    <button
-                      type="button"
-                      title="Dùng gợi ý"
-                      onClick={() => onUseReply(reply)}
-                      className="shrink-0 rounded-lg bg-emerald-600 px-2 py-1 text-[10px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100"
-                    >
-                      Dùng
-                    </button>
-                  ) : null}
-                  <CopyReplyButton text={reply} />
+        {itemsWithoutReply.length > 0 && (
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-wide text-rose-500">Vi phạm</p>
+            <ul className="mt-2 space-y-2 text-sm text-rose-700">
+              {itemsWithoutReply.map((item, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="font-bold text-rose-400">+</span>
+                  <span>{item.issue}</span>
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="mt-2 text-sm text-slate-500">
-              Chưa có gợi ý trong audit này — chạy lại audit sau khi deploy AI service mới.
+            <p className="mt-2 text-xs text-slate-500">
+              Chưa có gợi ý gắn từng mục — chạy lại audit sau khi deploy AI mới.
             </p>
-          )}
-        </section>
+          </section>
+        )}
+
+        {!itemsWithReply.length && !itemsWithoutReply.length && (
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+              Gợi ý trả lời
+            </p>
+            <p className="mt-2 text-sm text-slate-500">
+              Chưa có mục vi phạm kèm gợi ý — chạy lại audit sau khi deploy AI service mới.
+            </p>
+          </section>
+        )}
       </div>
     </div>
   )

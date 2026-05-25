@@ -87,6 +87,7 @@ export interface CskhAuditRow {
     auditDate?: string
     jobRunId?: string
     suggestedReplies?: string | string[] | null
+    actionItems?: Array<{ issue: string; suggestedReply: string }> | string | null
     violations?: string | null
     tokenUsage?: {
       prompt_tokens?: number

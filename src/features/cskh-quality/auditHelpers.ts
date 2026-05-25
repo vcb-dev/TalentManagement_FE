@@ -125,6 +125,70 @@ export function parseSuggestedReplies(row: CskhAuditRow): string[] {
   return parseAiListField(row.metadata?.suggestedReplies)
 }
 
+export type AuditActionItem = {
+  issue: string
+  suggestedReply: string
+}
+
+function parseActionItemsFromPipeText(text: string): AuditActionItem[] {
+  return text
+    .split(/\n+/)
+    .map((line) => {
+      const cleaned = line.replace(/^[\s•+\-–*]+/, '').trim()
+      const sep = cleaned.indexOf('||')
+      if (sep < 0) return null
+      const issue = cleaned.slice(0, sep).trim()
+      const suggestedReply = cleaned.slice(sep + 2).trim()
+      if (!issue || !suggestedReply) return null
+      return { issue, suggestedReply }
+    })
+    .filter((item): item is AuditActionItem => item != null)
+}
+
+/** Vi phạm/lỗi kèm gợi ý trả lời tương ứng — 1 mục = 1 card */
+export function parseAuditActionItems(row: CskhAuditRow): AuditActionItem[] {
+  const raw = row.metadata?.actionItems
+  if (Array.isArray(raw)) {
+    const parsed = raw
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null
+        const rowItem = item as Record<string, unknown>
+        const issue = String(rowItem.issue ?? rowItem.violation ?? '').trim()
+        const suggestedReply = String(
+          rowItem.suggestedReply ?? rowItem.suggested_reply ?? ''
+        ).trim()
+        if (!issue || !suggestedReply) return null
+        return { issue, suggestedReply }
+      })
+      .filter((item): item is AuditActionItem => item != null)
+    if (parsed.length) return parsed
+  }
+
+  if (typeof raw === 'string' && raw.trim()) {
+    const parsed = parseActionItemsFromPipeText(raw)
+    if (parsed.length) return parsed
+  }
+
+  const violations = parseViolations(row)
+  const suggestions = parseSuggestedReplies(row)
+  if (violations.length && suggestions.length) {
+    const count = Math.max(violations.length, suggestions.length)
+    return Array.from({ length: count }, (_, i) => ({
+      issue: violations[i] ?? violations[violations.length - 1] ?? 'Cần cải thiện',
+      suggestedReply: suggestions[i] ?? suggestions[suggestions.length - 1] ?? '',
+    })).filter((item) => item.suggestedReply)
+  }
+
+  if (suggestions.length) {
+    return suggestions.map((suggestedReply, i) => ({
+      issue: violations[i] ?? `Gợi ý ${i + 1}`,
+      suggestedReply,
+    }))
+  }
+
+  return violations.map((issue) => ({ issue, suggestedReply: '' }))
+}
+
 export function lastMessagePreview(row: CskhAuditRow): string {
   const transcript = Array.isArray(row.transcript) ? row.transcript : []
   const last = transcript[transcript.length - 1]
