@@ -246,13 +246,16 @@ export async function fetchInboxConversations(pageId?: string): Promise<CskhInbo
 
 export async function fetchInboxMessages(
   conversationId: string,
-  since?: string
+  opts?: { since?: string; refresh?: boolean }
 ): Promise<{ conversation: CskhInboxConversation; messages: CskhInboxMessage[] }> {
+  const params: Record<string, string> = {}
+  if (opts?.since) params.since = opts.since
+  if (opts?.refresh) params.refresh = '1'
   const { data } = await apiClient.get<{
     conversation: CskhInboxConversation
     messages: CskhInboxMessage[]
   }>(`/cskh/inbox/conversations/${conversationId}/messages`, {
-    params: since ? { since } : undefined,
+    params: Object.keys(params).length ? params : undefined,
   })
   return data
 }

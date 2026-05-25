@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
 import {
   Loader2,
   Play,
@@ -178,11 +177,7 @@ function LiveBubble({ msg }: { msg: CskhInboxMessage }) {
   if (isNoiseMessageText(msg.text)) return null
   const isStaff = msg.direction === 'outbound' || msg.senderType === 'staff'
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`flex ${isStaff ? 'justify-end' : 'justify-start'}`}
-    >
+    <div className={`flex ${isStaff ? 'justify-end' : 'justify-start'}`}>
       <div
         className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm shadow-md ${
           isStaff
@@ -202,7 +197,7 @@ function LiveBubble({ msg }: { msg: CskhInboxMessage }) {
           {msg.status === 'failed' && ' · thất bại'}
         </p>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -229,11 +224,7 @@ function ChatBubble({
   const resolvedType =
     messageType ?? (videoUrl ? 'video' : imageUrl || attachmentUrl ? 'image' : 'text')
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`flex ${isStaff ? 'justify-end' : 'justify-start'}`}
-    >
+    <div className={`flex ${isStaff ? 'justify-end' : 'justify-start'}`}>
       <div
         className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm shadow-md ${
           isStaff
@@ -253,7 +244,7 @@ function ChatBubble({
           </p>
         ) : null}
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -433,6 +424,8 @@ export function AuditMessengerView({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+  const chatScrollSigRef = useRef('')
+  const refreshedConvRef = useRef<string | null>(null)
   const qc = useQueryClient()
 
   useEffect(() => {
@@ -549,7 +542,8 @@ export function AuditMessengerView({
   const inboxQuery = useQuery({
     queryKey: ['cskh', 'inbox', 'conversations'],
     queryFn: () => fetchInboxConversations(),
-    refetchInterval: inboxLive ? 8000 : 2500,
+    refetchInterval: inboxLive ? false : 20_000,
+    refetchOnWindowFocus: false,
   })
 
   // Đồng bộ nền lần đầu (link hội thoại cũ) — không cần bấm nút
@@ -591,9 +585,17 @@ export function AuditMessengerView({
 
   const liveMsgQuery = useQuery({
     queryKey: ['cskh', 'inbox', 'messages', inboxConv?.id],
-    queryFn: () => fetchInboxMessages(inboxConv!.id),
+    queryFn: () => {
+      const convId = inboxConv!.id
+      const needRefresh = refreshedConvRef.current !== convId
+      if (needRefresh) refreshedConvRef.current = convId
+      return fetchInboxMessages(convId, { refresh: needRefresh })
+    },
     enabled: !!inboxConv?.id,
-    refetchInterval: inboxLive ? 5000 : 1500,
+    refetchInterval: inboxLive ? false : 12_000,
+    staleTime: 8_000,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
   })
 
   const sendMut = useMutation({
@@ -605,8 +607,26 @@ export function AuditMessengerView({
   })
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [transcript.length, liveMsgQuery.data?.messages.length, selected?.id])
+    chatScrollSigRef.current = ''
+  }, [inboxConv?.id, selected?.id])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    const liveMsgs = liveMsgQuery.data?.messages ?? []
+    const lastLive = liveMsgs[liveMsgs.length - 1]
+    const sig = `${selected?.id ?? ''}|live:${lastLive?.id ?? ''}:${liveMsgs.length}|audit:${transcript.length}`
+    if (sig === chatScrollSigRef.current) return
+    chatScrollSigRef.current = sig
+
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 140
+    if (!nearBottom && liveMsgs.length > 1) return
+
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'auto' })
+    })
+  }, [selected?.id, liveMsgQuery.data?.messages, transcript.length])
 
   const liveMessages = (liveMsgQuery.data?.messages ?? []).filter(
     (msg) => !isNoiseMessageText(msg.text)
