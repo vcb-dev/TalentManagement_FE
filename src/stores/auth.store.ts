@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { clearSessionToken, persistSessionToken } from '@/features/auth/sessionTokenStorage'
 import type { UserSession } from '@/types/auth'
 
 export interface AuthStore {
@@ -13,8 +14,19 @@ export interface AuthStore {
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   accessToken: null,
-  setSession: (user, accessToken) => set({ user, accessToken }),
+  setSession: (user, accessToken) => {
+    if (accessToken) persistSessionToken(accessToken)
+    else clearSessionToken()
+    set({ user, accessToken })
+  },
   setUser: (user) => set({ user }),
-  setAccessToken: (accessToken) => set({ accessToken }),
-  logout: () => set({ user: null, accessToken: null }),
+  setAccessToken: (accessToken) => {
+    if (accessToken) persistSessionToken(accessToken)
+    else clearSessionToken()
+    set({ accessToken })
+  },
+  logout: () => {
+    clearSessionToken()
+    set({ user: null, accessToken: null })
+  },
 }))
