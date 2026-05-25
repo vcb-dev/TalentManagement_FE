@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { cskhCustomerAvatarSrc } from './messageMedia'
 
 /** Facebook CDN — proxy qua BE vì img tag không gửi JWT. */
 export function cskhAvatarSrc(pictureUrl?: string | null): string | undefined {
@@ -12,6 +13,8 @@ export function cskhAvatarSrc(pictureUrl?: string | null): string | undefined {
   }
   return pictureUrl
 }
+
+export { cskhCustomerAvatarSrc, cskhMediaSrc } from './messageMedia'
 
 export function avatarGradient(name: string) {
   const palettes = [
@@ -28,15 +31,19 @@ export function avatarGradient(name: string) {
 export function CskhPageAvatar({
   name,
   pictureUrl,
+  pageId,
+  psid,
   className,
 }: {
   name: string
   pictureUrl?: string | null
+  pageId?: string | null
+  psid?: string | null
   className?: string
 }) {
   const [failed, setFailed] = useState(false)
   const letter = (name.charAt(0) || 'P').toUpperCase()
-  const imgSrc = cskhAvatarSrc(pictureUrl)
+  const imgSrc = cskhCustomerAvatarSrc({ pictureUrl, pageId, psid })
   const showImage = imgSrc && !failed
 
   if (showImage) {
@@ -618,18 +625,24 @@ export function ChatThreadHeader({
   badge,
   avatarLetter,
   pictureUrl,
+  pageId,
+  psid,
 }: {
   name: string
   subtitle: string
   badge?: ReactNode
   avatarLetter: string
   pictureUrl?: string | null
+  pageId?: string | null
+  psid?: string | null
 }) {
   return (
     <header className="flex items-center gap-3 border-b border-white/50 bg-white/75 px-4 py-3.5 backdrop-blur-md">
       <CskhPageAvatar
         name={name}
         pictureUrl={pictureUrl}
+        pageId={pageId}
+        psid={psid}
         className="h-11 w-11 rounded-2xl text-sm shadow-md ring-2 ring-white/80"
       />
       <div className="min-w-0 flex-1">

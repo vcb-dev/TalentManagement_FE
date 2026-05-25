@@ -40,10 +40,10 @@ import {
   scoreColor,
   vietnamTodayIso,
 } from './auditHelpers'
+import { cskhMediaSrc, resolveMessageMedia } from './messageMedia'
 import {
   ChatThreadHeader,
   CskhPageAvatar,
-  cskhAvatarSrc,
   CskhAuditProgressBanner,
   CskhAuditProgressPanel,
   CskhEmptyState,
@@ -117,35 +117,57 @@ function resolveCustomerPicture(
 
 function MessageBubbleContent({
   text,
-  imageUrl,
+  attachmentUrl,
+  messageType,
   isStaff,
 }: {
-  text?: string
-  imageUrl?: string | null
+  text?: string | null
+  attachmentUrl?: string | null
+  messageType?: string | null
   isStaff?: boolean
 }) {
-  const [failed, setFailed] = useState(false)
-  const showImage = imageUrl && !failed
-  const cleanText =
-    text && text !== '[Ảnh]' && text !== '[attachment]' && !/^image\//i.test(text) ? text : null
+  const [imageFailed, setImageFailed] = useState(false)
+  const [videoFailed, setVideoFailed] = useState(false)
+  const media = resolveMessageMedia({ text, attachmentUrl, messageType })
+  const proxied = media.attachmentUrl ? cskhMediaSrc(media.attachmentUrl) : undefined
+  const showImage = media.messageType === 'image' && proxied && !imageFailed
+  const showVideo = media.messageType === 'video' && proxied && !videoFailed
 
   return (
     <div className="space-y-2">
       {showImage ? (
-        <a href={imageUrl} target="_blank" rel="noreferrer" className="block">
+        <a href={media.attachmentUrl!} target="_blank" rel="noreferrer" className="block">
           <img
-            src={cskhAvatarSrc(imageUrl) ?? imageUrl}
+            src={proxied}
             alt=""
             referrerPolicy="no-referrer"
             className="max-h-64 max-w-full rounded-xl object-cover"
-            onError={() => setFailed(true)}
+            onError={() => setImageFailed(true)}
           />
         </a>
       ) : null}
-      {cleanText ? <p className="whitespace-pre-wrap break-words">{cleanText}</p> : null}
-      {!showImage && !cleanText ? (
+      {showVideo ? (
+        <video
+          src={proxied}
+          controls
+          playsInline
+          preload="metadata"
+          className="max-h-64 max-w-full rounded-xl"
+          onError={() => setVideoFailed(true)}
+        />
+      ) : null}
+      {media.displayText ? (
+        <p className="whitespace-pre-wrap break-words">{media.displayText}</p>
+      ) : null}
+      {!showImage && !showVideo && !media.displayText ? (
         <p className={`text-sm italic ${isStaff ? 'text-blue-100' : 'text-slate-400'}`}>
-          [Tệp đính kèm]
+          {media.messageType === 'video'
+            ? '[Video]'
+            : media.messageType === 'image'
+              ? '[Ảnh]'
+              : media.messageType === 'sticker'
+                ? '[Sticker]'
+                : '[Tệp đính kèm]'}
         </p>
       ) : null}
     </div>
@@ -168,7 +190,12 @@ function LiveBubble({ msg }: { msg: CskhInboxMessage }) {
             : 'rounded-bl-md border border-white/70 bg-white/95 text-slate-800'
         }`}
       >
-        <MessageBubbleContent text={msg.text} imageUrl={msg.attachmentUrl} isStaff={isStaff} />
+        <MessageBubbleContent
+          text={msg.text}
+          attachmentUrl={msg.attachmentUrl}
+          messageType={msg.messageType}
+          isStaff={isStaff}
+        />
         <p className={`mt-1 text-[10px] ${isStaff ? 'text-blue-100' : 'text-slate-400'}`}>
           {new Date(msg.sentAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
           {msg.status === 'pending' && ' · đang gửi'}
@@ -183,15 +210,24 @@ function ChatBubble({
   sender,
   text,
   time,
+  attachmentUrl,
+  messageType,
   imageUrl,
+  videoUrl,
 }: {
   sender?: string
   text?: string
   time?: string
+  attachmentUrl?: string | null
+  messageType?: string | null
   imageUrl?: string | null
+  videoUrl?: string | null
 }) {
   if (isNoiseMessageText(text)) return null
   const isStaff = sender === 'Staff'
+  const resolvedUrl = attachmentUrl ?? imageUrl ?? videoUrl ?? null
+  const resolvedType =
+    messageType ?? (videoUrl ? 'video' : imageUrl || attachmentUrl ? 'image' : 'text')
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -205,7 +241,12 @@ function ChatBubble({
             : 'rounded-bl-md border border-white/70 bg-white/95 text-slate-800 backdrop-blur-sm'
         }`}
       >
-        <MessageBubbleContent text={text} imageUrl={imageUrl} isStaff={isStaff} />
+        <MessageBubbleContent
+          text={text}
+          attachmentUrl={resolvedUrl}
+          messageType={resolvedType}
+          isStaff={isStaff}
+        />
         {time ? (
           <p className={`mt-1 text-[10px] ${isStaff ? 'text-blue-100' : 'text-slate-400'}`}>
             {time}
@@ -496,6 +537,8 @@ export function AuditMessengerView({
         text?: string
         timestamp?: string
         imageUrl?: string | null
+        videoUrl?: string | null
+        attachmentUrl?: string | null
         type?: string
       }>
     )
@@ -719,6 +762,8 @@ export function AuditMessengerView({
                               pictureUrl={
                                 row.customerPictureUrl ?? row.metadata?.customerPictureUrl
                               }
+                              pageId={meta?.pageId}
+                              psid={meta?.participantPsid}
                               className="h-9 w-9 rounded-xl text-xs"
                             />
                             <div className="min-w-0 flex-1">
@@ -761,6 +806,8 @@ export function AuditMessengerView({
                       displayCustomerName(selected.customerName).charAt(0) || '?'
                     ).toUpperCase()}
                     pictureUrl={resolveCustomerPicture(selected, inboxConv)}
+                    pageId={selected.metadata?.pageId ?? inboxConv?.pageId}
+                    psid={selected.metadata?.participantPsid ?? inboxConv?.participantPsid}
                     badge={
                       <span
                         className={`rounded-full border px-2.5 py-1 text-xs font-bold ${scoreColor(selected.score)}`}
@@ -808,7 +855,10 @@ export function AuditMessengerView({
                             key={`audit-${idx}`}
                             sender={line.sender}
                             text={line.text}
+                            attachmentUrl={line.attachmentUrl}
+                            messageType={line.type}
                             imageUrl={line.imageUrl}
+                            videoUrl={line.videoUrl}
                             time={
                               line.timestamp
                                 ? new Date(line.timestamp).toLocaleTimeString('vi-VN', {
@@ -836,7 +886,10 @@ export function AuditMessengerView({
                               key={`audit-copy-${idx}`}
                               sender={line.sender}
                               text={line.text}
+                              attachmentUrl={line.attachmentUrl}
+                              messageType={line.type}
                               imageUrl={line.imageUrl}
+                              videoUrl={line.videoUrl}
                               time={
                                 line.timestamp
                                   ? new Date(line.timestamp).toLocaleTimeString('vi-VN', {

@@ -214,6 +214,8 @@ export type DisplayTranscriptLine = {
   text?: string
   timestamp?: string
   imageUrl?: string | null
+  videoUrl?: string | null
+  attachmentUrl?: string | null
   type?: string
 }
 
