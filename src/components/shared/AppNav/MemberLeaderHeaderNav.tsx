@@ -62,7 +62,7 @@ function buildHeaderGroups(items: AppNavItem[], labels: Record<string, string>):
     'bod',
     'other',
     'company',
-  ]
+  ] //§
 
   const bucket = new Map<string, AppNavItem[]>()
   for (const item of items) {

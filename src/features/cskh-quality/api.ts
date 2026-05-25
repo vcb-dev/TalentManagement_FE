@@ -51,6 +51,13 @@ export interface CskhJobRun {
     auditCount?: number
     auditDate?: string
     scanned?: number
+    tokenUsage?: {
+      model?: string
+      promptTokens?: number
+      completionTokens?: number
+      totalTokens?: number
+      perAuditAvg?: number
+    }
   } | null
   error?: string | null
   startedAt: string
@@ -70,11 +77,20 @@ export interface CskhAuditRow {
     pageName?: string
     pageId?: string
     conversationId?: string
+    participantPsid?: string
     noReply?: boolean
     staffAbsent?: boolean
     needsFollowUp?: boolean
     auditDate?: string
     jobRunId?: string
+    suggestedReplies?: string | string[] | null
+    violations?: string | null
+    tokenUsage?: {
+      prompt_tokens?: number
+      completion_tokens?: number
+      total_tokens?: number
+      model?: string
+    } | null
   } | null
   createdAt: string
 }
@@ -187,5 +203,76 @@ export async function fetchCskhAudits(params?: {
   limit?: number
 }): Promise<CskhAuditRow[]> {
   const { data } = await apiClient.get<CskhAuditRow[]>('/cskh/audits', { params })
+  return data
+}
+
+export interface CskhInboxConversation {
+  id: string
+  pageId: string
+  pageName: string | null
+  fbConversationId: string | null
+  participantPsid: string
+  customerName: string | null
+  lastMessage: string | null
+  lastMessageAt: string | null
+  unreadCount: number
+  updatedAt: string
+}
+
+export interface CskhInboxMessage {
+  id: string
+  conversationId: string
+  fbMessageId: string | null
+  direction: 'inbound' | 'outbound'
+  senderType: 'customer' | 'staff'
+  text: string
+  sentAt: string
+  status: 'sent' | 'pending' | 'failed'
+}
+
+export async function fetchInboxConversations(pageId?: string): Promise<CskhInboxConversation[]> {
+  const { data } = await apiClient.get<CskhInboxConversation[]>('/cskh/inbox/conversations', {
+    params: pageId ? { pageId } : undefined,
+  })
+  return data
+}
+
+export async function fetchInboxMessages(
+  conversationId: string,
+  since?: string
+): Promise<{ conversation: CskhInboxConversation; messages: CskhInboxMessage[] }> {
+  const { data } = await apiClient.get<{
+    conversation: CskhInboxConversation
+    messages: CskhInboxMessage[]
+  }>(`/cskh/inbox/conversations/${conversationId}/messages`, {
+    params: since ? { since } : undefined,
+  })
+  return data
+}
+
+export async function sendInboxMessage(
+  conversationId: string,
+  text: string
+): Promise<CskhInboxMessage> {
+  const { data } = await apiClient.post<CskhInboxMessage>(
+    `/cskh/inbox/conversations/${conversationId}/send`,
+    { text }
+  )
+  return data
+}
+
+export async function syncInboxFromGraph(
+  pageId?: string
+): Promise<{ synced: number; pageCount: number }> {
+  const { data } = await apiClient.post<{ synced: number; pageCount: number }>('/cskh/inbox/sync', {
+    pageId,
+  })
+  return data
+}
+
+export async function fetchInboxAuditHint(conversationId: string): Promise<CskhAuditRow | null> {
+  const { data } = await apiClient.get<CskhAuditRow | null>(
+    `/cskh/inbox/conversations/${conversationId}/audit-hint`
+  )
   return data
 }

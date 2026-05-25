@@ -1,0 +1,77 @@
+import type { CskhAuditRow } from './api'
+
+export function formatAuditDateLabel(dateStr: string) {
+  const [y, m, d] = dateStr.split('-')
+  return `${d}/${m}/${y}`
+}
+
+export function vietnamTodayIso(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
+}
+
+/** Page "Kim Nhạn - Vân Phong Các" → NV "Kim Nhạn". */
+export function extractAgentFromPageLabel(pageName?: string | null): string | null {
+  if (!pageName?.trim()) return null
+  const m = pageName.trim().match(/^([^-–—|/]+?)\s[-–—|/]\s+/)
+  const candidate = m?.[1]?.trim()
+  if (!candidate || candidate.length > 40) return null
+  if (/shop|store|page|official|cửa hàng|cua hang|fanpage/i.test(candidate)) return null
+  return candidate
+}
+
+export function displayAgentName(row: CskhAuditRow): string {
+  const name = row.agentName?.trim()
+  if (name && name !== 'Nhân viên') return name
+  return extractAgentFromPageLabel(row.metadata?.pageName) || '—'
+}
+
+export function displayChannelName(row: CskhAuditRow): string {
+  const pageName = row.metadata?.pageName
+  return (
+    extractAgentFromPageLabel(pageName) ||
+    pageName?.trim() ||
+    displayPageShopLabel(pageName) ||
+    row.channel ||
+    '—'
+  )
+}
+
+export function displayCustomerName(name?: string | null): string {
+  const n = name?.trim()
+  if (n && n !== 'Khách hàng') return n
+  return '—'
+}
+
+export function displayPageShopLabel(pageName?: string | null): string | null {
+  if (!pageName?.trim()) return null
+  const parts = pageName.trim().split(/\s[-–—|/]\s+/)
+  if (parts.length >= 2) return parts.slice(1).join(' - ').trim() || null
+  return pageName.trim()
+}
+
+export function scoreColor(score: number) {
+  if (score >= 80) return 'text-emerald-600 bg-emerald-50 border-emerald-200'
+  if (score >= 50) return 'text-amber-600 bg-amber-50 border-amber-200'
+  return 'text-rose-600 bg-rose-50 border-rose-200'
+}
+
+export function parseBulletLines(text?: string | null): string[] {
+  if (!text?.trim()) return []
+  return text
+    .split(/\n+/)
+    .map((line) => line.replace(/^[\s•+\-–*]+/, '').trim())
+    .filter(Boolean)
+}
+
+export function parseSuggestedReplies(row: CskhAuditRow): string[] {
+  const raw = row.metadata?.suggestedReplies
+  if (typeof raw === 'string' && raw.trim()) return parseBulletLines(raw)
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean)
+  return []
+}
+
+export function lastMessagePreview(row: CskhAuditRow): string {
+  const transcript = Array.isArray(row.transcript) ? row.transcript : []
+  const last = transcript[transcript.length - 1]
+  return (last?.text || '').trim() || '—'
+}
