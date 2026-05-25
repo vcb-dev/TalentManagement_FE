@@ -274,6 +274,13 @@ export async function syncInboxFromGraph(
   return data
 }
 
+export async function linkAuditInbox(auditId: string): Promise<CskhInboxConversation> {
+  const { data } = await apiClient.post<CskhInboxConversation>('/cskh/inbox/link-audit', {
+    auditId,
+  })
+  return data
+}
+
 export async function fetchInboxAuditHint(conversationId: string): Promise<CskhAuditRow | null> {
   const { data } = await apiClient.get<CskhAuditRow | null>(
     `/cskh/inbox/conversations/${conversationId}/audit-hint`

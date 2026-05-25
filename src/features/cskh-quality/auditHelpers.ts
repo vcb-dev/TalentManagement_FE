@@ -63,11 +63,66 @@ export function parseBulletLines(text?: string | null): string[] {
     .filter(Boolean)
 }
 
-export function parseSuggestedReplies(row: CskhAuditRow): string[] {
-  const raw = row.metadata?.suggestedReplies
-  if (typeof raw === 'string' && raw.trim()) return parseBulletLines(raw)
-  if (Array.isArray(raw)) return raw.map(String).filter(Boolean)
+function splitLongListItem(text: string): string[] {
+  const trimmed = text.trim()
+  if (!trimmed) return []
+
+  const byViolation = trimmed
+    .split(/(?=Vi phạm Quy tắc)/i)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (byViolation.length > 1) return byViolation
+
+  const byRule = trimmed
+    .split(/(?=Quy tắc [IVXLC\d]+(?:\s*\(|:))/i)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (byRule.length > 1) return byRule
+
+  const bySemicolon = trimmed
+    .split(/;\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (bySemicolon.length > 1) return bySemicolon
+
+  return [trimmed]
+}
+
+/** Chuẩn hóa field AI trả về dạng string | string[] | JSON string */
+export function parseAiListField(raw: unknown): string[] {
+  if (raw == null) return []
+
+  if (Array.isArray(raw)) {
+    return raw.flatMap((item) => splitLongListItem(String(item)))
+  }
+
+  if (typeof raw === 'string') {
+    const text = raw.trim()
+    if (!text) return []
+    if (text.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(text) as unknown
+        if (Array.isArray(parsed)) {
+          return parsed.flatMap((item) => splitLongListItem(String(item)))
+        }
+      } catch {
+        /* fall through */
+      }
+    }
+    const lines = parseBulletLines(text)
+    if (lines.length > 1) return lines
+    return splitLongListItem(text)
+  }
+
   return []
+}
+
+export function parseViolations(row: CskhAuditRow): string[] {
+  return parseAiListField(row.metadata?.violations)
+}
+
+export function parseSuggestedReplies(row: CskhAuditRow): string[] {
+  return parseAiListField(row.metadata?.suggestedReplies)
 }
 
 export function lastMessagePreview(row: CskhAuditRow): string {

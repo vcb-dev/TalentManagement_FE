@@ -19,6 +19,7 @@ import {
   fetchInboxConversations,
   fetchInboxMessages,
   fetchRunningCskhJob,
+  linkAuditInbox,
   runAudit,
   sendInboxMessage,
   syncInboxFromGraph,
@@ -34,12 +35,15 @@ import {
   lastMessagePreview,
   parseBulletLines,
   parseSuggestedReplies,
+  parseViolations,
   scoreColor,
   vietnamTodayIso,
 } from './auditHelpers'
 import {
   ChatThreadHeader,
   CskhPageAvatar,
+  CskhAuditProgressBanner,
+  CskhAuditProgressPanel,
   CskhEmptyState,
   CskhLoading,
   CskhToolbar,
@@ -59,6 +63,10 @@ function storeJobId(jobId: string | null) {
   }
 }
 
+function normalizeName(value?: string | null): string {
+  return (value || '').toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
 function matchInboxConversation(
   row: CskhAuditRow,
   convs: CskhInboxConversation[]
@@ -76,11 +84,22 @@ function matchInboxConversation(
     const byFb = pageConvs.find((c) => c.fbConversationId === fbId)
     if (byFb) return byFb
   }
-  if (row.customerName) {
-    const name = displayCustomerName(row.customerName)
-    return (
-      pageConvs.find((c) => c.customerName && displayCustomerName(c.customerName) === name) ?? null
+  const auditName = normalizeName(displayCustomerName(row.customerName))
+  if (auditName && auditName !== '—') {
+    const byName = pageConvs.find(
+      (c) => c.customerName && normalizeName(displayCustomerName(c.customerName)) === auditName
     )
+    if (byName) return byName
+    const partial = pageConvs.find((c) => {
+      const inboxName = normalizeName(c.customerName)
+      return (
+        inboxName &&
+        (inboxName.includes(auditName) ||
+          auditName.includes(inboxName) ||
+          inboxName.split(' ')[0] === auditName.split(' ')[0])
+      )
+    })
+    if (partial) return partial
   }
   return null
 }
@@ -179,7 +198,7 @@ function AiAnalysisPanel({
   const meta = row.metadata
   const feedbackLines = parseBulletLines(row.feedback)
   const suggestions = parseSuggestedReplies(row)
-  const violations = parseBulletLines(typeof meta?.violations === 'string' ? meta.violations : null)
+  const violations = parseViolations(row)
 
   return (
     <div className="flex h-full flex-col">
@@ -230,9 +249,12 @@ function AiAnalysisPanel({
         {violations.length > 0 && (
           <section>
             <p className="text-xs font-semibold uppercase tracking-wide text-rose-500">Vi phạm</p>
-            <ul className="mt-2 space-y-1 text-sm text-rose-700">
+            <ul className="mt-2 space-y-2 text-sm text-rose-700">
               {violations.map((v, i) => (
-                <li key={i}>• {v}</li>
+                <li key={i} className="flex gap-2">
+                  <span className="font-bold text-rose-400">+</span>
+                  <span>{v}</span>
+                </li>
               ))}
             </ul>
           </section>
@@ -267,7 +289,7 @@ function AiAnalysisPanel({
             </ul>
           ) : (
             <p className="mt-2 text-sm text-slate-500">
-              Chưa có gợi ý — chạy audit mới sau khi cập nhật AI service.
+              Chưa có gợi ý trong audit này — chạy lại audit sau khi deploy AI service mới.
             </p>
           )}
         </section>
@@ -348,6 +370,7 @@ export function AuditMessengerView({
   const summary = progress?.summary
   const auditCount = summary?.auditCount ?? progress?.audits?.length ?? 0
   const isFetchPhase = isRunning && summary?.phase === 'fetch'
+  const isAuditPhase = isRunning && summary?.phase === 'audit'
   const displayAudits = jobId ? (progress?.audits ?? []) : (recentAudits ?? [])
   const sortedAudits = [...displayAudits].sort((a, b) => a.score - b.score)
   const selected = sortedAudits.find((a) => a.id === selectedId) ?? sortedAudits[0] ?? null
@@ -368,6 +391,19 @@ export function AuditMessengerView({
     : auditDate
       ? formatAuditDateLabel(auditDate)
       : null
+  const progressBadgeText = isFetchPhase
+    ? summary?.pagesTotal
+      ? `Page ${Math.min((summary.pagesProcessed ?? 0) + 1, summary.pagesTotal)}/${summary.pagesTotal}${
+          summary.currentPage ? ` · ${summary.currentPage}` : ''
+        }`
+      : `Quét inbox ${auditDayLabel}…`
+    : isAuditPhase
+      ? summary?.total
+        ? `${summary.processed ?? 0}/${summary.total} hội thoại`
+        : `Audit ${auditCount}${summary?.total ? `/${summary.total}` : ''}`
+      : isRunning
+        ? `Audit ${auditDayLabel}…`
+        : ''
   const canRun = !!auditDate && !isRunning
   const transcript = selected && Array.isArray(selected.transcript) ? selected.transcript : []
 
@@ -390,6 +426,31 @@ export function AuditMessengerView({
     () => (selected ? matchInboxConversation(selected, inboxQuery.data ?? []) : null),
     [selected, inboxQuery.data]
   )
+
+  const linkInboxMut = useMutation({
+    mutationFn: (auditId: string) => linkAuditInbox(auditId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cskh', 'inbox'] })
+    },
+  })
+
+  const linkAttemptRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    linkAttemptRef.current = null
+  }, [selected?.id])
+
+  useEffect(() => {
+    if (!selected || inboxConv) return
+    const meta = selected.metadata
+    if (!meta?.pageId || !(meta.participantPsid || meta.conversationId)) return
+    if (linkAttemptRef.current === selected.id || linkInboxMut.isPending) return
+    linkAttemptRef.current = selected.id
+    linkInboxMut.mutate(selected.id)
+  }, [selected, inboxConv, linkInboxMut.isPending, linkInboxMut])
+
+  const inboxLinkPending = linkInboxMut.isPending
+  const inboxLinkFailed = linkInboxMut.isError && !inboxConv
 
   const liveMsgQuery = useQuery({
     queryKey: ['cskh', 'inbox', 'messages', inboxConv?.id],
@@ -434,9 +495,7 @@ export function AuditMessengerView({
           {isRunning && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
               <Loader2 className="h-3 w-3 animate-spin" />
-              {isFetchPhase
-                ? `Quét inbox ${auditDayLabel}…`
-                : `Audit ${auditCount}${summary?.total ? `/${summary.total}` : ''}`}
+              {progressBadgeText}
             </span>
           )}
           {summary?.tokenUsage &&
@@ -525,20 +584,19 @@ export function AuditMessengerView({
         </p>
       )}
 
-      {recentLoading && !sortedAudits.length ? (
+      {recentLoading && !sortedAudits.length && !isRunning ? (
         <CskhLoading label="Đang tải kết quả audit…" />
+      ) : isRunning && !sortedAudits.length ? (
+        <CskhAuditProgressPanel auditDayLabel={auditDayLabel} summary={summary} />
       ) : !sortedAudits.length ? (
         <CskhEmptyState
           icon={<ClipboardCheck className="h-12 w-12 text-violet-500" />}
-          title={isRunning ? 'Đang audit…' : 'Chưa có dữ liệu audit'}
-          description={
-            isRunning
-              ? `Đang quét & audit ngày ${auditDayLabel ?? '…'} — vui lòng đợi.`
-              : 'Chọn ngày ở trên và bấm Chạy audit để AI phân tích hội thoại CSKH.'
-          }
+          title="Chưa có dữ liệu audit"
+          description="Chọn ngày ở trên và bấm Chạy audit để AI phân tích hội thoại CSKH."
         />
       ) : (
         <>
+          {isRunning && <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />}
           <MessengerWorkspace
             sidebar={
               <>
@@ -616,7 +674,7 @@ export function AuditMessengerView({
                     }
                   />
                   <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-                    {inboxConv && (
+                    {inboxConv ? (
                       <div className="space-y-3">
                         <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-600">
                           <span className="relative flex h-2 w-2">
@@ -641,9 +699,33 @@ export function AuditMessengerView({
                           </p>
                         )}
                       </div>
-                    )}
+                    ) : transcript.length > 0 ? (
+                      <div className="space-y-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                          Transcript ngày audit
+                          {selected.metadata?.auditDate
+                            ? ` · ${formatAuditDateLabel(selected.metadata.auditDate)}`
+                            : ''}
+                        </p>
+                        {transcript.map((line, idx) => (
+                          <ChatBubble
+                            key={`audit-${idx}`}
+                            sender={line.sender}
+                            text={line.text}
+                            time={
+                              line.timestamp
+                                ? new Date(line.timestamp).toLocaleTimeString('vi-VN', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })
+                                : undefined
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : null}
 
-                    {transcript.length > 0 && (
+                    {inboxConv && transcript.length > 0 && (
                       <details className="space-y-3 border-t border-indigo-100/80 pt-4">
                         <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-wide text-slate-400">
                           Transcript ngày audit
@@ -654,7 +736,7 @@ export function AuditMessengerView({
                         <div className="space-y-3 pt-2">
                           {transcript.map((line, idx) => (
                             <ChatBubble
-                              key={`audit-${idx}`}
+                              key={`audit-copy-${idx}`}
                               sender={line.sender}
                               text={line.text}
                               time={
@@ -675,14 +757,25 @@ export function AuditMessengerView({
                       <CskhEmptyState
                         icon={<MessageCircle className="h-10 w-10 text-indigo-400" />}
                         title="Không có tin nhắn"
-                        description="Chưa liên kết hội thoại Messenger. Hệ thống đang đồng bộ nền — thử chọn hội thoại khác hoặc chạy audit lại."
+                        description="Chưa liên kết hội thoại Messenger. Hệ thống đang thử liên kết tự động…"
                       />
                     )}
 
                     {selected && !inboxConv && (
-                      <p className="rounded-xl border border-dashed border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800">
-                        Chưa liên kết inbox — hệ thống tự đồng bộ nền. Chạy audit mới để gắn PSID
-                        chính xác hơn.
+                      <p
+                        className={`rounded-xl border px-3 py-2 text-xs ${
+                          inboxLinkPending
+                            ? 'border-indigo-200 bg-indigo-50/80 text-indigo-800'
+                            : inboxLinkFailed
+                              ? 'border-amber-200 bg-amber-50/80 text-amber-800'
+                              : 'border-amber-200 bg-amber-50/80 text-amber-800'
+                        }`}
+                      >
+                        {inboxLinkPending
+                          ? 'Đang liên kết inbox để nhắn tin trực tiếp…'
+                          : inboxLinkFailed
+                            ? 'Chưa liên kết inbox — audit cũ có thể thiếu PSID. Chạy audit lại để nhắn tin trực tiếp.'
+                            : 'Xem transcript ở trên. Liên kết inbox để nhắn tin trực tiếp cho khách.'}
                       </p>
                     )}
                   </div>
@@ -710,7 +803,11 @@ export function AuditMessengerView({
                         }}
                         disabled={!inboxConv}
                         placeholder={
-                          inboxConv ? 'Nhắn tin cho khách… (Enter gửi)' : 'Đang liên kết inbox…'
+                          inboxConv
+                            ? 'Nhắn tin cho khách… (Enter gửi)'
+                            : inboxLinkPending
+                              ? 'Đang liên kết inbox…'
+                              : 'Liên kết inbox để gửi tin — vẫn có thể dùng gợi ý bên phải'
                         }
                         className="max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border border-indigo-100 bg-white px-4 py-3 text-sm shadow-inner focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-slate-50 disabled:text-slate-400"
                       />

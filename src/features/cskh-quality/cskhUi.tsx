@@ -345,6 +345,261 @@ export function CskhLoading({ label = 'Đang tải…' }: { label?: string }) {
   )
 }
 
+type AuditProgressSummary = {
+  phase?: string
+  auditDate?: string
+  pagesTotal?: number
+  pagesProcessed?: number
+  currentPage?: string
+  scanned?: number
+  fetched?: number
+  total?: number
+  processed?: number
+  audited?: number
+  errors?: number
+  currentCustomer?: string
+  auditCount?: number
+}
+
+function auditProgressPercent(summary?: AuditProgressSummary | null): number {
+  if (!summary?.phase) return 3
+  if (summary.phase === 'fetch') {
+    const total = summary.pagesTotal ?? 0
+    const done = summary.pagesProcessed ?? 0
+    if (total <= 0) return 8
+    return Math.min(45, Math.round((done / total) * 45))
+  }
+  if (summary.phase === 'audit') {
+    const total = summary.total ?? 0
+    const processed = summary.processed ?? 0
+    if (total <= 0) return 50
+    return Math.round(45 + (processed / total) * 55)
+  }
+  return 5
+}
+
+export function CskhAuditProgressPanel({
+  auditDayLabel,
+  summary,
+}: {
+  auditDayLabel?: string | null
+  summary?: AuditProgressSummary | null
+}) {
+  const phase = summary?.phase ?? 'fetch'
+  const isFetch = phase === 'fetch'
+  const isAudit = phase === 'audit'
+  const pagesTotal = summary?.pagesTotal ?? 0
+  const pagesDone = summary?.pagesProcessed ?? 0
+  const pageCurrent = pagesTotal > 0 ? Math.min(pagesDone + 1, pagesTotal) : null
+  const auditTotal = summary?.total ?? 0
+  const auditProcessed = summary?.processed ?? 0
+  const percent = auditProgressPercent(summary)
+
+  const statusLine = isFetch
+    ? pagesTotal > 0
+      ? `Đang quét Page ${pageCurrent}/${pagesTotal}${summary?.currentPage ? ` · ${summary.currentPage}` : ''}`
+      : 'Đang kết nối Facebook…'
+    : isAudit
+      ? auditTotal > 0
+        ? `Đang chấm điểm ${auditProcessed}/${auditTotal} hội thoại${
+            summary?.currentCustomer ? ` · ${summary.currentCustomer}` : ''
+          }`
+        : 'Đang chuẩn bị chấm điểm…'
+      : 'Đang xử lý…'
+
+  const detailLine = isFetch
+    ? [
+        summary?.scanned != null && summary.scanned > 0
+          ? `Đã quét ${summary.scanned.toLocaleString('vi-VN')} tin nhắn`
+          : null,
+        summary?.fetched != null
+          ? `Tìm thấy ${summary.fetched.toLocaleString('vi-VN')} hội thoại ngày ${auditDayLabel ?? '…'}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' · ') || 'Đang đọc inbox từng Page — vui lòng đợi.'
+    : isAudit
+      ? [
+          summary?.audited != null ? `${summary.audited} thành công` : null,
+          summary?.errors ? `${summary.errors} lỗi` : null,
+          summary?.auditCount ? `${summary.auditCount} đã lưu` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ') || 'AI đang phân tích chất lượng CSKH…'
+      : ''
+
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
+      <div className="w-full max-w-lg space-y-6">
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-100 via-violet-100 to-fuchsia-100 shadow-inner">
+            <Loader2 className="h-7 w-7 animate-spin text-violet-600" />
+          </div>
+          <p className="text-lg font-bold text-slate-800">
+            Đang audit{auditDayLabel ? ` ngày ${auditDayLabel}` : '…'}
+          </p>
+          <p className="mt-1 text-sm font-medium text-violet-700">{statusLine}</p>
+          {detailLine ? (
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">{detailLine}</p>
+          ) : null}
+        </div>
+
+        <div className="flex gap-2">
+          {[
+            { id: 'fetch', label: '1. Quét inbox', active: isFetch, done: isAudit },
+            { id: 'audit', label: '2. Chấm điểm AI', active: isAudit, done: false },
+          ].map((step) => (
+            <div
+              key={step.id}
+              className={cn(
+                'flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-colors',
+                step.active && 'border-violet-300 bg-violet-50 text-violet-800',
+                step.done && !step.active && 'border-emerald-200 bg-emerald-50 text-emerald-700',
+                !step.active && !step.done && 'border-slate-200 bg-slate-50 text-slate-400'
+              )}
+            >
+              {step.active ? (
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+              ) : step.done ? (
+                <span className="text-emerald-600">✓</span>
+              ) : null}
+              {step.label}
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs font-medium text-slate-500">
+            <span>Tiến độ tổng</span>
+            <span className="tabular-nums text-violet-700">{percent}%</span>
+          </div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-500 ease-out"
+              style={{ width: `${Math.max(percent, 4)}%` }}
+            />
+          </div>
+        </div>
+
+        {isFetch && pagesTotal > 0 ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-medium text-slate-500">
+              <span>Quét Page</span>
+              <span className="tabular-nums">
+                {pagesDone}/{pagesTotal}
+              </span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-indigo-50">
+              <div
+                className="h-full rounded-full bg-indigo-400 transition-all duration-300"
+                style={{
+                  width: `${Math.max(Math.round((pagesDone / pagesTotal) * 100), pagesDone > 0 ? 6 : 2)}%`,
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {isAudit && auditTotal > 0 ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-medium text-slate-500">
+              <span>Chấm điểm AI</span>
+              <span className="tabular-nums">
+                {auditProcessed}/{auditTotal}
+              </span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-fuchsia-50">
+              <div
+                className="h-full rounded-full bg-fuchsia-500 transition-all duration-300"
+                style={{
+                  width: `${Math.max(Math.round((auditProcessed / auditTotal) * 100), auditProcessed > 0 ? 6 : 2)}%`,
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            {
+              label: 'Page',
+              value:
+                pagesTotal > 0
+                  ? `${Math.min(pagesDone + (isFetch ? 1 : 0), pagesTotal)}/${pagesTotal}`
+                  : '—',
+            },
+            {
+              label: 'Hội thoại',
+              value: summary?.fetched != null ? summary.fetched.toLocaleString('vi-VN') : '—',
+            },
+            {
+              label: 'Đã chấm',
+              value:
+                summary?.processed != null && auditTotal > 0
+                  ? `${summary.processed}/${auditTotal}`
+                  : (summary?.auditCount ?? summary?.audited ?? '—'),
+            },
+            {
+              label: 'Lỗi',
+              value: summary?.errors ?? 0,
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-xl border border-indigo-100/80 bg-white/90 px-3 py-2.5 text-center shadow-sm"
+            >
+              <p className="text-base font-bold tabular-nums text-indigo-700">{stat.value}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                {stat.label}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function CskhAuditProgressBanner({
+  auditDayLabel,
+  summary,
+}: {
+  auditDayLabel?: string | null
+  summary?: AuditProgressSummary | null
+}) {
+  const phase = summary?.phase ?? 'fetch'
+  const isFetch = phase === 'fetch'
+  const pagesTotal = summary?.pagesTotal ?? 0
+  const pagesDone = summary?.pagesProcessed ?? 0
+  const auditTotal = summary?.total ?? 0
+  const auditProcessed = summary?.processed ?? 0
+
+  const text = isFetch
+    ? pagesTotal > 0
+      ? `Quét Page ${Math.min(pagesDone + 1, pagesTotal)}/${pagesTotal}${
+          summary?.currentPage ? ` · ${summary.currentPage}` : ''
+        }${summary?.fetched != null ? ` · ${summary.fetched} hội thoại` : ''}`
+      : 'Đang quét inbox…'
+    : auditTotal > 0
+      ? `Chấm ${auditProcessed}/${auditTotal}${
+          summary?.currentCustomer ? ` · ${summary.currentCustomer}` : ''
+        }`
+      : 'Đang chấm điểm AI…'
+
+  return (
+    <div className="mx-4 mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-violet-200/80 bg-violet-50/90 px-4 py-2.5 sm:mx-5">
+      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-600" />
+      <p className="min-w-0 flex-1 text-sm font-medium text-violet-900">
+        {auditDayLabel ? `Audit ${auditDayLabel} — ` : ''}
+        {text}
+      </p>
+      <span className="text-xs font-bold tabular-nums text-violet-700">
+        {auditProgressPercent(summary)}%
+      </span>
+    </div>
+  )
+}
+
 export function ChatThreadHeader({
   name,
   subtitle,
