@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -12,6 +13,46 @@ export function avatarGradient(name: string) {
   ]
   const idx = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % palettes.length
   return palettes[idx]
+}
+
+export function CskhPageAvatar({
+  name,
+  pictureUrl,
+  className,
+}: {
+  name: string
+  pictureUrl?: string | null
+  className?: string
+}) {
+  const [failed, setFailed] = useState(false)
+  const letter = (name.charAt(0) || 'P').toUpperCase()
+  const showImage = pictureUrl && !failed
+
+  if (showImage) {
+    return (
+      <img
+        src={pictureUrl}
+        alt=""
+        className={cn(
+          'h-10 w-10 shrink-0 rounded-xl object-cover ring-1 ring-slate-200/80',
+          className
+        )}
+        onError={() => setFailed(true)}
+      />
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-xs font-bold text-white',
+        avatarGradient(name),
+        className
+      )}
+    >
+      {letter}
+    </div>
+  )
 }
 
 export function CskhPageShell({ children }: { children: ReactNode }) {
@@ -309,22 +350,21 @@ export function ChatThreadHeader({
   subtitle,
   badge,
   avatarLetter,
+  pictureUrl,
 }: {
   name: string
   subtitle: string
   badge?: ReactNode
   avatarLetter: string
+  pictureUrl?: string | null
 }) {
   return (
     <header className="flex items-center gap-3 border-b border-white/50 bg-white/75 px-4 py-3.5 backdrop-blur-md">
-      <div
-        className={cn(
-          'flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br text-sm font-bold text-white shadow-md ring-2 ring-white/80',
-          avatarGradient(name)
-        )}
-      >
-        {avatarLetter}
-      </div>
+      <CskhPageAvatar
+        name={name}
+        pictureUrl={pictureUrl}
+        className="h-11 w-11 rounded-2xl text-sm shadow-md ring-2 ring-white/80"
+      />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold text-slate-900">{name}</p>
         <p className="truncate text-xs text-slate-500">{subtitle}</p>

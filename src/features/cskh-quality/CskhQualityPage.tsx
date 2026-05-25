@@ -18,6 +18,7 @@ import {
   CskhGlassPanel,
   CskhHero,
   CskhPageShell,
+  CskhPageAvatar,
   CskhStatPill,
   CskhTabNav,
   CskhTokenStat,
@@ -231,9 +232,7 @@ function ConfigTab() {
                 }`}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 text-xs font-bold text-white">
-                    {(p.pageName?.charAt(0) || 'P').toUpperCase()}
-                  </div>
+                  <CskhPageAvatar name={p.pageName || p.pageId} pictureUrl={p.pagePictureUrl} />
                   <div className="min-w-0">
                     <p className="truncate font-medium text-slate-800">{p.pageName || p.pageId}</p>
                     <p className="truncate text-xs text-slate-400">ID: {p.pageId}</p>

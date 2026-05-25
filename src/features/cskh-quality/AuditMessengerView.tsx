@@ -38,8 +38,8 @@ import {
   vietnamTodayIso,
 } from './auditHelpers'
 import {
-  avatarGradient,
   ChatThreadHeader,
+  CskhPageAvatar,
   CskhEmptyState,
   CskhLoading,
   CskhToolbar,
@@ -83,6 +83,15 @@ function matchInboxConversation(
     )
   }
   return null
+}
+
+function resolveCustomerPicture(
+  row: CskhAuditRow,
+  inbox: CskhInboxConversation | null
+): string | null {
+  return (
+    row.customerPictureUrl ?? row.metadata?.customerPictureUrl ?? inbox?.customerPictureUrl ?? null
+  )
 }
 
 function LiveBubble({ msg }: { msg: CskhInboxMessage }) {
@@ -551,11 +560,13 @@ export function AuditMessengerView({
                           }`}
                         >
                           <div className="flex items-start gap-3">
-                            <div
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-xs font-bold text-white ${avatarGradient(name)}`}
-                            >
-                              {(name.charAt(0) || '?').toUpperCase()}
-                            </div>
+                            <CskhPageAvatar
+                              name={name}
+                              pictureUrl={
+                                row.customerPictureUrl ?? row.metadata?.customerPictureUrl
+                              }
+                              className="h-9 w-9 rounded-xl text-xs"
+                            />
                             <div className="min-w-0 flex-1">
                               <div className="flex items-start justify-between gap-2">
                                 <p className="truncate text-sm font-semibold text-slate-800">
@@ -595,6 +606,7 @@ export function AuditMessengerView({
                     avatarLetter={(
                       displayCustomerName(selected.customerName).charAt(0) || '?'
                     ).toUpperCase()}
+                    pictureUrl={resolveCustomerPicture(selected, inboxConv)}
                     badge={
                       <span
                         className={`rounded-full border px-2.5 py-1 text-xs font-bold ${scoreColor(selected.score)}`}

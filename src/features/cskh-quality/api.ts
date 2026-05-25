@@ -3,6 +3,7 @@ import { apiClient } from '@/lib/axios'
 export interface CskhPage {
   pageId: string
   pageName: string | null
+  pagePictureUrl?: string | null
   enabled: boolean
   updatedAt: string
   metadata?: unknown
@@ -69,6 +70,7 @@ export interface CskhAuditRow {
   id: string
   agentName: string | null
   customerName: string | null
+  customerPictureUrl?: string | null
   channel: string | null
   score: number
   feedback: string | null
@@ -78,6 +80,7 @@ export interface CskhAuditRow {
     pageId?: string
     conversationId?: string
     participantPsid?: string
+    customerPictureUrl?: string | null
     noReply?: boolean
     staffAbsent?: boolean
     needsFollowUp?: boolean
@@ -213,6 +216,7 @@ export interface CskhInboxConversation {
   fbConversationId: string | null
   participantPsid: string
   customerName: string | null
+  customerPictureUrl?: string | null
   lastMessage: string | null
   lastMessageAt: string | null
   unreadCount: number
