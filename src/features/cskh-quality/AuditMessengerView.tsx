@@ -40,7 +40,7 @@ import {
   scoreColor,
   vietnamTodayIso,
 } from './auditHelpers'
-import { cskhMediaSrc, resolveMessageMedia } from './messageMedia'
+import { cskhMediaProxySrc, cskhMediaSrc, resolveMessageMedia } from './messageMedia'
 import {
   ChatThreadHeader,
   CskhPageAvatar,
@@ -130,6 +130,7 @@ function MessageBubbleContent({
 }) {
   const [imageFailed, setImageFailed] = useState(false)
   const [videoFailed, setVideoFailed] = useState(false)
+  const [useMediaProxy, setUseMediaProxy] = useState(false)
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(attachmentUrl ?? null)
   const [resolvedType, setResolvedType] = useState<string | null>(messageType ?? null)
   const [resolvedText, setResolvedText] = useState<string | null | undefined>(text)
@@ -142,6 +143,7 @@ function MessageBubbleContent({
     setResolvedText(text)
     setImageFailed(false)
     setVideoFailed(false)
+    setUseMediaProxy(false)
     resolveAttempted.current = false
   }, [messageId, attachmentUrl, messageType, text])
 
@@ -180,31 +182,51 @@ function MessageBubbleContent({
     }
   }, [messageId, needsResolve])
 
-  const proxied = media.attachmentUrl ? cskhMediaSrc(media.attachmentUrl) : undefined
-  const showImage = media.messageType === 'image' && proxied && !imageFailed
-  const showVideo = media.messageType === 'video' && proxied && !videoFailed
+  const mediaSrc = media.attachmentUrl
+    ? useMediaProxy
+      ? cskhMediaProxySrc(media.attachmentUrl)
+      : cskhMediaSrc(media.attachmentUrl)
+    : undefined
+  const showImage = media.messageType === 'image' && mediaSrc && !imageFailed
+  const showVideo = media.messageType === 'video' && mediaSrc && !videoFailed
+
+  const onImageError = () => {
+    if (!useMediaProxy && media.attachmentUrl) {
+      setUseMediaProxy(true)
+      return
+    }
+    setImageFailed(true)
+  }
+
+  const onVideoError = () => {
+    if (!useMediaProxy && media.attachmentUrl) {
+      setUseMediaProxy(true)
+      return
+    }
+    setVideoFailed(true)
+  }
 
   return (
     <div className="space-y-2">
       {showImage ? (
         <a href={media.attachmentUrl!} target="_blank" rel="noreferrer" className="block">
           <img
-            src={proxied}
+            src={mediaSrc}
             alt=""
             referrerPolicy="no-referrer"
             className="max-h-64 max-w-full rounded-xl object-cover"
-            onError={() => setImageFailed(true)}
+            onError={onImageError}
           />
         </a>
       ) : null}
       {showVideo ? (
         <video
-          src={proxied}
+          src={mediaSrc}
           controls
           playsInline
           preload="metadata"
           className="max-h-64 max-w-full rounded-xl"
-          onError={() => setVideoFailed(true)}
+          onError={onVideoError}
         />
       ) : null}
       {media.displayText ? (

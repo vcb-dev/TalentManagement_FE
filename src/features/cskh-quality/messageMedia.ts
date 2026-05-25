@@ -109,13 +109,19 @@ export function resolveMessageMedia(input: {
   return { displayText, attachmentUrl, messageType }
 }
 
-/** Proxy media Facebook CDN qua BE (img/video không gửi JWT). */
-export function cskhMediaSrc(mediaUrl?: string | null): string | undefined {
+/** Proxy media Facebook CDN qua BE (fallback khi load trực tiếp thất bại). */
+export function cskhMediaProxySrc(mediaUrl?: string | null): string | undefined {
   if (!mediaUrl?.startsWith('http')) return undefined
   if (/fbcdn|fbsbx|facebook\.com|fb\.com/i.test(mediaUrl)) {
     const base = (import.meta.env.VITE_API_URL || 'http://localhost:3003').replace(/\/$/, '')
     return `${base}/cskh/media/proxy?url=${encodeURIComponent(mediaUrl)}`
   }
+  return mediaUrl
+}
+
+/** Ưu tiên URL gốc fbcdn — trình duyệt load trực tiếp với no-referrer. */
+export function cskhMediaSrc(mediaUrl?: string | null): string | undefined {
+  if (!mediaUrl?.startsWith('http')) return undefined
   return mediaUrl
 }
 
