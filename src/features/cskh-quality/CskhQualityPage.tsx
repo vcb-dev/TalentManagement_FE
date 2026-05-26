@@ -226,7 +226,11 @@ function ConfigTab() {
                 }`}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <CskhPageAvatar name={p.pageName || p.pageId} pictureUrl={p.pagePictureUrl} />
+                  <CskhPageAvatar
+                    name={p.pageName || p.pageId}
+                    pictureUrl={p.pagePictureUrl}
+                    pageId={p.pageId}
+                  />
                   <div className="min-w-0">
                     <p className="truncate font-medium text-slate-800">{p.pageName || p.pageId}</p>
                     <p className="truncate text-xs text-slate-400">ID: {p.pageId}</p>

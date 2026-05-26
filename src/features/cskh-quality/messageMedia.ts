@@ -125,6 +125,28 @@ export function cskhMediaSrc(mediaUrl?: string | null): string | undefined {
   return mediaUrl
 }
 
+/** Avatar Page Facebook — URL đã lưu hoặc fetch Graph qua BE. */
+export function cskhPageAvatarSrc(input: {
+  pictureUrl?: string | null
+  pageId?: string | null
+}): string | undefined {
+  const { pictureUrl, pageId } = input
+  const base = (import.meta.env.VITE_API_URL || 'http://localhost:3003').replace(/\/$/, '')
+
+  if (pictureUrl?.startsWith('http')) {
+    if (/fbcdn|fbsbx|facebook\.com|fb\.com/i.test(pictureUrl)) {
+      return `${base}/cskh/media/avatar?url=${encodeURIComponent(pictureUrl)}`
+    }
+    return pictureUrl
+  }
+
+  if (pageId) {
+    return `${base}/cskh/media/page-avatar?pageId=${encodeURIComponent(pageId)}`
+  }
+
+  return undefined
+}
+
 /** Avatar khách — ưu tiên URL đã lưu, fallback fetch trực tiếp từ Graph qua BE. */
 export function cskhCustomerAvatarSrc(input: {
   pictureUrl?: string | null

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { Loader2, X, AlertCircle, AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { cskhCustomerAvatarSrc } from './messageMedia'
+import { cskhCustomerAvatarSrc, cskhPageAvatarSrc } from './messageMedia'
 
 /** Facebook CDN — proxy qua BE vì img tag không gửi JWT. */
 export function cskhAvatarSrc(pictureUrl?: string | null): string | undefined {
@@ -14,7 +14,7 @@ export function cskhAvatarSrc(pictureUrl?: string | null): string | undefined {
   return pictureUrl
 }
 
-export { cskhCustomerAvatarSrc, cskhMediaSrc } from './messageMedia'
+export { cskhCustomerAvatarSrc, cskhMediaSrc, cskhPageAvatarSrc } from './messageMedia'
 
 export function avatarGradient(name: string) {
   const palettes = [
@@ -42,8 +42,15 @@ export function CskhPageAvatar({
   className?: string
 }) {
   const [failed, setFailed] = useState(false)
+  const [forcePageFetch, setForcePageFetch] = useState(false)
   const letter = (name.charAt(0) || 'P').toUpperCase()
-  const imgSrc = cskhCustomerAvatarSrc({ pictureUrl, pageId, psid })
+
+  const imgSrc = psid
+    ? cskhCustomerAvatarSrc({ pictureUrl, pageId, psid })
+    : forcePageFetch && pageId
+      ? cskhPageAvatarSrc({ pageId })
+      : cskhPageAvatarSrc({ pictureUrl, pageId })
+
   const showImage = imgSrc && !failed
 
   if (showImage) {
@@ -56,7 +63,13 @@ export function CskhPageAvatar({
           'h-10 w-10 shrink-0 rounded-xl object-cover ring-1 ring-slate-200/80',
           className
         )}
-        onError={() => setFailed(true)}
+        onError={() => {
+          if (!psid && pageId && !forcePageFetch) {
+            setForcePageFetch(true)
+            return
+          }
+          setFailed(true)
+        }}
       />
     )
   }
