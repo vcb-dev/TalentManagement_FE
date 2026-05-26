@@ -7,6 +7,7 @@ import {
   fetchCskhAudits,
   fetchAuditProgress,
   fetchRunningCskhJob,
+  fetchDeepSeekBalance,
   getCskhOAuthStartUrl,
   refreshCskhOAuth,
   setCskhPageEnabled,
@@ -22,19 +23,12 @@ import {
   CskhStatPill,
   CskhTabNav,
   CskhTokenStat,
+  CskhDeepSeekBalanceStat,
 } from './cskhUi'
 
 type Tab = 'config' | 'audit'
 
 const AUDIT_JOB_KEY = 'cskh:audit-job-id'
-
-function readStoredJobId(key: string): string | null {
-  try {
-    return sessionStorage.getItem(key)
-  } catch {
-    return null
-  }
-}
 
 function ConfigTab() {
   const qc = useQueryClient()
@@ -285,7 +279,7 @@ export function CskhQualityPage() {
     if (p.get('fb_connected')) return 'config'
     return 'audit'
   })
-  const [auditJobId, setAuditJobId] = useState<string | null>(() => readStoredJobId(AUDIT_JOB_KEY))
+  const [auditJobId, setAuditJobId] = useState<string | null>(null)
 
   const { data: pagesData } = useQuery({
     queryKey: ['cskh', 'pages'],
@@ -295,6 +289,14 @@ export function CskhQualityPage() {
   const { data: recentAudits } = useQuery({
     queryKey: ['cskh', 'audits', 'recent'],
     queryFn: () => fetchCskhAudits({ limit: 200 }),
+  })
+
+  const { data: deepSeekBalance, isLoading: balanceLoading } = useQuery({
+    queryKey: ['cskh', 'deepseek-balance'],
+    queryFn: fetchDeepSeekBalance,
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    retry: 2,
   })
 
   const { data: auditProgress } = useQuery({
@@ -311,9 +313,11 @@ export function CskhQualityPage() {
         if (running?.status === 'running') {
           setAuditJobId(running.id)
           sessionStorage.setItem(AUDIT_JOB_KEY, running.id)
+        } else {
+          sessionStorage.removeItem(AUDIT_JOB_KEY)
         }
       } catch {
-        /* ignore */
+        sessionStorage.removeItem(AUDIT_JOB_KEY)
       }
     })()
     const p = new URLSearchParams(window.location.search)
@@ -335,7 +339,7 @@ export function CskhQualityPage() {
     <CskhPageShell>
       <CskhHero
         title="CSKH Quality"
-        subtitle="Audit chất lượng CSKH bằng AI — xem hội thoại và nhắn tin trả lời khách ngay trong Audit."
+        subtitle="Audit chất lượng CSKH bằng AI — xem hội thoại, chấm điểm và trả lời khách ngay trên một màn hình."
         badge={
           pagesData?.oauthConnected ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
@@ -346,6 +350,16 @@ export function CskhQualityPage() {
         }
         stats={
           <>
+            <CskhDeepSeekBalanceStat
+              totalBalance={deepSeekBalance?.totalBalance}
+              currency={deepSeekBalance?.currency}
+              model={deepSeekBalance?.model}
+              isAvailable={deepSeekBalance?.isAvailable}
+              grantedBalance={deepSeekBalance?.grantedBalance}
+              toppedUpBalance={deepSeekBalance?.toppedUpBalance}
+              loading={balanceLoading}
+              error={deepSeekBalance?.error}
+            />
             <CskhTokenStat
               model={tokenUsage?.model}
               totalTokens={tokenUsage?.totalTokens}
@@ -354,7 +368,9 @@ export function CskhQualityPage() {
               perAuditAvg={tokenUsage?.perAuditAvg}
               running={auditRunning}
             />
-            <CskhStatPill label="Audit gần đây" value={auditCount} tone="live" />
+            {auditCount > 0 ? (
+              <CskhStatPill label="Audit gần đây" value={auditCount} tone="live" />
+            ) : null}
             <CskhStatPill label="Page bật" value={enabledPages} />
             <CskhStatPill
               label="Tổng Page"

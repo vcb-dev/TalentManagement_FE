@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getApiErrorMessage } from '@/lib/axios'
-import { toUserFacingError } from '@/lib/userFacingError'
+import { isTransientInfraError, toUserFacingError } from '@/lib/userFacingError'
 import {
   Loader2,
   Play,
@@ -12,6 +12,7 @@ import {
   ClipboardCheck,
   Calendar,
   Send,
+  Search,
 } from 'lucide-react'
 import {
   cancelAuditJob,
@@ -48,8 +49,10 @@ import {
   CskhPageAvatar,
   CskhAuditProgressBanner,
   CskhAuditProgressPanel,
+  CskhConnectionBadge,
   CskhEmptyState,
   CskhLoading,
+  CskhNoticeBanner,
   CskhToolbar,
   MessengerSidebarHeader,
   MessengerWorkspace,
@@ -57,6 +60,16 @@ import {
 import { useCskhInboxStream } from './useCskhInboxStream'
 
 const AUDIT_JOB_KEY = 'cskh:audit-job-id'
+
+function cskhQueryRetry(failureCount: number, error: unknown): boolean {
+  const msg = getApiErrorMessage(error)
+  if (isTransientInfraError(msg)) return failureCount < 4
+  return failureCount < 1
+}
+
+function cskhQueryRetryDelay(attempt: number): number {
+  return Math.min(1000 * 2 ** attempt, 8000)
+}
 
 function storeJobId(jobId: string | null) {
   try {
@@ -502,6 +515,9 @@ export function AuditMessengerView({
   const [auditDate, setAuditDate] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const [sidebarSearch, setSidebarSearch] = useState('')
+  const [completionNotice, setCompletionNotice] = useState<string | null>(null)
+  const [dismissedErrorKey, setDismissedErrorKey] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const chatScrollSigRef = useRef('')
   const refreshedConvRef = useRef<string | null>(null)
@@ -512,9 +528,14 @@ export function AuditMessengerView({
       if (jobId) return
       try {
         const running = await fetchRunningCskhJob('audit')
-        if (running?.status === 'running') setJobId(running.id)
+        if (running?.status === 'running') {
+          setJobId(running.id)
+          storeJobId(running.id)
+        } else {
+          storeJobId(null)
+        }
       } catch {
-        /* ignore */
+        storeJobId(null)
       }
     })()
   }, [jobId, setJobId])
@@ -543,12 +564,51 @@ export function AuditMessengerView({
     data: progress,
     isError: progressError,
     error: progressErr,
+    isFetching: progressFetching,
+    failureCount: progressFailureCount,
   } = useQuery({
     queryKey: ['cskh', 'audit-progress', jobId],
     queryFn: () => fetchAuditProgress(jobId!),
     enabled: !!jobId,
     refetchInterval: (query) => (query.state.data?.status === 'running' ? 1000 : false),
+    retry: cskhQueryRetry,
+    retryDelay: cskhQueryRetryDelay,
   })
+
+  const progressFinished = progress?.status === 'done' || progress?.status === 'failed'
+
+  useEffect(() => {
+    if (!progress || progress.status === 'running') return
+
+    if (progress.status === 'done') {
+      const count = progress.summary?.auditCount ?? progress.audits?.length ?? 0
+      const day = progress.summary?.auditDate
+      if (count > 0) {
+        setCompletionNotice(
+          `Hoàn tất ${count} hội thoại${day ? ` ngày ${formatAuditDateLabel(day)}` : ''}`
+        )
+      }
+      setJobId(null)
+      storeJobId(null)
+      void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
+      return
+    }
+
+    const savedCount = progress.summary?.auditCount ?? progress.audits?.length ?? 0
+    if (savedCount > 0) {
+      setJobId(null)
+      storeJobId(null)
+      void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
+    }
+  }, [progress, qc, setJobId])
+
+  useEffect(() => {
+    if (!progressError || !jobId || progressFetching) return
+    if (progressFailureCount < 4 && isTransientInfraError(getApiErrorMessage(progressErr))) return
+    setJobId(null)
+    storeJobId(null)
+    void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
+  }, [progressError, progressErr, progressFetching, progressFailureCount, jobId, qc, setJobId])
 
   useEffect(() => {
     if (progress?.summary?.auditDate) setAuditDate(progress.summary.auditDate)
@@ -557,12 +617,19 @@ export function AuditMessengerView({
   const { data: recentAudits, isLoading: recentLoading } = useQuery({
     queryKey: ['cskh', 'audits', 'recent'],
     queryFn: () => fetchCskhAudits({ limit: 200 }),
-    enabled: !jobId,
+    enabled: !jobId || progressFinished,
+    retry: cskhQueryRetry,
+    retryDelay: cskhQueryRetryDelay,
   })
+
+  useEffect(() => {
+    if (auditDate || recentLoading) return
+    const latest = recentAudits?.find((a) => a.metadata?.auditDate)?.metadata?.auditDate
+    setAuditDate(latest ?? vietnamTodayIso())
+  }, [auditDate, recentAudits, recentLoading])
 
   const isRunning = runMut.isPending || progress?.status === 'running'
   const isFailed = progress?.status === 'failed'
-  const isDone = progress?.status === 'done'
   const auditErrorMessage =
     toUserFacingError(
       progress?.error ||
@@ -573,9 +640,37 @@ export function AuditMessengerView({
   const auditCount = summary?.auditCount ?? progress?.audits?.length ?? 0
   const isFetchPhase = isRunning && summary?.phase === 'fetch'
   const isAuditPhase = isRunning && summary?.phase === 'audit'
-  const displayAudits = jobId ? (progress?.audits ?? []) : (recentAudits ?? [])
+  const displayAudits =
+    jobId && !progressFinished ? (progress?.audits ?? []) : (recentAudits ?? progress?.audits ?? [])
   const sortedAudits = [...displayAudits].sort((a, b) => a.score - b.score)
-  const selected = sortedAudits.find((a) => a.id === selectedId) ?? sortedAudits[0] ?? null
+  const filteredAudits = useMemo(() => {
+    const q = sidebarSearch.trim().toLowerCase()
+    if (!q) return sortedAudits
+    return sortedAudits.filter((row) => {
+      const name = displayCustomerName(row.customerName).toLowerCase()
+      const page = (row.metadata?.pageName ?? '').toLowerCase()
+      const agent = (row.agentName ?? '').toLowerCase()
+      return name.includes(q) || page.includes(q) || agent.includes(q)
+    })
+  }, [sortedAudits, sidebarSearch])
+  const selected =
+    filteredAudits.find((a) => a.id === selectedId) ??
+    sortedAudits.find((a) => a.id === selectedId) ??
+    filteredAudits[0] ??
+    sortedAudits[0] ??
+    null
+
+  const showTransientLoading =
+    (progressError && progressFetching && isTransientInfraError(auditErrorMessage)) ||
+    (recentLoading && !sortedAudits.length && !isRunning)
+
+  const errorKey = `${progress?.id ?? 'run'}-${auditErrorMessage}`
+  const showAuditError =
+    dismissedErrorKey !== errorKey &&
+    !showTransientLoading &&
+    (runMut.isError ||
+      (isFailed && sortedAudits.length === 0) ||
+      (progressError && sortedAudits.length === 0 && !recentLoading && !progressFetching))
 
   useEffect(() => {
     if (!sortedAudits.length) {
@@ -583,10 +678,10 @@ export function AuditMessengerView({
       return
     }
     if (!selectedId || !sortedAudits.some((a) => a.id === selectedId)) {
-      const first = sortedAudits[0]
+      const first = filteredAudits[0] ?? sortedAudits[0]
       if (first) setSelectedId(first.id)
     }
-  }, [sortedAudits, selectedId])
+  }, [sortedAudits, filteredAudits, selectedId])
 
   const auditDayLabel = summary?.auditDate
     ? formatAuditDateLabel(summary.auditDate)
@@ -631,11 +726,14 @@ export function AuditMessengerView({
     refetchOnWindowFocus: false,
   })
 
-  // Đồng bộ nền lần đầu (link hội thoại cũ) — không cần bấm nút
+  // Đồng bộ inbox nền — trì hoãn để không chen lấn lúc trang vừa load
   useEffect(() => {
-    void syncInboxFromGraph().then(() => {
-      void qc.invalidateQueries({ queryKey: ['cskh', 'inbox'] })
-    })
+    const timer = window.setTimeout(() => {
+      void syncInboxFromGraph()
+        .then(() => qc.invalidateQueries({ queryKey: ['cskh', 'inbox'] }))
+        .catch(() => {})
+    }, 2500)
+    return () => window.clearTimeout(timer)
   }, [qc])
 
   const inboxConv = useMemo(
@@ -757,23 +855,7 @@ export function AuditMessengerView({
               {sortedAudits.length} hội thoại · điểm thấp → cao
             </span>
           )}
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-              inboxLive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-            }`}
-          >
-            <span className="relative flex h-2 w-2">
-              {inboxLive && (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              )}
-              <span
-                className={`relative inline-flex h-2 w-2 rounded-full ${
-                  inboxLive ? 'bg-emerald-500' : 'bg-slate-400'
-                }`}
-              />
-            </span>
-            {inboxLive ? 'Realtime' : 'Đang kết nối…'}
-          </span>
+          <CskhConnectionBadge connected={inboxLive} />
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -799,13 +881,14 @@ export function AuditMessengerView({
               Hủy
             </button>
           )}
-          {(isFailed || progressError) && (
+          {(isFailed || progressError) && sortedAudits.length === 0 && (
             <button
               type="button"
               onClick={() => {
                 const date = auditDate || summary?.auditDate || vietnamTodayIso()
                 setJobId(null)
                 storeJobId(null)
+                setDismissedErrorKey(null)
                 runMut.mutate({ auditDate: date, force: true })
               }}
               className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-700"
@@ -816,19 +899,47 @@ export function AuditMessengerView({
         </div>
       </CskhToolbar>
 
-      {(isFailed || progressError || runMut.isError) && (
-        <p className="mx-4 mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 sm:mx-5">
-          {auditErrorMessage}
-        </p>
+      {showTransientLoading && (
+        <CskhNoticeBanner
+          tone="info"
+          title="Đang kết nối hệ thống"
+          message="Máy chủ vừa khởi động — đang tải lại dữ liệu audit, vui lòng đợi vài giây."
+        />
       )}
 
-      {isDone && auditCount > 0 && (
-        <p className="mx-4 mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 sm:mx-5">
-          Hoàn tất {auditCount} hội thoại ngày {auditDayLabel}
-        </p>
+      {showAuditError && (
+        <CskhNoticeBanner
+          tone="error"
+          title="Không chạy được audit"
+          message={auditErrorMessage}
+          onDismiss={() => setDismissedErrorKey(errorKey)}
+          action={
+            <button
+              type="button"
+              onClick={() => {
+                const date = auditDate || summary?.auditDate || vietnamTodayIso()
+                setDismissedErrorKey(null)
+                setJobId(null)
+                storeJobId(null)
+                runMut.mutate({ auditDate: date, force: true })
+              }}
+              className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
+            >
+              Thử chạy lại
+            </button>
+          }
+        />
       )}
 
-      {recentLoading && !sortedAudits.length && !isRunning ? (
+      {completionNotice && (
+        <CskhNoticeBanner
+          tone="success"
+          message={completionNotice}
+          onDismiss={() => setCompletionNotice(null)}
+        />
+      )}
+
+      {recentLoading && !sortedAudits.length && !isRunning && !showTransientLoading ? (
         <CskhLoading label="Đang tải kết quả audit…" />
       ) : isRunning && !sortedAudits.length ? (
         <CskhAuditProgressPanel auditDayLabel={auditDayLabel} summary={summary} />
@@ -844,9 +955,30 @@ export function AuditMessengerView({
           <MessengerWorkspace
             sidebar={
               <>
-                <MessengerSidebarHeader title={`Hội thoại (${sortedAudits.length})`} />
+                <MessengerSidebarHeader
+                  title={`Hội thoại (${sortedAudits.length})`}
+                  search={
+                    sortedAudits.length > 8 ? (
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="search"
+                          value={sidebarSearch}
+                          onChange={(e) => setSidebarSearch(e.target.value)}
+                          placeholder="Tìm khách, page, nhân viên…"
+                          className="w-full rounded-xl border border-indigo-100 bg-white py-2 pl-9 pr-3 text-xs shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                        />
+                      </div>
+                    ) : undefined
+                  }
+                />
                 <ul className="flex-1 overflow-y-auto">
-                  {sortedAudits.map((row) => {
+                  {filteredAudits.length === 0 && sidebarSearch.trim() ? (
+                    <li className="px-4 py-8 text-center text-sm text-slate-500">
+                      Không tìm thấy &quot;{sidebarSearch.trim()}&quot;
+                    </li>
+                  ) : null}
+                  {filteredAudits.map((row) => {
                     const active = row.id === selected?.id
                     const meta = row.metadata
                     const name = displayCustomerName(row.customerName)
@@ -907,9 +1039,6 @@ export function AuditMessengerView({
                         ? ` · ${formatAuditDateLabel(selected.metadata.auditDate)}`
                         : ''
                     }`}
-                    avatarLetter={(
-                      displayCustomerName(selected.customerName).charAt(0) || '?'
-                    ).toUpperCase()}
                     pictureUrl={resolveCustomerPicture(selected, inboxConv)}
                     pageId={selected.metadata?.pageId ?? inboxConv?.pageId}
                     psid={selected.metadata?.participantPsid ?? inboxConv?.participantPsid}
@@ -925,17 +1054,8 @@ export function AuditMessengerView({
                     {inboxConv ? (
                       <div className="space-y-3">
                         <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-600">
-                          <span className="relative flex h-2 w-2">
-                            {inboxLive && (
-                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                            )}
-                            <span
-                              className={`relative inline-flex h-2 w-2 rounded-full ${
-                                inboxLive ? 'bg-emerald-500' : 'bg-slate-400'
-                              }`}
-                            />
-                          </span>
-                          {inboxLive ? 'Chat live · Realtime' : 'Chat live · đang kết nối'}
+                          <CskhConnectionBadge connected={inboxLive} />
+                          Chat live
                         </p>
                         {liveMsgQuery.isLoading && liveMessages.length === 0 ? (
                           <p className="text-sm text-slate-500">Đang tải tin nhắn…</p>

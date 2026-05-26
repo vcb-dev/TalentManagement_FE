@@ -210,6 +210,22 @@ export async function fetchCskhAudits(params?: {
   return data
 }
 
+export interface DeepSeekBalanceResponse {
+  isAvailable?: boolean
+  currency?: string
+  totalBalance?: number
+  grantedBalance?: number
+  toppedUpBalance?: number
+  model?: string
+  error?: boolean
+  message?: string
+}
+
+export async function fetchDeepSeekBalance(): Promise<DeepSeekBalanceResponse> {
+  const { data } = await apiClient.get<DeepSeekBalanceResponse>('/cskh/ai/balance')
+  return data
+}
+
 export interface CskhInboxConversation {
   id: string
   pageId: string

@@ -20,6 +20,18 @@ function isTechnical(message: string): boolean {
   return TECHNICAL_PATTERNS.some((re) => re.test(msg))
 }
 
+/** Lỗi hạ tầng tạm thời (DB/mạng) — thường hết sau khi server khởi động xong. */
+export function isTransientInfraError(raw: string | null | undefined): boolean {
+  const msg = (raw ?? '').trim()
+  if (!msg) return false
+  const lower = msg.toLowerCase()
+  return (
+    lower.includes("can't reach database") ||
+    /prisma/i.test(msg) ||
+    /econnrefused|etimedout|enotfound|network error/i.test(lower)
+  )
+}
+
 /** Ẩn lỗi kỹ thuật — chỉ hiện câu dễ hiểu cho người dùng CSKH. */
 export function toUserFacingError(raw: string | null | undefined): string {
   const msg = (raw ?? '').trim()

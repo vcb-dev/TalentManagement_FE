@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, X, AlertCircle, AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { cskhCustomerAvatarSrc } from './messageMedia'
 
@@ -193,7 +193,7 @@ export function CskhTokenStat({
         {hasData ? totalTokens.toLocaleString('vi-VN') : '—'}
       </p>
       <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-        Token {model ? `· ${model}` : ''}
+        Token audit {model ? `· ${model}` : ''}
       </p>
       {hasData ? (
         <p className="mt-0.5 text-[10px] leading-snug text-slate-400">
@@ -207,6 +207,94 @@ export function CskhTokenStat({
         </p>
       ) : (
         <p className="mt-0.5 text-[10px] text-slate-400">Chạy audit để xem</p>
+      )}
+    </div>
+  )
+}
+
+export function formatDeepSeekBalance(amount: number, currency?: string) {
+  const cur = (currency || 'USD').toUpperCase()
+  const formatted = amount.toLocaleString('vi-VN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  if (cur === 'CNY') return `¥${formatted}`
+  if (cur === 'USD') return `$${formatted}`
+  return `${formatted} ${cur}`
+}
+
+export function CskhDeepSeekBalanceStat({
+  totalBalance,
+  currency,
+  model,
+  isAvailable,
+  grantedBalance,
+  toppedUpBalance,
+  loading,
+  error,
+}: {
+  totalBalance?: number
+  currency?: string
+  model?: string
+  isAvailable?: boolean
+  grantedBalance?: number
+  toppedUpBalance?: number
+  loading?: boolean
+  error?: boolean
+}) {
+  const hasBalance = totalBalance != null && !error
+  const lowBalance = hasBalance && totalBalance < 5
+
+  return (
+    <div
+      className={cn(
+        'min-w-[8.5rem] rounded-xl border px-4 py-2.5 shadow-sm backdrop-blur-sm',
+        error && 'border-slate-200/80 bg-white/90',
+        !error && lowBalance && 'border-amber-200/80 bg-amber-50/90',
+        !error && !lowBalance && isAvailable === false && 'border-rose-200/80 bg-rose-50/90',
+        !error && !lowBalance && isAvailable !== false && 'border-emerald-200/80 bg-emerald-50/90'
+      )}
+    >
+      <p
+        className={cn(
+          'text-lg font-bold tabular-nums',
+          error && 'text-slate-500',
+          !error && lowBalance && 'text-amber-700',
+          !error && !lowBalance && isAvailable === false && 'text-rose-700',
+          !error && !lowBalance && isAvailable !== false && 'text-emerald-700'
+        )}
+      >
+        {loading ? (
+          <Loader2 className="inline h-5 w-5 animate-spin" />
+        ) : hasBalance ? (
+          formatDeepSeekBalance(totalBalance, currency)
+        ) : (
+          '—'
+        )}
+      </p>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        Số dư DeepSeek {model ? `· ${model}` : ''}
+      </p>
+      {loading ? (
+        <p className="mt-0.5 text-[10px] text-slate-400">Đang tải…</p>
+      ) : hasBalance ? (
+        <p className="mt-0.5 text-[10px] leading-snug text-slate-400">
+          {isAvailable === false ? 'Hết số dư · cần nạp thêm' : 'Còn khả dụng'}
+          {(grantedBalance ?? 0) > 0 || (toppedUpBalance ?? 0) > 0 ? (
+            <>
+              <br />
+              {(grantedBalance ?? 0) > 0
+                ? `Tặng ${formatDeepSeekBalance(grantedBalance ?? 0, currency)}`
+                : null}
+              {(grantedBalance ?? 0) > 0 && (toppedUpBalance ?? 0) > 0 ? ' · ' : null}
+              {(toppedUpBalance ?? 0) > 0
+                ? `Nạp ${formatDeepSeekBalance(toppedUpBalance ?? 0, currency)}`
+                : null}
+            </>
+          ) : null}
+        </p>
+      ) : (
+        <p className="mt-0.5 text-[10px] text-slate-400">Không lấy được số dư</p>
       )}
     </div>
   )
@@ -360,6 +448,84 @@ export function CskhLoading({ label = 'Đang tải…' }: { label?: string }) {
         <Loader2 className="relative h-8 w-8 animate-spin text-indigo-500" />
       </div>
       <p className="text-sm font-medium">{label}</p>
+    </div>
+  )
+}
+
+export function CskhConnectionBadge({ connected }: { connected: boolean }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+        connected ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+      )}
+      title={connected ? 'Nhận tin nhắn realtime qua webhook' : 'Đang thử kết nối realtime…'}
+    >
+      <span className="relative flex h-1.5 w-1.5">
+        {connected && (
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+        )}
+        <span
+          className={cn(
+            'relative inline-flex h-1.5 w-1.5 rounded-full',
+            connected ? 'bg-emerald-500' : 'bg-slate-400'
+          )}
+        />
+      </span>
+      {connected ? 'Live' : 'Offline'}
+    </span>
+  )
+}
+
+export function CskhNoticeBanner({
+  tone = 'error',
+  title,
+  message,
+  onDismiss,
+  action,
+}: {
+  tone?: 'error' | 'warn' | 'success' | 'info'
+  title?: string
+  message: string
+  onDismiss?: () => void
+  action?: ReactNode
+}) {
+  const Icon =
+    tone === 'success'
+      ? CheckCircle2
+      : tone === 'warn'
+        ? AlertTriangle
+        : tone === 'info'
+          ? Info
+          : AlertCircle
+
+  return (
+    <div
+      className={cn(
+        'mx-4 mt-3 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm sm:mx-5',
+        tone === 'error' && 'border-rose-200 bg-rose-50 text-rose-800',
+        tone === 'warn' && 'border-amber-200 bg-amber-50 text-amber-900',
+        tone === 'success' && 'border-emerald-200 bg-emerald-50 text-emerald-800',
+        tone === 'info' && 'border-indigo-200 bg-indigo-50 text-indigo-800'
+      )}
+      role={tone === 'error' ? 'alert' : 'status'}
+    >
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 opacity-80" />
+      <div className="min-w-0 flex-1">
+        {title ? <p className="font-semibold">{title}</p> : null}
+        <p className={cn(title && 'mt-0.5', 'leading-relaxed')}>{message}</p>
+        {action ? <div className="mt-2">{action}</div> : null}
+      </div>
+      {onDismiss ? (
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="shrink-0 rounded-lg p-1 opacity-60 hover:bg-black/5 hover:opacity-100"
+          aria-label="Đóng"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -623,7 +789,6 @@ export function ChatThreadHeader({
   name,
   subtitle,
   badge,
-  avatarLetter,
   pictureUrl,
   pageId,
   psid,
@@ -631,7 +796,6 @@ export function ChatThreadHeader({
   name: string
   subtitle: string
   badge?: ReactNode
-  avatarLetter: string
   pictureUrl?: string | null
   pageId?: string | null
   psid?: string | null

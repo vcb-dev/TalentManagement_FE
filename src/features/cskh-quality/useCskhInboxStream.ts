@@ -14,9 +14,16 @@ export function useCskhInboxStream(enabled = true) {
 
     const base = (import.meta.env.VITE_API_URL || 'http://localhost:3003').replace(/\/$/, '')
     const es = new EventSource(`${base}/cskh/inbox/stream`, { withCredentials: true })
+    let disconnectTimer: ReturnType<typeof setTimeout> | null = null
 
-    es.onopen = () => setConnected(true)
-    es.onerror = () => setConnected(false)
+    es.onopen = () => {
+      if (disconnectTimer) clearTimeout(disconnectTimer)
+      setConnected(true)
+    }
+    es.onerror = () => {
+      if (disconnectTimer) clearTimeout(disconnectTimer)
+      disconnectTimer = setTimeout(() => setConnected(false), 4000)
+    }
     es.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data as string) as {
@@ -36,6 +43,7 @@ export function useCskhInboxStream(enabled = true) {
     }
 
     return () => {
+      if (disconnectTimer) clearTimeout(disconnectTimer)
       es.close()
       setConnected(false)
     }
