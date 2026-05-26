@@ -450,7 +450,7 @@ export function MemberClassesPanel() {
                           : 'Chưa điểm danh'}
                   </Badge>
                   <div className="pt-1">
-                    {s.attendance === 'PRESENT' || s.attendance === 'LATE' ? (
+                    {s.attendance === 'PRESENT' ? (
                       <Button
                         className={cn(
                           'h-10 w-full rounded-xl px-5 text-xs font-semibold uppercase tracking-wide shadow-lg transition-all',
@@ -565,7 +565,7 @@ export function MemberClassesPanel() {
                         </Badge>
                       </td>
                       <td className="px-8 py-5 text-right">
-                        {s.attendance === 'PRESENT' || s.attendance === 'LATE' ? (
+                        {s.attendance === 'PRESENT' ? (
                           <Button
                             className={cn(
                               'h-9 rounded-xl px-5 text-xs font-semibold uppercase tracking-wide shadow-lg transition-all',
