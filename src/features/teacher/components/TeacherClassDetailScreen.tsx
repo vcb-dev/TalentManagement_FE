@@ -11,9 +11,11 @@ import {
   Star,
   Edit3,
   ClipboardCheck,
+  CheckCircle2,
   FileDown,
   LayoutGrid,
   Table as TableIcon,
+  XCircle,
 } from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -59,6 +61,9 @@ import {
   useTeacherSchedules,
   useTeacherUpdateAttendance,
   useTeacherUpdateSchedule,
+  useApproveClassRegistration,
+  useRejectClassRegistration,
+  useTeacherClassRegistrations,
 } from '@/features/teacher/hooks'
 import { TeacherClassMemberCard } from './TeacherClassMemberCard'
 import type { ClassMemberRow } from './teacherClassMemberTypes'
@@ -137,9 +142,12 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const routeHash = useRouterState({ select: (s) => s.location.hash })
   const { data } = useTeacherClassDetail(classId)
   const { data: schedules = [] } = useTeacherSchedules(classId)
+  const { data: registrations = [] } = useTeacherClassRegistrations(classId)
   const createSchedule = useTeacherCreateSchedule(classId)
   const updateSchedule = useTeacherUpdateSchedule(classId)
   const deleteSchedule = useTeacherDeleteSchedule(classId)
+  const approveRegistration = useApproveClassRegistration(classId)
+  const rejectRegistration = useRejectClassRegistration(classId)
   const title = data?.name || `Lớp ${classId}`
   const members: ClassMemberRow[] = useMemo(
     () =>
@@ -177,6 +185,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const [evalModalOpen, setEvalModalOpen] = useState(false)
   const [evalTarget, setEvalTarget] = useState<{ userId: string; userName: string } | null>(null)
   const [viewEvalModalOpen, setViewEvalModalOpen] = useState(false)
+  const [rejectReasonById, setRejectReasonById] = useState<Record<string, string>>({})
 
   const updateAttendance = useTeacherUpdateAttendance(classId)
 
@@ -422,6 +431,84 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
               <div className="px-6 text-xs font-black uppercase tracking-widest text-slate-900">
                 Tất cả học viên
               </div>
+            </div>
+          </div>
+
+          <div className="mb-8 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-200/40">
+            <div className="flex flex-col gap-3 border-b border-slate-100 p-6 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
+                  Duyệt đăng ký
+                </p>
+                <h3 className="text-xl font-black text-slate-900">
+                  Học viên chờ vào lớp ({registrations.length})
+                </h3>
+              </div>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {registrations.length === 0 ? (
+                <p className="p-6 text-sm font-semibold text-slate-400">
+                  Chưa có đăng ký nào đang chờ duyệt.
+                </p>
+              ) : (
+                registrations.map((r) => (
+                  <div
+                    key={r.id}
+                    className="grid gap-4 p-5 lg:grid-cols-[1fr_280px] lg:items-center"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <EmployeeAvatar
+                        name={r.user.name}
+                        className="h-11 w-11 rounded-2xl shadow-sm ring-2 ring-background"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black text-slate-900">{r.user.name}</p>
+                        <p className="truncate text-xs font-semibold text-slate-500">
+                          {r.user.email} · {r.user.jobTitle || 'Chưa có vị trí'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Input
+                        value={rejectReasonById[r.id] ?? ''}
+                        onChange={(e) =>
+                          setRejectReasonById((prev) => ({ ...prev, [r.id]: e.target.value }))
+                        }
+                        placeholder="Lý do nếu từ chối"
+                        className="h-9 rounded-xl text-xs"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="flex-1 rounded-xl text-xs font-bold"
+                          disabled={approveRegistration.isPending}
+                          onClick={() => approveRegistration.mutate(r.id)}
+                        >
+                          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Duyệt
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 rounded-xl border-rose-200 text-xs font-bold text-rose-600"
+                          disabled={rejectRegistration.isPending}
+                          onClick={() => {
+                            const reason = (rejectReasonById[r.id] ?? '').trim()
+                            if (!reason) {
+                              toast.error('Vui lòng nhập lý do từ chối')
+                              return
+                            }
+                            rejectRegistration.mutate({ registrationId: r.id, reason })
+                          }}
+                        >
+                          <XCircle className="mr-1.5 h-3.5 w-3.5" /> Từ chối
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

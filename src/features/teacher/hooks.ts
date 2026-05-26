@@ -8,6 +8,7 @@ const teacherKeys = {
   classes: () => [...teacherKeys.all, 'classes'] as const,
   classDetail: (classId: string) => [...teacherKeys.all, 'class-detail', classId] as const,
   schedules: (classId: string) => [...teacherKeys.all, 'schedules', classId] as const,
+  registrations: (classId: string) => [...teacherKeys.all, 'registrations', classId] as const,
 }
 
 export function useTeacherClasses(enabled = true) {
@@ -120,5 +121,37 @@ export function useTeacherUpdateAttendance(classId: string) {
       toast.success('Đã lưu thông tin buổi học')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
+export function useTeacherClassRegistrations(classId: string) {
+  return useQuery({
+    queryKey: teacherKeys.registrations(classId),
+    queryFn: () => teacherApi.registrations(classId),
+    enabled: classId.length > 0,
+  })
+}
+
+export function useApproveClassRegistration(classId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (registrationId: string) => teacherApi.approveRegistration(classId, registrationId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: teacherKeys.registrations(classId) })
+      void qc.invalidateQueries({ queryKey: teacherKeys.classDetail(classId) })
+      void qc.invalidateQueries({ queryKey: teacherKeys.classes() })
+    },
+  })
+}
+
+export function useRejectClassRegistration(classId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { registrationId: string; reason: string }) =>
+      teacherApi.rejectRegistration(classId, input.registrationId, input.reason),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: teacherKeys.registrations(classId) })
+      void qc.invalidateQueries({ queryKey: teacherKeys.classes() })
+    },
   })
 }

@@ -44,7 +44,7 @@ import { Skeleton, SkeletonApprovalCardRow } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE, CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { Form } from '@/components/ui/form'
-import { TextareaController } from '@/components/ui/form-controllers'
+import { InputController, TextareaController } from '@/components/ui/form-controllers'
 
 const LEVEL_VI: Record<string, string> = {
   tap_su: 'Tập sự',
@@ -183,10 +183,13 @@ export function ChecklistStarScreen({
   const displaySubmission = selectedSubmission || lastSubmissionRef.current
   const submit = useSubmitEvidence()
   const fileRef = useRef<HTMLInputElement>(null)
-  const evidenceForm = useForm<{ note: string }>({ defaultValues: { note: '' } })
+  const evidenceForm = useForm<{ note: string; linkUrl: string; textContent: string }>({
+    defaultValues: { note: '', linkUrl: '', textContent: '' },
+  })
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const [selectedObjectiveId, setSelectedObjectiveId] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [submissionType, setSubmissionType] = useState<'FILE' | 'LINK' | 'TEXT'>('FILE')
   const [_, startTransition] = useTransition()
 
   const handleToggleTask = useCallback((id: string) => {
@@ -323,19 +326,36 @@ export function ChecklistStarScreen({
   }
 
   const handleUpload = () => {
-    if (!selectedFile) {
+    if (submissionType === 'FILE' && !selectedFile) {
       toast.error('Vui lòng chọn file trước khi nộp')
       return
     }
 
     const targetItemId = selectedObjective ? selectedObjective.id : currentItem?.id
     if (!targetItemId) return
+    const values = evidenceForm.getValues()
+    if (submissionType === 'LINK' && !/^https?:\/\/\S+$/i.test(values.linkUrl.trim())) {
+      toast.error('Vui lòng nhập link phản tư hợp lệ')
+      return
+    }
+    if (submissionType === 'TEXT' && values.textContent.trim().length < 20) {
+      toast.error('Nội dung phản tư cần ít nhất 20 ký tự')
+      return
+    }
 
     submit.mutate(
-      { levelId, starId, itemId: targetItemId, file: selectedFile },
+      {
+        levelId,
+        starId,
+        itemId: targetItemId,
+        file: selectedFile ?? undefined,
+        submissionType,
+        linkUrl: values.linkUrl.trim(),
+        textContent: values.textContent.trim(),
+      },
       {
         onSuccess: () => {
-          evidenceForm.reset({ note: '' })
+          evidenceForm.reset({ note: '', linkUrl: '', textContent: '' })
           setSelectedFile(null)
           if (fileRef.current) fileRef.current.value = ''
         },
@@ -621,6 +641,38 @@ export function ChecklistStarScreen({
                             accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4"
                             onChange={onFileChange}
                           />
+                          <div className="grid grid-cols-3 gap-2">
+                            {(['FILE', 'LINK', 'TEXT'] as const).map((type) => (
+                              <Button
+                                key={type}
+                                type="button"
+                                variant={submissionType === type ? 'default' : 'outline'}
+                                className="h-9 rounded-lg text-xs font-bold"
+                                onClick={() => setSubmissionType(type)}
+                              >
+                                {type === 'FILE' ? 'File' : type === 'LINK' ? 'Link' : 'Viết'}
+                              </Button>
+                            ))}
+                          </div>
+                          {submissionType === 'LINK' ? (
+                            <InputController
+                              control={evidenceForm.control}
+                              name="linkUrl"
+                              label="Link phản tư"
+                              placeholder="https://..."
+                              inputClassName="rounded-lg"
+                            />
+                          ) : null}
+                          {submissionType === 'TEXT' ? (
+                            <TextareaController
+                              control={evidenceForm.control}
+                              name="textContent"
+                              label="Nội dung phản tư"
+                              rows={6}
+                              placeholder="Viết phản tư trực tiếp tại hệ thống..."
+                              textareaClassName="w-full resize-y rounded-lg border border-gray-200 p-3 text-sm"
+                            />
+                          ) : null}
                           <TextareaController
                             control={evidenceForm.control}
                             name="note"
@@ -635,7 +687,11 @@ export function ChecklistStarScreen({
                             type="button"
                             variant="ghost"
                             className="w-full rounded-lg border-0 bg-gradient-to-br from-primary-600 to-primary-700 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all hover:bg-transparent hover:shadow-primary-600/35 active:scale-[0.98] disabled:opacity-50"
-                            disabled={!currentItem || submit.isPending || !selectedFile}
+                            disabled={
+                              !currentItem ||
+                              submit.isPending ||
+                              (submissionType === 'FILE' && !selectedFile)
+                            }
                             onClick={handleUpload}
                           >
                             {submit.isPending ? (
@@ -699,6 +755,38 @@ export function ChecklistStarScreen({
                               accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4"
                               onChange={onFileChange}
                             />
+                            <div className="grid grid-cols-3 gap-2">
+                              {(['FILE', 'LINK', 'TEXT'] as const).map((type) => (
+                                <Button
+                                  key={type}
+                                  type="button"
+                                  variant={submissionType === type ? 'default' : 'outline'}
+                                  className="h-9 rounded-lg text-xs font-bold"
+                                  onClick={() => setSubmissionType(type)}
+                                >
+                                  {type === 'FILE' ? 'File' : type === 'LINK' ? 'Link' : 'Viết'}
+                                </Button>
+                              ))}
+                            </div>
+                            {submissionType === 'LINK' ? (
+                              <InputController
+                                control={evidenceForm.control}
+                                name="linkUrl"
+                                label="Link phản tư"
+                                placeholder="https://..."
+                                inputClassName="rounded-lg"
+                              />
+                            ) : null}
+                            {submissionType === 'TEXT' ? (
+                              <TextareaController
+                                control={evidenceForm.control}
+                                name="textContent"
+                                label="Nội dung phản tư"
+                                rows={6}
+                                placeholder="Viết phản tư trực tiếp tại hệ thống..."
+                                textareaClassName="w-full resize-y rounded-lg border border-gray-200 p-3 text-sm"
+                              />
+                            ) : null}
                             <TextareaController
                               control={evidenceForm.control}
                               name="note"
@@ -713,7 +801,9 @@ export function ChecklistStarScreen({
                               type="button"
                               variant="ghost"
                               className="w-full rounded-lg border-0 bg-gradient-to-br from-primary-600 to-primary-700 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all hover:bg-transparent hover:shadow-primary-600/35 active:scale-[0.98] disabled:opacity-50"
-                              disabled={submit.isPending || !selectedFile}
+                              disabled={
+                                submit.isPending || (submissionType === 'FILE' && !selectedFile)
+                              }
                               onClick={handleUpload}
                             >
                               {submit.isPending ? (

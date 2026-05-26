@@ -28,6 +28,45 @@ export function useMyEnrolledClass(range?: { startDate?: string; endDate?: strin
   })
 }
 
+export function useAvailableLearningClasses() {
+  return useQuery({
+    queryKey: [...learningKeys.all, 'available-classes'],
+    queryFn: () => learningApi.availableClasses(),
+  })
+}
+
+export function useRegisterLearningClass() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (classId: string) => {
+      const res = await apiClient.post<unknown>(`/learning/classes/${classId}/register`)
+      return res.data
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: [...learningKeys.all, 'available-classes'] })
+      void qc.invalidateQueries({ queryKey: learningKeys.myEnrolledClass() })
+      toast.success('Đã gửi đăng ký lớp')
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err)),
+  })
+}
+
+export function useRegisterMakeupSchedule() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (scheduleId: string) => {
+      const res = await apiClient.post<unknown>(`/learning/makeup-schedules/${scheduleId}/register`)
+      return res.data
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: learningKeys.myEnrolledClass() })
+      void qc.invalidateQueries({ queryKey: [...learningKeys.all, 'available-classes'] })
+      toast.success('Đã đăng ký học bù')
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err)),
+  })
+}
+
 export function useLearningChecklist(levelId: string, starId: string, enabled = true) {
   return useQuery({
     queryKey: learningKeys.checklist(levelId, starId),
@@ -47,10 +86,21 @@ export function useStarSubmissions(starId: string) {
 export function useSubmitEvidence() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (input: { levelId: string; starId: string; itemId: string; file: File }) => {
+    mutationFn: async (input: {
+      levelId: string
+      starId: string
+      itemId: string
+      file?: File
+      submissionType?: 'FILE' | 'LINK' | 'TEXT'
+      linkUrl?: string
+      textContent?: string
+    }) => {
       const form = new FormData()
       form.append('itemId', input.itemId)
-      form.append('file', input.file)
+      form.append('submissionType', input.submissionType ?? 'FILE')
+      if (input.file) form.append('file', input.file)
+      if (input.linkUrl) form.append('linkUrl', input.linkUrl)
+      if (input.textContent) form.append('textContent', input.textContent)
       const res = await apiClient.post<unknown>(
         `/learning/levels/${input.levelId}/stars/${input.starId}/evidence`,
         form,

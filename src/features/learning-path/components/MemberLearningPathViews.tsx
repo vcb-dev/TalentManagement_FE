@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
-import { Eye, X, Star, Edit3, School, Calendar } from 'lucide-react'
+import { Eye, X, Star, Edit3, School, Calendar, Send, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { DateController } from '@/components/ui/form-controllers'
@@ -22,7 +22,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useMyEnrolledClass } from '@/features/learning-path/hooks'
+import {
+  useAvailableLearningClasses,
+  useMyEnrolledClass,
+  useRegisterLearningClass,
+  useRegisterMakeupSchedule,
+} from '@/features/learning-path/hooks'
 import type { MeEnrolledClass } from '@/features/learning-path/schemas'
 import { cn } from '@/lib/utils'
 import { SessionEvaluationModal } from '@/features/teacher/components/SessionEvaluationModal'
@@ -132,6 +137,77 @@ function MemberScheduleTableSkeleton() {
   )
 }
 
+function AvailableClassesSection({ currentClassId }: { currentClassId?: string | null }) {
+  const { data: classes = [], isLoading } = useAvailableLearningClasses()
+  const registerClass = useRegisterLearningClass()
+
+  if (isLoading) {
+    return <Skeleton className="h-48 w-full rounded-[2rem]" />
+  }
+
+  const rows = classes.filter((c) => c.id !== currentClassId)
+  if (!rows.length) return null
+
+  return (
+    <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.04)]">
+      <div className="border-b border-slate-50 px-8 py-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/60">
+          Đăng ký lớp
+        </p>
+        <h3 className="text-lg font-black text-slate-900">Lớp đang mở</h3>
+      </div>
+      <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
+        {rows.map((c) => (
+          <div
+            key={c.id}
+            className={cn(
+              'rounded-2xl border border-slate-100 bg-slate-50/50 p-4',
+              c.isNew && 'border-primary/30 bg-primary/5 ring-1 ring-primary/10'
+            )}
+          >
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black text-slate-900">{c.name}</p>
+                <p className="text-xs font-semibold text-slate-500">
+                  {c.memberCount}/{c.capacity} học viên · còn {c.seatsLeft} chỗ
+                </p>
+              </div>
+              {c.isNew ? (
+                <Badge className="shrink-0 border-0 bg-primary/10 text-primary">
+                  <Sparkles className="mr-1 h-3 w-3" /> Mới
+                </Badge>
+              ) : null}
+            </div>
+            <p className="mb-3 text-xs font-medium text-slate-500">
+              Giáo viên: {c.teacher?.name ?? 'Chưa gán'}
+            </p>
+            {c.rejectionReason ? (
+              <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600">
+                Từ chối: {c.rejectionReason}
+              </p>
+            ) : null}
+            <Button
+              type="button"
+              className="h-10 w-full rounded-xl text-xs font-bold"
+              disabled={!c.canRegister || registerClass.isPending}
+              onClick={() => registerClass.mutate(c.id)}
+            >
+              <Send className="mr-2 h-3.5 w-3.5" />
+              {c.registrationStatus === 'PENDING'
+                ? 'Đang chờ duyệt'
+                : c.registrationStatus === 'APPROVED'
+                  ? 'Đã tham gia'
+                  : c.canRegister
+                    ? 'Đăng ký lớp'
+                    : 'Không thể đăng ký'}
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function MemberClassesPanel() {
   const user = useAuthStore((s) => s.user)
   const filterForm = useForm<{ startDate: string; endDate: string }>({
@@ -149,6 +225,8 @@ export function MemberClassesPanel() {
   const hasDateFilter = Boolean(scheduleRange.startDate || scheduleRange.endDate)
 
   const { data, isLoading, isError, isFetching } = useMyEnrolledClass(scheduleRange)
+  const { data: availableClasses = [] } = useAvailableLearningClasses()
+  const registerMakeup = useRegisterMakeupSchedule()
   const [membersOpen, setMembersOpen] = useState(false)
   const [evalModalOpen, setEvalModalOpen] = useState(false)
   const [evalTarget, setEvalTarget] = useState<{ scheduleId: string; topic: string } | null>(null)
@@ -174,16 +252,29 @@ export function MemberClassesPanel() {
 
   if (!cls) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-slate-200 bg-slate-50/50 py-16 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-slate-300 shadow-sm ring-1 ring-slate-100">
-          <School className="h-8 w-8" />
+      <div className="space-y-6">
+        <div className="flex flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-slate-200 bg-slate-50/50 py-16 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-slate-300 shadow-sm ring-1 ring-slate-100">
+            <School className="h-8 w-8" />
+          </div>
+          <p className="mt-4 text-sm font-bold text-slate-500">Bạn chưa được xếp vào lớp nào</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Khi quản lý gán lớp, thông tin sẽ hiển thị tại đây.
+          </p>
         </div>
-        <p className="mt-4 text-sm font-bold text-slate-500">Bạn chưa được xếp vào lớp nào</p>
-        <p className="mt-1 text-xs text-slate-400">
-          Khi quản lý gán lớp, thông tin sẽ hiển thị tại đây.
-        </p>
+        <AvailableClassesSection />
       </div>
     )
+  }
+
+  const makeupCandidatesByTopic = new Map<string, Array<(typeof availableClasses)[number]>>()
+  for (const c of availableClasses) {
+    if (c.id === cls.id || c.seatsLeft <= 0) continue
+    for (const s of c.schedules) {
+      const list = makeupCandidatesByTopic.get(s.topic) ?? []
+      list.push({ ...c, schedules: [s] })
+      makeupCandidatesByTopic.set(s.topic, list)
+    }
   }
 
   return (
@@ -215,6 +306,59 @@ export function MemberClassesPanel() {
           </div>
         </div>
       </div>
+
+      {cls.makeups.length > 0 ? (
+        <div className="rounded-[2rem] border border-amber-200 bg-amber-50/70 p-5 shadow-sm">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">
+            Buổi cần học lại
+          </p>
+          <div className="mt-3 space-y-3">
+            {cls.makeups.map((m) => {
+              const candidates = makeupCandidatesByTopic.get(m.originalTopic) ?? []
+              return (
+                <div key={m.id} className="rounded-2xl bg-white p-4 ring-1 ring-amber-100">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-slate-900">{m.originalTopic}</p>
+                      <p className="text-xs font-semibold text-amber-700">
+                        {m.status === 'REGISTERED' && m.makeupSchedule
+                          ? `Đã đăng ký học bù: ${m.makeupClassName} · ${m.makeupSchedule.dateIso} ${m.makeupSchedule.startTime}`
+                          : 'Bạn đã vắng buổi này và cần học bù.'}
+                      </p>
+                    </div>
+                    {m.status === 'PENDING' ? (
+                      <div className="flex flex-wrap gap-2">
+                        {candidates.length ? (
+                          candidates.map((c) => {
+                            const s = c.schedules[0]
+                            if (!s) return null
+                            return (
+                              <Button
+                                key={`${c.id}-${s.id}`}
+                                type="button"
+                                size="sm"
+                                className="rounded-xl text-xs font-bold"
+                                disabled={registerMakeup.isPending}
+                                onClick={() => registerMakeup.mutate(s.id)}
+                              >
+                                Học bù {c.name} · {s.dateIso}
+                              </Button>
+                            )
+                          })
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-400">
+                            Chưa có lớp khác còn chỗ cho cùng buổi học.
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.04)]">
         <div className="border-b border-slate-50 bg-slate-50/30 px-8 py-5">
@@ -271,9 +415,7 @@ export function MemberClassesPanel() {
               cls.schedules.map((s) => (
                 <div key={s.id} className="space-y-3 p-4">
                   <div>
-                    <p className="text-xs font-bold text-slate-900">
-                      {formatDateIsoVi(s.dateIso)}
-                    </p>
+                    <p className="text-xs font-bold text-slate-900">{formatDateIsoVi(s.dateIso)}</p>
                     <p className="text-xs font-bold text-slate-400">
                       {s.startTime} - {s.endTime}
                     </p>
@@ -526,6 +668,8 @@ export function MemberClassesPanel() {
           </div>
         </div>
       </Modal>
+
+      <AvailableClassesSection currentClassId={cls.id} />
     </div>
   )
 }

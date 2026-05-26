@@ -12,6 +12,7 @@ import {
   meEnrolledClassResponseSchema,
   meLearningPathSchema,
   submissionApiSchema,
+  availableLearningClassSchema,
 } from './schemas'
 
 export const learningApi = {
@@ -59,5 +60,14 @@ export const learningApi = {
       params: Object.keys(params).length ? params : undefined,
     })
     return safeParse(meEnrolledClassResponseSchema, res.data, 'GET /me/learning-class')
+  },
+
+  availableClasses: async () => {
+    const res = await apiClient.get<unknown>('/learning/classes/available')
+    return safeParse(
+      z.array(availableLearningClassSchema),
+      res.data,
+      'GET /learning/classes/available'
+    )
   },
 }

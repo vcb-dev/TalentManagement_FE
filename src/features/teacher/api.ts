@@ -5,6 +5,7 @@ import {
   teacherClassApiSchema,
   teacherClassDetailApiSchema,
   teacherClassScheduleApiSchema,
+  teacherClassRegistrationApiSchema,
   teacherGradeResponseSchema,
 } from './schemas'
 
@@ -102,5 +103,29 @@ export const teacherApi = {
       res.data,
       'POST /teacher/classes/:id/schedules/:scheduleId/attendance'
     )
+  },
+
+  registrations: async (classId: string) => {
+    const res = await apiClient.get<unknown>(`/teacher/classes/${classId}/registrations`)
+    return safeParse(
+      z.array(teacherClassRegistrationApiSchema),
+      res.data,
+      'GET /teacher/classes/:id/registrations'
+    )
+  },
+
+  approveRegistration: async (classId: string, registrationId: string) => {
+    const res = await apiClient.post<unknown>(
+      `/teacher/classes/${classId}/registrations/${registrationId}/approve`
+    )
+    return safeParse(z.object({ ok: z.boolean() }), res.data, 'POST approve registration')
+  },
+
+  rejectRegistration: async (classId: string, registrationId: string, reason: string) => {
+    const res = await apiClient.post<unknown>(
+      `/teacher/classes/${classId}/registrations/${registrationId}/reject`,
+      { reason }
+    )
+    return safeParse(z.object({ ok: z.boolean() }), res.data, 'POST reject registration')
   },
 }

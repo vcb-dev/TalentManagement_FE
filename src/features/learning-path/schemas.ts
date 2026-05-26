@@ -25,6 +25,9 @@ export const submissionApiSchema = z.object({
   status: z.enum(['PENDING', 'ACCEPTED', 'REJECTED', 'GRADED']),
   fileName: z.string(),
   url: z.string().optional(),
+  submissionType: z.enum(['FILE', 'LINK', 'TEXT']).optional(),
+  linkUrl: z.string().nullable().optional(),
+  textContent: z.string().nullable().optional(),
   score: z.number().nullish(),
   managerComment: z.string().nullish(),
   createdAt: z.string().datetime(),
@@ -45,6 +48,7 @@ const scheduleSlotSchema = z.object({
   topic: z.string(),
   location: z.string().nullable(),
   attendance: z.string().optional(),
+  makeupStatus: z.string().nullable().optional(),
   isEvaluated: z.boolean().optional(),
   examQuestions: z.any().nullable().optional(),
 })
@@ -66,6 +70,22 @@ const enrolledClassSchema = z.object({
   teacherName: z.string(),
   examQuestions: z.any().nullable().optional(),
   schedules: z.array(scheduleSlotSchema),
+  makeups: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        status: z.string(),
+        originalScheduleId: z.string().uuid(),
+        originalTopic: z.string(),
+        makeupClassId: z.string().uuid().nullable(),
+        makeupClassName: z.string().nullable(),
+        makeupScheduleId: z.string().uuid().nullable(),
+        makeupSchedule: scheduleSlotSchema
+          .pick({ id: true, dateIso: true, startTime: true, endTime: true, topic: true })
+          .nullable(),
+      })
+    )
+    .default([]),
   members: z.array(enrolledMemberSchema),
 })
 
@@ -76,6 +96,39 @@ export const meEnrolledClassResponseSchema = z.object({
 
 export type MeEnrolledClass = z.infer<typeof enrolledClassSchema>
 export type MeEnrolledClassSchedule = z.infer<typeof scheduleSlotSchema>
+
+export const availableLearningClassSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  levelFrom: z.string(),
+  levelTo: z.string(),
+  status: z.enum(['open', 'full', 'closed']),
+  capacity: z.number().int(),
+  memberCount: z.number().int().nonnegative(),
+  seatsLeft: z.number().int().nonnegative(),
+  isNew: z.boolean(),
+  canRegister: z.boolean(),
+  registrationStatus: z.string().nullable(),
+  rejectionReason: z.string().nullable().optional(),
+  teacher: z
+    .object({
+      userId: z.string().uuid(),
+      name: z.string(),
+      email: z.string(),
+    })
+    .nullable(),
+  schedules: z.array(
+    z.object({
+      id: z.string().uuid(),
+      dateIso: z.string(),
+      startTime: z.string(),
+      endTime: z.string(),
+      topic: z.string(),
+      location: z.string().nullable(),
+    })
+  ),
+  createdAt: z.string().datetime(),
+})
 
 export const meLearningPathSchema = z.object({
   careerLevel: levelCodeSchema,

@@ -108,6 +108,7 @@ export const managerClassScheduleApiSchema = z.object({
   examQuestions: z.any().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+  isNew: z.boolean().optional(),
 })
 
 export const managerClassApiSchema = z.object({

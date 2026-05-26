@@ -8,6 +8,7 @@ export const teacherClassApiSchema = z.object({
   examDate: z.string().datetime().nullable(),
   status: z.enum(['open', 'full', 'closed']),
   memberCount: z.number().int().nonnegative(),
+  pendingRegistrationCount: z.number().int().nonnegative().optional(),
 })
 
 export const teacherClassMemberApiSchema = z.object({
@@ -49,4 +50,19 @@ export const teacherClassScheduleApiSchema = z.object({
   evaluatedUserIds: z.array(z.string()).optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+})
+
+export const teacherClassRegistrationApiSchema = z.object({
+  id: z.string().uuid(),
+  classId: z.string().uuid(),
+  userId: z.string().uuid(),
+  status: z.string(),
+  reason: z.string().nullable().optional(),
+  createdAt: z.string().datetime(),
+  user: z.object({
+    userId: z.string().uuid(),
+    name: z.string(),
+    email: z.string(),
+    jobTitle: z.string().nullable(),
+  }),
 })

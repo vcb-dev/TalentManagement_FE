@@ -175,7 +175,7 @@ export function ManagerClassesScreen() {
         levelFrom: values.levelFrom,
         levelTo: NEXT_LEVEL_BY_FROM[values.levelFrom],
         status: 'open',
-        memberUserIds: selectedCreateMembers.map((m) => m.userId),
+        memberUserIds: [],
         teacherUserId: selectedCreateTeacher?.userId ?? null,
       },
       {
@@ -434,91 +434,105 @@ export function ManagerClassesScreen() {
                         )}
                       </div>
 
-                      <div className="search-dropdown-container relative md:col-span-2">
-                        <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                          Thêm nhân sự cho lớp (theo cấp đã chọn)
-                        </label>
-                        <div className="relative">
-                          <Input
-                            value={createMemberQuery}
-                            onChange={(e) => setCreateMemberQuery(e.target.value)}
-                            placeholder="Gõ tên/email để tìm nhân sự..."
-                            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
-                          />
-                          {createMemberQuery.trim().length > 0 && (
-                            <div className="absolute z-50 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
-                              {fetchingCreateOptions ? (
-                                <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  Đang tìm...
+                      {false ? (
+                        <>
+                          <div className="search-dropdown-container relative md:col-span-2">
+                            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                              Thêm nhân sự cho lớp (theo cấp đã chọn)
+                            </label>
+                            <div className="relative">
+                              <Input
+                                value={createMemberQuery}
+                                onChange={(e) => setCreateMemberQuery(e.target.value)}
+                                placeholder="Gõ tên/email để tìm nhân sự..."
+                                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+                              />
+                              {createMemberQuery.trim().length > 0 && (
+                                <div className="absolute z-50 mt-1 max-h-52 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                                  {fetchingCreateOptions ? (
+                                    <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      Đang tìm...
+                                    </div>
+                                  ) : createMemberOptions.filter(
+                                      (opt) =>
+                                        !selectedCreateMembers.some(
+                                          (m) => m.userId === opt.userId
+                                        ) && opt.userId !== selectedCreateTeacher?.userId
+                                    ).length === 0 ? (
+                                    <div className="px-2 py-2 text-xs text-muted-foreground">
+                                      Không có kết quả phù hợp
+                                    </div>
+                                  ) : (
+                                    createMemberOptions
+                                      .filter(
+                                        (opt) =>
+                                          !selectedCreateMembers.some(
+                                            (m) => m.userId === opt.userId
+                                          ) && opt.userId !== selectedCreateTeacher?.userId
+                                      )
+                                      .map((opt) => (
+                                        <Button
+                                          key={opt.userId}
+                                          type="button"
+                                          variant="ghost"
+                                          className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
+                                          onMouseDown={() => {
+                                            setSelectedCreateMembers((prev) => [...prev, opt])
+                                            setCreateMemberQuery('')
+                                          }}
+                                        >
+                                          <p className="font-semibold text-foreground">
+                                            {opt.name}
+                                          </p>
+                                          <p className="text-muted-foreground">{opt.email}</p>
+                                        </Button>
+                                      ))
+                                  )}
                                 </div>
-                              ) : createMemberOptions.filter(
-                                  (opt) =>
-                                    !selectedCreateMembers.some((m) => m.userId === opt.userId) &&
-                                    opt.userId !== selectedCreateTeacher?.userId
-                                ).length === 0 ? (
-                                <div className="px-2 py-2 text-xs text-muted-foreground">
-                                  Không có kết quả phù hợp
-                                </div>
-                              ) : (
-                                createMemberOptions
-                                  .filter(
-                                    (opt) =>
-                                      !selectedCreateMembers.some((m) => m.userId === opt.userId) &&
-                                      opt.userId !== selectedCreateTeacher?.userId
-                                  )
-                                  .map((opt) => (
-                                    <Button
-                                      key={opt.userId}
-                                      type="button"
-                                      variant="ghost"
-                                      className="flex h-auto w-full flex-col items-start rounded px-2 py-2 text-left text-xs font-normal hover:bg-primary/10"
-                                      onMouseDown={() => {
-                                        setSelectedCreateMembers((prev) => [...prev, opt])
-                                        setCreateMemberQuery('')
-                                      }}
-                                    >
-                                      <p className="font-semibold text-foreground">{opt.name}</p>
-                                      <p className="text-muted-foreground">{opt.email}</p>
-                                    </Button>
-                                  ))
                               )}
                             </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <p className="mb-1 text-xs font-semibold text-muted-foreground">
-                          Nhân sự đã chọn ({selectedCreateMembers.length})
-                        </p>
-                        {selectedCreateMembers.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">Chưa chọn nhân sự nào.</p>
-                        ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {selectedCreateMembers.map((m) => (
-                              <span
-                                key={m.userId}
-                                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs"
-                              >
-                                {m.name}
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-5 w-5 min-h-0 shrink-0 rounded p-0.5 hover:bg-primary/20"
-                                  onClick={() =>
-                                    setSelectedCreateMembers((prev) =>
-                                      prev.filter((x) => x.userId !== m.userId)
-                                    )
-                                  }
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </span>
-                            ))}
                           </div>
-                        )}
+
+                          <div className="md:col-span-2">
+                            <p className="mb-1 text-xs font-semibold text-muted-foreground">
+                              Nhân sự đã chọn ({selectedCreateMembers.length})
+                            </p>
+                            {selectedCreateMembers.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">
+                                Chưa chọn nhân sự nào.
+                              </p>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {selectedCreateMembers.map((m) => (
+                                  <span
+                                    key={m.userId}
+                                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs"
+                                  >
+                                    {m.name}
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5 min-h-0 shrink-0 rounded p-0.5 hover:bg-primary/20"
+                                      onClick={() =>
+                                        setSelectedCreateMembers((prev) =>
+                                          prev.filter((x) => x.userId !== m.userId)
+                                        )
+                                      }
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      ) : null}
+                      <div className="rounded-xl border border-dashed border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-semibold text-primary md:col-span-2">
+                        Học viên sẽ tự đăng ký lớp sau khi lớp được tạo. Giáo viên phụ trách duyệt
+                        hoặc từ chối từng đăng ký.
                       </div>
                       <div className="mt-5 flex justify-end gap-2 md:col-span-2">
                         <Button

@@ -126,10 +126,7 @@ export function ClassCard({ row, onEdit, onDelete }: ClassCardProps) {
           <div className="flex items-center gap-2">
             {isCollapsed && (
               <span
-                className={cn(
-                  'rounded-full px-2 py-0.5 text-xs font-bold uppercase',
-                  st.className
-                )}
+                className={cn('rounded-full px-2 py-0.5 text-xs font-bold uppercase', st.className)}
               >
                 {st.label}
               </span>
@@ -192,16 +189,18 @@ export function ClassCard({ row, onEdit, onDelete }: ClassCardProps) {
                         <p className="truncate font-semibold text-foreground">{m.name}</p>
                         <p className="truncate text-muted-foreground">{m.email}</p>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                        onClick={() => removeMember.mutate({ classId: row.id, userId: m.userId })}
-                        title="Xóa khỏi lớp"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
+                      {false ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          onClick={() => removeMember.mutate({ classId: row.id, userId: m.userId })}
+                          title="Xóa khỏi lớp"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : null}
                     </div>
                   ))}
                   {allMembers.length > 5 && (
@@ -222,49 +221,55 @@ export function ClassCard({ row, onEdit, onDelete }: ClassCardProps) {
             })()}
           </div>
 
-          <div className="search-dropdown-container relative mt-3">
-            <Input
-              value={query}
-              onFocus={() => setShowDropdown(true)}
-              onChange={(e) => {
-                setQuery(e.target.value)
-                setShowDropdown(true)
-              }}
-              placeholder="Gõ tên/email để thêm nhân sự..."
-              className="h-auto w-full rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
-            />
-            {showDropdown && query.trim().length > 0 && (
-              <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
-                {fetchingMemberOptions ? (
-                  <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Đang tìm...
-                  </div>
-                ) : filteredOptions.length === 0 ? (
-                  <div className="px-2 py-2 text-xs text-muted-foreground">
-                    Không có kết quả phù hợp
-                  </div>
-                ) : (
-                  filteredOptions.map((opt) => (
-                    <Button
-                      key={opt.userId}
-                      type="button"
-                      variant="ghost"
-                      className="flex h-auto w-full flex-col items-start rounded px-2 py-1.5 text-left text-xs font-normal hover:bg-primary/10"
-                      onMouseDown={() => {
-                        addMember.mutate({ classId: row.id, userId: opt.userId })
-                        setQuery('')
-                        setShowDropdown(false)
-                      }}
-                    >
-                      <p className="font-semibold text-foreground">{opt.name}</p>
-                      <p className="text-muted-foreground">{opt.email}</p>
-                    </Button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
+          {false ? (
+            <div className="search-dropdown-container relative mt-3">
+              <Input
+                value={query}
+                onFocus={() => setShowDropdown(true)}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  setShowDropdown(true)
+                }}
+                placeholder="Gõ tên/email để thêm nhân sự..."
+                className="h-auto w-full rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+              />
+              {showDropdown && query.trim().length > 0 && (
+                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
+                  {fetchingMemberOptions ? (
+                    <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Đang tìm...
+                    </div>
+                  ) : filteredOptions.length === 0 ? (
+                    <div className="px-2 py-2 text-xs text-muted-foreground">
+                      Không có kết quả phù hợp
+                    </div>
+                  ) : (
+                    filteredOptions.map((opt) => (
+                      <Button
+                        key={opt.userId}
+                        type="button"
+                        variant="ghost"
+                        className="flex h-auto w-full flex-col items-start rounded px-2 py-1.5 text-left text-xs font-normal hover:bg-primary/10"
+                        onMouseDown={() => {
+                          addMember.mutate({ classId: row.id, userId: opt.userId })
+                          setQuery('')
+                          setShowDropdown(false)
+                        }}
+                      >
+                        <p className="font-semibold text-foreground">{opt.name}</p>
+                        <p className="text-muted-foreground">{opt.email}</p>
+                      </Button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="mt-3 rounded-lg border border-dashed border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary">
+              Học viên tự đăng ký lớp; giáo viên sẽ duyệt hoặc từ chối đăng ký.
+            </p>
+          )}
 
           <div className="mt-5 flex gap-2">
             <Button
