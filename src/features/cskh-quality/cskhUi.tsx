@@ -562,10 +562,23 @@ type AuditProgressSummary = {
 function auditProgressPercent(summary?: AuditProgressSummary | null): number {
   if (!summary?.phase) return 3
   if (summary.phase === 'fetch') {
-    const total = summary.pagesTotal ?? 0
-    const done = summary.pagesProcessed ?? 0
-    if (total <= 0) return 8
-    return Math.min(45, Math.round((done / total) * 45))
+    const pagesTotal = summary.pagesTotal ?? 0
+    const pagesDone = summary.pagesProcessed ?? 0
+    const fetched = summary.fetched ?? 0
+    const scanned = summary.scanned ?? 0
+
+    if (pagesTotal <= 0) return 8
+
+    const pageShare = pagesTotal > 0 ? pagesDone / pagesTotal : 0
+    const withinPage =
+      fetched > 0
+        ? Math.min(0.85, Math.log10(fetched + 1) / 3)
+        : scanned > 0
+          ? Math.min(0.5, Math.log10(scanned + 1) / 4)
+          : 0.05
+    const pageSlice = 1 / pagesTotal
+    const raw = pageShare + withinPage * pageSlice
+    return Math.min(45, Math.max(5, Math.round(raw * 45)))
   }
   if (summary.phase === 'audit') {
     const total = summary.total ?? 0

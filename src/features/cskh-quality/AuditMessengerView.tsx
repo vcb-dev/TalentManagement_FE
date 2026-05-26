@@ -39,6 +39,7 @@ import {
   parseBulletLines,
   parseAuditActionItems,
   filterDisplayTranscript,
+  buildUnifiedAuditChatTimeline,
   isNoiseMessageText,
   scoreColor,
   vietnamTodayIso,
@@ -260,6 +261,17 @@ function MessageBubbleContent({
                   : '[Tệp đính kèm]'}
         </p>
       ) : null}
+    </div>
+  )
+}
+
+function AuditScopeDivider({ auditDayLabel }: { auditDayLabel: string }) {
+  return (
+    <div className="relative py-3">
+      <div className="absolute inset-x-0 top-1/2 border-t border-violet-200/80" />
+      <p className="relative mx-auto w-fit rounded-full border border-violet-200 bg-violet-50/95 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-violet-700 shadow-sm">
+        ▼ Hết phạm vi audit · {auditDayLabel}
+      </p>
     </div>
   )
 }
@@ -766,13 +778,18 @@ export function AuditMessengerView({
   const inboxLinkPending = linkInboxMut.isPending
   const inboxLinkFailed = linkInboxMut.isError && !inboxConv
 
+  const selectedAuditDate = selected?.metadata?.auditDate ?? null
+
   const liveMsgQuery = useQuery({
-    queryKey: ['cskh', 'inbox', 'messages', inboxConv?.id],
+    queryKey: ['cskh', 'inbox', 'messages', inboxConv?.id, selectedAuditDate],
     queryFn: () => {
       const convId = inboxConv!.id
       const needRefresh = refreshedConvRef.current !== convId
       if (needRefresh) refreshedConvRef.current = convId
-      return fetchInboxMessages(convId, { refresh: needRefresh })
+      return fetchInboxMessages(convId, {
+        refresh: needRefresh,
+        limit: selectedAuditDate ? 200 : undefined,
+      })
     },
     enabled: !!inboxConv?.id,
     refetchInterval: inboxLive ? false : 12_000,
@@ -793,13 +810,24 @@ export function AuditMessengerView({
     chatScrollSigRef.current = ''
   }, [inboxConv?.id, selected?.id])
 
+  const liveMessages = (liveMsgQuery.data?.messages ?? []).filter(
+    (msg) => !isNoiseMessageText(msg.text)
+  )
+
+  const chatTimeline = useMemo(
+    () => buildUnifiedAuditChatTimeline(liveMessages, transcript, selectedAuditDate),
+    [liveMessages, transcript, selectedAuditDate]
+  )
+
+  const selectedAuditDayLabel = selectedAuditDate ? formatAuditDateLabel(selectedAuditDate) : null
+
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
 
     const liveMsgs = liveMsgQuery.data?.messages ?? []
     const lastLive = liveMsgs[liveMsgs.length - 1]
-    const sig = `${selected?.id ?? ''}|live:${lastLive?.id ?? ''}:${liveMsgs.length}|audit:${transcript.length}`
+    const sig = `${selected?.id ?? ''}|live:${lastLive?.id ?? ''}:${liveMsgs.length}|audit:${chatTimeline.items.length}`
     if (sig === chatScrollSigRef.current) return
     chatScrollSigRef.current = sig
 
@@ -809,11 +837,7 @@ export function AuditMessengerView({
     requestAnimationFrame(() => {
       el.scrollTo({ top: el.scrollHeight, behavior: 'auto' })
     })
-  }, [selected?.id, liveMsgQuery.data?.messages, transcript.length])
-
-  const liveMessages = (liveMsgQuery.data?.messages ?? []).filter(
-    (msg) => !isNoiseMessageText(msg.text)
-  )
+  }, [selected?.id, liveMsgQuery.data?.messages, chatTimeline.items.length])
 
   return (
     <div className="space-y-0">
@@ -1051,83 +1075,105 @@ export function AuditMessengerView({
                     }
                   />
                   <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-                    {inboxConv ? (
+                    {inboxConv || transcript.length > 0 ? (
                       <div className="space-y-3">
-                        <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-600">
-                          <CskhConnectionBadge connected={inboxLive} />
-                          Chat live
-                        </p>
-                        {liveMsgQuery.isLoading && liveMessages.length === 0 ? (
+                        {inboxConv ? (
+                          <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-600">
+                            <CskhConnectionBadge connected={inboxLive} />
+                            Chat live
+                            {selectedAuditDayLabel ? (
+                              <span className="font-medium normal-case text-slate-400">
+                                · {chatTimeline.items.length} tin
+                                {chatTimeline.transcriptOnlyCount > 0
+                                  ? ` (${chatTimeline.transcriptOnlyCount} từ snapshot audit)`
+                                  : ''}
+                              </span>
+                            ) : null}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                            Hội thoại audit
+                            {selectedAuditDayLabel ? ` · ${selectedAuditDayLabel}` : ''}
+                          </p>
+                        )}
+
+                        {inboxConv && liveMsgQuery.isLoading && chatTimeline.items.length === 0 ? (
                           <p className="text-sm text-slate-500">Đang tải tin nhắn…</p>
-                        ) : liveMessages.length > 0 ? (
-                          liveMessages.map((msg) => <LiveBubble key={msg.id} msg={msg} />)
+                        ) : chatTimeline.items.length > 0 ? (
+                          <>
+                            {selectedAuditDayLabel ? (
+                              <p className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-xs text-indigo-800">
+                                Viền tím = tin nằm trong transcript audit (
+                                {chatTimeline.inTranscriptCount}/{transcript.length || '—'}). So
+                                khớp toàn bộ hội thoại với transcript ngày {selectedAuditDayLabel}.
+                              </p>
+                            ) : null}
+                            {chatTimeline.items.map((item, idx) => {
+                              const prev = chatTimeline.items[idx - 1]
+                              const showAuditDivider =
+                                selectedAuditDayLabel != null &&
+                                chatTimeline.auditEndMs != null &&
+                                prev?.inAuditScope &&
+                                !item.inAuditScope
+
+                              return (
+                                <div key={item.key} className="space-y-3">
+                                  {showAuditDivider ? (
+                                    <AuditScopeDivider auditDayLabel={selectedAuditDayLabel!} />
+                                  ) : null}
+                                  <div
+                                    className={
+                                      item.inTranscript && selectedAuditDayLabel
+                                        ? 'rounded-2xl ring-2 ring-violet-200/80 ring-offset-2 ring-offset-indigo-50/30'
+                                        : undefined
+                                    }
+                                  >
+                                    {item.kind === 'live' ? (
+                                      <LiveBubble msg={item.msg} />
+                                    ) : (
+                                      <div className="space-y-1">
+                                        {item.transcriptOnly ? (
+                                          <p className="text-center text-[10px] font-medium text-violet-600">
+                                            Snapshot audit — chưa có trên inbox live
+                                          </p>
+                                        ) : null}
+                                        <ChatBubble
+                                          sender={item.line.sender}
+                                          text={item.line.text}
+                                          attachmentUrl={item.line.attachmentUrl}
+                                          messageType={item.line.type}
+                                          imageUrl={item.line.imageUrl}
+                                          videoUrl={item.line.videoUrl}
+                                          time={
+                                            item.line.timestamp
+                                              ? new Date(item.line.timestamp).toLocaleTimeString(
+                                                  'vi-VN',
+                                                  { hour: '2-digit', minute: '2-digit' }
+                                                )
+                                              : undefined
+                                          }
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                            {selectedAuditDayLabel &&
+                            chatTimeline.auditEndMs != null &&
+                            chatTimeline.items.every((i) => i.inAuditScope) ? (
+                              <AuditScopeDivider auditDayLabel={selectedAuditDayLabel} />
+                            ) : null}
+                          </>
                         ) : (
                           <p className="text-sm text-slate-500">
-                            Chưa có tin nhắn. Khách nhắn trên Facebook sẽ hiện ở đây ngay.
+                            {inboxConv
+                              ? 'Chưa có tin nhắn. Khách nhắn trên Facebook sẽ hiện ở đây ngay.'
+                              : 'Không có transcript cho hội thoại này.'}
                           </p>
                         )}
                       </div>
-                    ) : transcript.length > 0 ? (
-                      <div className="space-y-3">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                          Hội thoại đến ngày audit
-                          {selected.metadata?.auditDate
-                            ? ` · ${formatAuditDateLabel(selected.metadata.auditDate)}`
-                            : ''}
-                        </p>
-                        {transcript.map((line, idx) => (
-                          <ChatBubble
-                            key={`audit-${idx}`}
-                            sender={line.sender}
-                            text={line.text}
-                            attachmentUrl={line.attachmentUrl}
-                            messageType={line.type}
-                            imageUrl={line.imageUrl}
-                            videoUrl={line.videoUrl}
-                            time={
-                              line.timestamp
-                                ? new Date(line.timestamp).toLocaleTimeString('vi-VN', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })
-                                : undefined
-                            }
-                          />
-                        ))}
-                      </div>
                     ) : null}
-
-                    {inboxConv && transcript.length > 0 && (
-                      <details className="space-y-3 border-t border-indigo-100/80 pt-4">
-                        <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                          Hội thoại đến ngày audit
-                          {selected.metadata?.auditDate
-                            ? ` · ${formatAuditDateLabel(selected.metadata.auditDate)}`
-                            : ''}
-                        </summary>
-                        <div className="space-y-3 pt-2">
-                          {transcript.map((line, idx) => (
-                            <ChatBubble
-                              key={`audit-copy-${idx}`}
-                              sender={line.sender}
-                              text={line.text}
-                              attachmentUrl={line.attachmentUrl}
-                              messageType={line.type}
-                              imageUrl={line.imageUrl}
-                              videoUrl={line.videoUrl}
-                              time={
-                                line.timestamp
-                                  ? new Date(line.timestamp).toLocaleTimeString('vi-VN', {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })
-                                  : undefined
-                              }
-                            />
-                          ))}
-                        </div>
-                      </details>
-                    )}
 
                     {!transcript.length && !inboxConv && (
                       <CskhEmptyState

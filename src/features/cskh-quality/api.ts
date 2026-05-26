@@ -262,11 +262,12 @@ export async function fetchInboxConversations(pageId?: string): Promise<CskhInbo
 
 export async function fetchInboxMessages(
   conversationId: string,
-  opts?: { since?: string; refresh?: boolean }
+  opts?: { since?: string; refresh?: boolean; limit?: number }
 ): Promise<{ conversation: CskhInboxConversation; messages: CskhInboxMessage[] }> {
   const params: Record<string, string> = {}
   if (opts?.since) params.since = opts.since
   if (opts?.refresh) params.refresh = '1'
+  if (opts?.limit != null && opts.limit > 0) params.limit = String(opts.limit)
   const { data } = await apiClient.get<{
     conversation: CskhInboxConversation
     messages: CskhInboxMessage[]
