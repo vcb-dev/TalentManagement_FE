@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getApiErrorMessage } from '@/lib/axios'
+import { toUserFacingError } from '@/lib/userFacingError'
 import {
   Loader2,
   Play,
@@ -561,6 +563,12 @@ export function AuditMessengerView({
   const isRunning = runMut.isPending || progress?.status === 'running'
   const isFailed = progress?.status === 'failed'
   const isDone = progress?.status === 'done'
+  const auditErrorMessage =
+    toUserFacingError(
+      progress?.error ||
+        (progressErr ? getApiErrorMessage(progressErr) : '') ||
+        (runMut.error ? getApiErrorMessage(runMut.error) : '')
+    ) || 'Không thể chạy audit. Vui lòng thử lại sau.'
   const summary = progress?.summary
   const auditCount = summary?.auditCount ?? progress?.audits?.length ?? 0
   const isFetchPhase = isRunning && summary?.phase === 'fetch'
@@ -808,9 +816,9 @@ export function AuditMessengerView({
         </div>
       </CskhToolbar>
 
-      {(isFailed || progressError) && (
+      {(isFailed || progressError || runMut.isError) && (
         <p className="mx-4 mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 sm:mx-5">
-          {progress?.error || (progressErr as Error)?.message || 'Audit thất bại'}
+          {auditErrorMessage}
         </p>
       )}
 
@@ -942,7 +950,7 @@ export function AuditMessengerView({
                     ) : transcript.length > 0 ? (
                       <div className="space-y-3">
                         <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                          Transcript ngày audit
+                          Hội thoại đến ngày audit
                           {selected.metadata?.auditDate
                             ? ` · ${formatAuditDateLabel(selected.metadata.auditDate)}`
                             : ''}
@@ -972,7 +980,7 @@ export function AuditMessengerView({
                     {inboxConv && transcript.length > 0 && (
                       <details className="space-y-3 border-t border-indigo-100/80 pt-4">
                         <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                          Transcript ngày audit
+                          Hội thoại đến ngày audit
                           {selected.metadata?.auditDate
                             ? ` · ${formatAuditDateLabel(selected.metadata.auditDate)}`
                             : ''}
@@ -1073,7 +1081,7 @@ export function AuditMessengerView({
                     </form>
                     {sendMut.isError && (
                       <p className="mt-2 text-xs text-rose-600">
-                        {(sendMut.error as Error).message}
+                        {getApiErrorMessage(sendMut.error)}
                       </p>
                     )}
                   </footer>
