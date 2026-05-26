@@ -6,6 +6,7 @@ import {
   fetchCskhPages,
   fetchCskhAudits,
   fetchAuditProgress,
+  fetchAuditTokenStats,
   fetchRunningCskhJob,
   fetchDeepSeekBalance,
   getCskhOAuthStartUrl,
@@ -298,9 +299,18 @@ export function CskhQualityPage() {
   const { data: deepSeekBalance, isLoading: balanceLoading } = useQuery({
     queryKey: ['cskh', 'deepseek-balance'],
     queryFn: fetchDeepSeekBalance,
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
     retry: 2,
+  })
+
+  const { data: auditTokenStats } = useQuery({
+    queryKey: ['cskh', 'audit-token-stats'],
+    queryFn: fetchAuditTokenStats,
+    staleTime: 10_000,
+    refetchInterval: auditJobId ? 3_000 : 60_000,
+    refetchOnWindowFocus: true,
   })
 
   const { data: auditProgress } = useQuery({
@@ -336,8 +346,13 @@ export function CskhQualityPage() {
 
   const enabledPages = (pagesData?.pages ?? []).filter((p) => p.enabled).length
   const auditCount = recentAudits?.length ?? 0
-  const tokenUsage = auditProgress?.summary?.tokenUsage
   const auditRunning = auditProgress?.status === 'running'
+  const liveTokenUsage = auditProgress?.summary?.tokenUsage
+  const persistedTokenUsage = auditTokenStats?.tokenUsage
+  const tokenUsage =
+    auditRunning && liveTokenUsage?.totalTokens
+      ? liveTokenUsage
+      : (persistedTokenUsage ?? liveTokenUsage)
 
   return (
     <CskhPageShell>
@@ -371,6 +386,13 @@ export function CskhQualityPage() {
               completionTokens={tokenUsage?.completionTokens}
               perAuditAvg={tokenUsage?.perAuditAvg}
               running={auditRunning}
+              hint={
+                auditRunning
+                  ? 'Đang cộng dồn…'
+                  : auditTokenStats?.source === 'lastJob' && tokenUsage?.totalTokens
+                    ? 'Lần audit gần nhất'
+                    : undefined
+              }
             />
             {auditCount > 0 ? (
               <CskhStatPill label="Audit gần đây" value={auditCount} tone="live" />

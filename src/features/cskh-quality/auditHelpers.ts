@@ -231,113 +231,19 @@ export function vietnamAuditDayStartMs(auditDate: string): number {
   return new Date(`${auditDate}T00:00:00+07:00`).getTime()
 }
 
-type TimelineLiveItem = {
-  kind: 'live'
-  key: string
-  msg: CskhInboxMessage
-  timestamp: number
-  inAuditScope: boolean
-  inTranscript: boolean
-  transcriptOnly: false
-}
-
-type TimelineTranscriptItem = {
-  kind: 'transcript'
-  key: string
-  line: DisplayTranscriptLine
-  timestamp: number
-  inAuditScope: boolean
-  inTranscript: true
-  transcriptOnly: true
-}
-
-export type UnifiedChatTimelineItem = TimelineLiveItem | TimelineTranscriptItem
-
-function timelineTimestamp(iso?: string | null): number {
+function parseMessageTime(iso?: string | null): number {
   if (!iso) return 0
   const t = new Date(iso).getTime()
   return Number.isNaN(t) ? 0 : t
 }
 
-function timelineDedupKey(sender: string, text: string | undefined, ts: number): string {
-  const bucket = Math.floor(ts / 120_000)
-  return `${sender}|${bucket}|${(text || '').trim().slice(0, 100)}`
-}
-
-function transcriptSenderLabel(sender?: string): 'Staff' | 'Customer' {
-  return sender === 'Staff' ? 'Staff' : 'Customer'
-}
-
-function liveSenderLabel(msg: CskhInboxMessage): 'Staff' | 'Customer' {
-  return msg.direction === 'outbound' || msg.senderType === 'staff' ? 'Staff' : 'Customer'
-}
-
-export function buildUnifiedAuditChatTimeline(
-  liveMessages: CskhInboxMessage[],
-  transcript: DisplayTranscriptLine[],
-  auditDate?: string | null
-): {
-  items: UnifiedChatTimelineItem[]
-  auditEndMs: number | null
-  liveCount: number
-  transcriptOnlyCount: number
-  inTranscriptCount: number
-} {
-  const auditEndMs = auditDate ? vietnamAuditDayEndMs(auditDate) : null
-  const filteredLive = liveMessages.filter((m) => !isNoiseMessageText(m.text))
-  const filteredTranscript = filterDisplayTranscript(transcript)
-
-  const transcriptKeys = new Set<string>()
-  for (const line of filteredTranscript) {
-    const ts = timelineTimestamp(line.timestamp)
-    transcriptKeys.add(timelineDedupKey(transcriptSenderLabel(line.sender), line.text, ts))
-  }
-
-  const liveKeys = new Set<string>()
-  const items: UnifiedChatTimelineItem[] = []
-
-  for (const msg of filteredLive) {
-    const ts = timelineTimestamp(msg.sentAt)
-    const sender = liveSenderLabel(msg)
-    const key = timelineDedupKey(sender, msg.text, ts)
-    liveKeys.add(key)
-    const inTranscript = transcriptKeys.has(key)
-    items.push({
-      kind: 'live',
-      key: `live:${msg.id}`,
-      msg,
-      timestamp: ts,
-      inAuditScope: auditEndMs == null || ts <= auditEndMs,
-      inTranscript,
-      transcriptOnly: false,
-    })
-  }
-
-  let transcriptOnlyCount = 0
-  filteredTranscript.forEach((line, idx) => {
-    const ts = timelineTimestamp(line.timestamp)
-    const sender = transcriptSenderLabel(line.sender)
-    const key = timelineDedupKey(sender, line.text, ts)
-    if (liveKeys.has(key)) return
-    transcriptOnlyCount++
-    items.push({
-      kind: 'transcript',
-      key: `transcript:${idx}:${ts}`,
-      line,
-      timestamp: ts,
-      inAuditScope: auditEndMs == null || ts <= auditEndMs,
-      inTranscript: true,
-      transcriptOnly: true,
-    })
+export function messagesAfterAuditDate(
+  messages: CskhInboxMessage[],
+  auditDate: string
+): CskhInboxMessage[] {
+  const endMs = vietnamAuditDayEndMs(auditDate)
+  return messages.filter((m) => {
+    const t = parseMessageTime(m.sentAt)
+    return t > endMs && !isNoiseMessageText(m.text)
   })
-
-  items.sort((a, b) => a.timestamp - b.timestamp || a.key.localeCompare(b.key))
-
-  return {
-    items,
-    auditEndMs,
-    liveCount: filteredLive.length,
-    transcriptOnlyCount,
-    inTranscriptCount: items.filter((i) => i.inTranscript).length,
-  }
 }

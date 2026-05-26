@@ -221,6 +221,24 @@ export interface DeepSeekBalanceResponse {
   message?: string
 }
 
+export interface AuditTokenStatsResponse {
+  source?: 'running' | 'lastJob' | 'none'
+  jobId?: string | null
+  finishedAt?: string | null
+  tokenUsage?: {
+    model?: string
+    promptTokens?: number
+    completionTokens?: number
+    totalTokens?: number
+    perAuditAvg?: number
+  } | null
+}
+
+export async function fetchAuditTokenStats(): Promise<AuditTokenStatsResponse> {
+  const { data } = await apiClient.get<AuditTokenStatsResponse>('/cskh/audit/token-stats')
+  return data
+}
+
 export async function fetchDeepSeekBalance(): Promise<DeepSeekBalanceResponse> {
   const { data } = await apiClient.get<DeepSeekBalanceResponse>('/cskh/ai/balance')
   return data
