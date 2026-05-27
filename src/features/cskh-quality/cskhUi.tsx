@@ -91,8 +91,8 @@ export function CskhPageAvatar({
 
 export function CskhPageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative -m-5 flex h-[calc(100dvh-3.25rem)] max-h-[calc(100dvh-3.25rem)] flex-col overflow-hidden md:-m-6 md:h-[calc(100dvh-3.5rem)] md:max-h-[calc(100dvh-3.5rem)]">
-      <div className="flex min-h-0 flex-1 basis-0 flex-col gap-2 overflow-hidden px-1 py-0.5 sm:px-2">
+    <div className="relative -m-5 flex h-[calc(100dvh-2.75rem)] max-h-[calc(100dvh-2.75rem)] flex-col overflow-hidden md:-m-6 md:h-[calc(100dvh-3rem)] md:max-h-[calc(100dvh-3rem)]">
+      <div className="flex min-h-0 flex-1 basis-0 flex-col gap-1 overflow-hidden px-1 py-0.5 sm:px-2">
         {children}
       </div>
     </div>
@@ -407,7 +407,7 @@ export function CskhGlassPanel({
 
 export function CskhToolbar({ children }: { children: ReactNode }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 via-white/50 to-violet-50/80 px-3 py-2 sm:px-4">
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 via-white/50 to-violet-50/80 px-3 py-1.5 sm:px-4 sm:py-2">
       {children}
     </div>
   )
@@ -434,7 +434,7 @@ export function MessengerWorkspace({
           {main}
         </div>
         {aside ? (
-          <aside className="hidden h-full min-h-0 min-w-[320px] flex-[1.05] flex-col overflow-hidden border-l border-slate-200/80 bg-white lg:flex xl:min-w-[360px]">
+          <aside className="hidden h-full min-h-0 min-w-[340px] flex-[1.25] flex-col overflow-hidden border-l border-slate-200/80 bg-white lg:flex xl:min-w-[400px] 2xl:min-w-[420px]">
             {aside}
           </aside>
         ) : null}

@@ -59,7 +59,7 @@ function TabBar({
   className?: string
 }) {
   return (
-    <div className={cn('flex gap-1 border-b border-slate-200/80', className)}>
+    <div className={cn('flex shrink-0 flex-wrap gap-0.5 border-b border-slate-200/80', className)}>
       {tabs.map((tab) => {
         const isActive = active === tab.id
         return (
@@ -68,7 +68,7 @@ function TabBar({
             type="button"
             onClick={() => onChange(tab.id)}
             className={cn(
-              'relative px-3 py-2.5 text-xs font-semibold transition-colors',
+              'relative whitespace-nowrap px-2.5 py-2.5 text-[11px] font-semibold transition-colors sm:px-3 sm:text-xs',
               isActive ? 'text-violet-700' : 'text-slate-500 hover:text-slate-700'
             )}
           >
@@ -97,7 +97,7 @@ function SummaryCard({ children, className }: { children: ReactNode; className?:
   return (
     <div
       className={cn(
-        'rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-4',
+        'rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-3.5 lg:p-2.5',
         className
       )}
     >
@@ -141,16 +141,16 @@ export function AuditSummaryHeader({
 
   return (
     <div className="shrink-0 overflow-x-auto border-b border-slate-200/80 bg-slate-50/50 lg:overflow-visible">
-      <div className="flex gap-2.5 p-2.5 sm:gap-3 sm:p-3 lg:grid lg:min-w-0 lg:grid-cols-4 lg:overflow-visible">
+      <div className="flex gap-2 p-2 sm:gap-2.5 sm:p-2.5 lg:grid lg:min-w-0 lg:grid-cols-4 lg:items-start lg:gap-2 lg:p-2 lg:overflow-visible">
         <SummaryCard className="min-w-[220px] shrink-0 lg:min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                 Hội thoại {conversationIndexLabel(index, total)}
               </p>
               <span
                 className={cn(
-                  'mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
+                  'mt-0.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
                   rank.passed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'
                 )}
               >
@@ -158,28 +158,19 @@ export function AuditSummaryHeader({
               </span>
             </div>
           </div>
-          <dl className="mt-3 space-y-1.5 text-xs">
-            <div className="flex justify-between gap-2">
+          <dl className="mt-2 grid grid-cols-1 gap-x-3 gap-y-1 text-[11px] sm:grid-cols-2 lg:mt-1.5 lg:gap-y-0.5">
+            <div className="flex justify-between gap-2 sm:flex-col sm:justify-start sm:gap-0.5">
               <dt className="text-slate-400">Thời gian</dt>
               <dd className="font-medium text-slate-700">
                 {auditDayLabel ??
                   (row.metadata?.auditDate ? formatAuditDateLabel(row.metadata.auditDate) : '—')}
               </dd>
             </div>
-            <div className="flex justify-between gap-2">
+            <div className="flex justify-between gap-2 sm:flex-col sm:justify-start sm:gap-0.5">
               <dt className="text-slate-400">Nhân viên</dt>
-              <dd className="font-medium text-violet-700">{displayAgentName(row)}</dd>
+              <dd className="truncate font-medium text-violet-700">{displayAgentName(row)}</dd>
             </div>
-            <div className="flex justify-between gap-2">
-              <dt className="text-slate-400">Kênh</dt>
-              <dd className="flex items-center gap-1 font-medium text-slate-700">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#1877F2] text-[9px] font-bold text-white">
-                  f
-                </span>
-                Messenger
-              </dd>
-            </div>
-            <div className="flex justify-between gap-2">
+            <div className="flex justify-between gap-2 sm:flex-col sm:justify-start sm:gap-0.5">
               <dt className="text-slate-400">Nguồn</dt>
               <dd>
                 {adSource.fromAd ? (
@@ -194,7 +185,7 @@ export function AuditSummaryHeader({
                 )}
               </dd>
             </div>
-            <div className="flex justify-between gap-2">
+            <div className="flex justify-between gap-2 sm:flex-col sm:justify-start sm:gap-0.5">
               <dt className="text-slate-400">Khách hàng</dt>
               <dd className="truncate font-medium text-slate-800">
                 {displayCustomerName(row.customerName)}
@@ -202,7 +193,7 @@ export function AuditSummaryHeader({
             </div>
           </dl>
           {tags.length ? (
-            <div className="mt-3 flex flex-wrap gap-1">
+            <div className="mt-2 hidden flex-wrap gap-1 xl:flex">
               {tags.map((tag) => (
                 <span
                   key={tag}
@@ -217,12 +208,12 @@ export function AuditSummaryHeader({
         </SummaryCard>
 
         <SummaryCard className="flex min-w-[180px] shrink-0 flex-col items-center justify-center text-center lg:min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
             Điểm chất lượng tổng
           </p>
           <p
             className={cn(
-              'mt-0.5 text-3xl font-black tabular-nums',
+              'mt-0.5 text-3xl font-black tabular-nums lg:text-2xl',
               row.score >= 70
                 ? 'text-emerald-600'
                 : row.score >= 50
@@ -231,36 +222,40 @@ export function AuditSummaryHeader({
             )}
           >
             {row.score}
-            <span className="text-lg font-bold text-slate-400">/100</span>
+            <span className="text-lg font-bold text-slate-400 lg:text-base">/100</span>
           </p>
-          <p className="mt-0.5 text-sm font-semibold text-slate-600">
+          <p className="text-sm font-semibold text-slate-600 lg:text-xs">
             {row.score >= 70 ? 'Đạt' : 'Chưa đạt'}
           </p>
-          <FiveStarRank filled={rank.stars} className="mt-2" starClassName="h-4 w-4" />
-          <p className="mt-1 text-xs text-slate-500">
+          <FiveStarRank
+            filled={rank.stars}
+            className="mt-1.5 lg:mt-1"
+            starClassName="h-4 w-4 lg:h-3.5 lg:w-3.5"
+          />
+          <p className="mt-0.5 text-xs text-slate-500 lg:text-[11px]">
             Xếp hạng: <span className="font-semibold text-slate-700">{rank.label}</span>
           </p>
         </SummaryCard>
 
         <SummaryCard className="min-w-[280px] shrink-0 lg:min-w-0">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 lg:mb-1">
             Điểm theo tiêu chí
           </p>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-5 gap-1.5 lg:gap-1">
             {criteria.map((c) => (
               <div
                 key={c.id}
-                className="flex flex-col items-center rounded-lg border border-slate-100 bg-slate-50/80 px-1.5 py-2.5 text-center"
+                className="flex flex-col items-center rounded-lg border border-slate-100 bg-slate-50/80 px-1 py-2 text-center lg:py-1.5"
                 title={c.label}
               >
-                <span className="text-lg leading-none">{c.icon}</span>
-                <p className="mt-1.5 line-clamp-2 min-h-[2.25rem] text-[10px] font-medium leading-tight text-slate-600">
+                <span className="text-base leading-none lg:text-sm">{c.icon}</span>
+                <p className="mt-1 line-clamp-1 text-[10px] font-medium leading-tight text-slate-600 lg:mt-0.5 lg:text-[9px]">
                   {c.label.split(',')[0]}
                 </p>
-                <p className="mt-0.5 text-xs font-bold tabular-nums text-slate-800">
+                <p className="mt-0.5 text-[11px] font-bold tabular-nums text-slate-800 lg:text-[10px]">
                   {c.score}/{c.max}
                 </p>
-                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-slate-200">
+                <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-slate-200">
                   <div
                     className={cn('h-full rounded-full', criterionBarColor(c.score, c.max))}
                     style={{ width: `${(c.score / c.max) * 100}%` }}
@@ -272,10 +267,10 @@ export function AuditSummaryHeader({
         </SummaryCard>
 
         <SummaryCard className="min-w-[240px] shrink-0 lg:min-w-0">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 lg:mb-1">
             So sánh trung bình
           </p>
-          <ChartContainer config={compareChartConfig} className="h-[100px] w-full">
+          <ChartContainer config={compareChartConfig} className="h-[100px] w-full lg:h-[76px]">
             <BarChart data={compareData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
@@ -534,12 +529,12 @@ export function CustomerIntentPanel({
   if (!intent) return null
 
   return (
-    <div className="border-b border-violet-100 bg-gradient-to-r from-violet-50/90 to-indigo-50/60 px-4 py-3">
+    <div className="border-b border-violet-100 bg-gradient-to-r from-violet-50/90 to-indigo-50/60 px-4 py-2.5">
       <div className="flex items-start gap-2">
         <Zap className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xs font-bold uppercase tracking-wide text-violet-700">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700">
               Khách đang hỏi
             </p>
             <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">
@@ -560,7 +555,7 @@ export function CustomerIntentPanel({
           </div>
           <p className="text-sm leading-relaxed text-slate-700">{intent.summary}</p>
           {intent.topics.length ? (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1">
               {intent.topics.map((topic) => (
                 <span
                   key={topic}
@@ -572,7 +567,7 @@ export function CustomerIntentPanel({
             </div>
           ) : null}
           {intent.suggestedFocus ? (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs leading-relaxed text-slate-500">
               <span className="font-semibold text-slate-600">Gợi ý:</span> {intent.suggestedFocus}
             </p>
           ) : null}
@@ -617,20 +612,20 @@ export function AuditAnalysisPanel({
   ]
 
   return (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-full min-h-0 flex-col bg-white">
       <CustomerIntentPanel intent={customerIntent} loading={intentLoading} />
       <TabBar tabs={tabs} active={tab} onChange={setTab} className="px-2" />
 
-      <div className="flex-1 overflow-y-auto p-5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
         {tab === 'detail' && (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <section>
               <h4 className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
                 <Sparkles className="h-4 w-4 text-violet-500" />
                 Đánh giá tổng quan AI
               </h4>
               {feedbackBullets.length ? (
-                <ul className="mt-3 space-y-2">
+                <ul className="mt-3 space-y-3">
                   {feedbackBullets.map((line, i) => (
                     <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-slate-700">
                       <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
@@ -639,7 +634,7 @@ export function AuditAnalysisPanel({
                   ))}
                 </ul>
               ) : (
-                <p className="mt-3 text-sm text-slate-500">
+                <p className="mt-3 text-sm leading-relaxed text-slate-500">
                   AI chưa có nhận xét chi tiết cho hội thoại này.
                 </p>
               )}
@@ -650,9 +645,9 @@ export function AuditAnalysisPanel({
                 <p className="text-xs font-bold uppercase tracking-wide text-emerald-600">
                   Ưu điểm
                 </p>
-                <ul className="mt-2 space-y-1.5">
+                <ul className="mt-2.5 space-y-2.5">
                   {pros.map((line, i) => (
-                    <li key={i} className="flex gap-2 text-sm text-slate-700">
+                    <li key={i} className="flex gap-2 text-sm leading-relaxed text-slate-700">
                       <span className="text-emerald-500">•</span>
                       <span>{line}</span>
                     </li>
@@ -666,9 +661,9 @@ export function AuditAnalysisPanel({
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-600">
                   Điểm cần cải thiện
                 </p>
-                <ul className="mt-2 space-y-1.5">
+                <ul className="mt-2.5 space-y-2.5">
                   {cons.map((line, i) => (
-                    <li key={i} className="flex gap-2 text-sm text-slate-700">
+                    <li key={i} className="flex gap-2 text-sm leading-relaxed text-slate-700">
                       <span className="text-amber-500">•</span>
                       <span>{line}</span>
                     </li>
@@ -806,7 +801,7 @@ export function AuditAnalysisPanel({
         )}
       </div>
 
-      <div className="border-t border-slate-100 p-4">
+      <div className="shrink-0 border-t border-slate-100 px-4 py-3 sm:px-5">
         <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Đánh giá auditor</p>
         <div className="mt-2 flex items-center gap-2">
           <div className="flex">
