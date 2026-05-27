@@ -227,6 +227,7 @@ export type DisplayTranscriptLine = {
   imageUrl?: string | null
   videoUrl?: string | null
   attachmentUrl?: string | null
+  attachmentUrls?: string[]
   type?: string
 }
 
@@ -257,4 +258,36 @@ export function messagesAfterAuditDate(
     const t = parseMessageTime(m.sentAt)
     return t > endMs && !isNoiseMessageText(m.text)
   })
+}
+
+/** Gộp nhiều tin ảnh cùng lúc (Facebook gửi 1 lần → nhiều row inbox) thành 1 bubble. */
+export function groupLiveMediaMessages(
+  messages: CskhInboxMessage[]
+): Array<CskhInboxMessage & { attachmentUrls?: string[] }> {
+  const grouped: Array<CskhInboxMessage & { attachmentUrls?: string[] }> = []
+
+  for (const msg of messages) {
+    const prev = grouped[grouped.length - 1]
+    const msgTs = parseMessageTime(msg.sentAt)
+    const prevTs = prev ? parseMessageTime(prev.sentAt) : 0
+    const prevUrls = prev?.attachmentUrls ?? (prev?.attachmentUrl ? [prev.attachmentUrl] : [])
+    const canMerge =
+      prev &&
+      prev.senderType === msg.senderType &&
+      prev.messageType === 'image' &&
+      msg.messageType === 'image' &&
+      !prev.text?.trim() &&
+      !msg.text?.trim() &&
+      Math.abs(msgTs - prevTs) <= 2000
+
+    if (canMerge && msg.attachmentUrl) {
+      prev!.attachmentUrls = [...prevUrls, msg.attachmentUrl]
+      if (!prev!.attachmentUrl) prev!.attachmentUrl = msg.attachmentUrl
+      continue
+    }
+
+    grouped.push({ ...msg })
+  }
+
+  return grouped
 }

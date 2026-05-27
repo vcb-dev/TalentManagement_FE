@@ -347,12 +347,14 @@ export async function fetchInboxMessages(
 export async function resolveInboxMessageMedia(messageId: string): Promise<{
   id: string
   attachmentUrl: string | null
+  attachmentUrls?: string[]
   messageType: string
   text: string
 }> {
   const { data } = await apiClient.post<{
     id: string
     attachmentUrl: string | null
+    attachmentUrls?: string[]
     messageType: string
     text: string
   }>(`/cskh/inbox/messages/${messageId}/resolve-media`)

@@ -45,6 +45,7 @@ import {
   resolveAuditFromAd,
   filterDisplayTranscript,
   messagesAfterAuditDate,
+  groupLiveMediaMessages,
   isNoiseMessageText,
   scoreColor,
   vietnamTodayIso,
@@ -138,46 +139,81 @@ function resolveCustomerPicture(
   )
 }
 
+function MediaImage({ url, compact }: { url: string; compact?: boolean }) {
+  const [failed, setFailed] = useState(false)
+  const [useProxy, setUseProxy] = useState(false)
+  const src = useProxy ? cskhMediaProxySrc(url) : cskhMediaSrc(url)
+  if (failed || !src) return null
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl">
+      <img
+        src={src}
+        alt=""
+        referrerPolicy="no-referrer"
+        className={
+          compact
+            ? 'aspect-square w-full object-cover'
+            : 'max-h-64 max-w-full rounded-xl object-cover'
+        }
+        onError={() => {
+          if (!useProxy) setUseProxy(true)
+          else setFailed(true)
+        }}
+      />
+    </a>
+  )
+}
+
 function MessageBubbleContent({
   messageId,
   text,
   attachmentUrl,
+  attachmentUrls,
   messageType,
   isStaff,
 }: {
   messageId?: string
   text?: string | null
   attachmentUrl?: string | null
+  attachmentUrls?: string[]
   messageType?: string | null
   isStaff?: boolean
 }) {
-  const [imageFailed, setImageFailed] = useState(false)
-  const [videoFailed, setVideoFailed] = useState(false)
-  const [useMediaProxy, setUseMediaProxy] = useState(false)
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(attachmentUrl ?? null)
+  const initialUrls = attachmentUrls?.filter(Boolean).length
+    ? attachmentUrls!.filter(Boolean)
+    : attachmentUrl
+      ? [attachmentUrl]
+      : []
+  const [resolvedUrls, setResolvedUrls] = useState<string[]>(initialUrls)
   const [resolvedType, setResolvedType] = useState<string | null>(messageType ?? null)
   const [resolvedText, setResolvedText] = useState<string | null | undefined>(text)
+  const [videoFailed, setVideoFailed] = useState(false)
+  const [useMediaProxy, setUseMediaProxy] = useState(false)
   const [resolving, setResolving] = useState(false)
   const resolveAttempted = useRef(false)
 
   useEffect(() => {
-    setResolvedUrl(attachmentUrl ?? null)
+    const urls = attachmentUrls?.filter(Boolean).length
+      ? attachmentUrls!.filter(Boolean)
+      : attachmentUrl
+        ? [attachmentUrl]
+        : []
+    setResolvedUrls(urls)
     setResolvedType(messageType ?? null)
     setResolvedText(text)
-    setImageFailed(false)
     setVideoFailed(false)
     setUseMediaProxy(false)
     resolveAttempted.current = false
-  }, [messageId, attachmentUrl, messageType, text])
+  }, [messageId, attachmentUrl, attachmentUrls, messageType, text])
 
   const media = resolveMessageMedia({
     text: resolvedText,
-    attachmentUrl: resolvedUrl,
+    attachmentUrl: resolvedUrls[0] ?? null,
     messageType: resolvedType,
   })
   const needsResolve =
     Boolean(messageId) &&
-    !resolvedUrl &&
+    resolvedUrls.length === 0 &&
     (media.messageType === 'image' ||
       media.messageType === 'video' ||
       resolvedText === '[Ảnh]' ||
@@ -192,7 +228,8 @@ function MessageBubbleContent({
     resolveInboxMessageMedia(messageId!)
       .then((row) => {
         if (cancelled) return
-        if (row.attachmentUrl) setResolvedUrl(row.attachmentUrl)
+        if (row.attachmentUrls?.length) setResolvedUrls(row.attachmentUrls)
+        else if (row.attachmentUrl) setResolvedUrls([row.attachmentUrl])
         if (row.messageType) setResolvedType(row.messageType)
         setResolvedText(row.text)
       })
@@ -205,24 +242,18 @@ function MessageBubbleContent({
     }
   }, [messageId, needsResolve])
 
-  const mediaSrc = media.attachmentUrl
+  const imageUrls =
+    media.messageType === 'image' ? resolvedUrls.filter((u) => u.startsWith('http')) : []
+  const videoUrl = media.messageType === 'video' ? (resolvedUrls[0] ?? media.attachmentUrl) : null
+  const videoSrc = videoUrl
     ? useMediaProxy
-      ? cskhMediaProxySrc(media.attachmentUrl)
-      : cskhMediaSrc(media.attachmentUrl)
+      ? cskhMediaProxySrc(videoUrl)
+      : cskhMediaSrc(videoUrl)
     : undefined
-  const showImage = media.messageType === 'image' && mediaSrc && !imageFailed
-  const showVideo = media.messageType === 'video' && mediaSrc && !videoFailed
-
-  const onImageError = () => {
-    if (!useMediaProxy && media.attachmentUrl) {
-      setUseMediaProxy(true)
-      return
-    }
-    setImageFailed(true)
-  }
+  const showVideo = media.messageType === 'video' && videoSrc && !videoFailed
 
   const onVideoError = () => {
-    if (!useMediaProxy && media.attachmentUrl) {
+    if (!useMediaProxy && videoUrl) {
       setUseMediaProxy(true)
       return
     }
@@ -231,20 +262,20 @@ function MessageBubbleContent({
 
   return (
     <div className="space-y-2">
-      {showImage ? (
-        <a href={media.attachmentUrl!} target="_blank" rel="noreferrer" className="block">
-          <img
-            src={mediaSrc}
-            alt=""
-            referrerPolicy="no-referrer"
-            className="max-h-64 max-w-full rounded-xl object-cover"
-            onError={onImageError}
-          />
-        </a>
+      {imageUrls.length > 0 ? (
+        <div
+          className={
+            imageUrls.length > 1 ? 'grid max-w-sm grid-cols-2 gap-1.5' : 'grid grid-cols-1 gap-1.5'
+          }
+        >
+          {imageUrls.map((url, idx) => (
+            <MediaImage key={`${url}-${idx}`} url={url} compact={imageUrls.length > 1} />
+          ))}
+        </div>
       ) : null}
       {showVideo ? (
         <video
-          src={mediaSrc}
+          src={videoSrc}
           controls
           playsInline
           preload="metadata"
@@ -255,7 +286,7 @@ function MessageBubbleContent({
       {media.displayText ? (
         <p className="whitespace-pre-wrap break-words">{media.displayText}</p>
       ) : null}
-      {!showImage && !showVideo && !media.displayText ? (
+      {!imageUrls.length && !showVideo && !media.displayText ? (
         <p className={`text-sm italic ${isStaff ? 'text-blue-100' : 'text-slate-400'}`}>
           {resolving
             ? 'Đang tải ảnh…'
@@ -283,7 +314,7 @@ function AuditScopeDivider({ auditDayLabel }: { auditDayLabel: string }) {
   )
 }
 
-function LiveBubble({ msg }: { msg: CskhInboxMessage }) {
+function LiveBubble({ msg }: { msg: CskhInboxMessage & { attachmentUrls?: string[] } }) {
   if (isNoiseMessageText(msg.text)) return null
   const isStaff = msg.direction === 'outbound' || msg.senderType === 'staff'
   return (
@@ -299,6 +330,7 @@ function LiveBubble({ msg }: { msg: CskhInboxMessage }) {
           messageId={msg.id}
           text={msg.text}
           attachmentUrl={msg.attachmentUrl}
+          attachmentUrls={msg.attachmentUrls}
           messageType={msg.messageType}
           isStaff={isStaff}
         />
@@ -317,6 +349,7 @@ function ChatBubble({
   text,
   time,
   attachmentUrl,
+  attachmentUrls,
   messageType,
   imageUrl,
   videoUrl,
@@ -325,13 +358,17 @@ function ChatBubble({
   text?: string
   time?: string
   attachmentUrl?: string | null
+  attachmentUrls?: string[]
   messageType?: string | null
   imageUrl?: string | null
   videoUrl?: string | null
 }) {
   if (isNoiseMessageText(text)) return null
   const isStaff = sender === 'Staff'
-  const resolvedUrl = attachmentUrl ?? imageUrl ?? videoUrl ?? null
+  const urls = attachmentUrls?.filter(Boolean).length
+    ? attachmentUrls!.filter(Boolean)
+    : [attachmentUrl, imageUrl, videoUrl].filter((u): u is string => Boolean(u))
+  const resolvedUrl = urls[0] ?? null
   const resolvedType =
     messageType ?? (videoUrl ? 'video' : imageUrl || attachmentUrl ? 'image' : 'text')
   return (
@@ -346,6 +383,7 @@ function ChatBubble({
         <MessageBubbleContent
           text={text}
           attachmentUrl={resolvedUrl}
+          attachmentUrls={urls.length > 1 ? urls : attachmentUrls}
           messageType={resolvedType}
           isStaff={isStaff}
         />
@@ -844,6 +882,7 @@ export function AuditMessengerView({
         imageUrl?: string | null
         videoUrl?: string | null
         attachmentUrl?: string | null
+        attachmentUrls?: string[]
         type?: string
       }>
     )
@@ -942,8 +981,10 @@ export function AuditMessengerView({
   )
 
   const postAuditLiveMessages = useMemo(() => {
-    if (!selectedAuditDate) return liveMessages
-    return messagesAfterAuditDate(liveMessages, selectedAuditDate)
+    const filtered = selectedAuditDate
+      ? messagesAfterAuditDate(liveMessages, selectedAuditDate)
+      : liveMessages
+    return groupLiveMediaMessages(filtered)
   }, [liveMessages, selectedAuditDate])
 
   const selectedAuditDayLabel = selectedAuditDate ? formatAuditDateLabel(selectedAuditDate) : null
@@ -1261,6 +1302,7 @@ export function AuditMessengerView({
                             sender={line.sender}
                             text={line.text}
                             attachmentUrl={line.attachmentUrl}
+                            attachmentUrls={line.attachmentUrls}
                             messageType={line.type}
                             imageUrl={line.imageUrl}
                             videoUrl={line.videoUrl}
