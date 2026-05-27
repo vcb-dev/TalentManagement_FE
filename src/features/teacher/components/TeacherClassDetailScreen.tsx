@@ -76,6 +76,26 @@ function getTodayIsoLocal(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function findOverlappingSchedule(
+  schedules: Array<{
+    id: string
+    dateIso: string
+    startTime: string
+    endTime: string
+    topic: string
+  }>,
+  input: { dateIso: string; startTime: string; endTime: string },
+  excludeScheduleId?: string | null
+) {
+  return schedules.find(
+    (s) =>
+      s.id !== excludeScheduleId &&
+      s.dateIso === input.dateIso &&
+      s.startTime < input.endTime &&
+      s.endTime > input.startTime
+  )
+}
+
 function TimeHmField({
   label,
   hour,
@@ -276,12 +296,23 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     }
     const startTime = joinTimeHm(values.startHour, values.startMinute)
     const endTime = joinTimeHm(values.endHour, values.endMinute)
+    if (startTime >= endTime) {
+      toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
+      return
+    }
     const input = {
       dateIso: values.dateIso,
       startTime,
       endTime,
       topic: values.topic.trim(),
       location: values.location.trim() || null,
+    }
+    const overlap = findOverlappingSchedule(schedules, input, editingScheduleId)
+    if (overlap) {
+      toast.error(
+        `Buổi học bị trùng với "${overlap.topic}" (${overlap.startTime} - ${overlap.endTime}).`
+      )
+      return
     }
     if (editingScheduleId) {
       updateSchedule.mutate(
@@ -613,12 +644,29 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     <form
                       className="space-y-6"
                       onSubmit={scheduleForm.handleSubmit((vals) => {
+                        const startTime = joinTimeHm(vals.startHour, vals.startMinute)
+                        const endTime = joinTimeHm(vals.endHour, vals.endMinute)
                         const payload = {
                           dateIso: vals.dateIso,
-                          startTime: `${vals.startHour}:${vals.startMinute}`,
-                          endTime: `${vals.endHour}:${vals.endMinute}`,
-                          topic: vals.topic,
-                          location: vals.location,
+                          startTime,
+                          endTime,
+                          topic: vals.topic.trim(),
+                          location: vals.location.trim() || null,
+                        }
+                        if (startTime >= endTime) {
+                          toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
+                          return
+                        }
+                        const overlap = findOverlappingSchedule(
+                          schedules,
+                          payload,
+                          editingScheduleId
+                        )
+                        if (overlap) {
+                          toast.error(
+                            `Buổi học bị trùng với "${overlap.topic}" (${overlap.startTime} - ${overlap.endTime}).`
+                          )
+                          return
                         }
                         if (editingScheduleId) {
                           updateSchedule.mutate(
