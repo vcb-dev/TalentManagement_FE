@@ -1,4 +1,4 @@
-import type { CskhAuditRow, CskhInboxMessage } from './api'
+import type { CskhAuditRow, CskhInboxConversation, CskhInboxMessage } from './api'
 
 export function formatAuditDateLabel(dateStr: string) {
   const [y, m, d] = dateStr.split('-')
@@ -193,6 +193,17 @@ export function lastMessagePreview(row: CskhAuditRow): string {
   const transcript = Array.isArray(row.transcript) ? row.transcript : []
   const last = transcript[transcript.length - 1]
   return (last?.text || '').trim() || '—'
+}
+
+/** Nguồn hội thoại: quảng cáo Click-to-Messenger vs organic. */
+export function resolveAuditFromAd(
+  row: CskhAuditRow,
+  inbox?: CskhInboxConversation | null
+): { fromAd: boolean; adTitle: string | null; adId: string | null } {
+  const fromAd = Boolean(row.fromAd ?? row.metadata?.fromAd ?? inbox?.fromAd)
+  const adTitle = row.adTitle ?? row.metadata?.adTitle ?? inbox?.adTitle ?? null
+  const adId = row.adId ?? row.metadata?.adId ?? inbox?.adId ?? null
+  return { fromAd, adTitle, adId }
 }
 
 /** Tin hệ thống Facebook — lọc khi hiển thị transcript cũ. */

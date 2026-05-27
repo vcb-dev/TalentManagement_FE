@@ -490,6 +490,51 @@ export function CskhConnectionBadge({ connected }: { connected: boolean }) {
   )
 }
 
+export function CskhAdSourceBadge({
+  fromAd,
+  adTitle,
+  compact,
+}: {
+  fromAd?: boolean
+  adTitle?: string | null
+  compact?: boolean
+}) {
+  if (!fromAd) return null
+  const label = adTitle?.trim() ? (compact ? 'QC' : `Quảng cáo`) : compact ? 'QC' : 'Từ quảng cáo'
+  const title =
+    label === 'QC'
+      ? adTitle?.trim()
+        ? `Quảng cáo: ${adTitle}`
+        : 'Khách vào từ quảng cáo'
+      : adTitle?.trim() || 'Khách vào từ quảng cáo Click-to-Messenger'
+  return (
+    <span
+      title={title}
+      className={cn(
+        'inline-flex max-w-full items-center rounded-full bg-sky-100 font-semibold text-sky-800',
+        compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-[11px]'
+      )}
+    >
+      <span className="truncate">{label}</span>
+      {!compact && adTitle?.trim() ? (
+        <span className="ml-1 truncate font-medium opacity-90">· {adTitle.trim()}</span>
+      ) : null}
+    </span>
+  )
+}
+
+export function CskhOrganicSourceBadge({ show }: { show?: boolean }) {
+  if (!show) return null
+  return (
+    <span
+      title="Khách nhắn trực tiếp, không qua quảng cáo"
+      className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
+    >
+      Organic
+    </span>
+  )
+}
+
 export function CskhNoticeBanner({
   tone = 'error',
   title,

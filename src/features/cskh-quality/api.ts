@@ -71,6 +71,10 @@ export interface CskhAuditRow {
   agentName: string | null
   customerName: string | null
   customerPictureUrl?: string | null
+  fromAd?: boolean
+  adId?: string | null
+  adTitle?: string | null
+  referralSource?: string | null
   channel: string | null
   score: number
   feedback: string | null
@@ -86,6 +90,10 @@ export interface CskhAuditRow {
     needsFollowUp?: boolean
     auditDate?: string
     jobRunId?: string
+    fromAd?: boolean
+    adId?: string | null
+    adTitle?: string | null
+    referralSource?: string | null
     suggestedReplies?: string | string[] | null
     actionItems?: Array<{ issue: string; suggestedReply: string }> | string | null
     violations?: string | null
@@ -252,6 +260,10 @@ export interface CskhInboxConversation {
   participantPsid: string
   customerName: string | null
   customerPictureUrl?: string | null
+  fromAd?: boolean
+  adId?: string | null
+  adTitle?: string | null
+  referralSource?: string | null
   lastMessage: string | null
   lastMessageAt: string | null
   unreadCount: number

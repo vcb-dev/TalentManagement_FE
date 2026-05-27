@@ -38,6 +38,7 @@ import {
   lastMessagePreview,
   parseBulletLines,
   parseAuditActionItems,
+  resolveAuditFromAd,
   filterDisplayTranscript,
   messagesAfterAuditDate,
   isNoiseMessageText,
@@ -48,6 +49,8 @@ import { cskhMediaProxySrc, cskhMediaSrc, resolveMessageMedia } from './messageM
 import {
   ChatThreadHeader,
   CskhPageAvatar,
+  CskhAdSourceBadge,
+  CskhOrganicSourceBadge,
   CskhAuditProgressBanner,
   CskhAuditProgressPanel,
   CskhConnectionBadge,
@@ -409,12 +412,15 @@ function SuggestedReplyBox({
 
 function AiAnalysisPanel({
   row,
+  inbox,
   onUseReply,
 }: {
   row: CskhAuditRow
+  inbox?: CskhInboxConversation | null
   onUseReply?: (text: string) => void
 }) {
   const meta = row.metadata
+  const adSource = resolveAuditFromAd(row, inbox)
   const feedbackLines = parseBulletLines(row.feedback)
   const actionItems = parseAuditActionItems(row)
   const itemsWithReply = actionItems.filter((item) => item.suggestedReply.trim())
@@ -434,8 +440,10 @@ function AiAnalysisPanel({
             {row.score}
           </span>
         </div>
-        <p className="mt-1 text-xs text-slate-500">
-          Kênh: {displayChannelName(row)}
+        <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <span>Kênh: {displayChannelName(row)}</span>
+          <CskhAdSourceBadge fromAd={adSource.fromAd} adTitle={adSource.adTitle} compact />
+          {!adSource.fromAd ? <CskhOrganicSourceBadge show /> : null}
           {meta?.staffAbsent && (
             <span className="ml-2 rounded-full bg-rose-100 px-2 py-0.5 text-rose-700">
               chưa rep
@@ -756,6 +764,11 @@ export function AuditMessengerView({
     [selected, inboxQuery.data]
   )
 
+  const selectedAdSource = useMemo(
+    () => (selected ? resolveAuditFromAd(selected, inboxConv) : null),
+    [selected, inboxConv]
+  )
+
   const linkInboxMut = useMutation({
     mutationFn: (auditId: string) => linkAuditInbox(auditId),
     onSuccess: () => {
@@ -1009,6 +1022,10 @@ export function AuditMessengerView({
                     const active = row.id === selected?.id
                     const meta = row.metadata
                     const name = displayCustomerName(row.customerName)
+                    const adSource = resolveAuditFromAd(
+                      row,
+                      matchInboxConversation(row, inboxQuery.data ?? [])
+                    )
                     return (
                       <li key={row.id}>
                         <button
@@ -1044,6 +1061,18 @@ export function AuditMessengerView({
                               <p className="mt-0.5 truncate text-xs text-indigo-500/80">
                                 {displayPageShopLabel(meta?.pageName) || meta?.pageName || '—'}
                               </p>
+                              <div className="mt-1 flex flex-wrap items-center gap-1">
+                                <CskhAdSourceBadge
+                                  fromAd={adSource.fromAd}
+                                  adTitle={adSource.adTitle}
+                                  compact
+                                />
+                                {!adSource.fromAd ? (
+                                  <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                                    Organic
+                                  </span>
+                                ) : null}
+                              </div>
                               <p className="mt-1 truncate text-xs text-slate-500">
                                 {lastMessagePreview(row)}
                               </p>
@@ -1070,11 +1099,18 @@ export function AuditMessengerView({
                     pageId={selected.metadata?.pageId ?? inboxConv?.pageId}
                     psid={selected.metadata?.participantPsid ?? inboxConv?.participantPsid}
                     badge={
-                      <span
-                        className={`rounded-full border px-2.5 py-1 text-xs font-bold ${scoreColor(selected.score)}`}
-                      >
-                        {selected.score}
-                      </span>
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                        <CskhAdSourceBadge
+                          fromAd={selectedAdSource?.fromAd}
+                          adTitle={selectedAdSource?.adTitle}
+                        />
+                        {!selectedAdSource?.fromAd ? <CskhOrganicSourceBadge show /> : null}
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-xs font-bold ${scoreColor(selected.score)}`}
+                        >
+                          {selected.score}
+                        </span>
+                      </div>
                     }
                   />
                   <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
@@ -1211,12 +1247,16 @@ export function AuditMessengerView({
                 />
               )
             }
-            aside={selected ? <AiAnalysisPanel row={selected} onUseReply={setDraft} /> : undefined}
+            aside={
+              selected ? (
+                <AiAnalysisPanel row={selected} inbox={inboxConv} onUseReply={setDraft} />
+              ) : undefined
+            }
           />
 
           {selected && sortedAudits.length > 0 && (
             <div className="border-t border-indigo-100/60 lg:hidden">
-              <AiAnalysisPanel row={selected} onUseReply={setDraft} />
+              <AiAnalysisPanel row={selected} inbox={inboxConv} onUseReply={setDraft} />
             </div>
           )}
         </>
