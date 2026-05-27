@@ -91,13 +91,8 @@ export function CskhPageAvatar({
 
 export function CskhPageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative -m-5 min-h-[calc(100vh-3.5rem)] overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50/40 to-violet-100/50 pb-8 md:-m-6 lg:-m-8">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 overflow-hidden opacity-60">
-        <div className="absolute -left-20 top-0 h-64 w-64 rounded-full bg-indigo-300/30 blur-3xl" />
-        <div className="absolute right-0 top-10 h-56 w-56 rounded-full bg-fuchsia-300/25 blur-3xl" />
-        <div className="absolute left-1/2 top-24 h-40 w-96 -translate-x-1/2 rounded-full bg-sky-200/30 blur-3xl" />
-      </div>
-      <div className="page-shell relative space-y-5 px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+    <div className="relative -m-5 min-h-[calc(100vh-3.5rem)] overflow-hidden bg-slate-50/90 pb-3 md:-m-6 lg:-m-8">
+      <div className="page-shell relative space-y-3 px-3 py-3 sm:px-4 lg:px-5">{children}</div>
     </div>
   )
 }
@@ -420,25 +415,22 @@ export function MessengerWorkspace({
   sidebar,
   main,
   aside,
-  header,
   className,
 }: {
   sidebar: ReactNode
   main: ReactNode
   aside?: ReactNode
-  header?: ReactNode
   className?: string
 }) {
   return (
-    <div className={cn('flex flex-col overflow-hidden', className)}>
-      {header}
+    <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', className)}>
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside className="flex w-[240px] shrink-0 flex-col border-r border-slate-200/80 bg-white sm:w-[260px] lg:w-[280px]">
+        <aside className="flex w-[240px] shrink-0 flex-col border-r border-slate-200/80 bg-white sm:w-[260px]">
           {sidebar}
         </aside>
-        <div className="flex min-w-0 flex-[1.1] flex-col bg-[#f0f2f5]">{main}</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#f0f2f5]">{main}</div>
         {aside ? (
-          <aside className="hidden min-w-0 flex-[1.2] flex-col border-l border-slate-200/80 bg-white lg:flex xl:max-w-[420px]">
+          <aside className="hidden min-h-0 min-w-[340px] flex-[1.05] flex-col border-l border-slate-200/80 bg-white lg:flex xl:min-w-[380px]">
             {aside}
           </aside>
         ) : null}

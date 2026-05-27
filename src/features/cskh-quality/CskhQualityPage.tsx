@@ -4,7 +4,6 @@ import { Loader2, RefreshCw, Link2, ClipboardCheck, CheckCircle2, AlertCircle } 
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   fetchCskhPages,
-  fetchAuditDayStats,
   fetchRunningCskhJob,
   getCskhOAuthStartUrl,
   refreshCskhOAuth,
@@ -13,15 +12,7 @@ import {
   type CskhPagesResponse,
 } from './api'
 import { AuditMessengerView } from './AuditMessengerView'
-import {
-  CskhGlassPanel,
-  CskhHero,
-  CskhPageShell,
-  CskhPageAvatar,
-  CskhStatPill,
-  AuditDayStatsCards,
-  CskhTabNav,
-} from './cskhUi'
+import { CskhGlassPanel, CskhPageShell, CskhPageAvatar, CskhTabNav } from './cskhUi'
 
 type Tab = 'config' | 'audit'
 
@@ -281,20 +272,6 @@ export function CskhQualityPage() {
     return 'audit'
   })
   const [auditJobId, setAuditJobId] = useState<string | null>(null)
-  const [selectedAuditDate, setSelectedAuditDate] = useState<string>('')
-
-  const { data: pagesData } = useQuery({
-    queryKey: ['cskh', 'pages'],
-    queryFn: fetchCskhPages,
-  })
-
-  const { data: dayStats, isFetching: dayStatsFetching } = useQuery({
-    queryKey: ['cskh', 'audit-day-stats', selectedAuditDate],
-    queryFn: () => fetchAuditDayStats(selectedAuditDate),
-    enabled: Boolean(selectedAuditDate),
-    staleTime: 30_000,
-    refetchInterval: auditJobId ? 3_000 : false,
-  })
 
   useEffect(() => {
     void (async () => {
@@ -320,41 +297,8 @@ export function CskhQualityPage() {
     }
   }, [])
 
-  const enabledPages = (pagesData?.pages ?? []).filter((p) => p.enabled).length
-  const statsLoading = Boolean(selectedAuditDate) && dayStatsFetching
-  const dayStatsLabel = selectedAuditDate ? selectedAuditDate.split('-').reverse().join('/') : null
-
   return (
     <CskhPageShell>
-      <CskhHero
-        title="CSKH Quality"
-        subtitle="Audit chất lượng CSKH bằng AI — xem hội thoại, chấm điểm và trả lời khách ngay trên một màn hình."
-        badge={
-          pagesData?.oauthConnected ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Đã kết nối
-            </span>
-          ) : null
-        }
-        stats={
-          <>
-            <AuditDayStatsCards
-              stats={dayStats}
-              loading={statsLoading}
-              auditDayLabel={dayStatsLabel}
-              className="flex flex-wrap gap-2 sm:grid-cols-none sm:flex"
-            />
-            <CskhStatPill label="Page bật" value={enabledPages} />
-            <CskhStatPill
-              label="Tổng Page"
-              value={pagesData?.pages.length ?? 0}
-              tone={!pagesData?.oauthConnected ? 'warn' : 'default'}
-            />
-          </>
-        }
-      />
-
       <CskhTabNav
         active={tab}
         onChange={(id) => setTab(id as Tab)}
@@ -366,16 +310,12 @@ export function CskhQualityPage() {
         }))}
       />
 
-      <CskhGlassPanel>
+      <CskhGlassPanel className={tab === 'audit' ? 'flex min-h-[calc(100vh-8.5rem)] flex-col' : ''}>
         <div className={tab === 'config' ? '' : 'hidden'}>
           <ConfigTab />
         </div>
-        <div className={tab === 'audit' ? '' : 'hidden'}>
-          <AuditMessengerView
-            jobId={auditJobId}
-            setJobId={setAuditJobId}
-            onAuditDateChange={setSelectedAuditDate}
-          />
+        <div className={tab === 'audit' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+          <AuditMessengerView jobId={auditJobId} setJobId={setAuditJobId} />
         </div>
       </CskhGlassPanel>
     </CskhPageShell>

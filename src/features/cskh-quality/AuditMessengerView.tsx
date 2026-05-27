@@ -39,7 +39,6 @@ import {
 import { cskhMediaProxySrc, cskhMediaSrc, resolveMessageMedia } from './messageMedia'
 import {
   AuditAnalysisPanel,
-  AuditBreadcrumb,
   AuditConversationSidebar,
   AuditSummaryHeader,
   AuditTimelinePanel,
@@ -56,7 +55,6 @@ import {
   CskhLoading,
   CskhNoticeBanner,
   CskhToolbar,
-  AuditDayStatsCards,
   MessengerWorkspace,
 } from './cskhUi'
 import { useCskhInboxStream } from './useCskhInboxStream'
@@ -389,11 +387,9 @@ function ChatBubble({
 export function AuditMessengerView({
   jobId,
   setJobId,
-  onAuditDateChange,
 }: {
   jobId: string | null
   setJobId: (id: string | null) => void
-  onAuditDateChange?: (auditDate: string) => void
 }) {
   const [auditDate, setAuditDate] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -557,10 +553,6 @@ export function AuditMessengerView({
   useEffect(() => {
     if (progress?.summary?.auditDate) setAuditDate(progress.summary.auditDate)
   }, [progress?.summary?.auditDate])
-
-  useEffect(() => {
-    onAuditDateChange?.(auditDate)
-  }, [auditDate, onAuditDateChange])
 
   const { data: dayStats } = useQuery({
     queryKey: ['cskh', 'audit-day-stats', auditDate],
@@ -887,23 +879,7 @@ export function AuditMessengerView({
     : 0
 
   return (
-    <div className="space-y-0">
-      <div className="border-b border-slate-200/80 bg-white px-4 py-3 sm:px-5">
-        <AuditBreadcrumb
-          conversationLabel={
-            selected && sortedAudits.length ? `#${selectedIndex}/${sortedAudits.length}` : null
-          }
-        />
-      </div>
-      <div className="border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/60 via-white to-violet-50/40 px-4 py-3 sm:px-5">
-        <AuditDayStatsCards
-          stats={dayStats}
-          loading={
-            Boolean(auditDate) && (recentFetching || dayStats === undefined) && !isAuditActive
-          }
-          auditDayLabel={auditDayLabel}
-        />
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col">
       <CskhToolbar>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -925,6 +901,11 @@ export function AuditMessengerView({
               </span>
             )}
           </div>
+          {selected && sortedAudits.length > 0 && (
+            <span className="inline-flex items-center rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
+              Hội thoại #{selectedIndex}/{sortedAudits.length}
+            </span>
+          )}
           {isRunning && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -1064,25 +1045,23 @@ export function AuditMessengerView({
           description="Chọn ngày ở trên và bấm Chạy audit để AI phân tích hội thoại CSKH."
         />
       ) : (
-        <>
+        <div className="flex min-h-0 flex-1 flex-col">
           {isAuditPhase && (
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}
+          {selected ? (
+            <AuditSummaryHeader
+              row={selected}
+              index={selectedIndex}
+              total={sortedAudits.length}
+              inbox={inboxConv}
+              comparison={comparisonQuery.data}
+              allAudits={sortedAudits}
+              auditDayLabel={selectedAuditDayLabel}
+            />
+          ) : null}
           <MessengerWorkspace
-            className="h-[min(820px,calc(100vh-220px))] min-h-[560px]"
-            header={
-              selected ? (
-                <AuditSummaryHeader
-                  row={selected}
-                  index={selectedIndex}
-                  total={sortedAudits.length}
-                  inbox={inboxConv}
-                  comparison={comparisonQuery.data}
-                  allAudits={sortedAudits}
-                  auditDayLabel={selectedAuditDayLabel}
-                />
-              ) : undefined
-            }
+            className="min-h-0 flex-1"
             sidebar={
               <AuditConversationSidebar
                 rows={sortedAudits}
@@ -1097,7 +1076,7 @@ export function AuditMessengerView({
             }
             main={
               selected ? (
-                <>
+                <div className="flex min-h-0 flex-1 flex-col">
                   <ChatThreadHeader
                     name={displayCustomerName(selected.customerName)}
                     subtitle={`${displayPageShopLabel(selected.metadata?.pageName) || selected.metadata?.pageName || selected.channel || ''}${
@@ -1277,7 +1256,7 @@ export function AuditMessengerView({
                       </p>
                     )}
                   </footer>
-                </>
+                </div>
               ) : (
                 <CskhEmptyState
                   icon={<MessageCircle className="h-12 w-12 text-violet-500" />}
@@ -1300,7 +1279,7 @@ export function AuditMessengerView({
           />
 
           {selected && sortedAudits.length > 0 && (
-            <div className="border-t border-slate-200/80 lg:hidden">
+            <div className="max-h-[480px] shrink-0 overflow-hidden border-t border-slate-200/80 lg:hidden">
               <AuditAnalysisPanel
                 row={selected}
                 inbox={inboxConv}
@@ -1310,7 +1289,7 @@ export function AuditMessengerView({
               />
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   )

@@ -1,6 +1,6 @@
 import { memo, useMemo, useState, type ReactNode } from 'react'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
-import { ChevronRight, Filter, MessageSquare, Sparkles, Star, Tag } from 'lucide-react'
+import { Filter, MessageSquare, Sparkles, Star, Tag } from 'lucide-react'
 import {
   ChartContainer,
   ChartTooltip,
@@ -26,6 +26,7 @@ import {
   formatDurationSec,
   resolveComparisonAverages,
   resolveCriteriaScores,
+  resolveFeedbackBullets,
   resolveKeywords,
   resolveProsCons,
   resolveSentiment,
@@ -91,25 +92,9 @@ function TabBar({
 
 function SummaryCard({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm', className)}>
+    <div className={cn('rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm', className)}>
       {children}
     </div>
-  )
-}
-
-export function AuditBreadcrumb({ conversationLabel }: { conversationLabel?: string | null }) {
-  return (
-    <nav className="flex items-center gap-1.5 text-sm text-slate-500">
-      <span className="font-medium text-slate-700">CSKH Quality</span>
-      <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-      <span className="font-medium text-slate-700">Audit</span>
-      {conversationLabel ? (
-        <>
-          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-          <span className="font-semibold text-violet-700">Hội thoại {conversationLabel}</span>
-        </>
-      ) : null}
-    </nav>
   )
 }
 
@@ -143,7 +128,7 @@ export function AuditSummaryHeader({
   ]
 
   return (
-    <div className="grid gap-3 border-b border-slate-200/80 bg-slate-50/50 p-4 lg:grid-cols-4">
+    <div className="grid shrink-0 gap-4 border-b border-slate-200/80 bg-slate-50/50 p-4 sm:p-5 lg:grid-cols-4">
       <SummaryCard>
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -245,15 +230,15 @@ export function AuditSummaryHeader({
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
           Điểm theo tiêu chí
         </p>
-        <div className="grid grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-5 gap-2">
           {criteria.map((c) => (
             <div
               key={c.id}
-              className="flex flex-col items-center rounded-lg border border-slate-100 bg-slate-50/80 px-1 py-2 text-center"
+              className="flex flex-col items-center rounded-lg border border-slate-100 bg-slate-50/80 px-1.5 py-2.5 text-center"
               title={c.label}
             >
-              <span className="text-base leading-none">{c.icon}</span>
-              <p className="mt-1 line-clamp-2 min-h-[2rem] text-[9px] font-medium leading-tight text-slate-600">
+              <span className="text-lg leading-none">{c.icon}</span>
+              <p className="mt-1.5 line-clamp-2 min-h-[2.25rem] text-[10px] font-medium leading-tight text-slate-600">
                 {c.label.split(',')[0]}
               </p>
               <p className="mt-0.5 text-xs font-bold tabular-nums text-slate-800">
@@ -274,7 +259,7 @@ export function AuditSummaryHeader({
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
           So sánh trung bình
         </p>
-        <ChartContainer config={compareChartConfig} className="h-[120px] w-full">
+        <ChartContainer config={compareChartConfig} className="h-[132px] w-full">
           <BarChart data={compareData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
@@ -521,6 +506,7 @@ export function AuditAnalysisPanel({
   const sentiment = resolveSentiment(row)
   const metrics = resolveTranscriptMetrics(row, transcript)
   const actionItems = parseAuditActionItems(row)
+  const feedbackBullets = resolveFeedbackBullets(row)
 
   const tabs = [
     { id: 'detail', label: 'Phân tích chi tiết' },
@@ -534,18 +520,28 @@ export function AuditAnalysisPanel({
     <div className="flex h-full flex-col bg-white">
       <TabBar tabs={tabs} active={tab} onChange={setTab} className="px-2" />
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-5">
         {tab === 'detail' && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <section>
               <h4 className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
                 <Sparkles className="h-4 w-4 text-violet-500" />
                 Đánh giá tổng quan AI
               </h4>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                {row.feedback?.replace(/^[\s•+\-]+/gm, '').trim() ||
-                  'AI chưa có nhận xét chi tiết cho hội thoại này.'}
-              </p>
+              {feedbackBullets.length ? (
+                <ul className="mt-3 space-y-2">
+                  {feedbackBullets.map((line, i) => (
+                    <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-slate-700">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">
+                  AI chưa có nhận xét chi tiết cho hội thoại này.
+                </p>
+              )}
             </section>
 
             {pros.length ? (

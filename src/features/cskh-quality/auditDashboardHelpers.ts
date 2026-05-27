@@ -1,6 +1,7 @@
 import type { AuditComparisonStats, CskhAuditRow } from './api'
 import {
   displayAgentName,
+  parseAiListField,
   parseAuditActionItems,
   parseBulletLines,
   type DisplayTranscriptLine,
@@ -139,6 +140,26 @@ export function resolveComparisonAverages(
     : overall
 
   return { staff, team, overall, source: 'fe' }
+}
+
+/** Chuyển feedback AI thành các dòng bullet để hiển thị trong tab Phân tích chi tiết. */
+export function resolveFeedbackBullets(row: CskhAuditRow): string[] {
+  const feedback = row.feedback?.trim()
+  if (!feedback) return []
+
+  const lines = parseBulletLines(feedback)
+  if (lines.length > 1) return lines
+
+  const fromAi = parseAiListField(feedback)
+  if (fromAi.length > 1) return fromAi
+
+  const bySentence = feedback
+    .split(/(?<=[.!?…])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 8)
+  if (bySentence.length > 1) return bySentence
+
+  return fromAi.length ? fromAi : lines.length ? lines : [feedback]
 }
 
 export function resolveProsCons(row: CskhAuditRow): {
