@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { Loader2, X, AlertCircle, AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DatePicker } from '@/components/ui/date-picker'
+import { formatAuditDateLabel } from './auditHelpers'
 import { cskhCustomerAvatarSrc, cskhPageAvatarSrc } from './messageMedia'
 
 /** Facebook CDN — proxy qua BE vì img tag không gửi JWT. */
@@ -466,6 +468,35 @@ export function CskhLoading({ label = 'Đang tải…' }: { label?: string }) {
       </div>
       <p className="text-sm font-medium">{label}</p>
     </div>
+  )
+}
+
+/** Calendar popover — dùng chung DatePicker của app, style gọn cho toolbar audit. */
+export function CskhAuditDatePicker({
+  value,
+  onChange,
+  disabled,
+  max,
+}: {
+  value: string
+  onChange: (value: string) => void
+  disabled?: boolean
+  max?: string
+}) {
+  return (
+    <DatePicker
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      max={max}
+      placeholder="Chọn ngày audit"
+      displayLabel={value ? formatAuditDateLabel(value) : undefined}
+      className={cn(
+        'h-10 min-w-[10.5rem] rounded-xl border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm',
+        'hover:border-indigo-300 hover:bg-indigo-50/40',
+        value && 'border-indigo-300/80 text-indigo-900'
+      )}
+    />
   )
 }
 

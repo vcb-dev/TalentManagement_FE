@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getApiErrorMessage } from '@/lib/axios'
 import { isTransientInfraError, toUserFacingError } from '@/lib/userFacingError'
@@ -11,7 +11,6 @@ import {
   Copy,
   Check,
   ClipboardCheck,
-  Calendar,
   Send,
   Search,
 } from 'lucide-react'
@@ -58,6 +57,7 @@ import {
   CskhOrganicSourceBadge,
   CskhAuditProgressBanner,
   CskhAuditProgressPanel,
+  CskhAuditDatePicker,
   CskhConnectionBadge,
   CskhEmptyState,
   CskhLoading,
@@ -138,6 +138,66 @@ function resolveCustomerPicture(
     row.customerPictureUrl ?? row.metadata?.customerPictureUrl ?? inbox?.customerPictureUrl ?? null
   )
 }
+
+const AuditSidebarRow = memo(function AuditSidebarRow({
+  row,
+  active,
+  adSource,
+  onSelect,
+}: {
+  row: CskhAuditRow
+  active: boolean
+  adSource: { fromAd: boolean; adTitle: string | null; adId: string | null }
+  onSelect: (id: string) => void
+}) {
+  const meta = row.metadata
+  const name = displayCustomerName(row.customerName)
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onSelect(row.id)}
+        className={`w-full px-4 py-3.5 text-left transition-all ${
+          active
+            ? 'bg-white shadow-[inset_3px_0_0_0_#7c3aed] ring-1 ring-violet-100'
+            : 'border-b border-slate-100/60 hover:bg-white/80'
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          <CskhPageAvatar
+            name={name}
+            pictureUrl={row.customerPictureUrl ?? row.metadata?.customerPictureUrl}
+            pageId={meta?.pageId}
+            psid={meta?.participantPsid}
+            className="h-9 w-9 rounded-xl text-xs"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
+              <span
+                className={`shrink-0 rounded-full border px-1.5 py-0.5 text-xs font-bold ${scoreColor(row.score)}`}
+              >
+                {row.score}
+              </span>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-indigo-500/80">
+              {displayPageShopLabel(meta?.pageName) || meta?.pageName || '—'}
+            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-1">
+              <CskhAdSourceBadge fromAd={adSource.fromAd} adTitle={adSource.adTitle} compact />
+              {!adSource.fromAd ? (
+                <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                  Organic
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1 truncate text-xs text-slate-500">{lastMessagePreview(row)}</p>
+          </div>
+        </div>
+      </button>
+    </li>
+  )
+})
 
 function MediaImage({ url, compact }: { url: string; compact?: boolean }) {
   const [failed, setFailed] = useState(false)
@@ -748,15 +808,25 @@ export function AuditMessengerView({
     staleTime: 15_000,
   })
 
-  const { data: recentAudits, isLoading: recentLoading } = useQuery({
+  const {
+    data: recentAudits,
+    isLoading: recentLoading,
+    isFetching: recentFetching,
+  } = useQuery({
     queryKey: ['cskh', 'audits', 'by-day', auditDate],
     queryFn: () => fetchCskhAudits({ auditDate, limit: 2000 }),
     enabled: Boolean(auditDate),
-    placeholderData: keepPreviousData,
-    staleTime: 30_000,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     retry: cskhQueryRetry,
     retryDelay: cskhQueryRetryDelay,
   })
+
+  useEffect(() => {
+    stableAuditsRef.current = []
+    setSelectedId(null)
+    setSidebarSearch('')
+  }, [auditDate])
 
   useEffect(() => {
     if (auditDate || recentLoading) return
@@ -782,7 +852,17 @@ export function AuditMessengerView({
   /** Quét inbox / khởi động job → màn tiến độ; chấm điểm → danh sách hội thoại */
   const showProgressScreen = isFetchPhase
 
+  const dayAuditsReady =
+    Boolean(auditDate) &&
+    !recentLoading &&
+    !recentFetching &&
+    recentAudits !== undefined &&
+    recentAudits.every((a) => !a.metadata?.auditDate || a.metadata.auditDate === auditDate)
+
+  const showDayLoading = Boolean(auditDate) && !isAuditActive && !dayAuditsReady
+
   const displayAudits = useMemo(() => {
+    if (showDayLoading) return []
     const filterDay = (rows: CskhAuditRow[]) =>
       rows.filter((a) => !auditDate || a.metadata?.auditDate === auditDate)
     const fromProgress = jobId && progress?.audits?.length ? filterDay(progress.audits) : []
@@ -790,8 +870,8 @@ export function AuditMessengerView({
     if (isAuditActive && fromProgress.length >= fromRecent.length) return fromProgress
     if (fromRecent.length) return fromRecent
     if (fromProgress.length) return fromProgress
-    return filterDay(stableAuditsRef.current)
-  }, [auditDate, isAuditActive, jobId, progress?.audits, recentAudits])
+    return []
+  }, [auditDate, isAuditActive, jobId, progress?.audits, recentAudits, showDayLoading])
 
   useEffect(() => {
     if (displayAudits.length) stableAuditsRef.current = displayAudits
@@ -819,11 +899,12 @@ export function AuditMessengerView({
     null
 
   const showTransientLoading =
-    (!isAuditActive &&
+    !showDayLoading &&
+    ((!isAuditActive &&
       progressError &&
       progressFetching &&
       isTransientInfraError(auditErrorMessage)) ||
-    (recentLoading && !sortedAudits.length && !isAuditActive)
+      (recentLoading && !sortedAudits.length && !isAuditActive && !auditDate))
 
   const errorKey = `${progress?.id ?? 'run'}-${auditErrorMessage}`
   const showAuditError =
@@ -893,8 +974,9 @@ export function AuditMessengerView({
   const inboxQuery = useQuery({
     queryKey: ['cskh', 'inbox', 'conversations'],
     queryFn: () => fetchInboxConversations(),
-    refetchInterval: inboxLive ? false : 20_000,
+    refetchInterval: inboxLive ? false : 30_000,
     refetchOnWindowFocus: false,
+    staleTime: 30_000,
   })
 
   // Đồng bộ inbox nền — trì hoãn, bỏ qua khi đang audit để tránh lag UI
@@ -944,6 +1026,18 @@ export function AuditMessengerView({
   const inboxLinkPending = linkInboxMut.isPending
   const inboxLinkFailed = linkInboxMut.isError && !inboxConv
 
+  const sidebarAdSources = useMemo(() => {
+    const convs = inboxQuery.data ?? []
+    return new Map(
+      filteredAudits.map((row) => [
+        row.id,
+        resolveAuditFromAd(row, matchInboxConversation(row, convs)),
+      ])
+    )
+  }, [filteredAudits, inboxQuery.data])
+
+  const handleSelectAudit = useCallback((id: string) => setSelectedId(id), [])
+
   const selectedAuditDate = selected?.metadata?.auditDate ?? null
 
   const liveMsgQuery = useQuery({
@@ -958,10 +1052,9 @@ export function AuditMessengerView({
       })
     },
     enabled: !!inboxConv?.id,
-    refetchInterval: inboxLive ? false : 12_000,
-    staleTime: 8_000,
+    refetchInterval: inboxLive ? false : 15_000,
+    staleTime: 15_000,
     refetchOnWindowFocus: false,
-    placeholderData: (prev) => prev,
   })
 
   const sendMut = useMutation({
@@ -1012,19 +1105,23 @@ export function AuditMessengerView({
       <CskhToolbar>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-indigo-500" />
             <label className="text-sm font-medium text-slate-700" htmlFor="audit-date">
               Ngày audit <span className="text-rose-500">*</span>
             </label>
-            <input
-              id="audit-date"
-              type="date"
-              value={auditDate}
-              max={vietnamTodayIso()}
-              disabled={isRunning}
-              onChange={(e) => setAuditDate(e.target.value)}
-              className="rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-50"
-            />
+            <div id="audit-date">
+              <CskhAuditDatePicker
+                value={auditDate}
+                onChange={setAuditDate}
+                max={vietnamTodayIso()}
+                disabled={isRunning}
+              />
+            </div>
+            {showDayLoading && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Đang tải…
+              </span>
+            )}
           </div>
           {isRunning && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
@@ -1150,8 +1247,12 @@ export function AuditMessengerView({
         />
       )}
 
-      {recentLoading && !sortedAudits.length && !isAuditActive && !showTransientLoading ? (
-        <CskhLoading label="Đang tải kết quả audit…" />
+      {showDayLoading ? (
+        <CskhLoading
+          label={
+            auditDayLabel ? `Đang tải hội thoại ngày ${auditDayLabel}…` : 'Đang tải kết quả audit…'
+          }
+        />
       ) : showProgressScreen ? (
         <CskhAuditProgressPanel auditDayLabel={auditDayLabel} summary={summary} />
       ) : !sortedAudits.length ? (
@@ -1191,70 +1292,17 @@ export function AuditMessengerView({
                       Không tìm thấy &quot;{sidebarSearch.trim()}&quot;
                     </li>
                   ) : null}
-                  {filteredAudits.map((row) => {
-                    const active = row.id === selected?.id
-                    const meta = row.metadata
-                    const name = displayCustomerName(row.customerName)
-                    const adSource = resolveAuditFromAd(
-                      row,
-                      matchInboxConversation(row, inboxQuery.data ?? [])
-                    )
-                    return (
-                      <li key={row.id}>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedId(row.id)}
-                          className={`w-full px-4 py-3.5 text-left transition-all ${
-                            active
-                              ? 'bg-white shadow-[inset_3px_0_0_0_#7c3aed] ring-1 ring-violet-100'
-                              : 'border-b border-slate-100/60 hover:bg-white/80'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <CskhPageAvatar
-                              name={name}
-                              pictureUrl={
-                                row.customerPictureUrl ?? row.metadata?.customerPictureUrl
-                              }
-                              pageId={meta?.pageId}
-                              psid={meta?.participantPsid}
-                              className="h-9 w-9 rounded-xl text-xs"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-start justify-between gap-2">
-                                <p className="truncate text-sm font-semibold text-slate-800">
-                                  {name}
-                                </p>
-                                <span
-                                  className={`shrink-0 rounded-full border px-1.5 py-0.5 text-xs font-bold ${scoreColor(row.score)}`}
-                                >
-                                  {row.score}
-                                </span>
-                              </div>
-                              <p className="mt-0.5 truncate text-xs text-indigo-500/80">
-                                {displayPageShopLabel(meta?.pageName) || meta?.pageName || '—'}
-                              </p>
-                              <div className="mt-1 flex flex-wrap items-center gap-1">
-                                <CskhAdSourceBadge
-                                  fromAd={adSource.fromAd}
-                                  adTitle={adSource.adTitle}
-                                  compact
-                                />
-                                {!adSource.fromAd ? (
-                                  <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                                    Organic
-                                  </span>
-                                ) : null}
-                              </div>
-                              <p className="mt-1 truncate text-xs text-slate-500">
-                                {lastMessagePreview(row)}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      </li>
-                    )
-                  })}
+                  {filteredAudits.map((row) => (
+                    <AuditSidebarRow
+                      key={row.id}
+                      row={row}
+                      active={row.id === selected?.id}
+                      adSource={
+                        sidebarAdSources.get(row.id) ?? { fromAd: false, adTitle: null, adId: null }
+                      }
+                      onSelect={handleSelectAudit}
+                    />
+                  ))}
                 </ul>
               </>
             }
