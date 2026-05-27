@@ -45,6 +45,7 @@ import {
   filterDisplayTranscript,
   messagesAfterAuditDate,
   groupLiveMediaMessages,
+  dedupeMediaUrls,
   isNoiseMessageText,
   scoreColor,
   vietnamTodayIso,
@@ -239,11 +240,9 @@ function MessageBubbleContent({
   messageType?: string | null
   isStaff?: boolean
 }) {
-  const initialUrls = attachmentUrls?.filter(Boolean).length
-    ? attachmentUrls!.filter(Boolean)
-    : attachmentUrl
-      ? [attachmentUrl]
-      : []
+  const initialUrls = dedupeMediaUrls(
+    attachmentUrls?.length ? attachmentUrls : attachmentUrl ? [attachmentUrl] : []
+  )
   const [resolvedUrls, setResolvedUrls] = useState<string[]>(initialUrls)
   const [resolvedType, setResolvedType] = useState<string | null>(messageType ?? null)
   const [resolvedText, setResolvedText] = useState<string | null | undefined>(text)
@@ -253,11 +252,9 @@ function MessageBubbleContent({
   const resolveAttempted = useRef(false)
 
   useEffect(() => {
-    const urls = attachmentUrls?.filter(Boolean).length
-      ? attachmentUrls!.filter(Boolean)
-      : attachmentUrl
-        ? [attachmentUrl]
-        : []
+    const urls = dedupeMediaUrls(
+      attachmentUrls?.length ? attachmentUrls : attachmentUrl ? [attachmentUrl] : []
+    )
     setResolvedUrls(urls)
     setResolvedType(messageType ?? null)
     setResolvedText(text)
@@ -288,8 +285,8 @@ function MessageBubbleContent({
     resolveInboxMessageMedia(messageId!)
       .then((row) => {
         if (cancelled) return
-        if (row.attachmentUrls?.length) setResolvedUrls(row.attachmentUrls)
-        else if (row.attachmentUrl) setResolvedUrls([row.attachmentUrl])
+        if (row.attachmentUrls?.length) setResolvedUrls(dedupeMediaUrls(row.attachmentUrls))
+        else if (row.attachmentUrl) setResolvedUrls(dedupeMediaUrls([row.attachmentUrl]))
         if (row.messageType) setResolvedType(row.messageType)
         setResolvedText(row.text)
       })
@@ -425,9 +422,9 @@ function ChatBubble({
 }) {
   if (isNoiseMessageText(text)) return null
   const isStaff = sender === 'Staff'
-  const urls = attachmentUrls?.filter(Boolean).length
-    ? attachmentUrls!.filter(Boolean)
-    : [attachmentUrl, imageUrl, videoUrl].filter((u): u is string => Boolean(u))
+  const urls = dedupeMediaUrls(
+    attachmentUrls?.length ? attachmentUrls : [attachmentUrl, imageUrl, videoUrl]
+  )
   const resolvedUrl = urls[0] ?? null
   const resolvedType =
     messageType ?? (videoUrl ? 'video' : imageUrl || attachmentUrl ? 'image' : 'text')
@@ -443,7 +440,7 @@ function ChatBubble({
         <MessageBubbleContent
           text={text}
           attachmentUrl={resolvedUrl}
-          attachmentUrls={urls.length > 1 ? urls : attachmentUrls}
+          attachmentUrls={urls.length > 1 ? urls : undefined}
           messageType={resolvedType}
           isStaff={isStaff}
         />
@@ -849,8 +846,13 @@ export function AuditMessengerView({
   const auditCount = summary?.auditCount ?? progress?.audits?.length ?? 0
   const isFetchPhase = isAuditActive && summary?.phase !== 'audit'
   const isAuditPhase = isAuditActive && summary?.phase === 'audit'
-  /** Quét inbox / khởi động job → màn tiến độ; chấm điểm → danh sách hội thoại */
-  const showProgressScreen = isFetchPhase
+  /** Quét inbox → màn tiến độ; chấm điểm → danh sách (giữ màn tiến độ nếu chưa có total). */
+  const showProgressScreen =
+    isFetchPhase ||
+    (isAuditPhase &&
+      (summary?.total ?? 0) === 0 &&
+      (summary?.processed ?? 0) === 0 &&
+      (progress?.audits?.length ?? 0) === 0)
 
   const dayAuditsReady =
     Boolean(auditDate) &&
@@ -867,7 +869,14 @@ export function AuditMessengerView({
       rows.filter((a) => !auditDate || a.metadata?.auditDate === auditDate)
     const fromProgress = jobId && progress?.audits?.length ? filterDay(progress.audits) : []
     const fromRecent = recentAudits?.length ? filterDay(recentAudits) : []
-    if (isAuditActive && fromProgress.length >= fromRecent.length) return fromProgress
+
+    if (isAuditActive && jobId) {
+      const merged = new Map<string, CskhAuditRow>()
+      for (const row of fromRecent) merged.set(row.id, row)
+      for (const row of fromProgress) merged.set(row.id, row)
+      return filterDay([...merged.values()])
+    }
+
     if (fromRecent.length) return fromRecent
     if (fromProgress.length) return fromProgress
     return []

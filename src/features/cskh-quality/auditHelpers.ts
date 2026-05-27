@@ -232,7 +232,42 @@ export type DisplayTranscriptLine = {
 }
 
 export function filterDisplayTranscript(lines: DisplayTranscriptLine[]): DisplayTranscriptLine[] {
-  return lines.filter((line) => !isNoiseMessageText(line.text))
+  return lines
+    .filter((line) => !isNoiseMessageText(line.text))
+    .map((line) => normalizeTranscriptMediaLine(line))
+}
+
+/** Loại URL ảnh/video trùng (Facebook hay trả cùng CDN cho nhiều attachment). */
+export function dedupeMediaUrls(urls: (string | null | undefined)[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of urls) {
+    const u = (raw ?? '').trim()
+    if (!u.startsWith('http')) continue
+    const key = u.split('?')[0].replace(/\/$/, '')
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(u)
+  }
+  return out
+}
+
+export function normalizeTranscriptMediaLine(line: DisplayTranscriptLine): DisplayTranscriptLine {
+  const urls = dedupeMediaUrls([
+    ...(line.attachmentUrls ?? []),
+    line.attachmentUrl,
+    line.imageUrl,
+    line.videoUrl,
+  ])
+  if (!urls.length) return line
+  const isVideo = line.type === 'video' || Boolean(line.videoUrl)
+  return {
+    ...line,
+    attachmentUrl: urls[0],
+    imageUrl: isVideo ? line.imageUrl : urls[0],
+    videoUrl: isVideo ? urls[0] : line.videoUrl,
+    attachmentUrls: urls.length > 1 ? urls : undefined,
+  }
 }
 
 export function vietnamAuditDayEndMs(auditDate: string): number {
@@ -281,8 +316,10 @@ export function groupLiveMediaMessages(
       Math.abs(msgTs - prevTs) <= 2000
 
     if (canMerge && msg.attachmentUrl) {
-      prev!.attachmentUrls = [...prevUrls, msg.attachmentUrl]
-      if (!prev!.attachmentUrl) prev!.attachmentUrl = msg.attachmentUrl
+      const merged = dedupeMediaUrls([...prevUrls, msg.attachmentUrl])
+      if (merged.length <= prevUrls.length) continue
+      prev!.attachmentUrls = merged.length > 1 ? merged : undefined
+      if (!prev!.attachmentUrl) prev!.attachmentUrl = merged[0]
       continue
     }
 
