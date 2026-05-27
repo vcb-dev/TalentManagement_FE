@@ -423,16 +423,21 @@ export function MessengerWorkspace({
   className?: string
 }) {
   return (
-    <div className={cn('flex flex-col', className)}>
-      <div className="flex flex-col lg:flex-row lg:items-start">
-        <aside className="flex max-h-[420px] w-full shrink-0 flex-col overflow-hidden border-b border-slate-200/80 bg-white lg:max-h-none lg:w-[280px] lg:border-b-0 lg:border-r xl:w-[300px]">
+    <div
+      className={cn(
+        'flex h-[min(720px,calc(100dvh-17rem))] min-h-[500px] flex-col overflow-hidden',
+        className
+      )}
+    >
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row lg:items-stretch">
+        <aside className="flex max-h-[240px] min-h-0 shrink-0 flex-col overflow-hidden border-b border-slate-200/80 bg-white sm:max-h-[280px] lg:h-full lg:max-h-none lg:w-[280px] lg:border-b-0 lg:border-r xl:w-[300px]">
           {sidebar}
         </aside>
-        <div className="flex min-h-[520px] min-w-0 flex-1 flex-col bg-[#f0f2f5] lg:min-h-[640px]">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#f0f2f5]">
           {main}
         </div>
         {aside ? (
-          <aside className="hidden w-full shrink-0 flex-col border-t border-slate-200/80 bg-white lg:flex lg:min-w-[400px] lg:flex-[1.15] lg:border-l lg:border-t-0 xl:min-w-[440px]">
+          <aside className="hidden h-full min-h-0 min-w-[400px] flex-[1.15] flex-col overflow-hidden border-l border-slate-200/80 bg-white lg:flex xl:min-w-[440px]">
             {aside}
           </aside>
         ) : null}

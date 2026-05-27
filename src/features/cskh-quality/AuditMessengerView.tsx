@@ -1104,7 +1104,7 @@ export function AuditMessengerView({
             }
             main={
               selected ? (
-                <div className="flex min-h-[520px] flex-col lg:min-h-[640px]">
+                <div className="flex h-full min-h-0 flex-col overflow-hidden">
                   <ChatThreadHeader
                     name={displayCustomerName(selected.customerName)}
                     subtitle={`${displayPageShopLabel(selected.metadata?.pageName) || selected.metadata?.pageName || selected.channel || ''}${
@@ -1158,7 +1158,7 @@ export function AuditMessengerView({
                     ))}
                   </div>
                   {chatTab === 'analysis' ? (
-                    <div className="lg:hidden">
+                    <div className="min-h-0 flex-1 overflow-hidden lg:hidden">
                       <AuditAnalysisPanel
                         row={selected}
                         inbox={inboxConv}

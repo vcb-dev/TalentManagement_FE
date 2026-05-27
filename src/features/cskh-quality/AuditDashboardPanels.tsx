@@ -423,8 +423,8 @@ export function AuditConversationSidebar({
   const pageRows = filtered.slice((safePage - 1) * SIDEBAR_PAGE_SIZE, safePage * SIDEBAR_PAGE_SIZE)
 
   return (
-    <div className="flex h-full flex-col bg-white">
-      <div className="space-y-2 border-b border-slate-200/80 p-3">
+    <div className="flex h-full min-h-0 flex-col bg-white">
+      <div className="shrink-0 space-y-2 border-b border-slate-200/80 p-3">
         <div className="relative">
           <MessageSquare className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           <input
@@ -452,7 +452,7 @@ export function AuditConversationSidebar({
           }}
         />
       </div>
-      <ul className="flex-1 overflow-y-auto">
+      <ul className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
         {pageRows.length === 0 ? (
           <li className="px-4 py-10 text-center text-sm text-slate-500">Không có hội thoại</li>
         ) : (
@@ -468,7 +468,7 @@ export function AuditConversationSidebar({
         )}
       </ul>
       {totalPages > 1 ? (
-        <div className="border-t border-slate-100 p-2">
+        <div className="shrink-0 border-t border-slate-100 p-2">
           <NumberedPaginationBar
             page={safePage}
             totalPages={totalPages}
@@ -527,7 +527,7 @@ export function CustomerIntentPanel({
 }) {
   if (loading) {
     return (
-      <div className="border-b border-violet-100 bg-violet-50/60 px-5 py-4">
+      <div className="shrink-0 border-b border-violet-100 bg-violet-50/60 px-5 py-4">
         <div className="flex items-center gap-2.5 text-base text-violet-700">
           <Loader2 className="h-5 w-5 animate-spin" />
           Đang phân tích tin nhắn mới…
@@ -538,7 +538,7 @@ export function CustomerIntentPanel({
   if (!intent) return null
 
   return (
-    <div className="border-b border-violet-100 bg-gradient-to-r from-violet-50/90 to-indigo-50/60 px-5 py-4">
+    <div className="shrink-0 border-b border-violet-100 bg-gradient-to-r from-violet-50/90 to-indigo-50/60 px-5 py-4">
       <div className="flex items-start gap-3">
         <Zap className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
         <div className="min-w-0 flex-1 space-y-2.5">
@@ -621,11 +621,11 @@ export function AuditAnalysisPanel({
   ]
 
   return (
-    <div className="flex flex-col bg-white">
+    <div className="flex h-full min-h-0 flex-col bg-white">
       <CustomerIntentPanel intent={customerIntent} loading={intentLoading} />
-      <TabBar tabs={tabs} active={tab} onChange={setTab} className="px-3" />
+      <TabBar tabs={tabs} active={tab} onChange={setTab} className="shrink-0 px-3" />
 
-      <div className="px-5 py-6 sm:px-6 sm:py-7">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 py-6 sm:px-6 sm:py-7">
         {tab === 'detail' && (
           <div className="space-y-8">
             <section>
@@ -814,7 +814,7 @@ export function AuditAnalysisPanel({
         )}
       </div>
 
-      <div className="border-t border-slate-100 px-5 py-5 sm:px-6">
+      <div className="shrink-0 border-t border-slate-100 px-5 py-5 sm:px-6">
         <p className="text-sm font-bold uppercase tracking-wide text-slate-400">Đánh giá auditor</p>
         <div className="mt-3 flex items-center gap-3">
           <div className="flex">
