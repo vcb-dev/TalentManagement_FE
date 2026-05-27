@@ -45,6 +45,7 @@ import {
   AuditConversationSidebar,
   AuditSummaryHeader,
   AuditTimelinePanel,
+  type AuditSidebarSort,
 } from './AuditDashboardPanels'
 import {
   ChatThreadHeader,
@@ -400,6 +401,7 @@ export function AuditMessengerView({
   const [draft, setDraft] = useState('')
   const [sidebarSearch, setSidebarSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState<'all' | 'ad' | 'organic'>('all')
+  const [sidebarSort, setSidebarSort] = useState<AuditSidebarSort>('newest')
   const [chatTab, setChatTab] = useState<'chat' | 'timeline' | 'analysis'>('chat')
   const [workspacePane, setWorkspacePane] = useState<MessengerWorkspacePane>('list')
   const [completionNotice, setCompletionNotice] = useState<string | null>(null)
@@ -1107,6 +1109,8 @@ export function AuditMessengerView({
                 onSearchChange={setSidebarSearch}
                 sourceFilter={sourceFilter}
                 onSourceFilterChange={setSourceFilter}
+                sortOrder={sidebarSort}
+                onSortOrderChange={setSidebarSort}
                 onSelect={handleSelectAudit}
               />
             }

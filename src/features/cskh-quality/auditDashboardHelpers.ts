@@ -386,16 +386,24 @@ export function conversationIndexLabel(index: number, total: number): string {
 }
 
 export function sidebarPreviewTime(row: CskhAuditRow): string {
-  const transcript = Array.isArray(row.transcript) ? row.transcript : []
-  const last = [...transcript].reverse().find((l) => l.timestamp)
-  if (last?.timestamp) {
-    return new Date(last.timestamp).toLocaleTimeString('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-  return new Date(row.createdAt).toLocaleTimeString('vi-VN', {
+  const ms = auditLastActivityMs(row)
+  if (!ms) return '—'
+  return new Date(ms).toLocaleTimeString('vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+/** Thời điểm tin nhắn cuối trong transcript (hoặc createdAt). */
+export function auditLastActivityMs(row: CskhAuditRow): number {
+  const transcript = Array.isArray(row.transcript) ? row.transcript : []
+  let max = 0
+  for (const line of transcript) {
+    if (!line.timestamp) continue
+    const t = new Date(line.timestamp).getTime()
+    if (!Number.isNaN(t) && t > max) max = t
+  }
+  if (max > 0) return max
+  const created = new Date(row.createdAt).getTime()
+  return Number.isNaN(created) ? 0 : created
 }

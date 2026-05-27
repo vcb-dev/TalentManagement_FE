@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, type ReactNode } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts'
 import { Filter, Loader2, MessageSquare, Sparkles, Star, Tag } from 'lucide-react'
 import {
@@ -7,7 +7,6 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
-import { NumberedPaginationBar } from '@/components/ui/pagination'
 import { FiveStarRank } from '@/components/icons/FiveStarRank'
 import { cn } from '@/lib/utils'
 import type {
@@ -37,6 +36,7 @@ import {
   resolveTags,
   scoreRankLabel,
   sidebarPreviewTime,
+  auditLastActivityMs,
 } from './auditDashboardHelpers'
 import { parseAuditActionItems, type DisplayTranscriptLine } from './auditHelpers'
 import { CskhAdSourceBadge, CskhPageAvatar } from './cskhUi'
@@ -45,7 +45,10 @@ const compareChartConfig = {
   score: { label: 'Điểm', color: 'hsl(262 83% 58%)' },
 } satisfies ChartConfig
 
-const SIDEBAR_PAGE_SIZE = 20
+const SIDEBAR_INITIAL = 30
+const SIDEBAR_LOAD_MORE = 25
+
+export type AuditSidebarSort = 'newest' | 'oldest'
 
 function CriterionLabel({ label }: { label: string }) {
   const parts = label.includes(' / ')
@@ -408,7 +411,9 @@ const AuditSidebarRow = memo(function AuditSidebarRow({
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-1">
-              <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
+              <p className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-800">
+                {name}
+              </p>
               <span
                 className={cn(
                   'shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums',
@@ -457,6 +462,8 @@ export function AuditConversationSidebar({
   onSearchChange,
   sourceFilter,
   onSourceFilterChange,
+  sortOrder,
+  onSortOrderChange,
   onSelect,
 }: {
   rows: CskhAuditRow[]
@@ -466,9 +473,13 @@ export function AuditConversationSidebar({
   onSearchChange: (v: string) => void
   sourceFilter: 'all' | 'ad' | 'organic'
   onSourceFilterChange: (v: 'all' | 'ad' | 'organic') => void
+  sortOrder: AuditSidebarSort
+  onSortOrderChange: (v: AuditSidebarSort) => void
   onSelect: (id: string) => void
 }) {
-  const [page, setPage] = useState(1)
+  const [visibleCount, setVisibleCount] = useState(SIDEBAR_INITIAL)
+  const listRef = useRef<HTMLUListElement>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
 
   const adCount = useMemo(() => rows.filter((r) => adMap.get(r.id)?.fromAd).length, [rows, adMap])
   const organicCount = rows.length - adCount
@@ -487,9 +498,39 @@ export function AuditConversationSidebar({
     })
   }, [rows, sourceFilter, adMap, search])
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / SIDEBAR_PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
-  const pageRows = filtered.slice((safePage - 1) * SIDEBAR_PAGE_SIZE, safePage * SIDEBAR_PAGE_SIZE)
+  const sortedFiltered = useMemo(() => {
+    const list = [...filtered]
+    list.sort((a, b) => {
+      const ta = auditLastActivityMs(a)
+      const tb = auditLastActivityMs(b)
+      return sortOrder === 'newest' ? tb - ta : ta - tb
+    })
+    return list
+  }, [filtered, sortOrder])
+
+  const visibleRows = sortedFiltered.slice(0, visibleCount)
+  const hasMore = visibleCount < sortedFiltered.length
+
+  useEffect(() => {
+    setVisibleCount(SIDEBAR_INITIAL)
+  }, [search, sourceFilter, sortOrder, rows.length])
+
+  useEffect(() => {
+    const root = listRef.current
+    const target = loadMoreRef.current
+    if (!root || !target || !hasMore) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((n) => Math.min(n + SIDEBAR_LOAD_MORE, sortedFiltered.length))
+        }
+      },
+      { root, rootMargin: '120px', threshold: 0 }
+    )
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [hasMore, sortedFiltered.length, visibleRows.length])
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
@@ -499,10 +540,7 @@ export function AuditConversationSidebar({
           <input
             type="search"
             value={search}
-            onChange={(e) => {
-              onSearchChange(e.target.value)
-              setPage(1)
-            }}
+            onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Tìm khách, nhân viên…"
             className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-8 text-xs focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-100"
           />
@@ -515,17 +553,25 @@ export function AuditConversationSidebar({
             { id: 'organic', label: 'Tự nhắn', count: organicCount },
           ]}
           active={sourceFilter}
-          onChange={(id) => {
-            onSourceFilterChange(id as 'all' | 'ad' | 'organic')
-            setPage(1)
-          }}
+          onChange={(id) => onSourceFilterChange(id as 'all' | 'ad' | 'organic')}
+        />
+        <SegmentedFilterBar
+          tabs={[
+            { id: 'newest', label: 'Gần nhất' },
+            { id: 'oldest', label: 'Cũ nhất' },
+          ]}
+          active={sortOrder}
+          onChange={(id) => onSortOrderChange(id as AuditSidebarSort)}
         />
       </div>
-      <ul className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
-        {pageRows.length === 0 ? (
+      <ul
+        ref={listRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [scrollbar-width:thin]"
+      >
+        {visibleRows.length === 0 ? (
           <li className="px-4 py-10 text-center text-sm text-slate-500">Không có hội thoại</li>
         ) : (
-          pageRows.map((row) => (
+          visibleRows.map((row) => (
             <AuditSidebarRow
               key={row.id}
               row={row}
@@ -535,18 +581,21 @@ export function AuditConversationSidebar({
             />
           ))
         )}
+        {hasMore ? (
+          <li aria-hidden className="list-none">
+            <div
+              ref={loadMoreRef}
+              className="flex items-center justify-center py-3 text-[11px] text-slate-400"
+            >
+              Cuộn để xem thêm…
+            </div>
+          </li>
+        ) : sortedFiltered.length > SIDEBAR_INITIAL ? (
+          <li className="border-t border-slate-100 py-2 text-center text-[10px] text-slate-400">
+            {sortedFiltered.length} hội thoại
+          </li>
+        ) : null}
       </ul>
-      {totalPages > 1 ? (
-        <div className="shrink-0 border-t border-slate-100 p-2">
-          <NumberedPaginationBar
-            page={safePage}
-            totalPages={totalPages}
-            onPageChange={setPage}
-            className="justify-center"
-            contentClassName="gap-0.5"
-          />
-        </div>
-      ) : null}
     </div>
   )
 }

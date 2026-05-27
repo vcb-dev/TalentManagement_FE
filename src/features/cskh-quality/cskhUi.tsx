@@ -445,7 +445,7 @@ export function MessengerWorkspace({
         <aside
           className={cn(
             'flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-slate-200/80 bg-white',
-            'xl:h-full xl:w-[min(240px,22vw)] xl:min-w-[200px] xl:max-w-[260px] xl:border-b-0 xl:border-r',
+            'xl:h-full xl:w-[min(320px,26vw)] xl:min-w-[280px] xl:max-w-[360px] xl:border-b-0 xl:border-r',
             showList ? 'min-h-0 flex-1 xl:flex-none' : 'hidden xl:flex'
           )}
         >
