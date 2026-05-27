@@ -1,6 +1,6 @@
 import { memo, useMemo, useState, type ReactNode } from 'react'
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
-import { Filter, MessageSquare, Sparkles, Star, Tag } from 'lucide-react'
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts'
+import { Filter, Loader2, MessageSquare, Sparkles, Star, Tag, Zap } from 'lucide-react'
 import {
   ChartContainer,
   ChartTooltip,
@@ -10,7 +10,12 @@ import {
 import { NumberedPaginationBar } from '@/components/ui/pagination'
 import { FiveStarRank } from '@/components/icons/FiveStarRank'
 import { cn } from '@/lib/utils'
-import type { AuditComparisonStats, CskhAuditRow, CskhInboxConversation } from './api'
+import type {
+  AuditComparisonStats,
+  CskhAuditRow,
+  CskhCustomerIntent,
+  CskhInboxConversation,
+} from './api'
 import {
   displayAgentName,
   displayCustomerName,
@@ -90,7 +95,12 @@ function TabBar({
 
 function SummaryCard({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm', className)}>
+    <div
+      className={cn(
+        'rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-4',
+        className
+      )}
+    >
       {children}
     </div>
   )
@@ -120,14 +130,18 @@ export function AuditSummaryHeader({
   const tags = resolveTags(row, adSource.fromAd)
 
   const compareData = [
-    { name: 'NV này', score: averages.staff, fill: 'hsl(262 83% 58%)' },
-    { name: 'TB team', score: averages.team, fill: 'hsl(217 91% 60%)' },
+    { name: 'Hội thoại', score: row.score, fill: 'hsl(262 83% 58%)' },
+    { name: 'TB Page', score: averages.team, fill: 'hsl(217 91% 60%)' },
     { name: 'TB ngày', score: averages.overall, fill: 'hsl(160 84% 39%)' },
   ]
+  const teamSample =
+    comparison?.teamSampleSize ??
+    allAudits.filter((a) => a.metadata?.pageName === row.metadata?.pageName).length
+  const daySample = comparison?.daySampleSize ?? allAudits.length
 
   return (
-    <div className="shrink-0 overflow-x-auto border-b border-slate-200/80 bg-slate-50/50">
-      <div className="flex gap-3 p-3 sm:gap-4 sm:p-4 lg:grid lg:min-w-0 lg:grid-cols-4 lg:overflow-visible">
+    <div className="shrink-0 overflow-x-auto border-b border-slate-200/80 bg-slate-50/50 lg:overflow-visible">
+      <div className="flex gap-2.5 p-2.5 sm:gap-3 sm:p-3 lg:grid lg:min-w-0 lg:grid-cols-4 lg:overflow-visible">
         <SummaryCard className="min-w-[220px] shrink-0 lg:min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -208,7 +222,7 @@ export function AuditSummaryHeader({
           </p>
           <p
             className={cn(
-              'mt-1 text-4xl font-black tabular-nums',
+              'mt-0.5 text-3xl font-black tabular-nums',
               row.score >= 70
                 ? 'text-emerald-600'
                 : row.score >= 50
@@ -261,19 +275,25 @@ export function AuditSummaryHeader({
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
             So sánh trung bình
           </p>
-          <ChartContainer config={compareChartConfig} className="h-[132px] w-full">
+          <ChartContainer config={compareChartConfig} className="h-[100px] w-full">
             <BarChart data={compareData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={36} />
+              <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                {compareData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.fill} />
+                ))}
+              </Bar>
             </BarChart>
           </ChartContainer>
-          <div className="mt-2 flex justify-between text-[10px] text-slate-500">
-            <span>NV: {averages.staff}</span>
-            <span>Team: {averages.team}</span>
-            <span>Ngày: {averages.overall}</span>
+          <div className="mt-1.5 flex justify-between gap-1 text-[10px] text-slate-500">
+            <span title="Điểm hội thoại đang xem">HT: {row.score}</span>
+            <span title={`Trung bình Page (${teamSample} hội thoại)`}>Page: {averages.team}</span>
+            <span title={`Trung bình cả ngày (${daySample} hội thoại)`}>
+              Ngày: {averages.overall}
+            </span>
           </div>
         </SummaryCard>
       </div>
@@ -488,18 +508,96 @@ export function AuditTimelinePanel({
   )
 }
 
+const urgencyTone: Record<CskhCustomerIntent['urgency'], string> = {
+  low: 'bg-slate-100 text-slate-600',
+  normal: 'bg-sky-100 text-sky-700',
+  high: 'bg-rose-100 text-rose-700',
+}
+
+export function CustomerIntentPanel({
+  intent,
+  loading,
+}: {
+  intent?: CskhCustomerIntent | null
+  loading?: boolean
+}) {
+  if (loading) {
+    return (
+      <div className="border-b border-violet-100 bg-violet-50/60 px-4 py-3">
+        <div className="flex items-center gap-2 text-sm text-violet-700">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Đang phân tích tin nhắn mới…
+        </div>
+      </div>
+    )
+  }
+  if (!intent) return null
+
+  return (
+    <div className="border-b border-violet-100 bg-gradient-to-r from-violet-50/90 to-indigo-50/60 px-4 py-3">
+      <div className="flex items-start gap-2">
+        <Zap className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-bold uppercase tracking-wide text-violet-700">
+              Khách đang hỏi
+            </p>
+            <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">
+              {intent.intentLabel}
+            </span>
+            <span
+              className={cn(
+                'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase',
+                urgencyTone[intent.urgency] ?? urgencyTone.normal
+              )}
+            >
+              {intent.urgency === 'high'
+                ? 'Gấp'
+                : intent.urgency === 'low'
+                  ? 'Thấp'
+                  : 'Bình thường'}
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-slate-700">{intent.summary}</p>
+          {intent.topics.length ? (
+            <div className="flex flex-wrap gap-1.5">
+              {intent.topics.map((topic) => (
+                <span
+                  key={topic}
+                  className="rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[11px] font-medium text-violet-700"
+                >
+                  {topic}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {intent.suggestedFocus ? (
+            <p className="text-xs text-slate-500">
+              <span className="font-semibold text-slate-600">Gợi ý:</span> {intent.suggestedFocus}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function AuditAnalysisPanel({
   row,
   inbox,
   transcript,
   auditDayLabel,
   onUseReply,
+  customerIntent,
+  intentLoading,
 }: {
   row: CskhAuditRow
   inbox?: CskhInboxConversation | null
   transcript: DisplayTranscriptLine[]
   auditDayLabel: string | null
   onUseReply?: (text: string) => void
+  customerIntent?: CskhCustomerIntent | null
+  intentLoading?: boolean
 }) {
   const [tab, setTab] = useState('detail')
   const adSource = resolveAuditFromAd(row, inbox)
@@ -520,6 +618,7 @@ export function AuditAnalysisPanel({
 
   return (
     <div className="flex h-full flex-col bg-white">
+      <CustomerIntentPanel intent={customerIntent} loading={intentLoading} />
       <TabBar tabs={tabs} active={tab} onChange={setTab} className="px-2" />
 
       <div className="flex-1 overflow-y-auto p-5">

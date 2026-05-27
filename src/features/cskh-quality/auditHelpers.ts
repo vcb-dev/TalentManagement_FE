@@ -295,6 +295,42 @@ export function messagesAfterAuditDate(
   })
 }
 
+/** Tin inbox chưa có trong transcript audit — dùng cho chat realtime kiểu Pancake. */
+export function inboxMessagesAfterTranscript(
+  transcript: Array<{ sender?: string; text?: string; timestamp?: string }>,
+  messages: CskhInboxMessage[]
+): CskhInboxMessage[] {
+  let lastTranscriptTs = 0
+  const seen = new Set<string>()
+  for (const line of transcript) {
+    lastTranscriptTs = Math.max(lastTranscriptTs, parseMessageTime(line.timestamp))
+    const role = line.sender === 'Staff' ? 'staff' : 'customer'
+    const text = (line.text ?? '').trim().toLowerCase()
+    if (text) seen.add(`${role}|${text}`)
+  }
+
+  const cutoff = lastTranscriptTs > 0 ? lastTranscriptTs - 120_000 : 0
+
+  return messages.filter((m) => {
+    if (isNoiseMessageText(m.text)) return false
+    const t = parseMessageTime(m.sentAt)
+    if (lastTranscriptTs > 0 && t < cutoff) return false
+    const role = m.senderType === 'staff' ? 'staff' : 'customer'
+    const text = (m.text ?? '').trim().toLowerCase()
+    const key = `${role}|${text}`
+    if (text && seen.has(key)) {
+      const lineTs = [...transcript]
+        .filter((line) => {
+          const r = line.sender === 'Staff' ? 'staff' : 'customer'
+          return `${r}|${(line.text ?? '').trim().toLowerCase()}` === key
+        })
+        .map((line) => parseMessageTime(line.timestamp))
+      if (lineTs.some((ts) => ts > 0 && Math.abs(ts - t) <= 120_000)) return false
+    }
+    return true
+  })
+}
+
 /** Gộp nhiều tin ảnh cùng lúc (Facebook gửi 1 lần → nhiều row inbox) thành 1 bubble. */
 export function groupLiveMediaMessages(
   messages: CskhInboxMessage[]

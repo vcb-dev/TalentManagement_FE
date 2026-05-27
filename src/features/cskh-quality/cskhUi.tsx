@@ -91,8 +91,8 @@ export function CskhPageAvatar({
 
 export function CskhPageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative -m-5 flex h-[calc(100dvh-4.5rem)] max-h-[calc(100dvh-4.5rem)] flex-col overflow-hidden md:-m-6 md:h-[calc(100dvh-4.75rem)] md:max-h-[calc(100dvh-4.75rem)]">
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden px-1 py-1 sm:px-2">
+    <div className="relative -m-5 flex h-[calc(100dvh-3.25rem)] max-h-[calc(100dvh-3.25rem)] flex-col overflow-hidden md:-m-6 md:h-[calc(100dvh-3.5rem)] md:max-h-[calc(100dvh-3.5rem)]">
+      <div className="flex min-h-0 flex-1 basis-0 flex-col gap-2 overflow-hidden px-1 py-0.5 sm:px-2">
         {children}
       </div>
     </div>
@@ -361,7 +361,7 @@ export function CskhTabNav({
   onChange: (id: string) => void
 }) {
   return (
-    <nav className="flex shrink-0 gap-2 overflow-x-auto rounded-2xl border border-white/70 bg-white/60 p-1.5 shadow-md shadow-indigo-100/40 backdrop-blur-xl">
+    <nav className="flex shrink-0 gap-1.5 overflow-x-auto rounded-xl border border-white/70 bg-white/60 p-1 shadow-md shadow-indigo-100/40 backdrop-blur-xl">
       {tabs.map(({ id, label, icon, busy }) => {
         const isActive = active === id
         return (
@@ -370,7 +370,7 @@ export function CskhTabNav({
             type="button"
             onClick={() => onChange(id)}
             className={cn(
-              'flex min-w-[7.5rem] flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200',
+              'flex min-w-[7rem] flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200',
               isActive
                 ? 'bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-lg shadow-indigo-300/40'
                 : 'text-slate-600 hover:bg-white/80 hover:text-slate-900'
@@ -407,7 +407,7 @@ export function CskhGlassPanel({
 
 export function CskhToolbar({ children }: { children: ReactNode }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 via-white/50 to-violet-50/80 px-4 py-3 sm:px-5">
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 via-white/50 to-violet-50/80 px-3 py-2 sm:px-4">
       {children}
     </div>
   )

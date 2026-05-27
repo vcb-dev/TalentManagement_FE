@@ -10,6 +10,7 @@ import {
   fetchAuditComparisonStats,
   fetchAuditProgress,
   fetchCskhAudits,
+  fetchCustomerIntent,
   fetchInboxConversations,
   fetchInboxMessages,
   fetchRunningCskhJob,
@@ -30,6 +31,7 @@ import {
   resolveAuditFromAd,
   filterDisplayTranscript,
   messagesAfterAuditDate,
+  inboxMessagesAfterTranscript,
   groupLiveMediaMessages,
   dedupeMediaUrls,
   isNoiseMessageText,
@@ -736,12 +738,10 @@ export function AuditMessengerView({
     )
   }, [selected])
 
-  const inboxLive = useCskhInboxStream(true)
-
   const inboxQuery = useQuery({
     queryKey: ['cskh', 'inbox', 'conversations'],
     queryFn: () => fetchInboxConversations(),
-    refetchInterval: inboxLive ? false : 30_000,
+    refetchInterval: false,
     refetchOnWindowFocus: false,
     staleTime: 30_000,
   })
@@ -807,6 +807,22 @@ export function AuditMessengerView({
 
   const selectedAuditDate = selected?.metadata?.auditDate ?? null
 
+  const inboxLive = useCskhInboxStream({
+    enabled: true,
+    activeConversationId: inboxConv?.id ?? null,
+    activeAuditDate: selectedAuditDate,
+    onIntent: (conversationId, intent) => {
+      qc.setQueryData(['cskh', 'inbox', 'intent', conversationId], intent)
+    },
+  })
+
+  const intentQuery = useQuery({
+    queryKey: ['cskh', 'inbox', 'intent', inboxConv?.id],
+    queryFn: () => fetchCustomerIntent(inboxConv!.id),
+    enabled: Boolean(inboxConv?.id),
+    staleTime: 30_000,
+  })
+
   const liveMsgQuery = useQuery({
     queryKey: ['cskh', 'inbox', 'messages', inboxConv?.id, selectedAuditDate],
     queryFn: () => {
@@ -840,21 +856,34 @@ export function AuditMessengerView({
     (msg) => !isNoiseMessageText(msg.text)
   )
 
-  const postAuditLiveMessages = useMemo(() => {
-    const filtered = selectedAuditDate
-      ? messagesAfterAuditDate(liveMessages, selectedAuditDate)
-      : liveMessages
-    return groupLiveMediaMessages(filtered)
-  }, [liveMessages, selectedAuditDate])
+  const realtimeMessages = useMemo(() => {
+    const fresh = inboxConv
+      ? inboxMessagesAfterTranscript(transcript, liveMessages)
+      : selectedAuditDate
+        ? messagesAfterAuditDate(liveMessages, selectedAuditDate)
+        : liveMessages
+    return groupLiveMediaMessages(fresh)
+  }, [inboxConv, transcript, liveMessages, selectedAuditDate])
+
+  const hasRealtimeTail = inboxConv && realtimeMessages.length > 0
 
   const selectedAuditDayLabel = selectedAuditDate ? formatAuditDateLabel(selectedAuditDate) : null
 
+  const comparisonAuditDate = auditDate || selected?.metadata?.auditDate || summary?.auditDate || ''
+
   const comparisonQuery = useQuery({
-    queryKey: ['cskh', 'audit-comparison', auditDate, selected?.id],
-    queryFn: () => fetchAuditComparisonStats(auditDate, selected!.id),
-    enabled: Boolean(auditDate && selected?.id),
+    queryKey: ['cskh', 'audit-comparison', comparisonAuditDate, selected?.id],
+    queryFn: () => fetchAuditComparisonStats(comparisonAuditDate, selected!.id),
+    enabled: Boolean(comparisonAuditDate && selected?.id),
     staleTime: 60_000,
   })
+
+  useEffect(() => {
+    if (!inboxConv?.id || !liveMessages.length) return
+    const lastCustomer = [...liveMessages].reverse().find((m) => m.senderType === 'customer')
+    if (!lastCustomer) return
+    void qc.invalidateQueries({ queryKey: ['cskh', 'inbox', 'intent', inboxConv.id] })
+  }, [liveMessages, inboxConv?.id, qc])
 
   useEffect(() => {
     const el = scrollRef.current
@@ -862,7 +891,7 @@ export function AuditMessengerView({
 
     const liveMsgs = liveMsgQuery.data?.messages ?? []
     const lastLive = liveMsgs[liveMsgs.length - 1]
-    const sig = `${selected?.id ?? ''}|live:${lastLive?.id ?? ''}:${liveMsgs.length}|audit:${transcript.length}`
+    const sig = `${selected?.id ?? ''}|live:${lastLive?.id ?? ''}:${liveMsgs.length}|rt:${realtimeMessages.length}|audit:${transcript.length}`
     if (sig === chatScrollSigRef.current) return
     chatScrollSigRef.current = sig
 
@@ -872,14 +901,14 @@ export function AuditMessengerView({
     requestAnimationFrame(() => {
       el.scrollTo({ top: el.scrollHeight, behavior: 'auto' })
     })
-  }, [selected?.id, liveMsgQuery.data?.messages, transcript.length])
+  }, [selected?.id, liveMsgQuery.data?.messages, realtimeMessages.length, transcript.length])
 
   const selectedIndex = selected
     ? Math.max(1, sortedAudits.findIndex((a) => a.id === selected.id) + 1)
     : 0
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 basis-0 flex-col overflow-hidden">
       <CskhToolbar>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -1045,7 +1074,7 @@ export function AuditMessengerView({
           description="Chọn ngày ở trên và bấm Chạy audit để AI phân tích hội thoại CSKH."
         />
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 basis-0 flex-col overflow-hidden">
           {isAuditPhase && (
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}
@@ -1061,7 +1090,7 @@ export function AuditMessengerView({
             />
           ) : null}
           <MessengerWorkspace
-            className="min-h-0 flex-1 overflow-hidden"
+            className="min-h-0 flex-1 basis-0 overflow-hidden"
             sidebar={
               <AuditConversationSidebar
                 rows={sortedAudits}
@@ -1137,6 +1166,8 @@ export function AuditMessengerView({
                         transcript={transcript}
                         auditDayLabel={selectedAuditDayLabel}
                         onUseReply={setDraft}
+                        customerIntent={intentQuery.data ?? null}
+                        intentLoading={intentQuery.isFetching && !intentQuery.data}
                       />
                     </div>
                   ) : null}
@@ -1187,6 +1218,27 @@ export function AuditMessengerView({
                           {selectedAuditDayLabel ? (
                             <AuditScopeDivider auditDayLabel={selectedAuditDayLabel} />
                           ) : null}
+                          {hasRealtimeTail ? (
+                            <div className="space-y-3 pt-1">
+                              <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-600">
+                                <CskhConnectionBadge connected={inboxLive} />
+                                Tin mới · realtime
+                              </p>
+                              {realtimeMessages.map((msg) => (
+                                <LiveBubble key={msg.id} msg={msg} />
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : chatTab === 'chat' && inboxConv && realtimeMessages.length > 0 ? (
+                        <div className="space-y-3">
+                          <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-600">
+                            <CskhConnectionBadge connected={inboxLive} />
+                            Hội thoại live
+                          </p>
+                          {realtimeMessages.map((msg) => (
+                            <LiveBubble key={msg.id} msg={msg} />
+                          ))}
                         </div>
                       ) : chatTab === 'chat' && !inboxConv ? (
                         <CskhEmptyState
@@ -1198,18 +1250,6 @@ export function AuditMessengerView({
                         <p className="text-sm text-slate-500">
                           Không có transcript — chạy audit lại để lấy đầy đủ hội thoại.
                         </p>
-                      ) : null}
-
-                      {chatTab === 'chat' && inboxConv && postAuditLiveMessages.length > 0 ? (
-                        <div className="space-y-3 border-t border-slate-200/80 pt-4">
-                          <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-600">
-                            <CskhConnectionBadge connected={inboxLive} />
-                            Tin sau ngày audit (chat live)
-                          </p>
-                          {postAuditLiveMessages.map((msg) => (
-                            <LiveBubble key={msg.id} msg={msg} />
-                          ))}
-                        </div>
                       ) : null}
 
                       {chatTab === 'chat' && selected && !inboxConv && transcript.length > 0 && (
@@ -1300,6 +1340,8 @@ export function AuditMessengerView({
                   transcript={transcript}
                   auditDayLabel={selectedAuditDayLabel}
                   onUseReply={setDraft}
+                  customerIntent={intentQuery.data ?? null}
+                  intentLoading={intentQuery.isFetching && !intentQuery.data}
                 />
               ) : undefined
             }

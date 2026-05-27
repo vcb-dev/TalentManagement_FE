@@ -147,6 +147,15 @@ export interface AuditComparisonStats {
   daySampleSize: number
 }
 
+export interface CskhCustomerIntent {
+  summary: string
+  intentLabel: string
+  topics: string[]
+  urgency: 'low' | 'normal' | 'high'
+  suggestedFocus: string
+  analyzedAt: string
+}
+
 export function getCskhOAuthStartUrl(returnUrl?: string): string {
   const base = (import.meta.env.VITE_API_URL || 'http://localhost:3003').replace(/\/$/, '')
   const ret = returnUrl || (typeof window !== 'undefined' ? window.location.href : '')
@@ -297,6 +306,21 @@ export async function fetchAuditComparisonStats(
     params: { auditDate, auditId },
   })
   return data
+}
+
+export async function fetchCustomerIntent(conversationId: string): Promise<CskhCustomerIntent> {
+  const { data } = await apiClient.get<CskhCustomerIntent>(
+    `/cskh/inbox/conversations/${conversationId}/intent`
+  )
+  return {
+    summary: data.summary,
+    intentLabel: data.intentLabel ?? (data as { intent_label?: string }).intent_label ?? 'Chưa rõ',
+    topics: data.topics ?? [],
+    urgency: data.urgency ?? 'normal',
+    suggestedFocus:
+      data.suggestedFocus ?? (data as { suggested_focus?: string }).suggested_focus ?? '',
+    analyzedAt: data.analyzedAt ?? (data as { analyzed_at?: string }).analyzed_at ?? '',
+  }
 }
 
 export interface DeepSeekBalanceResponse {

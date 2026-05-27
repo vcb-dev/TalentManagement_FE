@@ -1,11 +1,37 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import type { CskhCustomerIntent } from './api'
+import {
+  appendInboxMessagesToCache,
+  patchInboxConversationInCache,
+  type InboxRealtimeConversationPatch,
+  type InboxRealtimeMessagePayload,
+} from './inboxRealtimeCache'
+
+export type InboxRealtimeEvent = {
+  type?: string
+  conversationId?: string
+  messages?: InboxRealtimeMessagePayload[]
+  conversation?: InboxRealtimeConversationPatch
+  intent?: CskhCustomerIntent
+}
+
+type UseCskhInboxStreamOptions = {
+  enabled?: boolean
+  activeConversationId?: string | null
+  activeAuditDate?: string | null
+  onIntent?: (conversationId: string, intent: CskhCustomerIntent) => void
+}
 
 /**
- * SSE từ BE — nhận push ngay khi webhook Facebook có tin mới.
- * Cookie session được gửi kèm (withCredentials).
+ * SSE từ BE — push tin + intent ngay khi webhook Facebook có sự kiện mới.
  */
-export function useCskhInboxStream(enabled = true) {
+export function useCskhInboxStream({
+  enabled = true,
+  activeConversationId,
+  activeAuditDate,
+  onIntent,
+}: UseCskhInboxStreamOptions = {}) {
   const qc = useQueryClient()
   const [connected, setConnected] = useState(false)
 
@@ -26,11 +52,32 @@ export function useCskhInboxStream(enabled = true) {
     }
     es.onmessage = (ev) => {
       try {
-        const data = JSON.parse(ev.data as string) as {
-          type?: string
-          conversationId?: string
-        }
+        const data = JSON.parse(ev.data as string) as InboxRealtimeEvent
         if (data.type === 'ping') return
+
+        if (data.type === 'intent' && data.conversationId && data.intent) {
+          qc.setQueryData(['cskh', 'inbox', 'intent', data.conversationId], data.intent)
+          onIntent?.(data.conversationId, data.intent)
+          return
+        }
+
+        if (data.conversation) {
+          patchInboxConversationInCache(qc, data.conversation)
+        }
+
+        if (data.type === 'message' && data.messages?.length && data.conversationId) {
+          appendInboxMessagesToCache(
+            qc,
+            data.conversationId,
+            activeAuditDate ?? undefined,
+            data.messages
+          )
+          if (data.conversationId !== activeConversationId) {
+            void qc.invalidateQueries({ queryKey: ['cskh', 'inbox', 'conversations'] })
+          }
+          return
+        }
+
         void qc.invalidateQueries({ queryKey: ['cskh', 'inbox'] })
         if (data.conversationId) {
           void qc.invalidateQueries({
@@ -47,7 +94,7 @@ export function useCskhInboxStream(enabled = true) {
       es.close()
       setConnected(false)
     }
-  }, [enabled, qc])
+  }, [enabled, qc, activeConversationId, activeAuditDate, onIntent])
 
   return connected
 }
