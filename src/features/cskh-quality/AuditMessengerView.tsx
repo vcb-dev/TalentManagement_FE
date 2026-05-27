@@ -739,8 +739,10 @@ export function AuditMessengerView({
         (runMut.error ? getApiErrorMessage(runMut.error) : '')
     ) || 'Không thể chạy audit. Vui lòng thử lại sau.'
   const auditCount = summary?.auditCount ?? progress?.audits?.length ?? 0
-  const isFetchPhase = isAuditActive && summary?.phase === 'fetch'
+  const isFetchPhase = isAuditActive && summary?.phase !== 'audit'
   const isAuditPhase = isAuditActive && summary?.phase === 'audit'
+  /** Quét inbox / khởi động job → màn tiến độ; chấm điểm → danh sách hội thoại */
+  const showProgressScreen = isFetchPhase
 
   const displayAudits = useMemo(() => {
     const filterDay = (rows: CskhAuditRow[]) =>
@@ -1109,7 +1111,7 @@ export function AuditMessengerView({
 
       {recentLoading && !sortedAudits.length && !isAuditActive && !showTransientLoading ? (
         <CskhLoading label="Đang tải kết quả audit…" />
-      ) : isAuditActive && !sortedAudits.length ? (
+      ) : showProgressScreen ? (
         <CskhAuditProgressPanel auditDayLabel={auditDayLabel} summary={summary} />
       ) : !sortedAudits.length ? (
         <CskhEmptyState
@@ -1119,7 +1121,7 @@ export function AuditMessengerView({
         />
       ) : (
         <>
-          {isAuditActive && (
+          {isAuditPhase && (
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}
           <MessengerWorkspace
