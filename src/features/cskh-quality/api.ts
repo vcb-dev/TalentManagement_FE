@@ -52,6 +52,12 @@ export interface CskhJobRun {
     auditCount?: number
     auditDate?: string
     scanned?: number
+    paused?: boolean
+    partial?: boolean
+    pauseRequested?: boolean
+    skippedAlready?: number
+    remaining?: number
+    allAlreadyAudited?: boolean
     tokenUsage?: {
       model?: string
       promptTokens?: number
@@ -179,6 +185,17 @@ export async function runAudit(params: { auditDate: string; force?: boolean }): 
   return data
 }
 
+export async function pauseAuditJob(): Promise<{
+  paused: boolean
+  jobId?: string
+  message?: string
+}> {
+  const { data } = await apiClient.post<{ paused: boolean; jobId?: string; message?: string }>(
+    '/cskh/audit/pause'
+  )
+  return data
+}
+
 export async function cancelAuditJob(): Promise<{ cancelled: number }> {
   const { data } = await apiClient.post<{ cancelled: number }>('/cskh/audit/cancel')
   return data
@@ -212,9 +229,29 @@ export async function fetchAuditProgress(jobId: string): Promise<CskhAuditProgre
 export async function fetchCskhAudits(params?: {
   pageId?: string
   jobRunId?: string
+  auditDate?: string
   limit?: number
 }): Promise<CskhAuditRow[]> {
   const { data } = await apiClient.get<CskhAuditRow[]>('/cskh/audits', { params })
+  return data
+}
+
+export interface AuditDayStats {
+  auditDate: string
+  pageId?: string | null
+  total: number
+  passed: number
+  failed: number
+  fromAd: number
+}
+
+export async function fetchAuditDayStats(
+  auditDate: string,
+  pageId?: string
+): Promise<AuditDayStats> {
+  const { data } = await apiClient.get<AuditDayStats>('/cskh/audits/day-stats', {
+    params: { auditDate, pageId },
+  })
   return data
 }
 

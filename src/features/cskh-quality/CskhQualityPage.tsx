@@ -4,15 +4,13 @@ import { Loader2, RefreshCw, Link2, ClipboardCheck, CheckCircle2, AlertCircle } 
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   fetchCskhPages,
-  fetchCskhAudits,
-  fetchAuditProgress,
-  fetchAuditTokenStats,
+  fetchAuditDayStats,
   fetchRunningCskhJob,
-  fetchDeepSeekBalance,
   getCskhOAuthStartUrl,
   refreshCskhOAuth,
   setCskhPageEnabled,
   setCskhPagesEnabledBulk,
+  type AuditDayStats,
   type CskhPagesResponse,
 } from './api'
 import { AuditMessengerView } from './AuditMessengerView'
@@ -23,8 +21,6 @@ import {
   CskhPageAvatar,
   CskhStatPill,
   CskhTabNav,
-  CskhTokenStat,
-  CskhDeepSeekBalanceStat,
 } from './cskhUi'
 
 type Tab = 'config' | 'audit'
@@ -285,39 +281,19 @@ export function CskhQualityPage() {
     return 'audit'
   })
   const [auditJobId, setAuditJobId] = useState<string | null>(null)
+  const [selectedAuditDate, setSelectedAuditDate] = useState<string>('')
 
   const { data: pagesData } = useQuery({
     queryKey: ['cskh', 'pages'],
     queryFn: fetchCskhPages,
   })
 
-  const { data: recentAudits } = useQuery({
-    queryKey: ['cskh', 'audits', 'recent'],
-    queryFn: () => fetchCskhAudits({ limit: 200 }),
-  })
-
-  const { data: deepSeekBalance, isLoading: balanceLoading } = useQuery({
-    queryKey: ['cskh', 'deepseek-balance'],
-    queryFn: fetchDeepSeekBalance,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: true,
-    retry: 2,
-  })
-
-  const { data: auditTokenStats } = useQuery({
-    queryKey: ['cskh', 'audit-token-stats'],
-    queryFn: fetchAuditTokenStats,
-    staleTime: 10_000,
-    refetchInterval: auditJobId ? 3_000 : 60_000,
-    refetchOnWindowFocus: true,
-  })
-
-  const { data: auditProgress } = useQuery({
-    queryKey: ['cskh', 'audit-progress', auditJobId],
-    queryFn: () => fetchAuditProgress(auditJobId!),
-    enabled: !!auditJobId,
-    refetchInterval: (query) => (query.state.data?.status === 'running' ? 2000 : false),
+  const { data: dayStats } = useQuery({
+    queryKey: ['cskh', 'audit-day-stats', selectedAuditDate],
+    queryFn: () => fetchAuditDayStats(selectedAuditDate),
+    enabled: Boolean(selectedAuditDate),
+    staleTime: 15_000,
+    refetchInterval: auditJobId ? 3_000 : false,
   })
 
   useEffect(() => {
@@ -345,14 +321,8 @@ export function CskhQualityPage() {
   }, [])
 
   const enabledPages = (pagesData?.pages ?? []).filter((p) => p.enabled).length
-  const auditCount = recentAudits?.length ?? 0
-  const auditRunning = auditProgress?.status === 'running'
-  const liveTokenUsage = auditProgress?.summary?.tokenUsage
-  const persistedTokenUsage = auditTokenStats?.tokenUsage
-  const tokenUsage =
-    auditRunning && liveTokenUsage?.totalTokens
-      ? liveTokenUsage
-      : (persistedTokenUsage ?? liveTokenUsage)
+  const stats: AuditDayStats | undefined = dayStats
+  const dayStatsLabel = selectedAuditDate ? selectedAuditDate.split('-').reverse().join('/') : null
 
   return (
     <CskhPageShell>
@@ -369,34 +339,24 @@ export function CskhQualityPage() {
         }
         stats={
           <>
-            <CskhDeepSeekBalanceStat
-              totalBalance={deepSeekBalance?.totalBalance}
-              currency={deepSeekBalance?.currency}
-              model={deepSeekBalance?.model}
-              isAvailable={deepSeekBalance?.isAvailable}
-              grantedBalance={deepSeekBalance?.grantedBalance}
-              toppedUpBalance={deepSeekBalance?.toppedUpBalance}
-              loading={balanceLoading}
-              error={deepSeekBalance?.error}
+            <CskhStatPill
+              label="Không đạt (<70)"
+              value={stats?.failed ?? '—'}
+              tone="rose"
+              hint={dayStatsLabel ? `Ngày ${dayStatsLabel}` : 'Chọn ngày audit'}
             />
-            <CskhTokenStat
-              model={tokenUsage?.model}
-              totalTokens={tokenUsage?.totalTokens}
-              promptTokens={tokenUsage?.promptTokens}
-              completionTokens={tokenUsage?.completionTokens}
-              perAuditAvg={tokenUsage?.perAuditAvg}
-              running={auditRunning}
-              hint={
-                auditRunning
-                  ? 'Đang cộng dồn…'
-                  : auditTokenStats?.source === 'lastJob' && tokenUsage?.totalTokens
-                    ? 'Lần audit gần nhất'
-                    : undefined
-              }
+            <CskhStatPill
+              label="Đạt (≥70)"
+              value={stats?.passed ?? '—'}
+              tone="live"
+              hint={dayStatsLabel ? `${stats?.total ?? 0} hội thoại` : undefined}
             />
-            {auditCount > 0 ? (
-              <CskhStatPill label="Audit gần đây" value={auditCount} tone="live" />
-            ) : null}
+            <CskhStatPill
+              label="Từ quảng cáo"
+              value={stats?.fromAd ?? '—'}
+              tone="sky"
+              hint={dayStatsLabel ? `Ngày ${dayStatsLabel}` : undefined}
+            />
             <CskhStatPill label="Page bật" value={enabledPages} />
             <CskhStatPill
               label="Tổng Page"
@@ -414,7 +374,7 @@ export function CskhQualityPage() {
           id,
           label,
           icon: <Icon className="h-4 w-4" />,
-          busy: id === 'audit' && auditProgress?.status === 'running',
+          busy: id === 'audit' && !!auditJobId,
         }))}
       />
 
@@ -423,7 +383,11 @@ export function CskhQualityPage() {
           <ConfigTab />
         </div>
         <div className={tab === 'audit' ? '' : 'hidden'}>
-          <AuditMessengerView jobId={auditJobId} setJobId={setAuditJobId} />
+          <AuditMessengerView
+            jobId={auditJobId}
+            setJobId={setAuditJobId}
+            onAuditDateChange={setSelectedAuditDate}
+          />
         </div>
       </CskhGlassPanel>
     </CskhPageShell>

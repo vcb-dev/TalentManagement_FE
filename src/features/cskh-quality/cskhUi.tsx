@@ -146,7 +146,7 @@ export function CskhStatPill({
 }: {
   label: string
   value: string | number
-  tone?: 'default' | 'live' | 'warn'
+  tone?: 'default' | 'live' | 'warn' | 'rose' | 'sky'
   hint?: string
 }) {
   return (
@@ -155,6 +155,8 @@ export function CskhStatPill({
         'rounded-xl border px-4 py-2.5 text-center shadow-sm backdrop-blur-sm min-w-[5.5rem]',
         tone === 'live' && 'border-emerald-200/80 bg-emerald-50/90',
         tone === 'warn' && 'border-amber-200/80 bg-amber-50/90',
+        tone === 'rose' && 'border-rose-200/80 bg-rose-50/90',
+        tone === 'sky' && 'border-sky-200/80 bg-sky-50/90',
         tone === 'default' && 'border-indigo-100/80 bg-white/90'
       )}
     >
@@ -163,6 +165,8 @@ export function CskhStatPill({
           'text-lg font-bold tabular-nums',
           tone === 'live' && 'text-emerald-700',
           tone === 'warn' && 'text-amber-700',
+          tone === 'rose' && 'text-rose-700',
+          tone === 'sky' && 'text-sky-700',
           tone === 'default' && 'text-indigo-700'
         )}
       >
@@ -602,6 +606,9 @@ type AuditProgressSummary = {
   errors?: number
   currentCustomer?: string
   auditCount?: number
+  pauseRequested?: boolean
+  skippedAlready?: number
+  paused?: boolean
 }
 
 function auditProgressPercent(summary?: AuditProgressSummary | null): number {
@@ -651,17 +658,19 @@ export function CskhAuditProgressPanel({
   const auditProcessed = summary?.processed ?? 0
   const percent = auditProgressPercent(summary)
 
-  const statusLine = isFetch
-    ? pagesTotal > 0
-      ? `Đang quét Page ${pageCurrent}/${pagesTotal}${summary?.currentPage ? ` · ${summary.currentPage}` : ''}`
-      : 'Đang kết nối Facebook…'
-    : isAudit
-      ? auditTotal > 0
-        ? `Đang chấm điểm ${auditProcessed}/${auditTotal} hội thoại${
-            summary?.currentCustomer ? ` · ${summary.currentCustomer}` : ''
-          }`
-        : 'Đang chuẩn bị chấm điểm…'
-      : 'Đang xử lý…'
+  const statusLine = summary?.pauseRequested
+    ? 'Đang tạm dừng — chờ chấm xong hội thoại đang xử lý…'
+    : isFetch
+      ? pagesTotal > 0
+        ? `Đang quét Page ${pageCurrent}/${pagesTotal}${summary?.currentPage ? ` · ${summary.currentPage}` : ''}`
+        : 'Đang kết nối Facebook…'
+      : isAudit
+        ? auditTotal > 0
+          ? `Đang chấm điểm ${auditProcessed}/${auditTotal} hội thoại${
+              summary?.currentCustomer ? ` · ${summary.currentCustomer}` : ''
+            }`
+          : 'Đang chuẩn bị chấm điểm…'
+        : 'Đang xử lý…'
 
   const detailLine = isFetch
     ? [

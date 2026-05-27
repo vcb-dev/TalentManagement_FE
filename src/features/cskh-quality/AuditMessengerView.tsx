@@ -4,6 +4,7 @@ import { getApiErrorMessage } from '@/lib/axios'
 import { isTransientInfraError, toUserFacingError } from '@/lib/userFacingError'
 import {
   Loader2,
+  Pause,
   Play,
   Sparkles,
   MessageCircle,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react'
 import {
   cancelAuditJob,
+  pauseAuditJob,
   fetchAuditProgress,
   fetchCskhAudits,
   fetchInboxConversations,
@@ -528,9 +530,11 @@ function AiAnalysisPanel({
 export function AuditMessengerView({
   jobId,
   setJobId,
+  onAuditDateChange,
 }: {
   jobId: string | null
   setJobId: (id: string | null) => void
+  onAuditDateChange?: (auditDate: string) => void
 }) {
   const [auditDate, setAuditDate] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -578,6 +582,15 @@ export function AuditMessengerView({
       storeJobId(null)
       void qc.invalidateQueries({ queryKey: ['cskh', 'audit-progress'] })
       void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
+      void qc.invalidateQueries({ queryKey: ['cskh', 'audit-day-stats'] })
+    },
+  })
+
+  const pauseMut = useMutation({
+    mutationFn: () => pauseAuditJob(),
+    onSuccess: (res) => {
+      if (!res.paused) return
+      void qc.invalidateQueries({ queryKey: ['cskh', 'audit-progress', jobId] })
     },
   })
 
@@ -604,7 +617,20 @@ export function AuditMessengerView({
     if (progress.status === 'done') {
       const count = progress.summary?.auditCount ?? progress.audits?.length ?? 0
       const day = progress.summary?.auditDate
-      if (count > 0) {
+      if (progress.summary?.allAlreadyAudited) {
+        setCompletionNotice(
+          `Đã chấm hết ${progress.summary.skippedAlready ?? count} hội thoại${
+            day ? ` ngày ${formatAuditDateLabel(day)}` : ''
+          } — không còn hội thoại mới.`
+        )
+      } else if (progress.summary?.paused || progress.summary?.partial) {
+        const remaining = progress.summary.remaining
+        setCompletionNotice(
+          `Tạm dừng — đã chấm ${count} hội thoại${
+            day ? ` ngày ${formatAuditDateLabel(day)}` : ''
+          }${remaining ? ` · còn ~${remaining} trong batch này` : ''}. Chạy lại cùng ngày để tiếp tục.`
+        )
+      } else if (count > 0) {
         setCompletionNotice(
           `Hoàn tất ${count} hội thoại${day ? ` ngày ${formatAuditDateLabel(day)}` : ''}`
         )
@@ -612,8 +638,8 @@ export function AuditMessengerView({
       setJobId(null)
       storeJobId(null)
       void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
-      void qc.invalidateQueries({ queryKey: ['cskh', 'audit-token-stats'] })
-      void qc.invalidateQueries({ queryKey: ['cskh', 'deepseek-balance'] })
+      void qc.invalidateQueries({ queryKey: ['cskh', 'audit-day-stats'] })
+      void qc.invalidateQueries({ queryKey: ['cskh', 'audit-day-stats'] })
       return
     }
 
@@ -622,6 +648,7 @@ export function AuditMessengerView({
       setJobId(null)
       storeJobId(null)
       void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
+      void qc.invalidateQueries({ queryKey: ['cskh', 'audit-day-stats'] })
     }
   }, [progress, qc, setJobId])
 
@@ -631,16 +658,21 @@ export function AuditMessengerView({
     setJobId(null)
     storeJobId(null)
     void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
+    void qc.invalidateQueries({ queryKey: ['cskh', 'audit-day-stats'] })
   }, [progressError, progressErr, progressFetching, progressFailureCount, jobId, qc, setJobId])
 
   useEffect(() => {
     if (progress?.summary?.auditDate) setAuditDate(progress.summary.auditDate)
   }, [progress?.summary?.auditDate])
 
+  useEffect(() => {
+    onAuditDateChange?.(auditDate)
+  }, [auditDate, onAuditDateChange])
+
   const { data: recentAudits, isLoading: recentLoading } = useQuery({
-    queryKey: ['cskh', 'audits', 'recent'],
-    queryFn: () => fetchCskhAudits({ limit: 200 }),
-    enabled: !jobId || progressFinished,
+    queryKey: ['cskh', 'audits', 'by-day', auditDate],
+    queryFn: () => fetchCskhAudits({ auditDate, limit: 2000 }),
+    enabled: Boolean(auditDate) && (!jobId || progressFinished),
     retry: cskhQueryRetry,
     retryDelay: cskhQueryRetryDelay,
   })
@@ -651,7 +683,9 @@ export function AuditMessengerView({
     setAuditDate(latest ?? vietnamTodayIso())
   }, [auditDate, recentAudits, recentLoading])
 
+  const summary = progress?.summary
   const isRunning = runMut.isPending || progress?.status === 'running'
+  const isPausing = Boolean(summary?.pauseRequested) || pauseMut.isPending
   const isFailed = progress?.status === 'failed'
   const auditErrorMessage =
     toUserFacingError(
@@ -659,12 +693,15 @@ export function AuditMessengerView({
         (progressErr ? getApiErrorMessage(progressErr) : '') ||
         (runMut.error ? getApiErrorMessage(runMut.error) : '')
     ) || 'Không thể chạy audit. Vui lòng thử lại sau.'
-  const summary = progress?.summary
   const auditCount = summary?.auditCount ?? progress?.audits?.length ?? 0
   const isFetchPhase = isRunning && summary?.phase === 'fetch'
   const isAuditPhase = isRunning && summary?.phase === 'audit'
   const displayAudits =
-    jobId && !progressFinished ? (progress?.audits ?? []) : (recentAudits ?? progress?.audits ?? [])
+    jobId && !progressFinished
+      ? (progress?.audits ?? []).filter((a) => !auditDate || a.metadata?.auditDate === auditDate)
+      : (recentAudits ?? progress?.audits ?? []).filter(
+          (a) => !auditDate || a.metadata?.auditDate === auditDate
+        )
   const sortedAudits = [...displayAudits].sort((a, b) => a.score - b.score)
   const filteredAudits = useMemo(() => {
     const q = sidebarSearch.trim().toLowerCase()
@@ -892,7 +929,7 @@ export function AuditMessengerView({
             )}
           {!isRunning && sortedAudits.length > 0 && (
             <span className="text-xs font-medium text-slate-500">
-              {sortedAudits.length} hội thoại · điểm thấp → cao
+              {sortedAudits.length} hội thoại ngày {auditDayLabel ?? '…'} · điểm thấp → cao
             </span>
           )}
           <CskhConnectionBadge connected={inboxLive} />
@@ -912,14 +949,29 @@ export function AuditMessengerView({
             {auditDate ? `Chạy ${formatAuditDateLabel(auditDate)}` : 'Chọn ngày'}
           </button>
           {isRunning && (
-            <button
-              type="button"
-              disabled={cancelMut.isPending}
-              onClick={() => cancelMut.mutate()}
-              className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100"
-            >
-              Hủy
-            </button>
+            <>
+              <button
+                type="button"
+                disabled={pauseMut.isPending || isPausing}
+                onClick={() => pauseMut.mutate()}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+              >
+                {isPausing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Pause className="h-4 w-4" />
+                )}
+                {isPausing ? 'Đang dừng…' : 'Tạm dừng'}
+              </button>
+              <button
+                type="button"
+                disabled={cancelMut.isPending}
+                onClick={() => cancelMut.mutate()}
+                className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+              >
+                Hủy
+              </button>
+            </>
           )}
           {(isFailed || progressError) && sortedAudits.length === 0 && (
             <button
@@ -996,7 +1048,7 @@ export function AuditMessengerView({
             sidebar={
               <>
                 <MessengerSidebarHeader
-                  title={`Hội thoại (${sortedAudits.length})`}
+                  title={`Hội thoại (${sortedAudits.length})${auditDayLabel ? ` · ${auditDayLabel}` : ''}`}
                   search={
                     sortedAudits.length > 8 ? (
                       <div className="relative">
