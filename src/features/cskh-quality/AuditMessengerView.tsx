@@ -396,7 +396,7 @@ export function AuditMessengerView({
   const [draft, setDraft] = useState('')
   const [sidebarSearch, setSidebarSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState<'all' | 'ad' | 'organic'>('all')
-  const [chatTab, setChatTab] = useState<'chat' | 'timeline'>('chat')
+  const [chatTab, setChatTab] = useState<'chat' | 'timeline' | 'analysis'>('chat')
   const [completionNotice, setCompletionNotice] = useState<string | null>(null)
   const [dismissedErrorKey, setDismissedErrorKey] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -879,7 +879,7 @@ export function AuditMessengerView({
     : 0
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <CskhToolbar>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -1045,7 +1045,7 @@ export function AuditMessengerView({
           description="Chọn ngày ở trên và bấm Chạy audit để AI phân tích hội thoại CSKH."
         />
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {isAuditPhase && (
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}
@@ -1061,7 +1061,7 @@ export function AuditMessengerView({
             />
           ) : null}
           <MessengerWorkspace
-            className="min-h-0 flex-1"
+            className="min-h-0 flex-1 overflow-hidden"
             sidebar={
               <AuditConversationSidebar
                 rows={sortedAudits}
@@ -1076,7 +1076,7 @@ export function AuditMessengerView({
             }
             main={
               selected ? (
-                <div className="flex min-h-0 flex-1 flex-col">
+                <div className="flex h-full min-h-0 flex-col overflow-hidden">
                   <ChatThreadHeader
                     name={displayCustomerName(selected.customerName)}
                     subtitle={`${displayPageShopLabel(selected.metadata?.pageName) || selected.metadata?.pageName || selected.channel || ''}${
@@ -1102,16 +1102,21 @@ export function AuditMessengerView({
                       </div>
                     }
                   />
-                  <div className="flex gap-1 border-b border-slate-200/80 bg-white px-4">
-                    {[
-                      { id: 'chat' as const, label: 'Hội thoại' },
-                      { id: 'timeline' as const, label: 'Timeline sự kiện' },
-                    ].map((t) => (
+                  <div className="flex shrink-0 gap-1 border-b border-slate-200/80 bg-white px-4">
+                    {(
+                      [
+                        { id: 'chat' as const, label: 'Hội thoại' },
+                        { id: 'timeline' as const, label: 'Timeline sự kiện' },
+                        { id: 'analysis' as const, label: 'Phân tích', mobileOnly: true },
+                      ] as const
+                    ).map((t) => (
                       <button
                         key={t.id}
                         type="button"
                         onClick={() => setChatTab(t.id)}
                         className={`relative px-3 py-2.5 text-xs font-semibold ${
+                          'mobileOnly' in t && t.mobileOnly ? 'lg:hidden' : ''
+                        } ${
                           chatTab === t.id
                             ? 'text-violet-700'
                             : 'text-slate-500 hover:text-slate-700'
@@ -1124,138 +1129,160 @@ export function AuditMessengerView({
                       </button>
                     ))}
                   </div>
-                  <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-                    {chatTab === 'timeline' ? (
-                      <AuditTimelinePanel
+                  {chatTab === 'analysis' ? (
+                    <div className="min-h-0 flex-1 overflow-hidden lg:hidden">
+                      <AuditAnalysisPanel
+                        row={selected}
+                        inbox={inboxConv}
                         transcript={transcript}
                         auditDayLabel={selectedAuditDayLabel}
+                        onUseReply={setDraft}
                       />
-                    ) : null}
-                    {chatTab === 'chat' && transcript.length > 0 ? (
-                      <div className="space-y-3">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">
-                          Hội thoại audit
-                          {selectedAuditDayLabel ? ` · ${selectedAuditDayLabel}` : ''}
-                          <span className="ml-2 font-medium normal-case text-slate-400">
-                            · {transcript.length} tin
-                          </span>
-                        </p>
-                        {transcript.map((line, idx) => (
-                          <ChatBubble
-                            key={`audit-${idx}`}
-                            sender={line.sender}
-                            text={line.text}
-                            attachmentUrl={line.attachmentUrl}
-                            attachmentUrls={line.attachmentUrls}
-                            messageType={line.type}
-                            imageUrl={line.imageUrl}
-                            videoUrl={line.videoUrl}
-                            time={
-                              line.timestamp
-                                ? new Date(line.timestamp).toLocaleTimeString('vi-VN', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })
-                                : undefined
-                            }
-                          />
-                        ))}
-                        {selectedAuditDayLabel ? (
-                          <AuditScopeDivider auditDayLabel={selectedAuditDayLabel} />
-                        ) : null}
-                      </div>
-                    ) : chatTab === 'chat' && !inboxConv ? (
-                      <CskhEmptyState
-                        icon={<MessageCircle className="h-10 w-10 text-indigo-400" />}
-                        title="Không có transcript"
-                        description="Chưa liên kết inbox. Chạy audit lại để lấy đầy đủ hội thoại."
-                      />
-                    ) : chatTab === 'chat' ? (
-                      <p className="text-sm text-slate-500">
-                        Không có transcript — chạy audit lại để lấy đầy đủ hội thoại.
-                      </p>
-                    ) : null}
-
-                    {chatTab === 'chat' && inboxConv && postAuditLiveMessages.length > 0 ? (
-                      <div className="space-y-3 border-t border-slate-200/80 pt-4">
-                        <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-600">
-                          <CskhConnectionBadge connected={inboxLive} />
-                          Tin sau ngày audit (chat live)
-                        </p>
-                        {postAuditLiveMessages.map((msg) => (
-                          <LiveBubble key={msg.id} msg={msg} />
-                        ))}
-                      </div>
-                    ) : null}
-
-                    {chatTab === 'chat' && selected && !inboxConv && transcript.length > 0 && (
-                      <p
-                        className={`rounded-xl border px-3 py-2 text-xs ${
-                          inboxLinkPending
-                            ? 'border-indigo-200 bg-indigo-50/80 text-indigo-800'
-                            : inboxLinkFailed
-                              ? 'border-amber-200 bg-amber-50/80 text-amber-800'
-                              : 'border-amber-200 bg-amber-50/80 text-amber-800'
-                        }`}
-                      >
-                        {inboxLinkPending
-                          ? 'Đang liên kết inbox để nhắn tin trực tiếp…'
-                          : inboxLinkFailed
-                            ? 'Chưa liên kết inbox — audit cũ có thể thiếu PSID. Chạy audit lại để nhắn tin trực tiếp.'
-                            : 'Xem transcript ở trên. Liên kết inbox để nhắn tin trực tiếp cho khách.'}
-                      </p>
-                    )}
-                  </div>
-
-                  <footer className="border-t border-slate-200/80 bg-white p-3">
-                    <form
-                      className="flex items-end gap-2"
-                      onSubmit={(e) => {
-                        e.preventDefault()
-                        const t = draft.trim()
-                        if (!t || sendMut.isPending || !inboxConv) return
-                        sendMut.mutate(t)
-                      }}
+                    </div>
+                  ) : null}
+                  <div
+                    className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
+                      chatTab === 'analysis' ? 'hidden lg:flex' : ''
+                    }`}
+                  >
+                    <div
+                      ref={scrollRef}
+                      className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain px-4 py-4"
                     >
-                      <textarea
-                        rows={1}
-                        value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
+                      {chatTab === 'timeline' ? (
+                        <AuditTimelinePanel
+                          transcript={transcript}
+                          auditDayLabel={selectedAuditDayLabel}
+                        />
+                      ) : null}
+                      {chatTab === 'chat' && transcript.length > 0 ? (
+                        <div className="space-y-3">
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">
+                            Hội thoại audit
+                            {selectedAuditDayLabel ? ` · ${selectedAuditDayLabel}` : ''}
+                            <span className="ml-2 font-medium normal-case text-slate-400">
+                              · {transcript.length} tin
+                            </span>
+                          </p>
+                          {transcript.map((line, idx) => (
+                            <ChatBubble
+                              key={`audit-${idx}`}
+                              sender={line.sender}
+                              text={line.text}
+                              attachmentUrl={line.attachmentUrl}
+                              attachmentUrls={line.attachmentUrls}
+                              messageType={line.type}
+                              imageUrl={line.imageUrl}
+                              videoUrl={line.videoUrl}
+                              time={
+                                line.timestamp
+                                  ? new Date(line.timestamp).toLocaleTimeString('vi-VN', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  : undefined
+                              }
+                            />
+                          ))}
+                          {selectedAuditDayLabel ? (
+                            <AuditScopeDivider auditDayLabel={selectedAuditDayLabel} />
+                          ) : null}
+                        </div>
+                      ) : chatTab === 'chat' && !inboxConv ? (
+                        <CskhEmptyState
+                          icon={<MessageCircle className="h-10 w-10 text-indigo-400" />}
+                          title="Không có transcript"
+                          description="Chưa liên kết inbox. Chạy audit lại để lấy đầy đủ hội thoại."
+                        />
+                      ) : chatTab === 'chat' ? (
+                        <p className="text-sm text-slate-500">
+                          Không có transcript — chạy audit lại để lấy đầy đủ hội thoại.
+                        </p>
+                      ) : null}
+
+                      {chatTab === 'chat' && inboxConv && postAuditLiveMessages.length > 0 ? (
+                        <div className="space-y-3 border-t border-slate-200/80 pt-4">
+                          <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-600">
+                            <CskhConnectionBadge connected={inboxLive} />
+                            Tin sau ngày audit (chat live)
+                          </p>
+                          {postAuditLiveMessages.map((msg) => (
+                            <LiveBubble key={msg.id} msg={msg} />
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {chatTab === 'chat' && selected && !inboxConv && transcript.length > 0 && (
+                        <p
+                          className={`rounded-xl border px-3 py-2 text-xs ${
+                            inboxLinkPending
+                              ? 'border-indigo-200 bg-indigo-50/80 text-indigo-800'
+                              : inboxLinkFailed
+                                ? 'border-amber-200 bg-amber-50/80 text-amber-800'
+                                : 'border-amber-200 bg-amber-50/80 text-amber-800'
+                          }`}
+                        >
+                          {inboxLinkPending
+                            ? 'Đang liên kết inbox để nhắn tin trực tiếp…'
+                            : inboxLinkFailed
+                              ? 'Chưa liên kết inbox — audit cũ có thể thiếu PSID. Chạy audit lại để nhắn tin trực tiếp.'
+                              : 'Xem transcript ở trên. Liên kết inbox để nhắn tin trực tiếp cho khách.'}
+                        </p>
+                      )}
+                    </div>
+
+                    {chatTab === 'chat' ? (
+                      <footer className="shrink-0 border-t border-slate-200/80 bg-white p-3">
+                        <form
+                          className="flex items-end gap-2"
+                          onSubmit={(e) => {
                             e.preventDefault()
                             const t = draft.trim()
-                            if (t && !sendMut.isPending && inboxConv) sendMut.mutate(t)
-                          }
-                        }}
-                        disabled={!inboxConv}
-                        placeholder={
-                          inboxConv
-                            ? 'Nhắn tin cho khách… (Enter gửi)'
-                            : inboxLinkPending
-                              ? 'Đang liên kết inbox…'
-                              : 'Liên kết inbox để gửi tin — vẫn có thể dùng gợi ý bên phải'
-                        }
-                        className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100 disabled:text-slate-400"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!draft.trim() || sendMut.isPending || !inboxConv}
-                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-md hover:bg-violet-700 disabled:opacity-50"
-                      >
-                        {sendMut.isPending ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                          <Send className="h-5 w-5" />
+                            if (!t || sendMut.isPending || !inboxConv) return
+                            sendMut.mutate(t)
+                          }}
+                        >
+                          <textarea
+                            rows={1}
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault()
+                                const t = draft.trim()
+                                if (t && !sendMut.isPending && inboxConv) sendMut.mutate(t)
+                              }
+                            }}
+                            disabled={!inboxConv}
+                            placeholder={
+                              inboxConv
+                                ? 'Nhắn tin cho khách… (Enter gửi)'
+                                : inboxLinkPending
+                                  ? 'Đang liên kết inbox…'
+                                  : 'Liên kết inbox để gửi tin — vẫn có thể dùng gợi ý bên phải'
+                            }
+                            className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100 disabled:text-slate-400"
+                          />
+                          <button
+                            type="submit"
+                            disabled={!draft.trim() || sendMut.isPending || !inboxConv}
+                            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-md hover:bg-violet-700 disabled:opacity-50"
+                          >
+                            {sendMut.isPending ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <Send className="h-5 w-5" />
+                            )}
+                          </button>
+                        </form>
+                        {sendMut.isError && (
+                          <p className="mt-2 text-xs text-rose-600">
+                            {getApiErrorMessage(sendMut.error)}
+                          </p>
                         )}
-                      </button>
-                    </form>
-                    {sendMut.isError && (
-                      <p className="mt-2 text-xs text-rose-600">
-                        {getApiErrorMessage(sendMut.error)}
-                      </p>
-                    )}
-                  </footer>
+                      </footer>
+                    ) : null}
+                  </div>
                 </div>
               ) : (
                 <CskhEmptyState
@@ -1277,18 +1304,6 @@ export function AuditMessengerView({
               ) : undefined
             }
           />
-
-          {selected && sortedAudits.length > 0 && (
-            <div className="max-h-[480px] shrink-0 overflow-hidden border-t border-slate-200/80 lg:hidden">
-              <AuditAnalysisPanel
-                row={selected}
-                inbox={inboxConv}
-                transcript={transcript}
-                auditDayLabel={selectedAuditDayLabel}
-                onUseReply={setDraft}
-              />
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -237,13 +237,13 @@ export function resolveKeywords(
   }
 }
 
-export function resolveTags(row: CskhAuditRow, fromAd: boolean): string[] {
+export function resolveTags(row: CskhAuditRow, _fromAd: boolean): string[] {
   const fromAi = row.metadata?.tags?.filter(Boolean)
   if (fromAi?.length) return fromAi
+
   const tags: string[] = []
-  if (fromAd) tags.push('Quảng cáo')
-  if (row.metadata?.needsFollowUp) tags.push('Cần follow-up')
-  if (row.metadata?.staffAbsent) tags.push('Chưa rep')
+  if (row.metadata?.needsFollowUp) tags.push('Khách chờ phản hồi')
+  if (row.metadata?.staffAbsent) tags.push('Chưa có phản hồi NV')
   return tags
 }
 

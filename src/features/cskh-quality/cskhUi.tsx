@@ -91,8 +91,10 @@ export function CskhPageAvatar({
 
 export function CskhPageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative -m-5 min-h-[calc(100vh-3.5rem)] overflow-hidden bg-slate-50/90 pb-3 md:-m-6 lg:-m-8">
-      <div className="page-shell relative space-y-3 px-3 py-3 sm:px-4 lg:px-5">{children}</div>
+    <div className="relative -m-5 flex h-[calc(100dvh-4.5rem)] max-h-[calc(100dvh-4.5rem)] flex-col overflow-hidden md:-m-6 md:h-[calc(100dvh-4.75rem)] md:max-h-[calc(100dvh-4.75rem)]">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden px-1 py-1 sm:px-2">
+        {children}
+      </div>
     </div>
   )
 }
@@ -359,7 +361,7 @@ export function CskhTabNav({
   onChange: (id: string) => void
 }) {
   return (
-    <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-white/70 bg-white/60 p-1.5 shadow-md shadow-indigo-100/40 backdrop-blur-xl">
+    <nav className="flex shrink-0 gap-2 overflow-x-auto rounded-2xl border border-white/70 bg-white/60 p-1.5 shadow-md shadow-indigo-100/40 backdrop-blur-xl">
       {tabs.map(({ id, label, icon, busy }) => {
         const isActive = active === id
         return (
@@ -405,7 +407,7 @@ export function CskhGlassPanel({
 
 export function CskhToolbar({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 via-white/50 to-violet-50/80 px-4 py-3 sm:px-5">
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 via-white/50 to-violet-50/80 px-4 py-3 sm:px-5">
       {children}
     </div>
   )
@@ -425,12 +427,14 @@ export function MessengerWorkspace({
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', className)}>
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside className="flex w-[240px] shrink-0 flex-col border-r border-slate-200/80 bg-white sm:w-[260px]">
+        <aside className="flex h-full min-h-0 w-[240px] shrink-0 flex-col overflow-hidden border-r border-slate-200/80 bg-white sm:w-[260px]">
           {sidebar}
         </aside>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#f0f2f5]">{main}</div>
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#f0f2f5]">
+          {main}
+        </div>
         {aside ? (
-          <aside className="hidden min-h-0 min-w-[340px] flex-[1.05] flex-col border-l border-slate-200/80 bg-white lg:flex xl:min-w-[380px]">
+          <aside className="hidden h-full min-h-0 min-w-[320px] flex-[1.05] flex-col overflow-hidden border-l border-slate-200/80 bg-white lg:flex xl:min-w-[360px]">
             {aside}
           </aside>
         ) : null}
@@ -590,7 +594,7 @@ export function CskhOrganicSourceBadge({ show }: { show?: boolean }) {
       title="Khách nhắn trực tiếp, không qua quảng cáo"
       className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
     >
-      Organic
+      Tự nhắn
     </span>
   )
 }
