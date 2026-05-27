@@ -8,6 +8,7 @@ const teacherKeys = {
   classes: () => [...teacherKeys.all, 'classes'] as const,
   classDetail: (classId: string) => [...teacherKeys.all, 'class-detail', classId] as const,
   schedules: (classId: string) => [...teacherKeys.all, 'schedules', classId] as const,
+  roadmapItems: (classId: string) => [...teacherKeys.all, 'roadmap-items', classId] as const,
   registrations: (classId: string) => [...teacherKeys.all, 'registrations', classId] as const,
 }
 
@@ -52,6 +53,14 @@ export function useTeacherSchedules(classId: string) {
   })
 }
 
+export function useTeacherRoadmapItems(classId: string) {
+  return useQuery({
+    queryKey: teacherKeys.roadmapItems(classId),
+    queryFn: () => teacherApi.roadmapItems(classId),
+    enabled: classId.length > 0,
+  })
+}
+
 export function useTeacherCreateSchedule(classId: string) {
   const qc = useQueryClient()
   return useMutation({
@@ -61,6 +70,7 @@ export function useTeacherCreateSchedule(classId: string) {
       endTime: string
       topic: string
       location?: string | null
+      roadmapItemIds: string[]
     }) => teacherApi.createSchedule(classId, input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: teacherKeys.schedules(classId) })
@@ -84,6 +94,7 @@ export function useTeacherUpdateSchedule(classId: string) {
         endTime?: string
         topic?: string
         location?: string | null
+        roadmapItemIds?: string[]
       }
     }) => teacherApi.updateSchedule(classId, scheduleId, input),
     onSuccess: () => {

@@ -6,6 +6,7 @@ import {
   teacherClassDetailApiSchema,
   teacherClassScheduleApiSchema,
   teacherClassRegistrationApiSchema,
+  teacherRoadmapItemApiSchema,
   teacherGradeResponseSchema,
 } from './schemas'
 
@@ -42,6 +43,15 @@ export const teacherApi = {
     )
   },
 
+  roadmapItems: async (classId: string) => {
+    const res = await apiClient.get<unknown>(`/teacher/classes/${classId}/roadmap-items`)
+    return safeParse(
+      z.array(teacherRoadmapItemApiSchema),
+      res.data,
+      'GET /teacher/classes/:id/roadmap-items'
+    )
+  },
+
   createSchedule: async (
     classId: string,
     input: {
@@ -50,6 +60,7 @@ export const teacherApi = {
       endTime: string
       topic: string
       location?: string | null
+      roadmapItemIds: string[]
     }
   ) => {
     const res = await apiClient.post<unknown>(`/teacher/classes/${classId}/schedules`, input)
@@ -65,6 +76,7 @@ export const teacherApi = {
       endTime?: string
       topic?: string
       location?: string | null
+      roadmapItemIds?: string[]
     }
   ) => {
     const res = await apiClient.patch<unknown>(

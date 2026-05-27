@@ -15,6 +15,8 @@ export const teacherClassMemberApiSchema = z.object({
   userId: z.string().uuid(),
   name: z.string(),
   email: z.string(),
+  isMakeup: z.boolean().optional(),
+  makeupScheduleIds: z.array(z.string().uuid()).optional(),
   latestResult: z
     .object({
       outcome: z.enum(['DAT', 'BAO_LUU', 'CHO_HOC_LAI', 'CHIA_TAY']),
@@ -34,6 +36,17 @@ export const teacherClassDetailApiSchema = z.object({
   members: z.array(teacherClassMemberApiSchema),
 })
 
+export const teacherRoadmapItemApiSchema = z.object({
+  id: z.string().uuid(),
+  levelLabel: z.string(),
+  topic: z.string(),
+  objective: z.string(),
+  materialRef: z.string().nullable().optional(),
+  trainer: z.string().nullable().optional(),
+  assessment: z.string().nullable().optional(),
+  rowOrder: z.number().int(),
+})
+
 export const teacherGradeResponseSchema = z.object({
   id: z.string().uuid(),
 })
@@ -46,6 +59,7 @@ export const teacherClassScheduleApiSchema = z.object({
   endTime: z.string(),
   topic: z.string(),
   location: z.string().nullable(),
+  roadmapItems: z.array(teacherRoadmapItemApiSchema).optional().default([]),
   attendanceData: z.record(z.string(), z.any()).nullable().optional(),
   evaluatedUserIds: z.array(z.string()).optional(),
   createdAt: z.string().datetime(),

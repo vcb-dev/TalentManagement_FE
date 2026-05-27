@@ -91,6 +91,41 @@ const LEVEL_ORDER_MAP: Record<string, number> = CAREER_LEVELS.reduce(
   (acc, k, i) => ({ ...acc, [k]: i }),
   {}
 )
+const NO_ASSESSMENT_VALUE = '__none__'
+const ASSESSMENT_OPTIONS = [
+  {
+    value: 'Review',
+    label: 'Review',
+    description: 'Cho phép học viên nộp phản tư/minh chứng.',
+  },
+  {
+    value: 'Tự luận',
+    label: 'Tự luận',
+    description: 'Cho phép học viên nộp bài viết, link hoặc file.',
+  },
+  {
+    value: 'Phản tư',
+    label: 'Phản tư',
+    description: 'Cho phép học viên nộp phản tư trực tiếp.',
+  },
+  {
+    value: 'Thi trắc nghiệm',
+    label: 'Thi trắc nghiệm',
+    description: 'Không mở form nộp phản tư.',
+  },
+  {
+    value: 'Không yêu cầu',
+    label: 'Không yêu cầu',
+    description: 'Không yêu cầu học viên nộp bài.',
+  },
+]
+const ASSESSMENT_OPTION_VALUES = new Set(ASSESSMENT_OPTIONS.map((option) => option.value))
+
+function normalizeAssessmentValue(value?: string | null) {
+  const trimmed = String(value || '').trim()
+  if (!trimmed || trimmed === 'Không yêu cầu') return null
+  return trimmed
+}
 
 export function RoadmapCrud() {
   const { data: items, isLoading } = useManagerRoadmapItems()
@@ -359,6 +394,7 @@ export function RoadmapCrud() {
             levelLabel: calculatedLevelLabel,
             materialRef: JSON.stringify(materials),
             objective: objectives[0]?.text || values.objective,
+            assessment: normalizeAssessmentValue(values.assessment),
           },
         },
         { onSuccess: handleCancel }
@@ -376,6 +412,7 @@ export function RoadmapCrud() {
           levelLabel: calculatedLevelLabel,
           materialRef: JSON.stringify(materials),
           objective: obj.text,
+          assessment: normalizeAssessmentValue(values.assessment),
         })
       }
       handleCancel()
@@ -626,7 +663,42 @@ export function RoadmapCrud() {
                             </FormLabel>
                             <FormControl>
                               <div className="relative group">
+                                <Select
+                                  value={
+                                    field.value && ASSESSMENT_OPTION_VALUES.has(field.value)
+                                      ? field.value
+                                      : field.value || NO_ASSESSMENT_VALUE
+                                  }
+                                  onValueChange={(value) =>
+                                    field.onChange(value === NO_ASSESSMENT_VALUE ? '' : value)
+                                  }
+                                >
+                                  <SelectTrigger className="h-12 rounded-2xl border-primary/10 bg-white pl-11 shadow-sm transition-all hover:border-primary/30 focus:ring-2 focus:ring-primary/20">
+                                    <SelectValue placeholder="Chọn hình thức đánh giá" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value={NO_ASSESSMENT_VALUE}>
+                                      Không yêu cầu
+                                    </SelectItem>
+                                    {field.value && !ASSESSMENT_OPTION_VALUES.has(field.value) ? (
+                                      <SelectItem value={field.value}>
+                                        Giá trị hiện tại: {field.value}
+                                      </SelectItem>
+                                    ) : null}
+                                    {ASSESSMENT_OPTIONS.map((option) => (
+                                      <SelectItem key={option.value} value={option.value}>
+                                        <div className="flex flex-col">
+                                          <span className="font-semibold">{option.label}</span>
+                                          <span className="text-xs text-muted-foreground">
+                                            {option.description}
+                                          </span>
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <Input
+                                  type="hidden"
                                   placeholder="Review, Thi trắc nghiệm..."
                                   className="h-12 rounded-2xl border-primary/10 bg-white pl-11 shadow-sm transition-all hover:border-primary/30 focus:ring-2 focus:ring-primary/20"
                                   {...field}

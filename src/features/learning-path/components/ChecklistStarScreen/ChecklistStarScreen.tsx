@@ -20,7 +20,6 @@ import {
   AlertCircle,
   Trophy,
   XCircle,
-  BookOpen,
 } from 'lucide-react'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { StarEmblem } from '@/components/icons/StarEmblem'
@@ -63,6 +62,25 @@ function rowKind(
   if (checklist.isCompleted(itemId)) return 'done'
   const next = items.find((i) => checklist.isUnlocked(i.id) && !checklist.isCompleted(i.id))
   return next?.id === itemId ? 'current' : 'locked'
+}
+
+function normalizeVietnamese(value?: string | null) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim()
+}
+
+function allowsReflectionSubmission(assessment?: string | null) {
+  const normalized = normalizeVietnamese(assessment)
+  return (
+    normalized.includes('phan tu') ||
+    normalized.includes('tu luan') ||
+    normalized.includes('review')
+  )
 }
 
 export interface ChecklistStarScreenProps {
@@ -191,6 +209,7 @@ export function ChecklistStarScreen({
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [submissionType, setSubmissionType] = useState<'FILE' | 'LINK' | 'TEXT'>('FILE')
   const [_, startTransition] = useTransition()
+  const hasStarProgression = levelId !== 'tap_su'
 
   const handleToggleTask = useCallback((id: string) => {
     startTransition(() => {
@@ -209,7 +228,12 @@ export function ChecklistStarScreen({
     ? roadmapTopicsByLevel.length || probationMilestones.length
     : sortedItems.length
   const doneCount = useProbationFlow
-    ? probationMilestones.filter((m) => m.status === 'done').length
+    ? roadmapTopicsByLevel.length > 0
+      ? roadmapTopicsByLevel.filter(
+          (topic) =>
+            topic.objectives.length > 0 && topic.objectives.every((o) => o.isClassCompleted)
+        ).length
+      : probationMilestones.filter((m) => m.status === 'done').length
     : sortedItems.filter((i) => checklist.isCompleted(i.id)).length
 
   const tasks = useMemo(() => {
@@ -221,15 +245,20 @@ export function ChecklistStarScreen({
 
         const isDone = topicStar <= currentStars
         const isCurrent = topicStar === currentStars + 1
-        const isLocked = topicStar > currentStars + 1
-
         return {
           id: topic.id,
           title: titleRaw,
           order: topic.sortOrder,
           description: topic.objectives.map((o) => o.objective).join('\n'),
           completedAt: null, // We don't have per-topic completion date in this simplified view yet
-          kind: isDone ? ('done' as const) : isCurrent ? ('current' as const) : ('locked' as const),
+          kind:
+            topic.objectives.length > 0 && topic.objectives.every((o) => o.isClassCompleted)
+              ? ('done' as const)
+              : isDone
+                ? ('done' as const)
+                : isCurrent
+                  ? ('current' as const)
+                  : ('locked' as const),
           objectives: topic.objectives,
         }
       })
@@ -299,6 +328,9 @@ export function ChecklistStarScreen({
     }
     return null
   }, [tasks, selectedObjectiveId])
+  const selectedObjectiveCanSubmitReflection = selectedObjective
+    ? allowsReflectionSubmission(selectedObjective.assessment)
+    : false
 
   const onPickFile = () => fileRef.current?.click()
 
@@ -307,6 +339,12 @@ export function ChecklistStarScreen({
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    if (selectedObjective && !selectedObjectiveCanSubmitReflection) {
+      toast.error('Học phần này không yêu cầu nộp phản tư.')
+      e.target.value = ''
+      return
+    }
 
     // Validate extension
     const ext = '.' + file.name.split('.').pop()?.toLowerCase()
@@ -326,6 +364,11 @@ export function ChecklistStarScreen({
   }
 
   const handleUpload = () => {
+    if (selectedObjective && !selectedObjectiveCanSubmitReflection) {
+      toast.error('Học phần này không yêu cầu nộp phản tư.')
+      return
+    }
+
     if (submissionType === 'FILE' && !selectedFile) {
       toast.error('Vui lòng chọn file trước khi nộp')
       return
@@ -449,9 +492,11 @@ export function ChecklistStarScreen({
                 <div className="min-w-0 space-y-2">
                   <div className="mb-2 flex flex-wrap items-center gap-3">
                     <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs font-bold uppercase tracking-tighter text-white">
-                      Level 1
+                      {hasStarProgression ? 'Level 1' : levelName}
                     </span>
-                    <BannerStars filled={Math.min(doneCount, 5)} total={5} />
+                    {hasStarProgression ? (
+                      <BannerStars filled={Math.min(doneCount, 5)} total={5} />
+                    ) : null}
                   </div>
                   <h1 className="text-[22px] font-extrabold leading-tight tracking-tight">
                     Lộ trình học {levelName}
@@ -497,35 +542,51 @@ export function ChecklistStarScreen({
                     </p>
                   ) : (
                     <div className="space-y-10">
-                      {[1, 2, 3, 4, 5, 6].map((starNum) => {
-                        const starTasks = tasks.filter((t) => {
-                          const match = t.title?.match(/^Sao\s*(\d+)/i)
-                          return match && match[1] ? parseInt(match[1]) === starNum : starNum === 1
-                        })
+                      {(hasStarProgression ? [1, 2, 3, 4, 5, 6] : [0]).map((starNum) => {
+                        const starTasks = hasStarProgression
+                          ? tasks.filter((t) => {
+                              const match = t.title?.match(/^Sao\s*(\d+)/i)
+                              return match && match[1]
+                                ? parseInt(match[1]) === starNum
+                                : starNum === 1
+                            })
+                          : tasks
                         if (starTasks.length === 0) return null
 
-                        const isUnlocked = starNum <= currentStars + 1
-                        const isDone = starNum <= currentStars
+                        const isUnlocked = !hasStarProgression || starNum <= currentStars + 1
+                        const isDone = hasStarProgression && starNum <= currentStars
 
                         return (
-                          <div key={starNum} className="space-y-4">
-                            <div className="flex items-center gap-3">
-                              <h3
-                                className={cn(
-                                  'text-sm font-black uppercase tracking-[0.2em]',
-                                  isUnlocked ? 'text-primary-600' : 'text-gray-400'
-                                )}
-                              >
-                                {isDone ? '✓ ' : !isUnlocked ? '🔒 ' : '⭐ '}
-                                Sao {starNum}
-                              </h3>
-                              <div className="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent" />
-                            </div>
+                          <div key={hasStarProgression ? starNum : 'level'} className="space-y-4">
+                            {hasStarProgression ? (
+                              <div className="flex items-center gap-3">
+                                <h3
+                                  className={cn(
+                                    'text-sm font-black uppercase tracking-[0.2em]',
+                                    isUnlocked ? 'text-primary-600' : 'text-gray-400'
+                                  )}
+                                >
+                                  {isDone ? '✓ ' : !isUnlocked ? '🔒 ' : '⭐ '}
+                                  Sao {starNum}
+                                </h3>
+                                <div className="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent" />
+                              </div>
+                            ) : null}
                             <div className="space-y-4">
                               {starTasks.map((it, idx) => {
                                 const doneDate = it.completedAt
                                   ? new Date(it.completedAt).toLocaleDateString('vi-VN')
                                   : undefined
+                                const objectiveDoneCount =
+                                  it.objectives?.filter((o) => o.isClassCompleted).length ?? 0
+                                const objectiveTotal = it.objectives?.length ?? 0
+                                const roadmapSubtitle = objectiveTotal
+                                  ? `${objectiveDoneCount}/${objectiveTotal} học phần đã học`
+                                  : undefined
+                                const taskSubmission = (submissions as any[])?.find((s) => {
+                                  if (s.itemId === it.id) return true
+                                  return it.objectives?.some((obj) => obj.id === s.itemId)
+                                })
                                 return (
                                   <div
                                     key={it.id}
@@ -544,30 +605,23 @@ export function ChecklistStarScreen({
                                       }
                                       objectiveList={it.objectives}
                                       subtitle={
-                                        it.kind === 'done'
+                                        roadmapSubtitle ||
+                                        (it.kind === 'done'
                                           ? doneDate
                                             ? `Hoàn thành ${doneDate}`
                                             : 'Đã hoàn thành'
                                           : it.kind === 'current'
                                             ? 'Ấn vào để xem chi tiết'
-                                            : `Mở khóa sau khi hoàn thành Sao ${starNum - 1}`
+                                            : hasStarProgression
+                                              ? `Mở khóa sau khi hoàn thành Sao ${starNum - 1}`
+                                              : 'Chưa mở khóa')
                                       }
                                       primaryAction={
-                                        it.kind === 'done'
+                                        it.kind === 'done' && taskSubmission
                                           ? {
-                                              label:
-                                                it.order === 2 ? 'Xem kết quả' : 'Xem bằng chứng',
+                                              label: 'Xem bài nộp',
                                               onClick: () => {
-                                                const sub = (submissions as any[])?.find(
-                                                  (s) => s.itemId === it.id
-                                                )
-                                                if (sub) {
-                                                  setSelectedSubmission(sub)
-                                                } else {
-                                                  toast.error(
-                                                    'Không tìm thấy dữ liệu chi tiết bài nộp.'
-                                                  )
-                                                }
+                                                setSelectedSubmission(taskSubmission)
                                               },
                                             }
                                           : it.kind === 'current'
@@ -726,7 +780,7 @@ export function ChecklistStarScreen({
                       {selectedObjective ? selectedObjective.objective : 'Bài đã nộp gần nhất'}
                     </h4>
 
-                    {selectedObjective ? (
+                    {selectedObjective && selectedObjectiveCanSubmitReflection ? (
                       <div className="mb-6">
                         <Form {...evidenceForm}>
                           <div className="space-y-4">
@@ -814,6 +868,10 @@ export function ChecklistStarScreen({
                             </Button>
                           </div>
                         </Form>
+                      </div>
+                    ) : selectedObjective ? (
+                      <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm font-semibold text-slate-500">
+                        Học phần này không yêu cầu nộp phản tư.
                       </div>
                     ) : null}
 
@@ -1081,6 +1139,9 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
     materialRef: string | null
     trainer: string | null
     assessment: string | null
+    isClassCompleted?: boolean
+    classCompletedAt?: string | null
+    classCompletionSource?: 'CLASS_SESSION' | 'MAKEUP_SESSION' | null
   }>
   expanded: boolean
   onToggle: (id: string) => void
@@ -1221,14 +1282,22 @@ const ChecklistTaskCard = memo(function ChecklistTaskCard({
                   {index + 1}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p
-                    className={cn(
-                      'text-[14px] mt-0.5 font-medium leading-relaxed transition-colors',
-                      isSelected ? 'text-primary-900' : 'text-gray-700 group-hover:text-gray-900'
-                    )}
-                  >
-                    {obj.objective}
-                  </p>
+                  <div className="flex flex-wrap items-start gap-2">
+                    <p
+                      className={cn(
+                        'text-[14px] mt-0.5 min-w-0 flex-1 font-medium leading-relaxed transition-colors',
+                        isSelected ? 'text-primary-900' : 'text-gray-700 group-hover:text-gray-900'
+                      )}
+                    >
+                      {obj.objective}
+                    </p>
+                    {obj.isClassCompleted ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-100">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Đã học
+                      </span>
+                    ) : null}
+                  </div>
 
                   {isSelected && hasMeta && (
                     <div className="mt-3 grid grid-cols-1 gap-4 border-t border-gray-100 pt-3 text-sm text-gray-800 sm:grid-cols-2">

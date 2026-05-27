@@ -145,13 +145,13 @@ function LearningPathMemberPage() {
 
   const currentStars = profile?.placement?.starId ?? 0
   const maxStars = useMemo(
-    () => STARS_PER_LEVEL[currentLevelId as LevelCode] || 6,
+    () => STARS_PER_LEVEL[currentLevelId as LevelCode] ?? 6,
     [currentLevelId]
   )
 
-  // Levels with star progression (biet_viec has Sao 1-6)
+  // Tập sự không có sao; từ Biết việc trở lên mới có sao.
   const hasStarProgression = useMemo(
-    () => currentLevelId === 'biet_viec' && maxStars > 0,
+    () => currentLevelId !== 'tap_su' && maxStars > 0,
     [currentLevelId, maxStars]
   )
 

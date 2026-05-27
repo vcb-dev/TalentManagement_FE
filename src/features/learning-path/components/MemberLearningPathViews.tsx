@@ -229,7 +229,11 @@ export function MemberClassesPanel() {
   const registerMakeup = useRegisterMakeupSchedule()
   const [membersOpen, setMembersOpen] = useState(false)
   const [evalModalOpen, setEvalModalOpen] = useState(false)
-  const [evalTarget, setEvalTarget] = useState<{ scheduleId: string; topic: string } | null>(null)
+  const [evalTarget, setEvalTarget] = useState<{
+    classId: string
+    scheduleId: string
+    topic: string
+  } | null>(null)
 
   const closeMembers = useCallback(() => setMembersOpen(false), [])
 
@@ -267,14 +271,18 @@ export function MemberClassesPanel() {
     )
   }
 
-  const makeupCandidatesByTopic = new Map<string, Array<(typeof availableClasses)[number]>>()
-  for (const c of availableClasses) {
-    if (c.id === cls.id || c.seatsLeft <= 0) continue
-    for (const s of c.schedules) {
-      const list = makeupCandidatesByTopic.get(s.topic) ?? []
-      list.push({ ...c, schedules: [s] })
-      makeupCandidatesByTopic.set(s.topic, list)
-    }
+  const makeupCandidateClasses = availableClasses.filter((c) => c.id !== cls.id && c.seatsLeft > 0)
+  const getMakeupCandidates = (requiredItems: Array<{ id: string }>) => {
+    if (requiredItems.length === 0) return []
+    const requiredIds = requiredItems.map((item) => item.id)
+    return makeupCandidateClasses.flatMap((c) =>
+      c.schedules
+        .filter((s) => {
+          const targetIds = new Set((s.roadmapItems ?? []).map((item) => item.id))
+          return requiredIds.every((id) => targetIds.has(id))
+        })
+        .map((s) => ({ ...c, schedules: [s] }))
+    )
   }
 
   return (
@@ -314,19 +322,55 @@ export function MemberClassesPanel() {
           </p>
           <div className="mt-3 space-y-3">
             {cls.makeups.map((m) => {
-              const candidates = makeupCandidatesByTopic.get(m.originalTopic) ?? []
+              const candidates = getMakeupCandidates(m.originalRoadmapItems ?? [])
               return (
                 <div key={m.id} className="rounded-2xl bg-white p-4 ring-1 ring-amber-100">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
                       <p className="text-sm font-black text-slate-900">{m.originalTopic}</p>
+                      {m.originalRoadmapItems?.length ? (
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          {m.originalRoadmapItems.map((item) => item.objective).join(', ')}
+                        </p>
+                      ) : null}
                       <p className="text-xs font-semibold text-amber-700">
-                        {m.status === 'REGISTERED' && m.makeupSchedule
-                          ? `Đã đăng ký học bù: ${m.makeupClassName} · ${m.makeupSchedule.dateIso} ${m.makeupSchedule.startTime}`
-                          : 'Bạn đã vắng buổi này và cần học bù.'}
+                        {m.status === 'COMPLETED' && m.makeupSchedule
+                          ? `Đã học bù: ${m.makeupClassName} · ${m.makeupSchedule.dateIso} ${m.makeupSchedule.startTime}`
+                          : m.status === 'REGISTERED' && m.makeupSchedule
+                            ? `Đã đăng ký học bù: ${m.makeupClassName} · ${m.makeupSchedule.dateIso} ${m.makeupSchedule.startTime}`
+                            : 'Bạn đã vắng buổi này và cần học bù.'}
                       </p>
                     </div>
-                    {m.status === 'PENDING' ? (
+                    {m.status === 'COMPLETED' && m.makeupClassId && m.makeupScheduleId ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        className={cn(
+                          'rounded-xl text-xs font-bold',
+                          m.isEvaluated
+                            ? 'bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600'
+                            : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
+                        )}
+                        onClick={() => {
+                          setEvalTarget({
+                            classId: m.makeupClassId!,
+                            scheduleId: m.makeupScheduleId!,
+                            topic: m.originalTopic,
+                          })
+                          setEvalModalOpen(true)
+                        }}
+                      >
+                        {m.isEvaluated ? (
+                          <>
+                            <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Sửa đánh giá học bù
+                          </>
+                        ) : (
+                          <>
+                            <Star className="mr-1.5 h-3.5 w-3.5" /> Đánh giá buổi học bù
+                          </>
+                        )}
+                      </Button>
+                    ) : m.status === 'PENDING' ? (
                       <div className="flex flex-wrap gap-2">
                         {candidates.length ? (
                           candidates.map((c) => {
@@ -347,7 +391,7 @@ export function MemberClassesPanel() {
                           })
                         ) : (
                           <span className="text-xs font-semibold text-slate-400">
-                            Chưa có lớp khác còn chỗ cho cùng buổi học.
+                            Chưa có lớp khác còn chỗ bao phủ đủ học phần cần học bù.
                           </span>
                         )}
                       </div>
@@ -432,22 +476,26 @@ export function MemberClassesPanel() {
                   <Badge
                     className={cn(
                       'h-7 rounded-lg px-3 text-xs font-semibold uppercase tracking-tight border-0 shadow-sm',
-                      s.attendance === 'PRESENT'
-                        ? 'bg-emerald-500/10 text-emerald-600'
-                        : s.attendance === 'LATE'
-                          ? 'bg-amber-500/10 text-amber-600'
-                          : s.attendance === 'ABSENT'
-                            ? 'bg-rose-500/10 text-rose-600'
-                            : 'bg-slate-100 text-slate-400'
+                      s.makeupStatus === 'COMPLETED'
+                        ? 'bg-sky-500/10 text-sky-600'
+                        : s.attendance === 'PRESENT'
+                          ? 'bg-emerald-500/10 text-emerald-600'
+                          : s.attendance === 'LATE'
+                            ? 'bg-amber-500/10 text-amber-600'
+                            : s.attendance === 'ABSENT'
+                              ? 'bg-rose-500/10 text-rose-600'
+                              : 'bg-slate-100 text-slate-400'
                     )}
                   >
-                    {s.attendance === 'PRESENT'
-                      ? 'Tham gia'
-                      : s.attendance === 'LATE'
-                        ? 'Đi muộn'
-                        : s.attendance === 'ABSENT'
-                          ? 'Vắng mặt'
-                          : 'Chưa điểm danh'}
+                    {s.makeupStatus === 'COMPLETED'
+                      ? 'Đã học bù'
+                      : s.attendance === 'PRESENT'
+                        ? 'Tham gia'
+                        : s.attendance === 'LATE'
+                          ? 'Đi muộn'
+                          : s.attendance === 'ABSENT'
+                            ? 'Vắng mặt'
+                            : 'Chưa điểm danh'}
                   </Badge>
                   <div className="pt-1">
                     {s.attendance === 'PRESENT' ? (
@@ -459,7 +507,7 @@ export function MemberClassesPanel() {
                             : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
                         )}
                         onClick={() => {
-                          setEvalTarget({ scheduleId: s.id, topic: s.topic })
+                          setEvalTarget({ classId: cls.id, scheduleId: s.id, topic: s.topic })
                           setEvalModalOpen(true)
                         }}
                       >
@@ -546,22 +594,26 @@ export function MemberClassesPanel() {
                         <Badge
                           className={cn(
                             'h-7 rounded-lg border-0 px-3 text-xs font-semibold uppercase tracking-tight shadow-sm',
-                            s.attendance === 'PRESENT'
-                              ? 'bg-emerald-500/10 text-emerald-600'
-                              : s.attendance === 'LATE'
-                                ? 'bg-amber-500/10 text-amber-600'
-                                : s.attendance === 'ABSENT'
-                                  ? 'bg-rose-500/10 text-rose-600'
-                                  : 'bg-slate-100 text-slate-400'
+                            s.makeupStatus === 'COMPLETED'
+                              ? 'bg-sky-500/10 text-sky-600'
+                              : s.attendance === 'PRESENT'
+                                ? 'bg-emerald-500/10 text-emerald-600'
+                                : s.attendance === 'LATE'
+                                  ? 'bg-amber-500/10 text-amber-600'
+                                  : s.attendance === 'ABSENT'
+                                    ? 'bg-rose-500/10 text-rose-600'
+                                    : 'bg-slate-100 text-slate-400'
                           )}
                         >
-                          {s.attendance === 'PRESENT'
-                            ? 'Tham gia'
-                            : s.attendance === 'LATE'
-                              ? 'Đi muộn'
-                              : s.attendance === 'ABSENT'
-                                ? 'Vắng mặt'
-                                : 'Chưa điểm danh'}
+                          {s.makeupStatus === 'COMPLETED'
+                            ? 'Đã học bù'
+                            : s.attendance === 'PRESENT'
+                              ? 'Tham gia'
+                              : s.attendance === 'LATE'
+                                ? 'Đi muộn'
+                                : s.attendance === 'ABSENT'
+                                  ? 'Vắng mặt'
+                                  : 'Chưa điểm danh'}
                         </Badge>
                       </td>
                       <td className="px-8 py-5 text-right">
@@ -574,7 +626,7 @@ export function MemberClassesPanel() {
                                 : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
                             )}
                             onClick={() => {
-                              setEvalTarget({ scheduleId: s.id, topic: s.topic })
+                              setEvalTarget({ classId: cls.id, scheduleId: s.id, topic: s.topic })
                               setEvalModalOpen(true)
                             }}
                           >
@@ -607,7 +659,7 @@ export function MemberClassesPanel() {
         <SessionEvaluationModal
           open={evalModalOpen}
           onOpenChange={setEvalModalOpen}
-          classId={cls.id}
+          classId={evalTarget.classId}
           scheduleId={evalTarget.scheduleId}
           userId={user?.id || ''}
           userName={user?.name || ''}

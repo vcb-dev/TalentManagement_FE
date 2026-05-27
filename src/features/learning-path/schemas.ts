@@ -47,6 +47,18 @@ const scheduleSlotSchema = z.object({
   endTime: z.string(),
   topic: z.string(),
   location: z.string().nullable(),
+  roadmapItems: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        levelLabel: z.string(),
+        topic: z.string(),
+        objective: z.string(),
+        rowOrder: z.number().int().optional(),
+      })
+    )
+    .optional()
+    .default([]),
   attendance: z.string().optional(),
   makeupStatus: z.string().nullable().optional(),
   isEvaluated: z.boolean().optional(),
@@ -75,13 +87,34 @@ const enrolledClassSchema = z.object({
       z.object({
         id: z.string().uuid(),
         status: z.string(),
+        completedAt: z.string().datetime().nullable().optional(),
         originalScheduleId: z.string().uuid(),
         originalTopic: z.string(),
+        originalRoadmapItems: z
+          .array(
+            z.object({
+              id: z.string().uuid(),
+              levelLabel: z.string(),
+              topic: z.string(),
+              objective: z.string(),
+              rowOrder: z.number().int().optional(),
+            })
+          )
+          .optional()
+          .default([]),
         makeupClassId: z.string().uuid().nullable(),
         makeupClassName: z.string().nullable(),
         makeupScheduleId: z.string().uuid().nullable(),
+        isEvaluated: z.boolean().optional(),
         makeupSchedule: scheduleSlotSchema
-          .pick({ id: true, dateIso: true, startTime: true, endTime: true, topic: true })
+          .pick({
+            id: true,
+            dateIso: true,
+            startTime: true,
+            endTime: true,
+            topic: true,
+            roadmapItems: true,
+          })
           .nullable(),
       })
     )
@@ -125,6 +158,18 @@ export const availableLearningClassSchema = z.object({
       endTime: z.string(),
       topic: z.string(),
       location: z.string().nullable(),
+      roadmapItems: z
+        .array(
+          z.object({
+            id: z.string().uuid(),
+            levelLabel: z.string(),
+            topic: z.string(),
+            objective: z.string(),
+            rowOrder: z.number().int().optional(),
+          })
+        )
+        .optional()
+        .default([]),
     })
   ),
   createdAt: z.string().datetime(),
@@ -148,6 +193,12 @@ export const meLearningPathSchema = z.object({
             materialRef: z.string().nullable(),
             trainer: z.string().nullable(),
             assessment: z.string().nullable(),
+            isClassCompleted: z.boolean().optional(),
+            classCompletedAt: z.string().datetime().nullable().optional(),
+            classCompletionSource: z
+              .enum(['CLASS_SESSION', 'MAKEUP_SESSION'])
+              .nullable()
+              .optional(),
           })
         ),
       })

@@ -129,6 +129,7 @@ export function SessionEvaluationModal({
     onSuccess: () => {
       toast.success('Đã lưu đánh giá buổi học')
       qc.invalidateQueries({ queryKey: ['session-evaluation', scheduleId, userId] })
+      qc.invalidateQueries({ queryKey: ['learning'] })
       onOpenChange(false)
     },
     onError: (err) => {
@@ -227,9 +228,7 @@ export function SessionEvaluationModal({
                 key={q.id}
                 className="flex flex-col gap-4 rounded-[24px] border border-slate-100 bg-slate-50/20 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/30"
               >
-                <Label className="text-sm font-bold leading-relaxed text-slate-700">
-                  {q.text}
-                </Label>
+                <Label className="text-sm font-bold leading-relaxed text-slate-700">{q.text}</Label>
                 {renderLikert(q.id)}
               </div>
             ))}

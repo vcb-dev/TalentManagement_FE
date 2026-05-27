@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Form } from '@/components/ui/form'
 import {
@@ -64,6 +65,7 @@ import {
   useApproveClassRegistration,
   useRejectClassRegistration,
   useTeacherClassRegistrations,
+  useTeacherRoadmapItems,
 } from '@/features/teacher/hooks'
 import { TeacherClassMemberCard } from './TeacherClassMemberCard'
 import type { ClassMemberRow } from './teacherClassMemberTypes'
@@ -93,6 +95,28 @@ function findOverlappingSchedule(
       s.dateIso === input.dateIso &&
       s.startTime < input.endTime &&
       s.endTime > input.startTime
+  )
+}
+
+function getVietnamNowParts() {
+  const vnNow = new Date(Date.now() + 7 * 60 * 60 * 1000)
+  const vnIso = vnNow.toISOString()
+  return { dateIso: vnIso.slice(0, 10), timeHm: vnIso.slice(11, 16) }
+}
+
+function isScheduleStarted(schedule: { dateIso: string; startTime: string }) {
+  const now = getVietnamNowParts()
+  return (
+    schedule.dateIso < now.dateIso ||
+    (schedule.dateIso === now.dateIso && schedule.startTime <= now.timeHm)
+  )
+}
+
+function isScheduleEnded(schedule: { dateIso: string; endTime: string }) {
+  const now = getVietnamNowParts()
+  return (
+    schedule.dateIso < now.dateIso ||
+    (schedule.dateIso === now.dateIso && schedule.endTime < now.timeHm)
   )
 }
 
@@ -162,6 +186,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const routeHash = useRouterState({ select: (s) => s.location.hash })
   const { data } = useTeacherClassDetail(classId)
   const { data: schedules = [] } = useTeacherSchedules(classId)
+  const { data: roadmapItems = [] } = useTeacherRoadmapItems(classId)
   const { data: registrations = [] } = useTeacherClassRegistrations(classId)
   const createSchedule = useTeacherCreateSchedule(classId)
   const updateSchedule = useTeacherUpdateSchedule(classId)
@@ -175,6 +200,8 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
         id: m.userId,
         name: m.name,
         email: m.email,
+        isMakeup: m.isMakeup,
+        makeupScheduleIds: m.makeupScheduleIds,
         examResult:
           m.latestResult?.outcome === 'DAT'
             ? 'Đạt'
@@ -222,6 +249,14 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     () => schedules.find((s) => s.id === activeScheduleId),
     [schedules, activeScheduleId]
   )
+  const roadmapItemsByTopic = useMemo(() => {
+    const groups = new Map<string, typeof roadmapItems>()
+    for (const item of roadmapItems) {
+      const topic = item.topic || 'Khác'
+      groups.set(topic, [...(groups.get(topic) ?? []), item])
+    }
+    return Array.from(groups.entries())
+  }, [roadmapItems])
   const scheduleForm = useForm({
     defaultValues: {
       dateIso: '',
@@ -231,17 +266,24 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       endMinute: '00',
       topic: '',
       location: '',
+      roadmapItemIds: [] as string[],
     },
   })
   const {
     control: scheduleControl,
     getValues: getScheduleValues,
     reset: resetScheduleValues,
+    setValue: setScheduleValue,
   } = scheduleForm
   const [startHour, startMinute, endHour, endMinute] = useWatch({
     control: scheduleControl,
     name: ['startHour', 'startMinute', 'endHour', 'endMinute'],
   })
+  const selectedRoadmapItemIds =
+    useWatch({
+      control: scheduleControl,
+      name: 'roadmapItemIds',
+    }) ?? []
 
   const scheduleInitial = {
     dateIso: '',
@@ -251,6 +293,15 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     endMinute: '00',
     topic: '',
     location: '',
+    roadmapItemIds: [] as string[],
+  }
+
+  const toggleRoadmapItem = (itemId: string, checked: boolean) => {
+    const current = getScheduleValues('roadmapItemIds') ?? []
+    const next = checked
+      ? Array.from(new Set([...current, itemId]))
+      : current.filter((id) => id !== itemId)
+    setScheduleValue('roadmapItemIds', next, { shouldDirty: true, shouldValidate: true })
   }
 
   const onEditSchedule = (scheduleId: string) => {
@@ -270,6 +321,25 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       endMinute: em,
       topic: s.topic,
       location: s.location ?? '',
+      roadmapItemIds: s.roadmapItems?.map((item) => item.id) ?? [],
+    })
+  }
+
+  const onDeleteSchedule = (scheduleId: string) => {
+    const s = schedules.find((x) => x.id === scheduleId)
+    if (!s) return
+    const ok = window.confirm(
+      `Xóa buổi học "${s.topic}" ngày ${s.dateIso} ${s.startTime} - ${s.endTime}?`
+    )
+    if (!ok) return
+    deleteSchedule.mutate(scheduleId, {
+      onSuccess: () => {
+        setActiveScheduleId(null)
+        if (editingScheduleId === scheduleId) {
+          resetScheduleForm()
+          setScheduleModalOpen(false)
+        }
+      },
     })
   }
 
@@ -300,12 +370,17 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
       return
     }
+    if (!values.roadmapItemIds.length) {
+      toast.error('Vui lòng chọn ít nhất một học phần trong lộ trình.')
+      return
+    }
     const input = {
       dateIso: values.dateIso,
       startTime,
       endTime,
       topic: values.topic.trim(),
       location: values.location.trim() || null,
+      roadmapItemIds: values.roadmapItemIds,
     }
     const overlap = findOverlappingSchedule(schedules, input, editingScheduleId)
     if (overlap) {
@@ -327,7 +402,9 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   }
 
   const filtered = useMemo(() => {
-    let list = members
+    let list = activeScheduleId
+      ? members.filter((m) => !m.isMakeup || m.makeupScheduleIds?.includes(activeScheduleId))
+      : members.filter((m) => !m.isMakeup)
     if (deferredSearchDraft) {
       const s = deferredSearchDraft.toLowerCase()
       list = list.filter(
@@ -335,9 +412,9 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       )
     }
     return list
-  }, [members, deferredSearchDraft])
+  }, [activeScheduleId, members, deferredSearchDraft])
 
-  const total = members.length
+  const total = activeScheduleId ? filtered.length : members.filter((m) => !m.isMakeup).length
   const page = 1
   const totalPages = 1
 
@@ -376,11 +453,6 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     <div className="-m-5 flex min-h-screen flex-col bg-[#f1f5f9] text-sm text-slate-900 md:-m-6 lg:-m-8">
       <div className="flex-1 overflow-y-auto px-4 py-10 sm:px-10 lg:px-16">
         <div className="mx-auto max-w-7xl">
-          {/* Version Indicator - To confirm update */}
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-slate-900/5 px-3 py-1 text-xs font-bold tracking-tighter text-slate-500 ring-1 ring-slate-900/10">
-            PREMIUM UI V2.0 — ACTIVE
-          </div>
-
           <div className="mb-12 space-y-6">
             <Link
               to="/teacher/classes"
@@ -577,7 +649,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
               <Button
                 className="h-14 rounded-2xl bg-primary px-8 text-base font-black text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95"
                 onClick={() => {
-                  resetScheduleValues()
+                  resetScheduleForm()
                   setScheduleModalOpen(true)
                 }}
               >
@@ -621,28 +693,81 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     )
                   })}
                 </div>
+                {selectedSchedule ? (
+                  <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-slate-900">
+                        {selectedSchedule.topic}
+                      </p>
+                      <p className="mt-1 text-xs font-bold text-slate-500">
+                        {selectedSchedule.dateIso} · {selectedSchedule.startTime} -{' '}
+                        {selectedSchedule.endTime}
+                        {selectedSchedule.location ? ` · ${selectedSchedule.location}` : ''}
+                      </p>
+                      {selectedSchedule.roadmapItems?.length ? (
+                        <p className="mt-1 line-clamp-2 text-xs font-semibold text-slate-400">
+                          {selectedSchedule.roadmapItems.map((item) => item.objective).join(', ')}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 rounded-xl border-primary/20 px-4 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5"
+                        disabled={deleteSchedule.isPending}
+                        onClick={() => onEditSchedule(selectedSchedule.id)}
+                      >
+                        <Pencil className="mr-1.5 h-4 w-4" />
+                        Sửa buổi
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 rounded-xl border-rose-200 px-4 text-xs font-black uppercase tracking-widest text-rose-600 hover:bg-rose-50"
+                        loading={deleteSchedule.isPending}
+                        disabled={deleteSchedule.isPending}
+                        onClick={() => onDeleteSchedule(selectedSchedule.id)}
+                      >
+                        <Trash2 className="mr-1.5 h-4 w-4" />
+                        Xóa buổi
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
 
           {/* Management Modal */}
           {scheduleModalOpen && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-              <div className="absolute inset-0" onClick={() => setScheduleModalOpen(false)} />
-              <div className="relative w-full max-w-2xl overflow-hidden rounded-[32px] bg-white shadow-2xl animate-in zoom-in-95 duration-300">
-                <div className="bg-slate-900 px-8 py-6 text-white">
-                  <h2 className="text-2xl font-black tracking-tight">
-                    {editingScheduleId ? 'CẬP NHẬT BUỔI HỌC' : 'THÊM BUỔI HỌC MỚI'}
-                  </h2>
-                  <p className="text-xs font-medium text-slate-400 mt-1 uppercase tracking-widest">
-                    Thông tin chi tiết buổi đào tạo trực tiếp
-                  </p>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/25 p-4 animate-in fade-in duration-200">
+              <div className="absolute inset-0" onClick={closeScheduleModal} />
+              <div className="relative flex max-h-[calc(100vh-6rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 animate-in zoom-in-95 duration-200">
+                <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-5">
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-black tracking-tight text-slate-950">
+                      {editingScheduleId ? 'CẬP NHẬT BUỔI HỌC' : 'THÊM BUỔI HỌC MỚI'}
+                    </h2>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      Thông tin chi tiết buổi đào tạo trực tiếp
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-9 w-9 rounded-xl p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                    onClick={closeScheduleModal}
+                    aria-label="Đóng"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
 
-                <div className="p-8">
+                <div className="min-h-0 overflow-y-auto bg-slate-50/70 px-6 py-5">
                   <Form {...scheduleForm}>
                     <form
-                      className="space-y-6"
+                      className="space-y-5"
                       onSubmit={scheduleForm.handleSubmit((vals) => {
                         const startTime = joinTimeHm(vals.startHour, vals.startMinute)
                         const endTime = joinTimeHm(vals.endHour, vals.endMinute)
@@ -652,9 +777,14 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           endTime,
                           topic: vals.topic.trim(),
                           location: vals.location.trim() || null,
+                          roadmapItemIds: vals.roadmapItemIds,
                         }
                         if (startTime >= endTime) {
                           toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
+                          return
+                        }
+                        if (!vals.roadmapItemIds.length) {
+                          toast.error('Vui lòng chọn ít nhất một học phần trong lộ trình.')
                           return
                         }
                         const overlap = findOverlappingSchedule(
@@ -673,7 +803,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                             { scheduleId: editingScheduleId, input: payload },
                             {
                               onSuccess: () => {
-                                setScheduleModalOpen(false)
+                                closeScheduleModal()
                                 toast.success('Đã cập nhật buổi học')
                               },
                             }
@@ -681,107 +811,158 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         } else {
                           createSchedule.mutate(payload, {
                             onSuccess: () => {
-                              setScheduleModalOpen(false)
+                              closeScheduleModal()
                               toast.success('Đã thêm buổi học mới')
                             },
                           })
                         }
                       })}
                     >
-                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <DateController
-                          control={scheduleForm.control}
-                          name="dateIso"
-                          label="Ngày học"
-                          required
-                          datePickerClassName="h-12 rounded-xl border-slate-200 focus:ring-slate-900/5"
-                        />
-                        <InputController
-                          control={scheduleForm.control}
-                          name="location"
-                          label="Địa điểm / Phòng"
-                          placeholder="VD: Phòng họp A, Zoom..."
-                          inputClassName="h-12 rounded-xl border-slate-200 focus:ring-slate-900/5"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <div className="space-y-3">
-                          <label className="text-xs font-black uppercase tracking-widest text-slate-400">
-                            Thời gian bắt đầu
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <InputController
-                              control={scheduleForm.control}
-                              name="startHour"
-                              label="Giờ"
-                              labelClassName="sr-only"
-                              type="number"
-                              className="w-20"
-                              inputClassName="h-12 text-center rounded-xl font-bold"
-                            />
-                            <span className="font-bold text-slate-300">:</span>
-                            <InputController
-                              control={scheduleForm.control}
-                              name="startMinute"
-                              label="Phút"
-                              labelClassName="sr-only"
-                              type="number"
-                              className="w-20"
-                              inputClassName="h-12 text-center rounded-xl font-bold"
-                            />
-                          </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                          <DateController
+                            control={scheduleForm.control}
+                            name="dateIso"
+                            label="Ngày học"
+                            required
+                            datePickerClassName="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10"
+                          />
+                          <InputController
+                            control={scheduleForm.control}
+                            name="location"
+                            label="Địa điểm / Phòng"
+                            placeholder="VD: Phòng họp A, Zoom..."
+                            inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
+                          />
                         </div>
 
-                        <div className="space-y-3">
-                          <label className="text-xs font-black uppercase tracking-widest text-slate-400">
-                            Thời gian kết thúc
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <InputController
-                              control={scheduleForm.control}
-                              name="endHour"
-                              label="Giờ"
-                              labelClassName="sr-only"
-                              type="number"
-                              className="w-20"
-                              inputClassName="h-12 text-center rounded-xl font-bold"
-                            />
-                            <span className="font-bold text-slate-300">:</span>
-                            <InputController
-                              control={scheduleForm.control}
-                              name="endMinute"
-                              label="Phút"
-                              labelClassName="sr-only"
-                              type="number"
-                              className="w-20"
-                              inputClassName="h-12 text-center rounded-xl font-bold"
-                            />
+                        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                          <div className="space-y-2">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                              Thời gian bắt đầu
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <InputController
+                                control={scheduleForm.control}
+                                name="startHour"
+                                label="Giờ"
+                                labelClassName="sr-only"
+                                type="number"
+                                className="w-20"
+                                inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
+                              />
+                              <span className="font-bold text-slate-300">:</span>
+                              <InputController
+                                control={scheduleForm.control}
+                                name="startMinute"
+                                label="Phút"
+                                labelClassName="sr-only"
+                                type="number"
+                                className="w-20"
+                                inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                              Thời gian kết thúc
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <InputController
+                                control={scheduleForm.control}
+                                name="endHour"
+                                label="Giờ"
+                                labelClassName="sr-only"
+                                type="number"
+                                className="w-20"
+                                inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
+                              />
+                              <span className="font-bold text-slate-300">:</span>
+                              <InputController
+                                control={scheduleForm.control}
+                                name="endMinute"
+                                label="Phút"
+                                labelClassName="sr-only"
+                                type="number"
+                                className="w-20"
+                                inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      <InputController
-                        control={scheduleForm.control}
-                        name="topic"
-                        label="Nội dung đào tạo"
-                        required
-                        placeholder="VD: Kiến thức sản phẩm, Kỹ năng tư vấn..."
-                        inputClassName="h-12 rounded-xl border-slate-200 focus:ring-slate-900/5"
-                      />
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div className="flex flex-wrap items-end justify-between gap-2">
+                          <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                            Học phần trong lộ trình
+                          </label>
+                          <span className="text-xs font-bold text-primary">
+                            Đã chọn {selectedRoadmapItemIds.length} học phần
+                          </span>
+                        </div>
+                        <div className="mt-3 max-h-64 space-y-4 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          {roadmapItemsByTopic.length === 0 ? (
+                            <p className="text-sm font-semibold text-slate-400">
+                              Chưa có học phần phù hợp với cấp của lớp này.
+                            </p>
+                          ) : (
+                            roadmapItemsByTopic.map(([topic, items]) => (
+                              <div key={topic} className="space-y-2">
+                                <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                  {topic}
+                                </p>
+                                <div className="space-y-2">
+                                  {items.map((item) => {
+                                    const checked = selectedRoadmapItemIds.includes(item.id)
+                                    return (
+                                      <label
+                                        key={item.id}
+                                        className={cn(
+                                          'flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-3 text-sm transition-colors',
+                                          checked
+                                            ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/10'
+                                            : 'border-slate-100 hover:border-primary/20'
+                                        )}
+                                      >
+                                        <Checkbox
+                                          checked={checked}
+                                          onCheckedChange={(value) =>
+                                            toggleRoadmapItem(item.id, value === true)
+                                          }
+                                          className="mt-0.5"
+                                        />
+                                        <span className="min-w-0">
+                                          <span className="block font-bold text-slate-900">
+                                            {item.objective}
+                                          </span>
+                                          <span className="mt-1 block text-xs font-semibold text-slate-400">
+                                            {item.assessment || 'Chưa có hình thức đánh giá'}
+                                          </span>
+                                        </span>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
 
-                      <div className="flex justify-end gap-3 pt-4">
+                      <div className="sticky bottom-0 -mx-6 -mb-5 flex justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
                         <Button
                           type="button"
                           variant="ghost"
-                          className="h-12 rounded-xl px-6 font-bold text-slate-400 hover:bg-slate-50"
-                          onClick={() => setScheduleModalOpen(false)}
+                          className="h-10 rounded-xl px-5 font-bold text-slate-600 hover:bg-slate-100"
+                          onClick={closeScheduleModal}
                         >
                           HỦY BỎ
                         </Button>
                         <Button
                           type="submit"
-                          className="h-12 rounded-xl bg-primary px-10 font-bold text-white shadow-xl shadow-primary/20 hover:bg-primary/90"
+                          className="h-10 rounded-xl bg-primary px-7 font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90"
                           loading={createSchedule.isPending || updateSchedule.isPending}
                         >
                           {editingScheduleId ? 'CẬP NHẬT' : 'LƯU BUỔI HỌC'}
@@ -804,19 +985,13 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
                   let displayAttendance = rawAttendance
                   if (currentSchedule && (rawAttendance === 'NONE' || !rawAttendance)) {
-                    const now = new Date()
-                    const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000)
-                    const vnDate = vnNow.toISOString().split('T')[0]
-                    const vnTime = vnNow.toISOString().split('T')[1].substring(0, 5)
-
-                    const isPassed =
-                      currentSchedule.dateIso < vnDate ||
-                      (currentSchedule.dateIso === vnDate && currentSchedule.endTime < vnTime)
-
-                    if (isPassed) {
+                    if (isScheduleEnded(currentSchedule)) {
                       displayAttendance = 'ABSENT'
                     }
                   }
+                  const attendanceLocked = currentSchedule
+                    ? !isScheduleStarted(currentSchedule)
+                    : false
 
                   const sessionData = {
                     ...(currentSchedule?.attendanceData?.[m.id] || {}),
@@ -831,7 +1006,14 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           className="h-10 w-10 shrink-0 rounded-2xl shadow-sm ring-2 ring-background"
                         />
                         <div className="min-w-0">
-                          <p className="text-sm font-black text-primary">{m.name}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-black text-primary">{m.name}</p>
+                            {m.isMakeup ? (
+                              <Badge className="rounded-lg border-0 bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-amber-700">
+                                Học bù
+                              </Badge>
+                            ) : null}
+                          </div>
                           <p className="break-all text-xs font-medium text-muted-foreground/80">
                             {m.email}
                           </p>
@@ -869,16 +1051,22 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                             </p>
                             <Select
                               value={sessionData.attendance || 'NONE'}
-                              onValueChange={(v) =>
+                              disabled={attendanceLocked}
+                              onValueChange={(v) => {
+                                if (attendanceLocked) {
+                                  toast.error('Chỉ được điểm danh sau khi buổi học bắt đầu.')
+                                  return
+                                }
                                 updateAttendance.mutate({
                                   scheduleId: activeScheduleId!,
                                   input: { userId: m.id, attendance: v },
                                 })
-                              }
+                              }}
                             >
                               <SelectTrigger
                                 className={cn(
                                   'h-10 w-full max-w-full rounded-full border-0 font-black text-xs uppercase tracking-widest shadow-sm',
+                                  attendanceLocked && 'cursor-not-allowed opacity-60',
                                   sessionData.attendance === 'PRESENT' &&
                                     'bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20',
                                   sessionData.attendance === 'ABSENT' &&
@@ -889,7 +1077,9 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                                     'bg-slate-100 text-slate-500 ring-1 ring-slate-200'
                                 )}
                               >
-                                <SelectValue placeholder="Chưa chọn" />
+                                <SelectValue
+                                  placeholder={attendanceLocked ? 'Chưa bắt đầu' : 'Chưa chọn'}
+                                />
                               </SelectTrigger>
                               <SelectContent className="rounded-2xl border-slate-200 p-1 shadow-2xl">
                                 <SelectItem
@@ -971,19 +1161,13 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                       // Nếu buổi học đã qua mà vẫn 'NONE', hiển thị là 'ABSENT'
                       let displayAttendance = rawAttendance
                       if (currentSchedule && (rawAttendance === 'NONE' || !rawAttendance)) {
-                        const now = new Date()
-                        const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000)
-                        const vnDate = vnNow.toISOString().split('T')[0]
-                        const vnTime = vnNow.toISOString().split('T')[1].substring(0, 5)
-
-                        const isPassed =
-                          currentSchedule.dateIso < vnDate ||
-                          (currentSchedule.dateIso === vnDate && currentSchedule.endTime < vnTime)
-
-                        if (isPassed) {
+                        if (isScheduleEnded(currentSchedule)) {
                           displayAttendance = 'ABSENT'
                         }
                       }
+                      const attendanceLocked = currentSchedule
+                        ? !isScheduleStarted(currentSchedule)
+                        : false
 
                       const sessionData = {
                         ...(currentSchedule?.attendanceData?.[m.id] || {}),
@@ -1002,9 +1186,16 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                                 className="h-10 w-10 rounded-2xl shadow-sm ring-2 ring-background transition-transform group-hover:scale-110"
                               />
                               <div>
-                                <p className="text-sm font-black text-primary transition-colors group-hover:text-primary-600">
-                                  {m.name}
-                                </p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-black text-primary transition-colors group-hover:text-primary-600">
+                                    {m.name}
+                                  </p>
+                                  {m.isMakeup ? (
+                                    <Badge className="rounded-lg border-0 bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-amber-700">
+                                      Học bù
+                                    </Badge>
+                                  ) : null}
+                                </div>
                                 <p className="text-xs font-medium text-muted-foreground/80">
                                   {m.email}
                                 </p>
@@ -1047,16 +1238,22 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                                 <div className="flex justify-center">
                                   <Select
                                     value={sessionData.attendance || 'NONE'}
-                                    onValueChange={(v) =>
+                                    disabled={attendanceLocked}
+                                    onValueChange={(v) => {
+                                      if (attendanceLocked) {
+                                        toast.error('Chỉ được điểm danh sau khi buổi học bắt đầu.')
+                                        return
+                                      }
                                       updateAttendance.mutate({
                                         scheduleId: activeScheduleId!,
                                         input: { userId: m.id, attendance: v },
                                       })
-                                    }
+                                    }}
                                   >
                                     <SelectTrigger
                                       className={cn(
                                         'h-9 w-[135px] rounded-full border-0 font-black text-xs uppercase tracking-widest transition-all shadow-sm',
+                                        attendanceLocked && 'cursor-not-allowed opacity-60',
                                         sessionData.attendance === 'PRESENT' &&
                                           'bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20',
                                         sessionData.attendance === 'ABSENT' &&
@@ -1068,7 +1265,11 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                                           'bg-slate-100 text-slate-500 ring-1 ring-slate-200'
                                       )}
                                     >
-                                      <SelectValue placeholder="Chưa chọn" />
+                                      <SelectValue
+                                        placeholder={
+                                          attendanceLocked ? 'Chưa bắt đầu' : 'Chưa chọn'
+                                        }
+                                      />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-2xl border-slate-200 p-1 shadow-2xl">
                                       <SelectItem
