@@ -18,6 +18,7 @@ import {
 import {
   cancelAuditJob,
   pauseAuditJob,
+  fetchAuditDayStats,
   fetchAuditProgress,
   fetchCskhAudits,
   fetchInboxConversations,
@@ -628,7 +629,7 @@ export function AuditMessengerView({
         setCompletionNotice(
           `Tạm dừng — đã chấm ${count} hội thoại${
             day ? ` ngày ${formatAuditDateLabel(day)}` : ''
-          }${remaining ? ` · còn ~${remaining} trong batch này` : ''}. Chạy lại cùng ngày để tiếp tục.`
+          }${remaining ? ` · còn ~${remaining} trong batch này` : ''}. Bấm «Tiếp tục chạy» cùng ngày để quét nốt.`
         )
       } else if (count > 0) {
         setCompletionNotice(
@@ -668,6 +669,13 @@ export function AuditMessengerView({
   useEffect(() => {
     onAuditDateChange?.(auditDate)
   }, [auditDate, onAuditDateChange])
+
+  const { data: dayStats } = useQuery({
+    queryKey: ['cskh', 'audit-day-stats', auditDate],
+    queryFn: () => fetchAuditDayStats(auditDate),
+    enabled: Boolean(auditDate),
+    staleTime: 15_000,
+  })
 
   const { data: recentAudits, isLoading: recentLoading } = useQuery({
     queryKey: ['cskh', 'audits', 'by-day', auditDate],
@@ -762,6 +770,13 @@ export function AuditMessengerView({
         ? `Audit ${auditDayLabel}…`
         : ''
   const canRun = !!auditDate && !isRunning
+  const canResumeAudit =
+    Boolean(auditDate) && !isRunning && ((dayStats?.total ?? 0) > 0 || sortedAudits.length > 0)
+  const runButtonLabel = auditDate
+    ? canResumeAudit
+      ? `Tiếp tục chạy ${formatAuditDateLabel(auditDate)}`
+      : `Chạy ${formatAuditDateLabel(auditDate)}`
+    : 'Chọn ngày'
   const transcript = useMemo(() => {
     if (!selected || !Array.isArray(selected.transcript)) return []
     return filterDisplayTranscript(
@@ -946,7 +961,7 @@ export function AuditMessengerView({
             ) : (
               <Play className="h-4 w-4" />
             )}
-            {auditDate ? `Chạy ${formatAuditDateLabel(auditDate)}` : 'Chọn ngày'}
+            {auditDate ? runButtonLabel : 'Chọn ngày'}
           </button>
           {isRunning && (
             <>
