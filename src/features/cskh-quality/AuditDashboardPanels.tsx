@@ -68,7 +68,7 @@ function TabBar({
             type="button"
             onClick={() => onChange(tab.id)}
             className={cn(
-              'relative whitespace-nowrap px-2.5 py-2.5 text-[11px] font-semibold transition-colors sm:px-3 sm:text-xs',
+              'relative whitespace-nowrap px-3.5 py-3.5 text-sm font-semibold transition-colors sm:px-4',
               isActive ? 'text-violet-700' : 'text-slate-500 hover:text-slate-700'
             )}
           >
@@ -97,7 +97,7 @@ function SummaryCard({ children, className }: { children: ReactNode; className?:
   return (
     <div
       className={cn(
-        'rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-3.5 lg:p-2.5',
+        'rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5',
         className
       )}
     >
@@ -141,16 +141,16 @@ export function AuditSummaryHeader({
 
   return (
     <div className="shrink-0 overflow-x-auto border-b border-slate-200/80 bg-slate-50/50 lg:overflow-visible">
-      <div className="flex gap-2 p-2 sm:gap-2.5 sm:p-2.5 lg:grid lg:min-w-0 lg:grid-cols-4 lg:items-start lg:gap-2 lg:p-2 lg:overflow-visible">
-        <SummaryCard className="min-w-[220px] shrink-0 lg:min-w-0">
+      <div className="flex gap-3 p-3 sm:gap-4 sm:p-4 lg:grid lg:min-w-0 lg:grid-cols-4 lg:items-stretch lg:overflow-visible">
+        <SummaryCard className="min-w-[260px] shrink-0 lg:min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 Hội thoại {conversationIndexLabel(index, total)}
               </p>
               <span
                 className={cn(
-                  'mt-0.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
+                  'mt-1 inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase',
                   rank.passed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'
                 )}
               >
@@ -158,19 +158,28 @@ export function AuditSummaryHeader({
               </span>
             </div>
           </div>
-          <dl className="mt-2 grid grid-cols-1 gap-x-3 gap-y-1 text-[11px] sm:grid-cols-2 lg:mt-1.5 lg:gap-y-0.5">
-            <div className="flex justify-between gap-2 sm:flex-col sm:justify-start sm:gap-0.5">
+          <dl className="mt-4 space-y-2 text-sm">
+            <div className="flex justify-between gap-3">
               <dt className="text-slate-400">Thời gian</dt>
               <dd className="font-medium text-slate-700">
                 {auditDayLabel ??
                   (row.metadata?.auditDate ? formatAuditDateLabel(row.metadata.auditDate) : '—')}
               </dd>
             </div>
-            <div className="flex justify-between gap-2 sm:flex-col sm:justify-start sm:gap-0.5">
+            <div className="flex justify-between gap-3">
               <dt className="text-slate-400">Nhân viên</dt>
               <dd className="truncate font-medium text-violet-700">{displayAgentName(row)}</dd>
             </div>
-            <div className="flex justify-between gap-2 sm:flex-col sm:justify-start sm:gap-0.5">
+            <div className="flex justify-between gap-3">
+              <dt className="text-slate-400">Kênh</dt>
+              <dd className="flex items-center gap-1.5 font-medium text-slate-700">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1877F2] text-[10px] font-bold text-white">
+                  f
+                </span>
+                Messenger
+              </dd>
+            </div>
+            <div className="flex justify-between gap-3">
               <dt className="text-slate-400">Nguồn</dt>
               <dd>
                 {adSource.fromAd ? (
@@ -178,14 +187,14 @@ export function AuditSummaryHeader({
                 ) : (
                   <span
                     title="Khách nhắn trực tiếp, không qua quảng cáo"
-                    className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
+                    className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600"
                   >
                     Tự nhắn
                   </span>
                 )}
               </dd>
             </div>
-            <div className="flex justify-between gap-2 sm:flex-col sm:justify-start sm:gap-0.5">
+            <div className="flex justify-between gap-3">
               <dt className="text-slate-400">Khách hàng</dt>
               <dd className="truncate font-medium text-slate-800">
                 {displayCustomerName(row.customerName)}
@@ -193,13 +202,13 @@ export function AuditSummaryHeader({
             </div>
           </dl>
           {tags.length ? (
-            <div className="mt-2 hidden flex-wrap gap-1 xl:flex">
+            <div className="mt-4 flex flex-wrap gap-1.5">
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700"
+                  className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700"
                 >
-                  <Tag className="h-2.5 w-2.5" />
+                  <Tag className="h-3 w-3" />
                   {tag}
                 </span>
               ))}
@@ -207,13 +216,13 @@ export function AuditSummaryHeader({
           ) : null}
         </SummaryCard>
 
-        <SummaryCard className="flex min-w-[180px] shrink-0 flex-col items-center justify-center text-center lg:min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+        <SummaryCard className="flex min-w-[200px] shrink-0 flex-col items-center justify-center text-center lg:min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
             Điểm chất lượng tổng
           </p>
           <p
             className={cn(
-              'mt-0.5 text-3xl font-black tabular-nums lg:text-2xl',
+              'mt-1 text-4xl font-black tabular-nums sm:text-5xl',
               row.score >= 70
                 ? 'text-emerald-600'
                 : row.score >= 50
@@ -222,40 +231,40 @@ export function AuditSummaryHeader({
             )}
           >
             {row.score}
-            <span className="text-lg font-bold text-slate-400 lg:text-base">/100</span>
+            <span className="text-xl font-bold text-slate-400 sm:text-2xl">/100</span>
           </p>
-          <p className="text-sm font-semibold text-slate-600 lg:text-xs">
+          <p className="mt-1 text-base font-semibold text-slate-600">
             {row.score >= 70 ? 'Đạt' : 'Chưa đạt'}
           </p>
           <FiveStarRank
             filled={rank.stars}
-            className="mt-1.5 lg:mt-1"
-            starClassName="h-4 w-4 lg:h-3.5 lg:w-3.5"
+            className="mt-3"
+            starClassName="h-5 w-5 sm:h-6 sm:w-6"
           />
-          <p className="mt-0.5 text-xs text-slate-500 lg:text-[11px]">
+          <p className="mt-2 text-sm text-slate-500">
             Xếp hạng: <span className="font-semibold text-slate-700">{rank.label}</span>
           </p>
         </SummaryCard>
 
-        <SummaryCard className="min-w-[280px] shrink-0 lg:min-w-0">
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 lg:mb-1">
+        <SummaryCard className="min-w-[300px] shrink-0 lg:min-w-0">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
             Điểm theo tiêu chí
           </p>
-          <div className="grid grid-cols-5 gap-1.5 lg:gap-1">
+          <div className="grid grid-cols-5 gap-2.5">
             {criteria.map((c) => (
               <div
                 key={c.id}
-                className="flex flex-col items-center rounded-lg border border-slate-100 bg-slate-50/80 px-1 py-2 text-center lg:py-1.5"
+                className="flex flex-col items-center rounded-xl border border-slate-100 bg-slate-50/80 px-1.5 py-3 text-center"
                 title={c.label}
               >
-                <span className="text-base leading-none lg:text-sm">{c.icon}</span>
-                <p className="mt-1 line-clamp-1 text-[10px] font-medium leading-tight text-slate-600 lg:mt-0.5 lg:text-[9px]">
+                <span className="text-xl leading-none sm:text-2xl">{c.icon}</span>
+                <p className="mt-2 line-clamp-2 min-h-[2.5rem] text-[11px] font-medium leading-snug text-slate-600 sm:text-xs">
                   {c.label.split(',')[0]}
                 </p>
-                <p className="mt-0.5 text-[11px] font-bold tabular-nums text-slate-800 lg:text-[10px]">
+                <p className="mt-1 text-sm font-bold tabular-nums text-slate-800">
                   {c.score}/{c.max}
                 </p>
-                <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-slate-200">
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                   <div
                     className={cn('h-full rounded-full', criterionBarColor(c.score, c.max))}
                     style={{ width: `${(c.score / c.max) * 100}%` }}
@@ -266,11 +275,11 @@ export function AuditSummaryHeader({
           </div>
         </SummaryCard>
 
-        <SummaryCard className="min-w-[240px] shrink-0 lg:min-w-0">
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 lg:mb-1">
+        <SummaryCard className="min-w-[260px] shrink-0 lg:min-w-0">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
             So sánh trung bình
           </p>
-          <ChartContainer config={compareChartConfig} className="h-[100px] w-full lg:h-[76px]">
+          <ChartContainer config={compareChartConfig} className="h-[130px] w-full sm:h-[150px]">
             <BarChart data={compareData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
@@ -283,7 +292,7 @@ export function AuditSummaryHeader({
               </Bar>
             </BarChart>
           </ChartContainer>
-          <div className="mt-1.5 flex justify-between gap-1 text-[10px] text-slate-500">
+          <div className="mt-2 flex justify-between gap-2 text-xs text-slate-500">
             <span title="Điểm hội thoại đang xem">HT: {row.score}</span>
             <span title={`Trung bình Page (${teamSample} hội thoại)`}>Page: {averages.team}</span>
             <span title={`Trung bình cả ngày (${daySample} hội thoại)`}>
@@ -518,9 +527,9 @@ export function CustomerIntentPanel({
 }) {
   if (loading) {
     return (
-      <div className="border-b border-violet-100 bg-violet-50/60 px-4 py-3">
-        <div className="flex items-center gap-2 text-sm text-violet-700">
-          <Loader2 className="h-4 w-4 animate-spin" />
+      <div className="border-b border-violet-100 bg-violet-50/60 px-5 py-4">
+        <div className="flex items-center gap-2.5 text-base text-violet-700">
+          <Loader2 className="h-5 w-5 animate-spin" />
           Đang phân tích tin nhắn mới…
         </div>
       </div>
@@ -529,20 +538,20 @@ export function CustomerIntentPanel({
   if (!intent) return null
 
   return (
-    <div className="border-b border-violet-100 bg-gradient-to-r from-violet-50/90 to-indigo-50/60 px-4 py-2.5">
-      <div className="flex items-start gap-2">
-        <Zap className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-violet-700">
+    <div className="border-b border-violet-100 bg-gradient-to-r from-violet-50/90 to-indigo-50/60 px-5 py-4">
+      <div className="flex items-start gap-3">
+        <Zap className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
+        <div className="min-w-0 flex-1 space-y-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-bold uppercase tracking-wide text-violet-700">
               Khách đang hỏi
             </p>
-            <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">
+            <span className="rounded-full bg-violet-600 px-2.5 py-1 text-xs font-bold text-white">
               {intent.intentLabel}
             </span>
             <span
               className={cn(
-                'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase',
+                'rounded-full px-2.5 py-1 text-xs font-semibold uppercase',
                 urgencyTone[intent.urgency] ?? urgencyTone.normal
               )}
             >
@@ -553,13 +562,13 @@ export function CustomerIntentPanel({
                   : 'Bình thường'}
             </span>
           </div>
-          <p className="text-sm leading-relaxed text-slate-700">{intent.summary}</p>
+          <p className="text-base leading-relaxed text-slate-700">{intent.summary}</p>
           {intent.topics.length ? (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-2">
               {intent.topics.map((topic) => (
                 <span
                   key={topic}
-                  className="rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[11px] font-medium text-violet-700"
+                  className="rounded-full border border-violet-200 bg-white px-3 py-1 text-sm font-medium text-violet-700"
                 >
                   {topic}
                 </span>
@@ -567,7 +576,7 @@ export function CustomerIntentPanel({
             </div>
           ) : null}
           {intent.suggestedFocus ? (
-            <p className="text-xs leading-relaxed text-slate-500">
+            <p className="text-sm leading-relaxed text-slate-500">
               <span className="font-semibold text-slate-600">Gợi ý:</span> {intent.suggestedFocus}
             </p>
           ) : null}
@@ -612,29 +621,29 @@ export function AuditAnalysisPanel({
   ]
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white">
+    <div className="flex flex-col bg-white">
       <CustomerIntentPanel intent={customerIntent} loading={intentLoading} />
-      <TabBar tabs={tabs} active={tab} onChange={setTab} className="px-2" />
+      <TabBar tabs={tabs} active={tab} onChange={setTab} className="px-3" />
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
+      <div className="px-5 py-6 sm:px-6 sm:py-7">
         {tab === 'detail' && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <section>
-              <h4 className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
-                <Sparkles className="h-4 w-4 text-violet-500" />
+              <h4 className="flex items-center gap-2 text-base font-bold text-slate-800">
+                <Sparkles className="h-5 w-5 text-violet-500" />
                 Đánh giá tổng quan AI
               </h4>
               {feedbackBullets.length ? (
-                <ul className="mt-3 space-y-3">
+                <ul className="mt-4 space-y-3.5">
                   {feedbackBullets.map((line, i) => (
-                    <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-slate-700">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
+                    <li key={i} className="flex gap-3 text-base leading-relaxed text-slate-700">
+                      <span className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-violet-500" />
                       <span>{line}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-3 text-sm leading-relaxed text-slate-500">
+                <p className="mt-4 text-base leading-relaxed text-slate-500">
                   AI chưa có nhận xét chi tiết cho hội thoại này.
                 </p>
               )}
@@ -642,12 +651,12 @@ export function AuditAnalysisPanel({
 
             {pros.length ? (
               <section>
-                <p className="text-xs font-bold uppercase tracking-wide text-emerald-600">
+                <p className="text-sm font-bold uppercase tracking-wide text-emerald-600">
                   Ưu điểm
                 </p>
-                <ul className="mt-2.5 space-y-2.5">
+                <ul className="mt-3 space-y-3">
                   {pros.map((line, i) => (
-                    <li key={i} className="flex gap-2 text-sm leading-relaxed text-slate-700">
+                    <li key={i} className="flex gap-2.5 text-base leading-relaxed text-slate-700">
                       <span className="text-emerald-500">•</span>
                       <span>{line}</span>
                     </li>
@@ -658,12 +667,12 @@ export function AuditAnalysisPanel({
 
             {cons.length ? (
               <section>
-                <p className="text-xs font-bold uppercase tracking-wide text-amber-600">
+                <p className="text-sm font-bold uppercase tracking-wide text-amber-600">
                   Điểm cần cải thiện
                 </p>
-                <ul className="mt-2.5 space-y-2.5">
+                <ul className="mt-3 space-y-3">
                   {cons.map((line, i) => (
-                    <li key={i} className="flex gap-2 text-sm leading-relaxed text-slate-700">
+                    <li key={i} className="flex gap-2.5 text-base leading-relaxed text-slate-700">
                       <span className="text-amber-500">•</span>
                       <span>{line}</span>
                     </li>
@@ -673,11 +682,11 @@ export function AuditAnalysisPanel({
             ) : null}
 
             {adSource.fromAd ? (
-              <section className="rounded-lg border border-sky-100 bg-sky-50/50 p-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-sky-700">
+              <section className="rounded-xl border border-sky-100 bg-sky-50/50 p-4">
+                <p className="text-sm font-bold uppercase tracking-wide text-sky-700">
                   Nguồn tin nhắn
                 </p>
-                <dl className="mt-2 space-y-1 text-xs">
+                <dl className="mt-3 space-y-2 text-sm">
                   <div className="flex justify-between gap-2">
                     <dt className="text-slate-500">Campaign</dt>
                     <dd className="font-medium text-slate-700">{adSource.adTitle ?? '—'}</dd>
@@ -695,21 +704,21 @@ export function AuditAnalysisPanel({
         )}
 
         {tab === 'criteria' && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {criteria[0]?.source === 'legacy' ? (
-              <p className="text-xs text-amber-600">
+              <p className="text-sm text-amber-600">
                 Audit cũ — chưa có điểm tiêu chí từ AI. Chạy lại audit để có dữ liệu chính xác.
               </p>
             ) : null}
             {criteria.map((c) => (
               <div key={c.id}>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-base">
                   <span className="font-medium text-slate-700">{c.label}</span>
-                  <span className="font-bold tabular-nums text-slate-800">
+                  <span className="text-lg font-bold tabular-nums text-slate-800">
                     {c.score}/{c.max}
                   </span>
                 </div>
-                <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+                <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100">
                   <div
                     className={cn(
                       'h-full rounded-full transition-all',
@@ -720,9 +729,9 @@ export function AuditAnalysisPanel({
                 </div>
               </div>
             ))}
-            <div className="mt-4 rounded-lg bg-violet-50 p-3 text-center">
-              <p className="text-2xl font-black text-violet-700">{row.score}/100</p>
-              <p className="text-xs text-slate-500">Tổng điểm chất lượng</p>
+            <div className="mt-6 rounded-xl bg-violet-50 p-5 text-center">
+              <p className="text-3xl font-black text-violet-700">{row.score}/100</p>
+              <p className="mt-1 text-sm text-slate-500">Tổng điểm chất lượng</p>
             </div>
           </div>
         )}
@@ -730,62 +739,64 @@ export function AuditAnalysisPanel({
         {tab === 'keywords' && (
           <div>
             {keywords.length ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2.5">
                 {keywords.map((kw) => (
                   <span
                     key={kw}
-                    className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-800"
+                    className="rounded-full border border-violet-200 bg-violet-50 px-4 py-1.5 text-sm font-medium text-violet-800"
                   >
                     {kw}
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">Chưa trích xuất được từ khóa từ transcript.</p>
+              <p className="text-base text-slate-500">
+                Chưa trích xuất được từ khóa từ transcript.
+              </p>
             )}
           </div>
         )}
 
         {tab === 'sentiment' && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div
               className={cn(
-                'rounded-xl border p-4 text-center',
+                'rounded-xl border p-5 text-center',
                 sentiment.tone === 'positive' && 'border-emerald-200 bg-emerald-50',
                 sentiment.tone === 'neutral' && 'border-amber-200 bg-amber-50',
                 sentiment.tone === 'negative' && 'border-rose-200 bg-rose-50'
               )}
             >
-              <p className="text-lg font-bold text-slate-800">{sentiment.label}</p>
-              <p className="mt-1 text-xs text-slate-500">Cảm xúc tổng thể hội thoại</p>
+              <p className="text-xl font-bold text-slate-800">{sentiment.label}</p>
+              <p className="mt-1 text-sm text-slate-500">Cảm xúc tổng thể hội thoại</p>
             </div>
-            <dl className="space-y-3 text-sm">
+            <dl className="space-y-4 text-base">
               <div>
                 <dt className="font-semibold text-slate-700">Khách hàng</dt>
-                <dd className="text-slate-600">{sentiment.customer}</dd>
+                <dd className="mt-1 leading-relaxed text-slate-600">{sentiment.customer}</dd>
               </div>
               <div>
                 <dt className="font-semibold text-slate-700">Nhân viên</dt>
-                <dd className="text-slate-600">{sentiment.staff}</dd>
+                <dd className="mt-1 leading-relaxed text-slate-600">{sentiment.staff}</dd>
               </div>
             </dl>
           </div>
         )}
 
         {tab === 'suggest' && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {actionItems.length ? (
               actionItems.map((item, i) => (
-                <div key={i} className="rounded-lg border border-rose-100 bg-rose-50/30 p-3">
-                  <p className="text-sm font-medium text-rose-800">{item.issue}</p>
+                <div key={i} className="rounded-xl border border-rose-100 bg-rose-50/30 p-4">
+                  <p className="text-base font-medium text-rose-800">{item.issue}</p>
                   {item.suggestedReply ? (
-                    <div className="mt-2 rounded-md bg-white p-2 text-sm text-slate-700">
+                    <div className="mt-3 rounded-lg bg-white p-3 text-base leading-relaxed text-slate-700">
                       {item.suggestedReply}
                       {onUseReply ? (
                         <button
                           type="button"
                           onClick={() => onUseReply(item.suggestedReply)}
-                          className="mt-2 block text-xs font-semibold text-violet-600 hover:text-violet-800"
+                          className="mt-2 block text-sm font-semibold text-violet-600 hover:text-violet-800"
                         >
                           Dùng gợi ý →
                         </button>
@@ -795,21 +806,23 @@ export function AuditAnalysisPanel({
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500">Không có vi phạm — hội thoại đạt chuẩn CSKH.</p>
+              <p className="text-base text-slate-500">
+                Không có vi phạm — hội thoại đạt chuẩn CSKH.
+              </p>
             )}
           </div>
         )}
       </div>
 
-      <div className="shrink-0 border-t border-slate-100 px-4 py-3 sm:px-5">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Đánh giá auditor</p>
-        <div className="mt-2 flex items-center gap-2">
+      <div className="border-t border-slate-100 px-5 py-5 sm:px-6">
+        <p className="text-sm font-bold uppercase tracking-wide text-slate-400">Đánh giá auditor</p>
+        <div className="mt-3 flex items-center gap-3">
           <div className="flex">
             {Array.from({ length: 5 }, (_, i) => (
               <Star
                 key={i}
                 className={cn(
-                  'h-4 w-4',
+                  'h-5 w-5',
                   i < Math.round(scoreRankLabel(row.score).stars)
                     ? 'fill-amber-400 text-amber-400'
                     : 'text-slate-200'
@@ -817,9 +830,9 @@ export function AuditAnalysisPanel({
               />
             ))}
           </div>
-          <span className="text-xs text-slate-500">AI Audit · {auditDayLabel ?? '—'}</span>
+          <span className="text-sm text-slate-500">AI Audit · {auditDayLabel ?? '—'}</span>
         </div>
-        <p className="mt-2 text-xs leading-relaxed text-slate-500">
+        <p className="mt-3 text-sm leading-relaxed text-slate-500">
           Điểm {row.score}/100 — {scoreRankLabel(row.score).label}. Xem tab Gợi ý cải thiện để hành
           động tiếp theo.
         </p>

@@ -908,7 +908,7 @@ export function AuditMessengerView({
     : 0
 
   return (
-    <div className="flex min-h-0 flex-1 basis-0 flex-col overflow-hidden">
+    <div className="flex flex-col">
       <CskhToolbar>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -1074,7 +1074,7 @@ export function AuditMessengerView({
           description="Chọn ngày ở trên và bấm Chạy audit để AI phân tích hội thoại CSKH."
         />
       ) : (
-        <div className="flex min-h-0 flex-1 basis-0 flex-col overflow-hidden">
+        <div className="flex flex-col">
           {isAuditPhase && (
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}
@@ -1090,7 +1090,6 @@ export function AuditMessengerView({
             />
           ) : null}
           <MessengerWorkspace
-            className="min-h-0 flex-1 basis-0 overflow-hidden"
             sidebar={
               <AuditConversationSidebar
                 rows={sortedAudits}
@@ -1105,7 +1104,7 @@ export function AuditMessengerView({
             }
             main={
               selected ? (
-                <div className="flex h-full min-h-0 flex-col overflow-hidden">
+                <div className="flex min-h-[520px] flex-col lg:min-h-[640px]">
                   <ChatThreadHeader
                     name={displayCustomerName(selected.customerName)}
                     subtitle={`${displayPageShopLabel(selected.metadata?.pageName) || selected.metadata?.pageName || selected.channel || ''}${
@@ -1159,7 +1158,7 @@ export function AuditMessengerView({
                     ))}
                   </div>
                   {chatTab === 'analysis' ? (
-                    <div className="min-h-0 flex-1 overflow-hidden lg:hidden">
+                    <div className="lg:hidden">
                       <AuditAnalysisPanel
                         row={selected}
                         inbox={inboxConv}

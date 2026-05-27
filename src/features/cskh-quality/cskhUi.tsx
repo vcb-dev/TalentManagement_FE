@@ -91,10 +91,8 @@ export function CskhPageAvatar({
 
 export function CskhPageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative -m-5 flex h-[calc(100dvh-2.75rem)] max-h-[calc(100dvh-2.75rem)] flex-col overflow-hidden md:-m-6 md:h-[calc(100dvh-3rem)] md:max-h-[calc(100dvh-3rem)]">
-      <div className="flex min-h-0 flex-1 basis-0 flex-col gap-1 overflow-hidden px-1 py-0.5 sm:px-2">
-        {children}
-      </div>
+    <div className="relative -m-5 flex flex-col md:-m-6">
+      <div className="flex flex-col gap-3 px-1 py-0.5 sm:px-2">{children}</div>
     </div>
   )
 }
@@ -407,7 +405,7 @@ export function CskhGlassPanel({
 
 export function CskhToolbar({ children }: { children: ReactNode }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 via-white/50 to-violet-50/80 px-3 py-1.5 sm:px-4 sm:py-2">
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 via-white/50 to-violet-50/80 px-4 py-3 sm:px-5">
       {children}
     </div>
   )
@@ -425,16 +423,16 @@ export function MessengerWorkspace({
   className?: string
 }) {
   return (
-    <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', className)}>
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside className="flex h-full min-h-0 w-[240px] shrink-0 flex-col overflow-hidden border-r border-slate-200/80 bg-white sm:w-[260px]">
+    <div className={cn('flex flex-col', className)}>
+      <div className="flex flex-col lg:flex-row lg:items-start">
+        <aside className="flex max-h-[420px] w-full shrink-0 flex-col overflow-hidden border-b border-slate-200/80 bg-white lg:max-h-none lg:w-[280px] lg:border-b-0 lg:border-r xl:w-[300px]">
           {sidebar}
         </aside>
-        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#f0f2f5]">
+        <div className="flex min-h-[520px] min-w-0 flex-1 flex-col bg-[#f0f2f5] lg:min-h-[640px]">
           {main}
         </div>
         {aside ? (
-          <aside className="hidden h-full min-h-0 min-w-[340px] flex-[1.25] flex-col overflow-hidden border-l border-slate-200/80 bg-white lg:flex xl:min-w-[400px] 2xl:min-w-[420px]">
+          <aside className="hidden w-full shrink-0 flex-col border-t border-slate-200/80 bg-white lg:flex lg:min-w-[400px] lg:flex-[1.15] lg:border-l lg:border-t-0 xl:min-w-[440px]">
             {aside}
           </aside>
         ) : null}
