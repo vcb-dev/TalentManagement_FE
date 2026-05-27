@@ -10,7 +10,6 @@ import {
   refreshCskhOAuth,
   setCskhPageEnabled,
   setCskhPagesEnabledBulk,
-  type AuditDayStats,
   type CskhPagesResponse,
 } from './api'
 import { AuditMessengerView } from './AuditMessengerView'
@@ -20,6 +19,7 @@ import {
   CskhPageShell,
   CskhPageAvatar,
   CskhStatPill,
+  AuditDayStatsCards,
   CskhTabNav,
 } from './cskhUi'
 
@@ -321,10 +321,8 @@ export function CskhQualityPage() {
   }, [])
 
   const enabledPages = (pagesData?.pages ?? []).filter((p) => p.enabled).length
-  const stats: AuditDayStats | undefined = dayStats
   const statsLoading = Boolean(selectedAuditDate) && dayStatsFetching
   const dayStatsLabel = selectedAuditDate ? selectedAuditDate.split('-').reverse().join('/') : null
-  const statValue = (n: number | undefined) => (statsLoading ? '…' : (n ?? '—'))
 
   return (
     <CskhPageShell>
@@ -341,23 +339,11 @@ export function CskhQualityPage() {
         }
         stats={
           <>
-            <CskhStatPill
-              label="Không đạt (<70)"
-              value={statValue(stats?.failed)}
-              tone="rose"
-              hint={dayStatsLabel ? `Ngày ${dayStatsLabel}` : 'Chọn ngày audit'}
-            />
-            <CskhStatPill
-              label="Đạt (≥70)"
-              value={statValue(stats?.passed)}
-              tone="live"
-              hint={dayStatsLabel ? `${stats?.total ?? 0} hội thoại` : undefined}
-            />
-            <CskhStatPill
-              label="Từ quảng cáo"
-              value={statValue(stats?.fromAd)}
-              tone="sky"
-              hint={dayStatsLabel ? `Ngày ${dayStatsLabel}` : undefined}
+            <AuditDayStatsCards
+              stats={dayStats}
+              loading={statsLoading}
+              auditDayLabel={dayStatsLabel}
+              className="flex flex-wrap gap-2 sm:grid-cols-none sm:flex"
             />
             <CskhStatPill label="Page bật" value={enabledPages} />
             <CskhStatPill

@@ -180,6 +180,41 @@ export function CskhStatPill({
   )
 }
 
+/** Thống kê nhanh theo ngày audit — đạt / không đạt / tổng / quảng cáo. */
+export function AuditDayStatsCards({
+  stats,
+  loading,
+  auditDayLabel,
+  className,
+}: {
+  stats?: { total?: number; passed?: number; failed?: number; fromAd?: number } | null
+  loading?: boolean
+  auditDayLabel?: string | null
+  className?: string
+}) {
+  const val = (n: number | undefined) => (loading ? '…' : (n ?? '—'))
+  const dayHint = auditDayLabel ? `Ngày ${auditDayLabel}` : 'Chọn ngày audit'
+
+  return (
+    <div className={cn('grid grid-cols-2 gap-2 sm:grid-cols-4', className)}>
+      <CskhStatPill label="Không đạt (<70)" value={val(stats?.failed)} tone="rose" hint={dayHint} />
+      <CskhStatPill
+        label="Đạt (≥70)"
+        value={val(stats?.passed)}
+        tone="live"
+        hint={stats?.total != null && !loading ? `${stats.total} hội thoại` : dayHint}
+      />
+      <CskhStatPill
+        label="Tổng hội thoại"
+        value={val(stats?.total)}
+        tone="default"
+        hint={dayHint}
+      />
+      <CskhStatPill label="Từ quảng cáo" value={val(stats?.fromAd)} tone="sky" hint={dayHint} />
+    </div>
+  )
+}
+
 export function CskhTokenStat({
   model,
   totalTokens,
@@ -385,31 +420,29 @@ export function MessengerWorkspace({
   sidebar,
   main,
   aside,
+  header,
   className,
 }: {
   sidebar: ReactNode
   main: ReactNode
   aside?: ReactNode
+  header?: ReactNode
   className?: string
 }) {
   return (
-    <div
-      className={cn(
-        'flex h-[min(760px,calc(100vh-240px))] min-h-[540px] overflow-hidden',
-        className
-      )}
-    >
-      <aside className="flex w-[280px] shrink-0 flex-col border-r border-indigo-100/60 bg-gradient-to-b from-slate-50/90 to-indigo-50/40 lg:w-[300px]">
-        {sidebar}
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col bg-gradient-to-br from-indigo-50/50 via-[#eef2ff] to-violet-50/60">
-        {main}
-      </div>
-      {aside ? (
-        <aside className="hidden w-[300px] shrink-0 border-l border-indigo-100/60 bg-gradient-to-b from-white to-violet-50/50 lg:flex lg:flex-col xl:w-[320px]">
-          {aside}
+    <div className={cn('flex flex-col overflow-hidden', className)}>
+      {header}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <aside className="flex w-[240px] shrink-0 flex-col border-r border-slate-200/80 bg-white sm:w-[260px] lg:w-[280px]">
+          {sidebar}
         </aside>
-      ) : null}
+        <div className="flex min-w-0 flex-[1.1] flex-col bg-[#f0f2f5]">{main}</div>
+        {aside ? (
+          <aside className="hidden min-w-0 flex-[1.2] flex-col border-l border-slate-200/80 bg-white lg:flex xl:max-w-[420px]">
+            {aside}
+          </aside>
+        ) : null}
+      </div>
     </div>
   )
 }

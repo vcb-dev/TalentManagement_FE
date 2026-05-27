@@ -109,8 +109,42 @@ export interface CskhAuditRow {
       total_tokens?: number
       model?: string
     } | null
+    criteriaScores?: {
+      greeting?: number
+      needs?: number
+      consult?: number
+      objection?: number
+      closing?: number
+    } | null
+    strengths?: string[] | null
+    weaknesses?: string[] | null
+    keywords?: string[] | null
+    sentiment?: {
+      label?: string
+      customer?: string
+      staff?: string
+      tone?: 'positive' | 'neutral' | 'negative'
+    } | null
+    tags?: string[] | null
+    transcriptMetrics?: {
+      firstResponseSec?: number | null
+      staffReplies?: number
+      customerMessages?: number
+      proactivePct?: number
+    } | null
   } | null
   createdAt: string
+}
+
+export interface AuditComparisonStats {
+  auditDate: string
+  auditId: string
+  staff: number
+  team: number
+  overall: number
+  staffSampleSize: number
+  teamSampleSize: number
+  daySampleSize: number
 }
 
 export function getCskhOAuthStartUrl(returnUrl?: string): string {
@@ -251,6 +285,16 @@ export async function fetchAuditDayStats(
 ): Promise<AuditDayStats> {
   const { data } = await apiClient.get<AuditDayStats>('/cskh/audits/day-stats', {
     params: { auditDate, pageId },
+  })
+  return data
+}
+
+export async function fetchAuditComparisonStats(
+  auditDate: string,
+  auditId: string
+): Promise<AuditComparisonStats> {
+  const { data } = await apiClient.get<AuditComparisonStats>('/cskh/audits/comparison', {
+    params: { auditDate, auditId },
   })
   return data
 }

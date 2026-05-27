@@ -1,23 +1,13 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getApiErrorMessage } from '@/lib/axios'
 import { isTransientInfraError, toUserFacingError } from '@/lib/userFacingError'
-import {
-  Loader2,
-  Pause,
-  Play,
-  Sparkles,
-  MessageCircle,
-  Copy,
-  Check,
-  ClipboardCheck,
-  Send,
-  Search,
-} from 'lucide-react'
+import { Loader2, Pause, Play, MessageCircle, ClipboardCheck, Send } from 'lucide-react'
 import {
   cancelAuditJob,
   pauseAuditJob,
   fetchAuditDayStats,
+  fetchAuditComparisonStats,
   fetchAuditProgress,
   fetchCskhAudits,
   fetchInboxConversations,
@@ -34,13 +24,9 @@ import {
   type CskhInboxMessage,
 } from './api'
 import {
-  displayChannelName,
   displayCustomerName,
   displayPageShopLabel,
   formatAuditDateLabel,
-  lastMessagePreview,
-  parseBulletLines,
-  parseAuditActionItems,
   resolveAuditFromAd,
   filterDisplayTranscript,
   messagesAfterAuditDate,
@@ -52,8 +38,14 @@ import {
 } from './auditHelpers'
 import { cskhMediaProxySrc, cskhMediaSrc, resolveMessageMedia } from './messageMedia'
 import {
+  AuditAnalysisPanel,
+  AuditBreadcrumb,
+  AuditConversationSidebar,
+  AuditSummaryHeader,
+  AuditTimelinePanel,
+} from './AuditDashboardPanels'
+import {
   ChatThreadHeader,
-  CskhPageAvatar,
   CskhAdSourceBadge,
   CskhOrganicSourceBadge,
   CskhAuditProgressBanner,
@@ -64,7 +56,7 @@ import {
   CskhLoading,
   CskhNoticeBanner,
   CskhToolbar,
-  MessengerSidebarHeader,
+  AuditDayStatsCards,
   MessengerWorkspace,
 } from './cskhUi'
 import { useCskhInboxStream } from './useCskhInboxStream'
@@ -139,66 +131,6 @@ function resolveCustomerPicture(
     row.customerPictureUrl ?? row.metadata?.customerPictureUrl ?? inbox?.customerPictureUrl ?? null
   )
 }
-
-const AuditSidebarRow = memo(function AuditSidebarRow({
-  row,
-  active,
-  adSource,
-  onSelect,
-}: {
-  row: CskhAuditRow
-  active: boolean
-  adSource: { fromAd: boolean; adTitle: string | null; adId: string | null }
-  onSelect: (id: string) => void
-}) {
-  const meta = row.metadata
-  const name = displayCustomerName(row.customerName)
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={() => onSelect(row.id)}
-        className={`w-full px-4 py-3.5 text-left transition-all ${
-          active
-            ? 'bg-white shadow-[inset_3px_0_0_0_#7c3aed] ring-1 ring-violet-100'
-            : 'border-b border-slate-100/60 hover:bg-white/80'
-        }`}
-      >
-        <div className="flex items-start gap-3">
-          <CskhPageAvatar
-            name={name}
-            pictureUrl={row.customerPictureUrl ?? row.metadata?.customerPictureUrl}
-            pageId={meta?.pageId}
-            psid={meta?.participantPsid}
-            className="h-9 w-9 rounded-xl text-xs"
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
-              <span
-                className={`shrink-0 rounded-full border px-1.5 py-0.5 text-xs font-bold ${scoreColor(row.score)}`}
-              >
-                {row.score}
-              </span>
-            </div>
-            <p className="mt-0.5 truncate text-xs text-indigo-500/80">
-              {displayPageShopLabel(meta?.pageName) || meta?.pageName || '—'}
-            </p>
-            <div className="mt-1 flex flex-wrap items-center gap-1">
-              <CskhAdSourceBadge fromAd={adSource.fromAd} adTitle={adSource.adTitle} compact />
-              {!adSource.fromAd ? (
-                <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                  Organic
-                </span>
-              ) : null}
-            </div>
-            <p className="mt-1 truncate text-xs text-slate-500">{lastMessagePreview(row)}</p>
-          </div>
-        </div>
-      </button>
-    </li>
-  )
-})
 
 function MediaImage({ url, compact }: { url: string; compact?: boolean }) {
   const [failed, setFailed] = useState(false)
@@ -454,176 +386,6 @@ function ChatBubble({
   )
 }
 
-function CopyReplyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <button
-      type="button"
-      title="Sao chép"
-      onClick={() => {
-        void navigator.clipboard.writeText(text).then(() => {
-          setCopied(true)
-          setTimeout(() => setCopied(false), 1500)
-        })
-      }}
-      className="shrink-0 rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-    >
-      {copied ? (
-        <Check className="h-3.5 w-3.5 text-emerald-600" />
-      ) : (
-        <Copy className="h-3.5 w-3.5" />
-      )}
-    </button>
-  )
-}
-
-function SuggestedReplyBox({
-  text,
-  onUseReply,
-}: {
-  text: string
-  onUseReply?: (text: string) => void
-}) {
-  if (!text.trim()) return null
-  return (
-    <div className="group mt-2 rounded-lg border border-emerald-200/80 bg-gradient-to-r from-emerald-50/90 to-teal-50/80 p-2.5">
-      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-        Gợi ý trả lời
-      </p>
-      <div className="flex items-start gap-2">
-        <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-        <p className="min-w-0 flex-1 whitespace-pre-wrap text-sm text-slate-800">{text}</p>
-        {onUseReply ? (
-          <button
-            type="button"
-            title="Dùng gợi ý"
-            onClick={() => onUseReply(text)}
-            className="shrink-0 rounded-lg bg-emerald-600 px-2 py-1 text-[10px] font-semibold text-white"
-          >
-            Dùng
-          </button>
-        ) : null}
-        <CopyReplyButton text={text} />
-      </div>
-    </div>
-  )
-}
-
-function AiAnalysisPanel({
-  row,
-  inbox,
-  onUseReply,
-}: {
-  row: CskhAuditRow
-  inbox?: CskhInboxConversation | null
-  onUseReply?: (text: string) => void
-}) {
-  const meta = row.metadata
-  const adSource = resolveAuditFromAd(row, inbox)
-  const feedbackLines = parseBulletLines(row.feedback)
-  const actionItems = parseAuditActionItems(row)
-  const itemsWithReply = actionItems.filter((item) => item.suggestedReply.trim())
-  const itemsWithoutReply = actionItems.filter((item) => !item.suggestedReply.trim())
-
-  return (
-    <div className="flex h-full flex-col">
-      <div className="border-b border-indigo-100/60 bg-gradient-to-r from-violet-50/80 to-fuchsia-50/50 px-4 py-3.5">
-        <div className="flex items-center justify-between gap-2">
-          <h4 className="flex items-center gap-1.5 text-sm font-bold text-violet-800">
-            <Sparkles className="h-4 w-4 text-violet-500" />
-            Phân tích AI
-          </h4>
-          <span
-            className={`rounded-full border px-2.5 py-0.5 text-sm font-bold ${scoreColor(row.score)}`}
-          >
-            {row.score}
-          </span>
-        </div>
-        <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-          <span>Kênh: {displayChannelName(row)}</span>
-          <CskhAdSourceBadge fromAd={adSource.fromAd} adTitle={adSource.adTitle} compact />
-          {!adSource.fromAd ? <CskhOrganicSourceBadge show /> : null}
-          {meta?.staffAbsent && (
-            <span className="ml-2 rounded-full bg-rose-100 px-2 py-0.5 text-rose-700">
-              chưa rep
-            </span>
-          )}
-          {meta?.needsFollowUp && !meta?.staffAbsent && (
-            <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-amber-800">
-              chưa rep hết
-            </span>
-          )}
-        </p>
-      </div>
-
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
-        <section>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Nhận xét</p>
-          {feedbackLines.length ? (
-            <ul className="mt-2 space-y-2 text-sm text-slate-700">
-              {feedbackLines.map((line, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="text-violet-400">+</span>
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2 text-sm text-slate-500">{row.feedback || 'Chưa có nhận xét.'}</p>
-          )}
-        </section>
-
-        {itemsWithReply.length > 0 && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-wide text-rose-500">
-              Vi phạm &amp; cách sửa
-            </p>
-            <ul className="mt-2 space-y-3">
-              {itemsWithReply.map((item, i) => (
-                <li key={i} className="rounded-xl border border-rose-100/80 bg-white p-3 shadow-sm">
-                  <div className="flex gap-2 text-sm text-rose-800">
-                    <span className="shrink-0 font-bold text-rose-400">{i + 1}.</span>
-                    <span className="font-medium leading-relaxed">{item.issue}</span>
-                  </div>
-                  <SuggestedReplyBox text={item.suggestedReply} onUseReply={onUseReply} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {itemsWithoutReply.length > 0 && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-wide text-rose-500">Vi phạm</p>
-            <ul className="mt-2 space-y-2 text-sm text-rose-700">
-              {itemsWithoutReply.map((item, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="font-bold text-rose-400">+</span>
-                  <span>{item.issue}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-xs text-slate-500">
-              Chưa có gợi ý gắn từng mục — chạy lại audit sau khi deploy AI mới.
-            </p>
-          </section>
-        )}
-
-        {!itemsWithReply.length && !itemsWithoutReply.length && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-              Gợi ý trả lời
-            </p>
-            <p className="mt-2 text-sm text-slate-500">
-              Chưa có mục vi phạm kèm gợi ý — chạy lại audit sau khi deploy AI service mới.
-            </p>
-          </section>
-        )}
-      </div>
-    </div>
-  )
-}
-
 export function AuditMessengerView({
   jobId,
   setJobId,
@@ -637,6 +399,8 @@ export function AuditMessengerView({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [sidebarSearch, setSidebarSearch] = useState('')
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'ad' | 'organic'>('all')
+  const [chatTab, setChatTab] = useState<'chat' | 'timeline'>('chat')
   const [completionNotice, setCompletionNotice] = useState<string | null>(null)
   const [dismissedErrorKey, setDismissedErrorKey] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -823,6 +587,8 @@ export function AuditMessengerView({
     stableAuditsRef.current = []
     setSelectedId(null)
     setSidebarSearch('')
+    setSourceFilter('all')
+    setChatTab('chat')
   }, [auditDate])
 
   useEffect(() => {
@@ -1091,6 +857,13 @@ export function AuditMessengerView({
 
   const selectedAuditDayLabel = selectedAuditDate ? formatAuditDateLabel(selectedAuditDate) : null
 
+  const comparisonQuery = useQuery({
+    queryKey: ['cskh', 'audit-comparison', auditDate, selected?.id],
+    queryFn: () => fetchAuditComparisonStats(auditDate, selected!.id),
+    enabled: Boolean(auditDate && selected?.id),
+    staleTime: 60_000,
+  })
+
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -1109,8 +882,28 @@ export function AuditMessengerView({
     })
   }, [selected?.id, liveMsgQuery.data?.messages, transcript.length])
 
+  const selectedIndex = selected
+    ? Math.max(1, sortedAudits.findIndex((a) => a.id === selected.id) + 1)
+    : 0
+
   return (
     <div className="space-y-0">
+      <div className="border-b border-slate-200/80 bg-white px-4 py-3 sm:px-5">
+        <AuditBreadcrumb
+          conversationLabel={
+            selected && sortedAudits.length ? `#${selectedIndex}/${sortedAudits.length}` : null
+          }
+        />
+      </div>
+      <div className="border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/60 via-white to-violet-50/40 px-4 py-3 sm:px-5">
+        <AuditDayStatsCards
+          stats={dayStats}
+          loading={
+            Boolean(auditDate) && (recentFetching || dayStats === undefined) && !isAuditActive
+          }
+          auditDayLabel={auditDayLabel}
+        />
+      </div>
       <CskhToolbar>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -1276,44 +1069,31 @@ export function AuditMessengerView({
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}
           <MessengerWorkspace
-            sidebar={
-              <>
-                <MessengerSidebarHeader
-                  title={`Hội thoại (${sortedAudits.length})${auditDayLabel ? ` · ${auditDayLabel}` : ''}`}
-                  search={
-                    sortedAudits.length > 8 ? (
-                      <div className="relative">
-                        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                        <input
-                          type="search"
-                          value={sidebarSearch}
-                          onChange={(e) => setSidebarSearch(e.target.value)}
-                          placeholder="Tìm khách, page, nhân viên…"
-                          className="w-full rounded-xl border border-indigo-100 bg-white py-2 pl-9 pr-3 text-xs shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                        />
-                      </div>
-                    ) : undefined
-                  }
+            className="h-[min(820px,calc(100vh-220px))] min-h-[560px]"
+            header={
+              selected ? (
+                <AuditSummaryHeader
+                  row={selected}
+                  index={selectedIndex}
+                  total={sortedAudits.length}
+                  inbox={inboxConv}
+                  comparison={comparisonQuery.data}
+                  allAudits={sortedAudits}
+                  auditDayLabel={selectedAuditDayLabel}
                 />
-                <ul className="flex-1 overflow-y-auto">
-                  {filteredAudits.length === 0 && sidebarSearch.trim() ? (
-                    <li className="px-4 py-8 text-center text-sm text-slate-500">
-                      Không tìm thấy &quot;{sidebarSearch.trim()}&quot;
-                    </li>
-                  ) : null}
-                  {filteredAudits.map((row) => (
-                    <AuditSidebarRow
-                      key={row.id}
-                      row={row}
-                      active={row.id === selected?.id}
-                      adSource={
-                        sidebarAdSources.get(row.id) ?? { fromAd: false, adTitle: null, adId: null }
-                      }
-                      onSelect={handleSelectAudit}
-                    />
-                  ))}
-                </ul>
-              </>
+              ) : undefined
+            }
+            sidebar={
+              <AuditConversationSidebar
+                rows={sortedAudits}
+                selectedId={selected?.id ?? null}
+                adMap={sidebarAdSources}
+                search={sidebarSearch}
+                onSearchChange={setSidebarSearch}
+                sourceFilter={sourceFilter}
+                onSourceFilterChange={setSourceFilter}
+                onSelect={handleSelectAudit}
+              />
             }
             main={
               selected ? (
@@ -1343,14 +1123,42 @@ export function AuditMessengerView({
                       </div>
                     }
                   />
+                  <div className="flex gap-1 border-b border-slate-200/80 bg-white px-4">
+                    {[
+                      { id: 'chat' as const, label: 'Hội thoại' },
+                      { id: 'timeline' as const, label: 'Timeline sự kiện' },
+                    ].map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setChatTab(t.id)}
+                        className={`relative px-3 py-2.5 text-xs font-semibold ${
+                          chatTab === t.id
+                            ? 'text-violet-700'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        {t.label}
+                        {chatTab === t.id ? (
+                          <span className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-violet-600" />
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
                   <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-                    {transcript.length > 0 ? (
+                    {chatTab === 'timeline' ? (
+                      <AuditTimelinePanel
+                        transcript={transcript}
+                        auditDayLabel={selectedAuditDayLabel}
+                      />
+                    ) : null}
+                    {chatTab === 'chat' && transcript.length > 0 ? (
                       <div className="space-y-3">
                         <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">
                           Hội thoại audit
                           {selectedAuditDayLabel ? ` · ${selectedAuditDayLabel}` : ''}
                           <span className="ml-2 font-medium normal-case text-slate-400">
-                            · {transcript.length} tin (đầu hội thoại → hết ngày audit)
+                            · {transcript.length} tin
                           </span>
                         </p>
                         {transcript.map((line, idx) => (
@@ -1377,19 +1185,19 @@ export function AuditMessengerView({
                           <AuditScopeDivider auditDayLabel={selectedAuditDayLabel} />
                         ) : null}
                       </div>
-                    ) : !inboxConv ? (
+                    ) : chatTab === 'chat' && !inboxConv ? (
                       <CskhEmptyState
                         icon={<MessageCircle className="h-10 w-10 text-indigo-400" />}
                         title="Không có transcript"
                         description="Chưa liên kết inbox. Chạy audit lại để lấy đầy đủ hội thoại."
                       />
-                    ) : (
+                    ) : chatTab === 'chat' ? (
                       <p className="text-sm text-slate-500">
                         Không có transcript — chạy audit lại để lấy đầy đủ hội thoại.
                       </p>
-                    )}
+                    ) : null}
 
-                    {inboxConv && postAuditLiveMessages.length > 0 ? (
+                    {chatTab === 'chat' && inboxConv && postAuditLiveMessages.length > 0 ? (
                       <div className="space-y-3 border-t border-slate-200/80 pt-4">
                         <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-600">
                           <CskhConnectionBadge connected={inboxLive} />
@@ -1401,7 +1209,7 @@ export function AuditMessengerView({
                       </div>
                     ) : null}
 
-                    {selected && !inboxConv && transcript.length > 0 && (
+                    {chatTab === 'chat' && selected && !inboxConv && transcript.length > 0 && (
                       <p
                         className={`rounded-xl border px-3 py-2 text-xs ${
                           inboxLinkPending
@@ -1420,7 +1228,7 @@ export function AuditMessengerView({
                     )}
                   </div>
 
-                  <footer className="border-t border-white/60 bg-white/90 p-3 backdrop-blur-md">
+                  <footer className="border-t border-slate-200/80 bg-white p-3">
                     <form
                       className="flex items-end gap-2"
                       onSubmit={(e) => {
@@ -1449,12 +1257,12 @@ export function AuditMessengerView({
                               ? 'Đang liên kết inbox…'
                               : 'Liên kết inbox để gửi tin — vẫn có thể dùng gợi ý bên phải'
                         }
-                        className="max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border border-indigo-100 bg-white px-4 py-3 text-sm shadow-inner focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-slate-50 disabled:text-slate-400"
+                        className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-100 disabled:bg-slate-100 disabled:text-slate-400"
                       />
                       <button
                         type="submit"
                         disabled={!draft.trim() || sendMut.isPending || !inboxConv}
-                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg disabled:opacity-50"
+                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-md hover:bg-violet-700 disabled:opacity-50"
                       >
                         {sendMut.isPending ? (
                           <Loader2 className="h-5 w-5 animate-spin" />
@@ -1480,14 +1288,26 @@ export function AuditMessengerView({
             }
             aside={
               selected ? (
-                <AiAnalysisPanel row={selected} inbox={inboxConv} onUseReply={setDraft} />
+                <AuditAnalysisPanel
+                  row={selected}
+                  inbox={inboxConv}
+                  transcript={transcript}
+                  auditDayLabel={selectedAuditDayLabel}
+                  onUseReply={setDraft}
+                />
               ) : undefined
             }
           />
 
           {selected && sortedAudits.length > 0 && (
-            <div className="border-t border-indigo-100/60 lg:hidden">
-              <AiAnalysisPanel row={selected} inbox={inboxConv} onUseReply={setDraft} />
+            <div className="border-t border-slate-200/80 lg:hidden">
+              <AuditAnalysisPanel
+                row={selected}
+                inbox={inboxConv}
+                transcript={transcript}
+                auditDayLabel={selectedAuditDayLabel}
+                onUseReply={setDraft}
+              />
             </div>
           )}
         </>
