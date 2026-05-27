@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getApiErrorMessage } from '@/lib/axios'
+import { cn } from '@/lib/utils'
 import { isTransientInfraError, toUserFacingError } from '@/lib/userFacingError'
 import { Loader2, Pause, Play, MessageCircle, ClipboardCheck, Send, ArrowLeft } from 'lucide-react'
 import {
@@ -1147,11 +1148,11 @@ export function AuditMessengerView({
                       </div>
                     }
                   />
-                  <div className="flex shrink-0 gap-1 border-b border-slate-200/80 bg-white px-4">
+                  <div className="grid shrink-0 grid-cols-3 gap-1 border-b border-slate-200/80 bg-white p-2 xl:grid-cols-2">
                     {(
                       [
                         { id: 'chat' as const, label: 'Hội thoại' },
-                        { id: 'timeline' as const, label: 'Timeline sự kiện' },
+                        { id: 'timeline' as const, label: 'Timeline' },
                         { id: 'analysis' as const, label: 'Phân tích', mobileOnly: true },
                       ] as const
                     ).map((t) => (
@@ -1162,18 +1163,15 @@ export function AuditMessengerView({
                           setChatTab(t.id)
                           if (t.id === 'analysis') setWorkspacePane('analysis')
                         }}
-                        className={`relative px-3 py-2.5 text-xs font-semibold ${
-                          'mobileOnly' in t && t.mobileOnly ? 'xl:hidden' : ''
-                        } ${
+                        className={cn(
+                          'rounded-lg px-2 py-2 text-center text-[11px] font-semibold leading-tight transition-all sm:text-xs',
+                          'mobileOnly' in t && t.mobileOnly ? 'xl:hidden' : '',
                           chatTab === t.id
-                            ? 'text-violet-700'
-                            : 'text-slate-500 hover:text-slate-700'
-                        }`}
+                            ? 'bg-violet-50 text-violet-800 ring-1 ring-violet-200'
+                            : 'text-slate-600 hover:bg-slate-50'
+                        )}
                       >
                         {t.label}
-                        {chatTab === t.id ? (
-                          <span className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-violet-600" />
-                        ) : null}
                       </button>
                     ))}
                   </div>

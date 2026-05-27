@@ -47,7 +47,84 @@ const compareChartConfig = {
 
 const SIDEBAR_PAGE_SIZE = 20
 
-function TabBar({
+function CriterionLabel({ label }: { label: string }) {
+  const parts = label.includes(' / ')
+    ? label.split(' / ')
+    : label.includes(',')
+      ? label.split(',').map((s) => s.trim())
+      : [label]
+
+  if (parts.length <= 1) {
+    return (
+      <p className="mt-2 w-full break-words text-[10px] font-medium leading-snug text-slate-600 sm:text-[11px]">
+        {label}
+      </p>
+    )
+  }
+
+  return (
+    <p className="mt-2 w-full text-[10px] font-medium leading-snug text-slate-600 sm:text-[11px]">
+      {parts.map((part, i) => (
+        <span key={i} className="block break-words">
+          {part}
+          {i < parts.length - 1 && label.includes(',') ? ',' : ''}
+        </span>
+      ))}
+    </p>
+  )
+}
+
+/** Bộ lọc sidebar — 3 ô full width, không scroll ngang. */
+function SegmentedFilterBar({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: Array<{ id: string; label: string; count?: number }>
+  active: string
+  onChange: (id: string) => void
+}) {
+  return (
+    <div
+      className="grid gap-1 rounded-xl bg-slate-100/90 p-1"
+      style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+    >
+      {tabs.map((tab) => {
+        const isActive = active === tab.id
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onChange(tab.id)}
+            className={cn(
+              'flex min-w-0 flex-col items-center justify-center rounded-lg px-1 py-2 text-center transition-all',
+              isActive
+                ? 'bg-white text-violet-700 shadow-sm ring-1 ring-violet-200/80'
+                : 'text-slate-600 hover:bg-white/60 hover:text-slate-800'
+            )}
+          >
+            <span className="w-full truncate text-[10px] font-bold leading-tight sm:text-[11px]">
+              {tab.label}
+            </span>
+            {tab.count != null ? (
+              <span
+                className={cn(
+                  'mt-0.5 text-[10px] font-bold tabular-nums',
+                  isActive ? 'text-violet-600' : 'text-slate-400'
+                )}
+              >
+                {tab.count}
+              </span>
+            ) : null}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Tab phân tích AI — lưới 2 cột, thấy hết không scroll. */
+function GridTabBar({
   tabs,
   active,
   onChange,
@@ -59,12 +136,7 @@ function TabBar({
   className?: string
 }) {
   return (
-    <div
-      className={cn(
-        'flex shrink-0 gap-0.5 overflow-x-auto border-b border-slate-200/80 [scrollbar-width:thin]',
-        className
-      )}
-    >
+    <div className={cn('grid grid-cols-2 gap-1.5', className)}>
       {tabs.map((tab) => {
         const isActive = active === tab.id
         return (
@@ -73,23 +145,17 @@ function TabBar({
             type="button"
             onClick={() => onChange(tab.id)}
             className={cn(
-              'relative whitespace-nowrap px-3.5 py-3.5 text-sm font-semibold transition-colors sm:px-4',
-              isActive ? 'text-violet-700' : 'text-slate-500 hover:text-slate-700'
+              'min-h-[2.75rem] rounded-xl border px-2.5 py-2 text-left text-[11px] font-semibold leading-snug transition-all sm:text-xs',
+              isActive
+                ? 'border-violet-400 bg-violet-50 text-violet-800 shadow-sm ring-1 ring-violet-200/60'
+                : 'border-slate-200/90 bg-white text-slate-600 hover:border-violet-200 hover:bg-violet-50/40 hover:text-slate-800'
             )}
           >
-            {tab.label}
+            <span className="line-clamp-2">{tab.label}</span>
             {tab.count != null ? (
-              <span
-                className={cn(
-                  'ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums',
-                  isActive ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-500'
-                )}
-              >
+              <span className="mt-0.5 block text-[10px] font-bold tabular-nums text-slate-400">
                 {tab.count}
               </span>
-            ) : null}
-            {isActive ? (
-              <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-violet-600" />
             ) : null}
           </button>
         )
@@ -251,22 +317,20 @@ export function AuditSummaryHeader({
           </p>
         </SummaryCard>
 
-        <SummaryCard className="min-w-0 sm:col-span-2 xl:col-span-1">
+        <SummaryCard className="min-w-0 xl:col-span-2">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
             Điểm theo tiêu chí
           </p>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-2.5">
+          <div className="grid grid-cols-2 gap-2 min-[900px]:grid-cols-3 xl:grid-cols-5 xl:gap-2.5">
             {criteria.map((c) => (
               <div
                 key={c.id}
-                className="flex flex-col items-center rounded-xl border border-slate-100 bg-slate-50/80 px-1.5 py-3 text-center"
+                className="flex min-w-0 flex-col items-center rounded-xl border border-slate-100 bg-slate-50/80 px-2 py-3 text-center"
                 title={c.label}
               >
                 <span className="text-xl leading-none sm:text-2xl">{c.icon}</span>
-                <p className="mt-2 line-clamp-2 min-h-[2.5rem] text-[11px] font-medium leading-snug text-slate-600 sm:text-xs">
-                  {c.label.split(',')[0]}
-                </p>
-                <p className="mt-1 text-sm font-bold tabular-nums text-slate-800">
+                <CriterionLabel label={c.label} />
+                <p className="mt-1.5 text-sm font-bold tabular-nums text-slate-800">
                   {c.score}/{c.max}
                 </p>
                 <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
@@ -280,7 +344,7 @@ export function AuditSummaryHeader({
           </div>
         </SummaryCard>
 
-        <SummaryCard className="min-w-0 sm:col-span-2 xl:col-span-1">
+        <SummaryCard className="min-w-0 sm:col-span-2 xl:col-span-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
             So sánh trung bình
           </p>
@@ -444,11 +508,11 @@ export function AuditConversationSidebar({
           />
           <Filter className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
         </div>
-        <TabBar
+        <SegmentedFilterBar
           tabs={[
             { id: 'all', label: 'Tất cả', count: rows.length },
             { id: 'ad', label: 'Quảng cáo', count: adCount },
-            { id: 'organic', label: 'Không QC', count: organicCount },
+            { id: 'organic', label: 'Tự nhắn', count: organicCount },
           ]}
           active={sourceFilter}
           onChange={(id) => {
@@ -675,7 +739,12 @@ export function AuditAnalysisPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
-      <TabBar tabs={tabs} active={tab} onChange={setTab} className="shrink-0 px-3" />
+      <GridTabBar
+        tabs={tabs}
+        active={tab}
+        onChange={setTab}
+        className="shrink-0 border-b border-slate-100 px-3 py-3"
+      />
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 py-6 sm:px-6 sm:py-7">
         {tab === 'intent' && (
