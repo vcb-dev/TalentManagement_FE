@@ -186,6 +186,8 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const [evalTarget, setEvalTarget] = useState<{ userId: string; userName: string } | null>(null)
   const [viewEvalModalOpen, setViewEvalModalOpen] = useState(false)
   const [rejectReasonById, setRejectReasonById] = useState<Record<string, string>>({})
+  const [approvingRegistrationId, setApprovingRegistrationId] = useState<string | null>(null)
+  const [rejectingRegistrationId, setRejectingRegistrationId] = useState<string | null>(null)
 
   const updateAttendance = useTeacherUpdateAttendance(classId)
 
@@ -482,8 +484,16 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           type="button"
                           size="sm"
                           className="flex-1 rounded-xl text-xs font-bold"
-                          disabled={approveRegistration.isPending}
-                          onClick={() => approveRegistration.mutate(r.id)}
+                          disabled={approveRegistration.isPending || rejectRegistration.isPending}
+                          loading={
+                            approvingRegistrationId === r.id && approveRegistration.isPending
+                          }
+                          onClick={() => {
+                            setApprovingRegistrationId(r.id)
+                            approveRegistration.mutate(r.id, {
+                              onSettled: () => setApprovingRegistrationId(null),
+                            })
+                          }}
                         >
                           <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Duyệt
                         </Button>
@@ -492,14 +502,19 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           size="sm"
                           variant="outline"
                           className="flex-1 rounded-xl border-rose-200 text-xs font-bold text-rose-600"
-                          disabled={rejectRegistration.isPending}
+                          disabled={approveRegistration.isPending || rejectRegistration.isPending}
+                          loading={rejectingRegistrationId === r.id && rejectRegistration.isPending}
                           onClick={() => {
                             const reason = (rejectReasonById[r.id] ?? '').trim()
                             if (!reason) {
                               toast.error('Vui lòng nhập lý do từ chối')
                               return
                             }
-                            rejectRegistration.mutate({ registrationId: r.id, reason })
+                            setRejectingRegistrationId(r.id)
+                            rejectRegistration.mutate(
+                              { registrationId: r.id, reason },
+                              { onSettled: () => setRejectingRegistrationId(null) }
+                            )
                           }}
                         >
                           <XCircle className="mr-1.5 h-3.5 w-3.5" /> Từ chối
