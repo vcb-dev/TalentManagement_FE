@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getApiErrorMessage } from '@/lib/axios'
 import { isTransientInfraError, toUserFacingError } from '@/lib/userFacingError'
 import {
@@ -30,6 +30,7 @@ import {
   sendInboxMessage,
   syncInboxFromGraph,
   type CskhAuditRow,
+  type CskhAuditProgress,
   type CskhInboxConversation,
   type CskhInboxMessage,
 } from './api'
@@ -546,6 +547,8 @@ export function AuditMessengerView({
   const scrollRef = useRef<HTMLDivElement>(null)
   const chatScrollSigRef = useRef('')
   const refreshedConvRef = useRef<string | null>(null)
+  const stableAuditsRef = useRef<CskhAuditRow[]>([])
+  const inboxSyncStartedRef = useRef(false)
   const qc = useQueryClient()
 
   useEffect(() => {
@@ -568,11 +571,31 @@ export function AuditMessengerView({
   const runMut = useMutation({
     mutationFn: (opts: { auditDate: string; force?: boolean }) =>
       runAudit({ auditDate: opts.auditDate, force: opts.force }),
-    onSuccess: (res) => {
+    onMutate: async (vars) => {
+      setCompletionNotice(null)
+      setDismissedErrorKey(null)
+      await qc.cancelQueries({ queryKey: ['cskh', 'audits', 'by-day', vars.auditDate] })
+    },
+    onSuccess: (res, vars) => {
+      const cached =
+        qc.getQueryData<CskhAuditRow[]>(['cskh', 'audits', 'by-day', vars.auditDate]) ??
+        stableAuditsRef.current
       setJobId(res.jobId)
       storeJobId(res.jobId)
-      void qc.invalidateQueries({ queryKey: ['cskh', 'audit-progress', res.jobId] })
-      void qc.invalidateQueries({ queryKey: ['cskh', 'audit-token-stats'] })
+      qc.setQueryData<CskhAuditProgress>(['cskh', 'audit-progress', res.jobId], {
+        id: res.jobId,
+        status: 'running',
+        startedAt: new Date().toISOString(),
+        summary: {
+          phase: 'fetch',
+          auditDate: vars.auditDate,
+          fetched: cached.length,
+          scanned: 0,
+          pagesProcessed: 0,
+          pagesTotal: 0,
+        },
+        audits: cached,
+      })
     },
   })
 
@@ -605,7 +628,8 @@ export function AuditMessengerView({
     queryKey: ['cskh', 'audit-progress', jobId],
     queryFn: () => fetchAuditProgress(jobId!),
     enabled: !!jobId,
-    refetchInterval: (query) => (query.state.data?.status === 'running' ? 1000 : false),
+    refetchInterval: (query) => (query.state.data?.status === 'running' ? 1500 : false),
+    placeholderData: keepPreviousData,
     retry: cskhQueryRetry,
     retryDelay: cskhQueryRetryDelay,
   })
@@ -614,6 +638,14 @@ export function AuditMessengerView({
 
   useEffect(() => {
     if (!progress || progress.status === 'running') return
+
+    const persistAuditsForDay = (day: string | undefined) => {
+      if (!day || !progress.audits?.length) return
+      const rows = progress.audits.filter((a) => a.metadata?.auditDate === day)
+      if (rows.length) {
+        qc.setQueryData(['cskh', 'audits', 'by-day', day], rows)
+      }
+    }
 
     if (progress.status === 'done') {
       const count = progress.summary?.auditCount ?? progress.audits?.length ?? 0
@@ -636,16 +668,17 @@ export function AuditMessengerView({
           `Hoàn tất ${count} hội thoại${day ? ` ngày ${formatAuditDateLabel(day)}` : ''}`
         )
       }
+      persistAuditsForDay(day)
       setJobId(null)
       storeJobId(null)
       void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
-      void qc.invalidateQueries({ queryKey: ['cskh', 'audit-day-stats'] })
       void qc.invalidateQueries({ queryKey: ['cskh', 'audit-day-stats'] })
       return
     }
 
     const savedCount = progress.summary?.auditCount ?? progress.audits?.length ?? 0
     if (savedCount > 0) {
+      persistAuditsForDay(progress.summary?.auditDate)
       setJobId(null)
       storeJobId(null)
       void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
@@ -680,7 +713,9 @@ export function AuditMessengerView({
   const { data: recentAudits, isLoading: recentLoading } = useQuery({
     queryKey: ['cskh', 'audits', 'by-day', auditDate],
     queryFn: () => fetchCskhAudits({ auditDate, limit: 2000 }),
-    enabled: Boolean(auditDate) && (!jobId || progressFinished),
+    enabled: Boolean(auditDate),
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
     retry: cskhQueryRetry,
     retryDelay: cskhQueryRetryDelay,
   })
@@ -692,7 +727,9 @@ export function AuditMessengerView({
   }, [auditDate, recentAudits, recentLoading])
 
   const summary = progress?.summary
-  const isRunning = runMut.isPending || progress?.status === 'running'
+  const isAuditActive =
+    runMut.isPending || progress?.status === 'running' || (!!jobId && !progressFinished)
+  const isRunning = isAuditActive
   const isPausing = Boolean(summary?.pauseRequested) || pauseMut.isPending
   const isFailed = progress?.status === 'failed'
   const auditErrorMessage =
@@ -702,15 +739,28 @@ export function AuditMessengerView({
         (runMut.error ? getApiErrorMessage(runMut.error) : '')
     ) || 'Không thể chạy audit. Vui lòng thử lại sau.'
   const auditCount = summary?.auditCount ?? progress?.audits?.length ?? 0
-  const isFetchPhase = isRunning && summary?.phase === 'fetch'
-  const isAuditPhase = isRunning && summary?.phase === 'audit'
-  const displayAudits =
-    jobId && !progressFinished
-      ? (progress?.audits ?? []).filter((a) => !auditDate || a.metadata?.auditDate === auditDate)
-      : (recentAudits ?? progress?.audits ?? []).filter(
-          (a) => !auditDate || a.metadata?.auditDate === auditDate
-        )
-  const sortedAudits = [...displayAudits].sort((a, b) => a.score - b.score)
+  const isFetchPhase = isAuditActive && summary?.phase === 'fetch'
+  const isAuditPhase = isAuditActive && summary?.phase === 'audit'
+
+  const displayAudits = useMemo(() => {
+    const filterDay = (rows: CskhAuditRow[]) =>
+      rows.filter((a) => !auditDate || a.metadata?.auditDate === auditDate)
+    const fromProgress = jobId && progress?.audits?.length ? filterDay(progress.audits) : []
+    const fromRecent = recentAudits?.length ? filterDay(recentAudits) : []
+    if (isAuditActive && fromProgress.length >= fromRecent.length) return fromProgress
+    if (fromRecent.length) return fromRecent
+    if (fromProgress.length) return fromProgress
+    return filterDay(stableAuditsRef.current)
+  }, [auditDate, isAuditActive, jobId, progress?.audits, recentAudits])
+
+  useEffect(() => {
+    if (displayAudits.length) stableAuditsRef.current = displayAudits
+  }, [displayAudits])
+
+  const sortedAudits = useMemo(
+    () => [...displayAudits].sort((a, b) => a.score - b.score),
+    [displayAudits]
+  )
   const filteredAudits = useMemo(() => {
     const q = sidebarSearch.trim().toLowerCase()
     if (!q) return sortedAudits
@@ -729,8 +779,11 @@ export function AuditMessengerView({
     null
 
   const showTransientLoading =
-    (progressError && progressFetching && isTransientInfraError(auditErrorMessage)) ||
-    (recentLoading && !sortedAudits.length && !isRunning)
+    (!isAuditActive &&
+      progressError &&
+      progressFetching &&
+      isTransientInfraError(auditErrorMessage)) ||
+    (recentLoading && !sortedAudits.length && !isAuditActive)
 
   const errorKey = `${progress?.id ?? 'run'}-${auditErrorMessage}`
   const showAuditError =
@@ -767,7 +820,9 @@ export function AuditMessengerView({
         ? `${summary.processed ?? 0}/${summary.total} hội thoại`
         : `Audit ${auditCount}${summary?.total ? `/${summary.total}` : ''}`
       : isRunning
-        ? `Audit ${auditDayLabel}…`
+        ? runMut.isPending && !summary
+          ? 'Đang khởi động…'
+          : `Audit ${auditDayLabel}…`
         : ''
   const canRun = !!auditDate && !isRunning
   const canResumeAudit =
@@ -801,15 +856,17 @@ export function AuditMessengerView({
     refetchOnWindowFocus: false,
   })
 
-  // Đồng bộ inbox nền — trì hoãn để không chen lấn lúc trang vừa load
+  // Đồng bộ inbox nền — trì hoãn, bỏ qua khi đang audit để tránh lag UI
   useEffect(() => {
+    if (isAuditActive || inboxSyncStartedRef.current) return
+    inboxSyncStartedRef.current = true
     const timer = window.setTimeout(() => {
       void syncInboxFromGraph()
         .then(() => qc.invalidateQueries({ queryKey: ['cskh', 'inbox'] }))
         .catch(() => {})
     }, 2500)
     return () => window.clearTimeout(timer)
-  }, [qc])
+  }, [qc, isAuditActive])
 
   const inboxConv = useMemo(
     () => (selected ? matchInboxConversation(selected, inboxQuery.data ?? []) : null),
@@ -961,7 +1018,11 @@ export function AuditMessengerView({
             ) : (
               <Play className="h-4 w-4" />
             )}
-            {auditDate ? runButtonLabel : 'Chọn ngày'}
+            {runMut.isPending && !jobId
+              ? 'Đang khởi động…'
+              : auditDate
+                ? runButtonLabel
+                : 'Chọn ngày'}
           </button>
           {isRunning && (
             <>
@@ -1046,9 +1107,9 @@ export function AuditMessengerView({
         />
       )}
 
-      {recentLoading && !sortedAudits.length && !isRunning && !showTransientLoading ? (
+      {recentLoading && !sortedAudits.length && !isAuditActive && !showTransientLoading ? (
         <CskhLoading label="Đang tải kết quả audit…" />
-      ) : isRunning && !sortedAudits.length ? (
+      ) : isAuditActive && !sortedAudits.length ? (
         <CskhAuditProgressPanel auditDayLabel={auditDayLabel} summary={summary} />
       ) : !sortedAudits.length ? (
         <CskhEmptyState
@@ -1058,7 +1119,9 @@ export function AuditMessengerView({
         />
       ) : (
         <>
-          {isRunning && <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />}
+          {isAuditActive && (
+            <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
+          )}
           <MessengerWorkspace
             sidebar={
               <>
