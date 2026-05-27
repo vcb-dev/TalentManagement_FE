@@ -6,6 +6,7 @@ export type AssistantChatMessage = {
   sources?: AssistantSource[]
   reportDraft?: AssistantReportDraft
   structuredReport?: AssistantStructuredReport
+  pending?: boolean
 }
 
 export type AssistantSource = {

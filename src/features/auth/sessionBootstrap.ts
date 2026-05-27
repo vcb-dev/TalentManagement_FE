@@ -1,4 +1,5 @@
 import { authApi } from '@/features/auth/api'
+import { loadSessionToken } from '@/features/auth/sessionTokenStorage'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -9,14 +10,19 @@ export async function ensureSessionFromCookie(): Promise<void> {
   if (isMockApiEnabled()) return
 
   const { user, accessToken } = useAuthStore.getState()
-  if (user || accessToken) return
+  if (user) return
+
+  const storedToken = accessToken ?? loadSessionToken()
+  if (storedToken && !accessToken) {
+    useAuthStore.getState().setAccessToken(storedToken)
+  }
 
   if (!sessionBootstrapInflight) {
     sessionBootstrapInflight = authApi
       .me()
       .then((d) => {
         if (d.user) {
-          useAuthStore.getState().setSession(d.user, d.accessToken ?? null)
+          useAuthStore.getState().setSession(d.user, d.accessToken ?? storedToken ?? null)
         } else {
           useAuthStore.getState().logout()
         }

@@ -317,10 +317,11 @@ function readKpiPageContext() {
 }
 
 const SUGGESTIONS = [
-  'Đăng nhập hệ thống như thế nào?',
-  'Phân tích bài Được việc của tôi',
-  'Đặt phòng tầng 5 lúc 9h sáng',
+  'Menu nào tôi được dùng?',
+  'Lớp học của tôi là gì?',
   'Điểm thi lớp của tôi?',
+  'Hướng dẫn Chia lớp (Manager)',
+  'Đặt phòng tầng 5 lúc 9h sáng',
 ]
 
 export function AssistantWidget() {
@@ -333,7 +334,7 @@ export function AssistantWidget() {
     {
       role: 'assistant',
       content:
-        'Xin chào! Mình là trợ lý Talent Management. Hỏi mình về đăng nhập, thi, lộ trình học, menu theo quyền — mình chỉ hỗ trợ trong phạm vi HRM nhé.',
+        'Xin chào! Mình là trợ lý Talent Management. Hỏi mình về menu trên app, thi cử, lộ trình học, đặt phòng, quản lý lớp — mình trả lời theo **tên mục trên màn hình** và dữ liệu thật của bạn nhé.',
     },
   ])
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -360,8 +361,16 @@ export function AssistantWidget() {
       if (!trimmed || loading) return
 
       const userMsg: AssistantChatMessage = { role: 'user', content: trimmed }
-      const history = messages.filter((m) => m.role === 'user' || m.role === 'assistant')
-      setMessages((prev) => [...prev, userMsg])
+      const history = messages.filter(
+        (m) => (m.role === 'user' || m.role === 'assistant') && !m.pending
+      )
+      const pendingAssistant: AssistantChatMessage = {
+        role: 'assistant',
+        content: '',
+        pending: true,
+      }
+
+      setMessages((prev) => [...prev, userMsg, pendingAssistant])
       setInput('')
       setLoading(true)
       scrollToBottom()
@@ -369,7 +378,7 @@ export function AssistantWidget() {
       try {
         const res = await postAssistantChat({
           message: trimmed,
-          history: history.slice(-16),
+          history: history.slice(-10),
           bookingDraft,
           pageContext: {
             path: window.location.pathname + window.location.search,
@@ -377,25 +386,37 @@ export function AssistantWidget() {
           },
         })
         setBookingDraft(res.bookingDraft ?? null)
-        setMessages((prev) => [
-          ...prev,
-          {
+        setMessages((prev) => {
+          const next = [...prev]
+          const pendingIdx = next.findIndex((m) => m.pending)
+          const assistantMsg: AssistantChatMessage = {
             role: 'assistant',
             content: res.reply,
             sources: res.sources,
             reportDraft: res.reportDraft,
             structuredReport: res.structuredReport,
-          },
-        ])
+          }
+          if (pendingIdx >= 0) {
+            next[pendingIdx] = assistantMsg
+            return next
+          }
+          return [...next, assistantMsg]
+        })
       } catch (err) {
         toast.error(getApiErrorMessage(err))
-        setMessages((prev) => [
-          ...prev,
-          {
+        setMessages((prev) => {
+          const next = [...prev]
+          const pendingIdx = next.findIndex((m) => m.pending)
+          const errMsg: AssistantChatMessage = {
             role: 'assistant',
             content: 'Đã có lỗi khi gọi trợ lý. Thử lại sau hoặc liên hệ IT.',
-          },
-        ])
+          }
+          if (pendingIdx >= 0) {
+            next[pendingIdx] = errMsg
+            return next
+          }
+          return [...next, errMsg]
+        })
       } finally {
         setLoading(false)
         scrollToBottom()
@@ -476,29 +497,32 @@ export function AssistantWidget() {
                     : 'mr-auto max-w-[min(100%,980px)] bg-background text-foreground shadow-sm ring-1 ring-border/70'
                 )}
               >
-                <div className="space-y-1">{renderAssistantMarkdown(m.content)}</div>
-                {m.structuredReport && (
-                  <AssistantStructuredReportView report={m.structuredReport} />
-                )}
-                {m.reportDraft && !m.structuredReport && (
-                  <div className="mt-2 rounded-lg border border-border bg-background/60 p-2 text-[11px] text-muted-foreground">
-                    Draft báo cáo {m.reportDraft.teamName} T{m.reportDraft.month}/
-                    {m.reportDraft.year} từ {m.reportDraft.memberReportCount} báo cáo member.
-                    {m.reportDraft.warnings.length > 0 && (
-                      <div className="mt-1">
-                        Có {m.reportDraft.warnings.length} cảnh báo khi đọc file upload.
+                {m.pending ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Đang trả lời…</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-1">{renderAssistantMarkdown(m.content)}</div>
+                    {m.structuredReport && (
+                      <AssistantStructuredReportView report={m.structuredReport} />
+                    )}
+                    {m.reportDraft && !m.structuredReport && (
+                      <div className="mt-2 rounded-lg border border-border bg-background/60 p-2 text-[11px] text-muted-foreground">
+                        Draft báo cáo {m.reportDraft.teamName} T{m.reportDraft.month}/
+                        {m.reportDraft.year} từ {m.reportDraft.memberReportCount} báo cáo member.
+                        {m.reportDraft.warnings.length > 0 && (
+                          <div className="mt-1">
+                            Có {m.reportDraft.warnings.length} cảnh báo khi đọc file upload.
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
             ))}
-            {loading && (
-              <div className="mr-auto flex items-center gap-2 rounded-2xl bg-muted px-3 py-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Đang trả lời…
-              </div>
-            )}
             <div ref={bottomRef} className="h-px shrink-0" aria-hidden />
           </div>
 

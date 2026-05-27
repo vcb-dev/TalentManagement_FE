@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import { Bell, BellOff, ChevronDown, LogOut, UserCircle } from 'lucide-react'
 import { useLogout } from '@/features/auth/hooks'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,9 @@ export function AppShell({ children, title }: AppShellProps) {
   const roleLabel = user ? formatRoleLabelsVi(user) : '—'
   const brandHomeTo = user ? defaultEntryPathFromSession(user) : '/dashboard'
   const brandHomeSearch = brandHomeTo === '/hr-admin' ? { page: 1, pageSize: 15 } : undefined
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  /** CSKH Audit — cần full width cho 3 cột (sidebar app thu/mở vẫn fit). */
+  const wideMain = pathname.startsWith('/cskh-quality')
   /** Không dùng sidebar — điều hướng bằng header ngang. */
   const compactNavNoSidebar =
     user?.role === 'MEMBER' ||
@@ -192,10 +195,18 @@ export function AppShell({ children, title }: AppShellProps) {
             </div>
           )}
         </header>
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-5 md:p-6">
+        <main
+          className={cn(
+            'min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain',
+            wideMain ? 'p-3 sm:p-4' : 'p-5 md:p-6'
+          )}
+        >
           <div
-            key={window.location.pathname}
-            className="mx-auto w-full max-w-[1400px] animate-page-entrance"
+            key={pathname}
+            className={cn(
+              'mx-auto w-full animate-page-entrance',
+              wideMain ? 'max-w-none' : 'max-w-[1400px]'
+            )}
           >
             {children}
           </div>

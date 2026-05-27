@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import type { ApiError } from '@/types/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
+import { toUserFacingError } from '@/lib/userFacingError'
 import { useAuthStore } from '@/stores/auth.store'
 
 export const apiClient = axios.create({
@@ -72,11 +73,11 @@ export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as ApiError | Record<string, unknown> | undefined
     const raw = data && typeof data === 'object' ? nestMessage(data) : undefined
-    if (raw) return raw
+    if (raw) return toUserFacingError(raw)
     const legacy = data as ApiError | undefined
-    if (legacy?.message) return legacy.message
-    if (error.message) return error.message
+    if (legacy?.message) return toUserFacingError(legacy.message)
+    if (error.message) return toUserFacingError(error.message)
   }
-  if (error instanceof Error) return error.message
+  if (error instanceof Error) return toUserFacingError(error.message)
   return 'Đã có lỗi xảy ra'
 }

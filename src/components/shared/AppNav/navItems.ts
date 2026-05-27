@@ -201,7 +201,7 @@ const BOD_ITEMS: AppNavItem[] = [
   },
 ]
 
-/** CSKH Quality — nhúng dashboard scraper trong app (`/cskh-quality`). */
+/** CSKH Quality — Facebook Messenger Monitor/Audit (`/cskh-quality`). */
 export const CSKH_QUALITY_ITEM: AppNavItem = {
   to: '/cskh-quality',
   label: 'CSKH Quality',

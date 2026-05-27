@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AboutUsRouteImport } from './routes/about-us'
 import { Route as ProtectedRouteRouteImport } from './routes/_protected/route'
 import { Route as AuthRouteRouteImport } from './routes/_auth/route'
@@ -68,6 +70,16 @@ import { Route as ProtectedExamExamIdGradeRouteImport } from './routes/_protecte
 import { Route as ProtectedExamExamIdClassifyRouteImport } from './routes/_protected/exam/$examId/classify'
 import { Route as ProtectedManagerGradeClassClassIdByQuestionRouteImport } from './routes/_protected/manager/grade-class/$classId/by-question'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutUsRoute = AboutUsRouteImport.update({
   id: '/about-us',
   path: '/about-us',
@@ -395,6 +407,8 @@ const ProtectedManagerGradeClassClassIdByQuestionRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about-us': typeof AboutUsRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/login': typeof AuthLoginRoute
   '/cskh-quality': typeof ProtectedCskhQualityRoute
   '/dashboard': typeof ProtectedDashboardRoute
@@ -453,6 +467,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about-us': typeof AboutUsRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/login': typeof AuthLoginRoute
   '/cskh-quality': typeof ProtectedCskhQualityRoute
   '/dashboard': typeof ProtectedDashboardRoute
@@ -514,6 +530,8 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteRouteWithChildren
   '/_protected': typeof ProtectedRouteRouteWithChildren
   '/about-us': typeof AboutUsRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/_auth/login': typeof AuthLoginRoute
   '/_protected/cskh-quality': typeof ProtectedCskhQualityRoute
   '/_protected/dashboard': typeof ProtectedDashboardRoute
@@ -574,6 +592,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about-us'
+    | '/privacy'
+    | '/terms'
     | '/login'
     | '/cskh-quality'
     | '/dashboard'
@@ -632,6 +652,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about-us'
+    | '/privacy'
+    | '/terms'
     | '/login'
     | '/cskh-quality'
     | '/dashboard'
@@ -692,6 +714,8 @@ export interface FileRouteTypes {
     | '/_auth'
     | '/_protected'
     | '/about-us'
+    | '/privacy'
+    | '/terms'
     | '/_auth/login'
     | '/_protected/cskh-quality'
     | '/_protected/dashboard'
@@ -753,10 +777,26 @@ export interface RootRouteChildren {
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
   AboutUsRoute: typeof AboutUsRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about-us': {
       id: '/about-us'
       path: '/about-us'
@@ -1321,6 +1361,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRouteRoute: AuthRouteRouteWithChildren,
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
   AboutUsRoute: AboutUsRoute,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
