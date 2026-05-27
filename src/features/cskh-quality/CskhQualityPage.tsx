@@ -310,11 +310,13 @@ export function CskhQualityPage() {
         }))}
       />
 
-      <CskhGlassPanel className={tab === 'audit' ? 'flex flex-col' : ''}>
+      <CskhGlassPanel className={tab === 'audit' ? 'flex min-h-0 flex-col overflow-hidden' : ''}>
         <div className={tab === 'config' ? '' : 'hidden'}>
           <ConfigTab />
         </div>
-        <div className={tab === 'audit' ? 'flex flex-col' : 'hidden'}>
+        <div
+          className={tab === 'audit' ? 'flex min-h-0 min-w-0 flex-col overflow-hidden' : 'hidden'}
+        >
           <AuditMessengerView jobId={auditJobId} setJobId={setAuditJobId} />
         </div>
       </CskhGlassPanel>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getApiErrorMessage } from '@/lib/axios'
 import { isTransientInfraError, toUserFacingError } from '@/lib/userFacingError'
-import { Loader2, Pause, Play, MessageCircle, ClipboardCheck, Send } from 'lucide-react'
+import { Loader2, Pause, Play, MessageCircle, ClipboardCheck, Send, ArrowLeft } from 'lucide-react'
 import {
   cancelAuditJob,
   pauseAuditJob,
@@ -58,6 +58,7 @@ import {
   CskhNoticeBanner,
   CskhToolbar,
   MessengerWorkspace,
+  type MessengerWorkspacePane,
 } from './cskhUi'
 import { useCskhInboxStream } from './useCskhInboxStream'
 
@@ -399,6 +400,7 @@ export function AuditMessengerView({
   const [sidebarSearch, setSidebarSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState<'all' | 'ad' | 'organic'>('all')
   const [chatTab, setChatTab] = useState<'chat' | 'timeline' | 'analysis'>('chat')
+  const [workspacePane, setWorkspacePane] = useState<MessengerWorkspacePane>('list')
   const [completionNotice, setCompletionNotice] = useState<string | null>(null)
   const [dismissedErrorKey, setDismissedErrorKey] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -803,7 +805,11 @@ export function AuditMessengerView({
     )
   }, [filteredAudits, inboxQuery.data])
 
-  const handleSelectAudit = useCallback((id: string) => setSelectedId(id), [])
+  const handleSelectAudit = useCallback((id: string) => {
+    setSelectedId(id)
+    setWorkspacePane('chat')
+    setChatTab('chat')
+  }, [])
 
   const selectedAuditDate = selected?.metadata?.auditDate ?? null
 
@@ -817,8 +823,8 @@ export function AuditMessengerView({
   })
 
   const intentQuery = useQuery({
-    queryKey: ['cskh', 'inbox', 'intent', inboxConv?.id],
-    queryFn: () => fetchCustomerIntent(inboxConv!.id),
+    queryKey: ['cskh', 'inbox', 'intent', inboxConv?.id, selected?.id],
+    queryFn: () => fetchCustomerIntent(inboxConv!.id, selected?.id),
     enabled: Boolean(inboxConv?.id),
     staleTime: 30_000,
   })
@@ -908,7 +914,7 @@ export function AuditMessengerView({
     : 0
 
   return (
-    <div className="flex flex-col">
+    <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
       <CskhToolbar>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -1074,7 +1080,7 @@ export function AuditMessengerView({
           description="Chọn ngày ở trên và bấm Chạy audit để AI phân tích hội thoại CSKH."
         />
       ) : (
-        <div className="flex flex-col">
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
           {isAuditPhase && (
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}
@@ -1090,6 +1096,7 @@ export function AuditMessengerView({
             />
           ) : null}
           <MessengerWorkspace
+            pane={workspacePane}
             sidebar={
               <AuditConversationSidebar
                 rows={sortedAudits}
@@ -1115,6 +1122,16 @@ export function AuditMessengerView({
                     pictureUrl={resolveCustomerPicture(selected, inboxConv)}
                     pageId={selected.metadata?.pageId ?? inboxConv?.pageId}
                     psid={selected.metadata?.participantPsid ?? inboxConv?.participantPsid}
+                    leading={
+                      <button
+                        type="button"
+                        onClick={() => setWorkspacePane('list')}
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 xl:hidden"
+                        aria-label="Danh sách hội thoại"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </button>
+                    }
                     badge={
                       <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                         <CskhAdSourceBadge
@@ -1141,9 +1158,12 @@ export function AuditMessengerView({
                       <button
                         key={t.id}
                         type="button"
-                        onClick={() => setChatTab(t.id)}
+                        onClick={() => {
+                          setChatTab(t.id)
+                          if (t.id === 'analysis') setWorkspacePane('analysis')
+                        }}
                         className={`relative px-3 py-2.5 text-xs font-semibold ${
-                          'mobileOnly' in t && t.mobileOnly ? 'lg:hidden' : ''
+                          'mobileOnly' in t && t.mobileOnly ? 'xl:hidden' : ''
                         } ${
                           chatTab === t.id
                             ? 'text-violet-700'
@@ -1158,7 +1178,7 @@ export function AuditMessengerView({
                     ))}
                   </div>
                   {chatTab === 'analysis' ? (
-                    <div className="min-h-0 flex-1 overflow-hidden lg:hidden">
+                    <div className="min-h-0 flex-1 overflow-hidden xl:hidden">
                       <AuditAnalysisPanel
                         row={selected}
                         inbox={inboxConv}
@@ -1172,7 +1192,7 @@ export function AuditMessengerView({
                   ) : null}
                   <div
                     className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
-                      chatTab === 'analysis' ? 'hidden lg:flex' : ''
+                      chatTab === 'analysis' ? 'hidden xl:flex' : ''
                     }`}
                   >
                     <div
@@ -1333,15 +1353,30 @@ export function AuditMessengerView({
             }
             aside={
               selected ? (
-                <AuditAnalysisPanel
-                  row={selected}
-                  inbox={inboxConv}
-                  transcript={transcript}
-                  auditDayLabel={selectedAuditDayLabel}
-                  onUseReply={setDraft}
-                  customerIntent={intentQuery.data ?? null}
-                  intentLoading={intentQuery.isFetching && !intentQuery.data}
-                />
+                <div className="flex h-full min-h-0 flex-col overflow-hidden">
+                  <div className="flex shrink-0 items-center gap-2 border-b border-slate-200/80 bg-white px-3 py-2 xl:hidden">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWorkspacePane('chat')
+                        setChatTab('chat')
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Hội thoại
+                    </button>
+                  </div>
+                  <AuditAnalysisPanel
+                    row={selected}
+                    inbox={inboxConv}
+                    transcript={transcript}
+                    auditDayLabel={selectedAuditDayLabel}
+                    onUseReply={setDraft}
+                    customerIntent={intentQuery.data ?? null}
+                    intentLoading={intentQuery.isFetching && !intentQuery.data}
+                  />
+                </div>
               ) : undefined
             }
           />

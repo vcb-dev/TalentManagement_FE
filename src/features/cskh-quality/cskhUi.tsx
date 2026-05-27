@@ -91,8 +91,8 @@ export function CskhPageAvatar({
 
 export function CskhPageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative -m-5 flex flex-col md:-m-6">
-      <div className="flex flex-col gap-3 px-1 py-0.5 sm:px-2">{children}</div>
+    <div className="relative flex min-w-0 flex-col">
+      <div className="flex min-w-0 flex-col gap-2 sm:gap-3">{children}</div>
     </div>
   )
 }
@@ -411,33 +411,62 @@ export function CskhToolbar({ children }: { children: ReactNode }) {
   )
 }
 
+export type MessengerWorkspacePane = 'list' | 'chat' | 'analysis'
+
 export function MessengerWorkspace({
   sidebar,
   main,
   aside,
+  pane = 'chat',
   className,
 }: {
   sidebar: ReactNode
   main: ReactNode
   aside?: ReactNode
+  /** Dưới xl: chỉ hiện một cột; từ xl: luôn 3 cột. */
+  pane?: MessengerWorkspacePane
   className?: string
 }) {
+  const showList = pane === 'list'
+  const showChat = pane === 'chat'
+  const showAnalysis = pane === 'analysis'
+
   return (
     <div
       className={cn(
-        'flex h-[min(720px,calc(100dvh-17rem))] min-h-[500px] flex-col overflow-hidden',
+        'flex min-h-0 flex-col overflow-hidden',
+        'h-[min(680px,calc(100dvh-15.5rem))] min-h-[360px]',
+        'sm:h-[min(720px,calc(100dvh-14.5rem))] sm:min-h-[420px]',
+        'xl:h-[min(860px,calc(100dvh-13rem))] xl:min-h-[480px]',
         className
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row lg:items-stretch">
-        <aside className="flex max-h-[240px] min-h-0 shrink-0 flex-col overflow-hidden border-b border-slate-200/80 bg-white sm:max-h-[280px] lg:h-full lg:max-h-none lg:w-[280px] lg:border-b-0 lg:border-r xl:w-[300px]">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden xl:flex-row xl:items-stretch">
+        <aside
+          className={cn(
+            'flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-slate-200/80 bg-white',
+            'xl:h-full xl:w-[min(240px,22vw)] xl:min-w-[200px] xl:max-w-[260px] xl:border-b-0 xl:border-r',
+            showList ? 'min-h-0 flex-1 xl:flex-none' : 'hidden xl:flex'
+          )}
+        >
           {sidebar}
         </aside>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#f0f2f5]">
+        <div
+          className={cn(
+            'flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#f0f2f5]',
+            showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-[1.05]'
+          )}
+        >
           {main}
         </div>
         {aside ? (
-          <aside className="hidden h-full min-h-0 min-w-[400px] flex-[1.15] flex-col overflow-hidden border-l border-slate-200/80 bg-white lg:flex xl:min-w-[440px]">
+          <aside
+            className={cn(
+              'flex min-h-0 min-w-0 flex-col overflow-hidden border-slate-200/80 bg-white',
+              'border-t xl:h-full xl:min-w-0 xl:flex-[0.95] xl:basis-[34%] xl:border-l xl:border-t-0 xl:max-w-[min(440px,38vw)]',
+              showAnalysis ? 'min-h-0 flex-1 xl:flex-none xl:flex' : 'hidden xl:flex'
+            )}
+          >
             {aside}
           </aside>
         ) : null}
@@ -935,6 +964,7 @@ export function ChatThreadHeader({
   pictureUrl,
   pageId,
   psid,
+  leading,
 }: {
   name: string
   subtitle: string
@@ -942,9 +972,11 @@ export function ChatThreadHeader({
   pictureUrl?: string | null
   pageId?: string | null
   psid?: string | null
+  leading?: ReactNode
 }) {
   return (
-    <header className="flex items-center gap-3 border-b border-white/50 bg-white/75 px-4 py-3.5 backdrop-blur-md">
+    <header className="flex items-center gap-2 border-b border-white/50 bg-white/75 px-3 py-3 backdrop-blur-md sm:gap-3 sm:px-4 sm:py-3.5">
+      {leading}
       <CskhPageAvatar
         name={name}
         pictureUrl={pictureUrl}

@@ -147,10 +147,27 @@ export interface AuditComparisonStats {
   daySampleSize: number
 }
 
+export interface CskhCustomerInterestedProduct {
+  productId: number
+  variantId: number
+  name: string
+  variantTitle: string
+  price: number
+  priceLabel: string
+  compareAtPrice: number | null
+  sku: string | null
+  imageUrl: string | null
+  inStock: boolean
+  matchReason: string
+}
+
 export interface CskhCustomerIntent {
   summary: string
   intentLabel: string
   topics: string[]
+  productMentions?: string[]
+  products?: CskhCustomerInterestedProduct[]
+  sapoConfigured?: boolean
   urgency: 'low' | 'normal' | 'high'
   suggestedFocus: string
   analyzedAt: string
@@ -308,14 +325,22 @@ export async function fetchAuditComparisonStats(
   return data
 }
 
-export async function fetchCustomerIntent(conversationId: string): Promise<CskhCustomerIntent> {
+export async function fetchCustomerIntent(
+  conversationId: string,
+  auditId?: string
+): Promise<CskhCustomerIntent> {
   const { data } = await apiClient.get<CskhCustomerIntent>(
-    `/cskh/inbox/conversations/${conversationId}/intent`
+    `/cskh/inbox/conversations/${conversationId}/intent`,
+    { params: auditId ? { auditId } : undefined }
   )
   return {
     summary: data.summary,
     intentLabel: data.intentLabel ?? (data as { intent_label?: string }).intent_label ?? 'Chưa rõ',
     topics: data.topics ?? [],
+    productMentions:
+      data.productMentions ?? (data as { product_mentions?: string[] }).product_mentions ?? [],
+    products: data.products ?? [],
+    sapoConfigured: data.sapoConfigured ?? (data as { sapo_configured?: boolean }).sapo_configured,
     urgency: data.urgency ?? 'normal',
     suggestedFocus:
       data.suggestedFocus ?? (data as { suggested_focus?: string }).suggested_focus ?? '',

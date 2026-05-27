@@ -1,6 +1,6 @@
 import { memo, useMemo, useState, type ReactNode } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts'
-import { Filter, Loader2, MessageSquare, Sparkles, Star, Tag, Zap } from 'lucide-react'
+import { Filter, Loader2, MessageSquare, Sparkles, Star, Tag } from 'lucide-react'
 import {
   ChartContainer,
   ChartTooltip,
@@ -59,7 +59,12 @@ function TabBar({
   className?: string
 }) {
   return (
-    <div className={cn('flex shrink-0 flex-wrap gap-0.5 border-b border-slate-200/80', className)}>
+    <div
+      className={cn(
+        'flex shrink-0 gap-0.5 overflow-x-auto border-b border-slate-200/80 [scrollbar-width:thin]',
+        className
+      )}
+    >
       {tabs.map((tab) => {
         const isActive = active === tab.id
         return (
@@ -140,9 +145,9 @@ export function AuditSummaryHeader({
   const daySample = comparison?.daySampleSize ?? allAudits.length
 
   return (
-    <div className="shrink-0 overflow-x-auto border-b border-slate-200/80 bg-slate-50/50 lg:overflow-visible">
-      <div className="flex gap-3 p-3 sm:gap-4 sm:p-4 lg:grid lg:min-w-0 lg:grid-cols-4 lg:items-stretch lg:overflow-visible">
-        <SummaryCard className="min-w-[260px] shrink-0 lg:min-w-0">
+    <div className="shrink-0 border-b border-slate-200/80 bg-slate-50/50">
+      <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:gap-4 sm:p-4 xl:grid-cols-4 xl:items-stretch">
+        <SummaryCard className="min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -216,7 +221,7 @@ export function AuditSummaryHeader({
           ) : null}
         </SummaryCard>
 
-        <SummaryCard className="flex min-w-[200px] shrink-0 flex-col items-center justify-center text-center lg:min-w-0">
+        <SummaryCard className="flex min-w-0 flex-col items-center justify-center text-center">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
             Điểm chất lượng tổng
           </p>
@@ -246,11 +251,11 @@ export function AuditSummaryHeader({
           </p>
         </SummaryCard>
 
-        <SummaryCard className="min-w-[300px] shrink-0 lg:min-w-0">
+        <SummaryCard className="min-w-0 sm:col-span-2 xl:col-span-1">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
             Điểm theo tiêu chí
           </p>
-          <div className="grid grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-2.5">
             {criteria.map((c) => (
               <div
                 key={c.id}
@@ -275,7 +280,7 @@ export function AuditSummaryHeader({
           </div>
         </SummaryCard>
 
-        <SummaryCard className="min-w-[260px] shrink-0 lg:min-w-0">
+        <SummaryCard className="min-w-0 sm:col-span-2 xl:col-span-1">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
             So sánh trung bình
           </p>
@@ -518,7 +523,7 @@ const urgencyTone: Record<CskhCustomerIntent['urgency'], string> = {
   high: 'bg-rose-100 text-rose-700',
 }
 
-export function CustomerIntentPanel({
+function CustomerIntentTabContent({
   intent,
   loading,
 }: {
@@ -527,61 +532,108 @@ export function CustomerIntentPanel({
 }) {
   if (loading) {
     return (
-      <div className="shrink-0 border-b border-violet-100 bg-violet-50/60 px-5 py-4">
-        <div className="flex items-center gap-2.5 text-base text-violet-700">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Đang phân tích tin nhắn mới…
-        </div>
+      <div className="flex items-center gap-2.5 py-8 text-base text-violet-700">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        Đang phân tích toàn bộ hội thoại…
       </div>
     )
   }
-  if (!intent) return null
+  if (!intent) {
+    return (
+      <p className="py-8 text-base leading-relaxed text-slate-500">
+        Liên kết inbox để AI phân tích khách đang hỏi gì dựa trên cuộc hội thoại.
+      </p>
+    )
+  }
 
   return (
-    <div className="shrink-0 border-b border-violet-100 bg-gradient-to-r from-violet-50/90 to-indigo-50/60 px-5 py-4">
-      <div className="flex items-start gap-3">
-        <Zap className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
-        <div className="min-w-0 flex-1 space-y-2.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xs font-bold uppercase tracking-wide text-violet-700">
-              Khách đang hỏi
-            </p>
-            <span className="rounded-full bg-violet-600 px-2.5 py-1 text-xs font-bold text-white">
-              {intent.intentLabel}
-            </span>
-            <span
-              className={cn(
-                'rounded-full px-2.5 py-1 text-xs font-semibold uppercase',
-                urgencyTone[intent.urgency] ?? urgencyTone.normal
-              )}
-            >
-              {intent.urgency === 'high'
-                ? 'Gấp'
-                : intent.urgency === 'low'
-                  ? 'Thấp'
-                  : 'Bình thường'}
-            </span>
-          </div>
-          <p className="text-base leading-relaxed text-slate-700">{intent.summary}</p>
-          {intent.topics.length ? (
-            <div className="flex flex-wrap gap-2">
-              {intent.topics.map((topic) => (
-                <span
-                  key={topic}
-                  className="rounded-full border border-violet-200 bg-white px-3 py-1 text-sm font-medium text-violet-700"
-                >
-                  {topic}
-                </span>
-              ))}
-            </div>
-          ) : null}
-          {intent.suggestedFocus ? (
-            <p className="text-sm leading-relaxed text-slate-500">
-              <span className="font-semibold text-slate-600">Gợi ý:</span> {intent.suggestedFocus}
-            </p>
-          ) : null}
-        </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-violet-600 px-3 py-1 text-sm font-bold text-white">
+          {intent.intentLabel}
+        </span>
+        <span
+          className={cn(
+            'rounded-full px-3 py-1 text-sm font-semibold uppercase',
+            urgencyTone[intent.urgency] ?? urgencyTone.normal
+          )}
+        >
+          {intent.urgency === 'high' ? 'Gấp' : intent.urgency === 'low' ? 'Thấp' : 'Bình thường'}
+        </span>
       </div>
+      <p className="text-base leading-relaxed text-slate-700">{intent.summary}</p>
+      {intent.topics.length ? (
+        <div>
+          <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
+            Chủ đề quan tâm
+          </p>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {intent.topics.map((topic) => (
+              <span
+                key={topic}
+                className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700"
+              >
+                {topic}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {intent.products?.length ? (
+        <div>
+          <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
+            Sản phẩm khách quan tâm (Sapo)
+          </p>
+          <ul className="mt-3 space-y-3">
+            {intent.products.map((p) => (
+              <li
+                key={`${p.productId}-${p.variantId}`}
+                className="flex gap-3 rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm"
+              >
+                {p.imageUrl ? (
+                  <img
+                    src={p.imageUrl}
+                    alt=""
+                    className="h-16 w-16 shrink-0 rounded-lg border border-slate-100 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
+                    SP
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold leading-snug text-slate-800">{p.name}</p>
+                  <p className="mt-1 text-lg font-bold tabular-nums text-violet-700">
+                    {p.priceLabel}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    {p.sku ? <span>SKU: {p.sku}</span> : null}
+                    <span>{p.inStock ? 'Còn hàng' : 'Hết hàng'}</span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : intent.sapoConfigured === false ? (
+        <p className="text-sm text-slate-400">
+          Chưa cấu hình Sapo API — thêm `SAPO_STORE` và `SAPO_ACCESS_TOKEN` trên BE để hiển thị SP
+          kèm giá.
+        </p>
+      ) : intent.productMentions?.length ? (
+        <p className="text-sm text-slate-500">
+          Khách nhắc: {intent.productMentions.join(', ')} — chưa khớp SP trong catalog Sapo.
+        </p>
+      ) : null}
+      {intent.suggestedFocus ? (
+        <section className="rounded-xl border border-violet-100 bg-violet-50/50 p-4">
+          <p className="text-sm font-bold uppercase tracking-wide text-violet-700">
+            Gợi ý tập trung
+          </p>
+          <p className="mt-2 text-base leading-relaxed text-slate-700">{intent.suggestedFocus}</p>
+        </section>
+      ) : null}
     </div>
   )
 }
@@ -603,7 +655,7 @@ export function AuditAnalysisPanel({
   customerIntent?: CskhCustomerIntent | null
   intentLoading?: boolean
 }) {
-  const [tab, setTab] = useState('detail')
+  const [tab, setTab] = useState('intent')
   const adSource = resolveAuditFromAd(row, inbox)
   const { pros, cons } = resolveProsCons(row)
   const criteria = resolveCriteriaScores(row)
@@ -613,6 +665,7 @@ export function AuditAnalysisPanel({
   const feedbackBullets = resolveFeedbackBullets(row)
 
   const tabs = [
+    { id: 'intent', label: 'Khách đang hỏi' },
     { id: 'detail', label: 'Phân tích chi tiết' },
     { id: 'criteria', label: 'Điểm & Tiêu chí' },
     { id: 'keywords', label: 'Từ khóa' },
@@ -622,10 +675,13 @@ export function AuditAnalysisPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
-      <CustomerIntentPanel intent={customerIntent} loading={intentLoading} />
       <TabBar tabs={tabs} active={tab} onChange={setTab} className="shrink-0 px-3" />
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 py-6 sm:px-6 sm:py-7">
+        {tab === 'intent' && (
+          <CustomerIntentTabContent intent={customerIntent} loading={intentLoading} />
+        )}
+
         {tab === 'detail' && (
           <div className="space-y-8">
             <section>
