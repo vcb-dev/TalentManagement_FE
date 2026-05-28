@@ -438,7 +438,13 @@ export function MessengerWorkspace({
   const showAnalysis = pane === 'analysis'
 
   return (
-    <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden h-full', className)}>
+    <div
+      className={cn(
+        'flex min-h-0 flex-1 flex-col overflow-hidden',
+        'h-[calc(100dvh-12rem)] md:h-[calc(100dvh-10rem)] xl:h-[calc(100dvh-8rem)]',
+        className
+      )}
+    >
       <div
         className={cn(
           'flex min-h-0 flex-1 flex-col overflow-hidden',
