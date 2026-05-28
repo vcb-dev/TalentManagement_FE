@@ -249,7 +249,7 @@ export const CSKH_QUALITY_ITEM: AppNavItem = {
     },
     {
       to: '/cskh-quality',
-      label: 'Hội thoại',
+      label: 'Chất lượng CSKH',
       icon: MessageSquare,
       match: 'prefix',
       search: { tab: 'audit' },
@@ -265,7 +265,7 @@ export const CSKH_QUALITY_ITEM: AppNavItem = {
     },
     {
       to: '/cskh-quality',
-      label: 'Chất lượng CSKH',
+      label: 'Hội thoại',
       icon: ShieldCheck,
       match: 'prefix',
       isDevelopment: true,
