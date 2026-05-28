@@ -42,8 +42,8 @@ import { cskhMediaProxySrc, cskhMediaSrc, resolveMessageMedia } from './messageM
 import {
   AuditAnalysisPanel,
   AuditConversationSidebar,
-  AuditSummaryHeader,
   AuditTimelinePanel,
+  AuditWorkspaceKpiBar,
   type AuditSidebarSort,
 } from './AuditDashboardPanels'
 import {
@@ -398,7 +398,7 @@ export function AuditMessengerView({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [sidebarSearch, setSidebarSearch] = useState('')
-  const [sourceFilter, setSourceFilter] = useState<'all' | 'ad' | 'organic'>('all')
+  const [listFilter, setListFilter] = useState<'all' | 'low' | 'ad'>('all')
   const [sidebarSort, setSidebarSort] = useState<AuditSidebarSort>('newest')
   const [chatTab, setChatTab] = useState<'chat' | 'timeline' | 'analysis'>('chat')
   const [workspacePane, setWorkspacePane] = useState<MessengerWorkspacePane>('list')
@@ -582,7 +582,7 @@ export function AuditMessengerView({
     stableAuditsRef.current = []
     setSelectedId(null)
     setSidebarSearch('')
-    setSourceFilter('all')
+    setListFilter('all')
     setChatTab('chat')
   }, [auditDate])
 
@@ -895,6 +895,11 @@ export function AuditMessengerView({
     ? Math.max(1, sortedAudits.findIndex((a) => a.id === selected.id) + 1)
     : 0
 
+  const avgScore = useMemo(() => {
+    if (!sortedAudits.length) return null
+    return Math.round(sortedAudits.reduce((s, a) => s + a.score, 0) / sortedAudits.length)
+  }, [sortedAudits])
+
   return (
     <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
       <CskhToolbar>
@@ -1094,16 +1099,12 @@ export function AuditMessengerView({
           {isAuditPhase && (
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}
-          {selected ? (
-            <AuditSummaryHeader
-              row={selected}
-              index={selectedIndex}
-              total={sortedAudits.length}
-              inbox={inboxConv}
-              scoreHistory={scoreHistoryQuery.data}
-              auditDayLabel={selectedAuditDayLabel}
-            />
-          ) : null}
+          <AuditWorkspaceKpiBar
+            stats={dayStats}
+            avgScore={avgScore}
+            loading={showDayLoading}
+            auditDayLabel={auditDayLabel}
+          />
           <MessengerWorkspace
             pane={workspacePane}
             sidebar={
@@ -1113,8 +1114,8 @@ export function AuditMessengerView({
                 adMap={sidebarAdSources}
                 search={sidebarSearch}
                 onSearchChange={setSidebarSearch}
-                sourceFilter={sourceFilter}
-                onSourceFilterChange={setSourceFilter}
+                listFilter={listFilter}
+                onListFilterChange={setListFilter}
                 sortOrder={sidebarSort}
                 onSortOrderChange={setSidebarSort}
                 onSelect={handleSelectAudit}
@@ -1195,6 +1196,7 @@ export function AuditMessengerView({
                         onUseReply={setDraft}
                         customerIntent={intentQuery.data ?? null}
                         intentLoading={intentQuery.isFetching && !intentQuery.data}
+                        scoreHistory={scoreHistoryQuery.data}
                       />
                     </div>
                   ) : null}
