@@ -942,12 +942,8 @@ export function AuditMessengerView({
 
   const selectedAuditDayLabel = selectedAuditDate ? formatAuditDateLabel(selectedAuditDate) : null
 
-  useEffect(() => {
-    if (!inboxConv?.id || !liveMessages.length) return
-    const lastCustomer = [...liveMessages].reverse().find((m) => m.senderType === 'customer')
-    if (!lastCustomer) return
-    void qc.invalidateQueries({ queryKey: ['cskh', 'inbox', 'intent', inboxConv.id] })
-  }, [liveMessages, inboxConv?.id, qc])
+  // Không invalidate intent liên tục theo polling tin nhắn,
+  // tránh trạng thái "Đang phân tích..." lặp dù đã có kết quả audit.
 
   useEffect(() => {
     const el = scrollRef.current
@@ -1290,7 +1286,7 @@ export function AuditMessengerView({
                         onUseReply={setDraft}
                         customerIntent={resolvedIntent}
                         intentLoading={
-                          Boolean(inboxConv?.id) && intentQuery.isFetching && !resolvedIntent
+                          Boolean(inboxConv?.id) && intentQuery.isLoading && !resolvedIntent
                         }
                       />
                     </div>
@@ -1480,7 +1476,7 @@ export function AuditMessengerView({
                     onUseReply={setDraft}
                     customerIntent={resolvedIntent}
                     intentLoading={
-                      Boolean(inboxConv?.id) && intentQuery.isFetching && !resolvedIntent
+                      Boolean(inboxConv?.id) && intentQuery.isLoading && !resolvedIntent
                     }
                   />
                 </div>

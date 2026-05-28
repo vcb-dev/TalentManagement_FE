@@ -476,7 +476,7 @@ export function MessengerWorkspace({
             className={cn(
               'flex min-h-0 min-w-0 flex-col overflow-hidden',
               isAuditLayout
-                ? 'bg-white xl:flex-1 xl:min-w-[400px] xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
+                ? 'bg-white xl:flex-1 xl:min-w-[360px] xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
                 : 'bg-[#f0f2f5]',
               showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-1'
             )}
@@ -488,7 +488,7 @@ export function MessengerWorkspace({
               className={cn(
                 'flex min-h-0 min-w-0 flex-col overflow-hidden bg-white',
                 isAuditLayout
-                  ? 'xl:h-full xl:w-[min(360px,32vw)] xl:min-w-[320px] xl:max-w-[400px] xl:flex-none xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
+                  ? 'xl:h-full xl:w-[min(430px,36vw)] xl:min-w-[380px] xl:max-w-[500px] xl:flex-none xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
                   : 'border-t border-slate-200/80 xl:h-full xl:w-[min(380px,32vw)] xl:max-w-[420px] xl:flex-none xl:border-l xl:border-t-0',
                 showAnalysis ? 'min-h-0 flex-1 xl:flex' : 'hidden xl:flex'
               )}
