@@ -656,33 +656,33 @@ function getCardIconAndColors(id: string) {
 
 function OverviewTab() {
   return (
-    <div className="min-w-0 space-y-5 overflow-x-hidden p-4 sm:space-y-6 sm:p-6 bg-[#f4f7fc]">
+    <div className="flex min-h-0 flex-col gap-2 overflow-x-hidden bg-[#f4f7fc] p-2 sm:gap-2.5 sm:p-3">
       {/* Upper Title and Operational Overview Banner */}
-      <div className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="shrink-0 rounded-xl border border-indigo-100 bg-white px-3 py-2.5 shadow-sm">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-600">
               CSKH Quality
             </p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900">
+            <h2 className="mt-0.5 text-lg font-black tracking-tight text-slate-900 sm:text-xl">
               Tổng quan vận hành CSKH
             </h2>
-            <p className="mt-1.5 max-w-3xl text-sm text-slate-600">
+            <p className="mt-0.5 hidden max-w-3xl text-xs text-slate-600 xl:block">
               Theo dõi kết nối Facebook, inbox real-time và chất lượng audit AI trên cùng một màn.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex shrink-0 flex-wrap gap-1.5">
             <Link
               to="/cskh-quality"
               search={{ tab: 'audit' }}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700"
             >
-              Mở Audit <ChevronRight className="h-4 w-4" />
+              Mở Audit <ChevronRight className="h-3.5 w-3.5" />
             </Link>
             <Link
               to="/cskh-quality"
               search={{ tab: 'config' }}
-              className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
             >
               Cấu hình Page
             </Link>
@@ -691,7 +691,7 @@ function OverviewTab() {
       </div>
 
       {/* Reihe 1: 6 KPI-Karten mit Sparklines */}
-      <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid shrink-0 grid-cols-2 gap-2 lg:grid-cols-3 2xl:grid-cols-6">
         {MOCK_KPI_CARDS.map((card) => {
           const details = getCardIconAndColors(card.id)
           const isCompactValue =
@@ -699,29 +699,29 @@ function OverviewTab() {
           return (
             <div
               key={card.id}
-              className="flex min-h-[8.75rem] min-w-0 flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm transition duration-200 hover:shadow-md"
+              className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200/60 bg-white p-2.5 shadow-sm transition duration-200 hover:shadow-md"
             >
               {/* Row 1: Icon and Title */}
-              <div className="flex min-w-0 items-center gap-2">
+              <div className="flex min-w-0 items-center gap-1.5">
                 <div
                   className={cn(
-                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl',
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
                     details.iconBg
                   )}
                 >
                   {details.icon}
                 </div>
-                <span className="min-w-0 text-[11px] font-bold uppercase tracking-wide text-slate-500 line-clamp-2 leading-snug">
+                <span className="min-w-0 text-[10px] font-bold uppercase tracking-wide text-slate-500 line-clamp-2 leading-snug">
                   {card.label}
                 </span>
               </div>
 
               {/* Row 2: Main Big Value */}
-              <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-1">
+              <div className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-1">
                 <span
                   className={cn(
                     'min-w-0 font-black tracking-tight text-slate-800 break-words',
-                    isCompactValue ? 'text-lg sm:text-xl' : 'text-2xl'
+                    isCompactValue ? 'text-base sm:text-lg' : 'text-xl'
                   )}
                 >
                   {card.value}
@@ -737,7 +737,7 @@ function OverviewTab() {
               </div>
 
               {/* Row 3: Bottom info + Sparkline separated */}
-              <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+              <div className="mt-1 flex items-end justify-between gap-1.5">
                 {/* Left Column: Trend and comparison details */}
                 <div className="flex flex-col min-w-0 pr-1 select-none">
                   {card.id !== 'csat' && card.id !== 'conversion-rate' ? (
@@ -767,11 +767,13 @@ function OverviewTab() {
       </div>
 
       {/* Reihe 2: Analyse & Produkte */}
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+      <div className="grid shrink-0 grid-cols-1 gap-2 xl:grid-cols-12">
         {/* Xu hướng chất lượng theo ngày */}
-        <div className="flex min-h-[340px] min-w-0 flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5 xl:col-span-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-sm font-extrabold text-slate-800">Xu hướng chất lượng theo ngày</h3>
+        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm xl:col-span-5">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
+              Xu hướng chất lượng theo ngày
+            </h3>
             <div className="flex items-center gap-1 border border-slate-200 rounded-lg px-2 py-1 bg-slate-50 text-[11px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition">
               <span>Theo ngày</span>
               <ChevronDown className="h-3.5 w-3.5" />
@@ -779,7 +781,7 @@ function OverviewTab() {
           </div>
 
           {/* Legend Custom */}
-          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-slate-500">
+          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-500">
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-blue-500" />
               <span>QA Score (TB)</span>
@@ -795,7 +797,7 @@ function OverviewTab() {
           </div>
 
           {/* Recharts Area/Line Chart */}
-          <div className="h-[210px] w-full mt-auto">
+          <div className="h-[130px] w-full sm:h-[150px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={MOCK_QUALITY_TREND}
@@ -848,14 +850,14 @@ function OverviewTab() {
         </div>
 
         {/* Nguồn hội thoại & tỷ lệ chốt */}
-        <div className="flex min-h-[340px] min-w-0 flex-col rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5 xl:col-span-3">
-          <h3 className="mb-4 text-sm font-extrabold text-slate-800">
+        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm xl:col-span-3">
+          <h3 className="mb-2 text-xs font-extrabold text-slate-800 sm:text-sm">
             Nguồn hội thoại & tỷ lệ chốt
           </h3>
 
-          <div className="my-auto flex flex-col items-center justify-between gap-5 min-[420px]:flex-row xl:flex-col 2xl:flex-row">
+          <div className="flex flex-col items-center justify-between gap-3 min-[420px]:flex-row xl:flex-col 2xl:flex-row">
             {/* Donut PieChart */}
-            <div className="relative h-[160px] w-[160px] flex items-center justify-center shrink-0">
+            <div className="relative flex h-[120px] w-[120px] shrink-0 items-center justify-center sm:h-[130px] sm:w-[130px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -914,9 +916,9 @@ function OverviewTab() {
         </div>
 
         {/* Top sản phẩm được quan tâm nhiều */}
-        <div className="flex min-h-[340px] min-w-0 flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5 xl:col-span-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h3 className="min-w-0 text-sm font-extrabold text-slate-800">
+        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm xl:col-span-4">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="min-w-0 text-xs font-extrabold text-slate-800 sm:text-sm">
               Top sản phẩm được quan tâm nhiều
             </h3>
             <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
@@ -924,7 +926,7 @@ function OverviewTab() {
             </span>
           </div>
 
-          <div className="space-y-3.5 my-auto">
+          <div className="space-y-2">
             {MOCK_TOP_PRODUCTS.map((p, index) => {
               const bgColors = [
                 'bg-purple-100 text-purple-700',
@@ -979,11 +981,11 @@ function OverviewTab() {
       </div>
 
       {/* Reihe 3: Effektivität & Funnel */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
+      <div className="grid shrink-0 grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-4">
         {/* Hiệu quả theo Page */}
-        <div className="flex min-h-[350px] min-w-0 flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
-            <h3 className="font-extrabold text-slate-800 text-sm">Hiệu quả theo Page</h3>
+        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+          <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+            <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">Hiệu quả theo Page</h3>
             <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
               Xem tất cả
             </span>
@@ -1002,16 +1004,16 @@ function OverviewTab() {
               <tbody className="divide-y divide-slate-100/50">
                 {MOCK_PAGE_EFFECTIVENESS.map((page, idx) => (
                   <tr key={idx} className="text-xs">
-                    <td className="py-2.5 font-bold text-slate-700 flex items-center gap-1.5 min-w-0 max-w-[120px]">
+                    <td className="py-1.5 font-bold text-slate-700 flex items-center gap-1.5 min-w-0 max-w-[120px]">
                       <div className="h-5 w-5 rounded bg-gradient-to-br from-indigo-500 to-indigo-700 text-[9px] font-black text-white flex items-center justify-center shrink-0 uppercase">
                         {page.name.charAt(12)}
                       </div>
                       <span className="truncate">{page.name}</span>
                     </td>
-                    <td className="py-2.5 text-right font-semibold text-slate-800 tabular-nums">
+                    <td className="py-1.5 text-right font-semibold text-slate-800 tabular-nums">
                       {formatNumber(page.conversations)}
                     </td>
-                    <td className="py-2.5 text-center">
+                    <td className="py-1.5 text-center">
                       <span
                         className={cn(
                           'inline-flex min-w-[28px] items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-black',
@@ -1023,7 +1025,7 @@ function OverviewTab() {
                         {page.qaScore}
                       </span>
                     </td>
-                    <td className="py-2.5 text-right font-semibold text-slate-800 tabular-nums">
+                    <td className="py-1.5 text-right font-semibold text-slate-800 tabular-nums">
                       {page.conversionRate}
                     </td>
                   </tr>
@@ -1034,19 +1036,21 @@ function OverviewTab() {
         </div>
 
         {/* Phễu chăm sóc & chốt đơn */}
-        <div className="flex min-h-[350px] min-w-0 flex-col rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5">
-          <h3 className="mb-4 text-sm font-extrabold text-slate-800">Phễu chăm sóc & chốt đơn</h3>
+        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+          <h3 className="mb-2 text-xs font-extrabold text-slate-800 sm:text-sm">
+            Phễu chăm sóc & chốt đơn
+          </h3>
 
-          <div className="my-auto grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
             {/* Left Column: Funnel blocks of centered decreasing width */}
-            <div className="min-w-0 space-y-2.5">
+            <div className="min-w-0 space-y-1.5">
               {MOCK_FUNNEL_STEPS.map((step, idx) => {
                 const widths = ['w-full', 'w-[88%]', 'w-[76%]', 'w-[64%]', 'w-[52%]']
                 return (
                   <div key={idx} className="flex justify-center">
                     <div
                       className={cn(
-                        'flex flex-col items-center justify-center h-11 text-white rounded-xl shadow-sm text-center px-3 bg-gradient-to-r',
+                        'flex flex-col items-center justify-center h-8 text-white rounded-lg shadow-sm text-center px-2 bg-gradient-to-r',
                         widths[idx],
                         step.bg
                       )}
@@ -1090,10 +1094,12 @@ function OverviewTab() {
         </div>
 
         {/* Khách hàng cần chăm sóc */}
-        <div className="flex min-h-[350px] min-w-0 flex-col rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5">
-          <h3 className="font-extrabold text-slate-800 text-sm mb-4">Khách hàng cần chăm sóc</h3>
+        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+          <h3 className="mb-2 text-xs font-extrabold text-slate-800 sm:text-sm">
+            Khách hàng cần chăm sóc
+          </h3>
 
-          <div className="grid grid-cols-1 gap-3 flex-1 justify-center my-auto">
+          <div className="grid grid-cols-1 gap-1.5">
             {MOCK_CUSTOMERS_TO_CARE.map((item) => {
               let IconComponent = Search
               if (item.type === 'warranty') IconComponent = ShieldCheck
@@ -1104,23 +1110,23 @@ function OverviewTab() {
                 <div
                   key={item.id}
                   className={cn(
-                    'flex items-center justify-between p-3 rounded-2xl border shadow-sm transition hover:-translate-y-0.5 duration-200 bg-white',
+                    'flex items-center justify-between rounded-xl border p-2 shadow-sm transition duration-200 bg-white',
                     item.border,
                     item.bg
                   )}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <div
                       className={cn(
-                        'flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-sm border',
+                        'flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm border',
                         item.border
                       )}
                     >
-                      <IconComponent className={cn('h-4.5 w-4.5', item.text)} />
+                      <IconComponent className={cn('h-4 w-4', item.text)} />
                     </div>
-                    <span className="text-xs font-bold text-slate-700">{item.label}</span>
+                    <span className="text-[11px] font-bold text-slate-700">{item.label}</span>
                   </div>
-                  <span className={cn('text-xl font-black tabular-nums', item.text)}>
+                  <span className={cn('text-lg font-black tabular-nums', item.text)}>
                     {item.count}
                   </span>
                 </div>
@@ -1130,9 +1136,9 @@ function OverviewTab() {
         </div>
 
         {/* Xếp hạng nhân viên */}
-        <div className="flex min-h-[350px] min-w-0 flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
-            <h3 className="font-extrabold text-slate-800 text-sm">
+        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+          <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+            <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
               Xếp hạng nhân viên (theo QA Score)
             </h3>
             <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
@@ -1184,15 +1190,17 @@ function OverviewTab() {
       </div>
 
       {/* Reihe 4: Sentiment & Aktivitäten */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
+      <div className="grid shrink-0 grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-4">
         {/* Cảm xúc khách hàng */}
-        <div className="flex min-h-[330px] min-w-0 flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5">
-          <h3 className="font-extrabold text-slate-800 text-sm mb-4">Cảm xúc khách hàng</h3>
+        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+          <h3 className="mb-2 text-xs font-extrabold text-slate-800 sm:text-sm">
+            Cảm xúc khách hàng
+          </h3>
 
-          <div className="flex flex-col justify-between flex-1 my-auto">
+          <div className="flex flex-col justify-between">
             {/* The Gauge Container */}
-            <div className="relative h-[115px] w-full flex items-center justify-center overflow-hidden shrink-0">
-              <div className="w-[190px] h-[190px] absolute -bottom-[80px]">
+            <div className="relative flex h-[88px] w-full shrink-0 items-center justify-center overflow-hidden">
+              <div className="absolute -bottom-[62px] h-[150px] w-[150px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -1215,39 +1223,39 @@ function OverviewTab() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="absolute bottom-1.5 flex flex-col items-center justify-center text-center pointer-events-none">
-                <span className="text-3xl font-black text-slate-800 leading-none">78%</span>
-                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider mt-1">
+              <div className="absolute bottom-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                <span className="text-2xl font-black text-slate-800 leading-none">78%</span>
+                <span className="mt-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-600">
                   Tích cực
                 </span>
               </div>
             </div>
 
             {/* Smiley rows at bottom */}
-            <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100/80">
+            <div className="mt-2 grid grid-cols-3 gap-1 border-t border-slate-100/80 pt-2">
               <div className="flex flex-col items-center text-center">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 mb-1.5 shadow-sm shrink-0">
-                  <Smile className="h-5 w-5" />
+                <div className="mb-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-600 shadow-sm">
+                  <Smile className="h-4 w-4" />
                 </div>
-                <span className="text-xs font-black text-slate-800">78%</span>
+                <span className="text-[11px] font-black text-slate-800">78%</span>
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 leading-none">
                   Tích cực
                 </span>
               </div>
               <div className="flex flex-col items-center text-center">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 border border-amber-100 text-amber-600 mb-1.5 shadow-sm shrink-0">
-                  <Meh className="h-5 w-5" />
+                <div className="mb-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-amber-100 bg-amber-50 text-amber-600 shadow-sm">
+                  <Meh className="h-4 w-4" />
                 </div>
-                <span className="text-xs font-black text-slate-800">16%</span>
+                <span className="text-[11px] font-black text-slate-800">16%</span>
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 leading-none">
                   Trung tính
                 </span>
               </div>
               <div className="flex flex-col items-center text-center">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 border border-rose-100 text-rose-600 mb-1.5 shadow-sm shrink-0">
-                  <Frown className="h-5 w-5" />
+                <div className="mb-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-rose-100 bg-rose-50 text-rose-600 shadow-sm">
+                  <Frown className="h-4 w-4" />
                 </div>
-                <span className="text-xs font-black text-slate-800">6%</span>
+                <span className="text-[11px] font-black text-slate-800">6%</span>
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 leading-none">
                   Tiêu cực
                 </span>
@@ -1257,12 +1265,12 @@ function OverviewTab() {
         </div>
 
         {/* Từ khóa nổi bật trong tháng */}
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm min-h-[330px] flex flex-col">
-          <h3 className="font-extrabold text-slate-800 text-sm mb-4">
+        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+          <h3 className="mb-2 text-xs font-extrabold text-slate-800 sm:text-sm">
             Từ khóa nổi bật trong tháng
           </h3>
 
-          <div className="grid grid-cols-2 gap-2 flex-1 justify-center my-auto">
+          <div className="grid grid-cols-2 gap-1.5">
             {MOCK_KEYWORDS.map((kw, index) => (
               <div
                 key={index}
@@ -1278,13 +1286,15 @@ function OverviewTab() {
         </div>
 
         {/* Xu hướng cảm xúc (CSAT) */}
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm min-h-[330px] flex flex-col justify-between">
-          <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
-            <h3 className="font-extrabold text-slate-800 text-sm">Xu hướng cảm xúc (CSAT)</h3>
+        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+          <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+            <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
+              Xu hướng cảm xúc (CSAT)
+            </h3>
           </div>
 
           {/* Custom CSAT Legend */}
-          <div className="mb-3 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-500">
+          <div className="mb-2 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-bold text-slate-500">
             <div className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               <span>Tích cực</span>
@@ -1300,7 +1310,7 @@ function OverviewTab() {
           </div>
 
           {/* CSAT Stacked Bar Chart */}
-          <div className="h-[190px] w-full mt-auto">
+          <div className="h-[120px] w-full sm:h-[130px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={MOCK_SENTIMENT_TRENDS}
@@ -1350,16 +1360,16 @@ function OverviewTab() {
         </div>
 
         {/* Hoạt động gần đây */}
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm min-h-[330px] flex flex-col justify-between">
-          <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
-            <h3 className="font-extrabold text-slate-800 text-sm">Hoạt động gần đây</h3>
+        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+          <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+            <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">Hoạt động gần đây</h3>
             <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
               Xem tất cả hoạt động
             </span>
           </div>
 
           {/* Timeline Feed Container */}
-          <div className="space-y-3.5 flex-1 flex flex-col justify-center my-auto min-h-0 overflow-y-auto">
+          <div className="space-y-2">
             {MOCK_RECENT_ACTIVITIES.map((act, index) => {
               let dotColor = 'border-violet-500 bg-violet-100 text-violet-600'
               if (act.type === 'unclosed') dotColor = 'border-amber-400 bg-amber-50 text-amber-500'
@@ -2391,7 +2401,13 @@ export function CskhQualityPage() {
 
   return (
     <CskhPageShell
-      className={tab === 'audit' ? undefined : '!h-auto min-h-0 flex-none overflow-visible'}
+      className={
+        tab === 'audit'
+          ? undefined
+          : tab === 'overview'
+            ? 'h-full min-h-0 flex-1'
+            : '!h-auto min-h-0 flex-none overflow-visible'
+      }
     >
       {auditJobBusy && tab === 'audit' ? (
         <p className="mb-2 text-xs font-medium text-indigo-600">Đang quét và chấm điểm…</p>
@@ -2401,7 +2417,9 @@ export function CskhQualityPage() {
         className={
           tab === 'audit'
             ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden'
-            : 'min-h-0 overflow-x-hidden overflow-y-auto'
+            : tab === 'overview'
+              ? 'flex h-full min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto [scrollbar-width:thin]'
+              : 'min-h-0 overflow-x-hidden overflow-y-auto'
         }
       >
         {tab === 'overview' ? <OverviewTab /> : null}

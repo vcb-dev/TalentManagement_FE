@@ -40,7 +40,8 @@ export function AppShell({ children, title }: AppShellProps) {
     select: (s) => s.location.search as { tab?: string },
   })
   const cskhTab = pathname.startsWith('/cskh-quality') ? (cskhSearch.tab ?? null) : null
-  /** CSKH Audit — full width + khóa scroll ngoài; tab Cài đặt Kênh scroll bình thường. */
+  /** CSKH Audit — full width + khóa scroll ngoài; các tab khác scroll/fit theo nội dung. */
+  const cskhAuditLayout = pathname.startsWith('/cskh-quality') && cskhTab === 'audit'
   const wideMain = pathname.startsWith('/cskh-quality') && cskhTab !== 'config'
   /** Không dùng sidebar — điều hướng bằng header ngang. */
   const compactNavNoSidebar =
@@ -202,7 +203,11 @@ export function AppShell({ children, title }: AppShellProps) {
         <main
           className={cn(
             'min-h-0 min-w-0 flex-1 overflow-x-hidden overscroll-y-contain',
-            wideMain ? 'h-full overflow-y-hidden p-3 sm:p-4' : 'overflow-y-auto p-5 md:p-6'
+            wideMain
+              ? cskhAuditLayout
+                ? 'h-full overflow-y-hidden p-3 sm:p-4'
+                : 'h-full min-h-0 overflow-hidden p-2 sm:p-3'
+              : 'overflow-y-auto p-5 md:p-6'
           )}
         >
           <div
