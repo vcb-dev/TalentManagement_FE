@@ -366,6 +366,43 @@ export function resolveTranscriptMetrics(
   return { ...computeTranscriptMetricsFe(transcript), source: 'fe' }
 }
 
+export type CustomerSentimentBreakdown = {
+  positive: number
+  neutral: number
+  negative: number
+}
+
+/** Phân bổ % hiển thị theo tone AI (một hội thoại — tổng 100%). */
+export function resolveCustomerSentimentBreakdown(row: CskhAuditRow): CustomerSentimentBreakdown {
+  const raw = row.metadata?.sentiment as
+    | {
+        positivePct?: number
+        neutralPct?: number
+        negativePct?: number
+      }
+    | undefined
+  const p = raw?.positivePct
+  const n = raw?.neutralPct
+  const neg = raw?.negativePct
+  if (
+    typeof p === 'number' &&
+    typeof n === 'number' &&
+    typeof neg === 'number' &&
+    Math.abs(p + n + neg - 100) < 2
+  ) {
+    return {
+      positive: Math.round(p),
+      neutral: Math.round(n),
+      negative: Math.round(neg),
+    }
+  }
+
+  const { tone } = resolveSentiment(row)
+  if (tone === 'positive') return { positive: 70, neutral: 20, negative: 10 }
+  if (tone === 'negative') return { positive: 10, neutral: 20, negative: 70 }
+  return { positive: 20, neutral: 60, negative: 20 }
+}
+
 export function resolveSentiment(row: CskhAuditRow): AuditSentimentView {
   const s = row.metadata?.sentiment
   if (s?.label || s?.customer || s?.staff) {

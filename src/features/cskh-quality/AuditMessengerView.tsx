@@ -38,6 +38,7 @@ import {
   scoreColor,
   vietnamTodayIso,
 } from './auditHelpers'
+import { auditDayMinusOne } from './auditWorkspaceKpi'
 import { cskhMediaProxySrc, cskhMediaSrc, resolveMessageMedia } from './messageMedia'
 import {
   AuditAnalysisPanel,
@@ -564,6 +565,8 @@ export function AuditMessengerView({
     staleTime: 15_000,
   })
 
+  const prevAuditDate = useMemo(() => (auditDate ? auditDayMinusOne(auditDate) : null), [auditDate])
+
   const {
     data: recentAudits,
     isLoading: recentLoading,
@@ -590,6 +593,14 @@ export function AuditMessengerView({
   const isAuditActive =
     runMut.isPending || progress?.status === 'running' || (!!jobId && !progressFinished)
   const isRunning = isAuditActive
+
+  const { data: prevDayAudits } = useQuery({
+    queryKey: ['cskh', 'audits', 'by-day', prevAuditDate],
+    queryFn: () => fetchCskhAudits({ auditDate: prevAuditDate!, limit: 2000 }),
+    enabled: Boolean(prevAuditDate) && !isAuditActive,
+    staleTime: 120_000,
+  })
+
   useEffect(() => {
     onAuditJobActiveChange?.(isRunning)
   }, [isRunning, onAuditJobActiveChange])
@@ -895,10 +906,10 @@ export function AuditMessengerView({
     ? Math.max(1, sortedAudits.findIndex((a) => a.id === selected.id) + 1)
     : 0
 
-  const avgScore = useMemo(() => {
-    if (!sortedAudits.length) return null
-    return Math.round(sortedAudits.reduce((s, a) => s + a.score, 0) / sortedAudits.length)
-  }, [sortedAudits])
+  const prevDayAuditsFiltered = useMemo(() => {
+    if (!prevAuditDate || !prevDayAudits?.length) return []
+    return prevDayAudits.filter((a) => a.metadata?.auditDate === prevAuditDate)
+  }, [prevAuditDate, prevDayAudits])
 
   return (
     <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
@@ -1100,12 +1111,12 @@ export function AuditMessengerView({
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}
           <AuditWorkspaceKpiBar
-            stats={dayStats}
-            avgScore={avgScore}
+            rows={sortedAudits}
+            prevRows={prevDayAuditsFiltered}
             loading={showDayLoading}
-            auditDayLabel={auditDayLabel}
           />
           <MessengerWorkspace
+            layout="audit"
             pane={workspacePane}
             sidebar={
               <AuditConversationSidebar

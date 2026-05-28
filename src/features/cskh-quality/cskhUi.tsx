@@ -419,6 +419,7 @@ export function MessengerWorkspace({
   aside,
   pane = 'chat',
   className,
+  layout = 'default',
 }: {
   sidebar: ReactNode
   main: ReactNode
@@ -426,7 +427,10 @@ export function MessengerWorkspace({
   /** Dưới xl: chỉ hiện một cột; từ xl: luôn 3 cột. */
   pane?: MessengerWorkspacePane
   className?: string
+  /** audit: danh sách hẹp, panel phân tích rộng hơn */
+  layout?: 'default' | 'audit'
 }) {
+  const isAuditLayout = layout === 'audit'
   const showList = pane === 'list'
   const showChat = pane === 'chat'
   const showAnalysis = pane === 'analysis'
@@ -445,7 +449,10 @@ export function MessengerWorkspace({
         <aside
           className={cn(
             'flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-slate-200/80 bg-white',
-            'xl:h-full xl:w-[min(300px,24vw)] xl:min-w-[260px] xl:max-w-[340px] xl:border-b-0 xl:border-r',
+            isAuditLayout
+              ? 'xl:h-full xl:w-[220px] xl:min-w-[200px] xl:max-w-[240px]'
+              : 'xl:h-full xl:w-[min(300px,24vw)] xl:min-w-[260px] xl:max-w-[340px]',
+            'xl:border-b-0 xl:border-r',
             showList ? 'min-h-0 flex-1 xl:flex-none' : 'hidden xl:flex'
           )}
         >
@@ -454,7 +461,8 @@ export function MessengerWorkspace({
         <div
           className={cn(
             'flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#f0f2f5]',
-            showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-1'
+            showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-1',
+            isAuditLayout && 'xl:max-w-[min(520px,36vw)]'
           )}
         >
           {main}
@@ -463,8 +471,11 @@ export function MessengerWorkspace({
           <aside
             className={cn(
               'flex min-h-0 min-w-0 flex-col overflow-hidden border-slate-200/80 bg-white',
-              'border-t xl:h-full xl:min-w-0 xl:w-[min(380px,32vw)] xl:max-w-[420px] xl:border-l xl:border-t-0',
-              showAnalysis ? 'min-h-0 flex-1 xl:flex-none xl:flex' : 'hidden xl:flex'
+              'border-t xl:h-full xl:min-w-0 xl:flex-1 xl:border-l xl:border-t-0',
+              isAuditLayout
+                ? 'xl:min-w-[360px] xl:max-w-none'
+                : 'xl:w-[min(380px,32vw)] xl:max-w-[420px] xl:flex-none',
+              showAnalysis ? 'min-h-0 flex-1 xl:flex' : 'hidden xl:flex'
             )}
           >
             {aside}

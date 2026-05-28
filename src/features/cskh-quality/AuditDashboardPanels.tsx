@@ -1,6 +1,26 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
-import { ChevronDown, Filter, Loader2, MessageSquare, Sparkles, Star, Tag } from 'lucide-react'
+import {
+  ChevronDown,
+  Filter,
+  Frown,
+  Loader2,
+  MessageSquare,
+  MessageSquareCheck,
+  ShieldCheck,
+  ShoppingBag,
+  Smile,
+  Sparkles,
+  Star,
+  Tag,
+  UserRoundPlus,
+  UserX,
+} from 'lucide-react'
+import {
+  computeWorkspaceKpiSnapshot,
+  formatKpiDelta,
+  type WorkspaceKpiSnapshot,
+} from './auditWorkspaceKpi'
 import {
   ChartContainer,
   ChartTooltip,
@@ -35,6 +55,7 @@ import {
   resolveFeedbackBullets,
   resolveKeywords,
   resolveProsCons,
+  resolveCustomerSentimentBreakdown,
   resolveSentiment,
   resolveTags,
   scoreRankLabel,
@@ -102,71 +123,254 @@ function AuditAccordionSection({
   )
 }
 
-/** Hàng KPI đầu workspace — dữ liệu thật từ ngày audit. */
-export function AuditWorkspaceKpiBar({
-  stats,
-  avgScore,
-  loading,
-  auditDayLabel,
+function KpiSparkline({
+  data,
+  color,
+  className,
 }: {
-  stats?: { total?: number; passed?: number; failed?: number; fromAd?: number } | null
-  avgScore?: number | null
-  loading?: boolean
-  auditDayLabel?: string | null
+  data: number[]
+  color: string
+  className?: string
 }) {
-  const passPct =
-    stats?.total && stats.total > 0 ? Math.round(((stats.passed ?? 0) / stats.total) * 100) : null
+  const w = 56
+  const h = 28
+  const min = Math.min(...data, 0)
+  const max = Math.max(...data, 100)
+  const range = max - min || 1
+  const pts = data
+    .map((v, i) => {
+      const x = (i / Math.max(1, data.length - 1)) * w
+      const y = h - ((v - min) / range) * (h - 4) - 2
+      return `${x},${y}`
+    })
+    .join(' ')
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      className={cn('shrink-0 opacity-90', className)}
+      width={w}
+      height={h}
+      aria-hidden
+    >
+      <polyline
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={pts}
+      />
+    </svg>
+  )
+}
 
-  const cards = [
-    {
-      label: 'Điểm QA trung bình',
-      value: loading ? '…' : avgScore != null ? `${avgScore}/100` : '—',
-      sub: auditDayLabel ?? 'Theo ngày chọn',
-      accent: 'border-violet-200 bg-gradient-to-br from-violet-50 to-white',
-    },
-    {
-      label: 'Tỷ lệ đạt (≥70)',
-      value: loading ? '…' : passPct != null ? `${passPct}%` : '—',
-      sub: stats?.passed != null ? `${stats.passed} hội thoại` : undefined,
-      accent: 'border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-white',
-    },
-    {
-      label: 'Chưa đạt (<70)',
-      value: loading ? '…' : (stats?.failed ?? '—'),
-      sub: 'Cần cải thiện',
-      accent: 'border-amber-200 bg-gradient-to-br from-amber-50/60 to-white',
-    },
-    {
-      label: 'Tổng đã audit',
-      value: loading ? '…' : (stats?.total ?? '—'),
-      sub: auditDayLabel ?? undefined,
-      accent: 'border-slate-200 bg-white',
-    },
-    {
-      label: 'Từ quảng cáo',
-      value: loading ? '…' : (stats?.fromAd ?? '—'),
-      sub: 'Nguồn QC',
-      accent: 'border-sky-200 bg-gradient-to-br from-sky-50/80 to-white',
-    },
-  ]
+function KpiTrendBadge({
+  delta,
+}: {
+  delta: { text: string; tone: 'up-good' | 'up-bad' | 'neutral' } | null
+}) {
+  if (!delta) return null
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums',
+        delta.tone === 'up-good' && 'bg-emerald-50 text-emerald-700',
+        delta.tone === 'up-bad' && 'bg-rose-50 text-rose-700',
+        delta.tone === 'neutral' && 'bg-slate-100 text-slate-500'
+      )}
+    >
+      {delta.text}
+    </span>
+  )
+}
+
+function WorkspaceKpiCard({
+  icon,
+  iconBg,
+  title,
+  value,
+  valueClass,
+  delta,
+  vsText,
+  sparkData,
+  sparkColor,
+  loading,
+}: {
+  icon: ReactNode
+  iconBg: string
+  title: string
+  value: string
+  valueClass?: string
+  delta: { text: string; tone: 'up-good' | 'up-bad' | 'neutral' } | null
+  vsText?: string | null
+  sparkData: number[]
+  sparkColor: string
+  loading?: boolean
+}) {
+  return (
+    <div className="relative flex min-w-[10.5rem] flex-1 flex-col rounded-lg border border-slate-200/90 bg-white px-3 py-2.5 shadow-sm">
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white shadow-sm',
+            iconBg
+          )}
+        >
+          {icon}
+        </span>
+        <span className="text-[11px] font-semibold leading-tight text-slate-700">{title}</span>
+      </div>
+      <div className="mt-2 flex items-end justify-between gap-1">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline gap-1.5">
+            <span
+              className={cn(
+                'text-xl font-bold tabular-nums leading-none sm:text-2xl',
+                valueClass ?? 'text-slate-800',
+                loading && 'animate-pulse text-slate-300'
+              )}
+            >
+              {loading ? '…' : value}
+            </span>
+            {!loading ? <KpiTrendBadge delta={delta} /> : null}
+          </div>
+          {vsText ? <p className="mt-1 text-[10px] font-medium text-slate-400">{vsText}</p> : null}
+        </div>
+        {!loading ? <KpiSparkline data={sparkData} color={sparkColor} /> : null}
+      </div>
+    </div>
+  )
+}
+
+/** Hàng 7 KPI đầu workspace — giống mockup dashboard CSKH. */
+export function AuditWorkspaceKpiBar({
+  rows,
+  prevRows,
+  loading,
+}: {
+  rows: CskhAuditRow[]
+  prevRows?: CskhAuditRow[] | null
+  loading?: boolean
+}) {
+  const cur = useMemo(() => computeWorkspaceKpiSnapshot(rows), [rows])
+  const prev = useMemo(
+    () => (prevRows?.length ? computeWorkspaceKpiSnapshot(prevRows) : null),
+    [prevRows]
+  )
+
+  const cards = useMemo(() => {
+    const spark = cur.scoreSpark
+    const vs = (key: keyof WorkspaceKpiSnapshot, v: number | null, suffix = '%') =>
+      prev && prev[key] != null && v != null ? `vs ${prev[key]}${suffix}` : null
+
+    return [
+      {
+        title: 'QA Score trung bình',
+        icon: <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-blue-500',
+        value: cur.avgScore != null ? `${cur.avgScore}` : '—',
+        valueSuffix: '/100',
+        valueClass:
+          cur.avgScore != null && cur.avgScore >= 70
+            ? 'text-emerald-600'
+            : cur.avgScore != null && cur.avgScore >= 50
+              ? 'text-amber-600'
+              : 'text-slate-800',
+        delta: formatKpiDelta(cur.avgScore, prev?.avgScore ?? null, true, 'điểm'),
+        vsText:
+          prev?.avgScore != null
+            ? `vs ${prev.avgScore}/100 ngày trước`
+            : cur.avgScore != null
+              ? `${cur.total} hội thoại`
+              : null,
+        spark,
+        sparkColor: '#3b82f6',
+        higherIsBetter: true,
+      },
+      {
+        title: 'CSAT (Hài lòng)',
+        icon: <Smile className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-amber-400',
+        value: cur.csatPct != null ? `${cur.csatPct}%` : '—',
+        delta: formatKpiDelta(cur.csatPct, prev?.csatPct ?? null, true),
+        vsText: vs('csatPct', cur.csatPct),
+        spark,
+        sparkColor: '#22c55e',
+      },
+      {
+        title: 'Tỷ lệ phản hồi đúng chuẩn',
+        icon: <MessageSquareCheck className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-violet-500',
+        value: cur.standardPct != null ? `${cur.standardPct}%` : '—',
+        delta: formatKpiDelta(cur.standardPct, prev?.standardPct ?? null, true),
+        vsText: vs('standardPct', cur.standardPct),
+        spark,
+        sparkColor: '#8b5cf6',
+      },
+      {
+        title: 'Tỷ lệ bỏ sót khách',
+        icon: <UserX className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-rose-500',
+        value: cur.missedPct != null ? `${cur.missedPct}%` : '—',
+        delta: formatKpiDelta(cur.missedPct, prev?.missedPct ?? null, false),
+        vsText: vs('missedPct', cur.missedPct),
+        spark: spark.map((v) => 100 - v),
+        sparkColor: '#f43f5e',
+      },
+      {
+        title: 'Tỷ lệ follow-up',
+        icon: <UserRoundPlus className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-teal-500',
+        value: cur.followUpPct != null ? `${cur.followUpPct}%` : '—',
+        delta: formatKpiDelta(cur.followUpPct, prev?.followUpPct ?? null, true),
+        vsText: vs('followUpPct', cur.followUpPct),
+        spark,
+        sparkColor: '#14b8a6',
+      },
+      {
+        title: 'Tỷ lệ khách tiêu cực',
+        icon: <Frown className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-red-500',
+        value: cur.negativePct != null ? `${cur.negativePct}%` : '—',
+        delta: formatKpiDelta(cur.negativePct, prev?.negativePct ?? null, false),
+        vsText: vs('negativePct', cur.negativePct),
+        spark: spark.map((v) => Math.max(0, 100 - v)),
+        sparkColor: '#ef4444',
+      },
+      {
+        title: 'Tỷ lệ chốt',
+        icon: <ShoppingBag className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-blue-600',
+        value: cur.closingPct != null ? `${cur.closingPct}%` : '—',
+        delta: formatKpiDelta(cur.closingPct, prev?.closingPct ?? null, true),
+        vsText: vs('closingPct', cur.closingPct),
+        spark,
+        sparkColor: '#2563eb',
+      },
+    ] as const
+  }, [cur, prev])
 
   return (
-    <div className="shrink-0 border-b border-slate-200/80 bg-slate-50/40 px-3 py-3 sm:px-4">
+    <div className="shrink-0 border-b border-slate-200/80 bg-slate-50/50 px-2 py-2.5 sm:px-3">
       <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
         {cards.map((c) => (
-          <div
-            key={c.label}
-            className={cn(
-              'min-w-[9.5rem] shrink-0 rounded-xl border px-3 py-2.5 shadow-sm',
-              c.accent
-            )}
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              {c.label}
-            </p>
-            <p className="mt-1 text-xl font-black tabular-nums text-slate-900">{c.value}</p>
-            {c.sub ? <p className="mt-0.5 text-[10px] text-slate-400">{c.sub}</p> : null}
-          </div>
+          <WorkspaceKpiCard
+            key={c.title}
+            icon={c.icon}
+            iconBg={c.iconBg}
+            title={c.title}
+            value={
+              'valueSuffix' in c && c.valueSuffix && c.value !== '—'
+                ? `${c.value}${c.valueSuffix}`
+                : c.value
+            }
+            valueClass={'valueClass' in c ? c.valueClass : undefined}
+            delta={loading ? null : c.delta}
+            vsText={loading ? null : c.vsText}
+            sparkData={c.spark}
+            sparkColor={c.sparkColor}
+            loading={loading}
+          />
         ))}
       </div>
     </div>
@@ -242,7 +446,7 @@ const AuditSidebarRow = memo(function AuditSidebarRow({
         type="button"
         onClick={() => onSelect(row.id)}
         className={cn(
-          'w-full border-b border-slate-100 px-3 py-3 text-left transition-all',
+          'w-full border-b border-slate-100 px-2.5 py-2.5 text-left transition-all',
           active ? 'bg-violet-50/90 shadow-[inset_3px_0_0_0_#7c3aed]' : 'hover:bg-white'
         )}
       >
@@ -252,14 +456,14 @@ const AuditSidebarRow = memo(function AuditSidebarRow({
             pictureUrl={row.customerPictureUrl ?? row.metadata?.customerPictureUrl}
             pageId={row.metadata?.pageId}
             psid={row.metadata?.participantPsid}
-            className="h-9 w-9 rounded-full text-xs"
+            className="h-8 w-8 rounded-full text-[10px]"
           />
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <p className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-800">
+            <div className="flex items-start justify-between gap-1.5">
+              <p className="line-clamp-2 min-w-0 flex-1 text-xs font-semibold leading-snug text-slate-800">
                 {name}
               </p>
-              <ScoreRing score={row.score} size={40} />
+              <ScoreRing score={row.score} size={34} />
             </div>
             <p className="mt-0.5 text-[11px] font-medium text-violet-700">
               {displayAgentName(row)}
@@ -544,7 +748,7 @@ function CustomerIntentTabContent({
       {intent.products?.length ? (
         <div>
           <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
-            Sản phẩm khách quan tâm (Sapo)
+            Sản phẩm khách quan tâm
           </p>
           <ul className="mt-3 space-y-3">
             {intent.products.map((p) => (
@@ -577,15 +781,8 @@ function CustomerIntentTabContent({
             ))}
           </ul>
         </div>
-      ) : intent.sapoConfigured === false ? (
-        <p className="text-sm text-slate-400">
-          Chưa cấu hình Sapo API — thêm `SAPO_STORE` và `SAPO_ACCESS_TOKEN` trên BE để hiển thị SP
-          kèm giá.
-        </p>
       ) : intent.productMentions?.length ? (
-        <p className="text-sm text-slate-500">
-          Khách nhắc: {intent.productMentions.join(', ')} — chưa khớp SP trong catalog Sapo.
-        </p>
+        <p className="text-sm text-slate-500">Khách nhắc: {intent.productMentions.join(', ')}</p>
       ) : null}
       {intent.suggestedFocus ? (
         <section className="rounded-xl border border-violet-100 bg-violet-50/50 p-4">
@@ -594,6 +791,86 @@ function CustomerIntentTabContent({
           </p>
           <p className="mt-2 text-base leading-relaxed text-slate-700">{intent.suggestedFocus}</p>
         </section>
+      ) : null}
+    </div>
+  )
+}
+
+const SENTIMENT_ROWS = [
+  {
+    key: 'positive' as const,
+    label: 'Tích cực',
+    emoji: '😊',
+    iconBg: 'bg-emerald-100 ring-1 ring-emerald-200/80',
+  },
+  {
+    key: 'neutral' as const,
+    label: 'Trung tính',
+    emoji: '😐',
+    iconBg: 'bg-amber-100 ring-1 ring-amber-200/80',
+  },
+  {
+    key: 'negative' as const,
+    label: 'Tiêu cực',
+    emoji: '😠',
+    iconBg: 'bg-rose-100 ring-1 ring-rose-200/80',
+  },
+]
+
+function CustomerSentimentPanel({
+  row,
+  sentiment,
+}: {
+  row: CskhAuditRow
+  sentiment: ReturnType<typeof resolveSentiment>
+}) {
+  const [showDetail, setShowDetail] = useState(false)
+  const breakdown = useMemo(() => resolveCustomerSentimentBreakdown(row), [row])
+
+  return (
+    <div className="rounded-xl border border-slate-200/90 bg-white shadow-sm">
+      <div className="space-y-0.5 px-3 py-2">
+        {SENTIMENT_ROWS.map((r) => (
+          <div key={r.key} className="flex items-center gap-3 py-2.5">
+            <span
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg leading-none',
+                r.iconBg
+              )}
+              aria-hidden
+            >
+              {r.emoji}
+            </span>
+            <span className="min-w-0 flex-1 text-sm font-semibold text-slate-800">{r.label}</span>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-slate-800">
+              {breakdown[r.key]}%
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-slate-100 px-3 py-2.5 text-center">
+        <button
+          type="button"
+          onClick={() => setShowDetail((v) => !v)}
+          className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+        >
+          {showDetail ? 'Thu gọn phân tích cảm xúc' : 'Xem phân tích cảm xúc →'}
+        </button>
+      </div>
+      {showDetail ? (
+        <div className="space-y-3 border-t border-slate-100 bg-slate-50/50 px-4 py-3 text-sm">
+          <p className="font-semibold text-slate-800">
+            Tổng quan: <span className="font-bold text-violet-700">{sentiment.label}</span>
+          </p>
+          <div>
+            <p className="font-semibold text-slate-700">Khách hàng</p>
+            <p className="mt-0.5 leading-relaxed text-slate-600">{sentiment.customer}</p>
+          </div>
+          <div>
+            <p className="font-semibold text-slate-700">Nhân viên</p>
+            <p className="mt-0.5 leading-relaxed text-slate-600">{sentiment.staff}</p>
+          </div>
+        </div>
       ) : null}
     </div>
   )
@@ -739,13 +1016,13 @@ export function AuditAnalysisPanel({
 
               {cons.length ? (
                 <section>
-                  <p className="text-xs font-bold uppercase tracking-wide text-amber-600">
+                  <p className="text-xs font-bold uppercase tracking-wide text-rose-600">
                     Chưa đạt / cần cải thiện
                   </p>
                   <ul className="mt-2 space-y-2">
                     {cons.map((line, i) => (
-                      <li key={i} className="text-sm text-slate-700">
-                        <span className="text-amber-500">! </span>
+                      <li key={i} className="text-sm text-rose-900/90">
+                        <span className="font-bold text-rose-500">! </span>
                         {line}
                       </li>
                     ))}
@@ -807,27 +1084,8 @@ export function AuditAnalysisPanel({
             </div>
           </AuditAccordionSection>
 
-          <AuditAccordionSection value="sentiment" title="Cảm xúc">
-            <div
-              className={cn(
-                'rounded-lg border p-4 text-center',
-                sentiment.tone === 'positive' && 'border-emerald-200 bg-emerald-50',
-                sentiment.tone === 'neutral' && 'border-amber-200 bg-amber-50',
-                sentiment.tone === 'negative' && 'border-rose-200 bg-rose-50'
-              )}
-            >
-              <p className="font-bold text-slate-800">{sentiment.label}</p>
-            </div>
-            <dl className="mt-3 space-y-2 text-sm">
-              <div>
-                <dt className="font-semibold text-slate-700">Khách</dt>
-                <dd className="text-slate-600">{sentiment.customer}</dd>
-              </div>
-              <div>
-                <dt className="font-semibold text-slate-700">Nhân viên</dt>
-                <dd className="text-slate-600">{sentiment.staff}</dd>
-              </div>
-            </dl>
+          <AuditAccordionSection value="sentiment" title="Cảm xúc của khách">
+            <CustomerSentimentPanel row={row} sentiment={sentiment} />
           </AuditAccordionSection>
 
           <AuditAccordionSection value="suggest" title="Gợi ý cải thiện">
