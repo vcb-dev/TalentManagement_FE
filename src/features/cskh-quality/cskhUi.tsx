@@ -440,10 +440,10 @@ export function MessengerWorkspace({
   return (
     <div
       className={cn(
-        'flex min-h-0 flex-col overflow-hidden',
-        'h-[min(720px,calc(100dvh-14rem))] min-h-[400px]',
-        'sm:h-[min(780px,calc(100dvh-13rem))] sm:min-h-[480px]',
-        'xl:h-[min(880px,calc(100dvh-11.5rem))] xl:min-h-[520px]',
+        'flex min-h-0 flex-1 flex-col overflow-hidden',
+        'h-[min(800px,calc(100dvh-10rem))] min-h-[420px]',
+        'sm:h-[min(860px,calc(100dvh-9rem))] sm:min-h-[500px]',
+        'xl:h-auto xl:min-h-[540px] xl:flex-1',
         className
       )}
     >
