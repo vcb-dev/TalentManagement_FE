@@ -739,7 +739,6 @@ export function AuditMessengerView({
         (progressErr ? getApiErrorMessage(progressErr) : '') ||
         (runMut.error ? getApiErrorMessage(runMut.error) : '')
     ) || 'Không thể quét và chấm điểm. Vui lòng thử lại sau.'
-  const auditCount = summary?.auditCount ?? progress?.audits?.length ?? 0
   const isFetchPhase = isAuditActive && summary?.phase !== 'audit'
   const isAuditPhase = isAuditActive && summary?.phase === 'audit'
 
@@ -866,21 +865,6 @@ export function AuditMessengerView({
       : auditDateFrom && auditDateTo
         ? scoreRangeLabel
         : null
-  const progressBadgeText = isFetchPhase
-    ? summary?.pagesTotal
-      ? `Page ${Math.min((summary.pagesProcessed ?? 0) + 1, summary.pagesTotal)}/${summary.pagesTotal}${
-          summary.currentPage ? ` · ${summary.currentPage}` : ''
-        }`
-      : `Quét inbox ${auditDayLabel}…`
-    : isAuditPhase
-      ? summary?.total
-        ? `${summary.processed ?? 0}/${summary.total} hội thoại`
-        : `Chấm ${auditCount}${summary?.total ? `/${summary.total}` : ''}`
-      : isRunning
-        ? runMut.isPending && !summary
-          ? 'Đang khởi động…'
-          : `Chấm điểm ${auditDayLabel}…`
-        : ''
   const auditPercent = useMemo(() => auditProgressPercent(summary), [summary])
 
   useEffect(() => {
@@ -1145,10 +1129,6 @@ export function AuditMessengerView({
     })
   }, [selected?.id, liveMsgQuery.data?.messages, realtimeMessages.length, transcript.length])
 
-  const selectedIndex = selected
-    ? Math.max(1, sortedAudits.findIndex((a) => a.id === selected.id) + 1)
-    : 0
-
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <CskhToolbar>
@@ -1320,40 +1300,6 @@ export function AuditMessengerView({
               )}
             </div>
           </div>
-
-          {(isRunning ||
-            sortedAudits.length > 0 ||
-            (summary?.tokenUsage?.totalTokens ?? 0) > 0) && (
-            <div className="flex flex-wrap items-center gap-2 border-t border-indigo-100/70 pt-2 text-xs text-slate-600">
-              {isRunning && (
-                <span className="inline-flex items-center gap-1.5 rounded-md bg-indigo-100 px-2 py-0.5 font-semibold text-indigo-800">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  {progressBadgeText}
-                </span>
-              )}
-              {selected && sortedAudits.length > 0 && (
-                <span className="rounded-md bg-violet-50 px-2 py-0.5 font-semibold text-violet-800">
-                  #{selectedIndex}/{sortedAudits.length}
-                </span>
-              )}
-              {!isRunning && sortedAudits.length > 0 && (
-                <span>
-                  {sortedAudits.length.toLocaleString('vi-VN')} hội thoại · {selectedPageLabel}
-                  {auditDayLabel ? ` · ${auditDayLabel}` : ''}
-                </span>
-              )}
-              {summary?.tokenUsage &&
-                summary.tokenUsage.totalTokens != null &&
-                summary.tokenUsage.totalTokens > 0 && (
-                  <span className="rounded-md bg-violet-50 px-2 py-0.5 text-violet-800">
-                    Token {summary.tokenUsage.totalTokens.toLocaleString('vi-VN')}
-                    {summary.tokenUsage.perAuditAvg
-                      ? ` (~${summary.tokenUsage.perAuditAvg.toLocaleString('vi-VN')}/cuộc)`
-                      : ''}
-                  </span>
-                )}
-            </div>
-          )}
         </div>
       </CskhToolbar>
 
@@ -1444,8 +1390,18 @@ export function AuditMessengerView({
       ) : isRunning && !sortedAudits.length ? (
         <CskhEmptyState
           icon={<Loader2 className="h-12 w-12 animate-spin text-violet-500" />}
-          title="Đang chấm điểm…"
-          description="Tiến độ chi tiết hiển thị ở thông báo góc trên. Kết quả sẽ xuất hiện ở đây khi có hội thoại đầu tiên."
+          title={
+            isFetchPhase
+              ? auditDayLabel
+                ? `Đang quét inbox · ${auditDayLabel}`
+                : 'Đang quét inbox…'
+              : 'Đang chấm điểm…'
+          }
+          description={
+            isFetchPhase
+              ? 'Đang lấy hội thoại từ Facebook — tiến độ chi tiết ở thông báo góc trên. Danh sách và kết quả chấm điểm sẽ hiện ở đây sau khi quét xong.'
+              : 'Tiến độ chi tiết hiển thị ở thông báo góc trên. Kết quả sẽ xuất hiện ở đây khi có hội thoại đầu tiên.'
+          }
         />
       ) : !auditExistsForSelection && !isRunning && !sortedAudits.length ? (
         <CskhEmptyState
