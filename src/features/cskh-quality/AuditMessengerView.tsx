@@ -40,6 +40,7 @@ import {
   vietnamTodayIso,
 } from './auditHelpers'
 import { cskhMediaProxySrc, cskhMediaSrc, resolveMessageMedia } from './messageMedia'
+import { sortAuditsByCreatedDesc } from './auditDashboardHelpers'
 import {
   AuditAnalysisPanel,
   AuditConversationSidebar,
@@ -513,7 +514,9 @@ export function AuditMessengerView({
     mutationFn: () => pauseAuditJob(),
     onSuccess: (res) => {
       if (!res.paused) return
-      void qc.invalidateQueries({ queryKey: ['cskh', 'audit-progress', jobId] })
+      if (jobId) {
+        void qc.invalidateQueries({ queryKey: ['cskh', 'audit-progress', jobId] })
+      }
     },
   })
 
@@ -534,20 +537,25 @@ export function AuditMessengerView({
   })
 
   const progressFinished = progress?.status === 'done' || progress?.status === 'failed'
+  const prevProgressStatusRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!progress || progress.status === 'running') return
 
     const persistAuditsForDay = (day: string | undefined) => {
       if (!day || !progress.audits?.length) return
-      const rows = progress.audits.filter(
+      const incoming = progress.audits.filter(
         (a) =>
           a.metadata?.auditDate === day &&
           (!selectedPageFilter || a.metadata?.pageId === selectedPageFilter)
       )
-      if (rows.length) {
-        qc.setQueryData(['cskh', 'audits', 'by-day', day, selectedPageId], rows)
-      }
+      if (!incoming.length) return
+      const cacheKey = ['cskh', 'audits', 'by-day', day, selectedPageId] as const
+      const prev = qc.getQueryData<CskhAuditRow[]>(cacheKey) ?? []
+      const merged = new Map<string, CskhAuditRow>()
+      for (const row of prev) merged.set(row.id, row)
+      for (const row of incoming) merged.set(row.id, row)
+      qc.setQueryData(cacheKey, sortAuditsByCreatedDesc([...merged.values()]))
     }
 
     if (progress.status === 'done') {
@@ -664,13 +672,6 @@ export function AuditMessengerView({
   const auditCount = summary?.auditCount ?? progress?.audits?.length ?? 0
   const isFetchPhase = isAuditActive && summary?.phase !== 'audit'
   const isAuditPhase = isAuditActive && summary?.phase === 'audit'
-  /** Quét inbox → màn tiến độ; chấm điểm → danh sách (giữ màn tiến độ nếu chưa có total). */
-  const showProgressScreen =
-    isFetchPhase ||
-    (isAuditPhase &&
-      (summary?.total ?? 0) === 0 &&
-      (summary?.processed ?? 0) === 0 &&
-      (progress?.audits?.length ?? 0) === 0)
 
   const dayAuditsReady =
     Boolean(auditDate) &&
@@ -697,11 +698,11 @@ export function AuditMessengerView({
       const merged = new Map<string, CskhAuditRow>()
       for (const row of fromRecent) merged.set(row.id, row)
       for (const row of fromProgress) merged.set(row.id, row)
-      return filterDay([...merged.values()])
+      return sortAuditsByCreatedDesc(filterDay([...merged.values()]))
     }
 
-    if (fromRecent.length) return fromRecent
-    if (fromProgress.length) return fromProgress
+    if (fromRecent.length) return sortAuditsByCreatedDesc(fromRecent)
+    if (fromProgress.length) return sortAuditsByCreatedDesc(fromProgress)
     return []
   }, [
     auditDate,
@@ -717,10 +718,16 @@ export function AuditMessengerView({
     if (displayAudits.length) stableAuditsRef.current = displayAudits
   }, [displayAudits])
 
-  const sortedAudits = useMemo(
-    () => [...displayAudits].sort((a, b) => a.score - b.score),
-    [displayAudits]
-  )
+  /** Quét inbox → màn tiến độ; đã có hội thoại thì luôn hiện danh sách (kể cả đang tạm dừng). */
+  const showProgressScreen =
+    displayAudits.length === 0 &&
+    (isFetchPhase ||
+      (isAuditPhase &&
+        (summary?.total ?? 0) === 0 &&
+        (summary?.processed ?? 0) === 0 &&
+        (progress?.audits?.length ?? 0) === 0))
+
+  const sortedAudits = useMemo(() => sortAuditsByCreatedDesc(displayAudits), [displayAudits])
   const pageOptions = useMemo(() => {
     const pages = pagesData?.pages ?? []
     return pages
@@ -772,6 +779,19 @@ export function AuditMessengerView({
       if (first) setSelectedId(first.id)
     }
   }, [sortedAudits, filteredAudits, selectedId])
+
+  useEffect(() => {
+    const prev = prevProgressStatusRef.current
+    const status = progress?.status ?? null
+    prevProgressStatusRef.current = status
+    const justPaused =
+      prev === 'running' &&
+      status === 'done' &&
+      Boolean(progress?.summary?.paused || progress?.summary?.partial)
+    if (!justPaused || !sortedAudits.length) return
+    setSelectedId(sortedAudits[0]!.id)
+    setWorkspacePane('list')
+  }, [progress?.status, progress?.summary?.paused, progress?.summary?.partial, sortedAudits])
 
   const auditDayLabel = summary?.auditDate
     ? formatAuditDateLabel(summary.auditDate)
@@ -1049,8 +1069,8 @@ export function AuditMessengerView({
             )}
           {!isRunning && sortedAudits.length > 0 && (
             <span className="text-xs font-medium text-slate-500">
-              {sortedAudits.length} hội thoại · {selectedPageLabel} · {auditDayLabel ?? '…'} · điểm
-              thấp → cao
+              {sortedAudits.length} hội thoại · {selectedPageLabel} · {auditDayLabel ?? '…'} · mới
+              chấm trước
             </span>
           )}
           <CskhConnectionBadge connected={inboxLive} />

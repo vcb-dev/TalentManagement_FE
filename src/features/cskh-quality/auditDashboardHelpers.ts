@@ -504,12 +504,18 @@ export function conversationIndexLabel(index: number, total: number): string {
 }
 
 export function sidebarPreviewTime(row: CskhAuditRow): string {
-  const ms = auditLastActivityMs(row)
+  const ms = auditCreatedAtMs(row)
   if (!ms) return '—'
   return new Date(ms).toLocaleTimeString('vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+/** Thời điểm audit được lưu — dùng sắp xếp «mới chấm trước». */
+export function auditCreatedAtMs(row: CskhAuditRow): number {
+  const created = new Date(row.createdAt).getTime()
+  return Number.isNaN(created) ? 0 : created
 }
 
 /** Thời điểm tin nhắn cuối trong transcript (hoặc createdAt). */
@@ -522,6 +528,9 @@ export function auditLastActivityMs(row: CskhAuditRow): number {
     if (!Number.isNaN(t) && t > max) max = t
   }
   if (max > 0) return max
-  const created = new Date(row.createdAt).getTime()
-  return Number.isNaN(created) ? 0 : created
+  return auditCreatedAtMs(row)
+}
+
+export function sortAuditsByCreatedDesc(rows: CskhAuditRow[]): CskhAuditRow[] {
+  return [...rows].sort((a, b) => auditCreatedAtMs(b) - auditCreatedAtMs(a))
 }

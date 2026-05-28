@@ -49,7 +49,7 @@ import {
   resolveTags,
   scoreRankLabel,
   sidebarPreviewTime,
-  auditLastActivityMs,
+  auditCreatedAtMs,
 } from './auditDashboardHelpers'
 import { parseAuditActionItems, type DisplayTranscriptLine } from './auditHelpers'
 import { CskhAdSourceBadge, CskhPageAvatar } from './cskhUi'
@@ -550,8 +550,8 @@ export function AuditConversationSidebar({
   const sortedFiltered = useMemo(() => {
     const list = [...filtered]
     list.sort((a, b) => {
-      const ta = auditLastActivityMs(a)
-      const tb = auditLastActivityMs(b)
+      const ta = auditCreatedAtMs(a)
+      const tb = auditCreatedAtMs(b)
       return sortOrder === 'newest' ? tb - ta : ta - tb
     })
     return list
@@ -597,7 +597,7 @@ export function AuditConversationSidebar({
             className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600"
             aria-label="Sắp xếp"
           >
-            <option value="newest">Gần nhất</option>
+            <option value="newest">Mới chấm</option>
             <option value="oldest">Cũ nhất</option>
           </select>
         </div>
