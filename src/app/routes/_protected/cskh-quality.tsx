@@ -4,7 +4,7 @@ import { CskhQualityPage } from '@/features/cskh-quality/CskhQualityPage'
 import { requireAnyPermissionId } from '@/lib/permissionGuards'
 
 const cskhQualitySearchSchema = z.object({
-  tab: z.enum(['audit', 'config']).optional(),
+  tab: z.enum(['overview', 'fb-page', 'audit', 'config']).optional(),
 })
 
 export const Route = createFileRoute('/_protected/cskh-quality')({
@@ -12,7 +12,7 @@ export const Route = createFileRoute('/_protected/cskh-quality')({
   beforeLoad: ({ search }) => {
     requireAnyPermissionId('manager.approvals', 'hr.employees.view', 'bod.dashboard.view')
     if (!search.tab) {
-      throw redirect({ to: '/cskh-quality', search: { tab: 'audit' } })
+      throw redirect({ to: '/cskh-quality', search: { tab: 'overview' } })
     }
   },
   component: CskhQualityPage,

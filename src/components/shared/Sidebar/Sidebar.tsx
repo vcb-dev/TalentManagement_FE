@@ -1,6 +1,7 @@
 ﻿import { memo, useEffect, useMemo, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   type AppNavItem,
   groupedSidebarNavItems,
@@ -92,6 +93,27 @@ const NavLink = memo(function NavLink({
             {item.children.map((child) => {
               const subActive = isNavItemActive(pathname, child, currentSearch)
               const ChildIcon = child.icon
+
+              if (child.isDevelopment) {
+                return (
+                  <SidebarMenuButton
+                    key={navItemDedupeKey(child)}
+                    collapsed={false}
+                    active={false}
+                    className="h-9 cursor-pointer"
+                    onClick={() => toast.info('Tính năng đang phát triển')}
+                  >
+                    <ChildIcon
+                      className="h-4 w-4 shrink-0 text-muted-foreground/70"
+                      strokeWidth={2}
+                    />
+                    <span className="truncate text-[13px] font-medium text-slate-500/80">
+                      {child.label}
+                    </span>
+                  </SidebarMenuButton>
+                )
+              }
+
               return (
                 <SidebarMenuButton
                   key={navItemDedupeKey(child)}

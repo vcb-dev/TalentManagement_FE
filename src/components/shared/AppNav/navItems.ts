@@ -7,10 +7,10 @@ import {
   ClipboardCheck,
   ClipboardList,
   DoorOpen,
-  Link2,
   FileUp,
   Headphones,
   Home,
+  LayoutDashboard,
   KeyRound,
   LayoutGrid,
   LineChart,
@@ -23,7 +23,35 @@ import {
   Users,
   Building2,
   Award,
+  MessageSquare,
+  UserCheck,
+  Megaphone,
+  ShoppingBag,
+  Coins,
+  FileText,
+  Settings,
 } from 'lucide-react'
+import { createElement } from 'react'
+
+const Facebook = (props: any) =>
+  createElement(
+    'svg',
+    {
+      xmlns: 'http://www.w3.org/2000/svg',
+      width: '24',
+      height: '24',
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      strokeWidth: '2',
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+      ...props,
+    },
+    createElement('path', {
+      d: 'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z',
+    })
+  ) as any
 
 export type NavMatchMode = 'exact' | 'prefix' | 'custom'
 
@@ -44,6 +72,7 @@ export type AppNavItem = {
   children?: AppNavItem[]
   /** Mở trong tab mới, không điều hướng khỏi app hiện tại */
   openNewTab?: boolean
+  isDevelopment?: boolean
 }
 
 /** Trang giới thiệu Viễn Chí Bảo (`/about-us`) — mở tab mới. */
@@ -212,16 +241,96 @@ export const CSKH_QUALITY_ITEM: AppNavItem = {
   children: [
     {
       to: '/cskh-quality',
-      label: 'Audit',
-      icon: ClipboardCheck,
+      label: 'Tổng quan',
+      icon: LayoutDashboard,
+      match: 'prefix',
+      search: { tab: 'overview' },
+      permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+    },
+    {
+      to: '/cskh-quality',
+      label: 'Hội thoại',
+      icon: MessageSquare,
       match: 'prefix',
       search: { tab: 'audit' },
       permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
     },
     {
       to: '/cskh-quality',
-      label: 'Cấu hình',
-      icon: Link2,
+      label: 'AI Insight',
+      icon: Sparkles,
+      match: 'prefix',
+      isDevelopment: true,
+      permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+    },
+    {
+      to: '/cskh-quality',
+      label: 'Chất lượng CSKH',
+      icon: ShieldCheck,
+      match: 'prefix',
+      isDevelopment: true,
+      permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+    },
+    {
+      to: '/cskh-quality',
+      label: 'Nhân viên',
+      icon: Users,
+      match: 'prefix',
+      isDevelopment: true,
+      permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+    },
+    {
+      to: '/cskh-quality',
+      label: 'Khách hàng',
+      icon: UserCheck,
+      match: 'prefix',
+      isDevelopment: true,
+      permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+    },
+    {
+      to: '/cskh-quality',
+      label: 'Page (Facebook)',
+      icon: Facebook,
+      match: 'prefix',
+      search: { tab: 'fb-page' },
+      permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+    },
+    {
+      to: '/cskh-quality',
+      label: 'Quảng cáo',
+      icon: Megaphone,
+      match: 'prefix',
+      isDevelopment: true,
+      permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+    },
+    {
+      to: '/cskh-quality',
+      label: 'Sản phẩm',
+      icon: ShoppingBag,
+      match: 'prefix',
+      isDevelopment: true,
+      permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+    },
+    {
+      to: '/cskh-quality',
+      label: 'Doanh thu Chat',
+      icon: Coins,
+      match: 'prefix',
+      isDevelopment: true,
+      permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+    },
+    {
+      to: '/cskh-quality',
+      label: 'Báo cáo',
+      icon: FileText,
+      match: 'prefix',
+      isDevelopment: true,
+      permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+    },
+    {
+      to: '/cskh-quality',
+      label: 'Cài đặt',
+      icon: Settings,
       match: 'prefix',
       search: { tab: 'config' },
       permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
