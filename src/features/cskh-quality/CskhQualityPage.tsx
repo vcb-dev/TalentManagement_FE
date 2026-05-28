@@ -975,7 +975,7 @@ function getCardIconAndColors(id: string) {
 
 function OverviewTab() {
   return (
-    <div className="flex min-h-0 flex-col gap-2 overflow-x-hidden bg-[#f4f7fc] p-2 pb-4 sm:gap-2.5 sm:p-3 sm:pb-5 font-sans">
+    <div className="flex h-full min-h-0 flex-col gap-2 overflow-y-auto lg:overflow-hidden bg-[#f4f7fc] p-2 pb-2 sm:gap-2.5 sm:p-3 font-sans">
       {/* Upper Title and Operational Overview Banner */}
       <div className="shrink-0 rounded-xl border border-indigo-100 bg-white px-3 py-2.5 shadow-sm">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
@@ -986,7 +986,7 @@ function OverviewTab() {
             <h2 className="mt-0.5 text-lg font-black tracking-tight text-slate-900 sm:text-xl">
               Tổng quan vận hành CSKH
             </h2>
-            <p className="mt-0.5 hidden max-w-3xl text-xs text-slate-600 xl:block">
+            <p className="mt-0.5 hidden max-w-3xl text-xs text-slate-600 lg:block">
               Theo dõi kết nối Facebook, inbox real-time và chất lượng audit AI trên cùng một màn.
             </p>
           </div>
@@ -1010,7 +1010,7 @@ function OverviewTab() {
       </div>
 
       {/* Reihe 1: 6 KPI-Karten mit Sparklines */}
-      <div className="grid shrink-0 grid-cols-2 gap-2 lg:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {MOCK_KPI_CARDS.map((card) => {
           const details = getCardIconAndColors(card.id)
           const isCompactValue =
@@ -1018,7 +1018,7 @@ function OverviewTab() {
           return (
             <div
               key={card.id}
-              className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200/60 bg-white p-2.5 shadow-sm transition duration-200 hover:shadow-md"
+              className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200/60 bg-white p-2 sm:p-2.5 shadow-sm transition duration-200 hover:shadow-md"
             >
               {/* Row 1: Icon and Title */}
               <div className="flex min-w-0 items-center gap-1.5">
@@ -1040,701 +1040,742 @@ function OverviewTab() {
                 <span
                   className={cn(
                     'min-w-0 font-black tracking-tight text-slate-800 break-words',
-                    isCompactValue ? 'text-base sm:text-lg' : 'text-xl'
+                    isCompactValue
+                      ? 'text-base sm:text-lg lg:text-sm 2xl:text-lg'
+                      : 'text-lg sm:text-xl lg:text-lg 2xl:text-xl'
                   )}
                 >
                   {card.value}
                 </span>
                 {card.max && (
-                  <span className="shrink-0 text-sm font-bold text-slate-400">{card.max}</span>
+                  <span className="shrink-0 text-xs sm:text-sm font-bold text-slate-400">
+                    {card.max}
+                  </span>
                 )}
                 {(card.id === 'csat' || card.id === 'conversion-rate') && (
-                  <span className="ml-0.5 inline-flex shrink-0 items-center gap-0.5 rounded-full border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-black text-emerald-600">
+                  <span className="ml-0.5 inline-flex shrink-0 items-center gap-0.5 rounded-full border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black text-emerald-600">
                     {card.trend}
                   </span>
                 )}
               </div>
 
               {/* Row 3: Bottom info + Sparkline separated */}
-              <div className="mt-1 flex items-end justify-between gap-1.5">
+              <div className="mt-0.5 flex items-end justify-between gap-1.5">
                 {/* Left Column: Trend and comparison details */}
                 <div className="flex flex-col min-w-0 pr-1 select-none">
                   {card.id !== 'csat' && card.id !== 'conversion-rate' ? (
                     <>
                       <div className="mb-0.5">
-                        <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 text-[10px] font-black text-emerald-600">
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 border border-emerald-100 px-1 py-0.2 text-[9px] sm:text-[10px] font-black text-emerald-600">
                           {card.trend}
                         </span>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-bold truncate">
+                      <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold truncate">
                         {card.comparison}
                       </span>
                     </>
                   ) : (
-                    <span className="text-[10px] text-slate-400 font-bold truncate">
+                    <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold truncate">
                       {card.comparison}
                     </span>
                   )}
                 </div>
 
                 {/* Right Column: Clean Sparkline with Dots */}
-                <Sparkline data={card.data} strokeColor={card.strokeColor} />
+                <div className="shrink-0 h-[24px]">
+                  <Sparkline data={card.data} strokeColor={card.strokeColor} />
+                </div>
               </div>
             </div>
           )
         })}
       </div>
 
-      {/* Reihe 2: Analyse & Produkte */}
-      <div className="grid shrink-0 grid-cols-1 gap-2 xl:grid-cols-12">
-        {/* Xu hướng chất lượng theo ngày */}
-        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm xl:col-span-5">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
-              Xu hướng chất lượng theo ngày
-            </h3>
-            <div className="flex items-center gap-1 border border-slate-200 rounded-lg px-2 py-1 bg-slate-50 text-[11px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition">
-              <span>Theo ngày</span>
-              <ChevronDown className="h-3.5 w-3.5" />
-            </div>
-          </div>
-
-          {/* Legend Custom */}
-          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-500">
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-blue-500" />
-              <span>QA Score (TB)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span>CSAT</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-purple-500" />
-              <span>Tỷ lệ chốt đơn</span>
-            </div>
-          </div>
-
-          {/* Recharts Area/Line Chart */}
-          <div className="h-[130px] w-full sm:h-[150px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={MOCK_QUALITY_TREND}
-                margin={{ top: 10, right: 5, left: -25, bottom: 0 }}
-              >
-                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 9, fontWeight: 500, fill: '#94a3b8' }}
-                />
-                <YAxis
-                  domain={[0, 100]}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 9, fontWeight: 500, fill: '#94a3b8' }}
-                />
-                <Tooltip cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }} />
-                <Line
-                  type="monotone"
-                  dataKey="qaScore"
-                  name="QA Score (TB)"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  dot={{ r: 2 }}
-                  isAnimationActive={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="csat"
-                  name="CSAT"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={{ r: 2 }}
-                  isAnimationActive={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="conversion"
-                  name="Tỷ lệ chốt đơn"
-                  stroke="#8b5cf6"
-                  strokeWidth={2}
-                  dot={{ r: 2 }}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Nguồn hội thoại & tỷ lệ chốt */}
-        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm xl:col-span-3">
-          <h3 className="mb-2 text-xs font-extrabold text-slate-800 sm:text-sm">
-            Nguồn hội thoại & tỷ lệ chốt
-          </h3>
-
-          <div className="flex flex-col items-center justify-between gap-3 min-[420px]:flex-row xl:flex-col 2xl:flex-row">
-            {/* Donut PieChart */}
-            <div className="relative flex h-[120px] w-[120px] shrink-0 items-center justify-center sm:h-[130px] sm:w-[130px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={MOCK_SOURCE_PIE}
-                    innerRadius={50}
-                    outerRadius={68}
-                    paddingAngle={3}
-                    dataKey="value"
-                    isAnimationActive={false}
-                  >
-                    {MOCK_SOURCE_PIE.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Tổng
-                </span>
-                <span className="text-2xl font-black text-slate-800 leading-none">5.253</span>
-                <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">
-                  hội thoại
-                </span>
+      {/* Main Grid for 4 Columns */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
+        {/* ================= COLUMN 1 ================= */}
+        <div className="flex min-h-0 flex-col gap-2 sm:gap-2.5 lg:h-full">
+          {/* Xu hướng chất lượng theo ngày */}
+          <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm lg:flex-1 lg:min-h-0">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
+                Xu hướng chất lượng theo ngày
+              </h3>
+              <div className="flex items-center gap-1 border border-slate-200 rounded-lg px-2 py-1 bg-slate-50 text-[11px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition">
+                <span>Theo ngày</span>
+                <ChevronDown className="h-3.5 w-3.5" />
               </div>
             </div>
 
-            {/* Source detailed specs */}
-            <div className="flex-1 space-y-4 w-full min-w-0">
-              {MOCK_SOURCE_PIE.map((src, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: src.color }}
-                    />
-                    <span className="truncate">{src.name}</span>
+            {/* Legend Custom */}
+            <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-500">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-blue-500" />
+                <span>QA Score (TB)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <span>CSAT</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-purple-500" />
+                <span>Tỷ lệ chốt đơn</span>
+              </div>
+            </div>
+
+            {/* Recharts Area/Line Chart */}
+            <div className="w-full flex-1 min-h-[90px] h-[120px] sm:h-[130px] lg:h-auto">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={MOCK_QUALITY_TREND}
+                  margin={{ top: 10, right: 5, left: -25, bottom: 0 }}
+                >
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 9, fontWeight: 500, fill: '#94a3b8' }}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 9, fontWeight: 500, fill: '#94a3b8' }}
+                  />
+                  <Tooltip cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }} />
+                  <Line
+                    type="monotone"
+                    dataKey="qaScore"
+                    name="QA Score (TB)"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="csat"
+                    name="CSAT"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="conversion"
+                    name="Tỷ lệ chốt đơn"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* 2. Hiệu quả theo Page */}
+          <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm lg:flex-1 lg:min-h-0">
+            <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
+              <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
+                Hiệu quả theo Page
+              </h3>
+              <span className="text-[10px] font-bold text-indigo-600 cursor-pointer hover:underline">
+                Xem tất cả
+              </span>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto [scrollbar-width:thin]">
+              <table className="w-full min-w-[240px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-slate-100 text-[9px] font-bold text-slate-400 uppercase tracking-wider sticky top-0 bg-white z-10">
+                    <th className="pb-1 font-black">Page</th>
+                    <th className="pb-1 text-right font-black">Hội thoại</th>
+                    <th className="pb-1 text-center font-black">QA Score</th>
+                    <th className="pb-1 text-right font-black">Tỷ lệ chốt</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100/50">
+                  {MOCK_PAGE_EFFECTIVENESS.map((page, idx) => (
+                    <tr key={idx} className="text-[11px]">
+                      <td className="py-1 font-bold text-slate-700 flex items-center gap-1 min-w-0 max-w-[100px]">
+                        <div className="h-4.5 w-4.5 rounded bg-gradient-to-br from-indigo-500 to-indigo-700 text-[8px] font-black text-white flex items-center justify-center shrink-0 uppercase">
+                          {page.name.charAt(12)}
+                        </div>
+                        <span className="truncate">{page.name}</span>
+                      </td>
+                      <td className="py-1 text-right font-semibold text-slate-800 tabular-nums">
+                        {formatNumber(page.conversations)}
+                      </td>
+                      <td className="py-1 text-center">
+                        <span
+                          className={cn(
+                            'inline-flex min-w-[24px] items-center justify-center rounded px-1 py-0.5 text-[9px] font-black',
+                            page.qaScore >= 80
+                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                              : 'bg-amber-50 text-amber-600 border border-amber-100'
+                          )}
+                        >
+                          {page.qaScore}
+                        </span>
+                      </td>
+                      <td className="py-1 text-right font-semibold text-slate-800 tabular-nums">
+                        {page.conversionRate}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 3. Cảm xúc khách hàng */}
+          <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm lg:flex-1 lg:min-h-0">
+            <h3 className="mb-1.5 shrink-0 text-xs font-extrabold text-slate-800 sm:text-sm">
+              Cảm xúc khách hàng
+            </h3>
+
+            <div className="flex flex-1 min-h-0 flex-col justify-between">
+              {/* The Gauge Container */}
+              <div className="relative flex h-[64px] w-full shrink-0 items-center justify-center overflow-hidden">
+                <div className="absolute -bottom-[54px] h-[110px] w-[110px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Tích cực', value: 78, color: '#10b981' },
+                          { name: 'Trung tính', value: 16, color: '#f59e0b' },
+                          { name: 'Tiêu cực', value: 6, color: '#ef4444' },
+                        ]}
+                        innerRadius={42}
+                        outerRadius={54}
+                        startAngle={180}
+                        endAngle={0}
+                        paddingAngle={1.5}
+                        dataKey="value"
+                      >
+                        <Cell fill="#10b981" />
+                        <Cell fill="#f59e0b" />
+                        <Cell fill="#ef4444" />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="absolute bottom-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                  <span className="text-lg font-black text-slate-800 leading-none">78%</span>
+                  <span className="mt-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-600">
+                    Tích cực
+                  </span>
+                </div>
+              </div>
+
+              {/* Smiley rows at bottom */}
+              <div className="mt-1.5 grid shrink-0 grid-cols-3 gap-1 border-t border-slate-100 pt-1.5">
+                <div className="flex flex-col items-center text-center">
+                  <div className="mb-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-emerald-100 bg-emerald-50 text-emerald-600 shadow-sm">
+                    <Smile className="h-3 w-3" />
                   </div>
-                  <div className="pl-4 text-xs space-y-0.5">
-                    <p className="font-black text-slate-800">
-                      {formatNumber(src.value)}{' '}
-                      <span className="font-medium text-slate-400">
-                        ({src.name === 'Quảng cáo' ? '35.3%' : '64.7%'})
+                  <span className="text-[9px] font-black text-slate-800">78%</span>
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 leading-none">
+                    Tích cực
+                  </span>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                  <div className="mb-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-amber-100 bg-amber-50 text-amber-600 shadow-sm">
+                    <Meh className="h-3 w-3" />
+                  </div>
+                  <span className="text-[9px] font-black text-slate-800">16%</span>
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 leading-none">
+                    Trung tính
+                  </span>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                  <div className="mb-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-rose-100 bg-rose-50 text-rose-600 shadow-sm">
+                    <Frown className="h-3 w-3" />
+                  </div>
+                  <span className="text-[9px] font-black text-slate-800">6%</span>
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 leading-none">
+                    Tiêu cực
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ================= COLUMN 2 ================= */}
+        <div className="flex min-h-0 flex-col gap-2 sm:gap-2.5 lg:h-full">
+          {/* 4. Nguồn hội thoại & tỷ lệ chốt */}
+          <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm lg:flex-1 lg:min-h-0">
+            <h3 className="mb-1.5 shrink-0 text-xs font-extrabold text-slate-800 sm:text-sm">
+              Nguồn hội thoại & tỷ lệ chốt
+            </h3>
+
+            <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-2 sm:flex-row lg:flex-col 2xl:flex-row overflow-y-auto [scrollbar-width:thin]">
+              {/* Donut PieChart */}
+              <div className="relative flex h-[90px] w-[90px] shrink-0 items-center justify-center sm:h-[100px] sm:w-[100px] lg:h-[85px] lg:w-[85px] 2xl:h-[100px] 2xl:w-[100px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={MOCK_SOURCE_PIE}
+                      innerRadius={36}
+                      outerRadius={48}
+                      paddingAngle={2.5}
+                      dataKey="value"
+                      isAnimationActive={false}
+                    >
+                      {MOCK_SOURCE_PIE.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                    Tổng
+                  </span>
+                  <span className="text-base font-black text-slate-800 leading-none mt-0.5">
+                    5.253
+                  </span>
+                </div>
+              </div>
+
+              {/* Source detailed specs */}
+              <div className="flex-1 space-y-2 w-full min-w-0 py-0.5 text-[11px] lg:space-y-1">
+                {MOCK_SOURCE_PIE.map((src, idx) => (
+                  <div key={idx} className="space-y-0.5">
+                    <div className="flex items-center gap-1 font-bold text-slate-700">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: src.color }}
+                      />
+                      <span className="truncate">{src.name}</span>
+                    </div>
+                    <div className="pl-3 space-y-0.5">
+                      <p className="font-black text-slate-800">
+                        {formatNumber(src.value)}{' '}
+                        <span className="font-medium text-slate-400">
+                          ({src.name === 'Quảng cáo' ? '35.3%' : '64.7%'})
+                        </span>
+                      </p>
+                      <p className="text-[9px] font-semibold text-slate-500">
+                        Chốt:{' '}
+                        <span className="font-bold text-indigo-600">
+                          {formatNumber(src.chotDon)}
+                        </span>{' '}
+                        ({src.rate})
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 5. Phễu chăm sóc & chốt đơn */}
+          <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm lg:flex-1 lg:min-h-0">
+            <h3 className="mb-1.5 shrink-0 text-xs font-extrabold text-slate-800 sm:text-sm">
+              Phễu chăm sóc & chốt đơn
+            </h3>
+
+            <div className="grid flex-1 min-h-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto] overflow-y-auto [scrollbar-width:thin] pr-0.5">
+              {/* Left Column: Funnel blocks */}
+              <div className="min-w-0 flex flex-col justify-between py-0.5 gap-1 flex-1">
+                {MOCK_FUNNEL_STEPS.map((step, idx) => {
+                  const widths = ['w-full', 'w-[88%]', 'w-[76%]', 'w-[64%]', 'w-[52%]']
+                  return (
+                    <div key={idx} className="flex justify-center flex-1 min-h-[22px] max-h-[32px]">
+                      <div
+                        className={cn(
+                          'flex flex-col items-center justify-center h-full text-white rounded bg-gradient-to-r text-center px-1.5 shadow-sm',
+                          widths[idx],
+                          step.bg
+                        )}
+                      >
+                        <span className="text-[7.5px] sm:text-[8px] font-bold opacity-90 uppercase tracking-wide leading-none">
+                          {step.name}
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] font-black tabular-nums mt-0.5 leading-none">
+                          {formatNumber(step.count)}{' '}
+                          <span className="text-[8px] font-normal opacity-80">
+                            ({step.percent})
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Right Column: Connection arrows */}
+              <div className="relative flex shrink-0 flex-row flex-wrap items-center justify-center gap-1.5 border-t border-slate-100 pt-1.5 lg:flex-col lg:justify-around lg:border-l lg:border-t-0 lg:py-1.5 lg:pl-1.5 lg:pt-0">
+                <div className="absolute left-0 top-0 hidden h-full w-px bg-gradient-to-b from-blue-200 via-purple-200 to-emerald-200 lg:block" />
+                {MOCK_FUNNEL_CONVERSIONS.map((conv, idx) => (
+                  <div
+                    key={idx}
+                    className="relative z-10 flex items-center gap-1 rounded bg-white py-0.5 lg:-ml-[10px]"
+                  >
+                    <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 shadow-sm">
+                      <ChevronRight className="h-2 w-2 rotate-90" />
+                    </div>
+                    <div className="flex flex-col text-[10px]">
+                      <span className="text-[7px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                        Chuyển
                       </span>
-                    </p>
-                    <p className="text-[10px] font-semibold text-slate-500">
-                      Chốt đơn:{' '}
-                      <span className="font-bold text-indigo-600">{formatNumber(src.chotDon)}</span>{' '}
-                      ({src.rate})
-                    </p>
+                      <span className="text-[9px] font-black text-emerald-600 leading-none mt-0.5">
+                        {conv.value}
+                      </span>
+                    </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 6. Từ khóa nổi bật */}
+          <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm lg:flex-1 lg:min-h-0">
+            <h3 className="mb-1.5 shrink-0 text-xs font-extrabold text-slate-800 sm:text-sm">
+              Từ khóa nổi bật
+            </h3>
+
+            <div className="grid flex-1 min-h-0 grid-cols-2 gap-1.5 overflow-y-auto [scrollbar-width:thin] align-content-start py-0.5">
+              {MOCK_KEYWORDS.map((kw, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between rounded border border-slate-100 bg-slate-50 px-1.5 h-6.5 text-[10px] font-bold text-slate-600 shadow-sm"
+                >
+                  <span className="text-slate-400 font-bold shrink-0 mr-1 flex items-center text-ellipsis overflow-hidden">
+                    #{' '}
+                    <span className="text-slate-600 font-bold ml-0.5 truncate max-w-[50px]">
+                      {kw.text}
+                    </span>
+                  </span>
+                  <span className="text-slate-800 font-black tabular-nums shrink-0">
+                    {kw.count}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Top sản phẩm được quan tâm nhiều */}
-        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm xl:col-span-4">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="min-w-0 text-xs font-extrabold text-slate-800 sm:text-sm">
-              Top sản phẩm được quan tâm nhiều
-            </h3>
-            <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
-              Xem tất cả
-            </span>
-          </div>
+        {/* ================= COLUMN 3 ================= */}
+        <div className="flex min-h-0 flex-col gap-2 sm:gap-2.5 lg:h-full">
+          {/* 7. Top sản phẩm */}
+          <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm lg:flex-1 lg:min-h-0">
+            <div className="mb-1.5 flex shrink-0 flex-wrap items-center justify-between gap-2">
+              <h3 className="min-w-0 text-xs font-extrabold text-slate-800 sm:text-sm">
+                Top sản phẩm
+              </h3>
+              <span className="text-[10px] font-bold text-indigo-600 cursor-pointer hover:underline">
+                Tất cả
+              </span>
+            </div>
 
-          <div className="space-y-2">
-            {MOCK_TOP_PRODUCTS.map((p, index) => {
-              const bgColors = [
-                'bg-purple-100 text-purple-700',
-                'bg-amber-100 text-amber-700',
-                'bg-blue-100 text-blue-700',
-                'bg-cyan-100 text-cyan-700',
-                'bg-pink-100 text-pink-700',
-              ]
-              const progressColors = [
-                'bg-purple-500',
-                'bg-amber-500',
-                'bg-blue-500',
-                'bg-cyan-500',
-                'bg-pink-500',
-              ]
-              // Scale the progress bar relative to the max count (1125 is index 0)
-              const percentageFill = Math.round((p.count / 1125) * 100)
+            <div className="space-y-1.5 flex-1 min-h-0 overflow-y-auto [scrollbar-width:thin] pr-0.5 py-0.5">
+              {MOCK_TOP_PRODUCTS.map((p, index) => {
+                const bgColors = [
+                  'bg-purple-100 text-purple-700',
+                  'bg-amber-100 text-amber-700',
+                  'bg-blue-100 text-blue-700',
+                  'bg-cyan-100 text-cyan-700',
+                  'bg-pink-100 text-pink-700',
+                ]
+                const progressColors = [
+                  'bg-purple-500',
+                  'bg-amber-500',
+                  'bg-blue-500',
+                  'bg-cyan-500',
+                  'bg-pink-500',
+                ]
+                const percentageFill = Math.round((p.count / 1125) * 100)
 
-              return (
-                <div key={p.id} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className={cn(
-                          'flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-black',
-                          bgColors[index]
-                        )}
-                      >
-                        {p.id}
-                      </span>
-                      <span className="truncate font-semibold text-slate-700">{p.name}</span>
-                    </div>
-                    <span className="shrink-0 font-bold text-slate-800">
-                      {formatNumber(p.count)}{' '}
-                      <span className="text-slate-400 font-medium">({p.percent}%)</span>
-                    </span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className={cn(
-                        'h-full rounded-full transition-all duration-500',
-                        progressColors[index]
-                      )}
-                      style={{ width: `${percentageFill}%` }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Reihe 3: Effektivität & Funnel */}
-      <div className="grid shrink-0 grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-4">
-        {/* Hiệu quả theo Page */}
-        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
-          <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
-            <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">Hiệu quả theo Page</h3>
-            <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
-              Xem tất cả
-            </span>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-x-auto">
-            <table className="w-full min-w-[280px] border-collapse text-left">
-              <thead>
-                <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="pb-2 font-black">Page</th>
-                  <th className="pb-2 text-right font-black">Hội thoại</th>
-                  <th className="pb-2 text-center font-black">QA Score</th>
-                  <th className="pb-2 text-right font-black">Tỷ lệ chốt</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100/50">
-                {MOCK_PAGE_EFFECTIVENESS.map((page, idx) => (
-                  <tr key={idx} className="text-xs">
-                    <td className="py-1.5 font-bold text-slate-700 flex items-center gap-1.5 min-w-0 max-w-[120px]">
-                      <div className="h-5 w-5 rounded bg-gradient-to-br from-indigo-500 to-indigo-700 text-[9px] font-black text-white flex items-center justify-center shrink-0 uppercase">
-                        {page.name.charAt(12)}
-                      </div>
-                      <span className="truncate">{page.name}</span>
-                    </td>
-                    <td className="py-1.5 text-right font-semibold text-slate-800 tabular-nums">
-                      {formatNumber(page.conversations)}
-                    </td>
-                    <td className="py-1.5 text-center">
-                      <span
-                        className={cn(
-                          'inline-flex min-w-[28px] items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-black',
-                          page.qaScore >= 80
-                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                            : 'bg-amber-50 text-amber-600 border border-amber-100'
-                        )}
-                      >
-                        {page.qaScore}
-                      </span>
-                    </td>
-                    <td className="py-1.5 text-right font-semibold text-slate-800 tabular-nums">
-                      {page.conversionRate}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Phễu chăm sóc & chốt đơn */}
-        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
-          <h3 className="mb-2 text-xs font-extrabold text-slate-800 sm:text-sm">
-            Phễu chăm sóc & chốt đơn
-          </h3>
-
-          <div className="grid min-w-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
-            {/* Left Column: Funnel blocks of centered decreasing width */}
-            <div className="min-w-0 space-y-1.5">
-              {MOCK_FUNNEL_STEPS.map((step, idx) => {
-                const widths = ['w-full', 'w-[88%]', 'w-[76%]', 'w-[64%]', 'w-[52%]']
                 return (
-                  <div key={idx} className="flex justify-center">
-                    <div
-                      className={cn(
-                        'flex flex-col items-center justify-center h-8 text-white rounded-lg shadow-sm text-center px-2 bg-gradient-to-r',
-                        widths[idx],
-                        step.bg
-                      )}
-                    >
-                      <span className="text-[9px] font-bold opacity-90 uppercase tracking-wider leading-none">
-                        {step.name}
+                  <div key={p.id} className="space-y-0.5 text-[11px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span
+                          className={cn(
+                            'flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded text-[9px] font-black',
+                            bgColors[index]
+                          )}
+                        >
+                          {p.id}
+                        </span>
+                        <span className="truncate font-semibold text-slate-700">{p.name}</span>
+                      </div>
+                      <span className="shrink-0 font-bold text-slate-800">
+                        {formatNumber(p.count)}{' '}
+                        <span className="text-slate-400 font-medium text-[9px]">
+                          ({p.percent}%)
+                        </span>
                       </span>
-                      <span className="text-xs font-black tabular-nums mt-0.5">
-                        {formatNumber(step.count)}{' '}
-                        <span className="text-[10px] font-medium opacity-80">({step.percent})</span>
-                      </span>
+                    </div>
+                    <div className="h-1 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className={cn(
+                          'h-full rounded-full transition-all duration-500',
+                          progressColors[index]
+                        )}
+                        style={{ width: `${percentageFill}%` }}
+                      />
                     </div>
                   </div>
                 )
               })}
             </div>
+          </div>
 
-            {/* Right Column: Connection arrows pointing down with transition rate */}
-            <div className="relative flex min-h-0 flex-row flex-wrap items-center justify-center gap-2 border-t border-slate-100 pt-3 lg:flex-col lg:justify-around lg:border-l lg:border-t-0 lg:py-3 lg:pl-2 lg:pt-0">
-              <div className="absolute left-0 top-0 hidden h-full w-px bg-gradient-to-b from-blue-200 via-purple-200 to-emerald-200 lg:block" />
-              {MOCK_FUNNEL_CONVERSIONS.map((conv, idx) => (
-                <div
-                  key={idx}
-                  className="relative z-10 flex items-center gap-1.5 rounded-lg bg-white py-0.5 lg:-ml-[13px]"
+          {/* 8. Khách hàng cần chăm sóc */}
+          <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm lg:flex-1 lg:min-h-0">
+            <h3 className="mb-1.5 shrink-0 text-xs font-extrabold text-slate-800 sm:text-sm">
+              Khách hàng cần chăm sóc
+            </h3>
+
+            <div className="grid flex-1 min-h-0 grid-cols-1 gap-1.5 overflow-y-auto [scrollbar-width:thin] pr-0.5 py-0.5">
+              {MOCK_CUSTOMERS_TO_CARE.map((item) => {
+                let IconComponent = Search
+                if (item.type === 'warranty') IconComponent = ShieldCheck
+                else if (item.type === 'unclosed') IconComponent = Clock3
+                else if (item.type === 'negative') IconComponent = Frown
+
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      'flex items-center justify-between rounded-lg border p-1.5 shadow-sm transition duration-200 bg-white h-[34px] shrink-0',
+                      item.border,
+                      item.bg
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div
+                        className={cn(
+                          'flex h-5.5 w-5.5 items-center justify-center rounded bg-white shadow-sm border shrink-0',
+                          item.border
+                        )}
+                      >
+                        <IconComponent className={cn('h-3.5 w-3.5', item.text)} />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-700 truncate">
+                        {item.label}
+                      </span>
+                    </div>
+                    <span className={cn('text-sm font-black tabular-nums shrink-0', item.text)}>
+                      {item.count}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* 9. Xu hướng cảm xúc (CSAT) */}
+          <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm lg:flex-1 lg:min-h-0">
+            <div className="mb-1 flex shrink-0 items-center justify-between gap-2">
+              <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">Xu hướng cảm xúc</h3>
+            </div>
+
+            {/* Custom CSAT Legend */}
+            <div className="mb-1 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[8px] font-bold text-slate-500">
+              <div className="flex items-center gap-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span>Tích cực</span>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                <span>Trung tính</span>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                <span>Tiêu cực</span>
+              </div>
+            </div>
+
+            {/* CSAT Stacked Bar Chart */}
+            <div className="w-full flex-1 min-h-[75px] h-[90px] sm:h-[100px] lg:h-auto">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={MOCK_SENTIMENT_TRENDS}
+                  margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
                 >
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 shadow-sm">
-                    <ChevronRight className="h-3 w-3 rotate-90" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-none">
-                      Chuyển
-                    </span>
-                    <span className="text-[11px] font-black text-emerald-600 leading-none mt-0.5">
-                      {conv.value}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 8, fontWeight: 500, fill: '#94a3b8' }}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 8, fontWeight: 500, fill: '#94a3b8' }}
+                    unit="%"
+                  />
+                  <Tooltip cursor={{ fill: '#f8fafc' }} />
+                  <Bar
+                    dataKey="positive"
+                    name="Tích cực"
+                    stackId="a"
+                    fill="#10b981"
+                    barSize={10}
+                    isAnimationActive={false}
+                  />
+                  <Bar
+                    dataKey="neutral"
+                    name="Trung tính"
+                    stackId="a"
+                    fill="#f59e0b"
+                    isAnimationActive={false}
+                  />
+                  <Bar
+                    dataKey="negative"
+                    name="Tiêu cực"
+                    stackId="a"
+                    fill="#ef4444"
+                    radius={[2, 2, 0, 0]}
+                    isAnimationActive={false}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
 
-        {/* Khách hàng cần chăm sóc */}
-        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
-          <h3 className="mb-2 text-xs font-extrabold text-slate-800 sm:text-sm">
-            Khách hàng cần chăm sóc
-          </h3>
+        {/* ================= COLUMN 4 ================= */}
+        <div className="flex min-h-0 flex-col gap-2 sm:gap-2.5 lg:h-full">
+          {/* 10. Xếp hạng nhân viên */}
+          <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm lg:flex-1 lg:min-h-0">
+            <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
+              <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
+                Xếp hạng nhân viên
+              </h3>
+              <span className="text-[10px] font-bold text-indigo-600 cursor-pointer hover:underline">
+                Tất cả
+              </span>
+            </div>
 
-          <div className="grid grid-cols-1 gap-1.5">
-            {MOCK_CUSTOMERS_TO_CARE.map((item) => {
-              let IconComponent = Search
-              if (item.type === 'warranty') IconComponent = ShieldCheck
-              else if (item.type === 'unclosed') IconComponent = Clock3
-              else if (item.type === 'negative') IconComponent = Frown
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto [scrollbar-width:thin]">
+              <table className="w-full min-w-[240px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-slate-100 text-[9px] font-bold text-slate-400 uppercase tracking-wider sticky top-0 bg-white z-10">
+                    <th className="pb-1 text-center font-black w-5">#</th>
+                    <th className="pb-1 font-black">Nhân viên</th>
+                    <th className="pb-1 text-center font-black">QA</th>
+                    <th className="pb-1 text-right font-black">Chốt</th>
+                    <th className="pb-1 text-right font-black">Hội thoại</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100/50">
+                  {MOCK_STAFF_RANKING.map((staff, idx) => (
+                    <tr key={idx} className="text-[11px]">
+                      <td className="py-1 text-center font-black text-slate-400">{staff.rank}</td>
+                      <td className="py-1 font-bold text-slate-700 flex items-center gap-1 min-w-0">
+                        <div className="h-5 w-5 rounded-full bg-gradient-to-br from-indigo-50 to-purple-500 text-[9px] font-black text-white flex items-center justify-center shrink-0">
+                          {staff.avatar}
+                        </div>
+                        <span className="truncate flex items-center gap-0.5 min-w-0">
+                          <span className="truncate">{staff.name}</span>
+                          {staff.hasTrophy && <span className="shrink-0 text-[10px]">🏆</span>}
+                        </span>
+                      </td>
+                      <td className="py-1 text-center">
+                        <span className="inline-flex min-w-[22px] items-center justify-center rounded bg-emerald-50 px-1 py-0.5 text-[9px] font-black text-emerald-600 border border-emerald-100">
+                          {staff.qaScore}
+                        </span>
+                      </td>
+                      <td className="py-1 text-right font-semibold text-slate-800 tabular-nums">
+                        {staff.conversionRate}
+                      </td>
+                      <td className="py-1 text-right font-semibold text-slate-800 tabular-nums">
+                        {formatNumber(staff.conversations)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-              return (
-                <div
-                  key={item.id}
-                  className={cn(
-                    'flex items-center justify-between rounded-xl border p-2 shadow-sm transition duration-200 bg-white',
-                    item.border,
-                    item.bg
-                  )}
-                >
-                  <div className="flex items-center gap-2">
+          {/* 11. Hoạt động gần đây */}
+          <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm lg:flex-1 lg:min-h-0">
+            <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
+              <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
+                Hoạt động gần đây
+              </h3>
+              <span className="text-[10px] font-bold text-indigo-600 cursor-pointer hover:underline">
+                Tất cả
+              </span>
+            </div>
+
+            {/* Timeline Feed Container */}
+            <div className="space-y-2 flex-1 min-h-0 overflow-y-auto [scrollbar-width:thin] pr-0.5 py-0.5">
+              {MOCK_RECENT_ACTIVITIES.slice(0, 4).map((act, index, arr) => {
+                let dotColor = 'border-violet-500 bg-violet-100 text-violet-600'
+                if (act.type === 'unclosed')
+                  dotColor = 'border-amber-400 bg-amber-50 text-amber-500'
+                else if (act.type === 'closed-order' || act.type === 'warranty')
+                  dotColor = 'border-emerald-400 bg-emerald-50 text-emerald-500'
+                else if (act.type === 'negative')
+                  dotColor = 'border-rose-400 bg-rose-50 text-rose-500'
+
+                return (
+                  <div
+                    key={index}
+                    className="relative flex min-h-0 items-start gap-1.5 pl-3 text-[10.5px]"
+                  >
+                    {/* Vertical line connecting timeline nodes */}
+                    {index < arr.length - 1 && (
+                      <div className="absolute bottom-[-6px] left-[3.5px] top-[10px] w-px bg-slate-100" />
+                    )}
+                    {/* Circle dot node */}
                     <div
                       className={cn(
-                        'flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm border',
-                        item.border
+                        'absolute left-0 top-[2px] flex h-2 w-2 shrink-0 items-center justify-center rounded-full border bg-white',
+                        dotColor
                       )}
-                    >
-                      <IconComponent className={cn('h-4 w-4', item.text)} />
-                    </div>
-                    <span className="text-[11px] font-bold text-slate-700">{item.label}</span>
-                  </div>
-                  <span className={cn('text-lg font-black tabular-nums', item.text)}>
-                    {item.count}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+                    />
 
-        {/* Xếp hạng nhân viên */}
-        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
-          <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
-            <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
-              Xếp hạng nhân viên (theo QA Score)
-            </h3>
-            <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
-              Xem tất cả
-            </span>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-x-auto">
-            <table className="w-full min-w-[280px] border-collapse text-left">
-              <thead>
-                <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="pb-2 text-center font-black w-6">#</th>
-                  <th className="pb-2 font-black">Nhân viên</th>
-                  <th className="pb-2 text-center font-black">QA Score</th>
-                  <th className="pb-2 text-right font-black">Tỷ lệ chốt</th>
-                  <th className="pb-2 text-right font-black">Hội thoại</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100/50">
-                {MOCK_STAFF_RANKING.map((staff, idx) => (
-                  <tr key={idx} className="text-xs">
-                    <td className="py-2 text-center font-black text-slate-400">{staff.rank}</td>
-                    <td className="py-2 font-bold text-slate-700 flex items-center gap-1.5 min-w-0">
-                      <div className="h-6 w-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-[10px] font-black text-white flex items-center justify-center shrink-0">
-                        {staff.avatar}
-                      </div>
-                      <span className="truncate flex items-center gap-1 min-w-0">
-                        <span className="truncate">{staff.name}</span>
-                        {staff.hasTrophy && <span className="shrink-0 text-xs">🏆</span>}
+                    {/* Right hand description layout */}
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[8px] font-bold tabular-nums text-slate-400">
+                        {act.time}
                       </span>
-                    </td>
-                    <td className="py-2 text-center">
-                      <span className="inline-flex min-w-[28px] items-center justify-center rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-black text-emerald-600 border border-emerald-100">
-                        {staff.qaScore}
-                      </span>
-                    </td>
-                    <td className="py-2 text-right font-semibold text-slate-800 tabular-nums">
-                      {staff.conversionRate}
-                    </td>
-                    <td className="py-2 text-right font-semibold text-slate-800 tabular-nums">
-                      {formatNumber(staff.conversations)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Reihe 4: Sentiment & Aktivitäten */}
-      <div className="grid shrink-0 grid-cols-1 gap-2 pb-1 md:grid-cols-2 2xl:grid-cols-4">
-        {/* Cảm xúc khách hàng */}
-        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-2.5 shadow-sm">
-          <h3 className="mb-1.5 text-xs font-extrabold text-slate-800 sm:text-sm">
-            Cảm xúc khách hàng
-          </h3>
-
-          <div className="flex flex-col justify-between">
-            {/* The Gauge Container */}
-            <div className="relative flex h-[72px] w-full shrink-0 items-center justify-center overflow-hidden">
-              <div className="absolute -bottom-[54px] h-[130px] w-[130px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: 'Tích cực', value: 78, color: '#10b981' },
-                        { name: 'Trung tính', value: 16, color: '#f59e0b' },
-                        { name: 'Tiêu cực', value: 6, color: '#ef4444' },
-                      ]}
-                      innerRadius={52}
-                      outerRadius={68}
-                      startAngle={180}
-                      endAngle={0}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      <Cell fill="#10b981" />
-                      <Cell fill="#f59e0b" />
-                      <Cell fill="#ef4444" />
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="absolute bottom-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                <span className="text-xl font-black text-slate-800 leading-none">78%</span>
-                <span className="mt-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-600">
-                  Tích cực
-                </span>
-              </div>
-            </div>
-
-            {/* Smiley rows at bottom */}
-            <div className="mt-1.5 grid grid-cols-3 gap-1 border-t border-slate-100/80 pt-1.5">
-              <div className="flex flex-col items-center text-center">
-                <div className="mb-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-emerald-100 bg-emerald-50 text-emerald-600 shadow-sm">
-                  <Smile className="h-3.5 w-3.5" />
-                </div>
-                <span className="text-[10px] font-black text-slate-800">78%</span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 leading-none">
-                  Tích cực
-                </span>
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <div className="mb-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-amber-100 bg-amber-50 text-amber-600 shadow-sm">
-                  <Meh className="h-3.5 w-3.5" />
-                </div>
-                <span className="text-[10px] font-black text-slate-800">16%</span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 leading-none">
-                  Trung tính
-                </span>
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <div className="mb-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-rose-100 bg-rose-50 text-rose-600 shadow-sm">
-                  <Frown className="h-3.5 w-3.5" />
-                </div>
-                <span className="text-[10px] font-black text-slate-800">6%</span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 leading-none">
-                  Tiêu cực
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Từ khóa nổi bật trong tháng */}
-        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-2.5 shadow-sm">
-          <h3 className="mb-1.5 text-xs font-extrabold text-slate-800 sm:text-sm">
-            Từ khóa nổi bật trong tháng
-          </h3>
-
-          <div className="grid grid-cols-2 gap-1">
-            {MOCK_KEYWORDS.map((kw, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between rounded-lg border border-slate-100/50 bg-slate-50 px-2 py-1 text-[11px] font-bold text-slate-600 shadow-sm"
-              >
-                <span className="text-slate-400 font-bold shrink-0 mr-1 flex items-center">
-                  # <span className="text-slate-600 font-bold ml-1">{kw.text}</span>
-                </span>
-                <span className="text-slate-800 font-black tabular-nums">{kw.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Xu hướng cảm xúc (CSAT) */}
-        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-2.5 shadow-sm">
-          <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
-            <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
-              Xu hướng cảm xúc (CSAT)
-            </h3>
-          </div>
-
-          {/* Custom CSAT Legend */}
-          <div className="mb-1.5 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] font-bold text-slate-500">
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span>Tích cực</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-amber-500" />
-              <span>Trung tính</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-rose-500" />
-              <span>Tiêu cực</span>
-            </div>
-          </div>
-
-          {/* CSAT Stacked Bar Chart */}
-          <div className="h-[96px] w-full sm:h-[104px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={MOCK_SENTIMENT_TRENDS}
-                margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
-              >
-                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 9, fontWeight: 500, fill: '#94a3b8' }}
-                />
-                <YAxis
-                  domain={[0, 100]}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 9, fontWeight: 500, fill: '#94a3b8' }}
-                  unit="%"
-                />
-                <Tooltip cursor={{ fill: '#f8fafc' }} />
-                <Bar
-                  dataKey="positive"
-                  name="Tích cực"
-                  stackId="a"
-                  fill="#10b981"
-                  barSize={14}
-                  isAnimationActive={false}
-                />
-                <Bar
-                  dataKey="neutral"
-                  name="Trung tính"
-                  stackId="a"
-                  fill="#f59e0b"
-                  isAnimationActive={false}
-                />
-                <Bar
-                  dataKey="negative"
-                  name="Tiêu cực"
-                  stackId="a"
-                  fill="#ef4444"
-                  radius={[3, 3, 0, 0]}
-                  isAnimationActive={false}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Hoạt động gần đây */}
-        <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-slate-200/60 bg-white p-2.5 shadow-sm">
-          <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
-            <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">Hoạt động gần đây</h3>
-            <span className="text-[10px] font-bold text-indigo-600 cursor-pointer hover:underline">
-              Xem tất cả
-            </span>
-          </div>
-
-          {/* Timeline Feed Container */}
-          <div className="space-y-1">
-            {MOCK_RECENT_ACTIVITIES.slice(0, 4).map((act, index, arr) => {
-              let dotColor = 'border-violet-500 bg-violet-100 text-violet-600'
-              if (act.type === 'unclosed') dotColor = 'border-amber-400 bg-amber-50 text-amber-500'
-              else if (act.type === 'closed-order' || act.type === 'warranty')
-                dotColor = 'border-emerald-400 bg-emerald-50 text-emerald-500'
-              else if (act.type === 'negative')
-                dotColor = 'border-rose-400 bg-rose-50 text-rose-500'
-
-              return (
-                <div
-                  key={index}
-                  className="relative flex min-h-0 items-start gap-2 pl-3.5 text-[11px]"
-                >
-                  {/* Vertical line connecting timeline nodes */}
-                  {index < arr.length - 1 && (
-                    <div className="absolute bottom-[-6px] left-[5px] top-[12px] w-px bg-slate-100" />
-                  )}
-                  {/* Circle dot node */}
-                  <div
-                    className={cn(
-                      'absolute left-0 top-[2px] flex h-3 w-3 shrink-0 items-center justify-center rounded-full border-2 bg-white',
-                      dotColor
-                    )}
-                  />
-
-                  {/* Right hand description layout */}
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[9px] font-bold tabular-nums text-slate-400">
-                      {act.time}
-                    </span>
-                    <p className="mt-0.5 line-clamp-1 font-semibold leading-snug tracking-tight text-slate-600">
-                      {/* Highlight specific sections in bold */}
-                      {act.label.includes('#') ? (
-                        <>
-                          {act.label
-                            .split(/(#\w+|\d+\s*điểm|\d+(?:\.\d+)*đ)/g)
-                            .map((part, pidx) => {
-                              if (
-                                part.startsWith('#') ||
-                                part.includes('điểm') ||
-                                part.includes('đ')
-                              ) {
+                      <p className="mt-0.5 line-clamp-1 font-semibold leading-snug tracking-tight text-slate-600">
+                        {/* Highlight specific sections in bold */}
+                        {act.label.includes('#') ? (
+                          <>
+                            {act.label
+                              .split(/(#\w+|\d+\s*điểm|\d+(?:\.\d+)*đ)/g)
+                              .map((part, pidx) => {
+                                if (
+                                  part.startsWith('#') ||
+                                  part.includes('điểm') ||
+                                  part.includes('đ')
+                                ) {
+                                  return (
+                                    <span
+                                      key={pidx}
+                                      className="font-extrabold text-slate-800 bg-slate-100 px-0.5 py-0.2 rounded text-[10px]"
+                                    >
+                                      {part}
+                                    </span>
+                                  )
+                                }
+                                return part
+                              })}
+                          </>
+                        ) : act.label.includes('khách') ? (
+                          <>
+                            {act.label.split(/(\d+\s*khách)/g).map((part, pidx) => {
+                              if (part.includes('khách')) {
                                 return (
                                   <span
                                     key={pidx}
-                                    className="font-extrabold text-slate-800 bg-slate-100 px-1 py-0.5 rounded text-[11px] inline-block mt-[-2px]"
+                                    className="font-extrabold text-amber-700 bg-amber-50 px-0.5 py-0.2 rounded text-[10px]"
                                   >
                                     {part}
                                   </span>
@@ -1742,47 +1783,32 @@ function OverviewTab() {
                               }
                               return part
                             })}
-                        </>
-                      ) : act.label.includes('khách') ? (
-                        <>
-                          {act.label.split(/(\d+\s*khách)/g).map((part, pidx) => {
-                            if (part.includes('khách')) {
-                              return (
-                                <span
-                                  key={pidx}
-                                  className="font-extrabold text-amber-700 bg-amber-50 px-1 py-0.5 rounded text-[11px] inline-block mt-[-2px]"
-                                >
-                                  {part}
-                                </span>
-                              )
-                            }
-                            return part
-                          })}
-                        </>
-                      ) : act.label.includes('tiêu cực') ? (
-                        <>
-                          {act.label.split(/(3\s*hội thoại)/g).map((part, pidx) => {
-                            if (part.includes('hội thoại')) {
-                              return (
-                                <span
-                                  key={pidx}
-                                  className="font-extrabold text-rose-700 bg-rose-50 px-1 py-0.5 rounded text-[11px] inline-block mt-[-2px]"
-                                >
-                                  {part}
-                                </span>
-                              )
-                            }
-                            return part
-                          })}
-                        </>
-                      ) : (
-                        act.label
-                      )}
-                    </p>
+                          </>
+                        ) : act.label.includes('tiêu cực') ? (
+                          <>
+                            {act.label.split(/(3\s*hội thoại)/g).map((part, pidx) => {
+                              if (part.includes('hội thoại')) {
+                                return (
+                                  <span
+                                    key={pidx}
+                                    className="font-extrabold text-rose-700 bg-rose-50 px-0.5 py-0.2 rounded text-[10px]"
+                                  >
+                                    {part}
+                                  </span>
+                                )
+                              }
+                              return part
+                            })}
+                          </>
+                        ) : (
+                          act.label
+                        )}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -2797,130 +2823,113 @@ function ProductsTab() {
   })
 
   return (
-    <div className="space-y-6 p-5 sm:p-6 bg-[#f4f7fc]">
-      {/* Header and Filter Row */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-150 pb-5">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-200">
-              <ShoppingBag className="h-5 w-5" />
+    <div className="flex h-full min-h-0 flex-col gap-2 overflow-y-auto lg:overflow-hidden bg-[#f4f7fc] p-2 pb-2 sm:gap-2.5 sm:p-3 font-sans">
+      {/* Upper Title and Operational Overview Banner */}
+      <div className="shrink-0 rounded-xl border border-indigo-100 bg-white px-3 py-2.5 shadow-sm">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-600">
+              Product Performance
+            </p>
+            <h2 className="mt-0.5 text-lg font-black tracking-tight text-slate-900 sm:text-xl">
+              Hiệu suất sản phẩm
+            </h2>
+            <p className="mt-0.5 hidden max-w-3xl text-xs text-slate-600 lg:block">
+              Quản lý, phân tích và đánh giá hiệu suất bán hàng của từng sản phẩm trên hệ thống.
+            </p>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <div className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-bold text-slate-700 shadow-sm transition hover:bg-slate-50">
+              <span>01/05/2026 - 31/05/2026</span>
+              <span className="text-slate-400">📅</span>
             </div>
-            <div>
-              <h2 className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-1.5">
-                Hiệu suất sản phẩm
-              </h2>
-              <p className="mt-0.5 text-xs text-slate-500 font-semibold uppercase tracking-wide">
-                Quản lý, phân tích và đánh giá hiệu suất bán hàng của từng sản phẩm
-              </p>
+            <div className="flex cursor-pointer items-center gap-1 border border-slate-200 rounded-lg bg-white px-2.5 py-1.5 font-bold text-slate-700 shadow-sm transition hover:bg-slate-50">
+              <span>Tất cả team</span>
+              <ChevronDown className="h-3 w-3 text-slate-400" />
             </div>
-          </div>
-        </div>
-
-        {/* Top-Right Filters */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {/* Calendar Display */}
-          <div className="flex items-center gap-2 border border-slate-200 bg-white rounded-xl px-3 py-2 text-slate-700 font-bold shadow-sm cursor-pointer hover:bg-slate-50 transition">
-            <span>01/05/2026 - 31/05/2026</span>
-            <span className="text-slate-400">📅</span>
-          </div>
-
-          {/* Team Dropdown */}
-          <div className="flex items-center gap-1.5 border border-slate-200 bg-white rounded-xl px-3 py-2 text-slate-700 font-bold shadow-sm cursor-pointer hover:bg-slate-50 transition">
-            <span>Tất cả team</span>
-            <ChevronDown className="h-3.5 w-3.5" text-slate-400="" />
-          </div>
-
-          {/* Filters Button */}
-          <div className="flex items-center gap-1.5 border border-slate-200 bg-white rounded-xl px-3 py-2 text-slate-700 font-bold shadow-sm cursor-pointer hover:bg-slate-50 transition">
-            <span>Bộ lọc</span>
-            <ChevronDown className="h-3.5 w-3.5" text-slate-400="" />
-          </div>
-
-          {/* Updated time status */}
-          <div className="flex items-center gap-1 text-slate-400 font-bold px-2 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" />
-            <span>Cập nhật lúc 10:30</span>
+            <div className="flex cursor-pointer items-center gap-1 border border-slate-200 rounded-lg bg-white px-2.5 py-1.5 font-bold text-slate-700 shadow-sm transition hover:bg-slate-50">
+              <span>Bộ lọc</span>
+              <ChevronDown className="h-3 w-3 text-slate-400" />
+            </div>
+            <div className="flex items-center gap-1 px-1.5 py-1 font-bold text-slate-400">
+              <span className="mr-0.5 h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              <span>Cập nhật lúc 10:30</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Row 1: KPI-Karten (6 cards) */}
-      <div className="space-y-3">
-        <h3 className="font-extrabold text-slate-800 text-sm tracking-tight">
-          Tổng quan hiệu suất sản phẩm
-        </h3>
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {MOCK_PROD_KPI_CARDS.map((card) => {
-            let iconComponent = <Package className="h-4.5 w-4.5" />
-            if (card.icon === 'message-square')
-              iconComponent = <MessageSquare className="h-4.5 w-4.5" />
-            if (card.icon === 'message-circle')
-              iconComponent = <MessageCircle className="h-4.5 w-4.5" />
-            if (card.icon === 'shopping-bag')
-              iconComponent = <ShoppingBag className="h-4.5 w-4.5" />
-            if (card.icon === 'dollar-sign') iconComponent = <DollarSign className="h-4.5 w-4.5" />
-            if (card.icon === 'target') iconComponent = <Target className="h-4.5 w-4.5" />
+      <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        {MOCK_PROD_KPI_CARDS.map((card) => {
+          let iconComponent = <Package className="h-4 w-4" />
+          if (card.icon === 'message-square') iconComponent = <MessageSquare className="h-4 w-4" />
+          if (card.icon === 'message-circle') iconComponent = <MessageCircle className="h-4 w-4" />
+          if (card.icon === 'shopping-bag') iconComponent = <ShoppingBag className="h-4 w-4" />
+          if (card.icon === 'dollar-sign') iconComponent = <DollarSign className="h-4 w-4" />
+          if (card.icon === 'target') iconComponent = <Target className="h-4 w-4" />
 
-            return (
-              <div
-                key={card.id}
-                className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm flex flex-col justify-between h-[125px] transition hover:shadow-md duration-200"
-              >
-                {/* Top Title & Icon */}
-                <div className="flex items-center gap-2">
-                  <div
-                    className={cn(
-                      'flex h-8 w-8 items-center justify-center rounded-xl shrink-0',
-                      card.colors
-                    )}
-                  >
-                    {iconComponent}
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 truncate block">
-                    {card.label}
-                  </span>
+          return (
+            <div
+              key={card.id}
+              className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200/60 bg-white p-2 sm:p-2.5 shadow-sm transition duration-200 hover:shadow-md"
+            >
+              {/* Top Title & Icon */}
+              <div className="flex min-w-0 items-center gap-1.5">
+                <div
+                  className={cn(
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+                    card.colors
+                  )}
+                >
+                  {iconComponent}
                 </div>
+                <span className="min-w-0 text-[10px] font-bold uppercase tracking-wide text-slate-500 truncate block">
+                  {card.label}
+                </span>
+              </div>
 
-                {/* Value & Trend */}
-                <div className="space-y-0.5 mt-auto">
-                  <h3 className="text-xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                    {card.value}
-                  </h3>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 text-[9px] font-black text-emerald-600 leading-none">
-                      {card.trend}
-                    </span>
-                    <p className="text-[9px] text-slate-400 font-bold truncate">
-                      {card.comparison}
-                    </p>
-                  </div>
+              {/* Value & Trend */}
+              <div className="mt-1">
+                <h3 className="text-base sm:text-lg lg:text-sm 2xl:text-lg font-black text-slate-800 tracking-tight leading-none mb-1">
+                  {card.value}
+                </h3>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 border border-emerald-100 px-1 py-0.2 text-[9px] font-black text-emerald-600 leading-none">
+                    {card.trend}
+                  </span>
+                  <p className="text-[9px] text-slate-400 font-bold truncate">{card.comparison}</p>
                 </div>
               </div>
-            )
-          })}
-        </div>
+            </div>
+          )
+        })}
       </div>
 
       {/* Row 2: Bottom layout (Left: 70% | Right: 30%) */}
-      <div className="grid gap-5 grid-cols-1 lg:grid-cols-10">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-10 gap-2 sm:gap-2.5">
         {/* Left Side (col-span-7) */}
-        <div className="lg:col-span-7 space-y-5">
+        <div className="lg:col-span-7 flex min-h-0 flex-col gap-2 sm:gap-2.5 lg:h-full">
           {/* Table Card (Danh sách sản phẩm) */}
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <div className="rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm flex min-h-0 flex-1 flex-col">
+            <div className="flex items-center justify-between gap-2 mb-2 flex-wrap shrink-0">
               <div>
-                <h3 className="font-extrabold text-slate-800 text-sm">Danh sách sản phẩm</h3>
+                <h3 className="font-extrabold text-slate-800 text-xs sm:text-sm">
+                  Danh sách sản phẩm
+                </h3>
               </div>
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
                 {/* Search box */}
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
                   <input
                     type="search"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Tìm kiếm sản phẩm..."
-                    className="rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-[11px] font-bold shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-150 w-[140px] sm:w-[180px]"
+                    placeholder="Tìm kiếm..."
+                    className="rounded-lg border border-slate-200 bg-white py-1 pl-6 pr-2.5 text-[10px] font-bold shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-150 w-[120px] sm:w-[150px]"
                   />
                 </div>
 
@@ -2928,9 +2937,9 @@ function ProductsTab() {
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="rounded-lg border border-slate-200 bg-slate-50 py-1.5 px-2.5 text-[11px] font-bold text-slate-500 cursor-pointer focus:outline-none hover:bg-slate-100 transition"
+                  className="rounded-lg border border-slate-200 bg-slate-50 py-1 px-2 text-[10px] font-bold text-slate-500 cursor-pointer focus:outline-none hover:bg-slate-100 transition"
                 >
-                  <option value="all">Tất cả danh mục</option>
+                  <option value="all">Danh mục</option>
                   <option value="Nhẫn">Nhẫn</option>
                   <option value="Dây chuyền">Dây chuyền</option>
                   <option value="Lắc tay">Lắc tay</option>
@@ -2942,9 +2951,9 @@ function ProductsTab() {
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="rounded-lg border border-slate-200 bg-slate-50 py-1.5 px-2.5 text-[11px] font-bold text-slate-500 cursor-pointer focus:outline-none hover:bg-slate-100 transition"
+                  className="rounded-lg border border-slate-200 bg-slate-50 py-1 px-2 text-[10px] font-bold text-slate-500 cursor-pointer focus:outline-none hover:bg-slate-100 transition"
                 >
-                  <option value="all">Tất cả trạng thái</option>
+                  <option value="all">Trạng thái</option>
                   <option value="hot">Bán chạy</option>
                   <option value="potential">Tiềm năng</option>
                 </select>
@@ -2952,75 +2961,75 @@ function ProductsTab() {
                 {/* Export Button */}
                 <button
                   type="button"
-                  className="flex items-center gap-1 border border-slate-200 bg-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition"
+                  className="flex items-center gap-1 border border-slate-200 bg-white px-2 py-1 rounded-lg text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition"
                 >
-                  <Download className="h-3.5 w-3.5 text-slate-500" />
-                  <span>Xuất dữ liệu</span>
+                  <Download className="h-3 w-3 text-slate-500" />
+                  <span>Xuất</span>
                 </button>
               </div>
             </div>
 
             {/* List Table */}
-            <div className="overflow-x-auto min-h-0 [scrollbar-width:thin]">
-              <table className="w-full text-left border-collapse min-w-[850px]">
+            <div className="flex-1 overflow-y-auto overflow-x-auto min-h-0 [scrollbar-width:thin] border-t border-slate-100 pt-1.5">
+              <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
-                  <tr className="border-b border-slate-150 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="pb-2.5 font-black">Sản phẩm</th>
-                    <th className="pb-2.5 text-left font-black">Danh mục</th>
-                    <th className="pb-2.5 text-right font-black">Tin nhắn</th>
-                    <th className="pb-2.5 text-right font-black">Tỷ lệ phản hồi</th>
-                    <th className="pb-2.5 text-right font-black">Tỷ lệ chốt</th>
-                    <th className="pb-2.5 text-right font-black">Đã bán</th>
-                    <th className="pb-2.5 text-right font-black">Doanh thu</th>
-                    <th className="pb-2.5 text-right font-black">Doanh thu / SP</th>
-                    <th className="pb-2.5 text-center font-black">AI Score</th>
-                    <th className="pb-2.5 text-center font-black">Xu hướng</th>
+                  <tr className="border-b border-slate-100 text-[9px] font-bold text-slate-400 uppercase tracking-wider sticky top-0 bg-white z-10">
+                    <th className="pb-1 font-black">Sản phẩm</th>
+                    <th className="pb-1 text-left font-black">Danh mục</th>
+                    <th className="pb-1 text-right font-black">Tin nhắn</th>
+                    <th className="pb-1 text-right font-black">Tỷ lệ phản hồi</th>
+                    <th className="pb-1 text-right font-black">Tỷ lệ chốt</th>
+                    <th className="pb-1 text-right font-black">Đã bán</th>
+                    <th className="pb-1 text-right font-black">Doanh thu</th>
+                    <th className="pb-1 text-right font-black">Doanh thu / SP</th>
+                    <th className="pb-1 text-center font-black">AI Score</th>
+                    <th className="pb-1 text-center font-black">Xu hướng</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/50">
                   {filteredProducts.map((prod, idx) => (
-                    <tr key={idx} className="text-xs hover:bg-slate-50/50 transition">
+                    <tr key={idx} className="text-[11px] hover:bg-slate-50/50 transition">
                       {/* Product details */}
-                      <td className="py-3 font-bold text-slate-700 flex items-center gap-2 min-w-0 max-w-[180px]">
-                        <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 text-base flex items-center justify-center shrink-0 border border-indigo-100/40">
+                      <td className="py-1.5 font-bold text-slate-700 flex items-center gap-1.5 min-w-0 max-w-[150px]">
+                        <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-indigo-50 to-violet-50 text-sm flex items-center justify-center shrink-0 border border-indigo-100/40">
                           {prod.image}
                         </div>
                         <div className="min-w-0 leading-none">
-                          <span className="truncate block font-black text-slate-800 text-[11px]">
+                          <span className="truncate block font-black text-slate-800 text-[10.5px]">
                             {prod.name}
                           </span>
-                          <span className="text-[9px] text-slate-400 font-bold block mt-0.5">
+                          <span className="text-[8.5px] text-slate-400 font-bold block mt-0.5">
                             {prod.code}
                           </span>
                         </div>
                       </td>
 
                       {/* Category */}
-                      <td className="py-3 text-left font-bold text-slate-500">{prod.category}</td>
+                      <td className="py-1.5 text-left font-bold text-slate-500">{prod.category}</td>
 
                       {/* Messages */}
-                      <td className="py-3 text-right">
-                        <span className="font-black text-slate-800 text-[11px] block leading-none">
+                      <td className="py-1.5 text-right">
+                        <span className="font-black text-slate-800 block leading-none">
                           {formatNumber(prod.msg)}
                         </span>
-                        <span className="text-[9px] font-bold block mt-1 leading-none text-emerald-500">
+                        <span className="text-[8.5px] font-bold block mt-0.5 leading-none text-emerald-500">
                           {prod.msgTrend}
                         </span>
                       </td>
 
                       {/* Response rate */}
-                      <td className="py-3 text-right font-extrabold text-slate-700 tabular-nums">
+                      <td className="py-1.5 text-right font-extrabold text-slate-700 tabular-nums">
                         {prod.responseRate}
                       </td>
 
                       {/* Closing rate */}
-                      <td className="py-3 text-right">
-                        <span className="font-black text-slate-800 text-[11px] block leading-none">
+                      <td className="py-1.5 text-right">
+                        <span className="font-black text-slate-800 block leading-none">
                           {prod.closingRate}
                         </span>
                         <span
                           className={cn(
-                            'text-[9px] font-bold block mt-1 leading-none',
+                            'text-[8.5px] font-bold block mt-0.5 leading-none',
                             prod.closingTrend.includes('↓') ? 'text-rose-500' : 'text-emerald-500'
                           )}
                         >
@@ -3029,35 +3038,35 @@ function ProductsTab() {
                       </td>
 
                       {/* Sold quantity */}
-                      <td className="py-3 text-right">
-                        <span className="font-black text-slate-800 text-[11px] block leading-none">
+                      <td className="py-1.5 text-right">
+                        <span className="font-black text-slate-800 block leading-none">
                           {prod.sold}
                         </span>
-                        <span className="text-[9px] font-bold block mt-1 leading-none text-emerald-500">
+                        <span className="text-[8.5px] font-bold block mt-0.5 leading-none text-emerald-500">
                           {prod.soldTrend}
                         </span>
                       </td>
 
                       {/* Revenue */}
-                      <td className="py-3 text-right">
-                        <span className="font-black text-slate-800 text-[11px] block leading-none">
+                      <td className="py-1.5 text-right">
+                        <span className="font-black text-slate-800 block leading-none">
                           {prod.revenue}
                         </span>
-                        <span className="text-[9px] font-bold block mt-1 leading-none text-emerald-500">
+                        <span className="text-[8.5px] font-bold block mt-0.5 leading-none text-emerald-500">
                           {prod.revenueTrend}
                         </span>
                       </td>
 
                       {/* Rev per product */}
-                      <td className="py-3 text-right font-bold text-slate-600 tabular-nums">
+                      <td className="py-1.5 text-right font-bold text-slate-600 tabular-nums">
                         {prod.revPerItem}
                       </td>
 
                       {/* AI Quality badge */}
-                      <td className="py-3 text-center">
+                      <td className="py-1.5 text-center">
                         <span
                           className={cn(
-                            'inline-flex min-w-[28px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-black',
+                            'inline-flex min-w-[24px] items-center justify-center rounded px-1 py-0.5 text-[9px] font-black',
                             prod.aiScore >= 85
                               ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                               : prod.aiScore >= 75
@@ -3070,7 +3079,7 @@ function ProductsTab() {
                       </td>
 
                       {/* Xu hướng Sparkline */}
-                      <td className="py-3 text-center">
+                      <td className="py-1.5 text-center">
                         <div className="flex justify-center">
                           <SparklinePath
                             data={prod.trendData}
@@ -3085,32 +3094,32 @@ function ProductsTab() {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between border-t border-slate-100 mt-4 pt-3 text-[11px] font-bold text-slate-400">
+            <div className="flex shrink-0 items-center justify-between border-t border-slate-100 mt-2 pt-2 text-[10px] font-bold text-slate-400">
               <span>Hiển thị 1 - 6 trong 286 sản phẩm</span>
-              <div className="flex items-center gap-1.5 select-none">
-                <span className="h-6 w-6 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
+              <div className="flex items-center gap-1 select-none">
+                <span className="h-5 w-5 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
                   &lt;
                 </span>
-                <span className="h-6 w-6 rounded bg-indigo-600 text-white flex items-center justify-center cursor-pointer">
+                <span className="h-5 w-5 rounded bg-indigo-600 text-white flex items-center justify-center cursor-pointer">
                   1
                 </span>
-                <span className="h-6 w-6 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
+                <span className="h-5 w-5 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
                   2
                 </span>
-                <span className="h-6 w-6 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
+                <span className="h-5 w-5 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
                   3
                 </span>
-                <span className="h-6 w-6 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
+                <span className="h-5 w-5 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
                   4
                 </span>
-                <span className="h-6 w-6 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
+                <span className="h-5 w-5 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
                   5
                 </span>
                 <span>...</span>
-                <span className="h-6 w-6 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
+                <span className="h-5 w-5 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
                   48
                 </span>
-                <span className="h-6 w-6 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
+                <span className="h-5 w-5 rounded flex items-center justify-center cursor-pointer hover:bg-slate-100">
                   &gt;
                 </span>
               </div>
@@ -3118,87 +3127,87 @@ function ProductsTab() {
           </div>
 
           {/* Grid for two bottom charts */}
-          <div className="grid gap-5 grid-cols-1 md:grid-cols-2">
+          <div className="grid gap-2 sm:gap-2.5 grid-cols-1 md:grid-cols-2 lg:h-[185px] shrink-0">
             {/* Chart 1: Số tin nhắn theo sản phẩm */}
-            <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between h-[320px]">
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <h3 className="font-extrabold text-slate-800 text-sm">
+            <div className="rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm flex flex-col justify-between min-h-0 h-full">
+              <div className="flex shrink-0 items-center justify-between gap-2 mb-1">
+                <h3 className="font-extrabold text-slate-800 text-[11px] sm:text-xs">
                   Số tin nhắn theo sản phẩm{' '}
-                  <span className="text-slate-400 font-bold text-xs">(Top 10)</span>
+                  <span className="text-slate-400 font-bold text-[10px]">(Top 10)</span>
                 </h3>
-                <select className="rounded-lg border border-slate-200 bg-slate-50 py-1 px-2 text-[10px] font-bold text-slate-500 cursor-pointer focus:outline-none">
+                <select className="rounded-lg border border-slate-200 bg-slate-50 py-0.5 px-1 text-[9px] font-bold text-slate-500 cursor-pointer focus:outline-none">
                   <option>Tin nhắn</option>
                 </select>
               </div>
 
               {/* Bar Chart */}
-              <div className="h-[210px] w-full mt-auto">
+              <div className="flex-1 min-h-0 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={MOCK_PROD_MSG_CHART}
-                    margin={{ top: 10, right: 5, left: -25, bottom: 5 }}
+                    margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
                   >
                     <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis
                       dataKey="name"
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fontSize: 8, fontWeight: 700, fill: '#64748b' }}
+                      tick={{ fontSize: 7, fontWeight: 700, fill: '#64748b' }}
                     />
                     <YAxis
                       domain={[0, 'auto']}
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}K` : v)}
-                      tick={{ fontSize: 8, fontWeight: 700, fill: '#94a3b8' }}
+                      tick={{ fontSize: 7, fontWeight: 700, fill: '#94a3b8' }}
                     />
                     <Tooltip cursor={{ fill: '#f1f5f9/50' }} />
-                    <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={20} />
+                    <Bar dataKey="value" fill="#6366f1" radius={[3, 3, 0, 0]} barSize={12} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
             {/* Chart 2: Tỷ lệ chốt theo sản phẩm */}
-            <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between h-[320px]">
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <h3 className="font-extrabold text-slate-800 text-sm">
+            <div className="rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm flex flex-col justify-between min-h-0 h-full">
+              <div className="flex shrink-0 items-center justify-between gap-2 mb-1">
+                <h3 className="font-extrabold text-slate-800 text-[11px] sm:text-xs">
                   Tỷ lệ chốt theo sản phẩm{' '}
-                  <span className="text-slate-400 font-bold text-xs">(Top 10)</span>
+                  <span className="text-slate-400 font-bold text-[10px]">(Top 10)</span>
                 </h3>
-                <select className="rounded-lg border border-slate-200 bg-slate-50 py-1 px-2 text-[10px] font-bold text-slate-500 cursor-pointer focus:outline-none">
+                <select className="rounded-lg border border-slate-200 bg-slate-50 py-0.5 px-1 text-[9px] font-bold text-slate-500 cursor-pointer focus:outline-none">
                   <option>Tỷ lệ chốt</option>
                 </select>
               </div>
 
               {/* Line Chart */}
-              <div className="h-[210px] w-full mt-auto">
+              <div className="flex-1 min-h-0 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={MOCK_PROD_CLOSING_CHART}
-                    margin={{ top: 10, right: 10, left: -25, bottom: 5 }}
+                    margin={{ top: 5, right: 10, left: -25, bottom: 0 }}
                   >
                     <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis
                       dataKey="name"
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fontSize: 8, fontWeight: 700, fill: '#64748b' }}
+                      tick={{ fontSize: 7, fontWeight: 700, fill: '#64748b' }}
                     />
                     <YAxis
                       domain={[0, 20]}
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(v) => `${v}%`}
-                      tick={{ fontSize: 8, fontWeight: 700, fill: '#94a3b8' }}
+                      tick={{ fontSize: 7, fontWeight: 700, fill: '#94a3b8' }}
                     />
                     <Tooltip />
                     <Line
                       type="monotone"
                       dataKey="rate"
                       stroke="#10b981"
-                      strokeWidth={2}
-                      dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }}
+                      strokeWidth={1.5}
+                      dot={{ r: 2, fill: '#10b981', strokeWidth: 0 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -3208,20 +3217,20 @@ function ProductsTab() {
         </div>
 
         {/* Right Side (col-span-3) */}
-        <div className="lg:col-span-3 space-y-5">
+        <div className="lg:col-span-3 flex min-h-0 flex-col gap-2 sm:gap-2.5 lg:h-full">
           {/* Top sản phẩm doanh thu cao nhất */}
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
-              <h3 className="font-extrabold text-slate-800 text-sm">
-                Top sản phẩm doanh thu cao nhất
+          <div className="rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm flex flex-col min-h-0 lg:flex-1">
+            <div className="flex shrink-0 items-center justify-between gap-2 mb-2">
+              <h3 className="font-extrabold text-slate-800 text-xs sm:text-sm">
+                Top sản phẩm cao nhất
               </h3>
-              <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
+              <span className="text-[10px] font-bold text-indigo-600 cursor-pointer hover:underline">
                 Xem tất cả
               </span>
             </div>
 
             {/* Vertically stacked items with Rank labels */}
-            <div className="space-y-4 my-auto">
+            <div className="space-y-1.5 flex-1 min-h-0 overflow-y-auto [scrollbar-width:thin] pr-0.5 py-0.5">
               {MOCK_PROD_REVENUE_TOP.map((item, idx) => {
                 const rankColors = [
                   'bg-blue-100 text-blue-800',
@@ -3231,12 +3240,12 @@ function ProductsTab() {
                   'bg-slate-50 text-slate-500',
                 ]
                 return (
-                  <div key={idx} className="flex items-center justify-between gap-2.5 text-xs">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                  <div key={idx} className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       {/* Circle Rank ID */}
                       <span
                         className={cn(
-                          'h-5 w-5 shrink-0 rounded-full flex items-center justify-center text-[10px] font-black',
+                          'h-4.5 w-4.5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-black',
                           rankColors[idx % rankColors.length]
                         )}
                       >
@@ -3244,21 +3253,21 @@ function ProductsTab() {
                       </span>
 
                       {/* Product avatar image */}
-                      <div className="h-8 w-8 rounded-xl bg-slate-50 flex items-center justify-center text-sm border border-slate-100">
+                      <div className="h-7 w-7 rounded-lg bg-slate-50 flex items-center justify-center text-sm border border-slate-100">
                         {item.image}
                       </div>
 
                       <div className="min-w-0 leading-none">
-                        <span className="font-black text-slate-800 truncate block text-[11px]">
+                        <span className="font-black text-slate-800 truncate block text-[10.5px]">
                           {item.name}
                         </span>
                       </div>
                     </div>
                     <div className="text-right shrink-0 leading-none">
-                      <span className="font-black text-slate-850 tabular-nums block text-[11px]">
+                      <span className="font-black text-slate-850 tabular-nums block text-[10.5px]">
                         {item.value}
                       </span>
-                      <span className="text-[9px] text-slate-400 font-bold block mt-1">
+                      <span className="text-[8.5px] text-slate-400 font-bold block mt-0.5">
                         {item.sold} đã bán
                       </span>
                     </div>
@@ -3269,10 +3278,12 @@ function ProductsTab() {
           </div>
 
           {/* AI Insight về sản phẩm */}
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between">
-            <h3 className="font-extrabold text-slate-800 text-sm mb-4">AI Insight về sản phẩm</h3>
+          <div className="rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm flex flex-col min-h-0 lg:flex-1">
+            <h3 className="font-extrabold text-slate-800 text-xs sm:text-sm mb-2 shrink-0">
+              AI Insight về sản phẩm
+            </h3>
 
-            <div className="space-y-3 flex-1 flex flex-col justify-center my-auto">
+            <div className="space-y-1.5 flex-1 min-h-0 overflow-y-auto [scrollbar-width:thin] pr-0.5 py-0.5">
               {MOCK_PROD_AI_INSIGHTS.map((ins) => {
                 let bulletBg = 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                 let bulletIcon = '🌿'
@@ -3288,19 +3299,19 @@ function ProductsTab() {
                 return (
                   <div
                     key={ins.id}
-                    className="flex gap-2.5 items-start text-[11px] p-2 rounded-xl bg-slate-50/50 hover:bg-slate-50 transition border border-slate-100"
+                    className="flex gap-2 items-start text-[10.5px] p-1.5 rounded-lg bg-slate-50/50 hover:bg-slate-50 transition border border-slate-100"
                   >
                     {/* Circle Bullet Badge */}
                     <div
                       className={cn(
-                        'flex h-6 w-6 items-center justify-center rounded-lg text-xs font-bold shrink-0 shadow-sm',
+                        'flex h-5.5 w-5.5 items-center justify-center rounded bg-white text-xs font-bold shrink-0 shadow-sm border border-slate-100',
                         bulletBg
                       )}
                     >
                       {bulletIcon}
                     </div>
 
-                    <p className="text-slate-600 font-bold leading-relaxed tracking-tight">
+                    <p className="text-slate-600 font-bold leading-normal tracking-tight">
                       {ins.text
                         .split(
                           /(Nhẫn\s+\w+|Dây\s+\w+|Bông\s+\w+|Vòng\s+\w+|Classic|Minimal|Tiny|Charm|\d+(?:\.\d+)?%|\d+\.\d+)/g
@@ -3332,29 +3343,29 @@ function ProductsTab() {
               })}
             </div>
 
-            <div className="border-t border-slate-100 mt-4 pt-3 text-center shrink-0">
-              <span className="text-xs font-black text-indigo-600 cursor-pointer hover:underline flex items-center justify-center gap-1">
-                Xem tất cả insight <ChevronRight className="h-3.5 w-3.5" />
+            <div className="border-t border-slate-100 mt-2 pt-2 text-center shrink-0">
+              <span className="text-[10px] font-black text-indigo-600 cursor-pointer hover:underline flex items-center justify-center gap-1">
+                Xem tất cả insight <ChevronRight className="h-3 w-3" />
               </span>
             </div>
           </div>
 
           {/* Tình trạng sản phẩm */}
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col h-[320px] justify-between">
-            <h3 className="font-extrabold text-slate-800 text-sm shrink-0 mb-2">
+          <div className="rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm flex flex-col min-h-0 lg:flex-1">
+            <h3 className="font-extrabold text-slate-800 text-xs sm:text-sm shrink-0 mb-1.5">
               Tình trạng sản phẩm
             </h3>
 
-            <div className="flex items-center justify-around gap-4 my-auto h-full flex-1">
+            <div className="flex flex-1 min-h-0 items-center justify-around gap-2 overflow-y-auto [scrollbar-width:thin] py-0.5">
               {/* Donut chart */}
-              <div className="relative h-[120px] w-[120px] flex items-center justify-center shrink-0">
+              <div className="relative h-[85px] w-[85px] flex items-center justify-center shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={MOCK_PROD_STATUS_PIE}
-                      innerRadius={40}
-                      outerRadius={56}
-                      paddingAngle={3}
+                      innerRadius={28}
+                      outerRadius={40}
+                      paddingAngle={2}
                       dataKey="value"
                     >
                       {MOCK_PROD_STATUS_PIE.map((entry, index) => (
@@ -3364,23 +3375,20 @@ function ProductsTab() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute flex flex-col items-center justify-center text-center pointer-events-none">
-                  <span className="text-xl font-black text-slate-850 leading-none">286</span>
-                  <span className="text-[7px] font-black text-slate-400 mt-1 uppercase tracking-wider text-center">
-                    Tổng sản phẩm
+                  <span className="text-sm font-black text-slate-850 leading-none">286</span>
+                  <span className="text-[6.5px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider text-center max-w-[50px] leading-tight">
+                    Sản phẩm
                   </span>
                 </div>
               </div>
 
-              {/* Legend specs matching exactly the image */}
-              <div className="space-y-2 min-w-0 flex-1">
+              {/* Legend specs */}
+              <div className="space-y-1 min-w-0 flex-1 text-[10px]">
                 {MOCK_PROD_STATUS_PIE.map((status, idx) => (
-                  <div
-                    key={idx}
-                    className="leading-tight flex items-center justify-between gap-1 text-[9px]"
-                  >
-                    <div className="flex items-center gap-1.5 min-w-0">
+                  <div key={idx} className="leading-none flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1 min-w-0">
                       <span
-                        className="h-2 w-2 shrink-0 rounded-full"
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
                         style={{ backgroundColor: status.color }}
                       />
                       <span className="font-bold text-slate-500 truncate">{status.name}</span>
@@ -3394,9 +3402,9 @@ function ProductsTab() {
               </div>
             </div>
 
-            <div className="border-t border-slate-100 pt-3 text-center shrink-0 mt-2">
-              <span className="text-xs font-black text-indigo-600 cursor-pointer hover:underline flex items-center justify-center gap-1">
-                Xem danh sách chi tiết <ChevronRight className="h-3.5 w-3.5" />
+            <div className="border-t border-slate-100 pt-2 text-center shrink-0 mt-1.5">
+              <span className="text-[10px] font-black text-indigo-600 cursor-pointer hover:underline flex items-center justify-center gap-1">
+                Xem danh sách chi tiết <ChevronRight className="h-3 w-3" />
               </span>
             </div>
           </div>
@@ -3457,11 +3465,9 @@ export function CskhQualityPage() {
       className={
         tab === 'audit'
           ? undefined
-          : tab === 'overview' || tab === 'fb-page'
+          : tab === 'overview' || tab === 'fb-page' || tab === 'products'
             ? 'h-full min-h-0 flex-1'
-            : tab === 'products'
-              ? '!h-auto min-h-0 flex-1 overflow-visible'
-              : '!h-auto min-h-0 flex-none overflow-visible'
+            : '!h-auto min-h-0 flex-none overflow-visible'
       }
     >
       {auditJobBusy && tab === 'audit' ? (
@@ -3472,20 +3478,20 @@ export function CskhQualityPage() {
         className={
           tab === 'audit'
             ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden'
-            : tab === 'overview' || tab === 'fb-page'
-              ? 'flex h-full min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-1 [scrollbar-width:thin]'
-              : tab === 'products'
-                ? 'min-h-0 overflow-visible'
+            : tab === 'overview' || tab === 'products'
+              ? 'flex h-full min-h-0 flex-1 flex-col overflow-x-hidden lg:overflow-hidden overflow-y-auto pb-1 [scrollbar-width:thin]'
+              : tab === 'fb-page'
+                ? 'flex h-full min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-1 [scrollbar-width:thin]'
                 : 'min-h-0 overflow-x-hidden overflow-y-auto'
         }
       >
-        <div className={tab === 'overview' ? '' : 'hidden'}>
+        <div className={tab === 'overview' ? 'h-full min-h-0 flex flex-col' : 'hidden'}>
           <OverviewTab />
         </div>
         <div className={tab === 'fb-page' ? '' : 'hidden'}>
           <FbPageTab />
         </div>
-        <div className={tab === 'products' ? '' : 'hidden'}>
+        <div className={tab === 'products' ? 'h-full min-h-0 flex flex-col' : 'hidden'}>
           <ProductsTab />
         </div>
         <div className={tab === 'config' ? 'min-h-0' : 'hidden'}>
