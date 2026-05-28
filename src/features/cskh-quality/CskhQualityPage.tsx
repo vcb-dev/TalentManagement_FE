@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader2, RefreshCw, Link2, ClipboardCheck, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Loader2, RefreshCw, Link2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Route } from '@/app/routes/_protected/cskh-quality'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   fetchCskhPages,
@@ -12,9 +13,7 @@ import {
   type CskhPagesResponse,
 } from './api'
 import { AuditMessengerView } from './AuditMessengerView'
-import { CskhGlassPanel, CskhPageShell, CskhPageAvatar, CskhTabNav } from './cskhUi'
-
-type Tab = 'config' | 'audit'
+import { CskhGlassPanel, CskhPageShell, CskhPageAvatar } from './cskhUi'
 
 const AUDIT_JOB_KEY = 'cskh:audit-job-id'
 
@@ -256,34 +255,21 @@ function ConfigTab() {
   )
 }
 
-const TABS: { id: Tab; label: string; icon: typeof Link2 }[] = [
-  { id: 'audit', label: 'Audit', icon: ClipboardCheck },
-  { id: 'config', label: 'Cấu hình', icon: Link2 },
-]
-
 export function CskhQualityPage() {
-  const [tab, setTab] = useState<Tab>(() => {
-    if (typeof window === 'undefined') return 'config'
-    const p = new URLSearchParams(window.location.search)
-    const t = p.get('tab')
-    if (t === 'audit' || t === 'config') return t
-    if (p.get('tab') === 'chat') return 'audit'
-    if (p.get('fb_connected')) return 'config'
-    return 'audit'
-  })
-  const [auditJobId, setAuditJobId] = useState<string | null>(null)
+  const { tab: tabParam } = Route.useSearch()
+  const tab = tabParam === 'config' ? 'config' : 'audit'
+  const [auditJobBusy, setAuditJobBusy] = useState(false)
 
   useEffect(() => {
     void (async () => {
       try {
         const running = await fetchRunningCskhJob('audit')
-        if (running?.status === 'running') {
-          setAuditJobId(running.id)
-          sessionStorage.setItem(AUDIT_JOB_KEY, running.id)
-        } else {
+        setAuditJobBusy(running?.status === 'running')
+        if (running?.status !== 'running') {
           sessionStorage.removeItem(AUDIT_JOB_KEY)
         }
       } catch {
+        setAuditJobBusy(false)
         sessionStorage.removeItem(AUDIT_JOB_KEY)
       }
     })()
@@ -293,22 +279,16 @@ export function CskhQualityPage() {
       url.searchParams.delete('fb_connected')
       url.searchParams.delete('oauth_error')
       if (p.get('tab') === 'monitor') url.searchParams.set('tab', 'audit')
+      if (!url.searchParams.get('tab')) url.searchParams.set('tab', 'config')
       window.history.replaceState({}, '', url.pathname + url.search)
     }
   }, [])
 
   return (
     <CskhPageShell>
-      <CskhTabNav
-        active={tab}
-        onChange={(id) => setTab(id as Tab)}
-        tabs={TABS.map(({ id, label, icon: Icon }) => ({
-          id,
-          label,
-          icon: <Icon className="h-4 w-4" />,
-          busy: id === 'audit' && !!auditJobId,
-        }))}
-      />
+      {auditJobBusy && tab === 'audit' ? (
+        <p className="mb-2 text-xs font-medium text-indigo-600">Đang chạy audit…</p>
+      ) : null}
 
       <CskhGlassPanel className={tab === 'audit' ? 'flex min-h-0 flex-col overflow-hidden' : ''}>
         <div className={tab === 'config' ? '' : 'hidden'}>
@@ -317,7 +297,7 @@ export function CskhQualityPage() {
         <div
           className={tab === 'audit' ? 'flex min-h-0 min-w-0 flex-col overflow-hidden' : 'hidden'}
         >
-          <AuditMessengerView jobId={auditJobId} setJobId={setAuditJobId} />
+          <AuditMessengerView onAuditJobActiveChange={setAuditJobBusy} />
         </div>
       </CskhGlassPanel>
     </CskhPageShell>

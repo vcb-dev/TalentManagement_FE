@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   DoorOpen,
+  Link2,
   FileUp,
   Headphones,
   Home,
@@ -201,13 +202,31 @@ const BOD_ITEMS: AppNavItem[] = [
   },
 ]
 
-/** CSKH Quality — Facebook Messenger Monitor/Audit (`/cskh-quality`). */
+/** CSKH Quality — Audit + Cấu hình (`/cskh-quality?tab=…`). */
 export const CSKH_QUALITY_ITEM: AppNavItem = {
   to: '/cskh-quality',
   label: 'CSKH Quality',
   icon: Headphones,
   match: 'prefix',
   permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+  children: [
+    {
+      to: '/cskh-quality',
+      label: 'Audit',
+      icon: ClipboardCheck,
+      match: 'prefix',
+      search: { tab: 'audit' },
+      permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+    },
+    {
+      to: '/cskh-quality',
+      label: 'Cấu hình',
+      icon: Link2,
+      match: 'prefix',
+      search: { tab: 'config' },
+      permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
+    },
+  ],
 }
 
 const MANAGER_OPS_ITEMS: AppNavItem[] = [
@@ -543,6 +562,10 @@ export function isNavItemActive(
   }
 
   if (!pathMatches) return false
+
+  if (item.children?.length) {
+    return item.children.some((child) => isNavItemActive(pathname, child, currentSearch))
+  }
 
   // 2. Nếu path đã khớp, kiểm tra thêm search params để phân biệt (nếu item có định nghĩa search)
   if (item.search) {

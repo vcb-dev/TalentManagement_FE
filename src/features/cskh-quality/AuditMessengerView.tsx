@@ -8,7 +8,7 @@ import {
   cancelAuditJob,
   pauseAuditJob,
   fetchAuditDayStats,
-  fetchAuditComparisonStats,
+  fetchAuditScoreHistory,
   fetchAuditProgress,
   fetchCskhAudits,
   fetchCustomerIntent,
@@ -19,7 +19,6 @@ import {
   resolveInboxMessageMedia,
   runAudit,
   sendInboxMessage,
-  syncInboxFromGraph,
   type CskhAuditRow,
   type CskhAuditProgress,
   type CskhInboxConversation,
@@ -43,8 +42,8 @@ import { cskhMediaProxySrc, cskhMediaSrc, resolveMessageMedia } from './messageM
 import {
   AuditAnalysisPanel,
   AuditConversationSidebar,
-  AuditSummaryHeader,
   AuditTimelinePanel,
+  AuditWorkspaceKpiBar,
   type AuditSidebarSort,
 } from './AuditDashboardPanels'
 import {
@@ -390,45 +389,42 @@ function ChatBubble({
 }
 
 export function AuditMessengerView({
-  jobId,
-  setJobId,
+  onAuditJobActiveChange,
 }: {
-  jobId: string | null
-  setJobId: (id: string | null) => void
+  onAuditJobActiveChange?: (active: boolean) => void
 }) {
+  const [jobId, setJobId] = useState<string | null>(null)
   const [auditDate, setAuditDate] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [sidebarSearch, setSidebarSearch] = useState('')
-  const [sourceFilter, setSourceFilter] = useState<'all' | 'ad' | 'organic'>('all')
+  const [listFilter, setListFilter] = useState<'all' | 'low' | 'ad'>('all')
   const [sidebarSort, setSidebarSort] = useState<AuditSidebarSort>('newest')
   const [chatTab, setChatTab] = useState<'chat' | 'timeline' | 'analysis'>('chat')
   const [workspacePane, setWorkspacePane] = useState<MessengerWorkspacePane>('list')
   const [completionNotice, setCompletionNotice] = useState<string | null>(null)
   const [dismissedErrorKey, setDismissedErrorKey] = useState<string | null>(null)
+  const [backgroundJobId, setBackgroundJobId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const chatScrollSigRef = useRef('')
   const refreshedConvRef = useRef<string | null>(null)
   const stableAuditsRef = useRef<CskhAuditRow[]>([])
-  const inboxSyncStartedRef = useRef(false)
   const qc = useQueryClient()
 
   useEffect(() => {
     void (async () => {
-      if (jobId) return
       try {
         const running = await fetchRunningCskhJob('audit')
-        if (running?.status === 'running') {
-          setJobId(running.id)
-          storeJobId(running.id)
+        if (running?.status === 'running' && running.id !== jobId) {
+          setBackgroundJobId(running.id)
         } else {
-          storeJobId(null)
+          setBackgroundJobId(null)
         }
       } catch {
-        storeJobId(null)
+        setBackgroundJobId(null)
       }
     })()
-  }, [jobId, setJobId])
+  }, [jobId])
 
   const runMut = useMutation({
     mutationFn: (opts: { auditDate: string; force?: boolean }) =>
@@ -586,20 +582,17 @@ export function AuditMessengerView({
     stableAuditsRef.current = []
     setSelectedId(null)
     setSidebarSearch('')
-    setSourceFilter('all')
+    setListFilter('all')
     setChatTab('chat')
   }, [auditDate])
-
-  useEffect(() => {
-    if (auditDate || recentLoading) return
-    const latest = recentAudits?.find((a) => a.metadata?.auditDate)?.metadata?.auditDate
-    setAuditDate(latest ?? vietnamTodayIso())
-  }, [auditDate, recentAudits, recentLoading])
 
   const summary = progress?.summary
   const isAuditActive =
     runMut.isPending || progress?.status === 'running' || (!!jobId && !progressFinished)
   const isRunning = isAuditActive
+  useEffect(() => {
+    onAuditJobActiveChange?.(isRunning)
+  }, [isRunning, onAuditJobActiveChange])
   const isPausing = Boolean(summary?.pauseRequested) || pauseMut.isPending
   const isFailed = progress?.status === 'failed'
   const auditErrorMessage =
@@ -751,18 +744,6 @@ export function AuditMessengerView({
     staleTime: 30_000,
   })
 
-  // Đồng bộ inbox nền — trì hoãn, bỏ qua khi đang audit để tránh lag UI
-  useEffect(() => {
-    if (isAuditActive || inboxSyncStartedRef.current) return
-    inboxSyncStartedRef.current = true
-    const timer = window.setTimeout(() => {
-      void syncInboxFromGraph()
-        .then(() => qc.invalidateQueries({ queryKey: ['cskh', 'inbox'] }))
-        .catch(() => {})
-    }, 2500)
-    return () => window.clearTimeout(timer)
-  }, [qc, isAuditActive])
-
   const inboxConv = useMemo(
     () => (selected ? matchInboxConversation(selected, inboxQuery.data ?? []) : null),
     [selected, inboxQuery.data]
@@ -878,12 +859,10 @@ export function AuditMessengerView({
 
   const selectedAuditDayLabel = selectedAuditDate ? formatAuditDateLabel(selectedAuditDate) : null
 
-  const comparisonAuditDate = auditDate || selected?.metadata?.auditDate || summary?.auditDate || ''
-
-  const comparisonQuery = useQuery({
-    queryKey: ['cskh', 'audit-comparison', comparisonAuditDate, selected?.id],
-    queryFn: () => fetchAuditComparisonStats(comparisonAuditDate, selected!.id),
-    enabled: Boolean(comparisonAuditDate && selected?.id),
+  const scoreHistoryQuery = useQuery({
+    queryKey: ['cskh', 'audit-score-history', selected?.id],
+    queryFn: () => fetchAuditScoreHistory(selected!.id),
+    enabled: Boolean(selected?.id),
     staleTime: 60_000,
   })
 
@@ -915,6 +894,11 @@ export function AuditMessengerView({
   const selectedIndex = selected
     ? Math.max(1, sortedAudits.findIndex((a) => a.id === selected.id) + 1)
     : 0
+
+  const avgScore = useMemo(() => {
+    if (!sortedAudits.length) return null
+    return Math.round(sortedAudits.reduce((s, a) => s + a.score, 0) / sortedAudits.length)
+  }, [sortedAudits])
 
   return (
     <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
@@ -1068,6 +1052,28 @@ export function AuditMessengerView({
         />
       )}
 
+      {backgroundJobId && !jobId && !isRunning && (
+        <CskhNoticeBanner
+          tone="info"
+          title="Có tiến trình audit đang chạy"
+          message="Hệ thống đang chấm điểm từ lần trước. Bấm theo dõi để xem tiến độ — không tự chạy audit mới."
+          action={
+            <button
+              type="button"
+              onClick={() => {
+                setJobId(backgroundJobId)
+                storeJobId(backgroundJobId)
+                setBackgroundJobId(null)
+              }}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+            >
+              Theo dõi tiến độ
+            </button>
+          }
+          onDismiss={() => setBackgroundJobId(null)}
+        />
+      )}
+
       {showDayLoading ? (
         <CskhLoading
           label={
@@ -1076,28 +1082,29 @@ export function AuditMessengerView({
         />
       ) : showProgressScreen ? (
         <CskhAuditProgressPanel auditDayLabel={auditDayLabel} summary={summary} />
+      ) : !auditDate ? (
+        <CskhEmptyState
+          icon={<ClipboardCheck className="h-12 w-12 text-violet-500" />}
+          title="Chọn ngày audit"
+          description="Chọn ngày ở thanh công cụ, xem kết quả đã có hoặc bấm Chạy audit khi bạn muốn quét."
+        />
       ) : !sortedAudits.length ? (
         <CskhEmptyState
           icon={<ClipboardCheck className="h-12 w-12 text-violet-500" />}
           title="Chưa có dữ liệu audit"
-          description="Chọn ngày ở trên và bấm Chạy audit để AI phân tích hội thoại CSKH."
+          description={`Chưa có hội thoại được audit ngày ${auditDayLabel ?? 'này'}. Bấm «${runButtonLabel}» để bắt đầu.`}
         />
       ) : (
         <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
           {isAuditPhase && (
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}
-          {selected ? (
-            <AuditSummaryHeader
-              row={selected}
-              index={selectedIndex}
-              total={sortedAudits.length}
-              inbox={inboxConv}
-              comparison={comparisonQuery.data}
-              allAudits={sortedAudits}
-              auditDayLabel={selectedAuditDayLabel}
-            />
-          ) : null}
+          <AuditWorkspaceKpiBar
+            stats={dayStats}
+            avgScore={avgScore}
+            loading={showDayLoading}
+            auditDayLabel={auditDayLabel}
+          />
           <MessengerWorkspace
             pane={workspacePane}
             sidebar={
@@ -1107,8 +1114,8 @@ export function AuditMessengerView({
                 adMap={sidebarAdSources}
                 search={sidebarSearch}
                 onSearchChange={setSidebarSearch}
-                sourceFilter={sourceFilter}
-                onSourceFilterChange={setSourceFilter}
+                listFilter={listFilter}
+                onListFilterChange={setListFilter}
                 sortOrder={sidebarSort}
                 onSortOrderChange={setSidebarSort}
                 onSelect={handleSelectAudit}
@@ -1189,6 +1196,7 @@ export function AuditMessengerView({
                         onUseReply={setDraft}
                         customerIntent={intentQuery.data ?? null}
                         intentLoading={intentQuery.isFetching && !intentQuery.data}
+                        scoreHistory={scoreHistoryQuery.data}
                       />
                     </div>
                   ) : null}

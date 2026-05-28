@@ -435,9 +435,9 @@ export function MessengerWorkspace({
     <div
       className={cn(
         'flex min-h-0 flex-col overflow-hidden',
-        'h-[min(680px,calc(100dvh-15.5rem))] min-h-[360px]',
-        'sm:h-[min(720px,calc(100dvh-14.5rem))] sm:min-h-[420px]',
-        'xl:h-[min(860px,calc(100dvh-13rem))] xl:min-h-[480px]',
+        'h-[min(720px,calc(100dvh-14rem))] min-h-[400px]',
+        'sm:h-[min(780px,calc(100dvh-13rem))] sm:min-h-[480px]',
+        'xl:h-[min(880px,calc(100dvh-11.5rem))] xl:min-h-[520px]',
         className
       )}
     >
@@ -445,7 +445,7 @@ export function MessengerWorkspace({
         <aside
           className={cn(
             'flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-slate-200/80 bg-white',
-            'xl:h-full xl:w-[min(320px,26vw)] xl:min-w-[280px] xl:max-w-[360px] xl:border-b-0 xl:border-r',
+            'xl:h-full xl:w-[min(300px,24vw)] xl:min-w-[260px] xl:max-w-[340px] xl:border-b-0 xl:border-r',
             showList ? 'min-h-0 flex-1 xl:flex-none' : 'hidden xl:flex'
           )}
         >
@@ -454,7 +454,7 @@ export function MessengerWorkspace({
         <div
           className={cn(
             'flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#f0f2f5]',
-            showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-[1.05]'
+            showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-1'
           )}
         >
           {main}
@@ -463,7 +463,7 @@ export function MessengerWorkspace({
           <aside
             className={cn(
               'flex min-h-0 min-w-0 flex-col overflow-hidden border-slate-200/80 bg-white',
-              'border-t xl:h-full xl:min-w-0 xl:flex-[0.95] xl:basis-[34%] xl:border-l xl:border-t-0 xl:max-w-[min(440px,38vw)]',
+              'border-t xl:h-full xl:min-w-0 xl:w-[min(380px,32vw)] xl:max-w-[420px] xl:border-l xl:border-t-0',
               showAnalysis ? 'min-h-0 flex-1 xl:flex-none xl:flex' : 'hidden xl:flex'
             )}
           >

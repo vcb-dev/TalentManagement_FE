@@ -1,16 +1,22 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts'
-import { Filter, Loader2, MessageSquare, Sparkles, Star, Tag } from 'lucide-react'
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
+import { ChevronDown, Filter, Loader2, MessageSquare, Sparkles, Star, Tag } from 'lucide-react'
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 import { FiveStarRank } from '@/components/icons/FiveStarRank'
 import { cn } from '@/lib/utils'
 import type {
-  AuditComparisonStats,
+  AuditScoreHistory,
   CskhAuditRow,
   CskhCustomerIntent,
   CskhInboxConversation,
@@ -21,13 +27,10 @@ import {
   displayPageShopLabel,
   formatAuditDateLabel,
   resolveAuditFromAd,
-  scoreColor,
 } from './auditHelpers'
 import {
   buildTimelineEvents,
-  conversationIndexLabel,
   criterionBarColor,
-  resolveComparisonAverages,
   resolveCriteriaScores,
   resolveFeedbackBullets,
   resolveKeywords,
@@ -41,39 +44,132 @@ import {
 import { parseAuditActionItems, type DisplayTranscriptLine } from './auditHelpers'
 import { CskhAdSourceBadge, CskhPageAvatar } from './cskhUi'
 
-const compareChartConfig = {
-  score: { label: 'Điểm', color: 'hsl(262 83% 58%)' },
+const scoreHistoryChartConfig = {
+  score: { label: 'Điểm chất lượng', color: 'hsl(262 83% 58%)' },
 } satisfies ChartConfig
 
 const SIDEBAR_INITIAL = 30
 const SIDEBAR_LOAD_MORE = 25
 
 export type AuditSidebarSort = 'newest' | 'oldest'
+export type AuditListFilter = 'all' | 'low' | 'ad'
 
-function CriterionLabel({ label }: { label: string }) {
-  const parts = label.includes(' / ')
-    ? label.split(' / ')
-    : label.includes(',')
-      ? label.split(',').map((s) => s.trim())
-      : [label]
+function ScoreRing({ score, size = 44 }: { score: number; size?: number }) {
+  const pct = Math.min(100, Math.max(0, score))
+  const tone = score >= 70 ? 'text-emerald-600' : score >= 50 ? 'text-amber-600' : 'text-rose-600'
+  const ring = score >= 70 ? '#10b981' : score >= 50 ? '#f59e0b' : '#f43f5e'
+  return (
+    <div
+      className="relative shrink-0"
+      style={{ width: size, height: size }}
+      aria-label={`Điểm ${score}`}
+    >
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: `conic-gradient(${ring} ${pct * 3.6}deg, #e2e8f0 ${pct * 3.6}deg)`,
+        }}
+      />
+      <div className="absolute inset-[3px] flex items-center justify-center rounded-full bg-white text-xs font-black tabular-nums">
+        <span className={tone}>{score}</span>
+      </div>
+    </div>
+  )
+}
 
-  if (parts.length <= 1) {
-    return (
-      <p className="mt-2 w-full break-words text-[10px] font-medium leading-snug text-slate-600 sm:text-[11px]">
-        {label}
-      </p>
-    )
-  }
+function AuditAccordionSection({
+  value,
+  title,
+  children,
+  badge,
+}: {
+  value: string
+  title: string
+  children: ReactNode
+  badge?: ReactNode
+}) {
+  return (
+    <AccordionItem value={value} className="border-b border-slate-100 last:border-b-0">
+      <AccordionTrigger className="px-4 py-3.5 hover:no-underline hover:bg-slate-50/80">
+        <span className="flex min-w-0 flex-1 items-center gap-2 text-left">
+          <span className="text-sm font-bold text-slate-800">{title}</span>
+          {badge}
+        </span>
+        <ChevronDown className="chevron-accordion h-4 w-4 shrink-0 text-slate-400" />
+      </AccordionTrigger>
+      <AccordionContent className="px-4 pb-4 pt-0">{children}</AccordionContent>
+    </AccordionItem>
+  )
+}
+
+/** Hàng KPI đầu workspace — dữ liệu thật từ ngày audit. */
+export function AuditWorkspaceKpiBar({
+  stats,
+  avgScore,
+  loading,
+  auditDayLabel,
+}: {
+  stats?: { total?: number; passed?: number; failed?: number; fromAd?: number } | null
+  avgScore?: number | null
+  loading?: boolean
+  auditDayLabel?: string | null
+}) {
+  const passPct =
+    stats?.total && stats.total > 0 ? Math.round(((stats.passed ?? 0) / stats.total) * 100) : null
+
+  const cards = [
+    {
+      label: 'Điểm QA trung bình',
+      value: loading ? '…' : avgScore != null ? `${avgScore}/100` : '—',
+      sub: auditDayLabel ?? 'Theo ngày chọn',
+      accent: 'border-violet-200 bg-gradient-to-br from-violet-50 to-white',
+    },
+    {
+      label: 'Tỷ lệ đạt (≥70)',
+      value: loading ? '…' : passPct != null ? `${passPct}%` : '—',
+      sub: stats?.passed != null ? `${stats.passed} hội thoại` : undefined,
+      accent: 'border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-white',
+    },
+    {
+      label: 'Chưa đạt (<70)',
+      value: loading ? '…' : (stats?.failed ?? '—'),
+      sub: 'Cần cải thiện',
+      accent: 'border-amber-200 bg-gradient-to-br from-amber-50/60 to-white',
+    },
+    {
+      label: 'Tổng đã audit',
+      value: loading ? '…' : (stats?.total ?? '—'),
+      sub: auditDayLabel ?? undefined,
+      accent: 'border-slate-200 bg-white',
+    },
+    {
+      label: 'Từ quảng cáo',
+      value: loading ? '…' : (stats?.fromAd ?? '—'),
+      sub: 'Nguồn QC',
+      accent: 'border-sky-200 bg-gradient-to-br from-sky-50/80 to-white',
+    },
+  ]
 
   return (
-    <p className="mt-2 w-full text-[10px] font-medium leading-snug text-slate-600 sm:text-[11px]">
-      {parts.map((part, i) => (
-        <span key={i} className="block break-words">
-          {part}
-          {i < parts.length - 1 && label.includes(',') ? ',' : ''}
-        </span>
-      ))}
-    </p>
+    <div className="shrink-0 border-b border-slate-200/80 bg-slate-50/40 px-3 py-3 sm:px-4">
+      <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
+        {cards.map((c) => (
+          <div
+            key={c.label}
+            className={cn(
+              'min-w-[9.5rem] shrink-0 rounded-xl border px-3 py-2.5 shadow-sm',
+              c.accent
+            )}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              {c.label}
+            </p>
+            <p className="mt-1 text-xl font-black tabular-nums text-slate-900">{c.value}</p>
+            {c.sub ? <p className="mt-0.5 text-[10px] text-slate-400">{c.sub}</p> : null}
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -126,257 +222,6 @@ function SegmentedFilterBar({
   )
 }
 
-/** Tab phân tích AI — lưới 2 cột, thấy hết không scroll. */
-function GridTabBar({
-  tabs,
-  active,
-  onChange,
-  className,
-}: {
-  tabs: Array<{ id: string; label: string; count?: number }>
-  active: string
-  onChange: (id: string) => void
-  className?: string
-}) {
-  return (
-    <div className={cn('grid grid-cols-2 gap-1.5', className)}>
-      {tabs.map((tab) => {
-        const isActive = active === tab.id
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onChange(tab.id)}
-            className={cn(
-              'min-h-[2.75rem] rounded-xl border px-2.5 py-2 text-left text-[11px] font-semibold leading-snug transition-all sm:text-xs',
-              isActive
-                ? 'border-violet-400 bg-violet-50 text-violet-800 shadow-sm ring-1 ring-violet-200/60'
-                : 'border-slate-200/90 bg-white text-slate-600 hover:border-violet-200 hover:bg-violet-50/40 hover:text-slate-800'
-            )}
-          >
-            <span className="line-clamp-2">{tab.label}</span>
-            {tab.count != null ? (
-              <span className="mt-0.5 block text-[10px] font-bold tabular-nums text-slate-400">
-                {tab.count}
-              </span>
-            ) : null}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function SummaryCard({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <div
-      className={cn(
-        'rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5',
-        className
-      )}
-    >
-      {children}
-    </div>
-  )
-}
-
-export function AuditSummaryHeader({
-  row,
-  index,
-  total,
-  inbox,
-  comparison,
-  allAudits,
-  auditDayLabel,
-}: {
-  row: CskhAuditRow
-  index: number
-  total: number
-  inbox?: CskhInboxConversation | null
-  comparison?: AuditComparisonStats
-  allAudits: CskhAuditRow[]
-  auditDayLabel?: string | null
-}) {
-  const adSource = resolveAuditFromAd(row, inbox)
-  const rank = scoreRankLabel(row.score)
-  const criteria = resolveCriteriaScores(row)
-  const averages = resolveComparisonAverages(comparison, row, allAudits)
-  const tags = resolveTags(row, adSource.fromAd)
-
-  const compareData = [
-    { name: 'Hội thoại', score: row.score, fill: 'hsl(262 83% 58%)' },
-    { name: 'TB Page', score: averages.team, fill: 'hsl(217 91% 60%)' },
-    { name: 'TB ngày', score: averages.overall, fill: 'hsl(160 84% 39%)' },
-  ]
-  const teamSample =
-    comparison?.teamSampleSize ??
-    allAudits.filter((a) => a.metadata?.pageName === row.metadata?.pageName).length
-  const daySample = comparison?.daySampleSize ?? allAudits.length
-
-  return (
-    <div className="shrink-0 border-b border-slate-200/80 bg-slate-50/50">
-      <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:gap-4 sm:p-4 xl:grid-cols-4 xl:items-stretch">
-        <SummaryCard className="min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Hội thoại {conversationIndexLabel(index, total)}
-              </p>
-              <span
-                className={cn(
-                  'mt-1 inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase',
-                  rank.passed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'
-                )}
-              >
-                {rank.passed ? 'Đã hoàn thành' : 'Cần cải thiện'}
-              </span>
-            </div>
-          </div>
-          <dl className="mt-4 space-y-2 text-sm">
-            <div className="flex justify-between gap-3">
-              <dt className="text-slate-400">Thời gian</dt>
-              <dd className="font-medium text-slate-700">
-                {auditDayLabel ??
-                  (row.metadata?.auditDate ? formatAuditDateLabel(row.metadata.auditDate) : '—')}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-slate-400">Nhân viên</dt>
-              <dd className="truncate font-medium text-violet-700">{displayAgentName(row)}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-slate-400">Kênh</dt>
-              <dd className="flex items-center gap-1.5 font-medium text-slate-700">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1877F2] text-[10px] font-bold text-white">
-                  f
-                </span>
-                Messenger
-              </dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-slate-400">Nguồn</dt>
-              <dd>
-                {adSource.fromAd ? (
-                  <CskhAdSourceBadge fromAd adTitle={adSource.adTitle} compact />
-                ) : (
-                  <span
-                    title="Khách nhắn trực tiếp, không qua quảng cáo"
-                    className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600"
-                  >
-                    Tự nhắn
-                  </span>
-                )}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-slate-400">Khách hàng</dt>
-              <dd className="truncate font-medium text-slate-800">
-                {displayCustomerName(row.customerName)}
-              </dd>
-            </div>
-          </dl>
-          {tags.length ? (
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700"
-                >
-                  <Tag className="h-3 w-3" />
-                  {tag}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </SummaryCard>
-
-        <SummaryCard className="flex min-w-0 flex-col items-center justify-center text-center">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Điểm chất lượng tổng
-          </p>
-          <p
-            className={cn(
-              'mt-1 text-4xl font-black tabular-nums sm:text-5xl',
-              row.score >= 70
-                ? 'text-emerald-600'
-                : row.score >= 50
-                  ? 'text-amber-600'
-                  : 'text-rose-600'
-            )}
-          >
-            {row.score}
-            <span className="text-xl font-bold text-slate-400 sm:text-2xl">/100</span>
-          </p>
-          <p className="mt-1 text-base font-semibold text-slate-600">
-            {row.score >= 70 ? 'Đạt' : 'Chưa đạt'}
-          </p>
-          <FiveStarRank
-            filled={rank.stars}
-            className="mt-3"
-            starClassName="h-5 w-5 sm:h-6 sm:w-6"
-          />
-          <p className="mt-2 text-sm text-slate-500">
-            Xếp hạng: <span className="font-semibold text-slate-700">{rank.label}</span>
-          </p>
-        </SummaryCard>
-
-        <SummaryCard className="min-w-0 xl:col-span-2">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Điểm theo tiêu chí
-          </p>
-          <div className="grid grid-cols-2 gap-2 min-[900px]:grid-cols-3 xl:grid-cols-5 xl:gap-2.5">
-            {criteria.map((c) => (
-              <div
-                key={c.id}
-                className="flex min-w-0 flex-col items-center rounded-xl border border-slate-100 bg-slate-50/80 px-2 py-3 text-center"
-                title={c.label}
-              >
-                <span className="text-xl leading-none sm:text-2xl">{c.icon}</span>
-                <CriterionLabel label={c.label} />
-                <p className="mt-1.5 text-sm font-bold tabular-nums text-slate-800">
-                  {c.score}/{c.max}
-                </p>
-                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-                  <div
-                    className={cn('h-full rounded-full', criterionBarColor(c.score, c.max))}
-                    style={{ width: `${(c.score / c.max) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </SummaryCard>
-
-        <SummaryCard className="min-w-0 sm:col-span-2 xl:col-span-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-            So sánh trung bình
-          </p>
-          <ChartContainer config={compareChartConfig} className="h-[130px] w-full sm:h-[150px]">
-            <BarChart data={compareData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
-              <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                {compareData.map((entry) => (
-                  <Cell key={entry.name} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ChartContainer>
-          <div className="mt-2 flex justify-between gap-2 text-xs text-slate-500">
-            <span title="Điểm hội thoại đang xem">HT: {row.score}</span>
-            <span title={`Trung bình Page (${teamSample} hội thoại)`}>Page: {averages.team}</span>
-            <span title={`Trung bình cả ngày (${daySample} hội thoại)`}>
-              Ngày: {averages.overall}
-            </span>
-          </div>
-        </SummaryCard>
-      </div>
-    </div>
-  )
-}
-
 const AuditSidebarRow = memo(function AuditSidebarRow({
   row,
   active,
@@ -410,19 +255,15 @@ const AuditSidebarRow = memo(function AuditSidebarRow({
             className="h-9 w-9 rounded-full text-xs"
           />
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-1">
+            <div className="flex items-start justify-between gap-2">
               <p className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-800">
                 {name}
               </p>
-              <span
-                className={cn(
-                  'shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums',
-                  scoreColor(row.score)
-                )}
-              >
-                {row.score}
-              </span>
+              <ScoreRing score={row.score} size={40} />
             </div>
+            <p className="mt-0.5 text-[11px] font-medium text-violet-700">
+              {displayAgentName(row)}
+            </p>
             <div className="mt-0.5 flex items-center gap-1.5">
               <span
                 className={cn(
@@ -460,8 +301,8 @@ export function AuditConversationSidebar({
   adMap,
   search,
   onSearchChange,
-  sourceFilter,
-  onSourceFilterChange,
+  listFilter,
+  onListFilterChange,
   sortOrder,
   onSortOrderChange,
   onSelect,
@@ -471,8 +312,8 @@ export function AuditConversationSidebar({
   adMap: Map<string, { fromAd: boolean; adTitle: string | null; adId: string | null }>
   search: string
   onSearchChange: (v: string) => void
-  sourceFilter: 'all' | 'ad' | 'organic'
-  onSourceFilterChange: (v: 'all' | 'ad' | 'organic') => void
+  listFilter: AuditListFilter
+  onListFilterChange: (v: AuditListFilter) => void
   sortOrder: AuditSidebarSort
   onSortOrderChange: (v: AuditSidebarSort) => void
   onSelect: (id: string) => void
@@ -482,12 +323,12 @@ export function AuditConversationSidebar({
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   const adCount = useMemo(() => rows.filter((r) => adMap.get(r.id)?.fromAd).length, [rows, adMap])
-  const organicCount = rows.length - adCount
+  const lowCount = useMemo(() => rows.filter((r) => r.score < 70).length, [rows])
 
   const filtered = useMemo(() => {
     let list = rows
-    if (sourceFilter === 'ad') list = list.filter((r) => adMap.get(r.id)?.fromAd)
-    if (sourceFilter === 'organic') list = list.filter((r) => !adMap.get(r.id)?.fromAd)
+    if (listFilter === 'ad') list = list.filter((r) => adMap.get(r.id)?.fromAd)
+    if (listFilter === 'low') list = list.filter((r) => r.score < 70)
     const q = search.trim().toLowerCase()
     if (!q) return list
     return list.filter((row) => {
@@ -496,7 +337,7 @@ export function AuditConversationSidebar({
       const pageName = (row.metadata?.pageName ?? '').toLowerCase()
       return name.includes(q) || agent.includes(q) || pageName.includes(q)
     })
-  }, [rows, sourceFilter, adMap, search])
+  }, [rows, listFilter, adMap, search])
 
   const sortedFiltered = useMemo(() => {
     const list = [...filtered]
@@ -513,7 +354,7 @@ export function AuditConversationSidebar({
 
   useEffect(() => {
     setVisibleCount(SIDEBAR_INITIAL)
-  }, [search, sourceFilter, sortOrder, rows.length])
+  }, [search, listFilter, sortOrder, rows.length])
 
   useEffect(() => {
     const root = listRef.current
@@ -534,7 +375,22 @@ export function AuditConversationSidebar({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
-      <div className="shrink-0 space-y-2 border-b border-slate-200/80 p-3">
+      <div className="shrink-0 space-y-2.5 border-b border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-white p-3">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-bold text-slate-800">
+            Danh sách hội thoại
+            <span className="ml-1.5 font-semibold text-slate-400">({rows.length})</span>
+          </h3>
+          <select
+            value={sortOrder}
+            onChange={(e) => onSortOrderChange(e.target.value as AuditSidebarSort)}
+            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600"
+            aria-label="Sắp xếp"
+          >
+            <option value="newest">Gần nhất</option>
+            <option value="oldest">Cũ nhất</option>
+          </select>
+        </div>
         <div className="relative">
           <MessageSquare className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           <input
@@ -542,26 +398,18 @@ export function AuditConversationSidebar({
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Tìm khách, nhân viên…"
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-8 text-xs focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-100"
+            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-8 text-xs shadow-sm focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-100"
           />
           <Filter className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
         </div>
         <SegmentedFilterBar
           tabs={[
             { id: 'all', label: 'Tất cả', count: rows.length },
+            { id: 'low', label: 'Điểm thấp', count: lowCount },
             { id: 'ad', label: 'Quảng cáo', count: adCount },
-            { id: 'organic', label: 'Tự nhắn', count: organicCount },
           ]}
-          active={sourceFilter}
-          onChange={(id) => onSourceFilterChange(id as 'all' | 'ad' | 'organic')}
-        />
-        <SegmentedFilterBar
-          tabs={[
-            { id: 'newest', label: 'Gần nhất' },
-            { id: 'oldest', label: 'Cũ nhất' },
-          ]}
-          active={sortOrder}
-          onChange={(id) => onSortOrderChange(id as AuditSidebarSort)}
+          active={listFilter}
+          onChange={(id) => onListFilterChange(id as AuditListFilter)}
         />
       </div>
       <ul
@@ -759,6 +607,7 @@ export function AuditAnalysisPanel({
   onUseReply,
   customerIntent,
   intentLoading,
+  scoreHistory,
 }: {
   row: CskhAuditRow
   inbox?: CskhInboxConversation | null
@@ -767,306 +616,327 @@ export function AuditAnalysisPanel({
   onUseReply?: (text: string) => void
   customerIntent?: CskhCustomerIntent | null
   intentLoading?: boolean
+  scoreHistory?: AuditScoreHistory
 }) {
-  const [tab, setTab] = useState('intent')
   const { pros, cons } = resolveProsCons(row)
   const criteria = resolveCriteriaScores(row)
   const resolvedKeywords = resolveKeywords(row, customerIntent)
   const sentiment = resolveSentiment(row)
   const actionItems = parseAuditActionItems(row)
   const feedbackBullets = resolveFeedbackBullets(row)
+  const adSource = resolveAuditFromAd(row, inbox)
+  const tags = resolveTags(row, adSource.fromAd)
+  const rank = scoreRankLabel(row.score)
 
-  const tabs = [
-    { id: 'intent', label: 'Khách đang hỏi' },
-    { id: 'detail', label: 'Phân tích chi tiết' },
-    { id: 'criteria', label: 'Điểm & Tiêu chí' },
-    { id: 'keywords', label: 'Sản phẩm & chủ đề' },
-    { id: 'sentiment', label: 'Cảm xúc' },
-    { id: 'suggest', label: 'Gợi ý cải thiện' },
-  ]
+  const historyChartData = useMemo(() => {
+    const points = scoreHistory?.points ?? []
+    if (points.length) {
+      return points.map((p) => ({
+        score: p.score,
+        name: p.auditDate ? formatAuditDateLabel(p.auditDate) : p.label,
+      }))
+    }
+    const day = row.metadata?.auditDate
+    return [
+      {
+        score: row.score,
+        name: day ? formatAuditDateLabel(day) : (auditDayLabel ?? 'Hiện tại'),
+      },
+    ]
+  }, [scoreHistory, row.score, row.metadata?.auditDate, auditDayLabel])
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
-      <GridTabBar
-        tabs={tabs}
-        active={tab}
-        onChange={setTab}
-        className="shrink-0 border-b border-slate-100 px-3 py-3"
-      />
+      <div className="shrink-0 border-b border-slate-200/80 bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3">
+        <p className="text-sm font-bold text-white">Phân tích AI</p>
+        <p className="text-xs text-violet-100">Bấm từng mục để mở / đóng</p>
+      </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 py-6 sm:px-6 sm:py-7">
-        {tab === 'intent' && (
-          <CustomerIntentTabContent intent={customerIntent} loading={intentLoading} />
-        )}
-
-        {tab === 'detail' && (
-          <div className="space-y-8">
-            <section>
-              <h4 className="flex items-center gap-2 text-base font-bold text-slate-800">
-                <Sparkles className="h-5 w-5 text-violet-500" />
-                Đánh giá tổng quan AI
-              </h4>
-              {feedbackBullets.length ? (
-                <ul className="mt-4 space-y-3.5">
-                  {feedbackBullets.map((line, i) => (
-                    <li key={i} className="flex gap-3 text-base leading-relaxed text-slate-700">
-                      <span className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-violet-500" />
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-4 text-base leading-relaxed text-slate-500">
-                  AI chưa có nhận xét chi tiết cho hội thoại này.
-                </p>
-              )}
-            </section>
-
-            {pros.length ? (
-              <section>
-                <p className="text-sm font-bold uppercase tracking-wide text-emerald-600">
-                  Ưu điểm
-                </p>
-                <ul className="mt-3 space-y-3">
-                  {pros.map((line, i) => (
-                    <li key={i} className="flex gap-2.5 text-base leading-relaxed text-slate-700">
-                      <span className="text-emerald-500">•</span>
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
-            {cons.length ? (
-              <section>
-                <p className="text-sm font-bold uppercase tracking-wide text-amber-600">
-                  Điểm cần cải thiện
-                </p>
-                <ul className="mt-3 space-y-3">
-                  {cons.map((line, i) => (
-                    <li key={i} className="flex gap-2.5 text-base leading-relaxed text-slate-700">
-                      <span className="text-amber-500">•</span>
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-          </div>
-        )}
-
-        {tab === 'criteria' && (
-          <div className="space-y-4">
-            {criteria[0]?.source === 'legacy' ? (
-              <p className="text-sm text-amber-600">
-                Audit cũ — chưa có điểm tiêu chí từ AI. Chạy lại audit để có dữ liệu chính xác.
-              </p>
-            ) : null}
-            {criteria.map((c) => (
-              <div key={c.id}>
-                <div className="flex items-center justify-between text-base">
-                  <span className="font-medium text-slate-700">{c.label}</span>
-                  <span className="text-lg font-bold tabular-nums text-slate-800">
-                    {c.score}/{c.max}
-                  </span>
-                </div>
-                <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className={cn(
-                      'h-full rounded-full transition-all',
-                      criterionBarColor(c.score, c.max)
-                    )}
-                    style={{ width: `${(c.score / c.max) * 100}%` }}
-                  />
-                </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+        <Accordion type="multiple" defaultValue={['score', 'intent']} className="w-full">
+          <AuditAccordionSection
+            value="score"
+            title="AI chấm điểm hội thoại"
+            badge={
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-700">
+                {row.score}/100
+              </span>
+            }
+          >
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+              <ScoreRing score={row.score} size={72} />
+              <div className="min-w-0 flex-1 text-center sm:text-left">
+                <p className="text-lg font-bold text-slate-800">{rank.label}</p>
+                <FiveStarRank
+                  filled={rank.stars}
+                  className="mt-2 justify-center sm:justify-start"
+                />
               </div>
-            ))}
-            <div className="mt-6 rounded-xl bg-violet-50 p-5 text-center">
-              <p className="text-3xl font-black text-violet-700">{row.score}/100</p>
-              <p className="mt-1 text-sm text-slate-500">Tổng điểm chất lượng</p>
             </div>
-          </div>
-        )}
+            <div className="mt-4 space-y-3">
+              {criteria[0]?.source === 'legacy' ? (
+                <p className="text-xs text-amber-600">Audit cũ — chạy lại để có điểm tiêu chí.</p>
+              ) : null}
+              {criteria.map((c) => (
+                <div key={c.id}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-slate-700">{c.label}</span>
+                    <span className="font-bold tabular-nums text-slate-800">
+                      {c.score}/{c.max}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={cn('h-full rounded-full', criterionBarColor(c.score, c.max))}
+                      style={{ width: `${(c.score / c.max) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </AuditAccordionSection>
 
-        {tab === 'keywords' && (
-          <div className="space-y-6">
-            {resolvedKeywords.products.length ? (
+          <AuditAccordionSection value="intent" title="Khách đang hỏi">
+            <CustomerIntentTabContent intent={customerIntent} loading={intentLoading} />
+          </AuditAccordionSection>
+
+          <AuditAccordionSection value="detail" title="Phân tích chi tiết">
+            <div className="space-y-5">
               <section>
-                <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
-                  Sản phẩm khách quan tâm
-                </p>
-                <ul className="mt-3 space-y-3">
+                <h4 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                  <Sparkles className="h-4 w-4 text-violet-500" />
+                  Đánh giá tổng quan AI
+                </h4>
+                {feedbackBullets.length ? (
+                  <ul className="mt-3 space-y-2.5">
+                    {feedbackBullets.map((line, i) => (
+                      <li key={i} className="flex gap-2 text-sm leading-relaxed text-slate-700">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-500">AI chưa có nhận xét chi tiết.</p>
+                )}
+              </section>
+
+              {pros.length ? (
+                <section>
+                  <p className="text-xs font-bold uppercase tracking-wide text-emerald-600">
+                    Ưu điểm
+                  </p>
+                  <ul className="mt-2 space-y-2">
+                    {pros.map((line, i) => (
+                      <li key={i} className="text-sm text-slate-700">
+                        <span className="text-emerald-500">✓ </span>
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+
+              {cons.length ? (
+                <section>
+                  <p className="text-xs font-bold uppercase tracking-wide text-amber-600">
+                    Chưa đạt / cần cải thiện
+                  </p>
+                  <ul className="mt-2 space-y-2">
+                    {cons.map((line, i) => (
+                      <li key={i} className="text-sm text-slate-700">
+                        <span className="text-amber-500">! </span>
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+            </div>
+          </AuditAccordionSection>
+
+          <AuditAccordionSection value="keywords" title="Sản phẩm & chủ đề">
+            <div className="space-y-4">
+              {resolvedKeywords.products.length ? (
+                <ul className="space-y-2">
                   {resolvedKeywords.products.map((p) => (
                     <li
                       key={`${p.productId}-${p.variantId}`}
-                      className="flex gap-3 rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm"
+                      className="flex gap-2 rounded-lg border border-slate-100 p-2"
                     >
                       {p.imageUrl ? (
-                        <img
-                          src={p.imageUrl}
-                          alt=""
-                          className="h-14 w-14 shrink-0 rounded-lg border border-slate-100 object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
-                          SP
-                        </div>
-                      )}
+                        <img src={p.imageUrl} alt="" className="h-12 w-12 rounded object-cover" />
+                      ) : null}
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold leading-snug text-slate-800">{p.name}</p>
-                        <p className="mt-1 text-base font-bold tabular-nums text-violet-700">
-                          {p.priceLabel}
-                        </p>
+                        <p className="text-sm font-semibold text-slate-800">{p.name}</p>
+                        <p className="text-sm font-bold text-violet-700">{p.priceLabel}</p>
                       </div>
                     </li>
                   ))}
                 </ul>
-              </section>
-            ) : null}
-
-            {resolvedKeywords.productMentions.length ? (
-              <section>
-                <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
-                  Khách nhắc tới
-                </p>
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                  {resolvedKeywords.productMentions.map((mention) => (
+              ) : null}
+              {resolvedKeywords.productMentions.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {resolvedKeywords.productMentions.map((m) => (
                     <span
-                      key={mention}
-                      className="rounded-full border border-violet-200 bg-violet-50 px-4 py-1.5 text-sm font-medium text-violet-800"
+                      key={m}
+                      className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-800"
                     >
-                      {mention}
+                      {m}
                     </span>
                   ))}
                 </div>
-              </section>
-            ) : null}
-
-            {resolvedKeywords.topics.length ? (
-              <section>
-                <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
-                  Chủ đề quan tâm
-                </p>
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                  {resolvedKeywords.topics.map((topic) => (
+              ) : null}
+              {resolvedKeywords.topics.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {resolvedKeywords.topics.map((t) => (
                     <span
-                      key={topic}
-                      className="rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm font-medium text-slate-700"
+                      key={t}
+                      className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
                     >
-                      {topic}
+                      {t}
                     </span>
                   ))}
                 </div>
-              </section>
-            ) : null}
-
-            {resolvedKeywords.keywords.length ? (
-              <section>
-                <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
-                  Từ khóa AI
+              ) : null}
+              {!resolvedKeywords.hasData ? (
+                <p className="text-sm text-slate-500">
+                  Chưa có sản phẩm/chủ đề — xem mục Khách đang hỏi.
                 </p>
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                  {resolvedKeywords.keywords.map((kw) => (
-                    <span
-                      key={kw}
-                      className="rounded-full border border-violet-200 bg-violet-50 px-4 py-1.5 text-sm font-medium text-violet-800"
-                    >
-                      {kw}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            ) : null}
+              ) : null}
+            </div>
+          </AuditAccordionSection>
 
-            {!resolvedKeywords.hasData ? (
-              <p className="text-base text-slate-500">
-                Chưa xác định được sản phẩm hoặc chủ đề từ hội thoại. Mở tab「Khách đang hỏi」 hoặc
-                chạy lại audit sau khi cập nhật AI.
-              </p>
-            ) : null}
-          </div>
-        )}
-
-        {tab === 'sentiment' && (
-          <div className="space-y-5">
+          <AuditAccordionSection value="sentiment" title="Cảm xúc">
             <div
               className={cn(
-                'rounded-xl border p-5 text-center',
+                'rounded-lg border p-4 text-center',
                 sentiment.tone === 'positive' && 'border-emerald-200 bg-emerald-50',
                 sentiment.tone === 'neutral' && 'border-amber-200 bg-amber-50',
                 sentiment.tone === 'negative' && 'border-rose-200 bg-rose-50'
               )}
             >
-              <p className="text-xl font-bold text-slate-800">{sentiment.label}</p>
-              <p className="mt-1 text-sm text-slate-500">Cảm xúc tổng thể hội thoại</p>
+              <p className="font-bold text-slate-800">{sentiment.label}</p>
             </div>
-            <dl className="space-y-4 text-base">
+            <dl className="mt-3 space-y-2 text-sm">
               <div>
-                <dt className="font-semibold text-slate-700">Khách hàng</dt>
-                <dd className="mt-1 leading-relaxed text-slate-600">{sentiment.customer}</dd>
+                <dt className="font-semibold text-slate-700">Khách</dt>
+                <dd className="text-slate-600">{sentiment.customer}</dd>
               </div>
               <div>
                 <dt className="font-semibold text-slate-700">Nhân viên</dt>
-                <dd className="mt-1 leading-relaxed text-slate-600">{sentiment.staff}</dd>
+                <dd className="text-slate-600">{sentiment.staff}</dd>
               </div>
             </dl>
-          </div>
-        )}
+          </AuditAccordionSection>
 
-        {tab === 'suggest' && (
-          <div className="space-y-4">
+          <AuditAccordionSection value="suggest" title="Gợi ý cải thiện">
             {actionItems.length ? (
-              actionItems.map((item, i) => (
-                <div key={i} className="rounded-xl border border-rose-100 bg-rose-50/30 p-4">
-                  <p className="text-base font-medium text-rose-800">{item.issue}</p>
-                  {item.suggestedReply ? (
-                    <div className="mt-3 rounded-lg bg-white p-3 text-base leading-relaxed text-slate-700">
-                      {item.suggestedReply}
-                      {onUseReply ? (
-                        <button
-                          type="button"
-                          onClick={() => onUseReply(item.suggestedReply)}
-                          className="mt-2 block text-sm font-semibold text-violet-600 hover:text-violet-800"
-                        >
-                          Dùng gợi ý →
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              ))
+              <div className="space-y-3">
+                {actionItems.map((item, i) => (
+                  <div key={i} className="rounded-lg border border-rose-100 bg-rose-50/40 p-3">
+                    <p className="text-sm font-medium text-rose-800">{item.issue}</p>
+                    {item.suggestedReply ? (
+                      <div className="mt-2 rounded bg-white p-2 text-sm text-slate-700">
+                        {item.suggestedReply}
+                        {onUseReply ? (
+                          <button
+                            type="button"
+                            onClick={() => onUseReply(item.suggestedReply)}
+                            className="mt-1 text-xs font-semibold text-violet-600"
+                          >
+                            Dùng gợi ý →
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             ) : (
-              <p className="text-base text-slate-500">
-                Không có vi phạm — hội thoại đạt chuẩn CSKH.
-              </p>
+              <p className="text-sm text-slate-500">Không có vi phạm — đạt chuẩn.</p>
             )}
-          </div>
-        )}
+          </AuditAccordionSection>
+
+          <AuditAccordionSection value="history" title="Lịch sử điểm chất lượng">
+            <ChartContainer config={scoreHistoryChartConfig} className="h-[140px] w-full">
+              <LineChart
+                data={historyChartData}
+                margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
+              >
+                <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 9 }} />
+                <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 9 }} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="hsl(262 83% 58%)"
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: 'hsl(262 83% 58%)' }}
+                />
+              </LineChart>
+            </ChartContainer>
+          </AuditAccordionSection>
+
+          <AuditAccordionSection value="info" title="Thông tin hội thoại">
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-500">Ngày audit</dt>
+                <dd className="font-medium text-slate-800">
+                  {auditDayLabel ??
+                    (row.metadata?.auditDate ? formatAuditDateLabel(row.metadata.auditDate) : '—')}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-500">Nhân viên</dt>
+                <dd className="font-medium text-violet-700">{displayAgentName(row)}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-500">Khách hàng</dt>
+                <dd className="font-medium text-slate-800">
+                  {displayCustomerName(row.customerName)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-500">Nguồn</dt>
+                <dd>
+                  {adSource.fromAd ? (
+                    <CskhAdSourceBadge fromAd adTitle={adSource.adTitle} compact />
+                  ) : (
+                    <span className="text-xs text-slate-600">Tự nhắn</span>
+                  )}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-500">Số tin (audit)</dt>
+                <dd className="font-medium tabular-nums">{transcript.length}</dd>
+              </div>
+            </dl>
+            {tags.length ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700"
+                  >
+                    <Tag className="h-3 w-3" />
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </AuditAccordionSection>
+        </Accordion>
       </div>
 
-      <div className="shrink-0 border-t border-slate-100 px-5 py-5 sm:px-6">
-        <p className="text-sm font-bold uppercase tracking-wide text-slate-400">Đánh giá auditor</p>
-        <div className="mt-3 flex items-center gap-3">
-          <div className="flex">
-            {Array.from({ length: 5 }, (_, i) => (
-              <Star
-                key={i}
-                className={cn(
-                  'h-5 w-5',
-                  i < Math.round(scoreRankLabel(row.score).stars)
-                    ? 'fill-amber-400 text-amber-400'
-                    : 'text-slate-200'
-                )}
-              />
-            ))}
-          </div>
-          <span className="text-sm text-slate-500">AI Audit · {auditDayLabel ?? '—'}</span>
+      <div className="shrink-0 border-t border-slate-100 bg-slate-50/50 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <FiveStarRank filled={rank.stars} starClassName="h-4 w-4" />
+          <span className="text-xs text-slate-500">
+            AI Audit · {auditDayLabel ?? '—'} · {row.score}/100
+          </span>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-slate-500">
-          Điểm {row.score}/100 — {scoreRankLabel(row.score).label}. Xem tab Gợi ý cải thiện để hành
-          động tiếp theo.
-        </p>
       </div>
     </div>
   )
