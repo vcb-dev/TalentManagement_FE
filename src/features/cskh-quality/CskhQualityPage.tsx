@@ -3437,7 +3437,7 @@ export function CskhQualityPage() {
       className={
         tab === 'audit'
           ? undefined
-          : tab === 'overview' || tab === 'fb-page'
+          : tab === 'overview' || tab === 'fb-page' || tab === 'products'
             ? 'h-full min-h-0 flex-1'
             : '!h-auto min-h-0 flex-none overflow-visible'
       }
@@ -3450,7 +3450,7 @@ export function CskhQualityPage() {
         className={
           tab === 'audit'
             ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden'
-            : tab === 'overview' || tab === 'fb-page'
+            : tab === 'overview' || tab === 'fb-page' || tab === 'products'
               ? 'flex h-full min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-1 [scrollbar-width:thin]'
               : 'min-h-0 overflow-x-hidden overflow-y-auto'
         }
