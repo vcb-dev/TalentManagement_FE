@@ -430,7 +430,7 @@ export function AuditMessengerView({
   const [sidebarSearch, setSidebarSearch] = useState('')
   const [listFilter, setListFilter] = useState<'all' | 'low' | 'ad'>('all')
   const [sidebarSort, setSidebarSort] = useState<AuditSidebarSort>('newest')
-  const [selectedPageId, setSelectedPageId] = useState<'all' | string>('all')
+  const [selectedPageId, setSelectedPageId] = useState('')
   const [chatTab, setChatTab] = useState<'chat' | 'timeline' | 'analysis'>('chat')
   const [workspacePane, setWorkspacePane] = useState<MessengerWorkspacePane>('list')
   const [intentByAuditId, setIntentByAuditId] = useState<Record<string, CskhCustomerIntent>>(() =>
@@ -444,7 +444,8 @@ export function AuditMessengerView({
   const refreshedConvRef = useRef<string | null>(null)
   const stableAuditsRef = useRef<CskhAuditRow[]>([])
   const qc = useQueryClient()
-  const selectedPageFilter = selectedPageId === 'all' ? undefined : selectedPageId
+  const selectedPageFilter = selectedPageId || undefined
+  const filtersReady = Boolean(auditDate && selectedPageId)
 
   useEffect(() => {
     void (async () => {
@@ -462,8 +463,8 @@ export function AuditMessengerView({
   }, [jobId])
 
   const runMut = useMutation({
-    mutationFn: (opts: { auditDate: string; force?: boolean }) =>
-      runAudit({ auditDate: opts.auditDate, force: opts.force }),
+    mutationFn: (opts: { auditDate: string; pageId: string; force?: boolean }) =>
+      runAudit({ auditDate: opts.auditDate, pageId: opts.pageId, force: opts.force }),
     onMutate: async (vars) => {
       setCompletionNotice(null)
       setDismissedErrorKey(null)
@@ -601,31 +602,10 @@ export function AuditMessengerView({
     if (progress?.summary?.auditDate) setAuditDate(progress.summary.auditDate)
   }, [progress?.summary?.auditDate])
 
-  const { data: dayStats } = useQuery({
-    queryKey: ['cskh', 'audit-day-stats', auditDate, selectedPageId],
-    queryFn: () => fetchAuditDayStats(auditDate, selectedPageFilter),
-    enabled: Boolean(auditDate),
-    staleTime: 15_000,
-  })
-
   const { data: pagesData } = useQuery({
     queryKey: ['cskh', 'pages'],
     queryFn: fetchCskhPages,
     staleTime: 60_000,
-  })
-
-  const {
-    data: recentAudits,
-    isLoading: recentLoading,
-    isFetching: recentFetching,
-  } = useQuery({
-    queryKey: ['cskh', 'audits', 'by-day', auditDate, selectedPageId],
-    queryFn: () => fetchCskhAudits({ auditDate, pageId: selectedPageFilter, limit: 2000 }),
-    enabled: Boolean(auditDate),
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
-    retry: cskhQueryRetry,
-    retryDelay: cskhQueryRetryDelay,
   })
 
   useEffect(() => {
@@ -640,6 +620,35 @@ export function AuditMessengerView({
   const isAuditActive =
     runMut.isPending || progress?.status === 'running' || (!!jobId && !progressFinished)
   const isRunning = isAuditActive
+
+  const {
+    data: dayStats,
+    isLoading: dayStatsLoading,
+    isFetching: dayStatsFetching,
+  } = useQuery({
+    queryKey: ['cskh', 'audit-day-stats', auditDate, selectedPageId],
+    queryFn: () => fetchAuditDayStats(auditDate, selectedPageFilter!),
+    enabled: filtersReady,
+    staleTime: 15_000,
+  })
+
+  const auditExistsForSelection = (dayStats?.total ?? 0) > 0
+  const checkingAudit =
+    filtersReady && !isRunning && (dayStatsLoading || dayStatsFetching) && dayStats === undefined
+
+  const {
+    data: recentAudits,
+    isLoading: recentLoading,
+    isFetching: recentFetching,
+  } = useQuery({
+    queryKey: ['cskh', 'audits', 'by-day', auditDate, selectedPageId],
+    queryFn: () => fetchCskhAudits({ auditDate, pageId: selectedPageFilter, limit: 2000 }),
+    enabled: filtersReady && (auditExistsForSelection || isRunning),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    retry: cskhQueryRetry,
+    retryDelay: cskhQueryRetryDelay,
+  })
 
   useEffect(() => {
     onAuditJobActiveChange?.(isRunning)
@@ -670,7 +679,8 @@ export function AuditMessengerView({
     recentAudits !== undefined &&
     recentAudits.every((a) => !a.metadata?.auditDate || a.metadata.auditDate === auditDate)
 
-  const showDayLoading = Boolean(auditDate) && !isAuditActive && !dayAuditsReady
+  const showDayLoading =
+    filtersReady && auditExistsForSelection && !isAuditActive && !dayAuditsReady
 
   const displayAudits = useMemo(() => {
     if (showDayLoading) return []
@@ -717,6 +727,8 @@ export function AuditMessengerView({
       .filter((p) => p.enabled)
       .sort((a, b) => (a.pageName || a.pageId).localeCompare(b.pageName || b.pageId, 'vi'))
   }, [pagesData?.pages])
+  const selectedPageLabel =
+    pageOptions.find((p) => p.pageId === selectedPageId)?.pageName || selectedPageId || 'Page'
   const filteredAudits = useMemo(() => {
     const q = sidebarSearch.trim().toLowerCase()
     if (!q) return sortedAudits
@@ -781,9 +793,9 @@ export function AuditMessengerView({
           ? 'Đang khởi động…'
           : `Audit ${auditDayLabel}…`
         : ''
-  const canRun = !!auditDate && !isRunning
+  const canRun = filtersReady && !isRunning
   const canResumeAudit =
-    Boolean(auditDate) && !isRunning && ((dayStats?.total ?? 0) > 0 || sortedAudits.length > 0)
+    filtersReady && !isRunning && ((dayStats?.total ?? 0) > 0 || sortedAudits.length > 0)
   const runButtonLabel = auditDate
     ? canResumeAudit
       ? `Tiếp tục chạy ${formatAuditDateLabel(auditDate)}`
@@ -807,7 +819,8 @@ export function AuditMessengerView({
 
   const inboxQuery = useQuery({
     queryKey: ['cskh', 'inbox', 'conversations', selectedPageId],
-    queryFn: () => fetchInboxConversations(selectedPageFilter),
+    queryFn: () => fetchInboxConversations(selectedPageFilter!),
+    enabled: filtersReady && (auditExistsForSelection || isRunning),
     refetchInterval: false,
     refetchOnWindowFocus: false,
     staleTime: 30_000,
@@ -985,10 +998,10 @@ export function AuditMessengerView({
                 disabled={isRunning}
               />
             </div>
-            {showDayLoading && (
+            {(showDayLoading || checkingAudit) && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Đang tải…
+                {checkingAudit ? 'Đang kiểm tra…' : 'Đang tải…'}
               </span>
             )}
           </div>
@@ -996,16 +1009,15 @@ export function AuditMessengerView({
             <label className="text-sm font-medium text-slate-700" htmlFor="audit-page-filter">
               Page
             </label>
-            <Select value={selectedPageId} onValueChange={(v) => setSelectedPageId(v)}>
+            <Select value={selectedPageId || undefined} onValueChange={(v) => setSelectedPageId(v)}>
               <SelectTrigger
                 id="audit-page-filter"
                 className="h-9 min-w-[180px] border-slate-200 bg-white text-xs font-medium text-slate-700"
-                aria-label="Lọc theo page"
+                aria-label="Chọn page"
               >
-                <SelectValue placeholder="Tất cả page" />
+                <SelectValue placeholder="Chọn page" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả page</SelectItem>
                 {pageOptions.map((p) => (
                   <SelectItem key={p.pageId} value={p.pageId}>
                     {p.pageName || p.pageId}
@@ -1037,8 +1049,8 @@ export function AuditMessengerView({
             )}
           {!isRunning && sortedAudits.length > 0 && (
             <span className="text-xs font-medium text-slate-500">
-              {sortedAudits.length} hội thoại ngày {auditDayLabel ?? '…'}
-              {selectedPageFilter ? ' · theo page đã chọn' : ''} · điểm thấp → cao
+              {sortedAudits.length} hội thoại · {selectedPageLabel} · {auditDayLabel ?? '…'} · điểm
+              thấp → cao
             </span>
           )}
           <CskhConnectionBadge connected={inboxLive} />
@@ -1047,7 +1059,7 @@ export function AuditMessengerView({
           <button
             type="button"
             disabled={!canRun || runMut.isPending}
-            onClick={() => runMut.mutate({ auditDate })}
+            onClick={() => runMut.mutate({ auditDate, pageId: selectedPageId })}
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-violet-200/50 hover:shadow-lg disabled:opacity-50"
           >
             {isRunning ? (
@@ -1057,9 +1069,11 @@ export function AuditMessengerView({
             )}
             {runMut.isPending && !jobId
               ? 'Đang khởi động…'
-              : auditDate
-                ? runButtonLabel
-                : 'Chọn ngày'}
+              : !auditDate
+                ? 'Chọn ngày'
+                : !selectedPageId
+                  ? 'Chọn page'
+                  : runButtonLabel}
           </button>
           {isRunning && (
             <>
@@ -1094,7 +1108,9 @@ export function AuditMessengerView({
                 setJobId(null)
                 storeJobId(null)
                 setDismissedErrorKey(null)
-                runMut.mutate({ auditDate: date, force: true })
+                if (selectedPageId) {
+                  runMut.mutate({ auditDate: date, pageId: selectedPageId, force: true })
+                }
               }}
               className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-700"
             >
@@ -1126,7 +1142,9 @@ export function AuditMessengerView({
                 setDismissedErrorKey(null)
                 setJobId(null)
                 storeJobId(null)
-                runMut.mutate({ auditDate: date, force: true })
+                if (selectedPageId) {
+                  runMut.mutate({ auditDate: date, pageId: selectedPageId, force: true })
+                }
               }}
               className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
             >
@@ -1178,13 +1196,21 @@ export function AuditMessengerView({
         <CskhEmptyState
           icon={<ClipboardCheck className="h-12 w-12 text-violet-500" />}
           title="Chọn ngày audit"
-          description="Chọn ngày ở thanh công cụ, xem kết quả đã có hoặc bấm Chạy audit khi bạn muốn quét."
+          description="Chọn ngày và Page Facebook — hệ thống chỉ hiển thị kết quả khi Page đó đã được chạy audit trong ngày."
         />
-      ) : !sortedAudits.length ? (
+      ) : !selectedPageId ? (
         <CskhEmptyState
           icon={<ClipboardCheck className="h-12 w-12 text-violet-500" />}
-          title="Chưa có dữ liệu audit"
-          description={`Chưa có hội thoại được audit ngày ${auditDayLabel ?? 'này'}. Bấm «${runButtonLabel}» để bắt đầu.`}
+          title="Chọn Page"
+          description={`Chọn Page cần xem chất lượng CSKH ngày ${auditDayLabel ?? formatAuditDateLabel(auditDate)}.`}
+        />
+      ) : checkingAudit ? (
+        <CskhLoading label="Đang kiểm tra dữ liệu audit…" />
+      ) : !auditExistsForSelection && !isRunning && !sortedAudits.length ? (
+        <CskhEmptyState
+          icon={<ClipboardCheck className="h-12 w-12 text-violet-500" />}
+          title="Chưa có chạy audit"
+          description={`Page «${selectedPageLabel}» chưa được chạy audit ngày ${auditDayLabel ?? formatAuditDateLabel(auditDate)}. Bấm «${runButtonLabel}» để bắt đầu — chỉ quét Page này, nhanh hơn quét tất cả.`}
         />
       ) : (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

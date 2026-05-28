@@ -272,15 +272,19 @@ export function CskhQualityPage() {
   }, [])
 
   return (
-    <CskhPageShell>
+    <CskhPageShell className={tab === 'config' ? '!h-auto flex-none' : undefined}>
       {auditJobBusy && tab === 'audit' ? (
         <p className="mb-2 text-xs font-medium text-indigo-600">Đang chạy audit…</p>
       ) : null}
 
       <CskhGlassPanel
-        className={tab === 'audit' ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden' : ''}
+        className={
+          tab === 'audit'
+            ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden'
+            : 'min-h-0 overflow-visible'
+        }
       >
-        <div className={tab === 'config' ? '' : 'hidden'}>
+        <div className={tab === 'config' ? 'min-h-0' : 'hidden'}>
           <ConfigTab />
         </div>
         <div

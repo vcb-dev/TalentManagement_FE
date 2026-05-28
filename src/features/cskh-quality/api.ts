@@ -241,7 +241,11 @@ export async function runMonitor(maxConversations?: number): Promise<{
   return data
 }
 
-export async function runAudit(params: { auditDate: string; force?: boolean }): Promise<{
+export async function runAudit(params: {
+  auditDate: string
+  force?: boolean
+  pageId?: string
+}): Promise<{
   jobId: string
   status: string
   alreadyRunning?: boolean
@@ -253,6 +257,7 @@ export async function runAudit(params: { auditDate: string; force?: boolean }): 
   }>('/cskh/audit/run', {
     auditDate: params.auditDate,
     force: params.force,
+    pageId: params.pageId,
   })
   return data
 }

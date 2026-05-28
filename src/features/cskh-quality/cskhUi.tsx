@@ -89,10 +89,26 @@ export function CskhPageAvatar({
   )
 }
 
-export function CskhPageShell({ children }: { children: ReactNode }) {
+export function CskhPageShell({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden sm:gap-3">
+    <div
+      className={cn(
+        'relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+        className
+      )}
+    >
+      <div
+        className={cn(
+          'flex min-h-0 min-w-0 flex-1 flex-col gap-2 sm:gap-3',
+          className?.includes('!h-auto') ? '' : 'overflow-hidden'
+        )}
+      >
         {children}
       </div>
     </div>
@@ -474,7 +490,7 @@ export function MessengerWorkspace({
             className={cn(
               'flex min-h-0 min-w-0 flex-col overflow-hidden',
               isAuditLayout
-                ? 'bg-white xl:flex-1 xl:min-w-[360px] xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
+                ? 'bg-white xl:min-w-[280px] xl:max-w-[min(380px,30vw)] xl:flex-[1_1_0%] xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
                 : 'bg-[#f0f2f5]',
               showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-1'
             )}
@@ -486,7 +502,7 @@ export function MessengerWorkspace({
               className={cn(
                 'flex min-h-0 min-w-0 flex-col overflow-hidden bg-white',
                 isAuditLayout
-                  ? 'xl:h-full xl:w-[min(430px,36vw)] xl:min-w-[380px] xl:max-w-[500px] xl:flex-none xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
+                  ? 'xl:h-full xl:w-[min(520px,42vw)] xl:min-w-[440px] xl:max-w-[640px] xl:flex-[1.15_1_0%] xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
                   : 'border-t border-slate-200/80 xl:h-full xl:w-[min(380px,32vw)] xl:max-w-[420px] xl:flex-none xl:border-l xl:border-t-0',
                 showAnalysis ? 'min-h-0 flex-1 xl:flex' : 'hidden xl:flex'
               )}
