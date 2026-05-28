@@ -1076,86 +1076,84 @@ export function AuditMessengerView({
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <CskhToolbar>
         <div className="flex w-full min-w-0 flex-col gap-2.5">
-          <div className="flex w-full min-w-0 flex-col gap-3 xl:flex-row xl:items-end xl:gap-4">
-            <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-              <div className="flex min-w-0 flex-col">
-                <CskhAuditFieldLabel required>Khoảng ngày</CskhAuditFieldLabel>
-                <CskhAuditDateRangePickers
-                  compact
-                  balanced
-                  from={auditDateFrom}
-                  to={auditDateTo}
-                  onFromChange={setAuditDateFrom}
-                  onToChange={setAuditDateTo}
-                  max={vietnamTodayIso()}
-                  disabled={isRunning}
-                />
-              </div>
-              <div className="flex min-w-0 flex-col">
-                <div className="mb-1 flex h-4 items-center justify-between gap-2">
-                  <CskhAuditFieldLabel required htmlFor="audit-page-filter" className="!mb-0">
-                    Kênh
-                  </CskhAuditFieldLabel>
-                  {selectedPageId && alreadyScoredCount > 0 && !isRunning && (
-                    <span
-                      className="shrink-0 text-[10px] font-semibold text-slate-500"
-                      title={`Trong ${scoreRangeLabel}`}
-                    >
-                      Đã chấm {alreadyScoredCount.toLocaleString('vi-VN')}
-                    </span>
-                  )}
-                </div>
-                <Select
-                  value={selectedPageId || undefined}
-                  onValueChange={(v) => setSelectedPageId(v)}
-                >
-                  <SelectTrigger
-                    id="audit-page-filter"
-                    className={cn(
-                      cskhAuditToolbarControlClass,
-                      '!h-9 !min-h-9 border-slate-200 !bg-white py-0 pl-2.5 pr-8',
-                      '!border hover:!bg-white focus:ring-1 focus:ring-indigo-200',
-                      '[&>span]:line-clamp-1 [&>span]:truncate'
-                    )}
-                    aria-label="Chọn kênh"
-                  >
-                    <SelectValue placeholder="Chọn kênh" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pageOptions.map((p) => (
-                      <SelectItem key={p.pageId} value={p.pageId}>
-                        {p.pageName || p.pageId}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex min-w-0 flex-col">
-                <CskhAuditFieldLabel
-                  htmlFor="audit-batch-limit"
-                  hint="Chỉ chấm cuộc chưa có điểm trong khoảng ngày. Đã 200, nhập 100 → chấm thêm 100."
-                >
-                  <span className="inline-flex items-center gap-0.5">
-                    Giới hạn
-                    <HelpCircle className="h-3 w-3 text-slate-400" aria-hidden />
-                  </span>
+          <div className="grid w-full min-w-0 grid-cols-1 items-end gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:gap-x-4">
+            <div className="flex min-w-0 flex-col">
+              <CskhAuditFieldLabel required>Khoảng ngày</CskhAuditFieldLabel>
+              <CskhAuditDateRangePickers
+                compact
+                balanced
+                from={auditDateFrom}
+                to={auditDateTo}
+                onFromChange={setAuditDateFrom}
+                onToChange={setAuditDateTo}
+                max={vietnamTodayIso()}
+                disabled={isRunning}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col">
+              <div className="mb-1 flex h-4 items-center justify-between gap-2">
+                <CskhAuditFieldLabel required htmlFor="audit-page-filter" className="!mb-0">
+                  Kênh
                 </CskhAuditFieldLabel>
-                <input
-                  id="audit-batch-limit"
-                  type="number"
-                  min={1}
-                  step={1}
-                  placeholder="Tất cả"
-                  value={batchLimitInput}
-                  onChange={(e) => setBatchLimitInput(e.target.value)}
-                  disabled={isRunning}
-                  title="Để trống = chấm hết cuộc chưa chấm. Nhập số = chỉ chấm thêm N cuộc (bỏ qua đã chấm)."
-                  className={cn(cskhAuditToolbarControlClass, 'px-2.5 placeholder:text-slate-400')}
-                />
+                {selectedPageId && alreadyScoredCount > 0 && !isRunning && (
+                  <span
+                    className="shrink-0 text-[10px] font-semibold text-slate-500"
+                    title={`Trong ${scoreRangeLabel}`}
+                  >
+                    Đã chấm {alreadyScoredCount.toLocaleString('vi-VN')}
+                  </span>
+                )}
               </div>
+              <Select
+                value={selectedPageId || undefined}
+                onValueChange={(v) => setSelectedPageId(v)}
+              >
+                <SelectTrigger
+                  id="audit-page-filter"
+                  className={cn(
+                    cskhAuditToolbarControlClass,
+                    '!h-9 !min-h-9 border-slate-200 !bg-white py-0 pl-2.5 pr-8',
+                    '!border hover:!bg-white focus:ring-1 focus:ring-indigo-200',
+                    '[&>span]:line-clamp-1 [&>span]:truncate'
+                  )}
+                  aria-label="Chọn kênh"
+                >
+                  <SelectValue placeholder="Chọn kênh" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pageOptions.map((p) => (
+                    <SelectItem key={p.pageId} value={p.pageId}>
+                      {p.pageName || p.pageId}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex min-w-0 flex-col">
+              <CskhAuditFieldLabel
+                htmlFor="audit-batch-limit"
+                hint="Chỉ chấm cuộc chưa có điểm trong khoảng ngày. Đã 200, nhập 100 → chấm thêm 100."
+              >
+                <span className="inline-flex items-center gap-0.5">
+                  Giới hạn
+                  <HelpCircle className="h-3 w-3 text-slate-400" aria-hidden />
+                </span>
+              </CskhAuditFieldLabel>
+              <input
+                id="audit-batch-limit"
+                type="number"
+                min={1}
+                step={1}
+                placeholder="Tất cả"
+                value={batchLimitInput}
+                onChange={(e) => setBatchLimitInput(e.target.value)}
+                disabled={isRunning}
+                title="Để trống = chấm hết cuộc chưa chấm. Nhập số = chỉ chấm thêm N cuộc (bỏ qua đã chấm)."
+                className={cn(cskhAuditToolbarControlClass, 'px-2.5 placeholder:text-slate-400')}
+              />
             </div>
 
-            <div className="flex h-9 shrink-0 flex-wrap items-center justify-end gap-2 xl:w-auto">
+            <div className="flex h-9 shrink-0 flex-wrap items-center justify-end gap-2 sm:col-span-3 md:col-span-1 md:col-auto">
               {(showDayLoading || checkingAudit) && (
                 <span className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-indigo-100 bg-indigo-50 px-2.5 text-xs font-medium text-indigo-700">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1238,7 +1236,7 @@ export function AuditMessengerView({
                       })
                     }
                   }}
-                  className="h-9 rounded-lg border border-violet-200 bg-violet-50 px-3 text-sm font-semibold text-violet-700 hover:bg-violet-100"
+                  className="inline-flex h-9 min-h-9 items-center rounded-lg border border-violet-200 bg-violet-50 px-3 text-xs font-semibold text-violet-700 hover:bg-violet-100"
                 >
                   Chạy lại
                 </button>
