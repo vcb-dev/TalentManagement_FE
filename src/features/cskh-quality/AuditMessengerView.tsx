@@ -460,6 +460,8 @@ export function AuditMessengerView({
   const chatScrollSigRef = useRef('')
   const refreshedConvRef = useRef<string | null>(null)
   const stableAuditsRef = useRef<CskhAuditRow[]>([])
+  const filtersRef = useRef({ auditDateFrom: '', auditDateTo: '', selectedPageId: '' })
+  const prevFiltersRef = useRef({ from: '', to: '', page: '' })
   const qc = useQueryClient()
   const selectedPageFilter = selectedPageId || undefined
   const filtersReady = Boolean(auditDateFrom && auditDateTo && selectedPageId)
@@ -468,6 +470,10 @@ export function AuditMessengerView({
     const n = Number.parseInt(batchLimitInput.trim(), 10)
     return Number.isFinite(n) && n > 0 ? n : undefined
   }, [batchLimitInput])
+
+  useEffect(() => {
+    filtersRef.current = { auditDateFrom, auditDateTo, selectedPageId }
+  }, [auditDateFrom, auditDateTo, selectedPageId])
 
   useEffect(() => {
     void (async () => {
@@ -506,6 +512,19 @@ export function AuditMessengerView({
       })
     },
     onSuccess: (res, vars) => {
+      const cur = filtersRef.current
+      if (
+        vars.auditDateFrom !== cur.auditDateFrom ||
+        vars.auditDateTo !== cur.auditDateTo ||
+        vars.pageId !== cur.selectedPageId
+      ) {
+        void fetchRunningCskhJob('audit').then((running) => {
+          if (running?.status === 'running' && running.id === res.jobId) {
+            setBackgroundJobId(res.jobId)
+          }
+        })
+        return
+      }
       const cached =
         qc.getQueryData<CskhAuditRow[]>([
           'cskh',
@@ -541,22 +560,36 @@ export function AuditMessengerView({
 
   const cancelMut = useMutation({
     mutationFn: () => cancelAuditJob(),
-    onSuccess: (res) => {
+    onMutate: () => {
+      const detachedJobId = jobId
       setJobId(null)
       storeJobId(null)
-      setBackgroundJobId(null)
       toast.dismiss(AUDIT_TOAST_ID)
+      runMut.reset()
+      if (detachedJobId) {
+        qc.removeQueries({ queryKey: ['cskh', 'audit-progress', detachedJobId] })
+      }
+      return { detachedJobId }
+    },
+    onSuccess: (res) => {
+      setBackgroundJobId(null)
       if (res.cancelled > 0) {
         toast.info('Đã hủy tiến trình chấm điểm', { duration: 4000 })
       } else {
         toast.info('Không còn tiến trình đang chạy', { duration: 3000 })
       }
-      void qc.cancelQueries({ queryKey: ['cskh', 'audit-progress'] })
       void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
       void qc.invalidateQueries({ queryKey: ['cskh', 'audit-day-stats'] })
     },
-    onError: (err) => {
+    onError: (err, _vars, ctx) => {
       toast.error(getApiErrorMessage(err) || 'Không hủy được tiến trình')
+      if (ctx?.detachedJobId) {
+        void fetchRunningCskhJob('audit').then((running) => {
+          if (running?.status === 'running' && running.id === ctx.detachedJobId) {
+            setBackgroundJobId(running.id)
+          }
+        })
+      }
     },
   })
 
@@ -586,7 +619,6 @@ export function AuditMessengerView({
     retryDelay: cskhQueryRetryDelay,
   })
 
-  const progressFinished = progress?.status === 'done' || progress?.status === 'failed'
   const prevProgressStatusRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -673,11 +705,14 @@ export function AuditMessengerView({
   }, [progressError, progressErr, progressFetching, progressFailureCount, jobId, qc, setJobId])
 
   useEffect(() => {
-    const from = progress?.summary?.auditDateFrom || progress?.summary?.auditDate
-    const to = progress?.summary?.auditDateTo || from
+    if (!jobId || progress?.status !== 'running') return
+    const from = progress.summary?.auditDateFrom || progress.summary?.auditDate
+    const to = progress.summary?.auditDateTo || from
     if (from) setAuditDateFrom(from)
     if (to) setAuditDateTo(to)
   }, [
+    jobId,
+    progress?.status,
     progress?.summary?.auditDateFrom,
     progress?.summary?.auditDateTo,
     progress?.summary?.auditDate,
@@ -690,16 +725,44 @@ export function AuditMessengerView({
   })
 
   useEffect(() => {
+    const prev = prevFiltersRef.current
+    const filtersChanged =
+      prev.from !== auditDateFrom || prev.to !== auditDateTo || prev.page !== selectedPageId
+    prevFiltersRef.current = {
+      from: auditDateFrom,
+      to: auditDateTo,
+      page: selectedPageId,
+    }
+
     stableAuditsRef.current = []
     setSelectedId(null)
     setSidebarSearch('')
     setListFilter('all')
     setChatTab('chat')
-  }, [auditDateFrom, auditDateTo, selectedPageId])
+
+    if (filtersChanged) {
+      setJobId((current) => {
+        if (current) {
+          storeJobId(null)
+          toast.dismiss(AUDIT_TOAST_ID)
+          qc.removeQueries({ queryKey: ['cskh', 'audit-progress', current] })
+        }
+        return null
+      })
+      runMut.reset()
+      void fetchRunningCskhJob('audit').then((running) => {
+        setBackgroundJobId(running?.status === 'running' ? running.id : null)
+      })
+    }
+  }, [auditDateFrom, auditDateTo, selectedPageId, qc])
 
   const summary = progress?.summary
   const isAuditActive =
-    runMut.isPending || progress?.status === 'running' || (!!jobId && !progressFinished)
+    runMut.isPending ||
+    (!!jobId &&
+      progress?.status !== 'failed' &&
+      progress?.status !== 'done' &&
+      (progress?.status === 'running' || progress === undefined))
   const isRunning = isAuditActive
 
   const {
