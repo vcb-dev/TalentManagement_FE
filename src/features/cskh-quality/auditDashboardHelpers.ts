@@ -1,4 +1,4 @@
-import type { AuditComparisonStats, CskhAuditRow } from './api'
+import type { AuditComparisonStats, CskhAuditRow, CskhCustomerIntent } from './api'
 import {
   displayAgentName,
   parseAiListField,
@@ -193,47 +193,113 @@ export function resolveProsCons(row: CskhAuditRow): {
   return { pros, cons, source: 'legacy' }
 }
 
+const GENERIC_KEYWORD_STOP = new Set([
+  'dạ',
+  'ạ',
+  'em',
+  'anh',
+  'chị',
+  'bạn',
+  'mình',
+  'cho',
+  'với',
+  'này',
+  'được',
+  'không',
+  'có',
+  'là',
+  'và',
+  'của',
+  'nha',
+  'nhé',
+  'ảnh',
+  'nhận',
+  'hàng',
+  'gửi',
+  'luôn',
+  'còn',
+  'khi',
+  'chưa',
+  'giúp',
+  'đeo',
+  'lõm',
+  'lại',
+  'rồi',
+  'vậy',
+  'nữa',
+  'đó',
+  'nào',
+  'sao',
+  'xin',
+  'shop',
+  'ad',
+])
+
+function isUsefulKeywordPhrase(value: string): boolean {
+  const text = value.trim()
+  if (text.length < 2) return false
+  const lower = text.toLowerCase()
+  if (GENERIC_KEYWORD_STOP.has(lower)) return false
+  const words = text.split(/\s+/).filter(Boolean)
+  if (words.length === 1 && text.length <= 5 && !/[A-Z0-9]/.test(text)) return false
+  if (words.length === 1 && GENERIC_KEYWORD_STOP.has(words[0]!.toLowerCase())) return false
+  return true
+}
+
+function dedupeLabels(values: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const value of values) {
+    const label = value.trim()
+    if (!label) continue
+    const key = label.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(label)
+  }
+  return out
+}
+
+export type ResolvedKeywords = {
+  products: NonNullable<CskhCustomerIntent['products']>
+  productMentions: string[]
+  topics: string[]
+  keywords: string[]
+  hasData: boolean
+}
+
 export function resolveKeywords(
   row: CskhAuditRow,
-  transcript: DisplayTranscriptLine[]
-): { keywords: string[]; source: 'ai' | 'legacy' } {
-  const fromAi = row.metadata?.keywords?.filter(Boolean)
-  if (fromAi?.length) return { keywords: fromAi, source: 'ai' }
+  customerIntent?: CskhCustomerIntent | null
+): ResolvedKeywords {
+  const products = customerIntent?.products ?? []
+  const productMentions = dedupeLabels(
+    (customerIntent?.productMentions ?? []).filter(isUsefulKeywordPhrase)
+  )
+  const topics = dedupeLabels(customerIntent?.topics ?? [])
+  const aiKeywords = dedupeLabels((row.metadata?.keywords ?? []).filter(isUsefulKeywordPhrase))
+  const tagKeywords = dedupeLabels((row.metadata?.tags ?? []).filter(isUsefulKeywordPhrase))
 
-  const stop = new Set([
-    'dạ',
-    'ạ',
-    'em',
-    'anh',
-    'chị',
-    'bạn',
-    'mình',
-    'cho',
-    'với',
-    'này',
-    'được',
-    'không',
-    'có',
-    'là',
-    'và',
-    'của',
-    'nha',
-    'nhé',
-  ])
-  const freq = new Map<string, number>()
-  for (const line of transcript) {
-    const words = (line.text ?? '').toLowerCase().match(/[\p{L}]{3,}/gu) ?? []
-    for (const w of words) {
-      if (stop.has(w)) continue
-      freq.set(w, (freq.get(w) ?? 0) + 1)
-    }
-  }
+  const productNames = new Set(products.map((p) => p.name.toLowerCase()))
+  const mentionSet = new Set(productMentions.map((m) => m.toLowerCase()))
+  const topicSet = new Set(topics.map((t) => t.toLowerCase()))
+
+  const keywords = dedupeLabels(
+    [...aiKeywords, ...tagKeywords].filter((kw) => {
+      const lower = kw.toLowerCase()
+      return !productNames.has(lower) && !mentionSet.has(lower) && !topicSet.has(lower)
+    })
+  ).slice(0, 8)
+
+  const hasData =
+    products.length > 0 || productMentions.length > 0 || topics.length > 0 || keywords.length > 0
+
   return {
-    keywords: [...freq.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 12)
-      .map(([w]) => w),
-    source: 'legacy',
+    products,
+    productMentions,
+    topics,
+    keywords,
+    hasData,
   }
 }
 

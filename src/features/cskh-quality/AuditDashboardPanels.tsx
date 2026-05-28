@@ -769,10 +769,9 @@ export function AuditAnalysisPanel({
   intentLoading?: boolean
 }) {
   const [tab, setTab] = useState('intent')
-  const adSource = resolveAuditFromAd(row, inbox)
   const { pros, cons } = resolveProsCons(row)
   const criteria = resolveCriteriaScores(row)
-  const { keywords } = resolveKeywords(row, transcript)
+  const resolvedKeywords = resolveKeywords(row, customerIntent)
   const sentiment = resolveSentiment(row)
   const actionItems = parseAuditActionItems(row)
   const feedbackBullets = resolveFeedbackBullets(row)
@@ -781,7 +780,7 @@ export function AuditAnalysisPanel({
     { id: 'intent', label: 'Khách đang hỏi' },
     { id: 'detail', label: 'Phân tích chi tiết' },
     { id: 'criteria', label: 'Điểm & Tiêu chí' },
-    { id: 'keywords', label: 'Từ khóa' },
+    { id: 'keywords', label: 'Sản phẩm & chủ đề' },
     { id: 'sentiment', label: 'Cảm xúc' },
     { id: 'suggest', label: 'Gợi ý cải thiện' },
   ]
@@ -854,26 +853,6 @@ export function AuditAnalysisPanel({
                 </ul>
               </section>
             ) : null}
-
-            {adSource.fromAd ? (
-              <section className="rounded-xl border border-sky-100 bg-sky-50/50 p-4">
-                <p className="text-sm font-bold uppercase tracking-wide text-sky-700">
-                  Nguồn tin nhắn
-                </p>
-                <dl className="mt-3 space-y-2 text-sm">
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-slate-500">Campaign</dt>
-                    <dd className="font-medium text-slate-700">{adSource.adTitle ?? '—'}</dd>
-                  </div>
-                  {adSource.adId ? (
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-slate-500">Ad ID</dt>
-                      <dd className="font-mono text-[10px] text-slate-600">{adSource.adId}</dd>
-                    </div>
-                  ) : null}
-                </dl>
-              </section>
-            ) : null}
           </div>
         )}
 
@@ -911,23 +890,101 @@ export function AuditAnalysisPanel({
         )}
 
         {tab === 'keywords' && (
-          <div>
-            {keywords.length ? (
-              <div className="flex flex-wrap gap-2.5">
-                {keywords.map((kw) => (
-                  <span
-                    key={kw}
-                    className="rounded-full border border-violet-200 bg-violet-50 px-4 py-1.5 text-sm font-medium text-violet-800"
-                  >
-                    {kw}
-                  </span>
-                ))}
-              </div>
-            ) : (
+          <div className="space-y-6">
+            {resolvedKeywords.products.length ? (
+              <section>
+                <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
+                  Sản phẩm khách quan tâm
+                </p>
+                <ul className="mt-3 space-y-3">
+                  {resolvedKeywords.products.map((p) => (
+                    <li
+                      key={`${p.productId}-${p.variantId}`}
+                      className="flex gap-3 rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm"
+                    >
+                      {p.imageUrl ? (
+                        <img
+                          src={p.imageUrl}
+                          alt=""
+                          className="h-14 w-14 shrink-0 rounded-lg border border-slate-100 object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
+                          SP
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold leading-snug text-slate-800">{p.name}</p>
+                        <p className="mt-1 text-base font-bold tabular-nums text-violet-700">
+                          {p.priceLabel}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {resolvedKeywords.productMentions.length ? (
+              <section>
+                <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
+                  Khách nhắc tới
+                </p>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {resolvedKeywords.productMentions.map((mention) => (
+                    <span
+                      key={mention}
+                      className="rounded-full border border-violet-200 bg-violet-50 px-4 py-1.5 text-sm font-medium text-violet-800"
+                    >
+                      {mention}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {resolvedKeywords.topics.length ? (
+              <section>
+                <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
+                  Chủ đề quan tâm
+                </p>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {resolvedKeywords.topics.map((topic) => (
+                    <span
+                      key={topic}
+                      className="rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm font-medium text-slate-700"
+                    >
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {resolvedKeywords.keywords.length ? (
+              <section>
+                <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
+                  Từ khóa AI
+                </p>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {resolvedKeywords.keywords.map((kw) => (
+                    <span
+                      key={kw}
+                      className="rounded-full border border-violet-200 bg-violet-50 px-4 py-1.5 text-sm font-medium text-violet-800"
+                    >
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {!resolvedKeywords.hasData ? (
               <p className="text-base text-slate-500">
-                Chưa trích xuất được từ khóa từ transcript.
+                Chưa xác định được sản phẩm hoặc chủ đề từ hội thoại. Mở tab「Khách đang hỏi」 hoặc
+                chạy lại audit sau khi cập nhật AI.
               </p>
-            )}
+            ) : null}
           </div>
         )}
 
