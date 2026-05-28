@@ -67,6 +67,7 @@ import {
   CskhAuditProgressPanel,
   CskhAuditDateRangePickers,
   CskhAuditFieldLabel,
+  cskhAuditToolbarControlClass,
   CskhConnectionBadge,
   CskhEmptyState,
   CskhLoading,
@@ -1077,8 +1078,8 @@ export function AuditMessengerView({
       <CskhToolbar>
         <div className="flex w-full min-w-0 flex-col gap-2.5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_5.5rem] xl:items-end xl:gap-4">
-              <div className="min-w-0 space-y-1">
+            <div className="flex min-w-0 flex-wrap items-end gap-x-4 gap-y-2">
+              <div className="shrink-0">
                 <CskhAuditFieldLabel required>Khoảng ngày</CskhAuditFieldLabel>
                 <CskhAuditDateRangePickers
                   compact
@@ -1090,21 +1091,25 @@ export function AuditMessengerView({
                   disabled={isRunning}
                 />
               </div>
-              <div className="min-w-0 space-y-1">
+              <div className="shrink-0">
                 <CskhAuditFieldLabel required htmlFor="audit-page-filter">
                   Kênh
                 </CskhAuditFieldLabel>
-                <div className="flex min-w-0 items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <Select
                     value={selectedPageId || undefined}
                     onValueChange={(v) => setSelectedPageId(v)}
                   >
                     <SelectTrigger
                       id="audit-page-filter"
-                      className="h-9 w-full min-w-0 border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-sm"
+                      className={cn(
+                        cskhAuditToolbarControlClass,
+                        '!h-9 !min-h-9 w-[10.5rem] max-w-[10.5rem] border-slate-200 !bg-white py-0 pl-2.5 pr-2 shadow-sm',
+                        '!border hover:!bg-white focus:ring-1 focus:ring-indigo-200 [&>span]:truncate'
+                      )}
                       aria-label="Chọn kênh"
                     >
-                      <SelectValue placeholder="Chọn kênh Facebook" />
+                      <SelectValue placeholder="Chọn kênh" />
                     </SelectTrigger>
                     <SelectContent>
                       {pageOptions.map((p) => (
@@ -1116,7 +1121,7 @@ export function AuditMessengerView({
                   </Select>
                   {selectedPageId && alreadyScoredCount > 0 && !isRunning && (
                     <span
-                      className="hidden shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600 sm:inline"
+                      className="inline-flex h-9 shrink-0 items-center rounded-lg bg-slate-100 px-2 text-[10px] font-semibold text-slate-600"
                       title={`Trong ${scoreRangeLabel}`}
                     >
                       Đã {alreadyScoredCount}
@@ -1124,7 +1129,7 @@ export function AuditMessengerView({
                   )}
                 </div>
               </div>
-              <div className="space-y-1 sm:max-w-[11rem] xl:max-w-none">
+              <div className="shrink-0">
                 <CskhAuditFieldLabel
                   htmlFor="audit-batch-limit"
                   hint="Chỉ chấm cuộc chưa có điểm trong khoảng ngày. Đã 200, nhập 100 → chấm thêm 100."
@@ -1144,14 +1149,17 @@ export function AuditMessengerView({
                   onChange={(e) => setBatchLimitInput(e.target.value)}
                   disabled={isRunning}
                   title="Để trống = chấm hết cuộc chưa chấm. Nhập số = chỉ chấm thêm N cuộc (bỏ qua đã chấm)."
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-800 shadow-sm placeholder:text-slate-400"
+                  className={cn(
+                    cskhAuditToolbarControlClass,
+                    'w-[4.25rem] px-2 text-center placeholder:text-slate-400'
+                  )}
                 />
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+            <div className="flex h-9 shrink-0 flex-wrap items-center gap-2 lg:ml-auto lg:justify-end">
               {(showDayLoading || checkingAudit) && (
-                <span className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-indigo-50 px-2.5 text-xs font-medium text-indigo-700">
+                <span className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-indigo-100 bg-indigo-50 px-2.5 text-xs font-medium text-indigo-700">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   {checkingAudit ? 'Kiểm tra…' : 'Tải…'}
                 </span>
@@ -1168,7 +1176,7 @@ export function AuditMessengerView({
                     maxConversations: parsedBatchLimit,
                   })
                 }
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 text-sm font-semibold text-white shadow-md shadow-violet-200/40 hover:shadow-lg disabled:opacity-50"
+                className="inline-flex h-9 min-h-9 items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3.5 text-xs font-semibold text-white shadow-md shadow-violet-200/40 hover:shadow-lg disabled:opacity-50"
               >
                 {isRunning || runMut.isPending ? (
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
@@ -1191,7 +1199,7 @@ export function AuditMessengerView({
                     type="button"
                     disabled={pauseMut.isPending || isPausing}
                     onClick={() => pauseMut.mutate()}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                    className="inline-flex h-9 min-h-9 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
                   >
                     {isPausing ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -1204,7 +1212,7 @@ export function AuditMessengerView({
                     type="button"
                     disabled={cancelMut.isPending}
                     onClick={() => cancelMut.mutate()}
-                    className="h-9 rounded-lg border border-rose-200 bg-rose-50 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+                    className="inline-flex h-9 min-h-9 items-center rounded-lg border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-100"
                   >
                     Hủy
                   </button>

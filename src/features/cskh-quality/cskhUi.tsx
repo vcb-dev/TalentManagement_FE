@@ -603,6 +603,12 @@ export function CskhLoading({ label = 'Đang tải…' }: { label?: string }) {
   )
 }
 
+/** Toolbar chấm điểm — nhãn + control cùng cỡ. */
+export const cskhAuditToolbarLabelClass =
+  'mb-1 block h-4 text-[11px] font-semibold leading-4 uppercase tracking-wide text-slate-500'
+export const cskhAuditToolbarControlClass =
+  'h-9 min-h-9 shrink-0 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-sm'
+
 /** Calendar popover — dùng chung DatePicker của app, style gọn cho toolbar chấm điểm. */
 export function CskhAuditDatePicker({
   value,
@@ -632,12 +638,15 @@ export function CskhAuditDatePicker({
       placeholder={placeholder}
       displayLabel={value ? formatAuditDateLabel(value) : undefined}
       className={cn(
-        'rounded-lg border-slate-200 bg-white font-medium text-slate-800 shadow-sm',
-        'hover:border-indigo-300 hover:bg-indigo-50/30',
-        value && 'border-indigo-300/70 text-indigo-900',
         compact
-          ? 'h-9 min-w-[7.75rem] px-2.5 py-1.5 text-xs'
-          : 'h-10 min-w-[9.5rem] rounded-xl border-indigo-200 px-3 py-2 text-sm font-semibold'
+          ? cn(
+              cskhAuditToolbarControlClass,
+              '!h-9 !min-h-9 !w-[6.75rem] !max-w-[6.75rem] justify-start !px-2 !py-0 font-medium',
+              '!rounded-lg !border !shadow-sm hover:border-indigo-300 hover:bg-indigo-50/30',
+              '!text-xs active:scale-100',
+              value && 'border-indigo-300/70 !bg-white text-indigo-900'
+            )
+          : 'h-10 min-w-[9.5rem] rounded-xl border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-indigo-300'
       )}
     />
   )
@@ -671,10 +680,16 @@ export function CskhAuditDateRangePickers({
         }}
         disabled={disabled}
         max={max}
-        placeholder="Từ ngày"
+        placeholder={compact ? 'Từ' : 'Từ ngày'}
         compact={compact}
       />
-      <span className={cn('shrink-0 text-slate-400', compact ? 'text-xs' : 'text-sm font-medium')}>
+      <span
+        className={cn(
+          'shrink-0 text-slate-400',
+          compact ? 'px-0.5 text-[10px]' : 'text-sm font-medium'
+        )}
+        aria-hidden
+      >
         →
       </span>
       <CskhAuditDatePicker
@@ -686,7 +701,7 @@ export function CskhAuditDateRangePickers({
         disabled={disabled}
         max={max}
         min={from || undefined}
-        placeholder="Đến ngày"
+        placeholder={compact ? 'Đến' : 'Đến ngày'}
         compact={compact}
       />
     </div>
@@ -709,10 +724,10 @@ export function CskhAuditFieldLabel({
     <label
       htmlFor={htmlFor}
       title={hint}
-      className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500"
+      className={cn(cskhAuditToolbarLabelClass, 'flex items-center gap-1 !mb-1')}
     >
       {children}
-      {required && <span className="text-rose-500 normal-case">*</span>}
+      {required && <span className="text-rose-500">*</span>}
     </label>
   )
 }
@@ -725,7 +740,7 @@ export function CskhConnectionBadge({ connected }: { connected: boolean }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+        'inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-[10px] font-semibold uppercase tracking-wide',
         connected ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
       )}
       title={connected ? 'Nhận tin nhắn realtime qua webhook' : 'Đang thử kết nối realtime…'}
