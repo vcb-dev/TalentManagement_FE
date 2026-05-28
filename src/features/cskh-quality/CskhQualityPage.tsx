@@ -1894,8 +1894,8 @@ function FbPageTab() {
         {/* Left Side */}
         <div className="space-y-2 xl:col-span-8">
           {/* Table Card (Danh sách Page Facebook) */}
-          <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-3.5 shadow-sm">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
                   Danh sách Page Facebook
@@ -1948,48 +1948,51 @@ function FbPageTab() {
             ) : (
               <>
                 <div className="min-h-0 overflow-x-auto [scrollbar-width:thin]">
-                  <table className="w-full min-w-[720px] border-collapse text-left">
+                  <table className="w-full min-w-[740px] border-separate border-spacing-y-2.5 text-left">
                     <thead>
-                      <tr className="border-b border-slate-150 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        <th className="pb-2.5 font-black">Page</th>
-                        <th className="pb-2.5 text-center font-black">Trạng thái</th>
-                        <th className="pb-2.5 text-right font-black">Tổng tin nhắn</th>
-                        <th className="pb-2.5 text-right font-black">Tin nhắn từ QC</th>
-                        <th className="pb-2.5 text-center font-black">% từ QC</th>
-                        <th className="pb-2.5 text-right font-black">Tỷ lệ phản hồi</th>
-                        <th className="pb-2.5 text-right font-black">Tỷ lệ chốt</th>
-                        <th className="pb-2.5 text-right font-black">Doanh thu</th>
-                        <th className="pb-2.5 text-center font-black">Chất lượng (AI)</th>
-                        <th className="pb-2.5 text-center font-black">Xu hướng</th>
+                      <tr className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <th className="px-2 pb-3 font-black">Page</th>
+                        <th className="px-2 pb-3 text-center font-black">Trạng thái</th>
+                        <th className="px-2 pb-3 text-right font-black">Tổng tin nhắn</th>
+                        <th className="px-2 pb-3 text-right font-black">Tin nhắn từ QC</th>
+                        <th className="px-2 pb-3 text-center font-black">% từ QC</th>
+                        <th className="px-2 pb-3 text-right font-black">Tỷ lệ phản hồi</th>
+                        <th className="px-2 pb-3 text-right font-black">Tỷ lệ chốt</th>
+                        <th className="px-2 pb-3 text-right font-black">Doanh thu</th>
+                        <th className="px-2 pb-3 text-center font-black">Chất lượng (AI)</th>
+                        <th className="px-2 pb-3 text-center font-black">Xu hướng</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100/50">
+                    <tbody>
                       {visiblePages.map((page) => {
                         const isInactive = page.status === 'inactive'
                         return (
-                          <tr key={page.pageId} className="text-xs transition hover:bg-slate-50/50">
-                            <td className="flex max-w-[200px] min-w-0 items-center gap-2.5 py-2.5 font-bold text-slate-700">
+                          <tr
+                            key={page.pageId}
+                            className="text-xs transition hover:bg-slate-50/60 [&>td]:border-y [&>td]:border-slate-100/80 [&>td:first-child]:rounded-l-xl [&>td:first-child]:border-l [&>td:last-child]:rounded-r-xl [&>td:last-child]:border-r"
+                          >
+                            <td className="flex max-w-[210px] min-w-0 items-center gap-3 bg-white px-3 py-4 font-bold text-slate-700">
                               <CskhPageAvatar
                                 name={page.name}
                                 pictureUrl={page.pictureUrl}
                                 pageId={page.pageId}
-                                className="h-8 w-8 shrink-0 rounded-full text-[11px]"
+                                className="h-9 w-9 shrink-0 rounded-full text-[11px]"
                               />
-                              <div className="min-w-0 leading-tight">
-                                <span className="block truncate text-xs font-black text-slate-800">
+                              <div className="min-w-0 leading-snug">
+                                <span className="block truncate text-[13px] font-black text-slate-800">
                                   {page.name}
                                 </span>
-                                <span className="mt-0.5 block truncate text-[10px] font-bold text-slate-400">
+                                <span className="mt-1 block truncate text-[10px] font-bold text-slate-400">
                                   ID: {page.pageId}
                                 </span>
                               </div>
                             </td>
 
                             {/* Status Badge */}
-                            <td className="py-2.5 text-center">
+                            <td className="bg-white px-2 py-4 text-center">
                               <span
                                 className={cn(
-                                  'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold',
+                                  'inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold',
                                   isInactive
                                     ? 'bg-slate-50 text-slate-400 border-slate-100'
                                     : 'bg-emerald-50 text-emerald-600 border-emerald-100'
@@ -2000,13 +2003,13 @@ function FbPageTab() {
                             </td>
 
                             {/* Metrics with mini-trends below */}
-                            <td className="py-2.5 text-right">
-                              <span className="block text-xs font-black leading-none text-slate-800">
+                            <td className="bg-white px-2 py-4 text-right">
+                              <span className="block text-[13px] font-black leading-snug text-slate-800">
                                 {formatNumber(page.totalMsg)}
                               </span>
                               <span
                                 className={cn(
-                                  'mt-1 block text-[10px] font-bold leading-none',
+                                  'mt-1.5 block text-[10px] font-bold leading-snug',
                                   page.totalTrend.includes('↓')
                                     ? 'text-rose-500'
                                     : 'text-emerald-500'
@@ -2016,13 +2019,13 @@ function FbPageTab() {
                               </span>
                             </td>
 
-                            <td className="py-2.5 text-right">
-                              <span className="block text-xs font-black leading-none text-slate-800">
+                            <td className="bg-white px-2 py-4 text-right">
+                              <span className="block text-[13px] font-black leading-snug text-slate-800">
                                 {formatNumber(page.adMsg)}
                               </span>
                               <span
                                 className={cn(
-                                  'mt-1 block text-[10px] font-bold leading-none',
+                                  'mt-1.5 block text-[10px] font-bold leading-snug',
                                   page.adTrend.includes('↓') ? 'text-rose-500' : 'text-emerald-500'
                                 )}
                               >
@@ -2031,18 +2034,18 @@ function FbPageTab() {
                             </td>
 
                             {/* % from ads */}
-                            <td className="py-2.5 text-center text-xs font-extrabold tabular-nums text-slate-800">
+                            <td className="bg-white px-2 py-4 text-center text-[13px] font-extrabold tabular-nums text-slate-800">
                               {page.adPercent}
                             </td>
 
                             {/* Response Rate */}
-                            <td className="py-2.5 text-right">
-                              <span className="block text-xs font-black leading-none text-slate-800">
+                            <td className="bg-white px-2 py-4 text-right">
+                              <span className="block text-[13px] font-black leading-snug text-slate-800">
                                 {page.responseRate}
                               </span>
                               <span
                                 className={cn(
-                                  'mt-1 block text-[10px] font-bold leading-none',
+                                  'mt-1.5 block text-[10px] font-bold leading-snug',
                                   page.responseTrend.includes('↓')
                                     ? 'text-rose-500'
                                     : 'text-emerald-500'
@@ -2053,13 +2056,13 @@ function FbPageTab() {
                             </td>
 
                             {/* Closing Rate */}
-                            <td className="py-2.5 text-right">
-                              <span className="block text-xs font-black leading-none text-slate-800">
+                            <td className="bg-white px-2 py-4 text-right">
+                              <span className="block text-[13px] font-black leading-snug text-slate-800">
                                 {page.closingRate}
                               </span>
                               <span
                                 className={cn(
-                                  'mt-1 block text-[10px] font-bold leading-none',
+                                  'mt-1.5 block text-[10px] font-bold leading-snug',
                                   page.closingTrend.includes('↓')
                                     ? 'text-rose-500'
                                     : 'text-emerald-500'
@@ -2070,13 +2073,13 @@ function FbPageTab() {
                             </td>
 
                             {/* Revenue */}
-                            <td className="py-2.5 text-right">
-                              <span className="block text-xs font-black leading-none text-slate-800">
+                            <td className="bg-white px-2 py-4 text-right">
+                              <span className="block text-[13px] font-black leading-snug text-slate-800">
                                 {page.revenue}
                               </span>
                               <span
                                 className={cn(
-                                  'mt-1 block text-[10px] font-bold leading-none',
+                                  'mt-1.5 block text-[10px] font-bold leading-snug',
                                   page.revenueTrend.includes('↓')
                                     ? 'text-rose-500'
                                     : 'text-emerald-500'
@@ -2087,10 +2090,10 @@ function FbPageTab() {
                             </td>
 
                             {/* AI Quality badge */}
-                            <td className="py-2.5 text-center">
+                            <td className="bg-white px-2 py-4 text-center">
                               <span
                                 className={cn(
-                                  'inline-flex min-w-[30px] items-center justify-center rounded-full border px-2 py-0.5 text-[10px] font-black',
+                                  'inline-flex min-w-[32px] items-center justify-center rounded-full border px-2.5 py-1 text-[11px] font-black',
                                   page.quality >= 85
                                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                                     : page.quality >= 75
@@ -2103,8 +2106,8 @@ function FbPageTab() {
                             </td>
 
                             {/* Xu hướng Sparkline */}
-                            <td className="py-2.5 text-center">
-                              <div className="flex justify-center">
+                            <td className="bg-white px-2 py-4 text-center">
+                              <div className="flex justify-center py-0.5">
                                 <SparklinePath
                                   data={page.trendData}
                                   stroke={page.isPositiveTrend ? '#10b981' : '#ef4444'}
@@ -2304,59 +2307,59 @@ function FbPageTab() {
         {/* Right Side */}
         <div className="space-y-2 xl:col-span-4">
           {/* Hiệu suất tin nhắn từ quảng cáo */}
-          <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
-            <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
-              <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
+          <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-2.5 shadow-sm">
+            <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
+              <h3 className="text-[11px] font-extrabold text-slate-800">
                 Hiệu suất tin nhắn từ quảng cáo
               </h3>
-              <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
+              <span className="cursor-pointer text-[10px] font-bold text-indigo-600 hover:underline">
                 Chi tiết
               </span>
             </div>
 
             {/* Vertically stacked items */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {MOCK_FB_AD_METRICS.map((item) => {
-                let iconComponent = <MessageCircle className="h-4 w-4" />
+                let iconComponent = <MessageCircle className="h-3.5 w-3.5" />
                 let bgBox = 'bg-blue-50 text-blue-600 border border-blue-100/50'
 
                 if (item.id === 'ad-cost') {
-                  iconComponent = <DollarSign className="h-4 w-4" />
+                  iconComponent = <DollarSign className="h-3.5 w-3.5" />
                   bgBox = 'bg-emerald-50 text-emerald-600 border border-emerald-100/50'
                 } else if (item.id === 'ad-cpm') {
-                  iconComponent = <TrendingDown className="h-4 w-4" />
+                  iconComponent = <TrendingDown className="h-3.5 w-3.5" />
                   bgBox = 'bg-rose-50 text-rose-600 border border-rose-100/50'
                 } else if (item.id === 'ad-quality') {
-                  iconComponent = <Award className="h-4 w-4" />
+                  iconComponent = <Award className="h-3.5 w-3.5" />
                   bgBox = 'bg-purple-50 text-purple-600 border border-purple-100/50'
                 }
 
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 shadow-sm hover:bg-slate-50/40 transition duration-150"
+                    className="flex items-center justify-between rounded-lg border border-slate-100 p-2 transition duration-150 hover:bg-slate-50/40"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
                       <div
                         className={cn(
-                          'flex h-8 w-8 items-center justify-center rounded-lg shrink-0',
+                          'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
                           bgBox
                         )}
                       >
                         {iconComponent}
                       </div>
-                      <div className="min-w-0 leading-none">
-                        <span className="text-[10px] font-bold text-slate-400 block truncate">
+                      <div className="min-w-0 leading-snug">
+                        <span className="block truncate text-[9px] font-bold text-slate-400">
                           {item.label}
                         </span>
-                        <span className="font-black text-slate-800 mt-1 block text-sm leading-none">
+                        <span className="mt-0.5 block text-xs font-black leading-snug text-slate-800">
                           {item.value}
                         </span>
                       </div>
                     </div>
                     <span
                       className={cn(
-                        'inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none shrink-0',
+                        'inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 text-[8px] font-black leading-none',
                         item.isPositive
                           ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                           : 'bg-rose-50 text-rose-600 border border-rose-100'
@@ -2370,9 +2373,9 @@ function FbPageTab() {
             </div>
 
             {/* Blue Info Alerts Box */}
-            <div className="mt-2 flex items-start gap-2 rounded-xl border border-blue-100/60 bg-blue-50/50 p-2.5 text-[10px] font-bold text-slate-600 shadow-inner">
-              <span className="text-blue-500 font-bold scale-110">💡</span>
-              <p className="leading-relaxed font-bold text-slate-600 text-[11px]">
+            <div className="mt-1.5 flex items-start gap-1.5 rounded-lg border border-blue-100/60 bg-blue-50/50 p-2 text-[9px] font-bold text-slate-600 shadow-inner">
+              <span className="scale-100 font-bold text-blue-500">💡</span>
+              <p className="leading-relaxed">
                 Tin nhắn từ quảng cáo chiếm <span className="font-black text-blue-600">60.8%</span>{' '}
                 tổng tin nhắn và mang lại <span className="font-black text-blue-600">62.3%</span>{' '}
                 doanh thu toàn bộ hệ thống.
@@ -2381,18 +2384,18 @@ function FbPageTab() {
           </div>
 
           {/* Top quảng cáo mang lại nhiều tin nhắn */}
-          <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
-            <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
-              <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
+          <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-2.5 shadow-sm">
+            <div className="mb-1.5 flex shrink-0 items-center justify-between gap-2">
+              <h3 className="text-[11px] font-extrabold text-slate-800">
                 Top quảng cáo mang lại nhiều tin nhắn
               </h3>
-              <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
+              <span className="cursor-pointer text-[10px] font-bold text-indigo-600 hover:underline">
                 Xem tất cả
               </span>
             </div>
 
             {/* Item Rows with Thumbnails */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {MOCK_FB_TOP_ADS.map((ad, idx) => {
                 const colors = [
                   'bg-purple-100 border-purple-200 text-purple-700',
@@ -2402,32 +2405,34 @@ function FbPageTab() {
                   'bg-pink-100 border-pink-200 text-pink-700',
                 ]
                 return (
-                  <div key={ad.id} className="flex items-center justify-between gap-2.5 text-xs">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {/* Emoji visual thumb box */}
+                  <div
+                    key={ad.id}
+                    className="flex items-center justify-between gap-2 rounded-lg px-1 py-1.5 text-[11px]"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
                       <div
                         className={cn(
-                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-base shadow-inner border',
+                          'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-sm shadow-inner',
                           colors[idx % colors.length]
                         )}
                       >
                         {ad.image}
                       </div>
-                      <div className="min-w-0 leading-none">
-                        <span className="font-black text-slate-800 truncate block text-[11px]">
+                      <div className="min-w-0 leading-snug">
+                        <span className="block truncate text-[10px] font-black text-slate-800">
                           {ad.name}
                         </span>
-                        <span className="text-[9px] text-slate-400 font-bold truncate block mt-0.5">
+                        <span className="mt-0.5 block truncate text-[9px] font-bold text-slate-400">
                           {ad.page}
                         </span>
                       </div>
                     </div>
-                    <div className="text-right shrink-0 leading-none">
-                      <span className="font-black text-slate-850 tabular-nums block text-[11px]">
+                    <div className="shrink-0 text-right leading-snug">
+                      <span className="block text-[10px] font-black tabular-nums text-slate-850">
                         {formatNumber(ad.messages)}
                       </span>
-                      <span className="text-[9px] text-slate-400 font-bold block mt-0.5">
-                        {ad.cost} <span className="font-medium text-[8px]">/tin</span>
+                      <span className="mt-0.5 block text-[9px] font-bold text-slate-400">
+                        {ad.cost} <span className="text-[8px] font-medium">/tin</span>
                       </span>
                     </div>
                   </div>
@@ -2437,12 +2442,10 @@ function FbPageTab() {
           </div>
 
           {/* AI Insight về Page */}
-          <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
-            <h3 className="mb-2 text-xs font-extrabold text-slate-800 sm:text-sm">
-              AI Insight về Page
-            </h3>
+          <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-2.5 shadow-sm">
+            <h3 className="mb-1.5 text-[11px] font-extrabold text-slate-800">AI Insight về Page</h3>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {MOCK_FB_AI_INSIGHTS.map((ins) => {
                 let statusDotColor = 'bg-emerald-500'
                 let bulletBg = 'bg-emerald-50 text-emerald-600 border border-emerald-100'
@@ -2465,19 +2468,18 @@ function FbPageTab() {
                 return (
                   <div
                     key={ins.id}
-                    className="flex gap-2.5 items-start text-[11px] p-2 rounded-xl bg-slate-50/50 hover:bg-slate-50 transition border border-slate-100"
+                    className="flex items-start gap-2 rounded-lg border border-slate-100 bg-slate-50/50 p-1.5 text-[10px] transition hover:bg-slate-50"
                   >
-                    {/* Circle Bullet Badge */}
                     <div
                       className={cn(
-                        'flex h-6 w-6 items-center justify-center rounded-lg text-xs font-bold shrink-0 shadow-sm',
+                        'flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-bold shadow-sm',
                         bulletBg
                       )}
                     >
                       {bulletIcon}
                     </div>
 
-                    <p className="text-slate-600 font-bold leading-relaxed tracking-tight">
+                    <p className="font-semibold leading-relaxed tracking-tight text-slate-600">
                       {ins.text
                         .split(
                           /(Vienchibao\s+\w+|VB\s+\w+|Nhẫn bạc Classic|\d+(?:\.\d+)?%|\d+\/\d+)/g
