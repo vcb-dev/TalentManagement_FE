@@ -534,7 +534,27 @@ type FbPageTableRow = {
 
 function mapConnectedPagesToTableRows(pages: CskhPage[]): FbPageTableRow[] {
   return pages.map((page, idx) => {
-    const mock = MOCK_FB_PAGES_LIST[idx % MOCK_FB_PAGES_LIST.length]
+    const fallbackMock = {
+      totalMsg: 0,
+      totalTrend: '—',
+      adMsg: 0,
+      adTrend: '—',
+      adPercent: '—',
+      responseRate: '—',
+      responseTrend: '—',
+      closingRate: '—',
+      closingTrend: '—',
+      revenue: '—',
+      revenueTrend: '—',
+      quality: 0,
+      trendData: [] as number[],
+      isPositiveTrend: true,
+    }
+
+    const mock =
+      MOCK_FB_PAGES_LIST.length > 0
+        ? (MOCK_FB_PAGES_LIST[idx % MOCK_FB_PAGES_LIST.length] ?? fallbackMock)
+        : fallbackMock
     // Mọi Page trong danh sách đã kết nối OAuth → coi là đang hoạt động (không dùng cờ enabled cũ).
     return {
       pageId: page.pageId,
