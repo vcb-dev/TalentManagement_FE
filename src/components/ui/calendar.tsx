@@ -50,8 +50,10 @@ export function Calendar({
         day_button:
           'rdp-day_button box-border inline-flex h-10 min-h-10 w-10 min-w-10 items-center justify-center align-middle rounded-xl border-2 border-transparent p-0 text-sm font-bold transition-all duration-300 hover:shadow-md active:scale-95',
         day_outside: 'text-slate-300 dark:text-slate-600 opacity-50',
+        disabled:
+          'rdp-disabled opacity-40 cursor-not-allowed pointer-events-none text-slate-300 dark:text-slate-600',
         day_disabled:
-          'text-slate-200 dark:text-slate-800 opacity-20 cursor-not-allowed pointer-events-none grayscale',
+          'opacity-40 cursor-not-allowed pointer-events-none text-slate-300 dark:text-slate-600 grayscale',
         day_range_middle: 'aria-selected:bg-accent aria-selected:text-accent-foreground',
         day_hidden: 'invisible',
         selected:
