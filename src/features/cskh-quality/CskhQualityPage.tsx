@@ -532,12 +532,12 @@ type FbPageTableRow = {
 function mapConnectedPagesToTableRows(pages: CskhPage[]): FbPageTableRow[] {
   return pages.map((page, idx) => {
     const mock = MOCK_FB_PAGES_LIST[idx % MOCK_FB_PAGES_LIST.length]
-    const isActive = page.enabled !== false
+    // Mọi Page trong danh sách đã kết nối OAuth → coi là đang hoạt động (không dùng cờ enabled cũ).
     return {
       pageId: page.pageId,
       name: page.pageName || page.pageId,
       pictureUrl: page.pagePictureUrl ?? null,
-      status: isActive ? 'active' : 'inactive',
+      status: 'active' as const,
       totalMsg: mock.totalMsg,
       totalTrend: mock.totalTrend,
       adMsg: mock.adMsg,
