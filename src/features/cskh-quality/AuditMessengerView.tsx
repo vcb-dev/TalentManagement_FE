@@ -68,7 +68,6 @@ import {
   CskhAuditDateRangePickers,
   CskhAuditFieldLabel,
   cskhAuditToolbarControlClass,
-  CskhConnectionBadge,
   CskhEmptyState,
   CskhLoading,
   CskhNoticeBanner,
@@ -1163,7 +1162,6 @@ export function AuditMessengerView({
                   {checkingAudit ? 'Kiểm tra…' : 'Tải…'}
                 </span>
               )}
-              <CskhConnectionBadge connected={inboxLive} />
               <button
                 type="button"
                 disabled={!canRun || runMut.isPending}
@@ -1540,9 +1538,8 @@ export function AuditMessengerView({
                           ) : null}
                           {hasRealtimeTail ? (
                             <div className="space-y-3 pt-1">
-                              <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-600">
-                                <CskhConnectionBadge connected={inboxLive} />
-                                Tin mới · realtime
+                              <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-600">
+                                Tin mới
                               </p>
                               {realtimeMessages.map((msg) => (
                                 <LiveBubble key={msg.id} msg={msg} />
@@ -1552,9 +1549,8 @@ export function AuditMessengerView({
                         </div>
                       ) : chatTab === 'chat' && inboxConv && realtimeMessages.length > 0 ? (
                         <div className="space-y-3">
-                          <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-emerald-600">
-                            <CskhConnectionBadge connected={inboxLive} />
-                            Hội thoại live
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-600">
+                            Tin mới
                           </p>
                           {realtimeMessages.map((msg) => (
                             <LiveBubble key={msg.id} msg={msg} />
