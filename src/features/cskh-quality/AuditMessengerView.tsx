@@ -21,6 +21,7 @@ import {
   sendInboxMessage,
   type CskhAuditRow,
   type CskhAuditProgress,
+  type CskhCustomerIntent,
   type CskhInboxConversation,
   type CskhInboxMessage,
 } from './api'
@@ -71,6 +72,26 @@ import {
 import { useCskhInboxStream } from './useCskhInboxStream'
 
 const AUDIT_JOB_KEY = 'cskh:audit-job-id'
+const AUDIT_INTENT_CACHE_KEY = 'cskh:audit-intent-cache:v1'
+
+function loadIntentCache(): Record<string, CskhCustomerIntent> {
+  try {
+    const raw = sessionStorage.getItem(AUDIT_INTENT_CACHE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, CskhCustomerIntent>
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveIntentCache(cache: Record<string, CskhCustomerIntent>) {
+  try {
+    sessionStorage.setItem(AUDIT_INTENT_CACHE_KEY, JSON.stringify(cache))
+  } catch {
+    /* ignore */
+  }
+}
 
 function cskhQueryRetry(failureCount: number, error: unknown): boolean {
   const msg = getApiErrorMessage(error)
@@ -410,6 +431,9 @@ export function AuditMessengerView({
   const [selectedPageId, setSelectedPageId] = useState<'all' | string>('all')
   const [chatTab, setChatTab] = useState<'chat' | 'timeline' | 'analysis'>('chat')
   const [workspacePane, setWorkspacePane] = useState<MessengerWorkspacePane>('list')
+  const [intentByAuditId, setIntentByAuditId] = useState<Record<string, CskhCustomerIntent>>(() =>
+    loadIntentCache()
+  )
   const [completionNotice, setCompletionNotice] = useState<string | null>(null)
   const [dismissedErrorKey, setDismissedErrorKey] = useState<string | null>(null)
   const [backgroundJobId, setBackgroundJobId] = useState<string | null>(null)
@@ -839,6 +863,7 @@ export function AuditMessengerView({
   }, [])
 
   const selectedAuditDate = selected?.metadata?.auditDate ?? null
+  const selectedIntentCache = selected?.id ? (intentByAuditId[selected.id] ?? null) : null
 
   const inboxLive = useCskhInboxStream({
     enabled: true,
@@ -852,9 +877,24 @@ export function AuditMessengerView({
   const intentQuery = useQuery({
     queryKey: ['cskh', 'inbox', 'intent', inboxConv?.id, selected?.id],
     queryFn: () => fetchCustomerIntent(inboxConv!.id, selected?.id),
-    enabled: Boolean(inboxConv?.id),
+    enabled: Boolean(inboxConv?.id && selected?.id && !selectedIntentCache),
     staleTime: 30_000,
+    retry: false,
+    refetchOnWindowFocus: false,
   })
+  const resolvedIntent = selectedIntentCache ?? intentQuery.data ?? null
+
+  useEffect(() => {
+    const aid = selected?.id
+    const intent = intentQuery.data
+    if (!aid || !intent) return
+    setIntentByAuditId((prev) => {
+      if (prev[aid]) return prev
+      const next = { ...prev, [aid]: intent }
+      saveIntentCache(next)
+      return next
+    })
+  }, [selected?.id, intentQuery.data])
 
   const liveMsgQuery = useQuery({
     queryKey: ['cskh', 'inbox', 'messages', inboxConv?.id, selectedAuditDate],
@@ -1248,8 +1288,10 @@ export function AuditMessengerView({
                         transcript={transcript}
                         auditDayLabel={selectedAuditDayLabel}
                         onUseReply={setDraft}
-                        customerIntent={intentQuery.data ?? null}
-                        intentLoading={intentQuery.isFetching && !intentQuery.data}
+                        customerIntent={resolvedIntent}
+                        intentLoading={
+                          Boolean(inboxConv?.id) && intentQuery.isFetching && !resolvedIntent
+                        }
                       />
                     </div>
                   ) : null}
@@ -1436,8 +1478,10 @@ export function AuditMessengerView({
                     transcript={transcript}
                     auditDayLabel={selectedAuditDayLabel}
                     onUseReply={setDraft}
-                    customerIntent={intentQuery.data ?? null}
-                    intentLoading={intentQuery.isFetching && !intentQuery.data}
+                    customerIntent={resolvedIntent}
+                    intentLoading={
+                      Boolean(inboxConv?.id) && intentQuery.isFetching && !resolvedIntent
+                    }
                   />
                 </div>
               ) : undefined

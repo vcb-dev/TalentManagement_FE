@@ -47,6 +47,43 @@ function isClosing(row: CskhAuditRow): boolean {
   return /chốt|đặt hàng|đã mua|cọc|thanh toán/i.test(fb)
 }
 
+function clampPct(v: number): number {
+  return Math.max(0, Math.min(100, Math.round(v * 10) / 10))
+}
+
+/** "Phản hồi đúng chuẩn" ưu tiên theo criteria, fallback theo transcript metrics. */
+function calcStandardPct(row: CskhAuditRow): number {
+  const criteria = resolveCriteriaScores(row)
+  const criteriaTotal = criteria.reduce((a, c) => a + c.score, 0)
+  const criteriaMax = criteria.reduce((a, c) => a + c.max, 0)
+  if (criteriaMax > 0) return clampPct((criteriaTotal / criteriaMax) * 100)
+
+  const m = row.metadata?.transcriptMetrics
+  if (!m) return 0
+  const responseScore =
+    m.firstResponseSec == null
+      ? 65
+      : m.firstResponseSec <= 60
+        ? 100
+        : m.firstResponseSec <= 180
+          ? 80
+          : 55
+  const proactive = m.proactivePct ?? 60
+  const replyScore = Math.min(100, (m.staffReplies ?? 0) * 20)
+  return clampPct(responseScore * 0.45 + proactive * 0.35 + replyScore * 0.2)
+}
+
+/** "Follow-up" dựa trên proactive + cờ needsFollowUp/noReply/staffAbsent, không dùng QA score. */
+function calcFollowUpPct(row: CskhAuditRow): number {
+  const m = row.metadata
+  const tm = m?.transcriptMetrics
+  if (m?.noReply || m?.staffAbsent) return 0
+  const proactiveBase =
+    tm?.proactivePct != null ? clampPct(tm.proactivePct) : tm?.staffReplies ? 80 : 40
+  if (m?.needsFollowUp) return clampPct(proactiveBase * 0.4)
+  return clampPct(60 + proactiveBase * 0.4)
+}
+
 function buildCriteriaSpark(row: CskhAuditRow, buckets = 8): number[] {
   const criteria = resolveCriteriaScores(row)
   if (criteria.length >= 3) {
@@ -115,24 +152,19 @@ export function computeWorkspaceKpiSnapshot(rows: CskhAuditRow[]): WorkspaceKpiS
 export function computeConversationKpiSnapshot(row: CskhAuditRow): WorkspaceKpiSnapshot {
   const breakdown = resolveCustomerSentimentBreakdown(row)
   const criteria = resolveCriteriaScores(row)
-  const criteriaTotal = criteria.reduce((a, c) => a + c.score, 0)
-  const criteriaMax = criteria.reduce((a, c) => a + c.max, 0)
-  const standardPct =
-    criteriaMax > 0 ? Math.round((criteriaTotal / criteriaMax) * 1000) / 10 : row.score
+  const standardPct = calcStandardPct(row)
 
   const closingCrit = criteria.find((c) => c.id === 'closing')
   const closingPct = closingCrit
     ? Math.round((closingCrit.score / closingCrit.max) * 1000) / 10
     : null
 
-  const metrics = row.metadata?.transcriptMetrics
-  const followUpPct =
-    metrics?.proactivePct != null ? Math.round(metrics.proactivePct) : isFollowUpOk(row) ? 100 : 0
+  const followUpPct = calcFollowUpPct(row)
 
   return {
     total: 1,
     avgScore: row.score,
-    csatPct: row.score,
+    csatPct: breakdown.positive,
     standardPct,
     missedPct: isMissed(row) ? 100 : 0,
     followUpPct,
