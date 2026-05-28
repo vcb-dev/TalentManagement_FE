@@ -92,39 +92,28 @@ const LEVEL_ORDER_MAP: Record<string, number> = CAREER_LEVELS.reduce(
   {}
 )
 const NO_ASSESSMENT_VALUE = '__none__'
-const ASSESSMENT_OPTIONS = [
-  {
-    value: 'Review',
-    label: 'Review',
-    description: 'Cho phép học viên nộp phản tư/minh chứng.',
-  },
-  {
-    value: 'Tự luận',
-    label: 'Tự luận',
-    description: 'Cho phép học viên nộp bài viết, link hoặc file.',
-  },
-  {
-    value: 'Phản tư',
-    label: 'Phản tư',
-    description: 'Cho phép học viên nộp phản tư trực tiếp.',
-  },
-  {
-    value: 'Thi trắc nghiệm',
-    label: 'Thi trắc nghiệm',
-    description: 'Không mở form nộp phản tư.',
-  },
-  {
-    value: 'Không yêu cầu',
-    label: 'Không yêu cầu',
-    description: 'Không yêu cầu học viên nộp bài.',
-  },
-]
-const ASSESSMENT_OPTION_VALUES = new Set(ASSESSMENT_OPTIONS.map((option) => option.value))
+const ALLOW_REFLECTION_VALUE = 'allow_reflection'
+const REFLECTION_ASSESSMENT_VALUE = 'Phản tư'
 
 function normalizeAssessmentValue(value?: string | null) {
   const trimmed = String(value || '').trim()
-  if (!trimmed || trimmed === 'Không yêu cầu') return null
+  if (!trimmed || trimmed === NO_ASSESSMENT_VALUE) return null
+  if (trimmed === ALLOW_REFLECTION_VALUE) return REFLECTION_ASSESSMENT_VALUE
   return trimmed
+}
+
+function isReflectionAllowed(value?: string | null) {
+  const normalized = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+  return (
+    normalized.includes('phan tu') ||
+    normalized.includes('tu luan') ||
+    normalized.includes('review')
+  )
 }
 
 export function RoadmapCrud() {
@@ -665,36 +654,28 @@ export function RoadmapCrud() {
                               <div className="relative group">
                                 <Select
                                   value={
-                                    field.value && ASSESSMENT_OPTION_VALUES.has(field.value)
-                                      ? field.value
-                                      : field.value || NO_ASSESSMENT_VALUE
+                                    isReflectionAllowed(field.value)
+                                      ? ALLOW_REFLECTION_VALUE
+                                      : NO_ASSESSMENT_VALUE
                                   }
                                   onValueChange={(value) =>
-                                    field.onChange(value === NO_ASSESSMENT_VALUE ? '' : value)
+                                    field.onChange(
+                                      value === ALLOW_REFLECTION_VALUE
+                                        ? REFLECTION_ASSESSMENT_VALUE
+                                        : ''
+                                    )
                                   }
                                 >
                                   <SelectTrigger className="h-12 rounded-2xl border-primary/10 bg-white pl-11 shadow-sm transition-all hover:border-primary/30 focus:ring-2 focus:ring-primary/20">
-                                    <SelectValue placeholder="Chọn hình thức đánh giá" />
+                                    <SelectValue placeholder="Chọn trạng thái nộp phản tư" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value={NO_ASSESSMENT_VALUE}>
                                       Không yêu cầu
                                     </SelectItem>
-                                    {field.value && !ASSESSMENT_OPTION_VALUES.has(field.value) ? (
-                                      <SelectItem value={field.value}>
-                                        Giá trị hiện tại: {field.value}
-                                      </SelectItem>
-                                    ) : null}
-                                    {ASSESSMENT_OPTIONS.map((option) => (
-                                      <SelectItem key={option.value} value={option.value}>
-                                        <div className="flex flex-col">
-                                          <span className="font-semibold">{option.label}</span>
-                                          <span className="text-xs text-muted-foreground">
-                                            {option.description}
-                                          </span>
-                                        </div>
-                                      </SelectItem>
-                                    ))}
+                                    <SelectItem value={ALLOW_REFLECTION_VALUE}>
+                                      Cho phép nộp phản tư
+                                    </SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <Input
