@@ -423,7 +423,7 @@ export function CskhGlassPanel({
 
 export function CskhToolbar({ children }: { children: ReactNode }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 via-white/50 to-violet-50/80 px-4 py-3 sm:px-5">
+    <div className="shrink-0 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 via-white/50 to-violet-50/80 px-4 py-3 sm:px-5">
       {children}
     </div>
   )
@@ -611,6 +611,7 @@ export function CskhAuditDatePicker({
   max,
   min,
   placeholder = 'Chọn ngày',
+  compact,
 }: {
   value: string
   onChange: (value: string) => void
@@ -618,6 +619,8 @@ export function CskhAuditDatePicker({
   max?: string
   min?: string
   placeholder?: string
+  /** Toolbar: cùng chiều cao với select/input khác. */
+  compact?: boolean
 }) {
   return (
     <DatePicker
@@ -629,9 +632,12 @@ export function CskhAuditDatePicker({
       placeholder={placeholder}
       displayLabel={value ? formatAuditDateLabel(value) : undefined}
       className={cn(
-        'h-10 min-w-[9.5rem] rounded-xl border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm',
-        'hover:border-indigo-300 hover:bg-indigo-50/40',
-        value && 'border-indigo-300/80 text-indigo-900'
+        'rounded-lg border-slate-200 bg-white font-medium text-slate-800 shadow-sm',
+        'hover:border-indigo-300 hover:bg-indigo-50/30',
+        value && 'border-indigo-300/70 text-indigo-900',
+        compact
+          ? 'h-9 min-w-[7.75rem] px-2.5 py-1.5 text-xs'
+          : 'h-10 min-w-[9.5rem] rounded-xl border-indigo-200 px-3 py-2 text-sm font-semibold'
       )}
     />
   )
@@ -645,6 +651,7 @@ export function CskhAuditDateRangePickers({
   onToChange,
   disabled,
   max = vietnamTodayIso(),
+  compact,
 }: {
   from: string
   to: string
@@ -652,9 +659,10 @@ export function CskhAuditDateRangePickers({
   onToChange: (v: string) => void
   disabled?: boolean
   max?: string
+  compact?: boolean
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex min-w-0 flex-nowrap items-center gap-1.5">
       <CskhAuditDatePicker
         value={from}
         onChange={(v) => {
@@ -664,8 +672,11 @@ export function CskhAuditDateRangePickers({
         disabled={disabled}
         max={max}
         placeholder="Từ ngày"
+        compact={compact}
       />
-      <span className="text-sm font-medium text-slate-400">→</span>
+      <span className={cn('shrink-0 text-slate-400', compact ? 'text-xs' : 'text-sm font-medium')}>
+        →
+      </span>
       <CskhAuditDatePicker
         value={to}
         onChange={(v) => {
@@ -676,8 +687,33 @@ export function CskhAuditDateRangePickers({
         max={max}
         min={from || undefined}
         placeholder="Đến ngày"
+        compact={compact}
       />
     </div>
+  )
+}
+
+/** Nhãn trường nhỏ cho toolbar chấm điểm. */
+export function CskhAuditFieldLabel({
+  children,
+  required,
+  htmlFor,
+  hint,
+}: {
+  children: ReactNode
+  required?: boolean
+  htmlFor?: string
+  hint?: string
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      title={hint}
+      className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500"
+    >
+      {children}
+      {required && <span className="text-rose-500 normal-case">*</span>}
+    </label>
   )
 }
 

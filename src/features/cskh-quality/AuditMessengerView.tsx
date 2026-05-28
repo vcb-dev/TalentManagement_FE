@@ -3,7 +3,16 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { getApiErrorMessage } from '@/lib/axios'
 import { cn } from '@/lib/utils'
 import { isTransientInfraError, toUserFacingError } from '@/lib/userFacingError'
-import { Loader2, Pause, Play, MessageCircle, ClipboardCheck, Send, ArrowLeft } from 'lucide-react'
+import {
+  Loader2,
+  Pause,
+  Play,
+  MessageCircle,
+  ClipboardCheck,
+  Send,
+  ArrowLeft,
+  HelpCircle,
+} from 'lucide-react'
 import {
   cancelAuditJob,
   fetchCskhPages,
@@ -57,6 +66,7 @@ import {
   CskhAuditProgressBanner,
   CskhAuditProgressPanel,
   CskhAuditDateRangePickers,
+  CskhAuditFieldLabel,
   CskhConnectionBadge,
   CskhEmptyState,
   CskhLoading,
@@ -1065,185 +1075,204 @@ export function AuditMessengerView({
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <CskhToolbar>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-slate-700">
-              Khoảng chấm điểm <span className="text-rose-500">*</span>
-            </span>
-            <CskhAuditDateRangePickers
-              from={auditDateFrom}
-              to={auditDateTo}
-              onFromChange={setAuditDateFrom}
-              onToChange={setAuditDateTo}
-              max={vietnamTodayIso()}
-              disabled={isRunning}
-            />
-            {(showDayLoading || checkingAudit) && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                {checkingAudit ? 'Đang kiểm tra…' : 'Đang tải…'}
-              </span>
-            )}
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-slate-700" htmlFor="audit-page-filter">
-                Kênh <span className="text-rose-500">*</span>
-              </label>
-              <Select
-                value={selectedPageId || undefined}
-                onValueChange={(v) => setSelectedPageId(v)}
-              >
-                <SelectTrigger
-                  id="audit-page-filter"
-                  className="h-9 min-w-[200px] border-slate-200 bg-white text-xs font-medium text-slate-700"
-                  aria-label="Chọn kênh"
+        <div className="flex w-full min-w-0 flex-col gap-2.5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_5.5rem] xl:items-end xl:gap-4">
+              <div className="min-w-0 space-y-1">
+                <CskhAuditFieldLabel required>Khoảng ngày</CskhAuditFieldLabel>
+                <CskhAuditDateRangePickers
+                  compact
+                  from={auditDateFrom}
+                  to={auditDateTo}
+                  onFromChange={setAuditDateFrom}
+                  onToChange={setAuditDateTo}
+                  max={vietnamTodayIso()}
+                  disabled={isRunning}
+                />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <CskhAuditFieldLabel required htmlFor="audit-page-filter">
+                  Kênh
+                </CskhAuditFieldLabel>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Select
+                    value={selectedPageId || undefined}
+                    onValueChange={(v) => setSelectedPageId(v)}
+                  >
+                    <SelectTrigger
+                      id="audit-page-filter"
+                      className="h-9 w-full min-w-0 border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-sm"
+                      aria-label="Chọn kênh"
+                    >
+                      <SelectValue placeholder="Chọn kênh Facebook" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pageOptions.map((p) => (
+                        <SelectItem key={p.pageId} value={p.pageId}>
+                          {p.pageName || p.pageId}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedPageId && alreadyScoredCount > 0 && !isRunning && (
+                    <span
+                      className="hidden shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600 sm:inline"
+                      title={`Trong ${scoreRangeLabel}`}
+                    >
+                      Đã {alreadyScoredCount}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1 sm:max-w-[11rem] xl:max-w-none">
+                <CskhAuditFieldLabel
+                  htmlFor="audit-batch-limit"
+                  hint="Chỉ chấm cuộc chưa có điểm trong khoảng ngày. Đã 200, nhập 100 → chấm thêm 100."
                 >
-                  <SelectValue placeholder="Chọn kênh" />
-                </SelectTrigger>
-                <SelectContent>
-                  {pageOptions.map((p) => (
-                    <SelectItem key={p.pageId} value={p.pageId}>
-                      {p.pageName || p.pageId}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <span className="inline-flex items-center gap-0.5">
+                    Giới hạn
+                    <HelpCircle className="h-3 w-3 text-slate-400" aria-hidden />
+                  </span>
+                </CskhAuditFieldLabel>
+                <input
+                  id="audit-batch-limit"
+                  type="number"
+                  min={1}
+                  step={1}
+                  placeholder="Tất cả"
+                  value={batchLimitInput}
+                  onChange={(e) => setBatchLimitInput(e.target.value)}
+                  disabled={isRunning}
+                  title="Để trống = chấm hết cuộc chưa chấm. Nhập số = chỉ chấm thêm N cuộc (bỏ qua đã chấm)."
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-800 shadow-sm placeholder:text-slate-400"
+                />
+              </div>
             </div>
-            {selectedPageId && alreadyScoredCount > 0 && !isRunning && (
-              <p className="pl-1 text-xs text-slate-500">
-                Kênh này đã chấm {alreadyScoredCount.toLocaleString('vi-VN')} cuộc trong{' '}
-                {scoreRangeLabel}
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-slate-700" htmlFor="audit-batch-limit">
-                Số cuộc lần này
-              </label>
-              <input
-                id="audit-batch-limit"
-                type="number"
-                min={1}
-                step={1}
-                placeholder="Tất cả"
-                value={batchLimitInput}
-                onChange={(e) => setBatchLimitInput(e.target.value)}
-                disabled={isRunning}
-                className="h-9 w-28 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700"
-                aria-label="Số hội thoại chấm mới (bỏ qua đã chấm)"
-              />
-            </div>
-            <p className="max-w-xs pl-1 text-xs text-slate-500">
-              Chỉ tính cuộc chưa chấm trong khoảng ngày — ví dụ đã 200, nhập 100 → chấm thêm 100.
-            </p>
-          </div>
-          {selected && sortedAudits.length > 0 && (
-            <span className="inline-flex items-center rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
-              Hội thoại #{selectedIndex}/{sortedAudits.length}
-            </span>
-          )}
-          {isRunning && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              {progressBadgeText}
-            </span>
-          )}
-          {summary?.tokenUsage &&
-            summary.tokenUsage.totalTokens != null &&
-            summary.tokenUsage.totalTokens > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-800">
-                Token: {summary.tokenUsage.totalTokens.toLocaleString('vi-VN')}
-                {summary.tokenUsage.perAuditAvg
-                  ? ` (~${summary.tokenUsage.perAuditAvg.toLocaleString('vi-VN')}/hội thoại)`
-                  : ''}
-              </span>
-            )}
-          {!isRunning && sortedAudits.length > 0 && (
-            <span className="text-xs font-medium text-slate-500">
-              {sortedAudits.length} hội thoại · {selectedPageLabel} · {auditDayLabel ?? '…'} · mới
-              chấm trước
-            </span>
-          )}
-          <CskhConnectionBadge connected={inboxLive} />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={!canRun || runMut.isPending}
-            onClick={() =>
-              runMut.mutate({
-                auditDateFrom,
-                auditDateTo,
-                pageId: selectedPageId,
-                maxConversations: parsedBatchLimit,
-              })
-            }
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-violet-200/50 hover:shadow-lg disabled:opacity-50"
-          >
-            {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="h-4 w-4" />
-            )}
-            {runMut.isPending && !jobId
-              ? 'Đang khởi động…'
-              : !auditDateFrom || !auditDateTo
-                ? 'Chọn khoảng ngày'
-                : !selectedPageId
-                  ? 'Chọn kênh'
-                  : runButtonLabel}
-          </button>
-          {isRunning && (
-            <>
+
+            <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+              {(showDayLoading || checkingAudit) && (
+                <span className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-indigo-50 px-2.5 text-xs font-medium text-indigo-700">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {checkingAudit ? 'Kiểm tra…' : 'Tải…'}
+                </span>
+              )}
+              <CskhConnectionBadge connected={inboxLive} />
               <button
                 type="button"
-                disabled={pauseMut.isPending || isPausing}
-                onClick={() => pauseMut.mutate()}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
-              >
-                {isPausing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Pause className="h-4 w-4" />
-                )}
-                {isPausing ? 'Đang dừng…' : 'Tạm dừng'}
-              </button>
-              <button
-                type="button"
-                disabled={cancelMut.isPending}
-                onClick={() => cancelMut.mutate()}
-                className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100"
-              >
-                Hủy
-              </button>
-            </>
-          )}
-          {(isFailed || progressError) && sortedAudits.length === 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                const from =
-                  auditDateFrom || summary?.auditDateFrom || summary?.auditDate || vietnamTodayIso()
-                const to = auditDateTo || summary?.auditDateTo || from
-                setJobId(null)
-                storeJobId(null)
-                setDismissedErrorKey(null)
-                if (selectedPageId) {
+                disabled={!canRun || runMut.isPending}
+                onClick={() =>
                   runMut.mutate({
-                    auditDateFrom: from,
-                    auditDateTo: to,
+                    auditDateFrom,
+                    auditDateTo,
                     pageId: selectedPageId,
                     maxConversations: parsedBatchLimit,
-                    force: true,
                   })
                 }
-              }}
-              className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-700"
-            >
-              Chạy lại
-            </button>
+                className="inline-flex h-9 items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 text-sm font-semibold text-white shadow-md shadow-violet-200/40 hover:shadow-lg disabled:opacity-50"
+              >
+                {isRunning || runMut.isPending ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4 shrink-0" />
+                )}
+                <span className="max-w-[14rem] truncate sm:max-w-[18rem]">
+                  {runMut.isPending && !jobId
+                    ? 'Khởi động…'
+                    : !auditDateFrom || !auditDateTo
+                      ? 'Chọn ngày'
+                      : !selectedPageId
+                        ? 'Chọn kênh'
+                        : runButtonLabel}
+                </span>
+              </button>
+              {isRunning && (
+                <>
+                  <button
+                    type="button"
+                    disabled={pauseMut.isPending || isPausing}
+                    onClick={() => pauseMut.mutate()}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                  >
+                    {isPausing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Pause className="h-4 w-4" />
+                    )}
+                    {isPausing ? 'Dừng…' : 'Tạm dừng'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={cancelMut.isPending}
+                    onClick={() => cancelMut.mutate()}
+                    className="h-9 rounded-lg border border-rose-200 bg-rose-50 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+                  >
+                    Hủy
+                  </button>
+                </>
+              )}
+              {(isFailed || progressError) && sortedAudits.length === 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const from =
+                      auditDateFrom ||
+                      summary?.auditDateFrom ||
+                      summary?.auditDate ||
+                      vietnamTodayIso()
+                    const to = auditDateTo || summary?.auditDateTo || from
+                    setJobId(null)
+                    storeJobId(null)
+                    setDismissedErrorKey(null)
+                    if (selectedPageId) {
+                      runMut.mutate({
+                        auditDateFrom: from,
+                        auditDateTo: to,
+                        pageId: selectedPageId,
+                        maxConversations: parsedBatchLimit,
+                        force: true,
+                      })
+                    }
+                  }}
+                  className="h-9 rounded-lg border border-violet-200 bg-violet-50 px-3 text-sm font-semibold text-violet-700 hover:bg-violet-100"
+                >
+                  Chạy lại
+                </button>
+              )}
+            </div>
+          </div>
+
+          {(isRunning ||
+            sortedAudits.length > 0 ||
+            (summary?.tokenUsage?.totalTokens ?? 0) > 0) && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-indigo-100/70 pt-2 text-xs text-slate-600">
+              {isRunning && (
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-indigo-100 px-2 py-0.5 font-semibold text-indigo-800">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {progressBadgeText}
+                </span>
+              )}
+              {selected && sortedAudits.length > 0 && (
+                <span className="rounded-md bg-violet-50 px-2 py-0.5 font-semibold text-violet-800">
+                  #{selectedIndex}/{sortedAudits.length}
+                </span>
+              )}
+              {!isRunning && sortedAudits.length > 0 && (
+                <span>
+                  {sortedAudits.length.toLocaleString('vi-VN')} hội thoại · {selectedPageLabel}
+                  {auditDayLabel ? ` · ${auditDayLabel}` : ''}
+                </span>
+              )}
+              {summary?.tokenUsage &&
+                summary.tokenUsage.totalTokens != null &&
+                summary.tokenUsage.totalTokens > 0 && (
+                  <span className="rounded-md bg-violet-50 px-2 py-0.5 text-violet-800">
+                    Token {summary.tokenUsage.totalTokens.toLocaleString('vi-VN')}
+                    {summary.tokenUsage.perAuditAvg
+                      ? ` (~${summary.tokenUsage.perAuditAvg.toLocaleString('vi-VN')}/cuộc)`
+                      : ''}
+                  </span>
+                )}
+            </div>
           )}
         </div>
       </CskhToolbar>
