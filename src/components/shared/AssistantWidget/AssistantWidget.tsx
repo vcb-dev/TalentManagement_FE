@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouterState } from '@tanstack/react-router'
 import { Bot, Loader2, Send, X } from 'lucide-react'
 import { AssistantRobotMascot } from './AssistantRobotMascot'
 import { toast } from 'sonner'
@@ -31,6 +32,9 @@ export function AssistantWidget() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [bookingDraft, setBookingDraft] = useState<AssistantBookingDraft | null>(null)
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const isCskhPage = pathname.startsWith('/cskh-quality')
+
   const [messages, setMessages] = useState<AssistantChatMessage[]>([
     {
       role: 'assistant',
@@ -125,21 +129,25 @@ export function AssistantWidget() {
         <button
           type="button"
           className={cn(
-            'fixed bottom-4 right-4 z-50 flex flex-col items-center',
+            'fixed z-50 flex flex-col items-center',
+            isCskhPage ? 'bottom-3 right-3' : 'bottom-4 right-4',
             'animate-assistant-fab-float transition-transform hover:scale-[1.03] active:scale-[0.98]',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
           )}
           aria-label="Mở trợ lý AI HRM"
           onClick={() => setOpen(true)}
         >
-          <AssistantRobotMascot />
+          <AssistantRobotMascot compact={isCskhPage} />
         </button>
       )}
 
       {open && (
         <div
           className={cn(
-            'fixed bottom-6 right-6 z-50 flex h-[min(520px,calc(100vh-3rem))] w-[min(400px,calc(100vw-1.5rem))] flex-col overflow-hidden',
+            'fixed z-50 flex flex-col overflow-hidden',
+            isCskhPage
+              ? 'bottom-3 right-3 h-[min(460px,calc(100vh-1.25rem))] w-[min(340px,calc(100vw-1rem))]'
+              : 'bottom-6 right-6 h-[min(520px,calc(100vh-3rem))] w-[min(400px,calc(100vw-1.5rem))]',
             'rounded-2xl border border-border bg-background shadow-2xl',
             'animate-assistant-panel-in'
           )}

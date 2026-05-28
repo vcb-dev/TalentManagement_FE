@@ -91,7 +91,7 @@ function ConfigTab() {
 
   return (
     <div className="space-y-5 p-5 sm:p-6">
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div>
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1877F2] via-[#0866FF] to-indigo-700 p-6 text-white shadow-lg">
           <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
           <div className="relative space-y-4">
@@ -143,30 +143,6 @@ function ConfigTab() {
               <p className="text-sm text-blue-100">Chưa kết nối — bấm nút trên để bắt đầu.</p>
             )}
           </div>
-        </div>
-
-        <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-violet-50/60 p-6">
-          <h3 className="font-bold text-slate-800">Hướng dẫn nhanh</h3>
-          <ol className="mt-4 space-y-3 text-sm text-slate-600">
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
-                1
-              </span>
-              Kết nối Facebook và bật Page cần theo dõi
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
-                2
-              </span>
-              Tab <strong>Chat</strong> — nhắn tin real-time với khách
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fuchsia-600 text-xs font-bold text-white">
-                3
-              </span>
-              Tab <strong>Audit</strong> — AI chấm điểm &amp; gợi ý trả lời
-            </li>
-          </ol>
         </div>
       </div>
 
@@ -290,7 +266,9 @@ export function CskhQualityPage() {
         <p className="mb-2 text-xs font-medium text-indigo-600">Đang chạy audit…</p>
       ) : null}
 
-      <CskhGlassPanel className={tab === 'audit' ? 'flex min-h-0 flex-col overflow-hidden' : ''}>
+      <CskhGlassPanel
+        className={tab === 'audit' ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden' : ''}
+      >
         <div className={tab === 'config' ? '' : 'hidden'}>
           <ConfigTab />
         </div>

@@ -6,6 +6,7 @@ import { isTransientInfraError, toUserFacingError } from '@/lib/userFacingError'
 import { Loader2, Pause, Play, MessageCircle, ClipboardCheck, Send, ArrowLeft } from 'lucide-react'
 import {
   cancelAuditJob,
+  fetchCskhPages,
   pauseAuditJob,
   fetchAuditDayStats,
   fetchAuditProgress,
@@ -399,6 +400,7 @@ export function AuditMessengerView({
   const [sidebarSearch, setSidebarSearch] = useState('')
   const [listFilter, setListFilter] = useState<'all' | 'low' | 'ad'>('all')
   const [sidebarSort, setSidebarSort] = useState<AuditSidebarSort>('newest')
+  const [selectedPageId, setSelectedPageId] = useState<'all' | string>('all')
   const [chatTab, setChatTab] = useState<'chat' | 'timeline' | 'analysis'>('chat')
   const [workspacePane, setWorkspacePane] = useState<MessengerWorkspacePane>('list')
   const [completionNotice, setCompletionNotice] = useState<string | null>(null)
@@ -409,6 +411,7 @@ export function AuditMessengerView({
   const refreshedConvRef = useRef<string | null>(null)
   const stableAuditsRef = useRef<CskhAuditRow[]>([])
   const qc = useQueryClient()
+  const selectedPageFilter = selectedPageId === 'all' ? undefined : selectedPageId
 
   useEffect(() => {
     void (async () => {
@@ -435,8 +438,13 @@ export function AuditMessengerView({
     },
     onSuccess: (res, vars) => {
       const cached =
-        qc.getQueryData<CskhAuditRow[]>(['cskh', 'audits', 'by-day', vars.auditDate]) ??
-        stableAuditsRef.current
+        qc.getQueryData<CskhAuditRow[]>([
+          'cskh',
+          'audits',
+          'by-day',
+          vars.auditDate,
+          selectedPageId,
+        ]) ?? stableAuditsRef.current
       setJobId(res.jobId)
       storeJobId(res.jobId)
       qc.setQueryData<CskhAuditProgress>(['cskh', 'audit-progress', res.jobId], {
@@ -498,9 +506,13 @@ export function AuditMessengerView({
 
     const persistAuditsForDay = (day: string | undefined) => {
       if (!day || !progress.audits?.length) return
-      const rows = progress.audits.filter((a) => a.metadata?.auditDate === day)
+      const rows = progress.audits.filter(
+        (a) =>
+          a.metadata?.auditDate === day &&
+          (!selectedPageFilter || a.metadata?.pageId === selectedPageFilter)
+      )
       if (rows.length) {
-        qc.setQueryData(['cskh', 'audits', 'by-day', day], rows)
+        qc.setQueryData(['cskh', 'audits', 'by-day', day, selectedPageId], rows)
       }
     }
 
@@ -541,7 +553,7 @@ export function AuditMessengerView({
       void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
       void qc.invalidateQueries({ queryKey: ['cskh', 'audit-day-stats'] })
     }
-  }, [progress, qc, setJobId])
+  }, [progress, qc, selectedPageFilter, selectedPageId, setJobId])
 
   useEffect(() => {
     if (!progressError || !jobId || progressFetching) return
@@ -557,10 +569,16 @@ export function AuditMessengerView({
   }, [progress?.summary?.auditDate])
 
   const { data: dayStats } = useQuery({
-    queryKey: ['cskh', 'audit-day-stats', auditDate],
-    queryFn: () => fetchAuditDayStats(auditDate),
+    queryKey: ['cskh', 'audit-day-stats', auditDate, selectedPageId],
+    queryFn: () => fetchAuditDayStats(auditDate, selectedPageFilter),
     enabled: Boolean(auditDate),
     staleTime: 15_000,
+  })
+
+  const { data: pagesData } = useQuery({
+    queryKey: ['cskh', 'pages'],
+    queryFn: fetchCskhPages,
+    staleTime: 60_000,
   })
 
   const {
@@ -568,8 +586,8 @@ export function AuditMessengerView({
     isLoading: recentLoading,
     isFetching: recentFetching,
   } = useQuery({
-    queryKey: ['cskh', 'audits', 'by-day', auditDate],
-    queryFn: () => fetchCskhAudits({ auditDate, limit: 2000 }),
+    queryKey: ['cskh', 'audits', 'by-day', auditDate, selectedPageId],
+    queryFn: () => fetchCskhAudits({ auditDate, pageId: selectedPageFilter, limit: 2000 }),
     enabled: Boolean(auditDate),
     staleTime: 60_000,
     gcTime: 5 * 60_000,
@@ -583,7 +601,7 @@ export function AuditMessengerView({
     setSidebarSearch('')
     setListFilter('all')
     setChatTab('chat')
-  }, [auditDate])
+  }, [auditDate, selectedPageId])
 
   const summary = progress?.summary
   const isAuditActive =
@@ -624,7 +642,11 @@ export function AuditMessengerView({
   const displayAudits = useMemo(() => {
     if (showDayLoading) return []
     const filterDay = (rows: CskhAuditRow[]) =>
-      rows.filter((a) => !auditDate || a.metadata?.auditDate === auditDate)
+      rows.filter(
+        (a) =>
+          (!auditDate || a.metadata?.auditDate === auditDate) &&
+          (!selectedPageFilter || a.metadata?.pageId === selectedPageFilter)
+      )
     const fromProgress = jobId && progress?.audits?.length ? filterDay(progress.audits) : []
     const fromRecent = recentAudits?.length ? filterDay(recentAudits) : []
 
@@ -638,7 +660,15 @@ export function AuditMessengerView({
     if (fromRecent.length) return fromRecent
     if (fromProgress.length) return fromProgress
     return []
-  }, [auditDate, isAuditActive, jobId, progress?.audits, recentAudits, showDayLoading])
+  }, [
+    auditDate,
+    isAuditActive,
+    jobId,
+    progress?.audits,
+    recentAudits,
+    selectedPageFilter,
+    showDayLoading,
+  ])
 
   useEffect(() => {
     if (displayAudits.length) stableAuditsRef.current = displayAudits
@@ -648,6 +678,12 @@ export function AuditMessengerView({
     () => [...displayAudits].sort((a, b) => a.score - b.score),
     [displayAudits]
   )
+  const pageOptions = useMemo(() => {
+    const pages = pagesData?.pages ?? []
+    return pages
+      .filter((p) => p.enabled)
+      .sort((a, b) => (a.pageName || a.pageId).localeCompare(b.pageName || b.pageId, 'vi'))
+  }, [pagesData?.pages])
   const filteredAudits = useMemo(() => {
     const q = sidebarSearch.trim().toLowerCase()
     if (!q) return sortedAudits
@@ -737,8 +773,8 @@ export function AuditMessengerView({
   }, [selected])
 
   const inboxQuery = useQuery({
-    queryKey: ['cskh', 'inbox', 'conversations'],
-    queryFn: () => fetchInboxConversations(),
+    queryKey: ['cskh', 'inbox', 'conversations', selectedPageId],
+    queryFn: () => fetchInboxConversations(selectedPageFilter),
     refetchInterval: false,
     refetchOnWindowFocus: false,
     staleTime: 30_000,
@@ -889,7 +925,7 @@ export function AuditMessengerView({
     : 0
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <CskhToolbar>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -910,6 +946,24 @@ export function AuditMessengerView({
                 Đang tải…
               </span>
             )}
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-slate-700" htmlFor="audit-page-filter">
+              Page
+            </label>
+            <select
+              id="audit-page-filter"
+              value={selectedPageId}
+              onChange={(e) => setSelectedPageId(e.target.value)}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-sm focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+            >
+              <option value="all">Tất cả page</option>
+              {pageOptions.map((p) => (
+                <option key={p.pageId} value={p.pageId}>
+                  {p.pageName || p.pageId}
+                </option>
+              ))}
+            </select>
           </div>
           {selected && sortedAudits.length > 0 && (
             <span className="inline-flex items-center rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
@@ -934,7 +988,8 @@ export function AuditMessengerView({
             )}
           {!isRunning && sortedAudits.length > 0 && (
             <span className="text-xs font-medium text-slate-500">
-              {sortedAudits.length} hội thoại ngày {auditDayLabel ?? '…'} · điểm thấp → cao
+              {sortedAudits.length} hội thoại ngày {auditDayLabel ?? '…'}
+              {selectedPageFilter ? ' · theo page đã chọn' : ''} · điểm thấp → cao
             </span>
           )}
           <CskhConnectionBadge connected={inboxLive} />
@@ -1083,7 +1138,7 @@ export function AuditMessengerView({
           description={`Chưa có hội thoại được audit ngày ${auditDayLabel ?? 'này'}. Bấm «${runButtonLabel}» để bắt đầu.`}
         />
       ) : (
-        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+        <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
           {isAuditPhase && (
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}

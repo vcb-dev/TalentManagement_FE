@@ -91,8 +91,10 @@ export function CskhPageAvatar({
 
 export function CskhPageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative flex min-w-0 flex-col">
-      <div className="flex min-w-0 flex-col gap-2 sm:gap-3">{children}</div>
+    <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden sm:gap-3">
+        {children}
+      </div>
     </div>
   )
 }

@@ -197,8 +197,8 @@ export function AppShell({ children, title }: AppShellProps) {
         </header>
         <main
           className={cn(
-            'min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain',
-            wideMain ? 'p-3 sm:p-4' : 'p-5 md:p-6'
+            'min-h-0 min-w-0 flex-1 overflow-x-hidden overscroll-y-contain',
+            wideMain ? 'h-full overflow-y-hidden p-3 sm:p-4' : 'overflow-y-auto p-5 md:p-6'
           )}
         >
           <div
