@@ -54,6 +54,7 @@ export interface CskhJobRun {
     auditDateFrom?: string
     auditDateTo?: string
     scanned?: number
+    maxConversations?: number | null
     paused?: boolean
     partial?: boolean
     pauseRequested?: boolean

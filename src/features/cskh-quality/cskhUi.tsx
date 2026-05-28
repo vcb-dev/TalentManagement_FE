@@ -882,9 +882,10 @@ type AuditProgressSummary = {
   pauseRequested?: boolean
   skippedAlready?: number
   paused?: boolean
+  maxConversations?: number | null
 }
 
-function auditProgressPercent(summary?: AuditProgressSummary | null): number {
+export function auditProgressPercent(summary?: AuditProgressSummary | null): number {
   if (!summary?.phase) return 3
   if (summary.phase === 'fetch') {
     const pagesTotal = summary.pagesTotal ?? 0
@@ -917,9 +918,11 @@ function auditProgressPercent(summary?: AuditProgressSummary | null): number {
 export function CskhAuditProgressPanel({
   auditDayLabel,
   summary,
+  className,
 }: {
   auditDayLabel?: string | null
   summary?: AuditProgressSummary | null
+  className?: string
 }) {
   const phase = summary?.phase ?? 'fetch'
   const isFetch = phase === 'fetch'
@@ -945,13 +948,19 @@ export function CskhAuditProgressPanel({
           : 'Đang chuẩn bị chấm điểm…'
         : 'Đang xử lý…'
 
+  const fetchCap = summary?.maxConversations ?? 0
   const detailLine = isFetch
     ? [
         summary?.scanned != null && summary.scanned > 0
-          ? `Đã quét ${summary.scanned.toLocaleString('vi-VN')} tin nhắn`
+          ? `Đã lướt ${summary.scanned.toLocaleString('vi-VN')} hội thoại inbox`
           : null,
         summary?.fetched != null
-          ? `Tìm thấy ${summary.fetched.toLocaleString('vi-VN')} hội thoại ngày ${auditDayLabel ?? '…'}`
+          ? fetchCap > 0
+            ? `Đủ ${Math.min(summary.fetched, fetchCap).toLocaleString('vi-VN')}/${fetchCap.toLocaleString('vi-VN')} cần chấm trong ${auditDayLabel ?? '…'}`
+            : `Tìm thấy ${summary.fetched.toLocaleString('vi-VN')} hội thoại trong ${auditDayLabel ?? '…'}`
+          : null,
+        fetchCap > 0 && summary?.scanned != null && summary.scanned > fetchCap
+          ? '(đã lướt thêm inbox không có tin trong khoảng ngày hoặc đã chấm trước đó)'
           : null,
       ]
         .filter(Boolean)
@@ -967,8 +976,13 @@ export function CskhAuditProgressPanel({
       : ''
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
-      <div className="w-full max-w-lg space-y-6">
+    <div
+      className={cn(
+        'flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-10',
+        className
+      )}
+    >
+      <div className="w-full max-w-2xl space-y-6">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-100 via-violet-100 to-fuchsia-100 shadow-inner">
             <Loader2 className="h-7 w-7 animate-spin text-violet-600" />
