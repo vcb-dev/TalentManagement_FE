@@ -607,7 +607,7 @@ export function CskhLoading({ label = 'Đang tải…' }: { label?: string }) {
 export const cskhAuditToolbarLabelClass =
   'mb-1 block h-4 text-[11px] font-semibold leading-4 uppercase tracking-wide text-slate-500'
 export const cskhAuditToolbarControlClass =
-  'h-9 min-h-9 shrink-0 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-sm'
+  'h-9 min-h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-sm'
 
 /** Calendar popover — dùng chung DatePicker của app, style gọn cho toolbar chấm điểm. */
 export function CskhAuditDatePicker({
@@ -656,6 +656,7 @@ export function CskhAuditDateRangePickers({
   disabled,
   max = vietnamTodayIso(),
   compact,
+  balanced,
 }: {
   from: string
   to: string
@@ -664,9 +665,17 @@ export function CskhAuditDateRangePickers({
   disabled?: boolean
   max?: string
   compact?: boolean
+  /** Toolbar: hai ô ngày chia đều chiều ngang cột. */
+  balanced?: boolean
 }) {
+  const wrapClass = balanced
+    ? 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2'
+    : compact
+      ? 'inline-flex flex-nowrap items-center gap-1'
+      : 'flex flex-wrap items-center gap-2'
+
   return (
-    <div className="inline-flex flex-nowrap items-center gap-1">
+    <div className={wrapClass}>
       <CskhAuditDatePicker
         value={from}
         onChange={(v) => {
@@ -675,13 +684,13 @@ export function CskhAuditDateRangePickers({
         }}
         disabled={disabled}
         max={max}
-        placeholder={compact ? 'Từ' : 'Từ ngày'}
+        placeholder={compact && !balanced ? 'Từ' : 'Từ ngày'}
         compact={compact}
       />
       <span
         className={cn(
-          'shrink-0 text-slate-400',
-          compact ? 'px-0.5 text-[10px]' : 'text-sm font-medium'
+          'shrink-0 text-center text-slate-400',
+          compact ? 'text-xs' : 'text-sm font-medium'
         )}
         aria-hidden
       >
@@ -696,7 +705,7 @@ export function CskhAuditDateRangePickers({
         disabled={disabled}
         max={max}
         min={from || undefined}
-        placeholder={compact ? 'Đến' : 'Đến ngày'}
+        placeholder={compact && !balanced ? 'Đến' : 'Đến ngày'}
         compact={compact}
       />
     </div>
@@ -709,17 +718,19 @@ export function CskhAuditFieldLabel({
   required,
   htmlFor,
   hint,
+  className,
 }: {
   children: ReactNode
   required?: boolean
   htmlFor?: string
   hint?: string
+  className?: string
 }) {
   return (
     <label
       htmlFor={htmlFor}
       title={hint}
-      className={cn(cskhAuditToolbarLabelClass, 'flex items-center gap-1 !mb-1')}
+      className={cn(cskhAuditToolbarLabelClass, 'mb-1 flex items-center gap-1', className)}
     >
       {children}
       {required && <span className="text-rose-500">*</span>}

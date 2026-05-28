@@ -95,7 +95,7 @@ export function DatePicker({
           disabled={disabled}
           className={cn(
             isToolbar
-              ? 'h-9 w-[5.5rem] max-w-[5.5rem] shrink-0 justify-start rounded-lg border border-slate-200 bg-white px-2 py-0 text-left text-xs font-medium text-slate-800 shadow-sm hover:border-indigo-300 hover:bg-indigo-50/30 active:scale-100'
+              ? 'h-9 w-full min-w-0 justify-start rounded-lg border border-slate-200 bg-white px-2.5 py-0 text-left text-xs font-medium text-slate-800 shadow-sm hover:border-indigo-300 hover:bg-indigo-50/30 active:scale-100'
               : 'h-12 w-full justify-start rounded-2xl border-2 border-slate-100 bg-white px-4 py-3 text-left text-sm font-bold shadow-sm transition-all hover:border-primary hover:bg-slate-50 active:scale-[0.98]',
             !selectedDate && (isToolbar ? 'text-slate-400' : 'text-slate-400 font-medium'),
             selectedDate &&

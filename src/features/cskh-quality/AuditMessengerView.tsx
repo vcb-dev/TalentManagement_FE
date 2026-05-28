@@ -1077,12 +1077,13 @@ export function AuditMessengerView({
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <CskhToolbar>
         <div className="flex w-full min-w-0 flex-col gap-2.5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex min-w-0 flex-wrap items-end gap-x-4 gap-y-2">
-              <div className="shrink-0">
+          <div className="flex w-full min-w-0 flex-col gap-3 xl:flex-row xl:items-end xl:gap-4">
+            <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+              <div className="flex min-w-0 flex-col">
                 <CskhAuditFieldLabel required>Khoảng ngày</CskhAuditFieldLabel>
                 <CskhAuditDateRangePickers
                   compact
+                  balanced
                   from={auditDateFrom}
                   to={auditDateTo}
                   onFromChange={setAuditDateFrom}
@@ -1091,46 +1092,46 @@ export function AuditMessengerView({
                   disabled={isRunning}
                 />
               </div>
-              <div className="shrink-0">
-                <CskhAuditFieldLabel required htmlFor="audit-page-filter">
-                  Kênh
-                </CskhAuditFieldLabel>
-                <div className="flex items-center gap-1.5">
-                  <Select
-                    value={selectedPageId || undefined}
-                    onValueChange={(v) => setSelectedPageId(v)}
-                  >
-                    <SelectTrigger
-                      id="audit-page-filter"
-                      className={cn(
-                        cskhAuditToolbarControlClass,
-                        '!h-9 !min-h-9 !w-[7.5rem] !max-w-[7.5rem] !flex-none shrink-0 border-slate-200 bg-white py-0 pl-2 pr-7 shadow-sm',
-                        'border hover:bg-white focus:ring-1 focus:ring-indigo-200',
-                        '[&>span]:line-clamp-1 [&>span]:truncate'
-                      )}
-                      aria-label="Chọn kênh"
-                    >
-                      <SelectValue placeholder="Kênh" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pageOptions.map((p) => (
-                        <SelectItem key={p.pageId} value={p.pageId}>
-                          {p.pageName || p.pageId}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="flex min-w-0 flex-col">
+                <div className="mb-1 flex h-4 items-center justify-between gap-2">
+                  <CskhAuditFieldLabel required htmlFor="audit-page-filter" className="!mb-0">
+                    Kênh
+                  </CskhAuditFieldLabel>
                   {selectedPageId && alreadyScoredCount > 0 && !isRunning && (
                     <span
-                      className="inline-flex h-9 shrink-0 items-center rounded-lg bg-slate-100 px-2 text-[10px] font-semibold text-slate-600"
+                      className="shrink-0 text-[10px] font-semibold text-slate-500"
                       title={`Trong ${scoreRangeLabel}`}
                     >
-                      Đã {alreadyScoredCount}
+                      Đã chấm {alreadyScoredCount.toLocaleString('vi-VN')}
                     </span>
                   )}
                 </div>
+                <Select
+                  value={selectedPageId || undefined}
+                  onValueChange={(v) => setSelectedPageId(v)}
+                >
+                  <SelectTrigger
+                    id="audit-page-filter"
+                    className={cn(
+                      cskhAuditToolbarControlClass,
+                      '!h-9 !min-h-9 border-slate-200 !bg-white py-0 pl-2.5 pr-8',
+                      '!border hover:!bg-white focus:ring-1 focus:ring-indigo-200',
+                      '[&>span]:line-clamp-1 [&>span]:truncate'
+                    )}
+                    aria-label="Chọn kênh"
+                  >
+                    <SelectValue placeholder="Chọn kênh" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pageOptions.map((p) => (
+                      <SelectItem key={p.pageId} value={p.pageId}>
+                        {p.pageName || p.pageId}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="shrink-0">
+              <div className="flex min-w-0 flex-col">
                 <CskhAuditFieldLabel
                   htmlFor="audit-batch-limit"
                   hint="Chỉ chấm cuộc chưa có điểm trong khoảng ngày. Đã 200, nhập 100 → chấm thêm 100."
@@ -1150,15 +1151,12 @@ export function AuditMessengerView({
                   onChange={(e) => setBatchLimitInput(e.target.value)}
                   disabled={isRunning}
                   title="Để trống = chấm hết cuộc chưa chấm. Nhập số = chỉ chấm thêm N cuộc (bỏ qua đã chấm)."
-                  className={cn(
-                    cskhAuditToolbarControlClass,
-                    'w-[4.25rem] px-2 text-center placeholder:text-slate-400'
-                  )}
+                  className={cn(cskhAuditToolbarControlClass, 'px-2.5 placeholder:text-slate-400')}
                 />
               </div>
             </div>
 
-            <div className="flex h-9 shrink-0 flex-wrap items-center gap-2 lg:ml-auto lg:justify-end">
+            <div className="flex h-9 shrink-0 flex-wrap items-center justify-end gap-2 xl:w-auto">
               {(showDayLoading || checkingAudit) && (
                 <span className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-indigo-100 bg-indigo-50 px-2.5 text-xs font-medium text-indigo-700">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
