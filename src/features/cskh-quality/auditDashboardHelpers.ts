@@ -398,9 +398,24 @@ export function resolveCustomerSentimentBreakdown(row: CskhAuditRow): CustomerSe
   }
 
   const { tone } = resolveSentiment(row)
-  if (tone === 'positive') return { positive: 70, neutral: 20, negative: 10 }
-  if (tone === 'negative') return { positive: 10, neutral: 20, negative: 70 }
-  return { positive: 20, neutral: 60, negative: 20 }
+  const score = clamp(row.score, 0, 100)
+
+  if (tone === 'positive') {
+    const positive = Math.min(92, Math.max(50, score + 8))
+    const negative = Math.max(2, Math.round((100 - score) * 0.12))
+    const neutral = Math.max(0, 100 - positive - negative)
+    return { positive, neutral, negative }
+  }
+  if (tone === 'negative') {
+    const negative = Math.min(88, Math.max(28, 100 - score + 5))
+    const positive = Math.max(2, Math.round(score * 0.2))
+    const neutral = Math.max(0, 100 - positive - negative)
+    return { positive, neutral, negative }
+  }
+  const neutral = Math.min(78, Math.max(25, Math.round(40 + score * 0.35)))
+  const negative = Math.max(5, Math.round((100 - score) * 0.22))
+  const positive = Math.max(0, 100 - neutral - negative)
+  return { positive, neutral, negative }
 }
 
 export function resolveSentiment(row: CskhAuditRow): AuditSentimentView {

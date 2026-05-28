@@ -445,42 +445,56 @@ export function MessengerWorkspace({
         className
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden xl:flex-row xl:items-stretch">
-        <aside
-          className={cn(
-            'flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-slate-200/80 bg-white',
-            isAuditLayout
-              ? 'xl:h-full xl:w-[220px] xl:min-w-[200px] xl:max-w-[240px]'
-              : 'xl:h-full xl:w-[min(300px,24vw)] xl:min-w-[260px] xl:max-w-[340px]',
-            'xl:border-b-0 xl:border-r',
-            showList ? 'min-h-0 flex-1 xl:flex-none' : 'hidden xl:flex'
-          )}
-        >
-          {sidebar}
-        </aside>
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col overflow-hidden',
+          isAuditLayout && 'xl:gap-2 xl:bg-slate-100/70 xl:p-2',
+          !isAuditLayout && 'xl:flex-row xl:items-stretch'
+        )}
+      >
         <div
           className={cn(
-            'flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#f0f2f5]',
-            showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-1',
-            isAuditLayout && 'xl:max-w-[min(520px,36vw)]'
+            isAuditLayout
+              ? 'flex min-h-0 flex-1 flex-col overflow-hidden xl:flex-row xl:items-stretch xl:gap-2'
+              : 'contents'
           )}
         >
-          {main}
-        </div>
-        {aside ? (
           <aside
             className={cn(
-              'flex min-h-0 min-w-0 flex-col overflow-hidden border-slate-200/80 bg-white',
-              'border-t xl:h-full xl:min-w-0 xl:flex-1 xl:border-l xl:border-t-0',
+              'flex min-h-0 shrink-0 flex-col overflow-hidden bg-white',
               isAuditLayout
-                ? 'xl:min-w-[360px] xl:max-w-none'
-                : 'xl:w-[min(380px,32vw)] xl:max-w-[420px] xl:flex-none',
-              showAnalysis ? 'min-h-0 flex-1 xl:flex' : 'hidden xl:flex'
+                ? 'xl:h-full xl:w-[258px] xl:min-w-[240px] xl:max-w-[272px] xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
+                : 'border-b border-slate-200/80 xl:h-full xl:w-[min(300px,24vw)] xl:min-w-[260px] xl:max-w-[340px] xl:border-b-0 xl:border-r',
+              showList ? 'min-h-0 flex-1 xl:flex-none' : 'hidden xl:flex'
             )}
           >
-            {aside}
+            {sidebar}
           </aside>
-        ) : null}
+          <div
+            className={cn(
+              'flex min-h-0 min-w-0 flex-col overflow-hidden',
+              isAuditLayout
+                ? 'bg-white xl:flex-1 xl:min-w-[400px] xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
+                : 'bg-[#f0f2f5]',
+              showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-1'
+            )}
+          >
+            {main}
+          </div>
+          {aside ? (
+            <aside
+              className={cn(
+                'flex min-h-0 min-w-0 flex-col overflow-hidden bg-white',
+                isAuditLayout
+                  ? 'xl:h-full xl:w-[min(360px,32vw)] xl:min-w-[320px] xl:max-w-[400px] xl:flex-none xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
+                  : 'border-t border-slate-200/80 xl:h-full xl:w-[min(380px,32vw)] xl:max-w-[420px] xl:flex-none xl:border-l xl:border-t-0',
+                showAnalysis ? 'min-h-0 flex-1 xl:flex' : 'hidden xl:flex'
+              )}
+            >
+              {aside}
+            </aside>
+          ) : null}
+        </div>
       </div>
     </div>
   )

@@ -8,7 +8,6 @@ import {
   cancelAuditJob,
   pauseAuditJob,
   fetchAuditDayStats,
-  fetchAuditScoreHistory,
   fetchAuditProgress,
   fetchCskhAudits,
   fetchCustomerIntent,
@@ -38,7 +37,6 @@ import {
   scoreColor,
   vietnamTodayIso,
 } from './auditHelpers'
-import { auditDayMinusOne } from './auditWorkspaceKpi'
 import { cskhMediaProxySrc, cskhMediaSrc, resolveMessageMedia } from './messageMedia'
 import {
   AuditAnalysisPanel,
@@ -366,10 +364,10 @@ function ChatBubble({
   return (
     <div className={`flex ${isStaff ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm shadow-md ${
+        className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm shadow-md ${
           isStaff
-            ? 'rounded-br-md bg-gradient-to-br from-[#0084FF] to-indigo-600 text-white'
-            : 'rounded-bl-md border border-white/70 bg-white/95 text-slate-800 backdrop-blur-sm'
+            ? 'rounded-br-md bg-gradient-to-br from-[#0084FF] to-indigo-600 text-white shadow-blue-200/40'
+            : 'rounded-bl-md border border-slate-200/90 bg-white text-slate-800 shadow-slate-200/50'
         }`}
       >
         <MessageBubbleContent
@@ -565,8 +563,6 @@ export function AuditMessengerView({
     staleTime: 15_000,
   })
 
-  const prevAuditDate = useMemo(() => (auditDate ? auditDayMinusOne(auditDate) : null), [auditDate])
-
   const {
     data: recentAudits,
     isLoading: recentLoading,
@@ -593,13 +589,6 @@ export function AuditMessengerView({
   const isAuditActive =
     runMut.isPending || progress?.status === 'running' || (!!jobId && !progressFinished)
   const isRunning = isAuditActive
-
-  const { data: prevDayAudits } = useQuery({
-    queryKey: ['cskh', 'audits', 'by-day', prevAuditDate],
-    queryFn: () => fetchCskhAudits({ auditDate: prevAuditDate!, limit: 2000 }),
-    enabled: Boolean(prevAuditDate) && !isAuditActive,
-    staleTime: 120_000,
-  })
 
   useEffect(() => {
     onAuditJobActiveChange?.(isRunning)
@@ -870,13 +859,6 @@ export function AuditMessengerView({
 
   const selectedAuditDayLabel = selectedAuditDate ? formatAuditDateLabel(selectedAuditDate) : null
 
-  const scoreHistoryQuery = useQuery({
-    queryKey: ['cskh', 'audit-score-history', selected?.id],
-    queryFn: () => fetchAuditScoreHistory(selected!.id),
-    enabled: Boolean(selected?.id),
-    staleTime: 60_000,
-  })
-
   useEffect(() => {
     if (!inboxConv?.id || !liveMessages.length) return
     const lastCustomer = [...liveMessages].reverse().find((m) => m.senderType === 'customer')
@@ -905,11 +887,6 @@ export function AuditMessengerView({
   const selectedIndex = selected
     ? Math.max(1, sortedAudits.findIndex((a) => a.id === selected.id) + 1)
     : 0
-
-  const prevDayAuditsFiltered = useMemo(() => {
-    if (!prevAuditDate || !prevDayAudits?.length) return []
-    return prevDayAudits.filter((a) => a.metadata?.auditDate === prevAuditDate)
-  }, [prevAuditDate, prevDayAudits])
 
   return (
     <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
@@ -1111,8 +1088,8 @@ export function AuditMessengerView({
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}
           <AuditWorkspaceKpiBar
-            rows={sortedAudits}
-            prevRows={prevDayAuditsFiltered}
+            selectedRow={selected}
+            dayRows={sortedAudits}
             loading={showDayLoading}
           />
           <MessengerWorkspace
@@ -1134,7 +1111,7 @@ export function AuditMessengerView({
             }
             main={
               selected ? (
-                <div className="flex h-full min-h-0 flex-col overflow-hidden">
+                <div className="flex h-full min-h-0 flex-col overflow-hidden bg-gradient-to-b from-slate-50/40 to-white">
                   <ChatThreadHeader
                     name={displayCustomerName(selected.customerName)}
                     subtitle={`${displayPageShopLabel(selected.metadata?.pageName) || selected.metadata?.pageName || selected.channel || ''}${
@@ -1170,7 +1147,7 @@ export function AuditMessengerView({
                       </div>
                     }
                   />
-                  <div className="grid shrink-0 grid-cols-3 gap-1 border-b border-slate-200/80 bg-white p-2 xl:grid-cols-2">
+                  <div className="grid shrink-0 grid-cols-3 gap-1.5 border-b border-slate-200/60 bg-white/90 px-3 py-2 backdrop-blur-sm xl:grid-cols-2">
                     {(
                       [
                         { id: 'chat' as const, label: 'Hội thoại' },
@@ -1186,11 +1163,11 @@ export function AuditMessengerView({
                           if (t.id === 'analysis') setWorkspacePane('analysis')
                         }}
                         className={cn(
-                          'rounded-lg px-2 py-2 text-center text-[11px] font-semibold leading-tight transition-all sm:text-xs',
+                          'rounded-xl px-2 py-2.5 text-center text-[11px] font-semibold leading-tight transition-all sm:text-xs',
                           'mobileOnly' in t && t.mobileOnly ? 'xl:hidden' : '',
                           chatTab === t.id
-                            ? 'bg-violet-50 text-violet-800 ring-1 ring-violet-200'
-                            : 'text-slate-600 hover:bg-slate-50'
+                            ? 'bg-violet-600 text-white shadow-md shadow-violet-200/50'
+                            : 'text-slate-600 hover:bg-slate-100'
                         )}
                       >
                         {t.label}
@@ -1207,7 +1184,6 @@ export function AuditMessengerView({
                         onUseReply={setDraft}
                         customerIntent={intentQuery.data ?? null}
                         intentLoading={intentQuery.isFetching && !intentQuery.data}
-                        scoreHistory={scoreHistoryQuery.data}
                       />
                     </div>
                   ) : null}
@@ -1218,7 +1194,7 @@ export function AuditMessengerView({
                   >
                     <div
                       ref={scrollRef}
-                      className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain px-4 py-4"
+                      className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain bg-[#e8ecf1] px-4 py-4"
                     >
                       {chatTab === 'timeline' ? (
                         <AuditTimelinePanel

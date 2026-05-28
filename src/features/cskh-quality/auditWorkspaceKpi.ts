@@ -1,4 +1,5 @@
 import type { CskhAuditRow } from './api'
+import { resolveCriteriaScores, resolveCustomerSentimentBreakdown } from './auditDashboardHelpers'
 
 export type WorkspaceKpiSnapshot = {
   total: number
@@ -44,6 +45,17 @@ function isClosing(row: CskhAuditRow): boolean {
   if (tags.some((t) => /chốt|đặt hàng|mua|thanh toán|cọc/i.test(t))) return true
   const fb = `${row.feedback ?? ''}`.toLowerCase()
   return /chốt|đặt hàng|đã mua|cọc|thanh toán/i.test(fb)
+}
+
+function buildCriteriaSpark(row: CskhAuditRow, buckets = 8): number[] {
+  const criteria = resolveCriteriaScores(row)
+  if (criteria.length >= 3) {
+    const pts = criteria.map((c) => Math.round((c.score / c.max) * 100))
+    while (pts.length < buckets) pts.push(pts[pts.length - 1] ?? row.score)
+    return pts.slice(0, buckets)
+  }
+  const s = row.score
+  return Array.from({ length: buckets }, (_, i) => Math.max(0, Math.min(100, s + (i - 4) * 2)))
 }
 
 function buildScoreSpark(rows: CskhAuditRow[], buckets = 8): number[] {
@@ -96,6 +108,37 @@ export function computeWorkspaceKpiSnapshot(rows: CskhAuditRow[]): WorkspaceKpiS
     negativePct: pct(negN, total),
     closingPct: pct(closeN, total),
     scoreSpark: buildScoreSpark(rows),
+  }
+}
+
+/** KPI 7 thẻ — theo đúng hội thoại đang chọn (dữ liệu audit thật). */
+export function computeConversationKpiSnapshot(row: CskhAuditRow): WorkspaceKpiSnapshot {
+  const breakdown = resolveCustomerSentimentBreakdown(row)
+  const criteria = resolveCriteriaScores(row)
+  const criteriaTotal = criteria.reduce((a, c) => a + c.score, 0)
+  const criteriaMax = criteria.reduce((a, c) => a + c.max, 0)
+  const standardPct =
+    criteriaMax > 0 ? Math.round((criteriaTotal / criteriaMax) * 1000) / 10 : row.score
+
+  const closingCrit = criteria.find((c) => c.id === 'closing')
+  const closingPct = closingCrit
+    ? Math.round((closingCrit.score / closingCrit.max) * 1000) / 10
+    : null
+
+  const metrics = row.metadata?.transcriptMetrics
+  const followUpPct =
+    metrics?.proactivePct != null ? Math.round(metrics.proactivePct) : isFollowUpOk(row) ? 100 : 0
+
+  return {
+    total: 1,
+    avgScore: row.score,
+    csatPct: row.score,
+    standardPct,
+    missedPct: isMissed(row) ? 100 : 0,
+    followUpPct,
+    negativePct: breakdown.negative,
+    closingPct,
+    scoreSpark: buildCriteriaSpark(row),
   }
 }
 
