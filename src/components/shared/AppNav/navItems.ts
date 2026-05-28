@@ -308,7 +308,7 @@ export const CSKH_QUALITY_ITEM: AppNavItem = {
       label: 'Sản phẩm',
       icon: ShoppingBag,
       match: 'prefix',
-      isDevelopment: true,
+      search: { tab: 'products' },
       permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
     },
     {

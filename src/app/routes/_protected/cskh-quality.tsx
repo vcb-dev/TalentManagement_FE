@@ -4,7 +4,7 @@ import { CskhQualityPage } from '@/features/cskh-quality/CskhQualityPage'
 import { requireAnyPermissionId } from '@/lib/permissionGuards'
 
 const cskhQualitySearchSchema = z.object({
-  tab: z.enum(['overview', 'fb-page', 'audit', 'config']).optional(),
+  tab: z.enum(['overview', 'fb-page', 'products', 'audit', 'config']).optional(),
 })
 
 function normalizeCskhQualitySearch(raw: unknown) {
