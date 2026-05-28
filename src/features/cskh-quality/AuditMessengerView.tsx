@@ -1104,12 +1104,13 @@ export function AuditMessengerView({
                       id="audit-page-filter"
                       className={cn(
                         cskhAuditToolbarControlClass,
-                        '!h-9 !min-h-9 w-[10.5rem] max-w-[10.5rem] border-slate-200 !bg-white py-0 pl-2.5 pr-2 shadow-sm',
-                        '!border hover:!bg-white focus:ring-1 focus:ring-indigo-200 [&>span]:truncate'
+                        '!h-9 !min-h-9 !w-[7.5rem] !max-w-[7.5rem] !flex-none shrink-0 border-slate-200 bg-white py-0 pl-2 pr-7 shadow-sm',
+                        'border hover:bg-white focus:ring-1 focus:ring-indigo-200',
+                        '[&>span]:line-clamp-1 [&>span]:truncate'
                       )}
                       aria-label="Chọn kênh"
                     >
-                      <SelectValue placeholder="Chọn kênh" />
+                      <SelectValue placeholder="Kênh" />
                     </SelectTrigger>
                     <SelectContent>
                       {pageOptions.map((p) => (

@@ -636,18 +636,13 @@ export function CskhAuditDatePicker({
       max={max}
       min={min}
       placeholder={placeholder}
+      size={compact ? 'toolbar' : 'default'}
       displayLabel={value ? formatAuditDateLabel(value) : undefined}
-      className={cn(
+      className={
         compact
-          ? cn(
-              cskhAuditToolbarControlClass,
-              '!h-9 !min-h-9 !w-[6.75rem] !max-w-[6.75rem] justify-start !px-2 !py-0 font-medium',
-              '!rounded-lg !border !shadow-sm hover:border-indigo-300 hover:bg-indigo-50/30',
-              '!text-xs active:scale-100',
-              value && 'border-indigo-300/70 !bg-white text-indigo-900'
-            )
+          ? undefined
           : 'h-10 min-w-[9.5rem] rounded-xl border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-indigo-300'
-      )}
+      }
     />
   )
 }
@@ -671,7 +666,7 @@ export function CskhAuditDateRangePickers({
   compact?: boolean
 }) {
   return (
-    <div className="flex min-w-0 flex-nowrap items-center gap-1.5">
+    <div className="inline-flex flex-nowrap items-center gap-1">
       <CskhAuditDatePicker
         value={from}
         onChange={(v) => {

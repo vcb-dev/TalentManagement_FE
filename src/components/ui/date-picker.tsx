@@ -29,6 +29,8 @@ type DatePickerProps = {
   lockToMonth?: LockToMonth
   /** Nhãn hiển thị trên nút (vd. "Hôm nay, 19/05/2026") thay cho dd/MM/yyyy */
   displayLabel?: string
+  /** Toolbar: ô cố định ~5.5rem, không w-full. */
+  size?: 'default' | 'toolbar'
 }
 
 function parseDateString(value?: string): Date | undefined {
@@ -48,7 +50,9 @@ export function DatePicker({
   max,
   lockToMonth,
   displayLabel,
+  size = 'default',
 }: DatePickerProps) {
+  const isToolbar = size === 'toolbar'
   const [open, setOpen] = React.useState(false)
   const selectedDate = parseDateString(value)
 
@@ -90,14 +94,22 @@ export function DatePicker({
           variant="outline"
           disabled={disabled}
           className={cn(
-            'h-12 w-full justify-start rounded-2xl border-2 border-slate-100 bg-white px-4 py-3 text-left text-sm font-bold shadow-sm transition-all hover:border-primary hover:bg-slate-50 active:scale-[0.98]',
-            !selectedDate && 'text-slate-400 font-medium',
-            selectedDate && 'border-primary/20 bg-primary/5 text-primary',
+            isToolbar
+              ? 'h-9 w-[5.5rem] max-w-[5.5rem] shrink-0 justify-start rounded-lg border border-slate-200 bg-white px-2 py-0 text-left text-xs font-medium text-slate-800 shadow-sm hover:border-indigo-300 hover:bg-indigo-50/30 active:scale-100'
+              : 'h-12 w-full justify-start rounded-2xl border-2 border-slate-100 bg-white px-4 py-3 text-left text-sm font-bold shadow-sm transition-all hover:border-primary hover:bg-slate-50 active:scale-[0.98]',
+            !selectedDate && (isToolbar ? 'text-slate-400' : 'text-slate-400 font-medium'),
+            selectedDate &&
+              (isToolbar
+                ? 'border-indigo-300/70 text-indigo-900'
+                : 'border-primary/20 bg-primary/5 text-primary'),
             className
           )}
         >
           <CalendarIcon
-            className={cn('mr-2 h-4 w-4', selectedDate ? 'text-primary' : 'text-slate-400')}
+            className={cn(
+              isToolbar ? 'mr-1 h-3 w-3 shrink-0' : 'mr-2 h-4 w-4',
+              selectedDate ? (isToolbar ? 'text-indigo-600' : 'text-primary') : 'text-slate-400'
+            )}
           />
           {displayLabel ??
             (selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: vi }) : placeholder)}
