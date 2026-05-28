@@ -541,13 +541,22 @@ export function AuditMessengerView({
 
   const cancelMut = useMutation({
     mutationFn: () => cancelAuditJob(),
-    onSuccess: () => {
+    onSuccess: (res) => {
       setJobId(null)
       storeJobId(null)
+      setBackgroundJobId(null)
       toast.dismiss(AUDIT_TOAST_ID)
-      void qc.invalidateQueries({ queryKey: ['cskh', 'audit-progress'] })
+      if (res.cancelled > 0) {
+        toast.info('Đã hủy tiến trình chấm điểm', { duration: 4000 })
+      } else {
+        toast.info('Không còn tiến trình đang chạy', { duration: 3000 })
+      }
+      void qc.cancelQueries({ queryKey: ['cskh', 'audit-progress'] })
       void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
       void qc.invalidateQueries({ queryKey: ['cskh', 'audit-day-stats'] })
+    },
+    onError: (err) => {
+      toast.error(getApiErrorMessage(err) || 'Không hủy được tiến trình')
     },
   })
 
@@ -1245,28 +1254,31 @@ export function AuditMessengerView({
                         : runButtonLabel}
                 </span>
               </button>
-              {isRunning && isFetchPhase && (
+              {isRunning && (
                 <>
-                  <button
-                    type="button"
-                    disabled={pauseMut.isPending || isPausing}
-                    onClick={() => pauseMut.mutate()}
-                    className="inline-flex h-9 min-h-9 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
-                  >
-                    {isPausing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Pause className="h-4 w-4" />
-                    )}
-                    {isPausing ? 'Dừng…' : 'Tạm dừng'}
-                  </button>
+                  {isFetchPhase && (
+                    <button
+                      type="button"
+                      disabled={pauseMut.isPending || isPausing || cancelMut.isPending}
+                      onClick={() => pauseMut.mutate()}
+                      className="inline-flex h-9 min-h-9 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                    >
+                      {isPausing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Pause className="h-4 w-4" />
+                      )}
+                      {isPausing ? 'Dừng…' : 'Tạm dừng'}
+                    </button>
+                  )}
                   <button
                     type="button"
                     disabled={cancelMut.isPending}
                     onClick={() => cancelMut.mutate()}
-                    className="inline-flex h-9 min-h-9 items-center rounded-lg border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                    className="inline-flex h-9 min-h-9 items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
                   >
-                    Hủy
+                    {cancelMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {cancelMut.isPending ? 'Đang hủy…' : 'Hủy'}
                   </button>
                 </>
               )}
