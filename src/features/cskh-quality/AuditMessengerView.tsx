@@ -1185,7 +1185,7 @@ export function AuditMessengerView({
           description={`Chưa có hội thoại được audit ngày ${auditDayLabel ?? 'này'}. Bấm «${runButtonLabel}» để bắt đầu.`}
         />
       ) : (
-        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {isAuditPhase && (
             <CskhAuditProgressBanner auditDayLabel={auditDayLabel} summary={summary} />
           )}

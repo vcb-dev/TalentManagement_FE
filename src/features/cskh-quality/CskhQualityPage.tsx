@@ -273,7 +273,11 @@ export function CskhQualityPage() {
           <ConfigTab />
         </div>
         <div
-          className={tab === 'audit' ? 'flex min-h-0 min-w-0 flex-col overflow-hidden' : 'hidden'}
+          className={
+            tab === 'audit'
+              ? 'flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
+              : 'hidden'
+          }
         >
           <AuditMessengerView onAuditJobActiveChange={setAuditJobBusy} />
         </div>
