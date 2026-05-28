@@ -38,12 +38,12 @@ import {
 import {
   displayCustomerName,
   displayPageShopLabel,
-  formatAuditDateLabel,
   formatAuditRangeLabel,
   auditRowMatchesScoreRange,
+  resolveAuditScopeFromRow,
+  messagesAfterAuditRange,
   resolveAuditFromAd,
   filterDisplayTranscript,
-  messagesAfterAuditDate,
   inboxMessagesAfterTranscript,
   groupLiveMediaMessages,
   dedupeMediaUrls,
@@ -1037,13 +1037,17 @@ export function AuditMessengerView({
     setChatTab('chat')
   }, [])
 
-  const selectedAuditDate = selected?.metadata?.auditDate ?? null
+  const selectedAuditScope = useMemo(
+    () => resolveAuditScopeFromRow(selected, auditDateFrom, auditDateTo),
+    [selected, auditDateFrom, auditDateTo]
+  )
+  const selectedAuditScopeLabel = selectedAuditScope?.label ?? null
   const selectedIntentCache = selected?.id ? (intentByAuditId[selected.id] ?? null) : null
 
   const inboxLive = useCskhInboxStream({
     enabled: true,
     activeConversationId: inboxConv?.id ?? null,
-    activeAuditDate: selectedAuditDate,
+    activeAuditDate: selectedAuditScope?.from ?? null,
     onIntent: (conversationId, intent) => {
       qc.setQueryData(['cskh', 'inbox', 'intent', conversationId], intent)
     },
@@ -1072,14 +1076,21 @@ export function AuditMessengerView({
   }, [selected?.id, intentQuery.data])
 
   const liveMsgQuery = useQuery({
-    queryKey: ['cskh', 'inbox', 'messages', inboxConv?.id, selectedAuditDate],
+    queryKey: [
+      'cskh',
+      'inbox',
+      'messages',
+      inboxConv?.id,
+      selectedAuditScope?.from,
+      selectedAuditScope?.to,
+    ],
     queryFn: () => {
       const convId = inboxConv!.id
       const needRefresh = refreshedConvRef.current !== convId
       if (needRefresh) refreshedConvRef.current = convId
       return fetchInboxMessages(convId, {
         refresh: needRefresh,
-        limit: selectedAuditDate ? 200 : undefined,
+        limit: selectedAuditScope ? 200 : undefined,
       })
     },
     enabled: !!inboxConv?.id,
@@ -1107,15 +1118,13 @@ export function AuditMessengerView({
   const realtimeMessages = useMemo(() => {
     const fresh = inboxConv
       ? inboxMessagesAfterTranscript(transcript, liveMessages)
-      : selectedAuditDate
-        ? messagesAfterAuditDate(liveMessages, selectedAuditDate)
+      : selectedAuditScope
+        ? messagesAfterAuditRange(liveMessages, selectedAuditScope.from, selectedAuditScope.to)
         : liveMessages
     return groupLiveMediaMessages(fresh)
-  }, [inboxConv, transcript, liveMessages, selectedAuditDate])
+  }, [inboxConv, transcript, liveMessages, selectedAuditScope])
 
   const hasRealtimeTail = inboxConv && realtimeMessages.length > 0
-
-  const selectedAuditDayLabel = selectedAuditDate ? formatAuditDateLabel(selectedAuditDate) : null
 
   // Không invalidate intent liên tục theo polling tin nhắn,
   // tránh trạng thái "Đang phân tích..." lặp dù đã có kết quả audit.
@@ -1451,9 +1460,7 @@ export function AuditMessengerView({
                   <ChatThreadHeader
                     name={displayCustomerName(selected.customerName)}
                     subtitle={`${displayPageShopLabel(selected.metadata?.pageName) || selected.metadata?.pageName || selected.channel || ''}${
-                      selected.metadata?.auditDate
-                        ? ` · ${formatAuditDateLabel(selected.metadata.auditDate)}`
-                        : ''
+                      selectedAuditScopeLabel ? ` · ${selectedAuditScopeLabel}` : ''
                     }`}
                     pictureUrl={resolveCustomerPicture(selected, inboxConv)}
                     pageId={selected.metadata?.pageId ?? inboxConv?.pageId}
@@ -1516,7 +1523,7 @@ export function AuditMessengerView({
                         row={selected}
                         inbox={inboxConv}
                         transcript={transcript}
-                        auditDayLabel={selectedAuditDayLabel}
+                        auditDayLabel={selectedAuditScopeLabel}
                         onUseReply={setDraft}
                         customerIntent={resolvedIntent}
                         intentLoading={
@@ -1537,14 +1544,14 @@ export function AuditMessengerView({
                       {chatTab === 'timeline' ? (
                         <AuditTimelinePanel
                           transcript={transcript}
-                          auditDayLabel={selectedAuditDayLabel}
+                          auditDayLabel={selectedAuditScopeLabel}
                         />
                       ) : null}
                       {chatTab === 'chat' && transcript.length > 0 ? (
                         <div className="space-y-3">
                           <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-600">
                             Hội thoại audit
-                            {selectedAuditDayLabel ? ` · ${selectedAuditDayLabel}` : ''}
+                            {selectedAuditScopeLabel ? ` · ${selectedAuditScopeLabel}` : ''}
                             <span className="ml-2 font-medium normal-case text-slate-400">
                               · {transcript.length} tin
                             </span>
@@ -1569,8 +1576,8 @@ export function AuditMessengerView({
                               }
                             />
                           ))}
-                          {selectedAuditDayLabel ? (
-                            <AuditScopeDivider auditDayLabel={selectedAuditDayLabel} />
+                          {selectedAuditScopeLabel ? (
+                            <AuditScopeDivider auditDayLabel={selectedAuditScopeLabel} />
                           ) : null}
                           {hasRealtimeTail ? (
                             <div className="space-y-3 pt-1">
@@ -1704,7 +1711,7 @@ export function AuditMessengerView({
                     row={selected}
                     inbox={inboxConv}
                     transcript={transcript}
-                    auditDayLabel={selectedAuditDayLabel}
+                    auditDayLabel={selectedAuditScopeLabel}
                     onUseReply={setDraft}
                     customerIntent={resolvedIntent}
                     intentLoading={

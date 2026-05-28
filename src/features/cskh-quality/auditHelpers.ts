@@ -15,10 +15,23 @@ export function formatAuditRangeLabel(from: string, to?: string) {
 
 export function auditRowMatchesScoreRange(row: CskhAuditRow, from: string, to: string): boolean {
   const meta = row.metadata
-  const rowFrom = (meta?.auditDateFrom as string | undefined) || meta?.auditDate
-  const rowTo = (meta?.auditDateTo as string | undefined) || meta?.auditDate
+  const rowFrom = meta?.auditDateFrom || meta?.auditDate
+  const rowTo = meta?.auditDateTo || meta?.auditDate
   if (!rowFrom || !rowTo) return false
   return rowFrom === from && rowTo === to
+}
+
+/** Khoảng ngày chấm điểm của một audit row (ưu tiên from–to, fallback auditDate). */
+export function resolveAuditScopeFromRow(
+  row: CskhAuditRow | null | undefined,
+  fallbackFrom?: string,
+  fallbackTo?: string
+): { from: string; to: string; label: string } | null {
+  const meta = row?.metadata
+  const from = (meta?.auditDateFrom || meta?.auditDate || fallbackFrom || '').trim()
+  const to = (meta?.auditDateTo || meta?.auditDate || fallbackTo || from).trim()
+  if (!from) return null
+  return { from, to: to || from, label: formatAuditRangeLabel(from, to) }
 }
 
 export function vietnamTodayIso(): string {
@@ -304,7 +317,18 @@ export function messagesAfterAuditDate(
   messages: CskhInboxMessage[],
   auditDate: string
 ): CskhInboxMessage[] {
-  const endMs = vietnamAuditDayEndMs(auditDate)
+  return messagesAfterAuditRange(messages, auditDate, auditDate)
+}
+
+/** Tin inbox sau hết khoảng chấm điểm (dùng ngày kết thúc của range). */
+export function messagesAfterAuditRange(
+  messages: CskhInboxMessage[],
+  auditDateFrom: string,
+  auditDateTo?: string
+): CskhInboxMessage[] {
+  const end = (auditDateTo?.trim() || auditDateFrom).trim()
+  if (!end) return messages
+  const endMs = vietnamAuditDayEndMs(end)
   return messages.filter((m) => {
     const t = parseMessageTime(m.sentAt)
     return t > endMs && !isNoiseMessageText(m.text)

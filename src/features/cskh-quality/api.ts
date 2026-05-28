@@ -98,6 +98,8 @@ export interface CskhAuditRow {
     staffAbsent?: boolean
     needsFollowUp?: boolean
     auditDate?: string
+    auditDateFrom?: string
+    auditDateTo?: string
     jobRunId?: string
     fromAd?: boolean
     adId?: string | null
