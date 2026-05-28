@@ -1249,7 +1249,7 @@ export function AuditMessengerView({
                       </div>
                     }
                   />
-                  <div className="grid shrink-0 grid-cols-3 gap-1.5 border-b border-slate-200/60 bg-white/90 px-3 py-2 backdrop-blur-sm xl:grid-cols-2">
+                  <div className="grid shrink-0 grid-cols-3 gap-1.5 border-b border-slate-200/60 bg-white/90 px-3 py-2 backdrop-blur-sm xl:hidden">
                     {(
                       [
                         { id: 'chat' as const, label: 'Hội thoại' },
