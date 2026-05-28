@@ -865,9 +865,9 @@ export function AuditMessengerView({
   const sortedAudits = useMemo(() => sortAuditsByCreatedDesc(displayAudits), [displayAudits])
   const pageOptions = useMemo(() => {
     const pages = pagesData?.pages ?? []
-    return pages
-      .filter((p) => p.enabled)
-      .sort((a, b) => (a.pageName || a.pageId).localeCompare(b.pageName || b.pageId, 'vi'))
+    return pages.sort((a, b) =>
+      (a.pageName || a.pageId).localeCompare(b.pageName || b.pageId, 'vi')
+    )
   }, [pagesData?.pages])
   const selectedPageLabel =
     pageOptions.find((p) => p.pageId === selectedPageId)?.pageName || selectedPageId || 'Page'

@@ -1,12 +1,11 @@
-import { Link } from '@tanstack/react-router'
-import { useCallback, useEffect, useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link, getRouteApi } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Loader2,
   RefreshCw,
   Link2,
   CheckCircle2,
-  AlertCircle,
   ChevronRight,
   Clock3,
   ShieldCheck,
@@ -38,6 +37,21 @@ import {
   BarChart,
   Bar,
 } from 'recharts'
+import { cn } from '@/lib/utils'
+import {
+  fetchCskhPages,
+  fetchCskhAudits,
+  fetchAuditTokenStats,
+  fetchDeepSeekBalance,
+  fetchInboxConversations,
+  fetchRunningCskhJob,
+  getCskhOAuthStartUrl,
+  refreshCskhOAuth,
+} from './api'
+import { AuditMessengerView } from './AuditMessengerView'
+import { CskhGlassPanel, CskhPageShell, CskhPageAvatar } from './cskhUi'
+
+const cskhQualityRoute = getRouteApi('/_protected/cskh-quality')
 
 // Custom Facebook Icon because newer versions of lucide-react do not export brand icons.
 function Facebook(props: React.SVGProps<SVGSVGElement>) {
@@ -58,24 +72,6 @@ function Facebook(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   )
 }
-import { Route } from '@/app/routes/_protected/cskh-quality'
-import { Checkbox } from '@/components/ui/checkbox'
-import { cn } from '@/lib/utils'
-import {
-  fetchCskhPages,
-  fetchCskhAudits,
-  fetchAuditTokenStats,
-  fetchDeepSeekBalance,
-  fetchInboxConversations,
-  fetchRunningCskhJob,
-  getCskhOAuthStartUrl,
-  refreshCskhOAuth,
-  setCskhPageEnabled,
-  setCskhPagesEnabledBulk,
-  type CskhPagesResponse,
-} from './api'
-import { AuditMessengerView } from './AuditMessengerView'
-import { CskhGlassPanel, CskhPageShell, CskhPageAvatar } from './cskhUi'
 
 const AUDIT_JOB_KEY = 'cskh:audit-job-id'
 
@@ -1488,67 +1484,17 @@ function OverviewTab() {
 
 function ConfigTab() {
   const qc = useQueryClient()
-  const pagesQueryKey = ['cskh', 'pages'] as const
   const { data, isLoading, refetch } = useQuery({
-    queryKey: pagesQueryKey,
+    queryKey: ['cskh', 'pages'],
     queryFn: fetchCskhPages,
   })
-
-  const [syncingIds, setSyncingIds] = useState<Set<string>>(() => new Set())
-
-  const patchPagesCache = useCallback(
-    (updater: (pages: CskhPagesResponse['pages']) => CskhPagesResponse['pages']) => {
-      qc.setQueryData<CskhPagesResponse>(pagesQueryKey, (prev) => {
-        if (!prev) return prev
-        return { ...prev, pages: updater(prev.pages) }
-      })
-    },
-    [qc, pagesQueryKey]
-  )
 
   const refreshMut = useMutation({
     mutationFn: refreshCskhOAuth,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cskh'] }),
   })
 
-  const toggleMut = useMutation({
-    mutationFn: ({ pageId, enabled }: { pageId: string; enabled: boolean }) =>
-      setCskhPageEnabled(pageId, enabled),
-    onMutate: async ({ pageId, enabled }) => {
-      setSyncingIds((prev) => new Set(prev).add(pageId))
-      await qc.cancelQueries({ queryKey: pagesQueryKey })
-      const prev = qc.getQueryData<CskhPagesResponse>(pagesQueryKey)
-      patchPagesCache((pages) => pages.map((p) => (p.pageId === pageId ? { ...p, enabled } : p)))
-      return { prev }
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(pagesQueryKey, ctx.prev)
-    },
-    onSettled: (_data, _err, { pageId }) => {
-      setSyncingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(pageId)
-        return next
-      })
-    },
-  })
-
-  const bulkMut = useMutation({
-    mutationFn: (enabled: boolean) => setCskhPagesEnabledBulk(enabled),
-    onMutate: async (enabled) => {
-      await qc.cancelQueries({ queryKey: pagesQueryKey })
-      const prev = qc.getQueryData<CskhPagesResponse>(pagesQueryKey)
-      patchPagesCache((pages) => pages.map((p) => ({ ...p, enabled })))
-      return { prev }
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(pagesQueryKey, ctx.prev)
-    },
-  })
-
   const pages = data?.pages ?? []
-  const enabledCount = pages.filter((p) => p.enabled).length
-  const allEnabled = pages.length > 0 && enabledCount === pages.length
 
   if (isLoading) {
     return (
@@ -1616,33 +1562,15 @@ function ConfigTab() {
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-4">
-          <div>
-            <h3 className="font-semibold text-slate-800">Facebook Pages</h3>
-            {pages.length ? (
-              <p className="mt-0.5 text-xs text-slate-500">
-                {enabledCount} / {pages.length} Page đang bật chấm điểm
-              </p>
-            ) : null}
-          </div>
+        <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-4">
+          <h3 className="font-semibold text-slate-800">Facebook Pages</h3>
           {pages.length ? (
-            <button
-              type="button"
-              onClick={() => bulkMut.mutate(!allEnabled)}
-              className="rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
-            >
-              {allEnabled ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
-            </button>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {pages.length.toLocaleString('vi-VN')} Page đã kết nối — chọn kênh khi chấm điểm ở tab
+              Chấm điểm.
+            </p>
           ) : null}
         </div>
-
-        {pages.length > 0 && enabledCount > 5 && (
-          <div className="mx-5 mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            Đang bật {enabledCount} Page — chấm điểm sẽ chậm. Chỉ bật 1–5 Page CSKH thực sự cần theo
-            dõi.
-          </div>
-        )}
 
         {!pages.length ? (
           <p className="p-8 text-center text-sm text-slate-500">
@@ -1651,37 +1579,15 @@ function ConfigTab() {
         ) : (
           <ul className="divide-y divide-slate-100">
             {pages.map((p) => (
-              <li
-                key={p.pageId}
-                className={`flex items-center justify-between gap-4 px-5 py-4 transition-opacity ${
-                  syncingIds.has(p.pageId) ? 'opacity-60' : 'opacity-100'
-                }`}
-              >
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <CskhPageAvatar
-                    name={p.pageName || p.pageId}
-                    pictureUrl={p.pagePictureUrl}
-                    pageId={p.pageId}
-                  />
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-slate-800">{p.pageName || p.pageId}</p>
-                    <p className="truncate text-xs text-slate-400">ID: {p.pageId}</p>
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                  <Checkbox
-                    id={`cskh-page-${p.pageId}`}
-                    checked={p.enabled}
-                    onCheckedChange={(checked) =>
-                      toggleMut.mutate({ pageId: p.pageId, enabled: checked === true })
-                    }
-                  />
-                  <label
-                    htmlFor={`cskh-page-${p.pageId}`}
-                    className="cursor-pointer select-none text-sm font-medium text-slate-700"
-                  >
-                    Bật chấm điểm
-                  </label>
+              <li key={p.pageId} className="flex items-center gap-3 px-5 py-4">
+                <CskhPageAvatar
+                  name={p.pageName || p.pageId}
+                  pictureUrl={p.pagePictureUrl}
+                  pageId={p.pageId}
+                />
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-slate-800">{p.pageName || p.pageId}</p>
+                  <p className="truncate text-xs text-slate-400">ID: {p.pageId}</p>
                 </div>
               </li>
             ))}
@@ -2461,7 +2367,7 @@ function FbPageTab() {
   )
 }
 export function CskhQualityPage() {
-  const { tab: tabParam } = Route.useSearch()
+  const { tab: tabParam } = cskhQualityRoute.useSearch()
   const tab =
     tabParam === 'config'
       ? 'config'
