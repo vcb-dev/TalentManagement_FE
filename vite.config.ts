@@ -59,6 +59,37 @@ export default defineConfig(({ mode }) => {
               return 'vendor-icons'
             }
 
+            if (
+              id.includes('node_modules/@tiptap/') ||
+              id.includes('node_modules/prosemirror-') ||
+              id.includes('node_modules/orderedmap') ||
+              id.includes('node_modules/rope-sequence') ||
+              id.includes('node_modules/w3c-keyname')
+            ) {
+              return 'vendor-editor'
+            }
+
+            if (
+              id.includes('node_modules/framer-motion') ||
+              id.includes('node_modules/motion-dom') ||
+              id.includes('node_modules/motion-utils')
+            ) {
+              return 'vendor-motion'
+            }
+
+            if (
+              id.includes('node_modules/docx') ||
+              id.includes('node_modules/jszip') ||
+              id.includes('node_modules/pako') ||
+              id.includes('node_modules/xml')
+            ) {
+              return 'vendor-docx'
+            }
+
+            if (id.includes('node_modules/canvas-confetti')) {
+              return 'vendor-effects'
+            }
+
             if (id.includes('node_modules/zod')) {
               return 'vendor-zod'
             }
