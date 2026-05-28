@@ -1,12 +1,26 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
-import { ChevronDown, Filter, Loader2, MessageSquare, Sparkles, Star, Tag } from 'lucide-react'
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
+  ChevronDown,
+  Filter,
+  Frown,
+  Loader2,
+  MessageSquare,
+  MessageSquareCheck,
+  ShieldCheck,
+  ShoppingBag,
+  Smile,
+  Sparkles,
+  Star,
+  Tag,
+  UserRoundPlus,
+  UserX,
+} from 'lucide-react'
+import {
+  computeConversationKpiSnapshot,
+  computeWorkspaceKpiSnapshot,
+  formatKpiDelta,
+  type WorkspaceKpiSnapshot,
+} from './auditWorkspaceKpi'
 import {
   Accordion,
   AccordionContent,
@@ -15,17 +29,13 @@ import {
 } from '@/components/ui/accordion'
 import { FiveStarRank } from '@/components/icons/FiveStarRank'
 import { cn } from '@/lib/utils'
-import type {
-  AuditScoreHistory,
-  CskhAuditRow,
-  CskhCustomerIntent,
-  CskhInboxConversation,
-} from './api'
+import type { CskhAuditRow, CskhCustomerIntent, CskhInboxConversation } from './api'
 import {
   displayAgentName,
   displayCustomerName,
   displayPageShopLabel,
   formatAuditDateLabel,
+  formatAuditRangeLabel,
   resolveAuditFromAd,
 } from './auditHelpers'
 import {
@@ -35,18 +45,15 @@ import {
   resolveFeedbackBullets,
   resolveKeywords,
   resolveProsCons,
+  resolveCustomerSentimentBreakdown,
   resolveSentiment,
   resolveTags,
   scoreRankLabel,
   sidebarPreviewTime,
-  auditLastActivityMs,
+  auditCreatedAtMs,
 } from './auditDashboardHelpers'
 import { parseAuditActionItems, type DisplayTranscriptLine } from './auditHelpers'
 import { CskhAdSourceBadge, CskhPageAvatar } from './cskhUi'
-
-const scoreHistoryChartConfig = {
-  score: { label: 'Điểm chất lượng', color: 'hsl(262 83% 58%)' },
-} satisfies ChartConfig
 
 const SIDEBAR_INITIAL = 30
 const SIDEBAR_LOAD_MORE = 25
@@ -89,8 +96,8 @@ function AuditAccordionSection({
   badge?: ReactNode
 }) {
   return (
-    <AccordionItem value={value} className="border-b border-slate-100 last:border-b-0">
-      <AccordionTrigger className="px-4 py-3.5 hover:no-underline hover:bg-slate-50/80">
+    <AccordionItem value={value} className="border-b border-slate-100/80 last:border-b-0">
+      <AccordionTrigger className="px-4 py-3.5 hover:no-underline hover:bg-violet-50/40 data-[state=open]:bg-violet-50/30">
         <span className="flex min-w-0 flex-1 items-center gap-2 text-left">
           <span className="text-sm font-bold text-slate-800">{title}</span>
           {badge}
@@ -102,72 +109,272 @@ function AuditAccordionSection({
   )
 }
 
-/** Hàng KPI đầu workspace — dữ liệu thật từ ngày audit. */
-export function AuditWorkspaceKpiBar({
-  stats,
-  avgScore,
-  loading,
-  auditDayLabel,
+function KpiSparkline({
+  data,
+  color,
+  className,
 }: {
-  stats?: { total?: number; passed?: number; failed?: number; fromAd?: number } | null
-  avgScore?: number | null
-  loading?: boolean
-  auditDayLabel?: string | null
+  data: number[]
+  color: string
+  className?: string
 }) {
-  const passPct =
-    stats?.total && stats.total > 0 ? Math.round(((stats.passed ?? 0) / stats.total) * 100) : null
+  const w = 56
+  const h = 28
+  const min = Math.min(...data, 0)
+  const max = Math.max(...data, 100)
+  const range = max - min || 1
+  const pts = data
+    .map((v, i) => {
+      const x = (i / Math.max(1, data.length - 1)) * w
+      const y = h - ((v - min) / range) * (h - 4) - 2
+      return `${x},${y}`
+    })
+    .join(' ')
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      className={cn('shrink-0 opacity-90', className)}
+      width={w}
+      height={h}
+      aria-hidden
+    >
+      <polyline
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={pts}
+      />
+    </svg>
+  )
+}
 
-  const cards = [
-    {
-      label: 'Điểm QA trung bình',
-      value: loading ? '…' : avgScore != null ? `${avgScore}/100` : '—',
-      sub: auditDayLabel ?? 'Theo ngày chọn',
-      accent: 'border-violet-200 bg-gradient-to-br from-violet-50 to-white',
-    },
-    {
-      label: 'Tỷ lệ đạt (≥70)',
-      value: loading ? '…' : passPct != null ? `${passPct}%` : '—',
-      sub: stats?.passed != null ? `${stats.passed} hội thoại` : undefined,
-      accent: 'border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-white',
-    },
-    {
-      label: 'Chưa đạt (<70)',
-      value: loading ? '…' : (stats?.failed ?? '—'),
-      sub: 'Cần cải thiện',
-      accent: 'border-amber-200 bg-gradient-to-br from-amber-50/60 to-white',
-    },
-    {
-      label: 'Tổng đã audit',
-      value: loading ? '…' : (stats?.total ?? '—'),
-      sub: auditDayLabel ?? undefined,
-      accent: 'border-slate-200 bg-white',
-    },
-    {
-      label: 'Từ quảng cáo',
-      value: loading ? '…' : (stats?.fromAd ?? '—'),
-      sub: 'Nguồn QC',
-      accent: 'border-sky-200 bg-gradient-to-br from-sky-50/80 to-white',
-    },
-  ]
+function KpiTrendBadge({
+  delta,
+}: {
+  delta: { text: string; tone: 'up-good' | 'up-bad' | 'neutral' } | null
+}) {
+  if (!delta) return null
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums',
+        delta.tone === 'up-good' && 'bg-emerald-50 text-emerald-700',
+        delta.tone === 'up-bad' && 'bg-rose-50 text-rose-700',
+        delta.tone === 'neutral' && 'bg-slate-100 text-slate-500'
+      )}
+    >
+      {delta.text}
+    </span>
+  )
+}
+
+function WorkspaceKpiCard({
+  icon,
+  iconBg,
+  title,
+  value,
+  valueClass,
+  delta,
+  vsText,
+  sparkData,
+  sparkColor,
+  loading,
+}: {
+  icon: ReactNode
+  iconBg: string
+  title: string
+  value: string
+  valueClass?: string
+  delta: { text: string; tone: 'up-good' | 'up-bad' | 'neutral' } | null
+  vsText?: string | null
+  sparkData: number[]
+  sparkColor: string
+  loading?: boolean
+}) {
+  return (
+    <div className="relative flex min-w-[10.5rem] flex-1 flex-col rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-md">
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white shadow-sm',
+            iconBg
+          )}
+        >
+          {icon}
+        </span>
+        <span className="text-[11px] font-semibold leading-tight text-slate-700">{title}</span>
+      </div>
+      <div className="mt-2 flex items-end justify-between gap-1">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline gap-1.5">
+            <span
+              className={cn(
+                'text-xl font-bold tabular-nums leading-none sm:text-2xl',
+                valueClass ?? 'text-slate-800',
+                loading && 'animate-pulse text-slate-300'
+              )}
+            >
+              {loading ? '…' : value}
+            </span>
+            {!loading ? <KpiTrendBadge delta={delta} /> : null}
+          </div>
+          {vsText ? <p className="mt-1 text-[10px] font-medium text-slate-400">{vsText}</p> : null}
+        </div>
+        {!loading ? <KpiSparkline data={sparkData} color={sparkColor} /> : null}
+      </div>
+    </div>
+  )
+}
+
+/** Hàng 7 KPI — theo hội thoại đang chọn; so sánh với TB ngày. */
+export function AuditWorkspaceKpiBar({
+  selectedRow,
+  dayRows,
+  loading,
+}: {
+  selectedRow?: CskhAuditRow | null
+  dayRows: CskhAuditRow[]
+  loading?: boolean
+}) {
+  const cur = useMemo(
+    () => (selectedRow ? computeConversationKpiSnapshot(selectedRow) : null),
+    [selectedRow]
+  )
+  const dayAvg = useMemo(
+    () => (dayRows.length ? computeWorkspaceKpiSnapshot(dayRows) : null),
+    [dayRows]
+  )
+
+  const cards = useMemo(() => {
+    if (!cur) return []
+    const spark = cur.scoreSpark
+    const vsDay = (key: keyof WorkspaceKpiSnapshot, v: number | null, suffix = '%') =>
+      dayAvg && dayAvg[key] != null && v != null ? `vs TB ${dayAvg[key]}${suffix}` : null
+
+    return [
+      {
+        title: 'QA Score',
+        icon: <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-blue-500',
+        value: cur.avgScore != null ? `${cur.avgScore}` : '—',
+        valueSuffix: '/100',
+        valueClass:
+          cur.avgScore != null && cur.avgScore >= 70
+            ? 'text-emerald-600'
+            : cur.avgScore != null && cur.avgScore >= 50
+              ? 'text-amber-600'
+              : 'text-rose-600',
+        delta: formatKpiDelta(cur.avgScore, dayAvg?.avgScore ?? null, true, 'điểm'),
+        vsText: vsDay('avgScore', cur.avgScore, '/100'),
+        spark,
+        sparkColor: '#3b82f6',
+      },
+      {
+        title: 'CSAT (Hài lòng)',
+        icon: <Smile className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-amber-400',
+        value: cur.csatPct != null ? `${cur.csatPct}%` : '—',
+        delta: formatKpiDelta(cur.csatPct, dayAvg?.csatPct ?? null, true),
+        vsText: vsDay('csatPct', cur.csatPct),
+        spark,
+        sparkColor: '#22c55e',
+      },
+      {
+        title: 'Phản hồi đúng chuẩn',
+        icon: <MessageSquareCheck className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-violet-500',
+        value: cur.standardPct != null ? `${cur.standardPct}%` : '—',
+        delta: formatKpiDelta(cur.standardPct, dayAvg?.standardPct ?? null, true),
+        vsText: vsDay('standardPct', cur.standardPct),
+        spark,
+        sparkColor: '#8b5cf6',
+      },
+      {
+        title: 'Bỏ sót khách',
+        icon: <UserX className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-rose-500',
+        value: cur.missedPct != null ? (cur.missedPct >= 100 ? 'Có' : 'Không') : '—',
+        valueClass:
+          cur.missedPct != null && cur.missedPct >= 100 ? 'text-rose-600' : 'text-emerald-600',
+        delta: formatKpiDelta(cur.missedPct, dayAvg?.missedPct ?? null, false),
+        vsText: vsDay('missedPct', cur.missedPct),
+        spark: spark.map((v) => 100 - v),
+        sparkColor: '#f43f5e',
+      },
+      {
+        title: 'Follow-up',
+        icon: <UserRoundPlus className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-teal-500',
+        value: cur.followUpPct != null ? `${cur.followUpPct}%` : '—',
+        delta: formatKpiDelta(cur.followUpPct, dayAvg?.followUpPct ?? null, true),
+        vsText: vsDay('followUpPct', cur.followUpPct),
+        spark,
+        sparkColor: '#14b8a6',
+      },
+      {
+        title: 'Khách tiêu cực',
+        icon: <Frown className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-red-500',
+        value: cur.negativePct != null ? `${cur.negativePct}%` : '—',
+        delta: formatKpiDelta(cur.negativePct, dayAvg?.negativePct ?? null, false),
+        vsText: vsDay('negativePct', cur.negativePct),
+        spark: spark.map((v) => Math.max(0, 100 - v)),
+        sparkColor: '#ef4444',
+      },
+      {
+        title: 'Tỷ lệ chốt',
+        icon: <ShoppingBag className="h-3.5 w-3.5" strokeWidth={2.5} />,
+        iconBg: 'bg-blue-600',
+        value: cur.closingPct != null ? `${cur.closingPct}%` : '—',
+        delta: formatKpiDelta(cur.closingPct, dayAvg?.closingPct ?? null, true),
+        vsText: vsDay('closingPct', cur.closingPct),
+        spark,
+        sparkColor: '#2563eb',
+      },
+    ] as const
+  }, [cur, dayAvg])
 
   return (
-    <div className="shrink-0 border-b border-slate-200/80 bg-slate-50/40 px-3 py-3 sm:px-4">
+    <div className="shrink-0 border-b border-slate-200/60 bg-gradient-to-b from-slate-50 to-white px-2 py-2.5 sm:px-3">
+      {!loading && selectedRow ? (
+        <p className="mb-2 truncate px-0.5 text-[11px] font-medium text-slate-500">
+          Chỉ số hội thoại:{' '}
+          <span className="font-semibold text-violet-700">
+            {displayCustomerName(selectedRow.customerName)}
+          </span>
+          {dayAvg?.avgScore != null ? (
+            <span className="text-slate-400"> · TB ngày {dayAvg.avgScore}/100</span>
+          ) : null}
+        </p>
+      ) : null}
       <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
-        {cards.map((c) => (
-          <div
-            key={c.label}
-            className={cn(
-              'min-w-[9.5rem] shrink-0 rounded-xl border px-3 py-2.5 shadow-sm',
-              c.accent
-            )}
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              {c.label}
-            </p>
-            <p className="mt-1 text-xl font-black tabular-nums text-slate-900">{c.value}</p>
-            {c.sub ? <p className="mt-0.5 text-[10px] text-slate-400">{c.sub}</p> : null}
-          </div>
-        ))}
+        {loading || !selectedRow
+          ? Array.from({ length: 7 }).map((_, i) => (
+              <div
+                key={i}
+                className="min-w-[10.5rem] flex-1 animate-pulse rounded-xl border border-slate-200/80 bg-white px-3 py-6"
+              />
+            ))
+          : cards.map((c) => (
+              <WorkspaceKpiCard
+                key={c.title}
+                icon={c.icon}
+                iconBg={c.iconBg}
+                title={c.title}
+                value={
+                  'valueSuffix' in c && c.valueSuffix && c.value !== '—'
+                    ? `${c.value}${c.valueSuffix}`
+                    : c.value
+                }
+                valueClass={'valueClass' in c ? c.valueClass : undefined}
+                delta={c.delta}
+                vsText={c.vsText}
+                sparkData={c.spark}
+                sparkColor={c.sparkColor}
+              />
+            ))}
       </div>
     </div>
   )
@@ -242,8 +449,10 @@ const AuditSidebarRow = memo(function AuditSidebarRow({
         type="button"
         onClick={() => onSelect(row.id)}
         className={cn(
-          'w-full border-b border-slate-100 px-3 py-3 text-left transition-all',
-          active ? 'bg-violet-50/90 shadow-[inset_3px_0_0_0_#7c3aed]' : 'hover:bg-white'
+          'mx-2 mb-2 w-[calc(100%-1rem)] rounded-xl border-b-0 px-2.5 py-2.5 text-left transition-all',
+          active
+            ? 'border border-violet-200/80 bg-violet-50 shadow-sm ring-1 ring-violet-200/60'
+            : 'border border-transparent hover:border-slate-200/80 hover:bg-slate-50/80'
         )}
       >
         <div className="flex items-start gap-2.5">
@@ -252,14 +461,14 @@ const AuditSidebarRow = memo(function AuditSidebarRow({
             pictureUrl={row.customerPictureUrl ?? row.metadata?.customerPictureUrl}
             pageId={row.metadata?.pageId}
             psid={row.metadata?.participantPsid}
-            className="h-9 w-9 rounded-full text-xs"
+            className="h-8 w-8 rounded-full text-[10px]"
           />
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <p className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-800">
+            <div className="flex items-start justify-between gap-1.5">
+              <p className="line-clamp-2 min-w-0 flex-1 text-xs font-semibold leading-snug text-slate-800">
                 {name}
               </p>
-              <ScoreRing score={row.score} size={40} />
+              <ScoreRing score={row.score} size={34} />
             </div>
             <p className="mt-0.5 text-[11px] font-medium text-violet-700">
               {displayAgentName(row)}
@@ -342,8 +551,8 @@ export function AuditConversationSidebar({
   const sortedFiltered = useMemo(() => {
     const list = [...filtered]
     list.sort((a, b) => {
-      const ta = auditLastActivityMs(a)
-      const tb = auditLastActivityMs(b)
+      const ta = auditCreatedAtMs(a)
+      const tb = auditCreatedAtMs(b)
       return sortOrder === 'newest' ? tb - ta : ta - tb
     })
     return list
@@ -374,12 +583,14 @@ export function AuditConversationSidebar({
   }, [hasMore, sortedFiltered.length, visibleRows.length])
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white">
-      <div className="shrink-0 space-y-2.5 border-b border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-white p-3">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl bg-white">
+      <div className="shrink-0 space-y-2.5 border-b border-violet-100/80 bg-gradient-to-br from-violet-50 via-white to-indigo-50/50 px-3 py-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-slate-800">
             Danh sách hội thoại
-            <span className="ml-1.5 font-semibold text-slate-400">({rows.length})</span>
+            <span className="ml-1.5 rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-violet-700">
+              {rows.length}
+            </span>
           </h3>
           <select
             value={sortOrder}
@@ -387,7 +598,7 @@ export function AuditConversationSidebar({
             className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600"
             aria-label="Sắp xếp"
           >
-            <option value="newest">Gần nhất</option>
+            <option value="newest">Mới chấm</option>
             <option value="oldest">Cũ nhất</option>
           </select>
         </div>
@@ -398,7 +609,7 @@ export function AuditConversationSidebar({
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Tìm khách, nhân viên…"
-            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-8 text-xs shadow-sm focus:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-100"
+            className="w-full rounded-xl border border-slate-200/90 bg-white py-2 pl-8 pr-8 text-xs shadow-sm transition-colors focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
           />
           <Filter className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
         </div>
@@ -414,7 +625,7 @@ export function AuditConversationSidebar({
       </div>
       <ul
         ref={listRef}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [scrollbar-width:thin]"
+        className="min-h-0 flex-1 space-y-0.5 overflow-y-auto overscroll-y-contain px-1 pb-2 [scrollbar-width:thin]"
       >
         {visibleRows.length === 0 ? (
           <li className="px-4 py-10 text-center text-sm text-slate-500">Không có hội thoại</li>
@@ -544,7 +755,7 @@ function CustomerIntentTabContent({
       {intent.products?.length ? (
         <div>
           <p className="text-sm font-bold uppercase tracking-wide text-slate-400">
-            Sản phẩm khách quan tâm (Sapo)
+            Sản phẩm khách quan tâm
           </p>
           <ul className="mt-3 space-y-3">
             {intent.products.map((p) => (
@@ -577,15 +788,8 @@ function CustomerIntentTabContent({
             ))}
           </ul>
         </div>
-      ) : intent.sapoConfigured === false ? (
-        <p className="text-sm text-slate-400">
-          Chưa cấu hình Sapo API — thêm `SAPO_STORE` và `SAPO_ACCESS_TOKEN` trên BE để hiển thị SP
-          kèm giá.
-        </p>
       ) : intent.productMentions?.length ? (
-        <p className="text-sm text-slate-500">
-          Khách nhắc: {intent.productMentions.join(', ')} — chưa khớp SP trong catalog Sapo.
-        </p>
+        <p className="text-sm text-slate-500">Khách nhắc: {intent.productMentions.join(', ')}</p>
       ) : null}
       {intent.suggestedFocus ? (
         <section className="rounded-xl border border-violet-100 bg-violet-50/50 p-4">
@@ -599,6 +803,86 @@ function CustomerIntentTabContent({
   )
 }
 
+const SENTIMENT_ROWS = [
+  {
+    key: 'positive' as const,
+    label: 'Tích cực',
+    emoji: '😊',
+    iconBg: 'bg-emerald-100 ring-1 ring-emerald-200/80',
+  },
+  {
+    key: 'neutral' as const,
+    label: 'Trung tính',
+    emoji: '😐',
+    iconBg: 'bg-amber-100 ring-1 ring-amber-200/80',
+  },
+  {
+    key: 'negative' as const,
+    label: 'Tiêu cực',
+    emoji: '😠',
+    iconBg: 'bg-rose-100 ring-1 ring-rose-200/80',
+  },
+]
+
+function CustomerSentimentPanel({
+  row,
+  sentiment,
+}: {
+  row: CskhAuditRow
+  sentiment: ReturnType<typeof resolveSentiment>
+}) {
+  const [showDetail, setShowDetail] = useState(false)
+  const breakdown = useMemo(() => resolveCustomerSentimentBreakdown(row), [row])
+
+  return (
+    <div className="rounded-xl border border-slate-200/90 bg-white shadow-sm">
+      <div className="space-y-0.5 px-3 py-2">
+        {SENTIMENT_ROWS.map((r) => (
+          <div key={r.key} className="flex items-center gap-3 py-2.5">
+            <span
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg leading-none',
+                r.iconBg
+              )}
+              aria-hidden
+            >
+              {r.emoji}
+            </span>
+            <span className="min-w-0 flex-1 text-sm font-semibold text-slate-800">{r.label}</span>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-slate-800">
+              {breakdown[r.key]}%
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-slate-100 px-3 py-2.5 text-center">
+        <button
+          type="button"
+          onClick={() => setShowDetail((v) => !v)}
+          className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+        >
+          {showDetail ? 'Thu gọn phân tích cảm xúc' : 'Xem phân tích cảm xúc →'}
+        </button>
+      </div>
+      {showDetail ? (
+        <div className="space-y-3 border-t border-slate-100 bg-slate-50/50 px-4 py-3 text-sm">
+          <p className="font-semibold text-slate-800">
+            Tổng quan: <span className="font-bold text-violet-700">{sentiment.label}</span>
+          </p>
+          <div>
+            <p className="font-semibold text-slate-700">Khách hàng</p>
+            <p className="mt-0.5 leading-relaxed text-slate-600">{sentiment.customer}</p>
+          </div>
+          <div>
+            <p className="font-semibold text-slate-700">Nhân viên</p>
+            <p className="mt-0.5 leading-relaxed text-slate-600">{sentiment.staff}</p>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function AuditAnalysisPanel({
   row,
   inbox,
@@ -607,7 +891,6 @@ export function AuditAnalysisPanel({
   onUseReply,
   customerIntent,
   intentLoading,
-  scoreHistory,
 }: {
   row: CskhAuditRow
   inbox?: CskhInboxConversation | null
@@ -616,7 +899,6 @@ export function AuditAnalysisPanel({
   onUseReply?: (text: string) => void
   customerIntent?: CskhCustomerIntent | null
   intentLoading?: boolean
-  scoreHistory?: AuditScoreHistory
 }) {
   const { pros, cons } = resolveProsCons(row)
   const criteria = resolveCriteriaScores(row)
@@ -628,32 +910,15 @@ export function AuditAnalysisPanel({
   const tags = resolveTags(row, adSource.fromAd)
   const rank = scoreRankLabel(row.score)
 
-  const historyChartData = useMemo(() => {
-    const points = scoreHistory?.points ?? []
-    if (points.length) {
-      return points.map((p) => ({
-        score: p.score,
-        name: p.auditDate ? formatAuditDateLabel(p.auditDate) : p.label,
-      }))
-    }
-    const day = row.metadata?.auditDate
-    return [
-      {
-        score: row.score,
-        name: day ? formatAuditDateLabel(day) : (auditDayLabel ?? 'Hiện tại'),
-      },
-    ]
-  }, [scoreHistory, row.score, row.metadata?.auditDate, auditDayLabel])
-
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white">
-      <div className="shrink-0 border-b border-slate-200/80 bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3">
-        <p className="text-sm font-bold text-white">Phân tích AI</p>
-        <p className="text-xs text-violet-100">Bấm từng mục để mở / đóng</p>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
+      <div className="shrink-0 border-b border-violet-500/20 bg-gradient-to-r from-violet-600 via-violet-600 to-indigo-600 px-4 py-3.5 shadow-sm">
+        <p className="text-sm font-bold tracking-tight text-white">Phân tích AI</p>
+        <p className="mt-0.5 text-[11px] text-violet-100/90">Bấm từng mục để mở / đóng chi tiết</p>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
-        <Accordion type="multiple" defaultValue={['score', 'intent']} className="w-full">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-slate-50/30">
+        <Accordion type="multiple" defaultValue={['score', 'intent']} className="w-full bg-white">
           <AuditAccordionSection
             value="score"
             title="AI chấm điểm hội thoại"
@@ -739,13 +1004,13 @@ export function AuditAnalysisPanel({
 
               {cons.length ? (
                 <section>
-                  <p className="text-xs font-bold uppercase tracking-wide text-amber-600">
+                  <p className="text-xs font-bold uppercase tracking-wide text-rose-600">
                     Chưa đạt / cần cải thiện
                   </p>
                   <ul className="mt-2 space-y-2">
                     {cons.map((line, i) => (
-                      <li key={i} className="text-sm text-slate-700">
-                        <span className="text-amber-500">! </span>
+                      <li key={i} className="text-sm text-rose-900/90">
+                        <span className="font-bold text-rose-500">! </span>
                         {line}
                       </li>
                     ))}
@@ -807,27 +1072,8 @@ export function AuditAnalysisPanel({
             </div>
           </AuditAccordionSection>
 
-          <AuditAccordionSection value="sentiment" title="Cảm xúc">
-            <div
-              className={cn(
-                'rounded-lg border p-4 text-center',
-                sentiment.tone === 'positive' && 'border-emerald-200 bg-emerald-50',
-                sentiment.tone === 'neutral' && 'border-amber-200 bg-amber-50',
-                sentiment.tone === 'negative' && 'border-rose-200 bg-rose-50'
-              )}
-            >
-              <p className="font-bold text-slate-800">{sentiment.label}</p>
-            </div>
-            <dl className="mt-3 space-y-2 text-sm">
-              <div>
-                <dt className="font-semibold text-slate-700">Khách</dt>
-                <dd className="text-slate-600">{sentiment.customer}</dd>
-              </div>
-              <div>
-                <dt className="font-semibold text-slate-700">Nhân viên</dt>
-                <dd className="text-slate-600">{sentiment.staff}</dd>
-              </div>
-            </dl>
+          <AuditAccordionSection value="sentiment" title="Cảm xúc của khách">
+            <CustomerSentimentPanel row={row} sentiment={sentiment} />
           </AuditAccordionSection>
 
           <AuditAccordionSection value="suggest" title="Gợi ý cải thiện">
@@ -858,34 +1104,20 @@ export function AuditAnalysisPanel({
             )}
           </AuditAccordionSection>
 
-          <AuditAccordionSection value="history" title="Lịch sử điểm chất lượng">
-            <ChartContainer config={scoreHistoryChartConfig} className="h-[140px] w-full">
-              <LineChart
-                data={historyChartData}
-                margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
-              >
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 9 }} />
-                <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 9 }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line
-                  type="monotone"
-                  dataKey="score"
-                  stroke="hsl(262 83% 58%)"
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: 'hsl(262 83% 58%)' }}
-                />
-              </LineChart>
-            </ChartContainer>
-          </AuditAccordionSection>
-
           <AuditAccordionSection value="info" title="Thông tin hội thoại">
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between gap-2">
-                <dt className="text-slate-500">Ngày audit</dt>
+                <dt className="text-slate-500">Khoảng chấm điểm</dt>
                 <dd className="font-medium text-slate-800">
                   {auditDayLabel ??
-                    (row.metadata?.auditDate ? formatAuditDateLabel(row.metadata.auditDate) : '—')}
+                    (row.metadata?.auditDateFrom && row.metadata?.auditDateTo
+                      ? formatAuditRangeLabel(
+                          String(row.metadata.auditDateFrom),
+                          String(row.metadata.auditDateTo)
+                        )
+                      : row.metadata?.auditDate
+                        ? formatAuditDateLabel(String(row.metadata.auditDate))
+                        : '—')}
                 </dd>
               </div>
               <div className="flex justify-between gap-2">

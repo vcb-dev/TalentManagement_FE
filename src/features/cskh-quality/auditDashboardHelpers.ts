@@ -366,6 +366,58 @@ export function resolveTranscriptMetrics(
   return { ...computeTranscriptMetricsFe(transcript), source: 'fe' }
 }
 
+export type CustomerSentimentBreakdown = {
+  positive: number
+  neutral: number
+  negative: number
+}
+
+/** Phân bổ % hiển thị theo tone AI (một hội thoại — tổng 100%). */
+export function resolveCustomerSentimentBreakdown(row: CskhAuditRow): CustomerSentimentBreakdown {
+  const raw = row.metadata?.sentiment as
+    | {
+        positivePct?: number
+        neutralPct?: number
+        negativePct?: number
+      }
+    | undefined
+  const p = raw?.positivePct
+  const n = raw?.neutralPct
+  const neg = raw?.negativePct
+  if (
+    typeof p === 'number' &&
+    typeof n === 'number' &&
+    typeof neg === 'number' &&
+    Math.abs(p + n + neg - 100) < 2
+  ) {
+    return {
+      positive: Math.round(p),
+      neutral: Math.round(n),
+      negative: Math.round(neg),
+    }
+  }
+
+  const { tone } = resolveSentiment(row)
+  const score = clamp(row.score, 0, 100)
+
+  if (tone === 'positive') {
+    const positive = Math.min(92, Math.max(50, score + 8))
+    const negative = Math.max(2, Math.round((100 - score) * 0.12))
+    const neutral = Math.max(0, 100 - positive - negative)
+    return { positive, neutral, negative }
+  }
+  if (tone === 'negative') {
+    const negative = Math.min(88, Math.max(28, 100 - score + 5))
+    const positive = Math.max(2, Math.round(score * 0.2))
+    const neutral = Math.max(0, 100 - positive - negative)
+    return { positive, neutral, negative }
+  }
+  const neutral = Math.min(78, Math.max(25, Math.round(40 + score * 0.35)))
+  const negative = Math.max(5, Math.round((100 - score) * 0.22))
+  const positive = Math.max(0, 100 - neutral - negative)
+  return { positive, neutral, negative }
+}
+
 export function resolveSentiment(row: CskhAuditRow): AuditSentimentView {
   const s = row.metadata?.sentiment
   if (s?.label || s?.customer || s?.staff) {
@@ -452,12 +504,18 @@ export function conversationIndexLabel(index: number, total: number): string {
 }
 
 export function sidebarPreviewTime(row: CskhAuditRow): string {
-  const ms = auditLastActivityMs(row)
+  const ms = auditCreatedAtMs(row)
   if (!ms) return '—'
   return new Date(ms).toLocaleTimeString('vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+/** Thời điểm audit được lưu — dùng sắp xếp «mới chấm trước». */
+export function auditCreatedAtMs(row: CskhAuditRow): number {
+  const created = new Date(row.createdAt).getTime()
+  return Number.isNaN(created) ? 0 : created
 }
 
 /** Thời điểm tin nhắn cuối trong transcript (hoặc createdAt). */
@@ -470,6 +528,9 @@ export function auditLastActivityMs(row: CskhAuditRow): number {
     if (!Number.isNaN(t) && t > max) max = t
   }
   if (max > 0) return max
-  const created = new Date(row.createdAt).getTime()
-  return Number.isNaN(created) ? 0 : created
+  return auditCreatedAtMs(row)
+}
+
+export function sortAuditsByCreatedDesc(rows: CskhAuditRow[]): CskhAuditRow[] {
+  return [...rows].sort((a, b) => auditCreatedAtMs(b) - auditCreatedAtMs(a))
 }

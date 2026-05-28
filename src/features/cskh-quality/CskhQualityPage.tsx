@@ -1560,7 +1560,7 @@ function ConfigTab() {
 
   return (
     <div className="space-y-5 p-5 sm:p-6">
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div>
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1877F2] via-[#0866FF] to-indigo-700 p-6 text-white shadow-lg">
           <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
           <div className="relative space-y-4">
@@ -1591,7 +1591,7 @@ function ConfigTab() {
                 ) : (
                   <RefreshCw className="h-4 w-4" />
                 )}
-                Làm mới token
+                Cập nhật kết nối Facebook
               </button>
             </div>
             {data?.oauthConnected ? (
@@ -1613,30 +1613,6 @@ function ConfigTab() {
             )}
           </div>
         </div>
-
-        <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-violet-50/60 p-6">
-          <h3 className="font-bold text-slate-800">Hướng dẫn nhanh</h3>
-          <ol className="mt-4 space-y-3 text-sm text-slate-600">
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
-                1
-              </span>
-              Kết nối Facebook và bật Page cần theo dõi
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
-                2
-              </span>
-              Tab <strong>Chat</strong> — nhắn tin real-time với khách
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fuchsia-600 text-xs font-bold text-white">
-                3
-              </span>
-              Tab <strong>Audit</strong> — AI chấm điểm &amp; gợi ý trả lời
-            </li>
-          </ol>
-        </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
@@ -1645,7 +1621,7 @@ function ConfigTab() {
             <h3 className="font-semibold text-slate-800">Facebook Pages</h3>
             {pages.length ? (
               <p className="mt-0.5 text-xs text-slate-500">
-                {enabledCount} / {pages.length} Page đang bật audit
+                {enabledCount} / {pages.length} Page đang bật chấm điểm
               </p>
             ) : null}
           </div>
@@ -1663,7 +1639,7 @@ function ConfigTab() {
         {pages.length > 0 && enabledCount > 5 && (
           <div className="mx-5 mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            Đang bật {enabledCount} Page — audit sẽ chậm. Chỉ bật 1–5 Page CSKH thực sự cần theo
+            Đang bật {enabledCount} Page — chấm điểm sẽ chậm. Chỉ bật 1–5 Page CSKH thực sự cần theo
             dõi.
           </div>
         )}
@@ -1704,7 +1680,7 @@ function ConfigTab() {
                     htmlFor={`cskh-page-${p.pageId}`}
                     className="cursor-pointer select-none text-sm font-medium text-slate-700"
                   >
-                    Bật audit
+                    Bật chấm điểm
                   </label>
                 </div>
               </li>
@@ -2497,6 +2473,15 @@ export function CskhQualityPage() {
   const [auditJobBusy, setAuditJobBusy] = useState(false)
 
   useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('tab') === 'monitor') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('tab', 'audit')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  }, [])
+
+  useEffect(() => {
     void (async () => {
       try {
         const running = await fetchRunningCskhJob('audit')
@@ -2521,23 +2506,33 @@ export function CskhQualityPage() {
   }, [])
 
   return (
-    <CskhPageShell>
+    <CskhPageShell className={tab === 'config' ? '!h-auto flex-none' : undefined}>
       {auditJobBusy && tab === 'audit' ? (
-        <p className="mb-2 text-xs font-medium text-indigo-600">Đang chạy audit…</p>
+        <p className="mb-2 text-xs font-medium text-indigo-600">Đang quét và chấm điểm…</p>
       ) : null}
 
-      <CskhGlassPanel className={tab === 'audit' ? 'flex min-h-0 flex-col overflow-hidden' : ''}>
+      <CskhGlassPanel
+        className={
+          tab === 'audit'
+            ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden'
+            : 'min-h-0 overflow-visible'
+        }
+      >
         <div className={tab === 'overview' ? '' : 'hidden'}>
           <OverviewTab />
         </div>
         <div className={tab === 'fb-page' ? '' : 'hidden'}>
           <FbPageTab />
         </div>
-        <div className={tab === 'config' ? '' : 'hidden'}>
+        <div className={tab === 'config' ? 'min-h-0' : 'hidden'}>
           <ConfigTab />
         </div>
         <div
-          className={tab === 'audit' ? 'flex min-h-0 min-w-0 flex-col overflow-hidden' : 'hidden'}
+          className={
+            tab === 'audit'
+              ? 'flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
+              : 'hidden'
+          }
         >
           <AuditMessengerView onAuditJobActiveChange={setAuditJobBusy} />
         </div>

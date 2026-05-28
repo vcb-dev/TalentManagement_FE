@@ -234,7 +234,7 @@ const BOD_ITEMS: AppNavItem[] = [
 /** CSKH Quality — Audit + Cấu hình (`/cskh-quality?tab=…`). */
 export const CSKH_QUALITY_ITEM: AppNavItem = {
   to: '/cskh-quality',
-  label: 'CSKH Quality',
+  label: 'Chất lượng CSKH',
   icon: Headphones,
   match: 'prefix',
   permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
@@ -329,7 +329,7 @@ export const CSKH_QUALITY_ITEM: AppNavItem = {
     },
     {
       to: '/cskh-quality',
-      label: 'Cài đặt',
+      label: 'Cài đặt Kênh',
       icon: Settings,
       match: 'prefix',
       search: { tab: 'config' },

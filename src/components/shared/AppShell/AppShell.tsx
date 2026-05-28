@@ -36,8 +36,12 @@ export function AppShell({ children, title }: AppShellProps) {
   const brandHomeTo = user ? defaultEntryPathFromSession(user) : '/dashboard'
   const brandHomeSearch = brandHomeTo === '/hr-admin' ? { page: 1, pageSize: 15 } : undefined
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  /** CSKH Audit — cần full width cho 3 cột (sidebar app thu/mở vẫn fit). */
-  const wideMain = pathname.startsWith('/cskh-quality')
+  const cskhSearch = useRouterState({
+    select: (s) => s.location.search as { tab?: string },
+  })
+  const cskhTab = pathname.startsWith('/cskh-quality') ? (cskhSearch.tab ?? null) : null
+  /** CSKH Audit — full width + khóa scroll ngoài; tab Cài đặt Kênh scroll bình thường. */
+  const wideMain = pathname.startsWith('/cskh-quality') && cskhTab !== 'config'
   /** Không dùng sidebar — điều hướng bằng header ngang. */
   const compactNavNoSidebar =
     user?.role === 'MEMBER' ||
@@ -197,15 +201,15 @@ export function AppShell({ children, title }: AppShellProps) {
         </header>
         <main
           className={cn(
-            'min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain',
-            wideMain ? 'p-3 sm:p-4' : 'p-5 md:p-6'
+            'min-h-0 min-w-0 flex-1 overflow-x-hidden overscroll-y-contain',
+            wideMain ? 'h-full overflow-y-hidden p-3 sm:p-4' : 'overflow-y-auto p-5 md:p-6'
           )}
         >
           <div
             key={pathname}
             className={cn(
               'mx-auto w-full animate-page-entrance',
-              wideMain ? 'max-w-none' : 'max-w-[1400px]'
+              wideMain ? 'flex h-full min-h-0 max-w-none flex-col' : 'max-w-[1400px]'
             )}
           >
             {children}

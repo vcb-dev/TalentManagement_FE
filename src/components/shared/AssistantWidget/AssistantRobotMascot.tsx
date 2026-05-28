@@ -1,19 +1,25 @@
 /** Robot mascot vẫy tay + bong bóng Hello (launcher trợ lý). */
-export function AssistantRobotMascot() {
+export function AssistantRobotMascot({ compact = false }: { compact?: boolean }) {
   return (
     <div className="pointer-events-none relative flex flex-col items-center gap-1">
       <div
-        className="relative animate-assistant-hello-bob rounded-2xl border border-primary/20 bg-background px-3 py-1.5 text-sm font-semibold text-primary shadow-md"
+        className={`relative animate-assistant-hello-bob rounded-2xl border border-primary/20 bg-background font-semibold text-primary shadow-md ${compact ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'}`}
         aria-hidden
       >
         Hello!
         <span
-          className="absolute -bottom-1.5 right-6 h-3 w-3 rotate-45 border-b border-r border-primary/20 bg-background"
+          className={`absolute rotate-45 border-b border-r border-primary/20 bg-background ${compact ? '-bottom-1 right-4 h-2.5 w-2.5' : '-bottom-1.5 right-6 h-3 w-3'}`}
           aria-hidden
         />
       </div>
 
-      <svg viewBox="0 0 120 140" className="h-[88px] w-[76px] drop-shadow-lg" aria-hidden>
+      <svg
+        viewBox="0 0 120 140"
+        className={
+          compact ? 'h-[64px] w-[56px] drop-shadow-md' : 'h-[88px] w-[76px] drop-shadow-lg'
+        }
+        aria-hidden
+      >
         <defs>
           <linearGradient id="assistant-robot-body" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.95" />

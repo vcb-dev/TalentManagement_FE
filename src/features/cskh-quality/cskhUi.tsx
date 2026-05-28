@@ -89,10 +89,28 @@ export function CskhPageAvatar({
   )
 }
 
-export function CskhPageShell({ children }: { children: ReactNode }) {
+export function CskhPageShell({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <div className="relative flex min-w-0 flex-col">
-      <div className="flex min-w-0 flex-col gap-2 sm:gap-3">{children}</div>
+    <div
+      className={cn(
+        'relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+        className
+      )}
+    >
+      <div
+        className={cn(
+          'flex min-h-0 min-w-0 flex-1 flex-col gap-2 sm:gap-3',
+          className?.includes('!h-auto') ? '' : 'overflow-hidden'
+        )}
+      >
+        {children}
+      </div>
     </div>
   )
 }
@@ -188,7 +206,7 @@ export function AuditDayStatsCards({
   className?: string
 }) {
   const val = (n: number | undefined) => (loading ? '…' : (n ?? '—'))
-  const dayHint = auditDayLabel ? `Ngày ${auditDayLabel}` : 'Chọn ngày audit'
+  const dayHint = auditDayLabel ? `Khoảng ${auditDayLabel}` : 'Chọn khoảng ngày'
 
   return (
     <div className={cn('grid grid-cols-2 gap-2 sm:grid-cols-4', className)}>
@@ -255,7 +273,7 @@ export function CskhTokenStat({
           ) : null}
         </p>
       ) : (
-        <p className="mt-0.5 text-[10px] text-slate-400">Chạy audit để xem</p>
+        <p className="mt-0.5 text-[10px] text-slate-400">Quét và chấm điểm để xem</p>
       )}
     </div>
   )
@@ -405,7 +423,7 @@ export function CskhGlassPanel({
 
 export function CskhToolbar({ children }: { children: ReactNode }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 via-white/50 to-violet-50/80 px-4 py-3 sm:px-5">
+    <div className="shrink-0 border-b border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 via-white/50 to-violet-50/80 px-4 py-3 sm:px-5">
       {children}
     </div>
   )
@@ -419,6 +437,7 @@ export function MessengerWorkspace({
   aside,
   pane = 'chat',
   className,
+  layout = 'default',
 }: {
   sidebar: ReactNode
   main: ReactNode
@@ -426,50 +445,102 @@ export function MessengerWorkspace({
   /** Dưới xl: chỉ hiện một cột; từ xl: luôn 3 cột. */
   pane?: MessengerWorkspacePane
   className?: string
+  /** audit: danh sách hẹp, panel phân tích rộng hơn */
+  layout?: 'default' | 'audit'
 }) {
+  const isAuditLayout = layout === 'audit'
   const showList = pane === 'list'
   const showChat = pane === 'chat'
   const showAnalysis = pane === 'analysis'
 
+  const auditPanelClass =
+    'min-h-0 min-w-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm'
+
   return (
     <div
       className={cn(
-        'flex min-h-0 flex-col overflow-hidden',
-        'h-[min(720px,calc(100dvh-14rem))] min-h-[400px]',
-        'sm:h-[min(780px,calc(100dvh-13rem))] sm:min-h-[480px]',
-        'xl:h-[min(880px,calc(100dvh-11.5rem))] xl:min-h-[520px]',
+        'flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden',
+        'h-[calc(100dvh-12rem)] md:h-[calc(100dvh-10rem)] xl:h-[calc(100dvh-8rem)]',
         className
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden xl:flex-row xl:items-stretch">
-        <aside
-          className={cn(
-            'flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-slate-200/80 bg-white',
-            'xl:h-full xl:w-[min(300px,24vw)] xl:min-w-[260px] xl:max-w-[340px] xl:border-b-0 xl:border-r',
-            showList ? 'min-h-0 flex-1 xl:flex-none' : 'hidden xl:flex'
-          )}
-        >
-          {sidebar}
-        </aside>
-        <div
-          className={cn(
-            'flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#f0f2f5]',
-            showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-1'
-          )}
-        >
-          {main}
-        </div>
-        {aside ? (
-          <aside
+      <div
+        className={cn(
+          'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+          isAuditLayout && 'xl:bg-slate-100/70 xl:p-2',
+          !isAuditLayout && 'xl:flex-row xl:items-stretch'
+        )}
+      >
+        {isAuditLayout ? (
+          <div
             className={cn(
-              'flex min-h-0 min-w-0 flex-col overflow-hidden border-slate-200/80 bg-white',
-              'border-t xl:h-full xl:min-w-0 xl:w-[min(380px,32vw)] xl:max-w-[420px] xl:border-l xl:border-t-0',
-              showAnalysis ? 'min-h-0 flex-1 xl:flex-none xl:flex' : 'hidden xl:flex'
+              'flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden',
+              /* Danh sách hẹp hơn · hội thoại + phân tích AI rộng hơn */
+              'xl:grid xl:w-full xl:grid-cols-[minmax(240px,19%)_minmax(400px,42%)_minmax(320px,39%)] xl:gap-2.5 xl:2xl:grid-cols-[minmax(248px,17%)_minmax(440px,43%)_minmax(340px,40%)]'
             )}
           >
-            {aside}
-          </aside>
-        ) : null}
+            <aside
+              className={cn(
+                auditPanelClass,
+                'flex flex-col',
+                showList ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-h-0'
+              )}
+            >
+              {sidebar}
+            </aside>
+            <div
+              className={cn(
+                auditPanelClass,
+                'flex flex-col',
+                showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-h-0'
+              )}
+            >
+              {main}
+            </div>
+            {aside ? (
+              <aside
+                className={cn(
+                  auditPanelClass,
+                  'flex flex-col',
+                  showAnalysis ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-h-0'
+                )}
+              >
+                {aside}
+              </aside>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <aside
+              className={cn(
+                'flex min-h-0 shrink-0 flex-col overflow-hidden bg-white',
+                'border-b border-slate-200/80 xl:h-full xl:w-[min(300px,24vw)] xl:min-w-[260px] xl:max-w-[340px] xl:border-b-0 xl:border-r',
+                showList ? 'min-h-0 flex-1 xl:flex-none' : 'hidden xl:flex'
+              )}
+            >
+              {sidebar}
+            </aside>
+            <div
+              className={cn(
+                'flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#f0f2f5]',
+                showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-1'
+              )}
+            >
+              {main}
+            </div>
+            {aside ? (
+              <aside
+                className={cn(
+                  'flex min-h-0 min-w-0 flex-col overflow-hidden bg-white',
+                  'border-t border-slate-200/80 xl:h-full xl:w-[min(380px,32vw)] xl:max-w-[420px] xl:flex-none xl:border-l xl:border-t-0',
+                  showAnalysis ? 'min-h-0 flex-1 xl:flex' : 'hidden xl:flex'
+                )}
+              >
+                {aside}
+              </aside>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   )
@@ -532,17 +603,30 @@ export function CskhLoading({ label = 'Đang tải…' }: { label?: string }) {
   )
 }
 
-/** Calendar popover — dùng chung DatePicker của app, style gọn cho toolbar audit. */
+/** Toolbar chấm điểm — nhãn + control cùng cỡ. */
+export const cskhAuditToolbarLabelClass =
+  'mb-1 block h-4 text-[11px] font-semibold leading-4 uppercase tracking-wide text-slate-500'
+export const cskhAuditToolbarControlClass =
+  'h-9 min-h-9 w-full min-w-0 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-sm'
+
+/** Calendar popover — dùng chung DatePicker của app, style gọn cho toolbar chấm điểm. */
 export function CskhAuditDatePicker({
   value,
   onChange,
   disabled,
   max,
+  min,
+  placeholder = 'Chọn ngày',
+  compact,
 }: {
   value: string
   onChange: (value: string) => void
   disabled?: boolean
   max?: string
+  min?: string
+  placeholder?: string
+  /** Toolbar: cùng chiều cao với select/input khác. */
+  compact?: boolean
 }) {
   return (
     <DatePicker
@@ -550,22 +634,119 @@ export function CskhAuditDatePicker({
       onChange={onChange}
       disabled={disabled}
       max={max}
-      placeholder="Chọn ngày audit"
+      min={min}
+      placeholder={placeholder}
+      size={compact ? 'toolbar' : 'default'}
       displayLabel={value ? formatAuditDateLabel(value) : undefined}
-      className={cn(
-        'h-10 min-w-[10.5rem] rounded-xl border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm',
-        'hover:border-indigo-300 hover:bg-indigo-50/40',
-        value && 'border-indigo-300/80 text-indigo-900'
-      )}
+      className={
+        compact
+          ? undefined
+          : 'h-10 min-w-[9.5rem] rounded-xl border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:border-indigo-300'
+      }
     />
   )
+}
+
+/** Khoảng ngày từ – đến (chấm điểm). */
+export function CskhAuditDateRangePickers({
+  from,
+  to,
+  onFromChange,
+  onToChange,
+  disabled,
+  max = vietnamTodayIso(),
+  compact,
+  balanced,
+}: {
+  from: string
+  to: string
+  onFromChange: (v: string) => void
+  onToChange: (v: string) => void
+  disabled?: boolean
+  max?: string
+  compact?: boolean
+  /** Toolbar: hai ô ngày chia đều chiều ngang cột. */
+  balanced?: boolean
+}) {
+  const wrapClass = balanced
+    ? 'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2'
+    : compact
+      ? 'inline-flex flex-nowrap items-center gap-1'
+      : 'flex flex-wrap items-center gap-2'
+
+  return (
+    <div className={wrapClass}>
+      <CskhAuditDatePicker
+        value={from}
+        onChange={(v) => {
+          onFromChange(v)
+          if (to && v > to) onToChange(v)
+        }}
+        disabled={disabled}
+        max={max}
+        placeholder={compact && !balanced ? 'Từ' : 'Từ ngày'}
+        compact={compact}
+      />
+      <span
+        className={cn(
+          'shrink-0 text-center text-slate-400',
+          compact ? 'text-xs' : 'text-sm font-medium'
+        )}
+        aria-hidden
+      >
+        →
+      </span>
+      <CskhAuditDatePicker
+        value={to}
+        onChange={(v) => {
+          onToChange(v)
+          if (from && v < from) onFromChange(v)
+        }}
+        disabled={disabled}
+        max={max}
+        min={from || undefined}
+        placeholder={compact && !balanced ? 'Đến' : 'Đến ngày'}
+        compact={compact}
+      />
+    </div>
+  )
+}
+
+/** Nhãn trường nhỏ cho toolbar chấm điểm. */
+export function CskhAuditFieldLabel({
+  children,
+  required,
+  htmlFor,
+  hint,
+  className,
+}: {
+  children: ReactNode
+  required?: boolean
+  htmlFor?: string
+  hint?: string
+  className?: string
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      title={hint}
+      className={cn(cskhAuditToolbarLabelClass, 'mb-1 flex items-center gap-1', className)}
+    >
+      {children}
+      {required && <span className="text-rose-500">*</span>}
+    </label>
+  )
+}
+
+function vietnamTodayIso(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
 }
 
 export function CskhConnectionBadge({ connected }: { connected: boolean }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+        'inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-[10px] font-semibold uppercase tracking-wide',
         connected ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
       )}
       title={connected ? 'Nhận tin nhắn realtime qua webhook' : 'Đang thử kết nối realtime…'}
@@ -701,9 +882,10 @@ type AuditProgressSummary = {
   pauseRequested?: boolean
   skippedAlready?: number
   paused?: boolean
+  maxConversations?: number | null
 }
 
-function auditProgressPercent(summary?: AuditProgressSummary | null): number {
+export function auditProgressPercent(summary?: AuditProgressSummary | null): number {
   if (!summary?.phase) return 3
   if (summary.phase === 'fetch') {
     const pagesTotal = summary.pagesTotal ?? 0
@@ -736,9 +918,11 @@ function auditProgressPercent(summary?: AuditProgressSummary | null): number {
 export function CskhAuditProgressPanel({
   auditDayLabel,
   summary,
+  className,
 }: {
   auditDayLabel?: string | null
   summary?: AuditProgressSummary | null
+  className?: string
 }) {
   const phase = summary?.phase ?? 'fetch'
   const isFetch = phase === 'fetch'
@@ -764,13 +948,19 @@ export function CskhAuditProgressPanel({
           : 'Đang chuẩn bị chấm điểm…'
         : 'Đang xử lý…'
 
+  const fetchCap = summary?.maxConversations ?? 0
   const detailLine = isFetch
     ? [
         summary?.scanned != null && summary.scanned > 0
-          ? `Đã quét ${summary.scanned.toLocaleString('vi-VN')} tin nhắn`
+          ? `Đã lướt ${summary.scanned.toLocaleString('vi-VN')} hội thoại inbox`
           : null,
         summary?.fetched != null
-          ? `Tìm thấy ${summary.fetched.toLocaleString('vi-VN')} hội thoại ngày ${auditDayLabel ?? '…'}`
+          ? fetchCap > 0
+            ? `Đủ ${Math.min(summary.fetched, fetchCap).toLocaleString('vi-VN')}/${fetchCap.toLocaleString('vi-VN')} cần chấm trong ${auditDayLabel ?? '…'}`
+            : `Tìm thấy ${summary.fetched.toLocaleString('vi-VN')} hội thoại trong ${auditDayLabel ?? '…'}`
+          : null,
+        fetchCap > 0 && summary?.scanned != null && summary.scanned > fetchCap
+          ? '(đã lướt thêm inbox không có tin trong khoảng ngày hoặc đã chấm trước đó)'
           : null,
       ]
         .filter(Boolean)
@@ -786,14 +976,19 @@ export function CskhAuditProgressPanel({
       : ''
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
-      <div className="w-full max-w-lg space-y-6">
+    <div
+      className={cn(
+        'flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-10',
+        className
+      )}
+    >
+      <div className="w-full max-w-2xl space-y-6">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-100 via-violet-100 to-fuchsia-100 shadow-inner">
             <Loader2 className="h-7 w-7 animate-spin text-violet-600" />
           </div>
           <p className="text-lg font-bold text-slate-800">
-            Đang audit{auditDayLabel ? ` ngày ${auditDayLabel}` : '…'}
+            Đang chấm điểm{auditDayLabel ? ` · ${auditDayLabel}` : '…'}
           </p>
           <p className="mt-1 text-sm font-medium text-violet-700">{statusLine}</p>
           {detailLine ? (
@@ -947,7 +1142,7 @@ export function CskhAuditProgressBanner({
     <div className="mx-4 mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-violet-200/80 bg-violet-50/90 px-4 py-2.5 sm:mx-5">
       <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-600" />
       <p className="min-w-0 flex-1 text-sm font-medium text-violet-900">
-        {auditDayLabel ? `Audit ${auditDayLabel} — ` : ''}
+        {auditDayLabel ? `Chấm điểm ${auditDayLabel} — ` : ''}
         {text}
       </p>
       <span className="text-xs font-bold tabular-nums text-violet-700">
