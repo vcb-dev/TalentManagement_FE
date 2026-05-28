@@ -715,6 +715,27 @@ body {
     color: hsl(var(--primary));
     transform: scale(1.05);
   }
+  /* Ngày ngoài khoảng min/max — hiển thị mờ, không chọn được */
+  [data-slot='daypicker'] .rdp-day_button:disabled,
+  [data-slot='daypicker'] .rdp-disabled .rdp-day_button,
+  [data-slot='daypicker'] .rdp-day[data-disabled='true'] .rdp-day_button {
+    opacity: 0.32 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    color: hsl(var(--muted-foreground) / 0.45) !important;
+    background-color: hsl(var(--muted) / 0.35) !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    transform: none !important;
+    font-weight: 500 !important;
+    filter: grayscale(0.55);
+  }
+  [data-slot='daypicker'] .rdp-day_today[data-disabled='true'] .rdp-day_button,
+  [data-slot='daypicker'] .rdp-day_today:has(.rdp-day_button:disabled) .rdp-day_button {
+    background-color: hsl(var(--muted) / 0.35) !important;
+    color: hsl(var(--muted-foreground) / 0.45) !important;
+    border-color: transparent !important;
+  }
   [data-slot='daypicker'] .rdp-day_button[aria-selected='true']:not(:disabled):hover {
     border-color: transparent;
   }

@@ -84,8 +84,6 @@ export function DatePicker({
     [isBeforeMin, maxDate]
   )
 
-  const isDayHidden = React.useCallback((date: Date) => isBeforeMin(date), [isBeforeMin])
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -124,18 +122,18 @@ export function DatePicker({
         <Calendar
           mode="single"
           selected={selectedDate}
-          defaultMonth={selectedDate ?? lockedFirstDay ?? minDate}
+          defaultMonth={selectedDate ?? lockedFirstDay ?? maxDate ?? minDate}
           month={lockToMonth ? lockedFirstDay : undefined}
           startMonth={lockedFirstDay ?? minDate}
-          endMonth={lockedLastDay}
+          endMonth={lockedLastDay ?? maxDate}
           disableNavigation={Boolean(lockToMonth)}
           captionLayout={lockToMonth ? 'label' : 'dropdown'}
           onSelect={(date) => {
+            if (date && isDayDisabled(date)) return
             onChange(date ? format(date, 'yyyy-MM-dd') : '')
             setOpen(false)
           }}
           disabled={isDayDisabled}
-          hidden={minDate ? isDayHidden : undefined}
         />
       </PopoverContent>
     </Popover>
