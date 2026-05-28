@@ -463,6 +463,10 @@ export function AuditMessengerView({
   const selectedPageFilter = selectedPageId || undefined
   const filtersReady = Boolean(auditDateFrom && auditDateTo && selectedPageId)
   const scoreRangeLabel = formatAuditRangeLabel(auditDateFrom, auditDateTo)
+  const parsedBatchLimit = useMemo(() => {
+    const n = Number.parseInt(batchLimitInput.trim(), 10)
+    return Number.isFinite(n) && n > 0 ? n : undefined
+  }, [batchLimitInput])
 
   useEffect(() => {
     void (async () => {
@@ -484,12 +488,14 @@ export function AuditMessengerView({
       auditDateFrom: string
       auditDateTo: string
       pageId: string
+      maxConversations?: number
       force?: boolean
     }) =>
       runAudit({
         auditDateFrom: opts.auditDateFrom,
         auditDateTo: opts.auditDateTo,
         pageId: opts.pageId,
+        maxConversations: opts.maxConversations,
         force: opts.force,
       }),
     onMutate: async (vars) => {
