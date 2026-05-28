@@ -7,8 +7,17 @@ const cskhQualitySearchSchema = z.object({
   tab: z.enum(['audit', 'config']).optional(),
 })
 
+function normalizeCskhQualitySearch(raw: unknown) {
+  const input =
+    raw && typeof raw === 'object' && !Array.isArray(raw)
+      ? { ...(raw as Record<string, unknown>) }
+      : {}
+  if (input.tab === 'monitor') input.tab = 'audit'
+  return cskhQualitySearchSchema.parse(input)
+}
+
 export const Route = createFileRoute('/_protected/cskh-quality')({
-  validateSearch: (raw) => cskhQualitySearchSchema.parse(raw),
+  validateSearch: normalizeCskhQualitySearch,
   beforeLoad: ({ search }) => {
     requireAnyPermissionId('manager.approvals', 'hr.employees.view', 'bod.dashboard.view')
     if (!search.tab) {

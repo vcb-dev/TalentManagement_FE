@@ -76,6 +76,7 @@ const AUDIT_INTENT_CACHE_KEY = 'cskh:audit-intent-cache:v1'
 
 function loadIntentCache(): Record<string, CskhCustomerIntent> {
   try {
+    if (typeof sessionStorage === 'undefined') return {}
     const raw = sessionStorage.getItem(AUDIT_INTENT_CACHE_KEY)
     if (!raw) return {}
     const parsed = JSON.parse(raw) as Record<string, CskhCustomerIntent>
@@ -87,6 +88,7 @@ function loadIntentCache(): Record<string, CskhCustomerIntent> {
 
 function saveIntentCache(cache: Record<string, CskhCustomerIntent>) {
   try {
+    if (typeof sessionStorage === 'undefined') return
     sessionStorage.setItem(AUDIT_INTENT_CACHE_KEY, JSON.stringify(cache))
   } catch {
     /* ignore */

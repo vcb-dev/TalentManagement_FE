@@ -205,7 +205,7 @@ export function AppShell({ children, title }: AppShellProps) {
             key={pathname}
             className={cn(
               'mx-auto w-full animate-page-entrance',
-              wideMain ? 'max-w-none' : 'max-w-[1400px]'
+              wideMain ? 'flex h-full min-h-0 max-w-none flex-col' : 'max-w-[1400px]'
             )}
           >
             {children}

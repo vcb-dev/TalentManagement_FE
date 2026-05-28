@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2, RefreshCw, Link2, CheckCircle2, AlertCircle } from 'lucide-react'
-import { Route } from '@/app/routes/_protected/cskh-quality'
+import { getRouteApi } from '@tanstack/react-router'
+
+const cskhQualityRoute = getRouteApi('/_protected/cskh-quality')
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   fetchCskhPages,
@@ -232,9 +234,18 @@ function ConfigTab() {
 }
 
 export function CskhQualityPage() {
-  const { tab: tabParam } = Route.useSearch()
+  const { tab: tabParam } = cskhQualityRoute.useSearch()
   const tab = tabParam === 'config' ? 'config' : 'audit'
   const [auditJobBusy, setAuditJobBusy] = useState(false)
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('tab') === 'monitor') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('tab', 'audit')
+      window.history.replaceState({}, '', url.pathname + url.search)
+    }
+  }, [])
 
   useEffect(() => {
     void (async () => {
