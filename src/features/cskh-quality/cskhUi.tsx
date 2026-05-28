@@ -453,64 +453,94 @@ export function MessengerWorkspace({
   const showChat = pane === 'chat'
   const showAnalysis = pane === 'analysis'
 
+  const auditPanelClass =
+    'min-h-0 min-w-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm'
+
   return (
     <div
       className={cn(
-        'flex min-h-0 flex-1 flex-col overflow-hidden',
+        'flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden',
         'h-[calc(100dvh-12rem)] md:h-[calc(100dvh-10rem)] xl:h-[calc(100dvh-8rem)]',
         className
       )}
     >
       <div
         className={cn(
-          'flex min-h-0 flex-1 flex-col overflow-hidden',
-          isAuditLayout && 'xl:gap-2 xl:bg-slate-100/70 xl:p-2',
+          'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+          isAuditLayout && 'xl:bg-slate-100/70 xl:p-2',
           !isAuditLayout && 'xl:flex-row xl:items-stretch'
         )}
       >
-        <div
-          className={cn(
-            isAuditLayout
-              ? 'flex min-h-0 flex-1 flex-col overflow-hidden xl:flex-row xl:items-stretch xl:gap-2'
-              : 'contents'
-          )}
-        >
-          <aside
-            className={cn(
-              'flex min-h-0 shrink-0 flex-col overflow-hidden bg-white',
-              isAuditLayout
-                ? 'xl:h-full xl:w-[258px] xl:min-w-[240px] xl:max-w-[272px] xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
-                : 'border-b border-slate-200/80 xl:h-full xl:w-[min(300px,24vw)] xl:min-w-[260px] xl:max-w-[340px] xl:border-b-0 xl:border-r',
-              showList ? 'min-h-0 flex-1 xl:flex-none' : 'hidden xl:flex'
-            )}
-          >
-            {sidebar}
-          </aside>
+        {isAuditLayout ? (
           <div
             className={cn(
-              'flex min-h-0 min-w-0 flex-col overflow-hidden',
-              isAuditLayout
-                ? 'bg-white xl:min-w-[280px] xl:max-w-[min(380px,30vw)] xl:flex-[1_1_0%] xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
-                : 'bg-[#f0f2f5]',
-              showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-1'
+              'flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden',
+              /* Danh sách cố định · chat vừa phải · AI chiếm phần còn lại — full width */
+              'xl:grid xl:w-full xl:grid-cols-[minmax(228px,18%)_minmax(300px,30%)_minmax(360px,1fr)] xl:gap-2.5 xl:2xl:grid-cols-[minmax(240px,16%)_minmax(320px,28%)_minmax(400px,1fr)]'
             )}
           >
-            {main}
-          </div>
-          {aside ? (
             <aside
               className={cn(
-                'flex min-h-0 min-w-0 flex-col overflow-hidden bg-white',
-                isAuditLayout
-                  ? 'xl:h-full xl:w-[min(520px,42vw)] xl:min-w-[440px] xl:max-w-[640px] xl:flex-[1.15_1_0%] xl:rounded-xl xl:border xl:border-slate-200/80 xl:shadow-sm'
-                  : 'border-t border-slate-200/80 xl:h-full xl:w-[min(380px,32vw)] xl:max-w-[420px] xl:flex-none xl:border-l xl:border-t-0',
-                showAnalysis ? 'min-h-0 flex-1 xl:flex' : 'hidden xl:flex'
+                auditPanelClass,
+                'flex flex-col',
+                showList ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-h-0'
               )}
             >
-              {aside}
+              {sidebar}
             </aside>
-          ) : null}
-        </div>
+            <div
+              className={cn(
+                auditPanelClass,
+                'flex flex-col',
+                showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-h-0'
+              )}
+            >
+              {main}
+            </div>
+            {aside ? (
+              <aside
+                className={cn(
+                  auditPanelClass,
+                  'flex flex-col',
+                  showAnalysis ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-h-0'
+                )}
+              >
+                {aside}
+              </aside>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <aside
+              className={cn(
+                'flex min-h-0 shrink-0 flex-col overflow-hidden bg-white',
+                'border-b border-slate-200/80 xl:h-full xl:w-[min(300px,24vw)] xl:min-w-[260px] xl:max-w-[340px] xl:border-b-0 xl:border-r',
+                showList ? 'min-h-0 flex-1 xl:flex-none' : 'hidden xl:flex'
+              )}
+            >
+              {sidebar}
+            </aside>
+            <div
+              className={cn(
+                'flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#f0f2f5]',
+                showChat ? 'min-h-0 flex-1' : 'hidden xl:flex xl:min-w-0 xl:flex-1'
+              )}
+            >
+              {main}
+            </div>
+            {aside ? (
+              <aside
+                className={cn(
+                  'flex min-h-0 min-w-0 flex-col overflow-hidden bg-white',
+                  'border-t border-slate-200/80 xl:h-full xl:w-[min(380px,32vw)] xl:max-w-[420px] xl:flex-none xl:border-l xl:border-t-0',
+                  showAnalysis ? 'min-h-0 flex-1 xl:flex' : 'hidden xl:flex'
+                )}
+              >
+                {aside}
+              </aside>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   )
