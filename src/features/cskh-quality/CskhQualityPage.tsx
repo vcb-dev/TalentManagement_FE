@@ -1,5 +1,5 @@
 import { Link, getRouteApi } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Loader2,
@@ -38,7 +38,13 @@ import {
   Bar,
 } from 'recharts'
 import { cn } from '@/lib/utils'
-import { fetchCskhPages, getCskhOAuthStartUrl, refreshCskhOAuth, fetchRunningCskhJob } from './api'
+import {
+  fetchCskhPages,
+  getCskhOAuthStartUrl,
+  refreshCskhOAuth,
+  fetchRunningCskhJob,
+  type CskhPage,
+} from './api'
 import { AuditMessengerView } from './AuditMessengerView'
 import { CskhGlassPanel, CskhPageShell, CskhPageAvatar } from './cskhUi'
 
@@ -501,6 +507,54 @@ const MOCK_FB_PAGES_LIST = [
     isPositiveTrend: false,
   },
 ]
+
+type FbPageTableRow = {
+  pageId: string
+  name: string
+  pictureUrl?: string | null
+  status: 'active' | 'inactive'
+  totalMsg: number
+  totalTrend: string
+  adMsg: number
+  adTrend: string
+  adPercent: string
+  responseRate: string
+  responseTrend: string
+  closingRate: string
+  closingTrend: string
+  revenue: string
+  revenueTrend: string
+  quality: number
+  trendData: number[]
+  isPositiveTrend: boolean
+}
+
+function mapConnectedPagesToTableRows(pages: CskhPage[]): FbPageTableRow[] {
+  return pages.map((page, idx) => {
+    const mock = MOCK_FB_PAGES_LIST[idx % MOCK_FB_PAGES_LIST.length]
+    const isActive = page.enabled !== false
+    return {
+      pageId: page.pageId,
+      name: page.pageName || page.pageId,
+      pictureUrl: page.pagePictureUrl ?? null,
+      status: isActive ? 'active' : 'inactive',
+      totalMsg: mock.totalMsg,
+      totalTrend: mock.totalTrend,
+      adMsg: mock.adMsg,
+      adTrend: mock.adTrend,
+      adPercent: mock.adPercent,
+      responseRate: mock.responseRate,
+      responseTrend: mock.responseTrend,
+      closingRate: mock.closingRate,
+      closingTrend: mock.closingTrend,
+      revenue: mock.revenue,
+      revenueTrend: mock.revenueTrend,
+      quality: mock.quality,
+      trendData: mock.trendData,
+      isPositiveTrend: mock.isPositiveTrend,
+    }
+  })
+}
 
 const MOCK_FB_MESSAGE_TREND = [
   { name: '01/05', total: 300, ad: 150 },
@@ -1677,99 +1731,143 @@ function FbPageTab() {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTimeframe, setActiveTimeframe] = useState<'day' | 'week' | 'month'>('day')
 
-  const filteredPages = MOCK_FB_PAGES_LIST.filter(
-    (page) =>
-      page.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      page.handle.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['cskh', 'pages'],
+    queryFn: fetchCskhPages,
+  })
+
+  const connectedPages = data?.pages ?? []
+
+  const pageRows = useMemo(() => mapConnectedPagesToTableRows(connectedPages), [connectedPages])
+
+  const filteredPages = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase()
+    if (!q) return pageRows
+    return pageRows.filter(
+      (page) => page.name.toLowerCase().includes(q) || page.pageId.toLowerCase().includes(q)
+    )
+  }, [pageRows, searchTerm])
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full min-h-[240px] items-center justify-center bg-[#f4f7fc] p-6 font-sans text-slate-500">
+        <Loader2 className="mr-2 h-6 w-6 animate-spin text-indigo-500" />
+        Đang tải danh sách Page…
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6 p-5 sm:p-6 bg-[#f4f7fc]">
+    <div className="flex min-h-0 flex-col gap-2 overflow-x-hidden bg-[#f4f7fc] p-2 pb-4 font-sans sm:gap-2.5 sm:p-3 sm:pb-5">
       {/* Header and Filter Row */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-150 pb-5">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-200">
-              <Facebook className="h-5 w-5" />
+      <div className="shrink-0 border-b border-slate-150 pb-2.5">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-200">
+                <Facebook className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-lg font-black tracking-tight text-slate-900 sm:text-xl">
+                  Page (Facebook)
+                </h2>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  Quản lý và đánh giá hiệu suất tất cả page Facebook
+                  {connectedPages.length > 0 ? (
+                    <span className="ml-1.5 normal-case text-indigo-600">
+                      · {connectedPages.length} kênh đã kết nối
+                    </span>
+                  ) : null}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-1.5">
-                Page (Facebook)
-              </h2>
-              <p className="mt-0.5 text-xs text-slate-500 font-semibold uppercase tracking-wide">
-                Quản lý và đánh giá hiệu suất tất cả page Facebook
-              </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+            <div className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-bold text-slate-700 shadow-sm transition hover:bg-slate-50">
+              <span>01/05/2026 - 31/05/2026</span>
+              <span className="text-slate-400">📅</span>
             </div>
-          </div>
-        </div>
-
-        {/* Top-Right Filters mimicking the screenshot */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {/* Calendar Display */}
-          <div className="flex items-center gap-2 border border-slate-200 bg-white rounded-xl px-3 py-2 text-slate-700 font-bold shadow-sm cursor-pointer hover:bg-slate-50 transition">
-            <span>01/05/2026 - 31/05/2026</span>
-            <span className="text-slate-400">📅</span>
-          </div>
-
-          {/* Team Dropdown */}
-          <div className="flex items-center gap-1.5 border border-slate-200 bg-white rounded-xl px-3 py-2 text-slate-700 font-bold shadow-sm cursor-pointer hover:bg-slate-50 transition">
-            <span>Tất cả team</span>
-            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-          </div>
-
-          {/* Filters Button */}
-          <div className="flex items-center gap-1.5 border border-slate-200 bg-white rounded-xl px-3 py-2 text-slate-700 font-bold shadow-sm cursor-pointer hover:bg-slate-50 transition">
-            <span>Bộ lọc</span>
-            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-          </div>
-
-          {/* Updated time status */}
-          <div className="flex items-center gap-1 text-slate-400 font-bold px-2 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" />
-            <span>Cập nhật lúc 10:30</span>
+            <div className="flex cursor-pointer items-center gap-1 border border-slate-200 rounded-lg bg-white px-2.5 py-1.5 font-bold text-slate-700 shadow-sm transition hover:bg-slate-50">
+              <span>Tất cả team</span>
+              <ChevronDown className="h-3 w-3 text-slate-400" />
+            </div>
+            <div className="flex cursor-pointer items-center gap-1 border border-slate-200 rounded-lg bg-white px-2.5 py-1.5 font-bold text-slate-700 shadow-sm transition hover:bg-slate-50">
+              <span>Bộ lọc</span>
+              <ChevronDown className="h-3 w-3 text-slate-400" />
+            </div>
+            <div className="flex items-center gap-1 px-1.5 py-1 font-bold text-slate-400">
+              <span className="mr-0.5 h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              <span>
+                Cập nhật lúc{' '}
+                {new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
+      {isError ? (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          Không tải được danh sách Page.{' '}
+          <button type="button" onClick={() => refetch()} className="font-semibold underline">
+            Thử lại
+          </button>
+        </div>
+      ) : null}
+
+      {!data?.oauthConnected ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Chưa kết nối Facebook.{' '}
+          <Link
+            to="/cskh-quality"
+            search={{ tab: 'config' }}
+            className="font-semibold text-indigo-700 underline"
+          >
+            Vào Cài đặt Kênh
+          </Link>{' '}
+          để kết nối Page.
+        </div>
+      ) : null}
+
       {/* Row 1: KPI-Karten (5 cards + 1 gauge) */}
-      <div className="space-y-3">
-        <h3 className="font-extrabold text-slate-800 text-sm tracking-tight">
+      <div className="shrink-0 space-y-2">
+        <h3 className="text-xs font-extrabold tracking-tight text-slate-800 sm:text-sm">
           Tổng quan hiệu suất toàn bộ Page
         </h3>
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 2xl:grid-cols-6">
           {MOCK_FB_KPI_CARDS.map((card) => (
             <div
               key={card.id}
-              className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm flex flex-col justify-between h-[120px] transition hover:shadow-md duration-200"
+              className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200/60 bg-white p-2.5 shadow-sm transition duration-200 hover:shadow-md"
             >
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
                   {card.label}
                 </span>
-                <h3 className="mt-1.5 text-2xl font-black text-slate-800 tracking-tight leading-none">
+                <h3 className="mt-1 text-lg font-black leading-none tracking-tight text-slate-800 sm:text-xl">
                   {card.value}
                 </h3>
               </div>
-              <div className="space-y-0.5 mt-auto">
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 text-[10px] font-black text-emerald-600 leading-none">
+              <div className="mt-1 space-y-0.5">
+                <span className="inline-flex items-center gap-0.5 rounded-full border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-black leading-none text-emerald-600">
                   {card.trend}
                 </span>
-                <p className="text-[9px] text-slate-400 font-bold truncate">{card.comparison}</p>
+                <p className="truncate text-[9px] font-bold text-slate-400">{card.comparison}</p>
               </div>
             </div>
           ))}
 
-          {/* Gauge Card 6 (Chất lượng AI) */}
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm flex items-center justify-between h-[120px] transition hover:shadow-md duration-200">
+          <div className="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white p-2.5 shadow-sm transition duration-200 hover:shadow-md">
             <div className="min-w-0">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">
+              <span className="block truncate text-[9px] font-bold uppercase tracking-wider text-slate-400">
                 Chất lượng (AI)
               </span>
-              <span className="text-xs font-black text-emerald-600 mt-2 inline-block bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+              <span className="mt-1 inline-block rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-600">
                 Đạt 92/100
               </span>
             </div>
-            <div className="shrink-0">
+            <div className="shrink-0 scale-90">
               <CircularProgress score={92} label="Rất tốt" color="#10b981" />
             </div>
           </div>
@@ -1777,223 +1875,236 @@ function FbPageTab() {
       </div>
 
       {/* Row 2: Bottom layout (Left: 70% | Right: 30%) */}
-      <div className="grid gap-5 grid-cols-1 lg:grid-cols-10">
-        {/* Left Side (col-span-7) */}
-        <div className="lg:col-span-7 space-y-5">
+      <div className="grid grid-cols-1 gap-2 xl:grid-cols-12">
+        {/* Left Side */}
+        <div className="space-y-2 xl:col-span-8">
           {/* Table Card (Danh sách Page Facebook) */}
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h3 className="font-extrabold text-slate-800 text-sm">Danh sách Page Facebook</h3>
+                <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
+                  Danh sách Page Facebook
+                </h3>
+                <p className="text-[10px] font-medium text-slate-500">
+                  Lấy từ kênh đã kết nối ở Cài đặt Kênh
+                </p>
               </div>
-              <div className="flex items-center gap-2 text-xs">
-                {/* Search box */}
+              <div className="flex items-center gap-1.5 text-[11px]">
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                   <input
                     type="search"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Tìm kiếm page..."
-                    className="rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-[11px] font-bold shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-150 w-[140px] sm:w-[180px]"
+                    className="w-[130px] rounded-lg border border-slate-200 bg-white py-1.5 pl-7 pr-2 text-[11px] font-bold shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-150 sm:w-[160px]"
                   />
                 </div>
-
-                {/* Dropdown tháng này */}
-                <div className="flex items-center gap-1 border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50 text-[11px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition">
+                <div className="flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[10px] font-bold text-slate-500 transition hover:bg-slate-100">
                   <span>Tháng này</span>
-                  <ChevronDown className="h-3.5 w-3.5" />
+                  <ChevronDown className="h-3 w-3" />
                 </div>
-
-                {/* Download Button */}
                 <button
                   type="button"
                   title="Tải báo cáo"
-                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white transition hover:bg-slate-50"
                 >
-                  <Download className="h-4 w-4 text-slate-500" />
+                  <Download className="h-3.5 w-3.5 text-slate-500" />
                 </button>
               </div>
             </div>
 
-            {/* List Table */}
-            <div className="overflow-x-auto min-h-0 [scrollbar-width:thin]">
-              <table className="w-full text-left border-collapse min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-slate-150 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="pb-2.5 font-black">Page</th>
-                    <th className="pb-2.5 text-center font-black">Trạng thái</th>
-                    <th className="pb-2.5 text-right font-black">Tổng tin nhắn</th>
-                    <th className="pb-2.5 text-right font-black">Tin nhắn từ QC</th>
-                    <th className="pb-2.5 text-center font-black">% từ QC</th>
-                    <th className="pb-2.5 text-right font-black">Tỷ lệ phản hồi</th>
-                    <th className="pb-2.5 text-right font-black">Tỷ lệ chốt</th>
-                    <th className="pb-2.5 text-right font-black">Doanh thu</th>
-                    <th className="pb-2.5 text-center font-black">Chất lượng (AI)</th>
-                    <th className="pb-2.5 text-center font-black">Xu hướng</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100/50">
-                  {filteredPages.map((page, idx) => {
-                    const isInactive = page.status === 'inactive'
-                    return (
-                      <tr key={idx} className="text-xs hover:bg-slate-50/50 transition">
-                        {/* Page logo and metadata */}
-                        <td className="py-3 font-bold text-slate-700 flex items-center gap-2 min-w-0 max-w-[150px]">
-                          <div
-                            className={cn(
-                              'h-7 w-7 rounded-full text-[10px] font-black text-white flex items-center justify-center shrink-0 uppercase',
-                              isInactive
-                                ? 'bg-slate-300'
-                                : 'bg-gradient-to-br from-blue-600 to-indigo-700 shadow-sm'
-                            )}
-                          >
-                            {page.name.charAt(0)}
-                          </div>
-                          <div className="min-w-0 leading-none">
-                            <span className="truncate block font-black text-slate-800 text-[11px]">
-                              {page.name}
-                            </span>
-                            <span className="text-[9px] text-slate-400 font-bold block mt-0.5">
-                              {page.handle}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* Status Badge */}
-                        <td className="py-3 text-center">
-                          <span
-                            className={cn(
-                              'inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold border',
-                              isInactive
-                                ? 'bg-slate-50 text-slate-400 border-slate-100'
-                                : 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                            )}
-                          >
-                            {isInactive ? 'Ngừng hoạt động' : 'Đang hoạt động'}
-                          </span>
-                        </td>
-
-                        {/* Metrics with mini-trends below */}
-                        <td className="py-3 text-right">
-                          <span className="font-black text-slate-800 text-[11px] block leading-none">
-                            {formatNumber(page.totalMsg)}
-                          </span>
-                          <span
-                            className={cn(
-                              'text-[9px] font-bold block mt-1 leading-none',
-                              page.totalTrend.includes('↓') ? 'text-rose-500' : 'text-emerald-500'
-                            )}
-                          >
-                            {page.totalTrend}
-                          </span>
-                        </td>
-
-                        <td className="py-3 text-right">
-                          <span className="font-black text-slate-800 text-[11px] block leading-none">
-                            {formatNumber(page.adMsg)}
-                          </span>
-                          <span
-                            className={cn(
-                              'text-[9px] font-bold block mt-1 leading-none',
-                              page.adTrend.includes('↓') ? 'text-rose-500' : 'text-emerald-500'
-                            )}
-                          >
-                            {page.adTrend}
-                          </span>
-                        </td>
-
-                        {/* % from ads */}
-                        <td className="py-3 text-center font-extrabold text-slate-800 tabular-nums">
-                          {page.adPercent}
-                        </td>
-
-                        {/* Response Rate */}
-                        <td className="py-3 text-right">
-                          <span className="font-black text-slate-800 text-[11px] block leading-none">
-                            {page.responseRate}
-                          </span>
-                          <span
-                            className={cn(
-                              'text-[9px] font-bold block mt-1 leading-none',
-                              page.responseTrend.includes('↓')
-                                ? 'text-rose-500'
-                                : 'text-emerald-500'
-                            )}
-                          >
-                            {page.responseTrend}
-                          </span>
-                        </td>
-
-                        {/* Closing Rate */}
-                        <td className="py-3 text-right">
-                          <span className="font-black text-slate-800 text-[11px] block leading-none">
-                            {page.closingRate}
-                          </span>
-                          <span
-                            className={cn(
-                              'text-[9px] font-bold block mt-1 leading-none',
-                              page.closingTrend.includes('↓') ? 'text-rose-500' : 'text-emerald-500'
-                            )}
-                          >
-                            {page.closingTrend}
-                          </span>
-                        </td>
-
-                        {/* Revenue */}
-                        <td className="py-3 text-right">
-                          <span className="font-black text-slate-800 text-[11px] block leading-none">
-                            {page.revenue}
-                          </span>
-                          <span
-                            className={cn(
-                              'text-[9px] font-bold block mt-1 leading-none',
-                              page.revenueTrend.includes('↓') ? 'text-rose-500' : 'text-emerald-500'
-                            )}
-                          >
-                            {page.revenueTrend}
-                          </span>
-                        </td>
-
-                        {/* AI Quality badge */}
-                        <td className="py-3 text-center">
-                          <span
-                            className={cn(
-                              'inline-flex min-w-[28px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-black',
-                              page.quality >= 85
-                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                : page.quality >= 75
-                                  ? 'bg-amber-50 text-amber-600 border border-amber-100'
-                                  : 'bg-rose-50 text-rose-600 border border-rose-100'
-                            )}
-                          >
-                            {page.quality}
-                          </span>
-                        </td>
-
-                        {/* Xu hướng Sparkline */}
-                        <td className="py-3 text-center">
-                          <div className="flex justify-center">
-                            <SparklinePath
-                              data={page.trendData}
-                              stroke={page.isPositiveTrend ? '#10b981' : '#ef4444'}
+            {!connectedPages.length ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-slate-500">
+                <p>Chưa có Page nào được kết nối.</p>
+                <Link
+                  to="/cskh-quality"
+                  search={{ tab: 'config' }}
+                  className="font-semibold text-indigo-600 underline"
+                >
+                  Thêm kênh tại Cài đặt Kênh
+                </Link>
+              </div>
+            ) : (
+              <div className="min-h-0 overflow-x-auto [scrollbar-width:thin]">
+                <table className="w-full min-w-[700px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-slate-150 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                      <th className="pb-2 font-black">Page</th>
+                      <th className="pb-2 text-center font-black">Trạng thái</th>
+                      <th className="pb-2 text-right font-black">Tổng tin nhắn</th>
+                      <th className="pb-2 text-right font-black">Tin nhắn từ QC</th>
+                      <th className="pb-2 text-center font-black">% từ QC</th>
+                      <th className="pb-2 text-right font-black">Tỷ lệ phản hồi</th>
+                      <th className="pb-2 text-right font-black">Tỷ lệ chốt</th>
+                      <th className="pb-2 text-right font-black">Doanh thu</th>
+                      <th className="pb-2 text-center font-black">Chất lượng (AI)</th>
+                      <th className="pb-2 text-center font-black">Xu hướng</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100/50">
+                    {filteredPages.map((page) => {
+                      const isInactive = page.status === 'inactive'
+                      return (
+                        <tr key={page.pageId} className="text-xs transition hover:bg-slate-50/50">
+                          <td className="flex max-w-[160px] min-w-0 items-center gap-2 py-2 font-bold text-slate-700">
+                            <CskhPageAvatar
+                              name={page.name}
+                              pictureUrl={page.pictureUrl}
+                              pageId={page.pageId}
+                              className="h-7 w-7 shrink-0 rounded-full text-[10px]"
                             />
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            <div className="min-w-0 leading-none">
+                              <span className="block truncate text-[11px] font-black text-slate-800">
+                                {page.name}
+                              </span>
+                              <span className="mt-0.5 block truncate text-[9px] font-bold text-slate-400">
+                                ID: {page.pageId}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Status Badge */}
+                          <td className="py-2 text-center">
+                            <span
+                              className={cn(
+                                'inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold border',
+                                isInactive
+                                  ? 'bg-slate-50 text-slate-400 border-slate-100'
+                                  : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                              )}
+                            >
+                              {isInactive ? 'Ngừng hoạt động' : 'Đang hoạt động'}
+                            </span>
+                          </td>
+
+                          {/* Metrics with mini-trends below */}
+                          <td className="py-2 text-right">
+                            <span className="font-black text-slate-800 text-[11px] block leading-none">
+                              {formatNumber(page.totalMsg)}
+                            </span>
+                            <span
+                              className={cn(
+                                'text-[9px] font-bold block mt-1 leading-none',
+                                page.totalTrend.includes('↓') ? 'text-rose-500' : 'text-emerald-500'
+                              )}
+                            >
+                              {page.totalTrend}
+                            </span>
+                          </td>
+
+                          <td className="py-2 text-right">
+                            <span className="font-black text-slate-800 text-[11px] block leading-none">
+                              {formatNumber(page.adMsg)}
+                            </span>
+                            <span
+                              className={cn(
+                                'text-[9px] font-bold block mt-1 leading-none',
+                                page.adTrend.includes('↓') ? 'text-rose-500' : 'text-emerald-500'
+                              )}
+                            >
+                              {page.adTrend}
+                            </span>
+                          </td>
+
+                          {/* % from ads */}
+                          <td className="py-3 text-center font-extrabold text-slate-800 tabular-nums">
+                            {page.adPercent}
+                          </td>
+
+                          {/* Response Rate */}
+                          <td className="py-2 text-right">
+                            <span className="font-black text-slate-800 text-[11px] block leading-none">
+                              {page.responseRate}
+                            </span>
+                            <span
+                              className={cn(
+                                'text-[9px] font-bold block mt-1 leading-none',
+                                page.responseTrend.includes('↓')
+                                  ? 'text-rose-500'
+                                  : 'text-emerald-500'
+                              )}
+                            >
+                              {page.responseTrend}
+                            </span>
+                          </td>
+
+                          {/* Closing Rate */}
+                          <td className="py-2 text-right">
+                            <span className="font-black text-slate-800 text-[11px] block leading-none">
+                              {page.closingRate}
+                            </span>
+                            <span
+                              className={cn(
+                                'text-[9px] font-bold block mt-1 leading-none',
+                                page.closingTrend.includes('↓')
+                                  ? 'text-rose-500'
+                                  : 'text-emerald-500'
+                              )}
+                            >
+                              {page.closingTrend}
+                            </span>
+                          </td>
+
+                          {/* Revenue */}
+                          <td className="py-2 text-right">
+                            <span className="font-black text-slate-800 text-[11px] block leading-none">
+                              {page.revenue}
+                            </span>
+                            <span
+                              className={cn(
+                                'text-[9px] font-bold block mt-1 leading-none',
+                                page.revenueTrend.includes('↓')
+                                  ? 'text-rose-500'
+                                  : 'text-emerald-500'
+                              )}
+                            >
+                              {page.revenueTrend}
+                            </span>
+                          </td>
+
+                          {/* AI Quality badge */}
+                          <td className="py-2 text-center">
+                            <span
+                              className={cn(
+                                'inline-flex min-w-[28px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-black',
+                                page.quality >= 85
+                                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                  : page.quality >= 75
+                                    ? 'bg-amber-50 text-amber-600 border border-amber-100'
+                                    : 'bg-rose-50 text-rose-600 border border-rose-100'
+                              )}
+                            >
+                              {page.quality}
+                            </span>
+                          </td>
+
+                          {/* Xu hướng Sparkline */}
+                          <td className="py-2 text-center">
+                            <div className="flex justify-center">
+                              <SparklinePath
+                                data={page.trendData}
+                                stroke={page.isPositiveTrend ? '#10b981' : '#ef4444'}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Grid for Message LineChart & Donut Chart */}
-          <div className="grid gap-5 grid-cols-1 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {/* Biểu đồ tin nhắn */}
-            <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between h-[300px]">
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <h3 className="font-extrabold text-slate-800 text-sm">Biểu đồ tin nhắn</h3>
+            <div className="flex flex-col justify-between rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
+                  Biểu đồ tin nhắn
+                </h3>
                 {/* Timeframe tab selector */}
                 <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-black text-slate-500">
                   <span
@@ -2045,7 +2156,7 @@ function FbPageTab() {
               </div>
 
               {/* Message Chart */}
-              <div className="h-[190px] w-full mt-auto">
+              <div className="h-[130px] w-full sm:h-[150px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={MOCK_FB_MESSAGE_TREND}
@@ -2072,6 +2183,7 @@ function FbPageTab() {
                       stroke="#3b82f6"
                       strokeWidth={2}
                       dot={{ r: 2.5 }}
+                      isAnimationActive={false}
                     />
                     <Line
                       type="monotone"
@@ -2080,6 +2192,7 @@ function FbPageTab() {
                       stroke="#10b981"
                       strokeWidth={2}
                       dot={{ r: 2.5 }}
+                      isAnimationActive={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -2087,22 +2200,23 @@ function FbPageTab() {
             </div>
 
             {/* Tỷ lệ tin nhắn từ quảng cáo Donut */}
-            <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col h-[300px]">
-              <h3 className="font-extrabold text-slate-800 text-sm mb-4">
+            <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+              <h3 className="mb-2 text-xs font-extrabold text-slate-800 sm:text-sm">
                 Tỷ lệ tin nhắn từ quảng cáo
               </h3>
 
-              <div className="flex items-center justify-around gap-4 my-auto h-full">
+              <div className="flex flex-col items-center justify-around gap-3 min-[420px]:flex-row">
                 {/* Donut chart */}
-                <div className="relative h-[160px] w-[160px] flex items-center justify-center shrink-0">
+                <div className="relative flex h-[120px] w-[120px] shrink-0 items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={MOCK_FB_SOURCE_PIE}
-                        innerRadius={50}
-                        outerRadius={68}
+                        innerRadius={42}
+                        outerRadius={58}
                         paddingAngle={3}
                         dataKey="value"
+                        isAnimationActive={false}
                       >
                         {MOCK_FB_SOURCE_PIE.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
@@ -2143,12 +2257,12 @@ function FbPageTab() {
           </div>
         </div>
 
-        {/* Right Side (col-span-3) */}
-        <div className="lg:col-span-3 space-y-5">
+        {/* Right Side */}
+        <div className="space-y-2 xl:col-span-4">
           {/* Hiệu suất tin nhắn từ quảng cáo */}
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col">
-            <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
-              <h3 className="font-extrabold text-slate-800 text-sm">
+          <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+            <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+              <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
                 Hiệu suất tin nhắn từ quảng cáo
               </h3>
               <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
@@ -2157,7 +2271,7 @@ function FbPageTab() {
             </div>
 
             {/* Vertically stacked items */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               {MOCK_FB_AD_METRICS.map((item) => {
                 let iconComponent = <MessageCircle className="h-4 w-4" />
                 let bgBox = 'bg-blue-50 text-blue-600 border border-blue-100/50'
@@ -2212,7 +2326,7 @@ function FbPageTab() {
             </div>
 
             {/* Blue Info Alerts Box */}
-            <div className="mt-4 flex items-start gap-2 rounded-2xl bg-blue-50/50 border border-blue-100/60 p-3.5 text-xs text-blue-800 shadow-inner">
+            <div className="mt-2 flex items-start gap-2 rounded-xl border border-blue-100/60 bg-blue-50/50 p-2.5 text-[10px] font-bold text-slate-600 shadow-inner">
               <span className="text-blue-500 font-bold scale-110">💡</span>
               <p className="leading-relaxed font-bold text-slate-600 text-[11px]">
                 Tin nhắn từ quảng cáo chiếm <span className="font-black text-blue-600">60.8%</span>{' '}
@@ -2223,9 +2337,9 @@ function FbPageTab() {
           </div>
 
           {/* Top quảng cáo mang lại nhiều tin nhắn */}
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
-              <h3 className="font-extrabold text-slate-800 text-sm">
+          <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+            <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+              <h3 className="text-xs font-extrabold text-slate-800 sm:text-sm">
                 Top quảng cáo mang lại nhiều tin nhắn
               </h3>
               <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
@@ -2234,7 +2348,7 @@ function FbPageTab() {
             </div>
 
             {/* Item Rows with Thumbnails */}
-            <div className="space-y-3.5 my-auto">
+            <div className="space-y-2">
               {MOCK_FB_TOP_ADS.map((ad, idx) => {
                 const colors = [
                   'bg-purple-100 border-purple-200 text-purple-700',
@@ -2279,10 +2393,12 @@ function FbPageTab() {
           </div>
 
           {/* AI Insight về Page */}
-          <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between">
-            <h3 className="font-extrabold text-slate-800 text-sm mb-4">AI Insight về Page</h3>
+          <div className="flex flex-col rounded-xl border border-slate-200/60 bg-white p-3 shadow-sm">
+            <h3 className="mb-2 text-xs font-extrabold text-slate-800 sm:text-sm">
+              AI Insight về Page
+            </h3>
 
-            <div className="space-y-3 flex-1 flex flex-col justify-center my-auto">
+            <div className="space-y-2">
               {MOCK_FB_AI_INSIGHTS.map((ins) => {
                 let statusDotColor = 'bg-emerald-500'
                 let bulletBg = 'bg-emerald-50 text-emerald-600 border border-emerald-100'
@@ -2405,7 +2521,7 @@ export function CskhQualityPage() {
       className={
         tab === 'audit'
           ? undefined
-          : tab === 'overview'
+          : tab === 'overview' || tab === 'fb-page'
             ? 'h-full min-h-0 flex-1'
             : '!h-auto min-h-0 flex-none overflow-visible'
       }
@@ -2418,7 +2534,7 @@ export function CskhQualityPage() {
         className={
           tab === 'audit'
             ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden'
-            : tab === 'overview'
+            : tab === 'overview' || tab === 'fb-page'
               ? 'flex h-full min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-1 [scrollbar-width:thin]'
               : 'min-h-0 overflow-x-hidden overflow-y-auto'
         }
