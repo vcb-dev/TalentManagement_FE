@@ -1727,9 +1727,12 @@ function CircularProgress({
   )
 }
 
+const FB_PAGE_LIST_PAGE_SIZE = 5
+
 function FbPageTab() {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTimeframe, setActiveTimeframe] = useState<'day' | 'week' | 'month'>('day')
+  const [visiblePageCount, setVisiblePageCount] = useState(FB_PAGE_LIST_PAGE_SIZE)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['cskh', 'pages'],
@@ -1747,6 +1750,18 @@ function FbPageTab() {
       (page) => page.name.toLowerCase().includes(q) || page.pageId.toLowerCase().includes(q)
     )
   }, [pageRows, searchTerm])
+
+  useEffect(() => {
+    setVisiblePageCount(FB_PAGE_LIST_PAGE_SIZE)
+  }, [searchTerm, filteredPages.length])
+
+  const visiblePages = useMemo(
+    () => filteredPages.slice(0, visiblePageCount),
+    [filteredPages, visiblePageCount]
+  )
+
+  const remainingPageCount = Math.max(0, filteredPages.length - visiblePageCount)
+  const canLoadMorePages = remainingPageCount > 0
 
   if (isLoading) {
     return (
@@ -1887,6 +1902,11 @@ function FbPageTab() {
                 </h3>
                 <p className="text-[10px] font-medium text-slate-500">
                   Lấy từ kênh đã kết nối ở Cài đặt Kênh
+                  {filteredPages.length > 0 ? (
+                    <span className="ml-1 text-slate-400">
+                      · Hiển thị {visiblePages.length}/{filteredPages.length}
+                    </span>
+                  ) : null}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 text-[11px]">
@@ -1926,174 +1946,198 @@ function FbPageTab() {
                 </Link>
               </div>
             ) : (
-              <div className="min-h-0 overflow-x-auto [scrollbar-width:thin]">
-                <table className="w-full min-w-[700px] border-collapse text-left">
-                  <thead>
-                    <tr className="border-b border-slate-150 text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                      <th className="pb-2 font-black">Page</th>
-                      <th className="pb-2 text-center font-black">Trạng thái</th>
-                      <th className="pb-2 text-right font-black">Tổng tin nhắn</th>
-                      <th className="pb-2 text-right font-black">Tin nhắn từ QC</th>
-                      <th className="pb-2 text-center font-black">% từ QC</th>
-                      <th className="pb-2 text-right font-black">Tỷ lệ phản hồi</th>
-                      <th className="pb-2 text-right font-black">Tỷ lệ chốt</th>
-                      <th className="pb-2 text-right font-black">Doanh thu</th>
-                      <th className="pb-2 text-center font-black">Chất lượng (AI)</th>
-                      <th className="pb-2 text-center font-black">Xu hướng</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100/50">
-                    {filteredPages.map((page) => {
-                      const isInactive = page.status === 'inactive'
-                      return (
-                        <tr key={page.pageId} className="text-xs transition hover:bg-slate-50/50">
-                          <td className="flex max-w-[160px] min-w-0 items-center gap-2 py-2 font-bold text-slate-700">
-                            <CskhPageAvatar
-                              name={page.name}
-                              pictureUrl={page.pictureUrl}
-                              pageId={page.pageId}
-                              className="h-7 w-7 shrink-0 rounded-full text-[10px]"
-                            />
-                            <div className="min-w-0 leading-none">
-                              <span className="block truncate text-[11px] font-black text-slate-800">
-                                {page.name}
-                              </span>
-                              <span className="mt-0.5 block truncate text-[9px] font-bold text-slate-400">
-                                ID: {page.pageId}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Status Badge */}
-                          <td className="py-2 text-center">
-                            <span
-                              className={cn(
-                                'inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold border',
-                                isInactive
-                                  ? 'bg-slate-50 text-slate-400 border-slate-100'
-                                  : 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                              )}
-                            >
-                              {isInactive ? 'Ngừng hoạt động' : 'Đang hoạt động'}
-                            </span>
-                          </td>
-
-                          {/* Metrics with mini-trends below */}
-                          <td className="py-2 text-right">
-                            <span className="font-black text-slate-800 text-[11px] block leading-none">
-                              {formatNumber(page.totalMsg)}
-                            </span>
-                            <span
-                              className={cn(
-                                'text-[9px] font-bold block mt-1 leading-none',
-                                page.totalTrend.includes('↓') ? 'text-rose-500' : 'text-emerald-500'
-                              )}
-                            >
-                              {page.totalTrend}
-                            </span>
-                          </td>
-
-                          <td className="py-2 text-right">
-                            <span className="font-black text-slate-800 text-[11px] block leading-none">
-                              {formatNumber(page.adMsg)}
-                            </span>
-                            <span
-                              className={cn(
-                                'text-[9px] font-bold block mt-1 leading-none',
-                                page.adTrend.includes('↓') ? 'text-rose-500' : 'text-emerald-500'
-                              )}
-                            >
-                              {page.adTrend}
-                            </span>
-                          </td>
-
-                          {/* % from ads */}
-                          <td className="py-3 text-center font-extrabold text-slate-800 tabular-nums">
-                            {page.adPercent}
-                          </td>
-
-                          {/* Response Rate */}
-                          <td className="py-2 text-right">
-                            <span className="font-black text-slate-800 text-[11px] block leading-none">
-                              {page.responseRate}
-                            </span>
-                            <span
-                              className={cn(
-                                'text-[9px] font-bold block mt-1 leading-none',
-                                page.responseTrend.includes('↓')
-                                  ? 'text-rose-500'
-                                  : 'text-emerald-500'
-                              )}
-                            >
-                              {page.responseTrend}
-                            </span>
-                          </td>
-
-                          {/* Closing Rate */}
-                          <td className="py-2 text-right">
-                            <span className="font-black text-slate-800 text-[11px] block leading-none">
-                              {page.closingRate}
-                            </span>
-                            <span
-                              className={cn(
-                                'text-[9px] font-bold block mt-1 leading-none',
-                                page.closingTrend.includes('↓')
-                                  ? 'text-rose-500'
-                                  : 'text-emerald-500'
-                              )}
-                            >
-                              {page.closingTrend}
-                            </span>
-                          </td>
-
-                          {/* Revenue */}
-                          <td className="py-2 text-right">
-                            <span className="font-black text-slate-800 text-[11px] block leading-none">
-                              {page.revenue}
-                            </span>
-                            <span
-                              className={cn(
-                                'text-[9px] font-bold block mt-1 leading-none',
-                                page.revenueTrend.includes('↓')
-                                  ? 'text-rose-500'
-                                  : 'text-emerald-500'
-                              )}
-                            >
-                              {page.revenueTrend}
-                            </span>
-                          </td>
-
-                          {/* AI Quality badge */}
-                          <td className="py-2 text-center">
-                            <span
-                              className={cn(
-                                'inline-flex min-w-[28px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-black',
-                                page.quality >= 85
-                                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                  : page.quality >= 75
-                                    ? 'bg-amber-50 text-amber-600 border border-amber-100'
-                                    : 'bg-rose-50 text-rose-600 border border-rose-100'
-                              )}
-                            >
-                              {page.quality}
-                            </span>
-                          </td>
-
-                          {/* Xu hướng Sparkline */}
-                          <td className="py-2 text-center">
-                            <div className="flex justify-center">
-                              <SparklinePath
-                                data={page.trendData}
-                                stroke={page.isPositiveTrend ? '#10b981' : '#ef4444'}
+              <>
+                <div className="min-h-0 overflow-x-auto [scrollbar-width:thin]">
+                  <table className="w-full min-w-[720px] border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-slate-150 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <th className="pb-2.5 font-black">Page</th>
+                        <th className="pb-2.5 text-center font-black">Trạng thái</th>
+                        <th className="pb-2.5 text-right font-black">Tổng tin nhắn</th>
+                        <th className="pb-2.5 text-right font-black">Tin nhắn từ QC</th>
+                        <th className="pb-2.5 text-center font-black">% từ QC</th>
+                        <th className="pb-2.5 text-right font-black">Tỷ lệ phản hồi</th>
+                        <th className="pb-2.5 text-right font-black">Tỷ lệ chốt</th>
+                        <th className="pb-2.5 text-right font-black">Doanh thu</th>
+                        <th className="pb-2.5 text-center font-black">Chất lượng (AI)</th>
+                        <th className="pb-2.5 text-center font-black">Xu hướng</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/50">
+                      {visiblePages.map((page) => {
+                        const isInactive = page.status === 'inactive'
+                        return (
+                          <tr key={page.pageId} className="text-xs transition hover:bg-slate-50/50">
+                            <td className="flex max-w-[200px] min-w-0 items-center gap-2.5 py-2.5 font-bold text-slate-700">
+                              <CskhPageAvatar
+                                name={page.name}
+                                pictureUrl={page.pictureUrl}
+                                pageId={page.pageId}
+                                className="h-8 w-8 shrink-0 rounded-full text-[11px]"
                               />
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                              <div className="min-w-0 leading-tight">
+                                <span className="block truncate text-xs font-black text-slate-800">
+                                  {page.name}
+                                </span>
+                                <span className="mt-0.5 block truncate text-[10px] font-bold text-slate-400">
+                                  ID: {page.pageId}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Status Badge */}
+                            <td className="py-2.5 text-center">
+                              <span
+                                className={cn(
+                                  'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold',
+                                  isInactive
+                                    ? 'bg-slate-50 text-slate-400 border-slate-100'
+                                    : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                )}
+                              >
+                                {isInactive ? 'Ngừng hoạt động' : 'Đang hoạt động'}
+                              </span>
+                            </td>
+
+                            {/* Metrics with mini-trends below */}
+                            <td className="py-2.5 text-right">
+                              <span className="block text-xs font-black leading-none text-slate-800">
+                                {formatNumber(page.totalMsg)}
+                              </span>
+                              <span
+                                className={cn(
+                                  'mt-1 block text-[10px] font-bold leading-none',
+                                  page.totalTrend.includes('↓')
+                                    ? 'text-rose-500'
+                                    : 'text-emerald-500'
+                                )}
+                              >
+                                {page.totalTrend}
+                              </span>
+                            </td>
+
+                            <td className="py-2.5 text-right">
+                              <span className="block text-xs font-black leading-none text-slate-800">
+                                {formatNumber(page.adMsg)}
+                              </span>
+                              <span
+                                className={cn(
+                                  'mt-1 block text-[10px] font-bold leading-none',
+                                  page.adTrend.includes('↓') ? 'text-rose-500' : 'text-emerald-500'
+                                )}
+                              >
+                                {page.adTrend}
+                              </span>
+                            </td>
+
+                            {/* % from ads */}
+                            <td className="py-2.5 text-center text-xs font-extrabold tabular-nums text-slate-800">
+                              {page.adPercent}
+                            </td>
+
+                            {/* Response Rate */}
+                            <td className="py-2.5 text-right">
+                              <span className="block text-xs font-black leading-none text-slate-800">
+                                {page.responseRate}
+                              </span>
+                              <span
+                                className={cn(
+                                  'mt-1 block text-[10px] font-bold leading-none',
+                                  page.responseTrend.includes('↓')
+                                    ? 'text-rose-500'
+                                    : 'text-emerald-500'
+                                )}
+                              >
+                                {page.responseTrend}
+                              </span>
+                            </td>
+
+                            {/* Closing Rate */}
+                            <td className="py-2.5 text-right">
+                              <span className="block text-xs font-black leading-none text-slate-800">
+                                {page.closingRate}
+                              </span>
+                              <span
+                                className={cn(
+                                  'mt-1 block text-[10px] font-bold leading-none',
+                                  page.closingTrend.includes('↓')
+                                    ? 'text-rose-500'
+                                    : 'text-emerald-500'
+                                )}
+                              >
+                                {page.closingTrend}
+                              </span>
+                            </td>
+
+                            {/* Revenue */}
+                            <td className="py-2.5 text-right">
+                              <span className="block text-xs font-black leading-none text-slate-800">
+                                {page.revenue}
+                              </span>
+                              <span
+                                className={cn(
+                                  'mt-1 block text-[10px] font-bold leading-none',
+                                  page.revenueTrend.includes('↓')
+                                    ? 'text-rose-500'
+                                    : 'text-emerald-500'
+                                )}
+                              >
+                                {page.revenueTrend}
+                              </span>
+                            </td>
+
+                            {/* AI Quality badge */}
+                            <td className="py-2.5 text-center">
+                              <span
+                                className={cn(
+                                  'inline-flex min-w-[30px] items-center justify-center rounded-full border px-2 py-0.5 text-[10px] font-black',
+                                  page.quality >= 85
+                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                    : page.quality >= 75
+                                      ? 'bg-amber-50 text-amber-600 border border-amber-100'
+                                      : 'bg-rose-50 text-rose-600 border border-rose-100'
+                                )}
+                              >
+                                {page.quality}
+                              </span>
+                            </td>
+
+                            {/* Xu hướng Sparkline */}
+                            <td className="py-2.5 text-center">
+                              <div className="flex justify-center">
+                                <SparklinePath
+                                  data={page.trendData}
+                                  stroke={page.isPositiveTrend ? '#10b981' : '#ef4444'}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {canLoadMorePages ? (
+                  <div className="mt-2 flex justify-center border-t border-slate-100 pt-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setVisiblePageCount((count) => count + FB_PAGE_LIST_PAGE_SIZE)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100"
+                    >
+                      Xem thêm
+                      <span className="font-black">
+                        {Math.min(remainingPageCount, FB_PAGE_LIST_PAGE_SIZE)} kênh
+                      </span>
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : filteredPages.length > FB_PAGE_LIST_PAGE_SIZE ? (
+                  <p className="mt-2 border-t border-slate-100 pt-2 text-center text-[10px] font-medium text-slate-400">
+                    Đã hiển thị tất cả {filteredPages.length} kênh
+                  </p>
+                ) : null}
+              </>
             )}
           </div>
 
