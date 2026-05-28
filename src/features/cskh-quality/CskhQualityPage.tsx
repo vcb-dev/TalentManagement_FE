@@ -122,7 +122,7 @@ function ConfigTab() {
                 ) : (
                   <RefreshCw className="h-4 w-4" />
                 )}
-                Làm mới token
+                Cập nhật kết nối Facebook
               </button>
             </div>
             {data?.oauthConnected ? (

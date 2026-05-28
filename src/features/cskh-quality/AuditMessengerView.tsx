@@ -61,6 +61,13 @@ import {
   MessengerWorkspace,
   type MessengerWorkspacePane,
 } from './cskhUi'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useCskhInboxStream } from './useCskhInboxStream'
 
 const AUDIT_JOB_KEY = 'cskh:audit-job-id'
@@ -951,19 +958,23 @@ export function AuditMessengerView({
             <label className="text-sm font-medium text-slate-700" htmlFor="audit-page-filter">
               Page
             </label>
-            <select
-              id="audit-page-filter"
-              value={selectedPageId}
-              onChange={(e) => setSelectedPageId(e.target.value)}
-              className="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-sm focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
-            >
-              <option value="all">Tất cả page</option>
-              {pageOptions.map((p) => (
-                <option key={p.pageId} value={p.pageId}>
-                  {p.pageName || p.pageId}
-                </option>
-              ))}
-            </select>
+            <Select value={selectedPageId} onValueChange={(v) => setSelectedPageId(v)}>
+              <SelectTrigger
+                id="audit-page-filter"
+                className="h-9 min-w-[180px] border-slate-200 bg-white text-xs font-medium text-slate-700"
+                aria-label="Lọc theo page"
+              >
+                <SelectValue placeholder="Tất cả page" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả page</SelectItem>
+                {pageOptions.map((p) => (
+                  <SelectItem key={p.pageId} value={p.pageId}>
+                    {p.pageName || p.pageId}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {selected && sortedAudits.length > 0 && (
             <span className="inline-flex items-center rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
