@@ -38,16 +38,7 @@ import {
   Bar,
 } from 'recharts'
 import { cn } from '@/lib/utils'
-import {
-  fetchCskhPages,
-  fetchCskhAudits,
-  fetchAuditTokenStats,
-  fetchDeepSeekBalance,
-  fetchInboxConversations,
-  fetchRunningCskhJob,
-  getCskhOAuthStartUrl,
-  refreshCskhOAuth,
-} from './api'
+import { fetchCskhPages, getCskhOAuthStartUrl, refreshCskhOAuth, fetchRunningCskhJob } from './api'
 import { AuditMessengerView } from './AuditMessengerView'
 import { CskhGlassPanel, CskhPageShell, CskhPageAvatar } from './cskhUi'
 
@@ -620,22 +611,7 @@ const MOCK_FB_AI_INSIGHTS = [
 ]
 
 function Sparkline({ data, strokeColor }: { data: { v: number }[]; strokeColor: string }) {
-  return (
-    <div className="h-10 w-24 shrink-0 bg-transparent">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
-          <Line
-            type="monotone"
-            dataKey="v"
-            stroke={strokeColor}
-            strokeWidth={1.5}
-            dot={{ r: 2.5, fill: strokeColor, strokeWidth: 0 }}
-            activeDot={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  )
+  return <SparklinePath data={data.map((d) => d.v)} stroke={strokeColor} />
 }
 
 function getCardIconAndColors(id: string) {
@@ -679,33 +655,8 @@ function getCardIconAndColors(id: string) {
 }
 
 function OverviewTab() {
-  // We run the queries in the background to satisfy any caching/real-time sync needs,
-  // but we build our dashboard fully styled to match the requested visual interface.
-  useQuery({ queryKey: ['cskh', 'pages'], queryFn: fetchCskhPages })
-  useQuery({
-    queryKey: ['cskh', 'inbox', 'overview'],
-    queryFn: () => fetchInboxConversations(),
-  })
-  useQuery({
-    queryKey: ['cskh', 'audits', 'overview'],
-    queryFn: () => fetchCskhAudits({ limit: 300 }),
-  })
-  useQuery({
-    queryKey: ['cskh', 'jobs', 'running', 'audit'],
-    queryFn: () => fetchRunningCskhJob('audit'),
-    refetchInterval: (q) => (q.state.data?.status === 'running' ? 3000 : false),
-  })
-  useQuery({
-    queryKey: ['cskh', 'audit-token-stats'],
-    queryFn: fetchAuditTokenStats,
-  })
-  useQuery({
-    queryKey: ['cskh', 'deepseek-balance'],
-    queryFn: fetchDeepSeekBalance,
-  })
-
   return (
-    <div className="space-y-6 p-5 sm:p-6 bg-[#f4f7fc]">
+    <div className="min-w-0 space-y-5 overflow-x-hidden p-4 sm:space-y-6 sm:p-6 bg-[#f4f7fc]">
       {/* Upper Title and Operational Overview Banner */}
       <div className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -740,44 +691,53 @@ function OverviewTab() {
       </div>
 
       {/* Reihe 1: 6 KPI-Karten mit Sparklines */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         {MOCK_KPI_CARDS.map((card) => {
           const details = getCardIconAndColors(card.id)
+          const isCompactValue =
+            card.id === 'revenue' || card.id === 'organic-orders' || card.id === 'ad-orders'
           return (
             <div
               key={card.id}
-              className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm flex flex-col justify-between h-[135px] transition hover:shadow-md duration-200"
+              className="flex min-h-[8.75rem] min-w-0 flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm transition duration-200 hover:shadow-md"
             >
               {/* Row 1: Icon and Title */}
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 <div
                   className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-xl shrink-0',
+                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl',
                     details.iconBg
                   )}
                 >
                   {details.icon}
                 </div>
-                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500 line-clamp-1">
+                <span className="min-w-0 text-[11px] font-bold uppercase tracking-wide text-slate-500 line-clamp-2 leading-snug">
                   {card.label}
                 </span>
               </div>
 
               {/* Row 2: Main Big Value */}
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-black text-slate-800 tracking-tight">
+              <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-1">
+                <span
+                  className={cn(
+                    'min-w-0 font-black tracking-tight text-slate-800 break-words',
+                    isCompactValue ? 'text-lg sm:text-xl' : 'text-2xl'
+                  )}
+                >
                   {card.value}
                 </span>
-                {card.max && <span className="text-sm font-bold text-slate-400">{card.max}</span>}
+                {card.max && (
+                  <span className="shrink-0 text-sm font-bold text-slate-400">{card.max}</span>
+                )}
                 {(card.id === 'csat' || card.id === 'conversion-rate') && (
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 text-[10px] font-black text-emerald-600 ml-1.5">
+                  <span className="ml-0.5 inline-flex shrink-0 items-center gap-0.5 rounded-full border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-black text-emerald-600">
                     {card.trend}
                   </span>
                 )}
               </div>
 
               {/* Row 3: Bottom info + Sparkline separated */}
-              <div className="flex items-end justify-between mt-auto">
+              <div className="mt-auto flex items-end justify-between gap-2 pt-2">
                 {/* Left Column: Trend and comparison details */}
                 <div className="flex flex-col min-w-0 pr-1 select-none">
                   {card.id !== 'csat' && card.id !== 'conversion-rate' ? (
@@ -806,12 +766,12 @@ function OverviewTab() {
         })}
       </div>
 
-      {/* Reihe 2: Analyse & Produkte (3 Spalten: 40% | 30% | 30%) */}
-      <div className="grid gap-5 grid-cols-1 lg:grid-cols-10">
-        {/* Xu hướng chất lượng theo ngày (40% Spalten) */}
-        <div className="lg:col-span-4 rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between min-h-[340px]">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <h3 className="font-extrabold text-slate-800 text-sm">Xu hướng chất lượng theo ngày</h3>
+      {/* Reihe 2: Analyse & Produkte */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+        {/* Xu hướng chất lượng theo ngày */}
+        <div className="flex min-h-[340px] min-w-0 flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5 xl:col-span-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-sm font-extrabold text-slate-800">Xu hướng chất lượng theo ngày</h3>
             <div className="flex items-center gap-1 border border-slate-200 rounded-lg px-2 py-1 bg-slate-50 text-[11px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition">
               <span>Theo ngày</span>
               <ChevronDown className="h-3.5 w-3.5" />
@@ -819,7 +779,7 @@ function OverviewTab() {
           </div>
 
           {/* Legend Custom */}
-          <div className="flex items-center gap-4 text-xs font-bold text-slate-500 mb-4 justify-start">
+          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-slate-500">
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-blue-500" />
               <span>QA Score (TB)</span>
@@ -862,6 +822,7 @@ function OverviewTab() {
                   stroke="#3b82f6"
                   strokeWidth={2}
                   dot={{ r: 2 }}
+                  isAnimationActive={false}
                 />
                 <Line
                   type="monotone"
@@ -870,6 +831,7 @@ function OverviewTab() {
                   stroke="#10b981"
                   strokeWidth={2}
                   dot={{ r: 2 }}
+                  isAnimationActive={false}
                 />
                 <Line
                   type="monotone"
@@ -878,19 +840,20 @@ function OverviewTab() {
                   stroke="#8b5cf6"
                   strokeWidth={2}
                   dot={{ r: 2 }}
+                  isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Nguồn hội thoại & tỷ lệ chốt (30% Spalten) */}
-        <div className="lg:col-span-3 rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col min-h-[340px]">
-          <h3 className="font-extrabold text-slate-800 text-sm mb-4">
+        {/* Nguồn hội thoại & tỷ lệ chốt */}
+        <div className="flex min-h-[340px] min-w-0 flex-col rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5 xl:col-span-3">
+          <h3 className="mb-4 text-sm font-extrabold text-slate-800">
             Nguồn hội thoại & tỷ lệ chốt
           </h3>
 
-          <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center justify-between gap-5 my-auto">
+          <div className="my-auto flex flex-col items-center justify-between gap-5 min-[420px]:flex-row xl:flex-col 2xl:flex-row">
             {/* Donut PieChart */}
             <div className="relative h-[160px] w-[160px] flex items-center justify-center shrink-0">
               <ResponsiveContainer width="100%" height="100%">
@@ -901,6 +864,7 @@ function OverviewTab() {
                     outerRadius={68}
                     paddingAngle={3}
                     dataKey="value"
+                    isAnimationActive={false}
                   >
                     {MOCK_SOURCE_PIE.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -949,10 +913,10 @@ function OverviewTab() {
           </div>
         </div>
 
-        {/* Top sản phẩm được quan tâm nhiều (30% Spalten) */}
-        <div className="lg:col-span-3 rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between min-h-[340px]">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <h3 className="font-extrabold text-slate-800 text-sm">
+        {/* Top sản phẩm được quan tâm nhiều */}
+        <div className="flex min-h-[340px] min-w-0 flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5 xl:col-span-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="min-w-0 text-sm font-extrabold text-slate-800">
               Top sản phẩm được quan tâm nhiều
             </h3>
             <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
@@ -1014,10 +978,10 @@ function OverviewTab() {
         </div>
       </div>
 
-      {/* Reihe 3: Effektivität & Funnel (4 Spalten: 25% | 25% | 25% | 25%) */}
-      <div className="grid gap-5 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+      {/* Reihe 3: Effektivität & Funnel */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
         {/* Hiệu quả theo Page */}
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between min-h-[350px]">
+        <div className="flex min-h-[350px] min-w-0 flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
             <h3 className="font-extrabold text-slate-800 text-sm">Hiệu quả theo Page</h3>
             <span className="text-xs font-bold text-indigo-600 cursor-pointer hover:underline">
@@ -1025,8 +989,8 @@ function OverviewTab() {
             </span>
           </div>
 
-          <div className="overflow-x-auto min-h-0 flex-1 flex flex-col justify-center">
-            <table className="w-full text-left border-collapse">
+          <div className="min-h-0 flex-1 overflow-x-auto">
+            <table className="w-full min-w-[280px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   <th className="pb-2 font-black">Page</th>
@@ -1070,12 +1034,12 @@ function OverviewTab() {
         </div>
 
         {/* Phễu chăm sóc & chốt đơn */}
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm min-h-[350px] flex flex-col">
-          <h3 className="font-extrabold text-slate-800 text-sm mb-4">Phễu chăm sóc & chốt đơn</h3>
+        <div className="flex min-h-[350px] min-w-0 flex-col rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5">
+          <h3 className="mb-4 text-sm font-extrabold text-slate-800">Phễu chăm sóc & chốt đơn</h3>
 
-          <div className="grid grid-cols-4 gap-4 items-center my-auto">
+          <div className="my-auto grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
             {/* Left Column: Funnel blocks of centered decreasing width */}
-            <div className="col-span-3 space-y-2.5">
+            <div className="min-w-0 space-y-2.5">
               {MOCK_FUNNEL_STEPS.map((step, idx) => {
                 const widths = ['w-full', 'w-[88%]', 'w-[76%]', 'w-[64%]', 'w-[52%]']
                 return (
@@ -1101,12 +1065,12 @@ function OverviewTab() {
             </div>
 
             {/* Right Column: Connection arrows pointing down with transition rate */}
-            <div className="col-span-1 h-[250px] flex flex-col justify-around py-3 pl-2 relative border-l border-slate-100">
-              <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-blue-200 via-purple-200 to-emerald-200" />
+            <div className="relative flex min-h-0 flex-row flex-wrap items-center justify-center gap-2 border-t border-slate-100 pt-3 lg:flex-col lg:justify-around lg:border-l lg:border-t-0 lg:py-3 lg:pl-2 lg:pt-0">
+              <div className="absolute left-0 top-0 hidden h-full w-px bg-gradient-to-b from-blue-200 via-purple-200 to-emerald-200 lg:block" />
               {MOCK_FUNNEL_CONVERSIONS.map((conv, idx) => (
                 <div
                   key={idx}
-                  className="relative flex items-center gap-1.5 z-10 -ml-[13px] bg-white py-0.5"
+                  className="relative z-10 flex items-center gap-1.5 rounded-lg bg-white py-0.5 lg:-ml-[13px]"
                 >
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 shadow-sm">
                     <ChevronRight className="h-3 w-3 rotate-90" />
@@ -1126,7 +1090,7 @@ function OverviewTab() {
         </div>
 
         {/* Khách hàng cần chăm sóc */}
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm min-h-[350px] flex flex-col">
+        <div className="flex min-h-[350px] min-w-0 flex-col rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5">
           <h3 className="font-extrabold text-slate-800 text-sm mb-4">Khách hàng cần chăm sóc</h3>
 
           <div className="grid grid-cols-1 gap-3 flex-1 justify-center my-auto">
@@ -1166,7 +1130,7 @@ function OverviewTab() {
         </div>
 
         {/* Xếp hạng nhân viên */}
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm flex flex-col justify-between min-h-[350px]">
+        <div className="flex min-h-[350px] min-w-0 flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex items-center justify-between gap-3 mb-4 shrink-0">
             <h3 className="font-extrabold text-slate-800 text-sm">
               Xếp hạng nhân viên (theo QA Score)
@@ -1176,8 +1140,8 @@ function OverviewTab() {
             </span>
           </div>
 
-          <div className="overflow-x-auto min-h-0 flex-1 flex flex-col justify-center">
-            <table className="w-full text-left border-collapse">
+          <div className="min-h-0 flex-1 overflow-x-auto">
+            <table className="w-full min-w-[280px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   <th className="pb-2 text-center font-black w-6">#</th>
@@ -1219,10 +1183,10 @@ function OverviewTab() {
         </div>
       </div>
 
-      {/* Reihe 4: Sentiment & Aktivitäten (4 Spalten: 25% | 25% | 25% | 25%) */}
-      <div className="grid gap-5 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+      {/* Reihe 4: Sentiment & Aktivitäten */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
         {/* Cảm xúc khách hàng */}
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm min-h-[330px] flex flex-col justify-between">
+        <div className="flex min-h-[330px] min-w-0 flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm sm:p-5">
           <h3 className="font-extrabold text-slate-800 text-sm mb-4">Cảm xúc khách hàng</h3>
 
           <div className="flex flex-col justify-between flex-1 my-auto">
@@ -1320,7 +1284,7 @@ function OverviewTab() {
           </div>
 
           {/* Custom CSAT Legend */}
-          <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 mb-3 shrink-0">
+          <div className="mb-3 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-500">
             <div className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               <span>Tích cực</span>
@@ -1357,14 +1321,28 @@ function OverviewTab() {
                   unit="%"
                 />
                 <Tooltip cursor={{ fill: '#f8fafc' }} />
-                <Bar dataKey="positive" name="Tích cực" stackId="a" fill="#10b981" barSize={14} />
-                <Bar dataKey="neutral" name="Trung tính" stackId="a" fill="#f59e0b" />
+                <Bar
+                  dataKey="positive"
+                  name="Tích cực"
+                  stackId="a"
+                  fill="#10b981"
+                  barSize={14}
+                  isAnimationActive={false}
+                />
+                <Bar
+                  dataKey="neutral"
+                  name="Trung tính"
+                  stackId="a"
+                  fill="#f59e0b"
+                  isAnimationActive={false}
+                />
                 <Bar
                   dataKey="negative"
                   name="Tiêu cực"
                   stackId="a"
                   fill="#ef4444"
                   radius={[3, 3, 0, 0]}
+                  isAnimationActive={false}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -2412,7 +2390,9 @@ export function CskhQualityPage() {
   }, [])
 
   return (
-    <CskhPageShell className={tab === 'config' ? '!h-auto flex-none' : undefined}>
+    <CskhPageShell
+      className={tab === 'audit' ? undefined : '!h-auto min-h-0 flex-none overflow-visible'}
+    >
       {auditJobBusy && tab === 'audit' ? (
         <p className="mb-2 text-xs font-medium text-indigo-600">Đang quét và chấm điểm…</p>
       ) : null}
@@ -2421,27 +2401,13 @@ export function CskhQualityPage() {
         className={
           tab === 'audit'
             ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden'
-            : 'min-h-0 overflow-visible'
+            : 'min-h-0 overflow-x-hidden overflow-y-auto'
         }
       >
-        <div className={tab === 'overview' ? '' : 'hidden'}>
-          <OverviewTab />
-        </div>
-        <div className={tab === 'fb-page' ? '' : 'hidden'}>
-          <FbPageTab />
-        </div>
-        <div className={tab === 'config' ? 'min-h-0' : 'hidden'}>
-          <ConfigTab />
-        </div>
-        <div
-          className={
-            tab === 'audit'
-              ? 'flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
-              : 'hidden'
-          }
-        >
-          <AuditMessengerView onAuditJobActiveChange={setAuditJobBusy} />
-        </div>
+        {tab === 'overview' ? <OverviewTab /> : null}
+        {tab === 'fb-page' ? <FbPageTab /> : null}
+        {tab === 'config' ? <ConfigTab /> : null}
+        {tab === 'audit' ? <AuditMessengerView onAuditJobActiveChange={setAuditJobBusy} /> : null}
       </CskhGlassPanel>
     </CskhPageShell>
   )
