@@ -476,7 +476,7 @@ export function MessengerWorkspace({
             className={cn(
               'flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden',
               /* Danh sách cố định · chat vừa phải · AI chiếm phần còn lại — full width */
-              'xl:grid xl:w-full xl:grid-cols-[minmax(228px,18%)_minmax(300px,30%)_minmax(360px,1fr)] xl:gap-2.5 xl:2xl:grid-cols-[minmax(240px,16%)_minmax(320px,28%)_minmax(400px,1fr)]'
+              'xl:grid xl:w-full xl:grid-cols-[minmax(252px,22%)_minmax(320px,34%)_minmax(340px,1fr)] xl:gap-2.5 xl:2xl:grid-cols-[minmax(268px,20%)_minmax(360px,32%)_minmax(360px,1fr)]'
             )}
           >
             <aside
