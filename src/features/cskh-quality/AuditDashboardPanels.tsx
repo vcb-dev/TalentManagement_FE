@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import { Filter, Loader2, MessageSquare, Sparkles, Star, Tag } from 'lucide-react'
 import {
   ChartContainer,
@@ -10,7 +10,7 @@ import {
 import { FiveStarRank } from '@/components/icons/FiveStarRank'
 import { cn } from '@/lib/utils'
 import type {
-  AuditComparisonStats,
+  AuditScoreHistory,
   CskhAuditRow,
   CskhCustomerIntent,
   CskhInboxConversation,
@@ -27,7 +27,6 @@ import {
   buildTimelineEvents,
   conversationIndexLabel,
   criterionBarColor,
-  resolveComparisonAverages,
   resolveCriteriaScores,
   resolveFeedbackBullets,
   resolveKeywords,
@@ -41,8 +40,8 @@ import {
 import { parseAuditActionItems, type DisplayTranscriptLine } from './auditHelpers'
 import { CskhAdSourceBadge, CskhPageAvatar } from './cskhUi'
 
-const compareChartConfig = {
-  score: { label: 'Điểm', color: 'hsl(262 83% 58%)' },
+const scoreHistoryChartConfig = {
+  score: { label: 'Điểm chất lượng', color: 'hsl(262 83% 58%)' },
 } satisfies ChartConfig
 
 const SIDEBAR_INITIAL = 30
@@ -185,33 +184,41 @@ export function AuditSummaryHeader({
   index,
   total,
   inbox,
-  comparison,
-  allAudits,
+  scoreHistory,
   auditDayLabel,
 }: {
   row: CskhAuditRow
   index: number
   total: number
   inbox?: CskhInboxConversation | null
-  comparison?: AuditComparisonStats
-  allAudits: CskhAuditRow[]
+  scoreHistory?: AuditScoreHistory
   auditDayLabel?: string | null
 }) {
   const adSource = resolveAuditFromAd(row, inbox)
   const rank = scoreRankLabel(row.score)
   const criteria = resolveCriteriaScores(row)
-  const averages = resolveComparisonAverages(comparison, row, allAudits)
   const tags = resolveTags(row, adSource.fromAd)
 
-  const compareData = [
-    { name: 'Hội thoại', score: row.score, fill: 'hsl(262 83% 58%)' },
-    { name: 'TB Page', score: averages.team, fill: 'hsl(217 91% 60%)' },
-    { name: 'TB ngày', score: averages.overall, fill: 'hsl(160 84% 39%)' },
-  ]
-  const teamSample =
-    comparison?.teamSampleSize ??
-    allAudits.filter((a) => a.metadata?.pageName === row.metadata?.pageName).length
-  const daySample = comparison?.daySampleSize ?? allAudits.length
+  const historyChartData = useMemo(() => {
+    const points = scoreHistory?.points ?? []
+    if (points.length) {
+      return points.map((p) => ({
+        score: p.score,
+        name: p.auditDate ? formatAuditDateLabel(p.auditDate) : p.label,
+        auditDate: p.auditDate,
+        isCurrent: p.auditId === row.id,
+      }))
+    }
+    const day = row.metadata?.auditDate
+    return [
+      {
+        score: row.score,
+        name: day ? formatAuditDateLabel(day) : (auditDayLabel ?? 'Hiện tại'),
+        auditDate: day ?? '',
+        isCurrent: true,
+      },
+    ]
+  }, [scoreHistory, row.id, row.score, row.metadata?.auditDate, auditDayLabel])
 
   return (
     <div className="shrink-0 border-b border-slate-200/80 bg-slate-50/50">
@@ -348,28 +355,35 @@ export function AuditSummaryHeader({
         </SummaryCard>
 
         <SummaryCard className="min-w-0 sm:col-span-2 xl:col-span-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-            So sánh trung bình
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Lịch sử điểm chất lượng
           </p>
-          <ChartContainer config={compareChartConfig} className="h-[130px] w-full sm:h-[150px]">
-            <BarChart data={compareData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+          <p className="mb-3 text-xs text-slate-500">
+            {historyChartData.length > 1
+              ? `${historyChartData.length} lần audit cùng hội thoại`
+              : 'Một lần audit — chạy audit các ngày khác để theo dõi xu hướng'}
+          </p>
+          <ChartContainer
+            config={scoreHistoryChartConfig}
+            className="h-[130px] w-full sm:h-[150px]"
+          >
+            <LineChart data={historyChartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
               <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                {compareData.map((entry) => (
-                  <Cell key={entry.name} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
+              <Line
+                type="monotone"
+                dataKey="score"
+                stroke="var(--color-score)"
+                strokeWidth={2.5}
+                dot={{ r: 4, fill: 'hsl(262 83% 58%)', strokeWidth: 0 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
           </ChartContainer>
-          <div className="mt-2 flex justify-between gap-2 text-xs text-slate-500">
-            <span title="Điểm hội thoại đang xem">HT: {row.score}</span>
-            <span title={`Trung bình Page (${teamSample} hội thoại)`}>Page: {averages.team}</span>
-            <span title={`Trung bình cả ngày (${daySample} hội thoại)`}>
-              Ngày: {averages.overall}
-            </span>
+          <div className="mt-2 text-xs text-slate-500">
+            Điểm hiện tại: <span className="font-semibold text-violet-700">{row.score}/100</span>
           </div>
         </SummaryCard>
       </div>

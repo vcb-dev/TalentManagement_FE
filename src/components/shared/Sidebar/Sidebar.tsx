@@ -1,4 +1,4 @@
-﻿import { memo, useMemo, useState } from 'react'
+﻿import { memo, useEffect, useMemo, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
@@ -21,13 +21,6 @@ import { cn } from '@/lib/utils'
 import { usePermission } from '@/hooks/usePermission'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-
 type NavItem = AppNavItem
 
 function navItemDedupeKey(item: NavItem): string {
@@ -43,82 +36,85 @@ const NavLink = memo(function NavLink({
   active: boolean
   collapsed: boolean
 }) {
-  const [isOpen, setIsOpen] = useState(false)
   const Icon = item.icon
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
   const currentSearch = routerState.location.search as Record<string, any>
+  const childActive = Boolean(
+    item.children?.some((child) => isNavItemActive(pathname, child, currentSearch))
+  )
+  const [isOpen, setIsOpen] = useState(childActive)
+
+  useEffect(() => {
+    if (childActive) setIsOpen(true)
+  }, [childActive])
 
   const inner = (
     <>
       <Icon
         className={cn(
           'h-[18px] w-[18px] shrink-0',
-          active ? 'text-primary-600' : 'text-muted-foreground'
+          active || childActive ? 'text-primary-600' : 'text-muted-foreground'
         )}
         strokeWidth={2}
       />
       {!collapsed ? <span className="flex-1 truncate">{item.label}</span> : null}
-      {item.children && !collapsed && (
-        <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', isOpen && 'rotate-90')} />
-      )}
+      {item.children && !collapsed ? (
+        <ChevronDown
+          className={cn(
+            'h-3.5 w-3.5 shrink-0 transition-transform duration-200',
+            isOpen && 'rotate-180'
+          )}
+          strokeWidth={2.25}
+          aria-hidden
+        />
+      ) : null}
     </>
   )
 
   const title = collapsed ? item.label : undefined
 
-  // Nếu có mục con
-  if (item.children) {
+  if (item.children?.length) {
     return (
-      <SidebarMenuItem>
-        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              collapsed={collapsed}
-              active={active}
-              onMouseEnter={() => setIsOpen(true)}
-              onMouseLeave={() => setIsOpen(false)}
-              className="w-full"
-            >
-              <div className="flex w-full items-center gap-2">{inner}</div>
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side="right"
-            align="start"
-            sideOffset={12}
-            onMouseEnter={() => setIsOpen(true)}
-            onMouseLeave={() => setIsOpen(false)}
-            className="w-56 p-1 bg-white/95 backdrop-blur-sm border-indigo-100 shadow-xl rounded-xl z-[100]"
-          >
-            <div className="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground tracking-wide border-b border-border/50 mb-1">
-              {item.label}
-            </div>
+      <SidebarMenuItem className="flex flex-col gap-0.5">
+        <SidebarMenuButton
+          type="button"
+          collapsed={collapsed}
+          active={active || childActive}
+          className="w-full"
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((v) => !v)}
+        >
+          <div className="flex w-full items-center gap-2">{inner}</div>
+        </SidebarMenuButton>
+        {isOpen && !collapsed ? (
+          <div className="mb-1 ml-3 flex flex-col gap-0.5 border-l-2 border-indigo-100/90 pl-2">
             {item.children.map((child) => {
-              const childActive = isNavItemActive(pathname, child, currentSearch)
+              const subActive = isNavItemActive(pathname, child, currentSearch)
+              const ChildIcon = child.icon
               return (
-                <DropdownMenuItem key={navItemDedupeKey(child)} asChild>
-                  <Link
-                    to={child.to}
-                    search={child.search}
-                    preload="intent"
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer',
-                      childActive
-                        ? 'bg-indigo-50 text-indigo-700'
-                        : 'text-muted-foreground hover:bg-slate-50 hover:text-foreground'
-                    )}
-                  >
-                    <child.icon
-                      className={cn('h-4 w-4', childActive ? 'text-indigo-600' : 'text-slate-400')}
+                <SidebarMenuButton
+                  key={navItemDedupeKey(child)}
+                  asChild
+                  collapsed={false}
+                  active={subActive}
+                  className="h-9"
+                >
+                  <Link to={child.to} search={child.search} preload="intent" title={child.label}>
+                    <ChildIcon
+                      className={cn(
+                        'h-4 w-4 shrink-0',
+                        subActive ? 'text-primary-600' : 'text-muted-foreground'
+                      )}
+                      strokeWidth={2}
                     />
-                    {child.label}
+                    <span className="truncate text-[13px] font-medium">{child.label}</span>
                   </Link>
-                </DropdownMenuItem>
+                </SidebarMenuButton>
               )
             })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </div>
+        ) : null}
       </SidebarMenuItem>
     )
   }

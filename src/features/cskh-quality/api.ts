@@ -147,6 +147,18 @@ export interface AuditComparisonStats {
   daySampleSize: number
 }
 
+export interface AuditScoreHistoryPoint {
+  auditId: string
+  auditDate: string
+  score: number
+  label: string
+}
+
+export interface AuditScoreHistory {
+  auditId: string
+  points: AuditScoreHistoryPoint[]
+}
+
 export interface CskhCustomerInterestedProduct {
   productId: number
   variantId: number
@@ -321,6 +333,13 @@ export async function fetchAuditComparisonStats(
 ): Promise<AuditComparisonStats> {
   const { data } = await apiClient.get<AuditComparisonStats>('/cskh/audits/comparison', {
     params: { auditDate, auditId },
+  })
+  return data
+}
+
+export async function fetchAuditScoreHistory(auditId: string): Promise<AuditScoreHistory> {
+  const { data } = await apiClient.get<AuditScoreHistory>('/cskh/audits/score-history', {
+    params: { auditId },
   })
   return data
 }
