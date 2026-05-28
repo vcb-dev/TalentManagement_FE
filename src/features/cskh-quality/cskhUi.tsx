@@ -206,7 +206,7 @@ export function AuditDayStatsCards({
   className?: string
 }) {
   const val = (n: number | undefined) => (loading ? '…' : (n ?? '—'))
-  const dayHint = auditDayLabel ? `Ngày ${auditDayLabel}` : 'Chọn ngày audit'
+  const dayHint = auditDayLabel ? `Khoảng ${auditDayLabel}` : 'Chọn khoảng ngày'
 
   return (
     <div className={cn('grid grid-cols-2 gap-2 sm:grid-cols-4', className)}>
@@ -273,7 +273,7 @@ export function CskhTokenStat({
           ) : null}
         </p>
       ) : (
-        <p className="mt-0.5 text-[10px] text-slate-400">Chạy audit để xem</p>
+        <p className="mt-0.5 text-[10px] text-slate-400">Quét và chấm điểm để xem</p>
       )}
     </div>
   )
@@ -603,17 +603,21 @@ export function CskhLoading({ label = 'Đang tải…' }: { label?: string }) {
   )
 }
 
-/** Calendar popover — dùng chung DatePicker của app, style gọn cho toolbar audit. */
+/** Calendar popover — dùng chung DatePicker của app, style gọn cho toolbar chấm điểm. */
 export function CskhAuditDatePicker({
   value,
   onChange,
   disabled,
   max,
+  min,
+  placeholder = 'Chọn ngày',
 }: {
   value: string
   onChange: (value: string) => void
   disabled?: boolean
   max?: string
+  min?: string
+  placeholder?: string
 }) {
   return (
     <DatePicker
@@ -621,15 +625,64 @@ export function CskhAuditDatePicker({
       onChange={onChange}
       disabled={disabled}
       max={max}
-      placeholder="Chọn ngày audit"
+      min={min}
+      placeholder={placeholder}
       displayLabel={value ? formatAuditDateLabel(value) : undefined}
       className={cn(
-        'h-10 min-w-[10.5rem] rounded-xl border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm',
+        'h-10 min-w-[9.5rem] rounded-xl border-indigo-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm',
         'hover:border-indigo-300 hover:bg-indigo-50/40',
         value && 'border-indigo-300/80 text-indigo-900'
       )}
     />
   )
+}
+
+/** Khoảng ngày từ – đến (chấm điểm). */
+export function CskhAuditDateRangePickers({
+  from,
+  to,
+  onFromChange,
+  onToChange,
+  disabled,
+  max = vietnamTodayIso(),
+}: {
+  from: string
+  to: string
+  onFromChange: (v: string) => void
+  onToChange: (v: string) => void
+  disabled?: boolean
+  max?: string
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <CskhAuditDatePicker
+        value={from}
+        onChange={(v) => {
+          onFromChange(v)
+          if (to && v > to) onToChange(v)
+        }}
+        disabled={disabled}
+        max={max}
+        placeholder="Từ ngày"
+      />
+      <span className="text-sm font-medium text-slate-400">→</span>
+      <CskhAuditDatePicker
+        value={to}
+        onChange={(v) => {
+          onToChange(v)
+          if (from && v < from) onFromChange(v)
+        }}
+        disabled={disabled}
+        max={max}
+        min={from || undefined}
+        placeholder="Đến ngày"
+      />
+    </div>
+  )
+}
+
+function vietnamTodayIso(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
 }
 
 export function CskhConnectionBadge({ connected }: { connected: boolean }) {
@@ -864,7 +917,7 @@ export function CskhAuditProgressPanel({
             <Loader2 className="h-7 w-7 animate-spin text-violet-600" />
           </div>
           <p className="text-lg font-bold text-slate-800">
-            Đang audit{auditDayLabel ? ` ngày ${auditDayLabel}` : '…'}
+            Đang chấm điểm{auditDayLabel ? ` · ${auditDayLabel}` : '…'}
           </p>
           <p className="mt-1 text-sm font-medium text-violet-700">{statusLine}</p>
           {detailLine ? (
@@ -1018,7 +1071,7 @@ export function CskhAuditProgressBanner({
     <div className="mx-4 mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-violet-200/80 bg-violet-50/90 px-4 py-2.5 sm:mx-5">
       <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-600" />
       <p className="min-w-0 flex-1 text-sm font-medium text-violet-900">
-        {auditDayLabel ? `Audit ${auditDayLabel} — ` : ''}
+        {auditDayLabel ? `Chấm điểm ${auditDayLabel} — ` : ''}
         {text}
       </p>
       <span className="text-xs font-bold tabular-nums text-violet-700">

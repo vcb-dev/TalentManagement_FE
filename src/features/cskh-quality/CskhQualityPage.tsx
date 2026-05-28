@@ -154,7 +154,7 @@ function ConfigTab() {
             <h3 className="font-semibold text-slate-800">Facebook Pages</h3>
             {pages.length ? (
               <p className="mt-0.5 text-xs text-slate-500">
-                {enabledCount} / {pages.length} Page đang bật audit
+                {enabledCount} / {pages.length} Page đang bật chấm điểm
               </p>
             ) : null}
           </div>
@@ -172,7 +172,7 @@ function ConfigTab() {
         {pages.length > 0 && enabledCount > 5 && (
           <div className="mx-5 mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            Đang bật {enabledCount} Page — audit sẽ chậm. Chỉ bật 1–5 Page CSKH thực sự cần theo
+            Đang bật {enabledCount} Page — chấm điểm sẽ chậm. Chỉ bật 1–5 Page CSKH thực sự cần theo
             dõi.
           </div>
         )}
@@ -213,7 +213,7 @@ function ConfigTab() {
                     htmlFor={`cskh-page-${p.pageId}`}
                     className="cursor-pointer select-none text-sm font-medium text-slate-700"
                   >
-                    Bật audit
+                    Bật chấm điểm
                   </label>
                 </div>
               </li>
@@ -274,7 +274,7 @@ export function CskhQualityPage() {
   return (
     <CskhPageShell className={tab === 'config' ? '!h-auto flex-none' : undefined}>
       {auditJobBusy && tab === 'audit' ? (
-        <p className="mb-2 text-xs font-medium text-indigo-600">Đang chạy audit…</p>
+        <p className="mb-2 text-xs font-medium text-indigo-600">Đang quét và chấm điểm…</p>
       ) : null}
 
       <CskhGlassPanel

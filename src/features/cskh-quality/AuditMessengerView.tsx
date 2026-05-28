@@ -29,6 +29,8 @@ import {
   displayCustomerName,
   displayPageShopLabel,
   formatAuditDateLabel,
+  formatAuditRangeLabel,
+  auditRowMatchesScoreRange,
   resolveAuditFromAd,
   filterDisplayTranscript,
   messagesAfterAuditDate,
@@ -54,7 +56,7 @@ import {
   CskhOrganicSourceBadge,
   CskhAuditProgressBanner,
   CskhAuditProgressPanel,
-  CskhAuditDatePicker,
+  CskhAuditDateRangePickers,
   CskhConnectionBadge,
   CskhEmptyState,
   CskhLoading,
@@ -330,7 +332,7 @@ function AuditScopeDivider({ auditDayLabel }: { auditDayLabel: string }) {
     <div className="relative py-3">
       <div className="absolute inset-x-0 top-1/2 border-t border-violet-200/80" />
       <p className="relative mx-auto w-fit rounded-full border border-violet-200 bg-violet-50/95 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-violet-700 shadow-sm">
-        ▼ Hết ngày audit · {auditDayLabel}
+        ▼ Hết phạm vi chấm điểm · {auditDayLabel}
       </p>
     </div>
   )
@@ -425,13 +427,16 @@ export function AuditMessengerView({
   onAuditJobActiveChange?: (active: boolean) => void
 }) {
   const [jobId, setJobId] = useState<string | null>(null)
-  const [auditDate, setAuditDate] = useState('')
+  const [auditDateFrom, setAuditDateFrom] = useState('')
+  const [auditDateTo, setAuditDateTo] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [sidebarSearch, setSidebarSearch] = useState('')
   const [listFilter, setListFilter] = useState<'all' | 'low' | 'ad'>('all')
   const [sidebarSort, setSidebarSort] = useState<AuditSidebarSort>('newest')
   const [selectedPageId, setSelectedPageId] = useState('')
+  /** Số cuộc chấm mới mỗi lần chạy (để trống = không giới hạn). */
+  const [batchLimitInput, setBatchLimitInput] = useState('')
   const [chatTab, setChatTab] = useState<'chat' | 'timeline' | 'analysis'>('chat')
   const [workspacePane, setWorkspacePane] = useState<MessengerWorkspacePane>('list')
   const [intentByAuditId, setIntentByAuditId] = useState<Record<string, CskhCustomerIntent>>(() =>
@@ -446,7 +451,8 @@ export function AuditMessengerView({
   const stableAuditsRef = useRef<CskhAuditRow[]>([])
   const qc = useQueryClient()
   const selectedPageFilter = selectedPageId || undefined
-  const filtersReady = Boolean(auditDate && selectedPageId)
+  const filtersReady = Boolean(auditDateFrom && auditDateTo && selectedPageId)
+  const scoreRangeLabel = formatAuditRangeLabel(auditDateFrom, auditDateTo)
 
   useEffect(() => {
     void (async () => {
@@ -464,20 +470,33 @@ export function AuditMessengerView({
   }, [jobId])
 
   const runMut = useMutation({
-    mutationFn: (opts: { auditDate: string; pageId: string; force?: boolean }) =>
-      runAudit({ auditDate: opts.auditDate, pageId: opts.pageId, force: opts.force }),
+    mutationFn: (opts: {
+      auditDateFrom: string
+      auditDateTo: string
+      pageId: string
+      force?: boolean
+    }) =>
+      runAudit({
+        auditDateFrom: opts.auditDateFrom,
+        auditDateTo: opts.auditDateTo,
+        pageId: opts.pageId,
+        force: opts.force,
+      }),
     onMutate: async (vars) => {
       setCompletionNotice(null)
       setDismissedErrorKey(null)
-      await qc.cancelQueries({ queryKey: ['cskh', 'audits', 'by-day', vars.auditDate] })
+      await qc.cancelQueries({
+        queryKey: ['cskh', 'audits', 'by-range', vars.auditDateFrom, vars.auditDateTo],
+      })
     },
     onSuccess: (res, vars) => {
       const cached =
         qc.getQueryData<CskhAuditRow[]>([
           'cskh',
           'audits',
-          'by-day',
-          vars.auditDate,
+          'by-range',
+          vars.auditDateFrom,
+          vars.auditDateTo,
           selectedPageId,
         ]) ?? stableAuditsRef.current
       setJobId(res.jobId)
@@ -488,7 +507,9 @@ export function AuditMessengerView({
         startedAt: new Date().toISOString(),
         summary: {
           phase: 'fetch',
-          auditDate: vars.auditDate,
+          auditDate: vars.auditDateFrom,
+          auditDateFrom: vars.auditDateFrom,
+          auditDateTo: vars.auditDateTo,
           fetched: cached.length,
           scanned: 0,
           pagesProcessed: 0,
@@ -542,15 +563,18 @@ export function AuditMessengerView({
   useEffect(() => {
     if (!progress || progress.status === 'running') return
 
-    const persistAuditsForDay = (day: string | undefined) => {
-      if (!day || !progress.audits?.length) return
+    const persistAuditsForRange = (from?: string, to?: string) => {
+      const rangeFrom = from || progress.summary?.auditDateFrom || progress.summary?.auditDate
+      const rangeTo =
+        to || progress.summary?.auditDateTo || progress.summary?.auditDateFrom || rangeFrom
+      if (!rangeFrom || !rangeTo || !progress.audits?.length) return
       const incoming = progress.audits.filter(
         (a) =>
-          a.metadata?.auditDate === day &&
+          auditRowMatchesScoreRange(a, rangeFrom, rangeTo) &&
           (!selectedPageFilter || a.metadata?.pageId === selectedPageFilter)
       )
       if (!incoming.length) return
-      const cacheKey = ['cskh', 'audits', 'by-day', day, selectedPageId] as const
+      const cacheKey = ['cskh', 'audits', 'by-range', rangeFrom, rangeTo, selectedPageId] as const
       const prev = qc.getQueryData<CskhAuditRow[]>(cacheKey) ?? []
       const merged = new Map<string, CskhAuditRow>()
       for (const row of prev) merged.set(row.id, row)
@@ -560,26 +584,29 @@ export function AuditMessengerView({
 
     if (progress.status === 'done') {
       const count = progress.summary?.auditCount ?? progress.audits?.length ?? 0
-      const day = progress.summary?.auditDate
+      const rangeFrom = progress.summary?.auditDateFrom || progress.summary?.auditDate
+      const rangeTo = progress.summary?.auditDateTo || rangeFrom
       if (progress.summary?.allAlreadyAudited) {
         setCompletionNotice(
           `Đã chấm hết ${progress.summary.skippedAlready ?? count} hội thoại${
-            day ? ` ngày ${formatAuditDateLabel(day)}` : ''
+            rangeFrom ? ` (${formatAuditRangeLabel(rangeFrom, rangeTo)})` : ''
           } — không còn hội thoại mới.`
         )
       } else if (progress.summary?.paused || progress.summary?.partial) {
         const remaining = progress.summary.remaining
         setCompletionNotice(
           `Tạm dừng — đã chấm ${count} hội thoại${
-            day ? ` ngày ${formatAuditDateLabel(day)}` : ''
-          }${remaining ? ` · còn ~${remaining} trong batch này` : ''}. Bấm «Tiếp tục chạy» cùng ngày để quét nốt.`
+            rangeFrom ? ` (${formatAuditRangeLabel(rangeFrom, rangeTo)})` : ''
+          }${remaining ? ` · còn ~${remaining} trong batch này` : ''}. Bấm «Tiếp tục quét và chấm điểm» cùng khoảng ngày để quét nốt.`
         )
       } else if (count > 0) {
         setCompletionNotice(
-          `Hoàn tất ${count} hội thoại${day ? ` ngày ${formatAuditDateLabel(day)}` : ''}`
+          `Hoàn tất ${count} hội thoại${
+            rangeFrom ? ` (${formatAuditRangeLabel(rangeFrom, rangeTo)})` : ''
+          }`
         )
       }
-      persistAuditsForDay(day)
+      persistAuditsForRange(rangeFrom, rangeTo)
       setJobId(null)
       storeJobId(null)
       void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
@@ -589,7 +616,10 @@ export function AuditMessengerView({
 
     const savedCount = progress.summary?.auditCount ?? progress.audits?.length ?? 0
     if (savedCount > 0) {
-      persistAuditsForDay(progress.summary?.auditDate)
+      persistAuditsForRange(
+        progress.summary?.auditDateFrom || progress.summary?.auditDate,
+        progress.summary?.auditDateTo
+      )
       setJobId(null)
       storeJobId(null)
       void qc.invalidateQueries({ queryKey: ['cskh', 'audits'] })
@@ -607,8 +637,15 @@ export function AuditMessengerView({
   }, [progressError, progressErr, progressFetching, progressFailureCount, jobId, qc, setJobId])
 
   useEffect(() => {
-    if (progress?.summary?.auditDate) setAuditDate(progress.summary.auditDate)
-  }, [progress?.summary?.auditDate])
+    const from = progress?.summary?.auditDateFrom || progress?.summary?.auditDate
+    const to = progress?.summary?.auditDateTo || from
+    if (from) setAuditDateFrom(from)
+    if (to) setAuditDateTo(to)
+  }, [
+    progress?.summary?.auditDateFrom,
+    progress?.summary?.auditDateTo,
+    progress?.summary?.auditDate,
+  ])
 
   const { data: pagesData } = useQuery({
     queryKey: ['cskh', 'pages'],
@@ -622,7 +659,7 @@ export function AuditMessengerView({
     setSidebarSearch('')
     setListFilter('all')
     setChatTab('chat')
-  }, [auditDate, selectedPageId])
+  }, [auditDateFrom, auditDateTo, selectedPageId])
 
   const summary = progress?.summary
   const isAuditActive =
@@ -634,8 +671,8 @@ export function AuditMessengerView({
     isLoading: dayStatsLoading,
     isFetching: dayStatsFetching,
   } = useQuery({
-    queryKey: ['cskh', 'audit-day-stats', auditDate, selectedPageId],
-    queryFn: () => fetchAuditDayStats(auditDate, selectedPageFilter!),
+    queryKey: ['cskh', 'audit-day-stats', auditDateFrom, auditDateTo, selectedPageId],
+    queryFn: () => fetchAuditDayStats(auditDateFrom, auditDateTo, selectedPageFilter!),
     enabled: filtersReady,
     staleTime: 15_000,
   })
@@ -649,8 +686,14 @@ export function AuditMessengerView({
     isLoading: recentLoading,
     isFetching: recentFetching,
   } = useQuery({
-    queryKey: ['cskh', 'audits', 'by-day', auditDate, selectedPageId],
-    queryFn: () => fetchCskhAudits({ auditDate, pageId: selectedPageFilter, limit: 2000 }),
+    queryKey: ['cskh', 'audits', 'by-range', auditDateFrom, auditDateTo, selectedPageId],
+    queryFn: () =>
+      fetchCskhAudits({
+        auditDateFrom,
+        auditDateTo,
+        pageId: selectedPageFilter,
+        limit: 2000,
+      }),
     enabled: filtersReady && (auditExistsForSelection || isRunning),
     staleTime: 60_000,
     gcTime: 5 * 60_000,
@@ -668,17 +711,17 @@ export function AuditMessengerView({
       progress?.error ||
         (progressErr ? getApiErrorMessage(progressErr) : '') ||
         (runMut.error ? getApiErrorMessage(runMut.error) : '')
-    ) || 'Không thể chạy audit. Vui lòng thử lại sau.'
+    ) || 'Không thể quét và chấm điểm. Vui lòng thử lại sau.'
   const auditCount = summary?.auditCount ?? progress?.audits?.length ?? 0
   const isFetchPhase = isAuditActive && summary?.phase !== 'audit'
   const isAuditPhase = isAuditActive && summary?.phase === 'audit'
 
   const dayAuditsReady =
-    Boolean(auditDate) &&
+    filtersReady &&
     !recentLoading &&
     !recentFetching &&
     recentAudits !== undefined &&
-    recentAudits.every((a) => !a.metadata?.auditDate || a.metadata.auditDate === auditDate)
+    recentAudits.every((a) => auditRowMatchesScoreRange(a, auditDateFrom, auditDateTo))
 
   const showDayLoading =
     filtersReady && auditExistsForSelection && !isAuditActive && !dayAuditsReady
@@ -688,7 +731,9 @@ export function AuditMessengerView({
     const filterDay = (rows: CskhAuditRow[]) =>
       rows.filter(
         (a) =>
-          (!auditDate || a.metadata?.auditDate === auditDate) &&
+          (!auditDateFrom ||
+            !auditDateTo ||
+            auditRowMatchesScoreRange(a, auditDateFrom, auditDateTo)) &&
           (!selectedPageFilter || a.metadata?.pageId === selectedPageFilter)
       )
     const fromProgress = jobId && progress?.audits?.length ? filterDay(progress.audits) : []
@@ -705,7 +750,8 @@ export function AuditMessengerView({
     if (fromProgress.length) return sortAuditsByCreatedDesc(fromProgress)
     return []
   }, [
-    auditDate,
+    auditDateFrom,
+    auditDateTo,
     isAuditActive,
     jobId,
     progress?.audits,
@@ -759,7 +805,7 @@ export function AuditMessengerView({
       progressError &&
       progressFetching &&
       isTransientInfraError(auditErrorMessage)) ||
-      (recentLoading && !sortedAudits.length && !isAuditActive && !auditDate))
+      (recentLoading && !sortedAudits.length && !isAuditActive && !filtersReady))
 
   const errorKey = `${progress?.id ?? 'run'}-${auditErrorMessage}`
   const showAuditError =
@@ -793,11 +839,15 @@ export function AuditMessengerView({
     setWorkspacePane('list')
   }, [progress?.status, progress?.summary?.paused, progress?.summary?.partial, sortedAudits])
 
-  const auditDayLabel = summary?.auditDate
-    ? formatAuditDateLabel(summary.auditDate)
-    : auditDate
-      ? formatAuditDateLabel(auditDate)
-      : null
+  const auditDayLabel =
+    summary?.auditDateFrom || summary?.auditDate
+      ? formatAuditRangeLabel(
+          summary.auditDateFrom || summary.auditDate || '',
+          summary.auditDateTo || summary.auditDateFrom || summary.auditDate
+        )
+      : auditDateFrom && auditDateTo
+        ? scoreRangeLabel
+        : null
   const progressBadgeText = isFetchPhase
     ? summary?.pagesTotal
       ? `Page ${Math.min((summary.pagesProcessed ?? 0) + 1, summary.pagesTotal)}/${summary.pagesTotal}${
@@ -807,20 +857,30 @@ export function AuditMessengerView({
     : isAuditPhase
       ? summary?.total
         ? `${summary.processed ?? 0}/${summary.total} hội thoại`
-        : `Audit ${auditCount}${summary?.total ? `/${summary.total}` : ''}`
+        : `Chấm ${auditCount}${summary?.total ? `/${summary.total}` : ''}`
       : isRunning
         ? runMut.isPending && !summary
           ? 'Đang khởi động…'
-          : `Audit ${auditDayLabel}…`
+          : `Chấm điểm ${auditDayLabel}…`
         : ''
-  const canRun = filtersReady && !isRunning
-  const canResumeAudit =
-    filtersReady && !isRunning && ((dayStats?.total ?? 0) > 0 || sortedAudits.length > 0)
-  const runButtonLabel = auditDate
-    ? canResumeAudit
-      ? `Tiếp tục chạy ${formatAuditDateLabel(auditDate)}`
-      : `Chạy ${formatAuditDateLabel(auditDate)}`
-    : 'Chọn ngày'
+  const alreadyScoredCount = dayStats?.total ?? sortedAudits.length
+  const canRun =
+    filtersReady &&
+    !isRunning &&
+    (!batchLimitInput.trim() || (parsedBatchLimit != null && parsedBatchLimit > 0))
+  const canResumeAudit = filtersReady && !isRunning && alreadyScoredCount > 0
+  const runButtonLabel =
+    auditDateFrom && auditDateTo
+      ? batchLimitInput.trim() && !parsedBatchLimit
+        ? 'Nhập số cuộc hợp lệ'
+        : canResumeAudit
+          ? parsedBatchLimit
+            ? `Chấm thêm ${parsedBatchLimit} cuộc (${alreadyScoredCount} đã chấm)`
+            : `Tiếp tục chấm điểm ${scoreRangeLabel}`
+          : parsedBatchLimit
+            ? `Quét và chấm ${parsedBatchLimit} cuộc · ${scoreRangeLabel}`
+            : `Quét và chấm điểm ${scoreRangeLabel}`
+      : 'Chọn khoảng ngày'
   const transcript = useMemo(() => {
     if (!selected || !Array.isArray(selected.transcript)) return []
     return filterDisplayTranscript(
@@ -1007,17 +1067,17 @@ export function AuditMessengerView({
       <CskhToolbar>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-slate-700" htmlFor="audit-date">
-              Ngày audit <span className="text-rose-500">*</span>
-            </label>
-            <div id="audit-date">
-              <CskhAuditDatePicker
-                value={auditDate}
-                onChange={setAuditDate}
-                max={vietnamTodayIso()}
-                disabled={isRunning}
-              />
-            </div>
+            <span className="text-sm font-medium text-slate-700">
+              Khoảng chấm điểm <span className="text-rose-500">*</span>
+            </span>
+            <CskhAuditDateRangePickers
+              from={auditDateFrom}
+              to={auditDateTo}
+              onFromChange={setAuditDateFrom}
+              onToChange={setAuditDateTo}
+              max={vietnamTodayIso()}
+              disabled={isRunning}
+            />
             {(showDayLoading || checkingAudit) && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -1025,26 +1085,59 @@ export function AuditMessengerView({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-slate-700" htmlFor="audit-page-filter">
-              Page
-            </label>
-            <Select value={selectedPageId || undefined} onValueChange={(v) => setSelectedPageId(v)}>
-              <SelectTrigger
-                id="audit-page-filter"
-                className="h-9 min-w-[180px] border-slate-200 bg-white text-xs font-medium text-slate-700"
-                aria-label="Chọn page"
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-slate-700" htmlFor="audit-page-filter">
+                Kênh <span className="text-rose-500">*</span>
+              </label>
+              <Select
+                value={selectedPageId || undefined}
+                onValueChange={(v) => setSelectedPageId(v)}
               >
-                <SelectValue placeholder="Chọn page" />
-              </SelectTrigger>
-              <SelectContent>
-                {pageOptions.map((p) => (
-                  <SelectItem key={p.pageId} value={p.pageId}>
-                    {p.pageName || p.pageId}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectTrigger
+                  id="audit-page-filter"
+                  className="h-9 min-w-[200px] border-slate-200 bg-white text-xs font-medium text-slate-700"
+                  aria-label="Chọn kênh"
+                >
+                  <SelectValue placeholder="Chọn kênh" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pageOptions.map((p) => (
+                    <SelectItem key={p.pageId} value={p.pageId}>
+                      {p.pageName || p.pageId}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedPageId && alreadyScoredCount > 0 && !isRunning && (
+              <p className="pl-1 text-xs text-slate-500">
+                Kênh này đã chấm {alreadyScoredCount.toLocaleString('vi-VN')} cuộc trong{' '}
+                {scoreRangeLabel}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-slate-700" htmlFor="audit-batch-limit">
+                Số cuộc lần này
+              </label>
+              <input
+                id="audit-batch-limit"
+                type="number"
+                min={1}
+                step={1}
+                placeholder="Tất cả"
+                value={batchLimitInput}
+                onChange={(e) => setBatchLimitInput(e.target.value)}
+                disabled={isRunning}
+                className="h-9 w-28 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700"
+                aria-label="Số hội thoại chấm mới (bỏ qua đã chấm)"
+              />
+            </div>
+            <p className="max-w-xs pl-1 text-xs text-slate-500">
+              Chỉ tính cuộc chưa chấm trong khoảng ngày — ví dụ đã 200, nhập 100 → chấm thêm 100.
+            </p>
           </div>
           {selected && sortedAudits.length > 0 && (
             <span className="inline-flex items-center rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
@@ -1079,7 +1172,14 @@ export function AuditMessengerView({
           <button
             type="button"
             disabled={!canRun || runMut.isPending}
-            onClick={() => runMut.mutate({ auditDate, pageId: selectedPageId })}
+            onClick={() =>
+              runMut.mutate({
+                auditDateFrom,
+                auditDateTo,
+                pageId: selectedPageId,
+                maxConversations: parsedBatchLimit,
+              })
+            }
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-violet-200/50 hover:shadow-lg disabled:opacity-50"
           >
             {isRunning ? (
@@ -1089,10 +1189,10 @@ export function AuditMessengerView({
             )}
             {runMut.isPending && !jobId
               ? 'Đang khởi động…'
-              : !auditDate
-                ? 'Chọn ngày'
+              : !auditDateFrom || !auditDateTo
+                ? 'Chọn khoảng ngày'
                 : !selectedPageId
-                  ? 'Chọn page'
+                  ? 'Chọn kênh'
                   : runButtonLabel}
           </button>
           {isRunning && (
@@ -1124,12 +1224,20 @@ export function AuditMessengerView({
             <button
               type="button"
               onClick={() => {
-                const date = auditDate || summary?.auditDate || vietnamTodayIso()
+                const from =
+                  auditDateFrom || summary?.auditDateFrom || summary?.auditDate || vietnamTodayIso()
+                const to = auditDateTo || summary?.auditDateTo || from
                 setJobId(null)
                 storeJobId(null)
                 setDismissedErrorKey(null)
                 if (selectedPageId) {
-                  runMut.mutate({ auditDate: date, pageId: selectedPageId, force: true })
+                  runMut.mutate({
+                    auditDateFrom: from,
+                    auditDateTo: to,
+                    pageId: selectedPageId,
+                    maxConversations: parsedBatchLimit,
+                    force: true,
+                  })
                 }
               }}
               className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-700"
@@ -1144,26 +1252,34 @@ export function AuditMessengerView({
         <CskhNoticeBanner
           tone="info"
           title="Đang kết nối hệ thống"
-          message="Máy chủ vừa khởi động — đang tải lại dữ liệu audit, vui lòng đợi vài giây."
+          message="Máy chủ vừa khởi động — đang tải lại dữ liệu chấm điểm, vui lòng đợi vài giây."
         />
       )}
 
       {showAuditError && (
         <CskhNoticeBanner
           tone="error"
-          title="Không chạy được audit"
+          title="Không chạy được chấm điểm"
           message={auditErrorMessage}
           onDismiss={() => setDismissedErrorKey(errorKey)}
           action={
             <button
               type="button"
               onClick={() => {
-                const date = auditDate || summary?.auditDate || vietnamTodayIso()
+                const from =
+                  auditDateFrom || summary?.auditDateFrom || summary?.auditDate || vietnamTodayIso()
+                const to = auditDateTo || summary?.auditDateTo || from
                 setDismissedErrorKey(null)
                 setJobId(null)
                 storeJobId(null)
                 if (selectedPageId) {
-                  runMut.mutate({ auditDate: date, pageId: selectedPageId, force: true })
+                  runMut.mutate({
+                    auditDateFrom: from,
+                    auditDateTo: to,
+                    pageId: selectedPageId,
+                    maxConversations: parsedBatchLimit,
+                    force: true,
+                  })
                 }
               }}
               className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
@@ -1185,8 +1301,8 @@ export function AuditMessengerView({
       {backgroundJobId && !jobId && !isRunning && (
         <CskhNoticeBanner
           tone="info"
-          title="Có tiến trình audit đang chạy"
-          message="Hệ thống đang chấm điểm từ lần trước. Bấm theo dõi để xem tiến độ — không tự chạy audit mới."
+          title="Có tiến trình chấm điểm đang chạy"
+          message="Hệ thống đang chấm điểm từ lần trước. Bấm theo dõi để xem tiến độ — không tự chạy batch mới."
           action={
             <button
               type="button"
@@ -1207,30 +1323,30 @@ export function AuditMessengerView({
       {showDayLoading ? (
         <CskhLoading
           label={
-            auditDayLabel ? `Đang tải hội thoại ngày ${auditDayLabel}…` : 'Đang tải kết quả audit…'
+            auditDayLabel ? `Đang tải hội thoại ${auditDayLabel}…` : 'Đang tải kết quả chấm điểm…'
           }
         />
       ) : showProgressScreen ? (
         <CskhAuditProgressPanel auditDayLabel={auditDayLabel} summary={summary} />
-      ) : !auditDate ? (
+      ) : !auditDateFrom || !auditDateTo ? (
         <CskhEmptyState
           icon={<ClipboardCheck className="h-12 w-12 text-violet-500" />}
-          title="Chọn ngày audit"
-          description="Chọn ngày và Page Facebook — hệ thống chỉ hiển thị kết quả khi Page đó đã được chạy audit trong ngày."
+          title="Chọn khoảng ngày"
+          description="Chọn từ ngày → đến ngày và Page Facebook — hệ thống chỉ hiển thị kết quả khi Page đó đã được quét và chấm điểm trong khoảng đó."
         />
       ) : !selectedPageId ? (
         <CskhEmptyState
           icon={<ClipboardCheck className="h-12 w-12 text-violet-500" />}
           title="Chọn Page"
-          description={`Chọn Page cần xem chất lượng CSKH ngày ${auditDayLabel ?? formatAuditDateLabel(auditDate)}.`}
+          description={`Chọn Page cần xem chất lượng CSKH (${scoreRangeLabel}).`}
         />
       ) : checkingAudit ? (
-        <CskhLoading label="Đang kiểm tra dữ liệu audit…" />
+        <CskhLoading label="Đang kiểm tra dữ liệu chấm điểm…" />
       ) : !auditExistsForSelection && !isRunning && !sortedAudits.length ? (
         <CskhEmptyState
           icon={<ClipboardCheck className="h-12 w-12 text-violet-500" />}
-          title="Chưa có chạy audit"
-          description={`Page «${selectedPageLabel}» chưa được chạy audit ngày ${auditDayLabel ?? formatAuditDateLabel(auditDate)}. Bấm «${runButtonLabel}» để bắt đầu — chỉ quét Page này, nhanh hơn quét tất cả.`}
+          title="Chưa có chấm điểm"
+          description={`Page «${selectedPageLabel}» chưa được quét và chấm điểm trong khoảng ${scoreRangeLabel}. Bấm «${runButtonLabel}» — chỉ quét Page này.`}
         />
       ) : (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

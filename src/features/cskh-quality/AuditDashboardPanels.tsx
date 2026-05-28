@@ -35,6 +35,7 @@ import {
   displayCustomerName,
   displayPageShopLabel,
   formatAuditDateLabel,
+  formatAuditRangeLabel,
   resolveAuditFromAd,
 } from './auditHelpers'
 import {
@@ -1106,10 +1107,17 @@ export function AuditAnalysisPanel({
           <AuditAccordionSection value="info" title="Thông tin hội thoại">
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between gap-2">
-                <dt className="text-slate-500">Ngày audit</dt>
+                <dt className="text-slate-500">Khoảng chấm điểm</dt>
                 <dd className="font-medium text-slate-800">
                   {auditDayLabel ??
-                    (row.metadata?.auditDate ? formatAuditDateLabel(row.metadata.auditDate) : '—')}
+                    (row.metadata?.auditDateFrom && row.metadata?.auditDateTo
+                      ? formatAuditRangeLabel(
+                          String(row.metadata.auditDateFrom),
+                          String(row.metadata.auditDateTo)
+                        )
+                      : row.metadata?.auditDate
+                        ? formatAuditDateLabel(String(row.metadata.auditDate))
+                        : '—')}
                 </dd>
               </div>
               <div className="flex justify-between gap-2">

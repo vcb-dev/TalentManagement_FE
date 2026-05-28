@@ -51,6 +51,8 @@ export interface CskhJobRun {
     avgScore?: number
     auditCount?: number
     auditDate?: string
+    auditDateFrom?: string
+    auditDateTo?: string
     scanned?: number
     paused?: boolean
     partial?: boolean
@@ -242,9 +244,12 @@ export async function runMonitor(maxConversations?: number): Promise<{
 }
 
 export async function runAudit(params: {
-  auditDate: string
+  auditDateFrom: string
+  auditDateTo: string
   force?: boolean
-  pageId?: string
+  pageId: string
+  /** Chỉ chấm tối đa N cuộc chưa chấm (bỏ qua đã chấm trong khoảng ngày). */
+  maxConversations?: number
 }): Promise<{
   jobId: string
   status: string
@@ -255,9 +260,12 @@ export async function runAudit(params: {
     status: string
     alreadyRunning?: boolean
   }>('/cskh/audit/run', {
-    auditDate: params.auditDate,
+    auditDateFrom: params.auditDateFrom,
+    auditDateTo: params.auditDateTo,
+    auditDate: params.auditDateFrom,
     force: params.force,
     pageId: params.pageId,
+    maxConversations: params.maxConversations,
   })
   return data
 }
@@ -307,6 +315,8 @@ export async function fetchCskhAudits(params?: {
   pageId?: string
   jobRunId?: string
   auditDate?: string
+  auditDateFrom?: string
+  auditDateTo?: string
   limit?: number
 }): Promise<CskhAuditRow[]> {
   const { data } = await apiClient.get<CskhAuditRow[]>('/cskh/audits', { params })
@@ -315,6 +325,8 @@ export async function fetchCskhAudits(params?: {
 
 export interface AuditDayStats {
   auditDate: string
+  auditDateFrom?: string
+  auditDateTo?: string
   pageId?: string | null
   total: number
   passed: number
@@ -323,11 +335,12 @@ export interface AuditDayStats {
 }
 
 export async function fetchAuditDayStats(
-  auditDate: string,
+  auditDateFrom: string,
+  auditDateTo: string,
   pageId?: string
 ): Promise<AuditDayStats> {
   const { data } = await apiClient.get<AuditDayStats>('/cskh/audits/day-stats', {
-    params: { auditDate, pageId },
+    params: { auditDateFrom, auditDateTo, auditDate: auditDateFrom, pageId },
   })
   return data
 }

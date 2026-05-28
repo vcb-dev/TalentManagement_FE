@@ -5,6 +5,22 @@ export function formatAuditDateLabel(dateStr: string) {
   return `${d}/${m}/${y}`
 }
 
+/** Nhãn khoảng ngày chấm điểm — một ngày hoặc from–to. */
+export function formatAuditRangeLabel(from: string, to?: string) {
+  if (!from) return '…'
+  const end = to?.trim() || from
+  if (from === end) return formatAuditDateLabel(from)
+  return `${formatAuditDateLabel(from)} – ${formatAuditDateLabel(end)}`
+}
+
+export function auditRowMatchesScoreRange(row: CskhAuditRow, from: string, to: string): boolean {
+  const meta = row.metadata
+  const rowFrom = (meta?.auditDateFrom as string | undefined) || meta?.auditDate
+  const rowTo = (meta?.auditDateTo as string | undefined) || meta?.auditDate
+  if (!rowFrom || !rowTo) return false
+  return rowFrom === from && rowTo === to
+}
+
 export function vietnamTodayIso(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
 }
