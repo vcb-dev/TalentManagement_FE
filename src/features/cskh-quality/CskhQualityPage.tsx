@@ -1092,7 +1092,7 @@ function OverviewTab() {
       </div>
 
       {/* Main Grid for 4 Columns */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
+      <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1 sm:gap-1.5">
         {/* ================= COLUMN 1 ================= */}
         <div className="flex min-h-0 flex-col gap-2 sm:gap-2.5 lg:h-full">
           {/* Xu hướng chất lượng theo ngày */}
