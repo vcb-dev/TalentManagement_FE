@@ -1010,7 +1010,7 @@ function OverviewTab() {
       </div>
 
       {/* Reihe 1: 6 KPI-Karten mit Sparklines */}
-      <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid shrink-0 grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
         {MOCK_KPI_CARDS.map((card) => {
           const details = getCardIconAndColors(card.id)
           const isCompactValue =
@@ -1018,7 +1018,7 @@ function OverviewTab() {
           return (
             <div
               key={card.id}
-              className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200/60 bg-white p-2 sm:p-2.5 shadow-sm transition duration-200 hover:shadow-md"
+              className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200/60 bg-white p-1.5 sm:p-2 shadow-sm transition duration-200 hover:shadow-md"
             >
               {/* Row 1: Icon and Title */}
               <div className="flex min-w-0 items-center gap-1.5">

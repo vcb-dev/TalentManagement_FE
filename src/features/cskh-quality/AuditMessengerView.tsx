@@ -1301,14 +1301,59 @@ export function AuditMessengerView({
               <button
                 type="button"
                 disabled={!canRun || runMut.isPending}
-                onClick={() =>
-                  runMut.mutate({
-                    auditDateFrom,
-                    auditDateTo,
-                    pageId: selectedPageId,
-                    maxConversations: parsedBatchLimit,
-                  })
-                }
+                onClick={() => {
+                  // Check if there's a background job running
+                  if (backgroundJobId) {
+                    toast.custom(
+                      (toastId) => (
+                        <div className="flex flex-col gap-2.5 rounded-lg border border-amber-300 bg-amber-50 p-4 shadow-lg">
+                          <div className="flex flex-col gap-1">
+                            <p className="text-sm font-semibold text-amber-900">
+                              Đang có tiến trình quét kênh
+                            </p>
+                            <p className="text-xs text-amber-800">
+                              Có một kênh đang quét dở. Bạn có muốn tiếp tục quét hay huỷ tiến trình
+                              này?
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                toast.dismiss(toastId)
+                                runMut.mutate({
+                                  auditDateFrom,
+                                  auditDateTo,
+                                  pageId: selectedPageId,
+                                  maxConversations: parsedBatchLimit,
+                                })
+                              }}
+                              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 text-xs font-semibold text-white hover:shadow-md"
+                            >
+                              <Play className="h-3.5 w-3.5 shrink-0" />
+                              Tiếp tục
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toast.dismiss(toastId)}
+                              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-700 hover:bg-amber-50"
+                            >
+                              Huỷ
+                            </button>
+                          </div>
+                        </div>
+                      ),
+                      { duration: Infinity }
+                    )
+                  } else {
+                    runMut.mutate({
+                      auditDateFrom,
+                      auditDateTo,
+                      pageId: selectedPageId,
+                      maxConversations: parsedBatchLimit,
+                    })
+                  }
+                }}
                 className="inline-flex h-9 min-h-9 items-center gap-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3.5 text-xs font-semibold text-white shadow-md shadow-violet-200/40 hover:shadow-lg disabled:opacity-50"
               >
                 {isRunning || runMut.isPending ? (
