@@ -1517,21 +1517,45 @@ export function AuditMessengerView({
       ) : checkingAudit ? (
         <CskhLoading label="Đang kiểm tra dữ liệu chấm điểm…" />
       ) : isRunning && !sortedAudits.length ? (
-        <CskhEmptyState
-          icon={<Loader2 className="h-12 w-12 animate-spin text-violet-500" />}
-          title={
-            isFetchPhase
-              ? auditDayLabel
-                ? `Đang quét inbox · ${auditDayLabel}`
-                : 'Đang quét inbox…'
-              : 'Đang chấm điểm…'
-          }
-          description={
-            isFetchPhase
-              ? 'Đang lấy hội thoại từ Facebook — tiến độ chi tiết ở thông báo góc trên. Danh sách và kết quả chấm điểm sẽ hiện ở đây sau khi quét xong.'
-              : 'Tiến độ chi tiết hiển thị ở thông báo góc trên. Kết quả sẽ xuất hiện ở đây khi có hội thoại đầu tiên.'
-          }
-        />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <AuditWorkspaceKpiBar selectedRow={selected} dayRows={[]} />
+          <MessengerWorkspace
+            layout="audit"
+            pane={workspacePane}
+            sidebar={
+              <AuditConversationSidebar
+                rows={[]}
+                selectedId={null}
+                adMap={new Map()}
+                search={sidebarSearch}
+                onSearchChange={setSidebarSearch}
+                listFilter={listFilter}
+                onListFilterChange={setListFilter}
+                sortOrder={sidebarSort}
+                onSortOrderChange={setSidebarSort}
+                onSelect={handleSelectAudit}
+              />
+            }
+            main={
+              <div className="flex h-full min-h-0 flex-col items-center justify-center gap-2 text-center text-slate-500">
+                <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {isFetchPhase ? 'Đang quét inbox' : 'Đang chấm điểm…'}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Tiến độ hiển thị ở thông báo góc trên phải
+                  </p>
+                </div>
+              </div>
+            }
+            analysis={
+              <div className="flex h-full items-center justify-center text-slate-500">
+                <p className="text-sm">Chờ dữ liệu…</p>
+              </div>
+            }
+          />
+        </div>
       ) : !auditExistsForSelection && !isRunning && !sortedAudits.length ? (
         <CskhEmptyState
           icon={<ClipboardCheck className="h-12 w-12 text-violet-500" />}
