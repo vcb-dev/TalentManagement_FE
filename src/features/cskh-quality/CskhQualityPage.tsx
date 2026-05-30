@@ -1018,7 +1018,7 @@ function OverviewTab() {
           return (
             <div
               key={card.id}
-              className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200/60 bg-white p-1 sm:p-1.5 shadow-sm transition duration-200 hover:shadow-md"
+              className="flex min-w-0 flex-col justify-between rounded-xl border border-slate-200/60 bg-white p-0.5 sm:p-1 shadow-sm transition duration-200 hover:shadow-md"
             >
               {/* Row 1: Icon and Title */}
               <div className="flex min-w-0 items-center gap-1.5">
