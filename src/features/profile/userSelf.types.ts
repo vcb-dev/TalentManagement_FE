@@ -50,6 +50,8 @@ export interface MeUserSelf {
   profileReviewDate: string | null
   cvAttachmentRef: string | null
   notes: string | null
+  teamPosition: string | null
+  currentLearningClassName: string | null
 }
 
 /** Khớp `USER_SELF_PATCH_KEYS` trên BE. */

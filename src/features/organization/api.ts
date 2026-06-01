@@ -181,6 +181,16 @@ export const organizationApi = {
     return res.data
   },
 
+  getDivisionsList: async (): Promise<Array<{ id: string; name: string }>> => {
+    if (isMockApiEnabled()) {
+      return HR_DEPARTMENT_OPTIONS.map((d) => ({ id: d.value, name: d.label }))
+    }
+    const res = await apiClient.get<Array<{ id: string; name: string }>>(
+      '/organization/divisions-list'
+    )
+    return res.data
+  },
+
   listDepartments: async () => {
     if (isMockApiEnabled()) {
       return HR_DEPARTMENT_OPTIONS.map((d) => ({

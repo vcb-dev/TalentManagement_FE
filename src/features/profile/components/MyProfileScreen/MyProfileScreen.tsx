@@ -359,11 +359,11 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
   const user = useAuthStore((s) => s.user)
   const { mutate: patchUser, isPending: patchPending } = usePatchMeUser()
   const { mutate: uploadPortrait, isPending: portraitUploading } = useUploadMePortrait()
-  const { data: orgTree } = useQuery({
-    queryKey: ['organization', 'tree'],
-    queryFn: () => organizationApi.getTree(),
+  const { data: divisionsData } = useQuery({
+    queryKey: ['organization', 'divisions-list'],
+    queryFn: () => organizationApi.getDivisionsList(),
   })
-  const divisions = useMemo(() => orgTree?.departments ?? [], [orgTree])
+  const divisions = useMemo(() => divisionsData ?? [], [divisionsData])
   const form = useForm<EditRecord>({
     defaultValues: userToEdit(u),
   })
@@ -531,97 +531,6 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                 </div>
               </section>
             </div>
-
-            <aside className="space-y-6">
-              <section className="rounded-3xl border border-primary/20 bg-gradient-to-br from-violet-50 to-indigo-50/50 p-8 shadow-sm dark:border-primary/20 dark:from-violet-950/20 dark:to-indigo-950/10 relative overflow-hidden">
-                <div className="absolute top-0 right-0 h-24 w-24 bg-primary/10 rounded-full -mr-12 -mt-12 blur-xl" />
-                <div className="mb-6 flex items-center gap-4 relative z-10">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-white shadow-lg shadow-primary/30 dark:shadow-none">
-                    <StarEmblem variant="filled" className="h-7 w-7" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
-                      Lộ trình hiện tại
-                    </p>
-                    <p className="text-base font-black text-slate-900 dark:text-slate-100 truncate">
-                      {page.currentLevel.progressLine}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-6 relative z-10">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-primary/70">
-                      <span>Tiến độ cấp độ</span>
-                      <span className="text-primary bg-white px-1.5 py-0.5 rounded-md shadow-sm">
-                        {levelProgressPct}%
-                      </span>
-                    </div>
-                    <div className="h-3 w-full overflow-hidden rounded-full bg-primary/15 dark:bg-primary/20 ring-4 ring-primary/5">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-400 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(99,102,241,0.4)]"
-                        style={{ width: `${levelProgressPct}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 border-t border-primary/15 pt-6 dark:border-primary/20">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Sao hiện tại
-                    </div>
-                    <div className="text-lg font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg">
-                      {page.currentLevel.currentStarIndex}
-                      <span className="text-slate-400 text-xs mx-0.5">/</span>
-                      {totalStars}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    {Array.from({ length: totalStars }, (_, i) => (
-                      <StarEmblem
-                        key={i}
-                        variant={i < filledStars ? 'filled' : 'muted'}
-                        className={cn(
-                          'h-7 w-7 transition-all duration-300',
-                          i < filledStars
-                            ? 'drop-shadow-[0_2px_4px_rgba(99,102,241,0.4)] hover:scale-110'
-                            : 'opacity-20 grayscale hover:opacity-40'
-                        )}
-                        alt={i < filledStars ? `Sao đã đạt ${i + 1}` : `Sao chưa đạt ${i + 1}`}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 pt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-10 rounded-xl border-primary/30 bg-white text-xs font-semibold uppercase tracking-wider text-primary shadow-sm transition-all hover:bg-primary hover:text-white hover:border-primary dark:border-primary/30 dark:bg-slate-900"
-                      asChild
-                    >
-                      <Link to="/learning-path" search={learningPathSearch}>
-                        Lộ trình
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-10 rounded-xl border-primary/30 bg-white text-xs font-semibold uppercase tracking-wider text-primary shadow-sm transition-all hover:bg-primary hover:text-white hover:border-primary dark:border-primary/30 dark:bg-slate-900"
-                      asChild
-                    >
-                      <Link to="/exam">Kết quả thi</Link>
-                    </Button>
-                  </div>
-                </div>
-              </section>
-
-              <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
-                <p className="text-center text-xs leading-relaxed text-slate-400 font-medium italic">
-                  * Thông tin được đồng bộ tự động từ hệ thống HRM và Lark. Các trường bị khóa không
-                  thể chỉnh sửa trực tiếp tại đây.
-                </p>
-              </div>
-            </aside>
           </div>
         </div>
       </div>
