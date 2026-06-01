@@ -18,6 +18,7 @@ const dashboardUserSchema = z.object({
   birthDate: z.string().nullable().optional(),
   startDateWork: z.string().nullable().optional(),
   learningClassName: z.string().nullable().optional(),
+  teamPosition: z.string().nullable().optional(),
 })
 
 const careerSchema = z

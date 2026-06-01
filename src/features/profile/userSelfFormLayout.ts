@@ -4,7 +4,7 @@ export type UserSelfFieldSpec = {
   key: MeUserDisplayKey
   label: string
   multiline?: boolean
-  kind?: 'portrait' | 'division-select'
+  kind?: 'portrait' | 'division-select' | 'position-select'
 }
 
 /** Các mục ngày chỉnh sửa được — `<input type="date">` (`startDateWork` chỉ đọc, không nằm đây). */
