@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { useManagerSubmissions, useUpdateSubmissionStatus } from '@/features/manager/hooks'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 import { formatViDate } from '@/lib/date'
@@ -54,7 +55,11 @@ export const ManagerLearningSubmissionsScreen = () => {
   }, [filtered])
 
   const onDownload = (url: string) => {
-    const fullUrl = url.startsWith('http') ? url : `${import.meta.env.VITE_API_URL}${url}`
+    const fullUrl = resolvePublicAssetUrl(url)
+    if (!fullUrl) {
+      toast.error('File không còn trên máy chủ')
+      return
+    }
     window.open(fullUrl, '_blank')
   }
 
@@ -291,7 +296,12 @@ const UserGroupCard = ({
                           variant="ghost"
                           size="sm"
                           className="mt-2 h-auto p-0 text-indigo-600 font-bold text-[10px] gap-1 hover:no-underline"
-                          onClick={() => onDownload(item.fileRef)}
+                          disabled={!item.fileRef}
+                          onClick={() =>
+                            item.fileRef
+                              ? onDownload(item.fileRef)
+                              : toast.error('File không còn trên máy chủ')
+                          }
                         >
                           <ExternalLink className="h-3 w-3" />
                           Xem minh chứng

@@ -907,7 +907,7 @@ export function ChecklistStarScreen({
                                     </span>
                                   </div>
                                 </div>
-                                {s.url && (
+                                {s.url ? (
                                   <Button
                                     type="button"
                                     variant="ghost"
@@ -921,7 +921,14 @@ export function ChecklistStarScreen({
                                   >
                                     <Eye className="h-4 w-4" />
                                   </Button>
-                                )}
+                                ) : s.fileMissing ? (
+                                  <span
+                                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600"
+                                    title="File không còn trên máy chủ"
+                                  >
+                                    <AlertCircle className="h-4 w-4" />
+                                  </span>
+                                ) : null}
                                 {s.status === 'GRADED' && (
                                   <Button
                                     type="button"
@@ -1056,7 +1063,7 @@ export function ChecklistStarScreen({
                                       {displaySubmission.fileName}
                                     </span>
                                   </div>
-                                  {displaySubmission.url && (
+                                  {displaySubmission.url ? (
                                     <Button
                                       type="button"
                                       size="sm"
@@ -1071,7 +1078,12 @@ export function ChecklistStarScreen({
                                       <ExternalLink className="h-3.5 w-3.5" />
                                       <span>Xem file</span>
                                     </Button>
-                                  )}
+                                  ) : displaySubmission.fileMissing ? (
+                                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
+                                      <AlertCircle className="h-3.5 w-3.5" />
+                                      File không còn trên máy chủ
+                                    </span>
+                                  ) : null}
                                 </div>
                               </div>
                             )}

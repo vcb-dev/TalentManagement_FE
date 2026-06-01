@@ -25,6 +25,7 @@ export const submissionApiSchema = z.object({
   status: z.enum(['PENDING', 'ACCEPTED', 'REJECTED', 'GRADED']),
   fileName: z.string(),
   url: z.string().optional(),
+  fileMissing: z.boolean().optional(),
   submissionType: z.enum(['FILE', 'LINK', 'TEXT']).optional(),
   linkUrl: z.string().nullable().optional(),
   textContent: z.string().nullable().optional(),
