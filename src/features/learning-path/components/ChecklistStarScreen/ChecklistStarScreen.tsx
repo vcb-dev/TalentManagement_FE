@@ -152,6 +152,7 @@ export function ChecklistStarScreen({
   currentStars = 0,
 }: ChecklistStarScreenProps) {
   const navigate = useNavigate()
+  const hideSubmissionCard = true
   const { data: myPath, isLoading: isPathLoading } = useMyLearningPath()
   const roadmapTopicsByLevel = useMemo(() => {
     if (!embedInLearningPath || !myPath) return []
@@ -527,7 +528,9 @@ export function ChecklistStarScreen({
             </div>
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-              <div className="space-y-4 lg:col-span-7">
+              <div
+                className={cn('space-y-4', hideSubmissionCard ? 'lg:col-span-12' : 'lg:col-span-7')}
+              >
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-lg font-bold text-gray-900">Danh sách nhiệm vụ</h2>
                   <span className="rounded-full bg-primary-100 px-3 py-1 text-xs font-semibold text-primary-700">
@@ -617,14 +620,14 @@ export function ChecklistStarScreen({
                                               : 'Chưa mở khóa')
                                       }
                                       primaryAction={
-                                        it.kind === 'done' && taskSubmission
+                                        !hideSubmissionCard && it.kind === 'done' && taskSubmission
                                           ? {
                                               label: 'Xem bài nộp',
                                               onClick: () => {
                                                 setSelectedSubmission(taskSubmission)
                                               },
                                             }
-                                          : it.kind === 'current'
+                                          : !hideSubmissionCard && it.kind === 'current'
                                             ? useProbationFlow
                                               ? undefined
                                               : { label: 'Nộp bằng chứng', onClick: onPickFile }
@@ -645,161 +648,48 @@ export function ChecklistStarScreen({
                 </div>
               </div>
 
-              <div className="lg:col-span-5">
-                <div className="sticky top-24 flex flex-col gap-6">
-                  {!useProbationFlow && !selectedObjective ? (
-                    <div
-                      className={cn(
-                        'rounded-[12px] bg-white p-6 shadow-lg ring-1 ring-gray-100',
-                        CARD_ENTRANCE_HOVER
-                      )}
-                      style={staggerStyle(0)}
-                    >
-                      <h3 className="mb-6 flex items-center gap-2 text-lg font-bold text-gray-900">
-                        <Paperclip
-                          className="h-5 w-5 shrink-0 text-primary-600"
-                          strokeWidth={2}
-                          aria-hidden
-                        />
-                        Nộp bằng chứng
-                      </h3>
-                      <Form {...evidenceForm}>
-                        <div className="space-y-6">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className="group h-auto w-full cursor-pointer rounded-lg border-2 border-dashed border-primary-200 bg-primary-50/50 p-8 text-center font-normal normal-case tracking-normal transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
-                            onClick={onPickFile}
-                            disabled={!currentItem || submit.isPending}
-                          >
-                            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110">
-                              <CloudUpload
-                                className="h-6 w-6 text-primary-600"
-                                strokeWidth={2}
-                                aria-hidden
-                              />
-                            </div>
-                            <p className="text-sm font-bold text-primary-700">
-                              {selectedFile ? `Đã chọn: ${selectedFile.name}` : 'Tải tệp lên'}
-                            </p>
-                            <p className="mt-1 text-sm text-primary-600/80">
-                              {selectedFile
-                                ? 'Nhấn để chọn file khác'
-                                : 'Hoặc nhấn để chọn từ máy tính (Tối đa 25MB)'}
-                            </p>
-                          </Button>
-                          <Input
-                            ref={fileRef}
-                            type="file"
-                            className="hidden"
-                            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4"
-                            onChange={onFileChange}
+              {!hideSubmissionCard ? (
+                <div className="lg:col-span-5">
+                  <div className="sticky top-24 flex flex-col gap-6">
+                    {!useProbationFlow && !selectedObjective ? (
+                      <div
+                        className={cn(
+                          'rounded-[12px] bg-white p-6 shadow-lg ring-1 ring-gray-100',
+                          CARD_ENTRANCE_HOVER
+                        )}
+                        style={staggerStyle(0)}
+                      >
+                        <h3 className="mb-6 flex items-center gap-2 text-lg font-bold text-gray-900">
+                          <Paperclip
+                            className="h-5 w-5 shrink-0 text-primary-600"
+                            strokeWidth={2}
+                            aria-hidden
                           />
-                          <div className="grid grid-cols-3 gap-2">
-                            {(['FILE', 'LINK', 'TEXT'] as const).map((type) => (
-                              <Button
-                                key={type}
-                                type="button"
-                                variant={submissionType === type ? 'default' : 'outline'}
-                                className="h-9 rounded-lg text-xs font-bold"
-                                onClick={() => setSubmissionType(type)}
-                              >
-                                {type === 'FILE' ? 'File' : type === 'LINK' ? 'Link' : 'Viết'}
-                              </Button>
-                            ))}
-                          </div>
-                          {submissionType === 'LINK' ? (
-                            <InputController
-                              control={evidenceForm.control}
-                              name="linkUrl"
-                              label="Link phản tư"
-                              placeholder="https://..."
-                              inputClassName="rounded-lg"
-                            />
-                          ) : null}
-                          {submissionType === 'TEXT' ? (
-                            <TextareaController
-                              control={evidenceForm.control}
-                              name="textContent"
-                              label="Nội dung phản tư"
-                              rows={6}
-                              placeholder="Viết phản tư trực tiếp tại hệ thống..."
-                              textareaClassName="w-full resize-y rounded-lg border border-gray-200 p-3 text-sm"
-                            />
-                          ) : null}
-                          <TextareaController
-                            control={evidenceForm.control}
-                            name="note"
-                            label="Mô tả"
-                            labelClassName="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-500"
-                            id="evidence-note"
-                            rows={4}
-                            placeholder="Mô tả ngắn gọn về tài liệu bạn nộp…"
-                            textareaClassName="w-full resize-y rounded-lg border-0 bg-primary-50/40 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className="w-full rounded-lg border-0 bg-gradient-to-br from-primary-600 to-primary-700 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all hover:bg-transparent hover:shadow-primary-600/35 active:scale-[0.98] disabled:opacity-50"
-                            disabled={
-                              !currentItem ||
-                              submit.isPending ||
-                              (submissionType === 'FILE' && !selectedFile)
-                            }
-                            onClick={handleUpload}
-                          >
-                            {submit.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                            ) : (
-                              'Nộp bài'
-                            )}
-                          </Button>
-                        </div>
-                      </Form>
-                    </div>
-                  ) : null}
-
-                  <div
-                    className={cn(
-                      'rounded-[12px] border border-primary-100/50 bg-primary-50/50 p-6',
-                      selectedObjective
-                        ? 'text-left bg-white shadow-lg ring-1 ring-gray-100 border-none'
-                        : 'text-center',
-                      CARD_ENTRANCE_HOVER
-                    )}
-                    style={staggerStyle(1)}
-                  >
-                    <h4
-                      className={cn(
-                        'mb-4 font-bold text-primary-600',
-                        selectedObjective
-                          ? 'text-base uppercase tracking-normal'
-                          : 'text-xs uppercase tracking-wide'
-                      )}
-                    >
-                      {selectedObjective ? selectedObjective.objective : 'Bài đã nộp gần nhất'}
-                    </h4>
-
-                    {selectedObjective && selectedObjectiveCanSubmitReflection ? (
-                      <div className="mb-6">
+                          Nộp bằng chứng
+                        </h3>
                         <Form {...evidenceForm}>
-                          <div className="space-y-4">
+                          <div className="space-y-6">
                             <Button
                               type="button"
                               variant="ghost"
-                              className="group h-auto w-full cursor-pointer rounded-lg border-2 border-dashed border-primary-200 bg-primary-50/50 p-6 text-center font-normal normal-case tracking-normal transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="group h-auto w-full cursor-pointer rounded-lg border-2 border-dashed border-primary-200 bg-primary-50/50 p-8 text-center font-normal normal-case tracking-normal transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
                               onClick={onPickFile}
-                              disabled={submit.isPending}
+                              disabled={!currentItem || submit.isPending}
                             >
-                              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110">
+                              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110">
                                 <CloudUpload
-                                  className="h-5 w-5 text-primary-600"
+                                  className="h-6 w-6 text-primary-600"
                                   strokeWidth={2}
                                   aria-hidden
                                 />
                               </div>
                               <p className="text-sm font-bold text-primary-700">
                                 {selectedFile ? `Đã chọn: ${selectedFile.name}` : 'Tải tệp lên'}
+                              </p>
+                              <p className="mt-1 text-sm text-primary-600/80">
+                                {selectedFile
+                                  ? 'Nhấn để chọn file khác'
+                                  : 'Hoặc nhấn để chọn từ máy tính (Tối đa 25MB)'}
                               </p>
                             </Button>
                             <Input
@@ -844,19 +734,21 @@ export function ChecklistStarScreen({
                             <TextareaController
                               control={evidenceForm.control}
                               name="note"
-                              label="Mô tả minh chứng"
-                              labelClassName="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500"
+                              label="Mô tả"
+                              labelClassName="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-500"
                               id="evidence-note"
-                              rows={3}
-                              placeholder="Mô tả..."
-                              textareaClassName="w-full resize-y rounded-lg border border-gray-200 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600"
+                              rows={4}
+                              placeholder="Mô tả ngắn gọn về tài liệu bạn nộp…"
+                              textareaClassName="w-full resize-y rounded-lg border-0 bg-primary-50/40 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600"
                             />
                             <Button
                               type="button"
                               variant="ghost"
                               className="w-full rounded-lg border-0 bg-gradient-to-br from-primary-600 to-primary-700 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all hover:bg-transparent hover:shadow-primary-600/35 active:scale-[0.98] disabled:opacity-50"
                               disabled={
-                                submit.isPending || (submissionType === 'FILE' && !selectedFile)
+                                !currentItem ||
+                                submit.isPending ||
+                                (submissionType === 'FILE' && !selectedFile)
                               }
                               onClick={handleUpload}
                             >
@@ -869,256 +761,370 @@ export function ChecklistStarScreen({
                           </div>
                         </Form>
                       </div>
-                    ) : selectedObjective ? (
-                      <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm font-semibold text-slate-500">
-                        Học phần này không yêu cầu nộp phản tư.
-                      </div>
                     ) : null}
 
-                    {selectedObjective && (
-                      <div className="mt-6 border-t border-gray-100 pt-4">
-                        <h5 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">
-                          Lịch sử bài nộp
-                        </h5>
-                      </div>
-                    )}
+                    <div
+                      className={cn(
+                        'rounded-[12px] border border-primary-100/50 bg-primary-50/50 p-6',
+                        selectedObjective
+                          ? 'text-left bg-white shadow-lg ring-1 ring-gray-100 border-none'
+                          : 'text-center',
+                        CARD_ENTRANCE_HOVER
+                      )}
+                      style={staggerStyle(1)}
+                    >
+                      <h4
+                        className={cn(
+                          'mb-4 font-bold text-primary-600',
+                          selectedObjective
+                            ? 'text-base uppercase tracking-normal'
+                            : 'text-xs uppercase tracking-wide'
+                        )}
+                      >
+                        {selectedObjective ? selectedObjective.objective : 'Bài đã nộp gần nhất'}
+                      </h4>
 
-                    {(submissions ?? []).length > 0 ? (
-                      <>
-                        <ul className="divide-y divide-primary-100/60 text-left text-sm">
-                          {(submissions ?? []).slice(0, 5).map((s) => (
-                            <li key={s.id} className="group py-3 first:pt-0 last:pb-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="min-w-0 flex-1">
-                                  <div
-                                    className="truncate font-semibold text-gray-900"
-                                    title={s.fileName}
-                                  >
-                                    {s.fileName}
-                                  </div>
-                                  <div className="mt-0.5 text-[13px] text-gray-500">
-                                    {new Date(s.createdAt).toLocaleDateString('vi-VN')} ·{' '}
-                                    <span className="font-medium text-primary-600">
-                                      {s.status === 'ACCEPTED' || s.status === 'GRADED'
-                                        ? 'Đã duyệt'
-                                        : s.status === 'PENDING'
-                                          ? 'Chờ duyệt'
-                                          : 'Từ chối'}
-                                    </span>
-                                  </div>
+                      {selectedObjective && selectedObjectiveCanSubmitReflection ? (
+                        <div className="mb-6">
+                          <Form {...evidenceForm}>
+                            <div className="space-y-4">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="group h-auto w-full cursor-pointer rounded-lg border-2 border-dashed border-primary-200 bg-primary-50/50 p-6 text-center font-normal normal-case tracking-normal transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={onPickFile}
+                                disabled={submit.isPending}
+                              >
+                                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110">
+                                  <CloudUpload
+                                    className="h-5 w-5 text-primary-600"
+                                    strokeWidth={2}
+                                    aria-hidden
+                                  />
                                 </div>
-                                {s.url ? (
+                                <p className="text-sm font-bold text-primary-700">
+                                  {selectedFile ? `Đã chọn: ${selectedFile.name}` : 'Tải tệp lên'}
+                                </p>
+                              </Button>
+                              <Input
+                                ref={fileRef}
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4"
+                                onChange={onFileChange}
+                              />
+                              <div className="grid grid-cols-3 gap-2">
+                                {(['FILE', 'LINK', 'TEXT'] as const).map((type) => (
                                   <Button
+                                    key={type}
                                     type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 shrink-0 rounded-full bg-primary-50 text-primary-600 shadow-sm hover:bg-primary-100 hover:text-primary-700"
-                                    title="Xem bài đã nộp"
-                                    onClick={() => {
-                                      const fullUrl = resolvePublicAssetUrl(s.url!)
-                                      if (fullUrl) window.open(fullUrl, '_blank')
-                                    }}
+                                    variant={submissionType === type ? 'default' : 'outline'}
+                                    className="h-9 rounded-lg text-xs font-bold"
+                                    onClick={() => setSubmissionType(type)}
                                   >
-                                    <Eye className="h-4 w-4" />
+                                    {type === 'FILE' ? 'File' : type === 'LINK' ? 'Link' : 'Viết'}
                                   </Button>
-                                ) : s.fileMissing ? (
-                                  <span
-                                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600"
-                                    title="File không còn trên máy chủ"
-                                  >
-                                    <AlertCircle className="h-4 w-4" />
-                                  </span>
-                                ) : null}
-                                {s.status === 'GRADED' && (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 shrink-0 rounded-full bg-blue-50 text-blue-600 shadow-sm hover:bg-blue-100 hover:text-blue-700 ml-2"
-                                    title="Xem kết quả"
-                                    onClick={() => setSelectedSubmission(s)}
-                                  >
-                                    <Info className="h-4 w-4" />
-                                  </Button>
-                                )}
+                                ))}
                               </div>
-                            </li>
-                          ))}
-                        </ul>
-
-                        <Dialog
-                          open={!!selectedSubmission}
-                          onOpenChange={(open) => !open && setSelectedSubmission(null)}
-                        >
-                          <DialogContent className="sm:max-w-[520px] overflow-hidden">
-                            <DialogHeader className="pb-2 border-b border-slate-100">
-                              <DialogTitle className="text-xl font-black tracking-tight text-slate-800 flex items-center gap-2">
-                                <Trophy className="h-5 w-5 text-amber-500" />
-                                Thành tích Lộ trình
-                              </DialogTitle>
-                              <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                Phản hồi chi tiết từ Ban điều hành
-                              </DialogDescription>
-                            </DialogHeader>
-                            {/* Score & Status Summary Card */}
-                            <div
-                              className={cn(
-                                'relative overflow-hidden rounded-[28px] p-8 text-center border-2 transition-all duration-500',
-                                (displaySubmission?.score || 0) >= 60
-                                  ? 'bg-emerald-50/50 border-emerald-100 shadow-emerald-100/20'
-                                  : 'bg-rose-50/50 border-rose-100 shadow-rose-100/20'
-                              )}
-                            >
-                              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                                {(displaySubmission?.score || 0) >= 60 ? (
-                                  <Trophy className="h-24 w-24" />
+                              {submissionType === 'LINK' ? (
+                                <InputController
+                                  control={evidenceForm.control}
+                                  name="linkUrl"
+                                  label="Link phản tư"
+                                  placeholder="https://..."
+                                  inputClassName="rounded-lg"
+                                />
+                              ) : null}
+                              {submissionType === 'TEXT' ? (
+                                <TextareaController
+                                  control={evidenceForm.control}
+                                  name="textContent"
+                                  label="Nội dung phản tư"
+                                  rows={6}
+                                  placeholder="Viết phản tư trực tiếp tại hệ thống..."
+                                  textareaClassName="w-full resize-y rounded-lg border border-gray-200 p-3 text-sm"
+                                />
+                              ) : null}
+                              <TextareaController
+                                control={evidenceForm.control}
+                                name="note"
+                                label="Mô tả minh chứng"
+                                labelClassName="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500"
+                                id="evidence-note"
+                                rows={3}
+                                placeholder="Mô tả..."
+                                textareaClassName="w-full resize-y rounded-lg border border-gray-200 p-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="w-full rounded-lg border-0 bg-gradient-to-br from-primary-600 to-primary-700 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary-600/25 transition-all hover:bg-transparent hover:shadow-primary-600/35 active:scale-[0.98] disabled:opacity-50"
+                                disabled={
+                                  submit.isPending || (submissionType === 'FILE' && !selectedFile)
+                                }
+                                onClick={handleUpload}
+                              >
+                                {submit.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                                 ) : (
-                                  <XCircle className="h-24 w-24" />
+                                  'Nộp bài'
                                 )}
-                              </div>
-
-                              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2 block">
-                                Kết quả tổng kết
-                              </span>
-
-                              <div className="flex flex-col items-center">
-                                <div
-                                  className={cn(
-                                    'text-7xl font-black tabular-nums tracking-tighter mb-2',
-                                    (displaySubmission?.score || 0) >= 60
-                                      ? 'text-emerald-600'
-                                      : 'text-rose-600'
-                                  )}
-                                >
-                                  {displaySubmission?.score ?? '--'}
-                                </div>
-
-                                <div
-                                  className={cn(
-                                    'flex items-center gap-2 px-5 py-2 rounded-full text-sm font-black uppercase tracking-widest border shadow-sm',
-                                    (displaySubmission?.score || 0) >= 60
-                                      ? 'bg-emerald-500 text-white border-emerald-400'
-                                      : 'bg-rose-500 text-white border-rose-400'
-                                  )}
-                                >
-                                  {(displaySubmission?.score || 0) >= 60 ? (
-                                    <>
-                                      <CheckCircle2 className="h-4 w-4" /> Đạt yêu cầu
-                                    </>
-                                  ) : (
-                                    <>
-                                      <AlertCircle className="h-4 w-4" /> Thi lại
-                                    </>
-                                  )}
-                                </div>
-                              </div>
+                              </Button>
                             </div>
-                            {/* Feedback Grid */}
-                            <div className="space-y-4 pt-4">
-                              {/* Manager Feedback */}
-                              <div className="group relative overflow-hidden rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
-                                <div className="flex items-center gap-3 mb-3">
-                                  <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                                    <UserCheck className="h-4 w-4 text-primary" />
-                                  </div>
-                                  <span className="text-[11px] font-black uppercase tracking-widest text-primary/70">
-                                    Nhận xét Quản lý
-                                  </span>
-                                </div>
-                                <p className="text-sm font-medium leading-relaxed text-slate-600 whitespace-pre-wrap pl-1 border-l-2 border-primary/20 italic">
-                                  {displaySubmission?.managerComment ||
-                                    'Quản lý chưa để lại nhận xét chi tiết.'}
-                                </p>
-                              </div>
+                          </Form>
+                        </div>
+                      ) : selectedObjective ? (
+                        <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm font-semibold text-slate-500">
+                          Học phần này không yêu cầu nộp phản tư.
+                        </div>
+                      ) : null}
 
-                              {/* Host Feedback */}
-                              <div className="group relative overflow-hidden rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
-                                <div className="flex items-center gap-3 mb-3">
-                                  <div className="h-8 w-8 rounded-xl bg-purple-100 flex items-center justify-center">
-                                    <MessageSquareQuote className="h-4 w-4 text-purple-700" />
-                                  </div>
-                                  <span className="text-[11px] font-black uppercase tracking-widest text-purple-700/70">
-                                    Nhận xét Host
-                                  </span>
-                                </div>
-                                <p className="text-sm font-medium leading-relaxed text-slate-600 whitespace-pre-wrap pl-1 border-l-2 border-purple-200 italic">
-                                  {displaySubmission?.hostComment ||
-                                    'Host chưa để lại nhận xét chi tiết.'}
-                                </p>
-                              </div>
-                            </div>
+                      {selectedObjective && (
+                        <div className="mt-6 border-t border-gray-100 pt-4">
+                          <h5 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500">
+                            Lịch sử bài nộp
+                          </h5>
+                        </div>
+                      )}
 
-                            {displaySubmission?.fileName && (
-                              <div className="flex flex-col gap-2 border-t border-dashed border-slate-200 pt-4">
-                                <span className="text-sm font-semibold text-slate-800">
-                                  File minh chứng đã nộp:
-                                </span>
-                                <div className="flex items-center justify-between bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 gap-3">
-                                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                                    <Paperclip className="h-4 w-4 text-indigo-600 shrink-0" />
-                                    <span
-                                      className="text-sm font-extrabold text-indigo-900 truncate flex-1"
-                                      title={displaySubmission.fileName}
+                      {(submissions ?? []).length > 0 ? (
+                        <>
+                          <ul className="divide-y divide-primary-100/60 text-left text-sm">
+                            {(submissions ?? []).slice(0, 5).map((s) => (
+                              <li key={s.id} className="group py-3 first:pt-0 last:pb-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div
+                                      className="truncate font-semibold text-gray-900"
+                                      title={s.fileName}
                                     >
-                                      {displaySubmission.fileName}
-                                    </span>
+                                      {s.fileName}
+                                    </div>
+                                    <div className="mt-0.5 text-[13px] text-gray-500">
+                                      {new Date(s.createdAt).toLocaleDateString('vi-VN')} ·{' '}
+                                      <span className="font-medium text-primary-600">
+                                        {s.status === 'ACCEPTED' || s.status === 'GRADED'
+                                          ? 'Đã duyệt'
+                                          : s.status === 'PENDING'
+                                            ? 'Chờ duyệt'
+                                            : 'Từ chối'}
+                                      </span>
+                                    </div>
                                   </div>
-                                  {displaySubmission.url ? (
+                                  {s.url ? (
                                     <Button
                                       type="button"
-                                      size="sm"
-                                      className="h-9 gap-1.5 rounded-xl font-bold bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hover:shadow transition-all shrink-0 flex items-center"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 shrink-0 rounded-full bg-primary-50 text-primary-600 shadow-sm hover:bg-primary-100 hover:text-primary-700"
+                                      title="Xem bài đã nộp"
                                       onClick={() => {
-                                        const fullUrl = resolvePublicAssetUrl(
-                                          displaySubmission.url!
-                                        )
+                                        const fullUrl = resolvePublicAssetUrl(s.url!)
                                         if (fullUrl) window.open(fullUrl, '_blank')
                                       }}
                                     >
-                                      <ExternalLink className="h-3.5 w-3.5" />
-                                      <span>Xem file</span>
+                                      <Eye className="h-4 w-4" />
                                     </Button>
-                                  ) : displaySubmission.fileMissing ? (
-                                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
-                                      <AlertCircle className="h-3.5 w-3.5" />
-                                      File không còn trên máy chủ
+                                  ) : s.fileMissing ? (
+                                    <span
+                                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600"
+                                      title="File không còn trên máy chủ"
+                                    >
+                                      <AlertCircle className="h-4 w-4" />
                                     </span>
                                   ) : null}
+                                  {s.status === 'GRADED' && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 shrink-0 rounded-full bg-blue-50 text-blue-600 shadow-sm hover:bg-blue-100 hover:text-blue-700 ml-2"
+                                      title="Xem kết quả"
+                                      onClick={() => setSelectedSubmission(s)}
+                                    >
+                                      <Info className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+
+                          <Dialog
+                            open={!!selectedSubmission}
+                            onOpenChange={(open) => !open && setSelectedSubmission(null)}
+                          >
+                            <DialogContent className="sm:max-w-[520px] overflow-hidden">
+                              <DialogHeader className="pb-2 border-b border-slate-100">
+                                <DialogTitle className="text-xl font-black tracking-tight text-slate-800 flex items-center gap-2">
+                                  <Trophy className="h-5 w-5 text-amber-500" />
+                                  Thành tích Lộ trình
+                                </DialogTitle>
+                                <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                  Phản hồi chi tiết từ Ban điều hành
+                                </DialogDescription>
+                              </DialogHeader>
+                              {/* Score & Status Summary Card */}
+                              <div
+                                className={cn(
+                                  'relative overflow-hidden rounded-[28px] p-8 text-center border-2 transition-all duration-500',
+                                  (displaySubmission?.score || 0) >= 60
+                                    ? 'bg-emerald-50/50 border-emerald-100 shadow-emerald-100/20'
+                                    : 'bg-rose-50/50 border-rose-100 shadow-rose-100/20'
+                                )}
+                              >
+                                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                                  {(displaySubmission?.score || 0) >= 60 ? (
+                                    <Trophy className="h-24 w-24" />
+                                  ) : (
+                                    <XCircle className="h-24 w-24" />
+                                  )}
+                                </div>
+
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2 block">
+                                  Kết quả tổng kết
+                                </span>
+
+                                <div className="flex flex-col items-center">
+                                  <div
+                                    className={cn(
+                                      'text-7xl font-black tabular-nums tracking-tighter mb-2',
+                                      (displaySubmission?.score || 0) >= 60
+                                        ? 'text-emerald-600'
+                                        : 'text-rose-600'
+                                    )}
+                                  >
+                                    {displaySubmission?.score ?? '--'}
+                                  </div>
+
+                                  <div
+                                    className={cn(
+                                      'flex items-center gap-2 px-5 py-2 rounded-full text-sm font-black uppercase tracking-widest border shadow-sm',
+                                      (displaySubmission?.score || 0) >= 60
+                                        ? 'bg-emerald-500 text-white border-emerald-400'
+                                        : 'bg-rose-500 text-white border-rose-400'
+                                    )}
+                                  >
+                                    {(displaySubmission?.score || 0) >= 60 ? (
+                                      <>
+                                        <CheckCircle2 className="h-4 w-4" /> Đạt yêu cầu
+                                      </>
+                                    ) : (
+                                      <>
+                                        <AlertCircle className="h-4 w-4" /> Thi lại
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            )}
-                          </DialogContent>
-                        </Dialog>
-                      </>
-                    ) : (
-                      <div className={cn('py-4', selectedObjective && 'text-center')}>
-                        {!selectedObjective && (
-                          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/60">
-                            <Clock
-                              className="h-8 w-8 text-gray-300"
-                              strokeWidth={1.5}
-                              aria-hidden
-                            />
-                          </div>
-                        )}
-                        <p className="text-sm font-medium text-gray-600">Chưa có bài nộp</p>
-                        {!selectedObjective && (
-                          <p className="mt-1 text-sm text-gray-500">
-                            Các bài nộp của bạn sẽ xuất hiện tại đây sau khi được hệ thống ghi nhận.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                              {/* Feedback Grid */}
+                              <div className="space-y-4 pt-4">
+                                {/* Manager Feedback */}
+                                <div className="group relative overflow-hidden rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+                                  <div className="flex items-center gap-3 mb-3">
+                                    <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                                      <UserCheck className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <span className="text-[11px] font-black uppercase tracking-widest text-primary/70">
+                                      Nhận xét Quản lý
+                                    </span>
+                                  </div>
+                                  <p className="text-sm font-medium leading-relaxed text-slate-600 whitespace-pre-wrap pl-1 border-l-2 border-primary/20 italic">
+                                    {displaySubmission?.managerComment ||
+                                      'Quản lý chưa để lại nhận xét chi tiết.'}
+                                  </p>
+                                </div>
 
-                  <Link
-                    to="/dashboard"
-                    className="block text-center text-sm font-semibold text-primary-600 hover:underline"
-                  >
-                    ← Về tổng quan học tập
-                  </Link>
+                                {/* Host Feedback */}
+                                <div className="group relative overflow-hidden rounded-[24px] border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+                                  <div className="flex items-center gap-3 mb-3">
+                                    <div className="h-8 w-8 rounded-xl bg-purple-100 flex items-center justify-center">
+                                      <MessageSquareQuote className="h-4 w-4 text-purple-700" />
+                                    </div>
+                                    <span className="text-[11px] font-black uppercase tracking-widest text-purple-700/70">
+                                      Nhận xét Host
+                                    </span>
+                                  </div>
+                                  <p className="text-sm font-medium leading-relaxed text-slate-600 whitespace-pre-wrap pl-1 border-l-2 border-purple-200 italic">
+                                    {displaySubmission?.hostComment ||
+                                      'Host chưa để lại nhận xét chi tiết.'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {displaySubmission?.fileName && (
+                                <div className="flex flex-col gap-2 border-t border-dashed border-slate-200 pt-4">
+                                  <span className="text-sm font-semibold text-slate-800">
+                                    File minh chứng đã nộp:
+                                  </span>
+                                  <div className="flex items-center justify-between bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 gap-3">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <Paperclip className="h-4 w-4 text-indigo-600 shrink-0" />
+                                      <span
+                                        className="text-sm font-extrabold text-indigo-900 truncate flex-1"
+                                        title={displaySubmission.fileName}
+                                      >
+                                        {displaySubmission.fileName}
+                                      </span>
+                                    </div>
+                                    {displaySubmission.url ? (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        className="h-9 gap-1.5 rounded-xl font-bold bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm hover:shadow transition-all shrink-0 flex items-center"
+                                        onClick={() => {
+                                          const fullUrl = resolvePublicAssetUrl(
+                                            displaySubmission.url!
+                                          )
+                                          if (fullUrl) window.open(fullUrl, '_blank')
+                                        }}
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                        <span>Xem file</span>
+                                      </Button>
+                                    ) : displaySubmission.fileMissing ? (
+                                      <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
+                                        <AlertCircle className="h-3.5 w-3.5" />
+                                        File không còn trên máy chủ
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              )}
+                            </DialogContent>
+                          </Dialog>
+                        </>
+                      ) : (
+                        <div className={cn('py-4', selectedObjective && 'text-center')}>
+                          {!selectedObjective && (
+                            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/60">
+                              <Clock
+                                className="h-8 w-8 text-gray-300"
+                                strokeWidth={1.5}
+                                aria-hidden
+                              />
+                            </div>
+                          )}
+                          <p className="text-sm font-medium text-gray-600">Chưa có bài nộp</p>
+                          {!selectedObjective && (
+                            <p className="mt-1 text-sm text-gray-500">
+                              Các bài nộp của bạn sẽ xuất hiện tại đây sau khi được hệ thống ghi
+                              nhận.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <Link
+                      to="/dashboard"
+                      className="block text-center text-sm font-semibold text-primary-600 hover:underline"
+                    >
+                      ← Về tổng quan học tập
+                    </Link>
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </div>
           </div>
         )}
