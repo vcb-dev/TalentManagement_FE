@@ -163,9 +163,10 @@ function renderField(
     u: MeUserSelf
     control: ReturnType<typeof useForm<EditRecord>>['control']
     divisions?: Array<{ id: string; name: string }>
+    positions?: Array<{ value: string; label: string }>
   }
 ) {
-  const { u, control, divisions } = ctx
+  const { u, control, divisions, positions } = ctx
   const forceReadonly = field.key === 'directManager'
 
   if (field.kind === 'portrait') {
@@ -200,6 +201,28 @@ function renderField(
         {divisions?.map((d) => (
           <SelectItem key={d.id} value={d.id}>
             {d.name}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (field.kind === 'position-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder="Chọn vị trí"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        selectClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        {positions?.map((p) => (
+          <SelectItem key={p.value} value={p.value}>
+            {p.label}
           </SelectItem>
         ))}
       </SelectController>
@@ -370,6 +393,11 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     queryFn: () => organizationApi.getDivisionsList(),
   })
   const divisions = useMemo(() => divisionsData ?? [], [divisionsData])
+  const { data: positionsData } = useQuery({
+    queryKey: ['profile', 'positions'],
+    queryFn: () => profileApi.getPositions(),
+  })
+  const positions = useMemo(() => positionsData ?? [], [positionsData])
   const form = useForm<EditRecord>({
     defaultValues: userToEdit(u),
   })
@@ -434,7 +462,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     })
   )
 
-  const fieldCtx = { u, control, divisions }
+  const fieldCtx = { u, control, divisions, positions }
   const avatarUploadInputId = useId()
 
   return (

@@ -71,4 +71,17 @@ export const profileApi = {
     })
     return res.data
   },
+
+  /** Lấy danh sách vị trí (team_position) — dùng cho dropdown form. */
+  getPositions: async (): Promise<Array<{ value: string; label: string }>> => {
+    if (isMockApiEnabled()) {
+      return [
+        { value: 'Senior Developer', label: 'Senior Developer' },
+        { value: 'Developer', label: 'Developer' },
+        { value: 'Junior Developer', label: 'Junior Developer' },
+      ]
+    }
+    const res = await apiClient.get<Array<{ value: string; label: string }>>('/me/positions')
+    return res.data ?? []
+  },
 }
