@@ -132,6 +132,9 @@ function userToEdit(u: MeUserSelf): EditRecord {
       r[k] = u[k] == null ? '' : String(u[k])
     }
   }
+  if (!r.displayName && u.fullNameLegal) {
+    r.displayName = u.fullNameLegal
+  }
   return r
 }
 
@@ -486,6 +489,12 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
       onSuccess: () => {
         form.reset(values) // Reset form để clear dirty state
         toast.success('Đã lưu')
+        if (user && values.displayName) {
+          useAuthStore.getState().setUser({
+            ...user,
+            name: values.displayName,
+          })
+        }
       },
       onError: () => toast.error('Không lưu được. Thử lại sau.'),
     })
