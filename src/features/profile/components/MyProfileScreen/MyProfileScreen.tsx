@@ -165,9 +165,10 @@ function renderField(
     control: ReturnType<typeof useForm<EditRecord>>['control']
     divisions?: Array<{ id: string; name: string }>
     positions?: Array<{ value: string; label: string }>
+    jobTitles?: Array<{ value: string; label: string }>
   }
 ) {
-  const { u, control, divisions, positions } = ctx
+  const { u, control, divisions, positions, jobTitles } = ctx
   const forceReadonly = field.key === 'directManager'
 
   if (field.kind === 'portrait') {
@@ -224,6 +225,28 @@ function renderField(
         {positions?.map((p) => (
           <SelectItem key={p.value} value={p.value}>
             {p.label}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (field.kind === 'job-title-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder="Chọn vị trí chuyên môn"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        {jobTitles?.map((j) => (
+          <SelectItem key={j.value} value={j.value}>
+            {j.label}
           </SelectItem>
         ))}
       </SelectController>
@@ -399,6 +422,11 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     queryFn: () => profileApi.getPositions(),
   })
   const positions = useMemo(() => positionsData ?? [], [positionsData])
+  const { data: jobTitlesData } = useQuery({
+    queryKey: ['profile', 'job-titles'],
+    queryFn: () => profileApi.getJobTitles(),
+  })
+  const jobTitles = useMemo(() => jobTitlesData ?? [], [jobTitlesData])
   const form = useForm<EditRecord>({
     defaultValues: userToEdit(u),
   })
@@ -463,7 +491,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     })
   )
 
-  const fieldCtx = { u, control, divisions, positions }
+  const fieldCtx = { u, control, divisions, positions, jobTitles }
   const avatarUploadInputId = useId()
 
   return (

@@ -4,7 +4,7 @@ export type UserSelfFieldSpec = {
   key: MeUserDisplayKey
   label: string
   multiline?: boolean
-  kind?: 'portrait' | 'division-select' | 'position-select'
+  kind?: 'portrait' | 'division-select' | 'position-select' | 'job-title-select'
 }
 
 /** Các mục ngày chỉnh sửa được — `<input type="date">` (`startDateWork` chỉ đọc, không nằm đây). */
@@ -34,7 +34,7 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
     title: 'Công việc & tổ chức',
     fields: [
       { key: 'divisionId', label: 'Phòng ban', kind: 'division-select' },
-      { key: 'jobTitle', label: 'Vị trí chuyên môn' },
+      { key: 'jobTitle', label: 'Vị trí chuyên môn', kind: 'job-title-select' },
       { key: 'teamPosition', label: 'Vị trí', kind: 'position-select' },
       { key: 'startDateWork', label: 'Ngày bắt đầu làm việc' },
       { key: 'employmentStatus', label: 'Tình trạng làm việc' },
@@ -48,7 +48,7 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
   {
     title: 'Nhân thân & liên hệ',
     fields: [
-      { key: 'displayName', label: 'Tên hiển thị' },
+      { key: 'displayName', label: 'Họ tên' },
       { key: 'gender', label: 'Giới tính' },
       { key: 'birthDate', label: 'Ngày sinh' },
       { key: 'phonePrimary', label: 'Điện thoại chính' },
