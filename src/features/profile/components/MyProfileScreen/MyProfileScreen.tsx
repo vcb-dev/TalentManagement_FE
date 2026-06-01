@@ -1,5 +1,6 @@
 import { useId, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useForm, useWatch, type Control } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -14,6 +15,7 @@ import {
   DateController,
   InputController,
   TextareaController,
+  SelectController,
 } from '@/components/ui/form-controllers'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
@@ -21,6 +23,7 @@ import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { type PatchMeUserBody, usePatchMeUser, useUploadMePortrait } from '@/features/profile/hooks'
+import { organizationApi } from '@/features/organization/api'
 import type { MyProfilePage } from '@/features/profile/types'
 import {
   formatUserDateForReadonlyDisplay,
@@ -158,9 +161,10 @@ function renderField(
   ctx: {
     u: MeUserSelf
     control: ReturnType<typeof useForm<EditRecord>>['control']
+    divisions?: Array<{ id: string; name: string }>
   }
 ) {
-  const { u, control } = ctx
+  const { u, control, divisions } = ctx
   const forceReadonly = field.key === 'directManager'
 
   if (field.kind === 'portrait') {
@@ -178,6 +182,23 @@ function renderField(
   }
 
   const key = field.key as MeUserPatchKey
+
+  if (field.kind === 'division-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder="Chọn phòng ban"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        selectClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+        options={divisions?.map((d) => ({ value: d.id, label: d.name })) || []}
+      />
+    )
+  }
 
   if (isDateFormField(field.key)) {
     return (
@@ -320,9 +341,7 @@ function ProfileIdentityCard({
           </Badge>
           <div className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
             <Building2 className="h-3 w-3" />
-            <span>
-              {u.departmentName?.trim() || '—'} · {u.teamGroup?.trim() || '—'}
-            </span>
+            <span>{u.departmentName?.trim() || '—'}</span>
           </div>
           <Badge
             variant="outline"
@@ -340,6 +359,11 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
   const user = useAuthStore((s) => s.user)
   const { mutate: patchUser, isPending: patchPending } = usePatchMeUser()
   const { mutate: uploadPortrait, isPending: portraitUploading } = useUploadMePortrait()
+  const { data: orgTree } = useQuery({
+    queryKey: ['organization', 'tree'],
+    queryFn: () => organizationApi.getTree(),
+  })
+  const divisions = useMemo(() => orgTree?.departments ?? [], [orgTree])
   const form = useForm<EditRecord>({
     defaultValues: userToEdit(u),
   })
@@ -404,7 +428,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     })
   )
 
-  const fieldCtx = { u, control }
+  const fieldCtx = { u, control, divisions }
   const avatarUploadInputId = useId()
 
   return (

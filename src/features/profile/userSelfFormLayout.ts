@@ -4,7 +4,7 @@ export type UserSelfFieldSpec = {
   key: MeUserDisplayKey
   label: string
   multiline?: boolean
-  kind?: 'portrait'
+  kind?: 'portrait' | 'division-select'
 }
 
 /** Các mục ngày chỉnh sửa được — `<input type="date">` (`startDateWork` chỉ đọc, không nằm đây). */
@@ -24,9 +24,6 @@ export const USER_WORK_ORG_READONLY_KEYS = [
   'startDateWork',
   'employeeCodePrimary',
   'hrOfficerName',
-  /** Lấy từ team_memberships trên BE — không sửa qua /me/user. */
-  'departmentName',
-  'teamGroup',
 ] as const satisfies readonly MeUserDisplayKey[]
 
 export function isWorkOrgReadonlyField(key: MeUserDisplayKey): boolean {
@@ -37,9 +34,8 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
   {
     title: 'Công việc & tổ chức',
     fields: [
-      { key: 'departmentName', label: 'Phòng ban' },
-      { key: 'teamGroup', label: 'Team / nhóm' },
-      { key: 'jobTitle', label: 'Chức danh' },
+      { key: 'divisionId', label: 'Phòng ban', kind: 'division-select' },
+      { key: 'jobTitle', label: 'Vị trí chuyên môn' },
       { key: 'startDateWork', label: 'Ngày bắt đầu làm việc' },
       { key: 'employmentStatus', label: 'Tình trạng làm việc' },
       { key: 'employeeCodePrimary', label: 'Mã nhân viên' },

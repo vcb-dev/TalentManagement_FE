@@ -16,6 +16,7 @@ export interface MeUserSelf {
   jobTitle: string | null
   teamGroup: string | null
   departmentName: string | null
+  divisionId: string | null
   directManager: string | null
   portraitRef: string | null
   gender: string | null
@@ -87,6 +88,7 @@ export const ME_USER_PATCH_KEYS = [
   'profileReviewDate',
   'cvAttachmentRef',
   'notes',
+  'divisionId',
 ] as const
 
 export type MeUserPatchKey = (typeof ME_USER_PATCH_KEYS)[number]
