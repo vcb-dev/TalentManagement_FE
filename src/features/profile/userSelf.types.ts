@@ -91,6 +91,7 @@ export const ME_USER_PATCH_KEYS = [
   'cvAttachmentRef',
   'notes',
   'divisionId',
+  'teamPosition',
 ] as const
 
 export type MeUserPatchKey = (typeof ME_USER_PATCH_KEYS)[number]

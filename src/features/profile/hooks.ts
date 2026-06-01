@@ -4,6 +4,7 @@ import { isMockApiEnabled } from '@/lib/mockEnv'
 import { authKeys } from '@/features/auth/queryKeys'
 import { profileApi } from '@/features/profile/api'
 import { profileKeys } from '@/features/profile/queryKeys'
+import { dashboardKeys } from '@/features/dashboard/queryKeys'
 import type { MeUserPatchKey } from '@/features/profile/userSelf.types'
 
 export type PatchMeUserBody = Partial<Record<MeUserPatchKey, string | null>>
@@ -29,6 +30,7 @@ export function usePatchMeUser() {
       await Promise.all([
         qc.invalidateQueries({ queryKey: profileKeys.page() }),
         qc.invalidateQueries({ queryKey: authKeys.me() }),
+        qc.invalidateQueries({ queryKey: dashboardKeys.me() }),
       ])
     },
   })
@@ -42,6 +44,7 @@ export function useUploadMePortrait() {
       await Promise.all([
         qc.invalidateQueries({ queryKey: profileKeys.page() }),
         qc.invalidateQueries({ queryKey: authKeys.me() }),
+        qc.invalidateQueries({ queryKey: dashboardKeys.me() }),
       ])
     },
   })
