@@ -175,7 +175,7 @@ export function EmployeeLearningDashboard() {
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const fullName = isLoading ? 'Loading...' : apiUser?.fullNameLegal?.trim() || user?.name || '—'
   const birthDate = isLoading ? 'Loading...' : formatDateVi(apiUser?.birthDate)
-  const jobTitleValue = isLoading ? 'Loading...' : apiUser?.jobTitle || roleLabel
+  const jobTitleValue = isLoading ? 'Loading...' : apiUser?.jobTitle || '—'
   const teamPositionValue = isLoading ? 'Loading...' : apiUser?.teamPosition?.trim() || '—'
   const levelLabelValue = isLoading ? 'Loading...' : levelLabel
   const promotionHistory = meDashboard?.promotionHistory ?? []
@@ -417,7 +417,7 @@ export function EmployeeLearningDashboard() {
                 {[
                   ['Họ tên', fullName],
                   ['Ngày sinh', birthDate],
-                  ['Phòng ban', teamLine],
+                  ['Phòng ban', deptLine],
                   ['Vị trí', teamPositionValue],
                   ['Vị trí chuyên môn', jobTitleValue],
                   ['Cấp độ', levelLabelValue],

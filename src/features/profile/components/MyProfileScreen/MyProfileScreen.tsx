@@ -195,7 +195,7 @@ function renderField(
         placeholder="Chọn phòng ban"
         className={cn('space-y-1.5', fieldBoxClass)}
         labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-        selectClassName={cn(fieldControlClass, inputEditable)}
+        triggerClassName={cn(fieldControlClass, inputEditable)}
         customLabel={<FieldLabel>{field.label}</FieldLabel>}
       >
         {divisions?.map((d) => (
@@ -217,7 +217,7 @@ function renderField(
         placeholder="Chọn vị trí"
         className={cn('space-y-1.5', fieldBoxClass)}
         labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-        selectClassName={cn(fieldControlClass, inputEditable)}
+        triggerClassName={cn(fieldControlClass, inputEditable)}
         customLabel={<FieldLabel>{field.label}</FieldLabel>}
       >
         {positions?.map((p) => (
