@@ -52,7 +52,6 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
   {
     title: 'Nhân thân & liên hệ',
     fields: [
-      { key: 'fullNameLegal', label: 'Họ tên đầy đủ (trên hồ sơ)' },
       { key: 'displayName', label: 'Tên hiển thị' },
       { key: 'gender', label: 'Giới tính' },
       { key: 'birthDate', label: 'Ngày sinh' },

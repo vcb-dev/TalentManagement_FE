@@ -396,7 +396,10 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
   ]
   const onSaveProfile = handleSubmit((values) =>
     patchUser(toPatch(values), {
-      onSuccess: () => toast.success('Đã lưu'),
+      onSuccess: () => {
+        form.reset(values) // Reset form để clear dirty state
+        toast.success('Đã lưu')
+      },
       onError: () => toast.error('Không lưu được. Thử lại sau.'),
     })
   )
