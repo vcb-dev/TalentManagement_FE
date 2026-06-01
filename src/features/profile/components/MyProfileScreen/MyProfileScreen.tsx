@@ -24,6 +24,7 @@ import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { type PatchMeUserBody, usePatchMeUser, useUploadMePortrait } from '@/features/profile/hooks'
+import { profileApi } from '@/features/profile/api'
 import { organizationApi } from '@/features/organization/api'
 import type { MyProfilePage } from '@/features/profile/types'
 import {

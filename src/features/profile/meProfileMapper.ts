@@ -24,6 +24,7 @@ export type MePublicUser = {
   employeeCodePrimary: string | null
   birthDate: string | null
   startDateWork: string | null
+  teamPosition: string | null
 }
 
 export type MeAppProfile = {
