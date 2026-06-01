@@ -17,6 +17,7 @@ import {
   TextareaController,
   SelectController,
 } from '@/components/ui/form-controllers'
+import { SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
@@ -195,8 +196,13 @@ function renderField(
         labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
         selectClassName={cn(fieldControlClass, inputEditable)}
         customLabel={<FieldLabel>{field.label}</FieldLabel>}
-        options={divisions?.map((d) => ({ value: d.id, label: d.name })) || []}
-      />
+      >
+        {divisions?.map((d) => (
+          <SelectItem key={d.id} value={d.id}>
+            {d.name}
+          </SelectItem>
+        ))}
+      </SelectController>
     )
   }
 
