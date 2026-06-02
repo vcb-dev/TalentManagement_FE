@@ -158,8 +158,8 @@ export function EmployeeLearningDashboard() {
   )
 
   const { data: meDashboard, isLoading } = useMyDashboard({ enabled: Boolean(user) })
-  const greetingName = user?.name?.trim() || 'bạn'
   const apiUser = meDashboard?.user
+  const greetingName = apiUser?.displayName?.trim() || user?.name?.trim() || 'bạn'
   const apiCareer = meDashboard?.career
   const levelFromStaff = parseLevelFromStaff(meDashboard?.staffLevel)
   const levelKey: LevelCode = levelFromStaff ?? apiCareer?.careerLevel ?? 'tap_su'
@@ -173,9 +173,12 @@ export function EmployeeLearningDashboard() {
     ? 'Loading...'
     : apiUser?.departmentName?.trim() || (user ? formatDepartment(user.departmentId) : '—')
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
-  const fullName = isLoading ? 'Loading...' : apiUser?.fullNameLegal?.trim() || user?.name || '—'
+  const fullName = isLoading
+    ? 'Loading...'
+    : apiUser?.displayName?.trim() || apiUser?.fullNameLegal?.trim() || user?.name || '—'
   const birthDate = isLoading ? 'Loading...' : formatDateVi(apiUser?.birthDate)
-  const jobTitleValue = isLoading ? 'Loading...' : apiUser?.jobTitle || roleLabel
+  const jobTitleValue = isLoading ? 'Loading...' : apiUser?.jobTitle || '—'
+  const teamPositionValue = isLoading ? 'Loading...' : apiUser?.teamPosition?.trim() || '—'
   const levelLabelValue = isLoading ? 'Loading...' : levelLabel
   const promotionHistory = meDashboard?.promotionHistory ?? []
   const highlightAchievements = meDashboard?.highlightAchievements ?? []
@@ -416,9 +419,9 @@ export function EmployeeLearningDashboard() {
                 {[
                   ['Họ tên', fullName],
                   ['Ngày sinh', birthDate],
-                  ['Phòng ban', teamLine],
-                  ['Vị trí', deptLine],
-                  ['Chức vụ', jobTitleValue],
+                  ['Phòng ban', deptLine],
+                  ['Vị trí', teamPositionValue],
+                  ['Vị trí chuyên môn', jobTitleValue],
                   ['Cấp độ', levelLabelValue],
                 ].map(([label, value], idx) => (
                   <div

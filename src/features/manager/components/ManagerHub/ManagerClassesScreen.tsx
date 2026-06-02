@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import {
@@ -126,7 +126,7 @@ export function ManagerClassesScreen() {
 
   const [deleteClassId, setDeleteClassId] = useState<string | null>(null)
 
-  const { data: rows = [], isLoading } = useManagerClasses({ search })
+  const { data: rows = [], isLoading, isError, error } = useManagerClasses({ search })
   const createClass = useCreateManagerClass()
   const deleteClass = useDeleteManagerClass()
   const updateClass = useUpdateManagerClass()
@@ -557,6 +557,34 @@ export function ManagerClassesScreen() {
             </div>,
             document.body
           )}
+
+        {isError && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+            <p className="font-semibold">Không thể tải danh sách lớp</p>
+            <p className="mt-1 text-xs opacity-80">
+              {error instanceof Error
+                ? error.message
+                : 'Lỗi không xác định. Kiểm tra quyền truy cập hoặc kết nối mạng.'}
+            </p>
+          </div>
+        )}
+
+        {isLoading && !isError && (
+          <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm">Đang tải danh sách lớp...</span>
+          </div>
+        )}
+
+        {!isLoading && !isError && rows.length === 0 && (
+          <div className="rounded-xl border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
+            <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+            <p className="text-sm font-semibold text-muted-foreground">Chưa có lớp học nào</p>
+            <p className="mt-1 text-xs text-muted-foreground/70">
+              Nhấn "Tạo lớp" để tạo lớp học đầu tiên.
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-6 items-start md:grid-cols-2 xl:grid-cols-3">
           {rows.map((row) => (

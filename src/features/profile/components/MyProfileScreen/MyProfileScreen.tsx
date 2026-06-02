@@ -1,5 +1,6 @@
 import { useId, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useForm, useWatch, type Control } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -14,13 +15,17 @@ import {
   DateController,
   InputController,
   TextareaController,
+  SelectController,
 } from '@/components/ui/form-controllers'
+import { SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { type PatchMeUserBody, usePatchMeUser, useUploadMePortrait } from '@/features/profile/hooks'
+import { profileApi } from '@/features/profile/api'
+import { organizationApi } from '@/features/organization/api'
 import type { MyProfilePage } from '@/features/profile/types'
 import {
   formatUserDateForReadonlyDisplay,
@@ -127,6 +132,9 @@ function userToEdit(u: MeUserSelf): EditRecord {
       r[k] = u[k] == null ? '' : String(u[k])
     }
   }
+  if (!r.displayName && u.fullNameLegal) {
+    r.displayName = u.fullNameLegal
+  }
   return r
 }
 
@@ -158,9 +166,12 @@ function renderField(
   ctx: {
     u: MeUserSelf
     control: ReturnType<typeof useForm<EditRecord>>['control']
+    divisions?: Array<{ id: string; name: string }>
+    positions?: Array<{ value: string; label: string }>
+    jobTitles?: Array<{ value: string; label: string }>
   }
 ) {
-  const { u, control } = ctx
+  const { u, control, divisions, positions, jobTitles } = ctx
   const forceReadonly = field.key === 'directManager'
 
   if (field.kind === 'portrait') {
@@ -178,6 +189,72 @@ function renderField(
   }
 
   const key = field.key as MeUserPatchKey
+
+  if (field.kind === 'division-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder="Chọn phòng ban"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        {divisions?.map((d) => (
+          <SelectItem key={d.id} value={d.id}>
+            {d.name}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (field.kind === 'position-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder="Chọn vị trí"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        {positions?.map((p) => (
+          <SelectItem key={p.value} value={p.value}>
+            {p.label}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (field.kind === 'job-title-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder="Chọn vị trí chuyên môn"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        {jobTitles?.map((j) => (
+          <SelectItem key={j.value} value={j.value}>
+            {j.label}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
 
   if (isDateFormField(field.key)) {
     return (
@@ -320,9 +397,7 @@ function ProfileIdentityCard({
           </Badge>
           <div className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
             <Building2 className="h-3 w-3" />
-            <span>
-              {u.departmentName?.trim() || '—'} · {u.teamGroup?.trim() || '—'}
-            </span>
+            <span>{u.departmentName?.trim() || '—'}</span>
           </div>
           <Badge
             variant="outline"
@@ -340,6 +415,21 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
   const user = useAuthStore((s) => s.user)
   const { mutate: patchUser, isPending: patchPending } = usePatchMeUser()
   const { mutate: uploadPortrait, isPending: portraitUploading } = useUploadMePortrait()
+  const { data: divisionsData } = useQuery({
+    queryKey: ['organization', 'divisions-list'],
+    queryFn: () => organizationApi.getDivisionsList(),
+  })
+  const divisions = useMemo(() => divisionsData ?? [], [divisionsData])
+  const { data: positionsData } = useQuery({
+    queryKey: ['profile', 'positions'],
+    queryFn: () => profileApi.getPositions(),
+  })
+  const positions = useMemo(() => positionsData ?? [], [positionsData])
+  const { data: jobTitlesData } = useQuery({
+    queryKey: ['profile', 'job-titles'],
+    queryFn: () => profileApi.getJobTitles(),
+  })
+  const jobTitles = useMemo(() => jobTitlesData ?? [], [jobTitlesData])
   const form = useForm<EditRecord>({
     defaultValues: userToEdit(u),
   })
@@ -396,12 +486,21 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
   ]
   const onSaveProfile = handleSubmit((values) =>
     patchUser(toPatch(values), {
-      onSuccess: () => toast.success('Đã lưu'),
+      onSuccess: () => {
+        form.reset(values) // Reset form để clear dirty state
+        toast.success('Đã lưu')
+        if (user && values.displayName) {
+          useAuthStore.getState().setUser({
+            ...user,
+            name: values.displayName,
+          })
+        }
+      },
       onError: () => toast.error('Không lưu được. Thử lại sau.'),
     })
   )
 
-  const fieldCtx = { u, control }
+  const fieldCtx = { u, control, divisions, positions, jobTitles }
   const avatarUploadInputId = useId()
 
   return (
@@ -504,97 +603,6 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                 </div>
               </section>
             </div>
-
-            <aside className="space-y-6">
-              <section className="rounded-3xl border border-primary/20 bg-gradient-to-br from-violet-50 to-indigo-50/50 p-8 shadow-sm dark:border-primary/20 dark:from-violet-950/20 dark:to-indigo-950/10 relative overflow-hidden">
-                <div className="absolute top-0 right-0 h-24 w-24 bg-primary/10 rounded-full -mr-12 -mt-12 blur-xl" />
-                <div className="mb-6 flex items-center gap-4 relative z-10">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-white shadow-lg shadow-primary/30 dark:shadow-none">
-                    <StarEmblem variant="filled" className="h-7 w-7" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
-                      Lộ trình hiện tại
-                    </p>
-                    <p className="text-base font-black text-slate-900 dark:text-slate-100 truncate">
-                      {page.currentLevel.progressLine}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-6 relative z-10">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-primary/70">
-                      <span>Tiến độ cấp độ</span>
-                      <span className="text-primary bg-white px-1.5 py-0.5 rounded-md shadow-sm">
-                        {levelProgressPct}%
-                      </span>
-                    </div>
-                    <div className="h-3 w-full overflow-hidden rounded-full bg-primary/15 dark:bg-primary/20 ring-4 ring-primary/5">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-400 transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(99,102,241,0.4)]"
-                        style={{ width: `${levelProgressPct}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 border-t border-primary/15 pt-6 dark:border-primary/20">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Sao hiện tại
-                    </div>
-                    <div className="text-lg font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg">
-                      {page.currentLevel.currentStarIndex}
-                      <span className="text-slate-400 text-xs mx-0.5">/</span>
-                      {totalStars}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    {Array.from({ length: totalStars }, (_, i) => (
-                      <StarEmblem
-                        key={i}
-                        variant={i < filledStars ? 'filled' : 'muted'}
-                        className={cn(
-                          'h-7 w-7 transition-all duration-300',
-                          i < filledStars
-                            ? 'drop-shadow-[0_2px_4px_rgba(99,102,241,0.4)] hover:scale-110'
-                            : 'opacity-20 grayscale hover:opacity-40'
-                        )}
-                        alt={i < filledStars ? `Sao đã đạt ${i + 1}` : `Sao chưa đạt ${i + 1}`}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 pt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-10 rounded-xl border-primary/30 bg-white text-xs font-semibold uppercase tracking-wider text-primary shadow-sm transition-all hover:bg-primary hover:text-white hover:border-primary dark:border-primary/30 dark:bg-slate-900"
-                      asChild
-                    >
-                      <Link to="/learning-path" search={learningPathSearch}>
-                        Lộ trình
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-10 rounded-xl border-primary/30 bg-white text-xs font-semibold uppercase tracking-wider text-primary shadow-sm transition-all hover:bg-primary hover:text-white hover:border-primary dark:border-primary/30 dark:bg-slate-900"
-                      asChild
-                    >
-                      <Link to="/exam">Kết quả thi</Link>
-                    </Button>
-                  </div>
-                </div>
-              </section>
-
-              <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
-                <p className="text-center text-xs leading-relaxed text-slate-400 font-medium italic">
-                  * Thông tin được đồng bộ tự động từ hệ thống HRM và Lark. Các trường bị khóa không
-                  thể chỉnh sửa trực tiếp tại đây.
-                </p>
-              </div>
-            </aside>
           </div>
         </div>
       </div>

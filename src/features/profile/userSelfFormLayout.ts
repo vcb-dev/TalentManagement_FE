@@ -4,7 +4,7 @@ export type UserSelfFieldSpec = {
   key: MeUserDisplayKey
   label: string
   multiline?: boolean
-  kind?: 'portrait'
+  kind?: 'portrait' | 'division-select' | 'position-select' | 'job-title-select'
 }
 
 /** Các mục ngày chỉnh sửa được — `<input type="date">` (`startDateWork` chỉ đọc, không nằm đây). */
@@ -19,14 +19,10 @@ export function isDateFormField(key: MeUserDisplayKey): boolean {
 
 /** Công việc & tổ chức — chỉ xem, không PATCH / chỉnh trên form. */
 export const USER_WORK_ORG_READONLY_KEYS = [
-  'jobTitle',
   'employmentStatus',
   'startDateWork',
   'employeeCodePrimary',
   'hrOfficerName',
-  /** Lấy từ team_memberships trên BE — không sửa qua /me/user. */
-  'departmentName',
-  'teamGroup',
 ] as const satisfies readonly MeUserDisplayKey[]
 
 export function isWorkOrgReadonlyField(key: MeUserDisplayKey): boolean {
@@ -37,9 +33,9 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
   {
     title: 'Công việc & tổ chức',
     fields: [
-      { key: 'departmentName', label: 'Phòng ban' },
-      { key: 'teamGroup', label: 'Team / nhóm' },
-      { key: 'jobTitle', label: 'Chức danh' },
+      { key: 'divisionId', label: 'Phòng ban', kind: 'division-select' },
+      { key: 'jobTitle', label: 'Vị trí chuyên môn', kind: 'job-title-select' },
+      { key: 'teamPosition', label: 'Vị trí', kind: 'position-select' },
       { key: 'startDateWork', label: 'Ngày bắt đầu làm việc' },
       { key: 'employmentStatus', label: 'Tình trạng làm việc' },
       { key: 'employeeCodePrimary', label: 'Mã nhân viên' },
@@ -52,8 +48,7 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
   {
     title: 'Nhân thân & liên hệ',
     fields: [
-      { key: 'fullNameLegal', label: 'Họ tên đầy đủ (trên hồ sơ)' },
-      { key: 'displayName', label: 'Tên hiển thị' },
+      { key: 'displayName', label: 'Họ tên' },
       { key: 'gender', label: 'Giới tính' },
       { key: 'birthDate', label: 'Ngày sinh' },
       { key: 'phonePrimary', label: 'Điện thoại chính' },
