@@ -121,7 +121,7 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     icon: School,
     match: 'prefix',
     permissionId: 'learning.view',
-    hiddenForRoles: ['MANAGER', 'BOD', 'HR'],
+    hiddenForRoles: ['MANAGER', 'BOD'],
   },
   {
     to: '/rewards',
