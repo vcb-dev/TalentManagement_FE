@@ -8,9 +8,15 @@ type ChatListPanelProps = {
   selectedConversationId?: string
   onSelect: (conversation: CskhInboxConversation) => void
   pageId?: string
+  typingConversationIds?: Set<string>
 }
 
-export function ChatListPanel({ selectedConversationId, onSelect, pageId }: ChatListPanelProps) {
+export function ChatListPanel({
+  selectedConversationId,
+  onSelect,
+  pageId,
+  typingConversationIds = new Set(),
+}: ChatListPanelProps) {
   const { data: conversations, isLoading } = useQuery({
     queryKey: ['cskh', 'inbox', 'conversations', pageId],
     queryFn: () => fetchInboxConversations(pageId),
@@ -85,30 +91,56 @@ export function ChatListPanel({ selectedConversationId, onSelect, pageId }: Chat
                 <h3 className="text-sm font-medium text-gray-900 truncate">
                   {conv.customerName || `Khách hàng ${conv.participantPsid.slice(0, 8)}`}
                 </h3>
-                <span className="text-xs text-gray-500 flex-shrink-0">
+                <span className="text-xs text-gray-400 flex-shrink-0">
                   {formatTime(conv.lastMessageAt)}
                 </span>
               </div>
 
-              {/* Last message preview */}
-              <p className="text-xs text-gray-600 truncate mt-1">
-                {conv.lastMessage || '[Không có tin nhắn]'}
-              </p>
-
-              {/* Unread badge + source */}
-              <div className="flex items-center gap-2 mt-2">
+              {/* Last message preview & unread badge */}
+              <div className="flex items-center justify-between mt-1 gap-2">
+                <div
+                  className={cn(
+                    'text-xs truncate flex-1 min-h-[16px]',
+                    typingConversationIds.has(conv.id)
+                      ? 'text-blue-600 font-medium italic'
+                      : 'text-gray-500'
+                  )}
+                >
+                  {typingConversationIds.has(conv.id) ? (
+                    <span className="inline-flex items-center gap-1 text-blue-600 font-semibold">
+                      đang nhập
+                      <span className="inline-flex gap-0.5 ml-0.5 items-end h-2 pb-0.5">
+                        {[0, 1, 2].map((i) => (
+                          <span
+                            key={i}
+                            className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"
+                            style={{
+                              animationDelay: `${i * 0.15}s`,
+                            }}
+                          />
+                        ))}
+                      </span>
+                    </span>
+                  ) : (
+                    conv.lastMessage || '[Không có tin nhắn]'
+                  )}
+                </div>
                 {conv.unreadCount > 0 && (
-                  <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full flex-shrink-0">
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold text-white bg-orange-500 rounded-full flex-shrink-0 animate-pulse">
                     {Math.min(conv.unreadCount, 99)}
                   </span>
                 )}
+              </div>
+
+              {/* Source tags */}
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                 {conv.fromAd && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                    Quảng cáo
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                    Ads
                   </span>
                 )}
                 {conv.pageName && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50/70 text-blue-700 border border-blue-100/50 max-w-[140px] truncate">
                     {conv.pageName}
                   </span>
                 )}

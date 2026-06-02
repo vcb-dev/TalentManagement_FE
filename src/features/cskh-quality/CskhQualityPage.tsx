@@ -46,10 +46,14 @@ import {
   getCskhOAuthStartUrl,
   refreshCskhOAuth,
   fetchRunningCskhJob,
+  setCskhPageEnabled,
+  syncInboxFromGraph,
   type CskhPage,
 } from './api'
 import { AuditMessengerView } from './AuditMessengerView'
+import { ChatMessengerPane } from './ChatMessengerPane'
 import { CskhGlassPanel, CskhPageShell, CskhPageAvatar } from './cskhUi'
+import { toast } from 'sonner'
 
 const cskhQualityRoute = getRouteApi('/_protected/cskh-quality')
 
@@ -1828,6 +1832,29 @@ function ConfigTab() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cskh'] }),
   })
 
+  const syncMut = useMutation({
+    mutationFn: syncInboxFromGraph,
+    onSuccess: (res) => {
+      toast.success(`Đã đồng bộ thành công ${res.synced} tin nhắn từ ${res.pageCount} kênh!`)
+      qc.invalidateQueries({ queryKey: ['cskh'] })
+    },
+    onError: () => {
+      toast.error('Đồng bộ tin nhắn thất bại. Vui lòng thử lại!')
+    },
+  })
+
+  const togglePageMut = useMutation({
+    mutationFn: (variables: { pageId: string; enabled: boolean }) =>
+      setCskhPageEnabled(variables.pageId, variables.enabled),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cskh'] })
+    },
+  })
+
+  const handleTogglePage = (pageId: string, enabled: boolean) => {
+    togglePageMut.mutate({ pageId, enabled })
+  }
+
   const pages = data?.pages ?? []
 
   if (isLoading) {
@@ -1873,6 +1900,19 @@ function ConfigTab() {
                 )}
                 Cập nhật kết nối Facebook
               </button>
+              <button
+                type="button"
+                disabled={!data?.oauthConnected || syncMut.isPending}
+                onClick={() => syncMut.mutate()}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-medium backdrop-blur transition hover:bg-white/20 disabled:opacity-50"
+              >
+                {syncMut.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Đồng bộ tin nhắn
+              </button>
             </div>
             {data?.oauthConnected ? (
               <div className="flex items-start gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm backdrop-blur">
@@ -1901,7 +1941,7 @@ function ConfigTab() {
           {pages.length ? (
             <p className="mt-0.5 text-xs text-slate-500">
               {pages.length.toLocaleString('vi-VN')} Page đã kết nối — chọn kênh khi chấm điểm ở tab
-              Chấm điểm.
+              Chấm điểm. Bật kênh để tải và hiển thị cuộc hội thoại.
             </p>
           ) : null}
         </div>
@@ -1913,15 +1953,39 @@ function ConfigTab() {
         ) : (
           <ul className="divide-y divide-slate-100">
             {pages.map((p) => (
-              <li key={p.pageId} className="flex items-center gap-3 px-5 py-4">
-                <CskhPageAvatar
-                  name={p.pageName || p.pageId}
-                  pictureUrl={p.pagePictureUrl}
-                  pageId={p.pageId}
-                />
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-800">{p.pageName || p.pageId}</p>
-                  <p className="truncate text-xs text-slate-400">ID: {p.pageId}</p>
+              <li
+                key={p.pageId}
+                className="flex items-center justify-between px-5 py-4 hover:bg-slate-50/30 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <CskhPageAvatar
+                    name={p.pageName || p.pageId}
+                    pictureUrl={p.pagePictureUrl}
+                    pageId={p.pageId}
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-850">
+                      {p.pageName || p.pageId}
+                    </p>
+                    <p className="truncate text-xs text-slate-400">ID: {p.pageId}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span
+                    className={`text-xs font-semibold ${p.enabled ? 'text-indigo-600' : 'text-slate-400'}`}
+                  >
+                    {p.enabled ? 'Đang hoạt động' : 'Ngưng hoạt động'}
+                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={p.enabled}
+                      onChange={(e) => handleTogglePage(p.pageId, e.target.checked)}
+                      className="sr-only peer"
+                      disabled={togglePageMut.isPending}
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
                 </div>
               </li>
             ))}
@@ -3424,7 +3488,9 @@ export function CskhQualityPage() {
           ? 'fb-page'
           : tabParam === 'products'
             ? 'products'
-            : 'overview'
+            : tabParam === 'chat'
+              ? 'chat'
+              : 'overview'
   const [auditJobBusy, setAuditJobBusy] = useState(false)
 
   useEffect(() => {
@@ -3463,8 +3529,8 @@ export function CskhQualityPage() {
   return (
     <CskhPageShell
       className={
-        tab === 'audit'
-          ? undefined
+        tab === 'audit' || tab === 'chat'
+          ? 'h-full min-h-0 flex-1'
           : tab === 'overview' || tab === 'fb-page' || tab === 'products'
             ? 'h-full min-h-0 flex-1'
             : '!h-auto min-h-0 flex-none overflow-visible'
@@ -3476,7 +3542,7 @@ export function CskhQualityPage() {
 
       <CskhGlassPanel
         className={
-          tab === 'audit'
+          tab === 'audit' || tab === 'chat'
             ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden'
             : tab === 'overview' || tab === 'products'
               ? 'flex h-full min-h-0 flex-1 flex-col overflow-x-hidden lg:overflow-hidden overflow-y-auto pb-1 [scrollbar-width:thin]'
@@ -3505,6 +3571,15 @@ export function CskhQualityPage() {
           }
         >
           <AuditMessengerView onAuditJobActiveChange={setAuditJobBusy} />
+        </div>
+        <div
+          className={
+            tab === 'chat'
+              ? 'flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
+              : 'hidden'
+          }
+        >
+          <ChatMessengerPane />
         </div>
       </CskhGlassPanel>
     </CskhPageShell>

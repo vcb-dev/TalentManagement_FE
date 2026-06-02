@@ -48,8 +48,8 @@ export function getBookingDisplayStatus(
 
   if (b.status === 'pending' && (isPast || timeStatus === 'done')) {
     return {
-      text: 'Quá hạn',
-      className: 'bg-slate-100 text-slate-500 border-slate-200',
+      text: 'Đã họp xong',
+      className: 'bg-stone-200 text-stone-700 border-stone-400',
     }
   }
 
