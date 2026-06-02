@@ -17,12 +17,16 @@ export function isMeetingEnded(
   return b.date < td || (b.date === td && b.timeTo <= ct)
 }
 
-/** Cần nộp BBH: đã duyệt, đã kết thúc, và từ ngày áp dụng tính năng trở đi. */
+/** Cần nộp BBH: (đã duyệt hoặc chờ duyệt), đã kết thúc, và từ ngày áp dụng tính năng trở đi. */
 export function requiresMeetingMinutes(
   b: MeetingBooking,
   vnTime: { date: string; time: string }
 ): boolean {
-  return b.status === 'approved' && isMeetingEnded(b, vnTime) && isSubjectToBbhPolicy(b)
+  return (
+    (b.status === 'approved' || b.status === 'pending') &&
+    isMeetingEnded(b, vnTime) &&
+    isSubjectToBbhPolicy(b)
+  )
 }
 
 export function getMinutesStatus(

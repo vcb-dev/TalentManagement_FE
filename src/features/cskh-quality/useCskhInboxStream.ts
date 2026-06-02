@@ -34,6 +34,7 @@ export function useCskhInboxStream({
 }: UseCskhInboxStreamOptions = {}) {
   const qc = useQueryClient()
   const [connected, setConnected] = useState(false)
+  const [typingConversationIds, setTypingConversationIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!enabled || typeof window === 'undefined') return
@@ -41,6 +42,7 @@ export function useCskhInboxStream({
     const base = (import.meta.env.VITE_API_URL || 'http://localhost:3003').replace(/\/$/, '')
     const es = new EventSource(`${base}/cskh/inbox/stream`, { withCredentials: true })
     let disconnectTimer: ReturnType<typeof setTimeout> | null = null
+    const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
     es.onopen = () => {
       if (disconnectTimer) clearTimeout(disconnectTimer)
@@ -54,6 +56,29 @@ export function useCskhInboxStream({
       try {
         const data = JSON.parse(ev.data as string) as InboxRealtimeEvent
         if (data.type === 'ping') return
+
+        // Handle typing indicator
+        if (data.type === 'typing' && data.conversationId) {
+          setTypingConversationIds((prev) => new Set([...prev, data.conversationId!]))
+
+          // Clear previous timeout if exists
+          if (typingTimeouts.has(data.conversationId)) {
+            clearTimeout(typingTimeouts.get(data.conversationId)!)
+          }
+
+          // Hide typing indicator after 3 seconds
+          const timeout = setTimeout(() => {
+            setTypingConversationIds((prev) => {
+              const next = new Set(prev)
+              next.delete(data.conversationId!)
+              return next
+            })
+            typingTimeouts.delete(data.conversationId!)
+          }, 3000)
+
+          typingTimeouts.set(data.conversationId, timeout)
+          return
+        }
 
         if (data.type === 'intent' && data.conversationId && data.intent) {
           qc.setQueryData(['cskh', 'inbox', 'intent', data.conversationId], data.intent)
@@ -93,8 +118,10 @@ export function useCskhInboxStream({
       if (disconnectTimer) clearTimeout(disconnectTimer)
       es.close()
       setConnected(false)
+      typingTimeouts.forEach((timeout) => clearTimeout(timeout))
+      typingTimeouts.clear()
     }
   }, [enabled, qc, activeConversationId, activeAuditDate, onIntent])
 
-  return connected
+  return { connected, typingConversationIds }
 }

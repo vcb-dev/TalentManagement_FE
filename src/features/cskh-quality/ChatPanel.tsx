@@ -13,14 +13,16 @@ import {
 } from './api'
 import { ChatMessage } from './ChatMessage'
 import { ChatMessageInput } from './ChatMessageInput'
+import { TypingIndicator } from './TypingIndicator'
 import { cskhMediaProxySrc } from './messageMedia'
 
 type ChatPanelProps = {
   conversation: CskhInboxConversation
+  isCustomerTyping?: boolean
   onClose?: () => void
 }
 
-export function ChatPanel({ conversation, onClose }: ChatPanelProps) {
+export function ChatPanel({ conversation, isCustomerTyping, onClose }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const lastMessageIdRef = useRef<string>('')
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
@@ -66,7 +68,7 @@ export function ChatPanel({ conversation, onClose }: ChatPanelProps) {
     })
   }, [conversation.id, messages.length])
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive or when typing starts
   useEffect(() => {
     const scrollToBottom = () => {
       if (scrollRef.current) {
@@ -81,7 +83,7 @@ export function ChatPanel({ conversation, onClose }: ChatPanelProps) {
 
     scrollToBottom()
     lastMessageIdRef.current = messages[messages.length - 1]?.id ?? ''
-  }, [messages])
+  }, [messages, isCustomerTyping])
 
   const displayMessages = useMemo(() => {
     return messages
@@ -138,7 +140,12 @@ export function ChatPanel({ conversation, onClose }: ChatPanelProps) {
             <p className="text-sm">Không có tin nhắn nào</p>
           </div>
         ) : (
-          displayMessages.map((msg) => <ChatMessage key={msg.id} message={msg} isOwn={msg.isOwn} />)
+          <>
+            {displayMessages.map((msg) => (
+              <ChatMessage key={msg.id} message={msg} isOwn={msg.isOwn} />
+            ))}
+            {isCustomerTyping && <TypingIndicator />}
+          </>
         )}
       </div>
 

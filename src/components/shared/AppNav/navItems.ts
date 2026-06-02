@@ -268,7 +268,7 @@ export const CSKH_QUALITY_ITEM: AppNavItem = {
       label: 'Hội thoại',
       icon: ShieldCheck,
       match: 'prefix',
-      isDevelopment: true,
+      search: { tab: 'chat' },
       permissionIdsAny: ['manager.approvals', 'hr.employees.view', 'bod.dashboard.view'],
     },
     {

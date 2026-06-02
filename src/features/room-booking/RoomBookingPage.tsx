@@ -75,8 +75,8 @@ function BookingStatusBadge({
 
   if (b.status === 'pending' && (isPast || b.timeStatus === 'done'))
     return (
-      <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-tight text-slate-500">
-        Quá hạn
+      <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-tight text-blue-700">
+        ✓ Đã họp xong
       </span>
     )
 

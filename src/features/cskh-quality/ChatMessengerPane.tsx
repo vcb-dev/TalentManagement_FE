@@ -1,9 +1,18 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { CskhInboxConversation } from './api'
+import { fetchCskhPages, type CskhInboxConversation } from './api'
 import { ChatListPanel } from './ChatListPanel'
 import { ChatPanel } from './ChatPanel'
+import { useCskhInboxStream } from './useCskhInboxStream'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 type ChatMessengerPaneProps = {
   pageId?: string
@@ -14,6 +23,24 @@ export function ChatMessengerPane({ pageId }: ChatMessengerPaneProps) {
     null
   )
 
+  const [selectedPageId, setSelectedPageId] = useState<string | undefined>(pageId)
+
+  // Enable real-time SSE stream
+  const { typingConversationIds } = useCskhInboxStream({
+    enabled: true,
+    activeConversationId: selectedConversation?.id ?? null,
+  })
+
+  // Fetch Facebook pages
+  const { data: pagesData } = useQuery({
+    queryKey: ['cskh', 'pages'],
+    queryFn: fetchCskhPages,
+  })
+
+  const allPages = useMemo(() => {
+    return pagesData?.pages ?? []
+  }, [pagesData])
+
   return (
     <div className="flex h-full gap-4 bg-white rounded-lg border border-gray-200">
       {/* Conversations List - Left Sidebar */}
@@ -22,14 +49,38 @@ export function ChatMessengerPane({ pageId }: ChatMessengerPaneProps) {
           selectedConversation && window.innerWidth < 768 ? 'hidden' : 'flex'
         } w-full md:w-80 flex-col border-r`}
       >
-        <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">Hội thoại</h2>
-          <p className="text-xs text-gray-500 mt-1">Facebook Messenger</p>
+        <div className="p-4 border-b flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Hội thoại</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Facebook Messenger</p>
+            </div>
+          </div>
+          <Select
+            value={selectedPageId ?? 'all'}
+            onValueChange={(val) => setSelectedPageId(val === 'all' ? undefined : val)}
+          >
+            <SelectTrigger
+              className="w-full !h-9 !min-h-9 border-slate-200 !bg-white pl-2.5 pr-8 !border hover:!bg-white focus:ring-1 focus:ring-blue-200 [&>span]:line-clamp-1 [&>span]:truncate text-xs font-semibold text-slate-700"
+              aria-label="Chọn kênh Facebook"
+            >
+              <SelectValue placeholder="Chọn kênh Facebook" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72 bg-white">
+              <SelectItem value="all">Tất cả kênh</SelectItem>
+              {allPages.map((page) => (
+                <SelectItem key={page.pageId} value={page.pageId}>
+                  {page.pageName || `Kênh ${page.pageId}`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <ChatListPanel
           selectedConversationId={selectedConversation?.id}
           onSelect={setSelectedConversation}
-          pageId={pageId}
+          pageId={selectedPageId}
+          typingConversationIds={typingConversationIds}
         />
       </div>
 
@@ -51,6 +102,7 @@ export function ChatMessengerPane({ pageId }: ChatMessengerPaneProps) {
           <div className="flex-1 overflow-hidden">
             <ChatPanel
               conversation={selectedConversation}
+              isCustomerTyping={typingConversationIds.has(selectedConversation.id)}
               onClose={() => setSelectedConversation(null)}
             />
           </div>

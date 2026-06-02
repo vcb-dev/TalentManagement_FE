@@ -12,44 +12,59 @@ export function appendInboxMessagesToCache(
   incoming: InboxRealtimeMessagePayload[]
 ) {
   if (!incoming.length) return
-  const queryKey = ['cskh', 'inbox', 'messages', conversationId, auditDateKey] as const
-  qc.setQueryData<{ conversation: CskhInboxConversation; messages: CskhInboxMessage[] }>(
-    queryKey,
-    (prev) => {
-      if (!prev) return prev
-      const byId = new Map(prev.messages.map((m) => [m.id, m]))
-      for (const msg of incoming) {
-        byId.set(msg.id, { ...byId.get(msg.id), ...msg })
+  const queries = qc.getQueryCache().findAll({
+    queryKey: ['cskh', 'inbox', 'messages', conversationId],
+  })
+  for (const q of queries) {
+    qc.setQueryData<{ conversation: CskhInboxConversation; messages: CskhInboxMessage[] }>(
+      q.queryKey,
+      (prev) => {
+        if (!prev) return prev
+        const byId = new Map(prev.messages.map((m) => [m.id, m]))
+        for (const msg of incoming) {
+          byId.set(msg.id, { ...byId.get(msg.id), ...msg })
+        }
+        const merged = [...byId.values()].sort(
+          (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
+        )
+        return { ...prev, messages: merged }
       }
-      const merged = [...byId.values()].sort(
-        (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
-      )
-      return { ...prev, messages: merged }
-    }
-  )
+    )
+  }
 }
 
 export function patchInboxConversationInCache(
   qc: QueryClient,
   patch: InboxRealtimeConversationPatch
 ) {
-  qc.setQueryData<CskhInboxConversation[]>(['cskh', 'inbox', 'conversations'], (prev) => {
-    if (!prev?.length) return prev
-    const idx = prev.findIndex((c) => c.id === patch.id)
-    if (idx < 0) {
-      const row = patch as CskhInboxConversation
-      return [row, ...prev].sort(
+  const queries = qc.getQueryCache().findAll({
+    queryKey: ['cskh', 'inbox', 'conversations'],
+  })
+  for (const q of queries) {
+    const key = q.queryKey
+    qc.setQueryData<CskhInboxConversation[]>(key, (prev) => {
+      if (!prev?.length) return prev
+      const idx = prev.findIndex((c) => c.id === patch.id)
+      if (idx < 0) {
+        const pageIdFilter = key[3] as string | undefined
+        if (pageIdFilter && patch.pageId && patch.pageId !== pageIdFilter) {
+          return prev
+        }
+        const row = patch as CskhInboxConversation
+        return [row, ...prev].sort(
+          (a, b) =>
+            new Date(b.lastMessageAt ?? 0).getTime() - new Date(a.lastMessageAt ?? 0).getTime()
+        )
+      }
+      const next = [...prev]
+      next[idx] = { ...next[idx], ...patch }
+      next.sort(
         (a, b) =>
           new Date(b.lastMessageAt ?? 0).getTime() - new Date(a.lastMessageAt ?? 0).getTime()
       )
-    }
-    const next = [...prev]
-    next[idx] = { ...next[idx], ...patch }
-    next.sort(
-      (a, b) => new Date(b.lastMessageAt ?? 0).getTime() - new Date(a.lastMessageAt ?? 0).getTime()
-    )
-    return next
-  })
+      return next
+    })
+  }
 }
 
 export function bumpAuditSidebarPreview(

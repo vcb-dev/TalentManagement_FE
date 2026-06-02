@@ -1158,7 +1158,7 @@ export function AuditMessengerView({
       })
     },
     enabled: !!inboxConv?.id,
-    refetchInterval: inboxLive ? false : 15_000,
+    refetchInterval: inboxLive.connected ? false : 15_000,
     staleTime: 15_000,
     refetchOnWindowFocus: false,
   })
