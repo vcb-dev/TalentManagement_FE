@@ -505,6 +505,17 @@ export async function sendInboxMessage(
   return data
 }
 
+export async function notifyInboxTyping(conversationId: string): Promise<void> {
+  await apiClient.post(`/cskh/inbox/conversations/${conversationId}/typing`)
+}
+
+export async function markInboxAsRead(conversationId: string): Promise<{ markedAsRead: number }> {
+  const { data } = await apiClient.post<{ markedAsRead: number }>(
+    `/cskh/inbox/conversations/${conversationId}/mark-as-read`
+  )
+  return data
+}
+
 export async function syncInboxFromGraph(
   pageId?: string
 ): Promise<{ synced: number; pageCount: number }> {

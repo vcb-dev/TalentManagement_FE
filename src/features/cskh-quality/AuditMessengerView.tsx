@@ -83,6 +83,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useCskhInboxStream } from './useCskhInboxStream'
+import { ChatMessengerPane } from './ChatMessengerPane'
 
 const AUDIT_JOB_KEY = 'cskh:audit-job-id'
 const AUDIT_INTENT_CACHE_KEY = 'cskh:audit-intent-cache:v1'
@@ -449,7 +450,7 @@ export function AuditMessengerView({
   const [selectedPageId, setSelectedPageId] = useState('')
   /** Số cuộc chấm mới mỗi lần chạy (để trống = không giới hạn). */
   const [batchLimitInput, setBatchLimitInput] = useState('')
-  const [chatTab, setChatTab] = useState<'chat' | 'timeline' | 'analysis'>('chat')
+  const [chatTab, setChatTab] = useState<'chat' | 'messenger' | 'timeline' | 'analysis'>('chat')
   const [workspacePane, setWorkspacePane] = useState<MessengerWorkspacePane>('list')
   const [intentByAuditId, setIntentByAuditId] = useState<Record<string, CskhCustomerIntent>>(() =>
     loadIntentCache()
@@ -1625,7 +1626,8 @@ export function AuditMessengerView({
                   <div className="grid shrink-0 grid-cols-3 gap-1.5 border-b border-slate-200/60 bg-white/90 px-3 py-2 backdrop-blur-sm xl:hidden">
                     {(
                       [
-                        { id: 'chat' as const, label: 'Hội thoại' },
+                        { id: 'chat' as const, label: 'Hội thoại Audit' },
+                        { id: 'messenger' as const, label: 'Messenger' },
                         { id: 'timeline' as const, label: 'Timeline' },
                         { id: 'analysis' as const, label: 'Phân tích', mobileOnly: true },
                       ] as const
@@ -1673,6 +1675,11 @@ export function AuditMessengerView({
                       ref={scrollRef}
                       className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain bg-[#e8ecf1] px-4 py-4"
                     >
+                      {chatTab === 'messenger' ? (
+                        <div className="min-h-0 flex-1 bg-white rounded-lg">
+                          <ChatMessengerPane pageId={selectedPageId} />
+                        </div>
+                      ) : null}
                       {chatTab === 'timeline' ? (
                         <AuditTimelinePanel
                           transcript={transcript}
