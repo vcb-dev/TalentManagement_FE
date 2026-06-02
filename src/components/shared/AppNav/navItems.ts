@@ -445,7 +445,6 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
     icon: Target,
     match: 'prefix',
     permissionIdsAny: ['kpi.team_view', 'kpi.team_edit'],
-    hiddenForRoles: ['MANAGER'],
   },
   {
     to: '/leader/vinh-danh',
@@ -467,7 +466,6 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
     icon: BarChart3,
     match: 'prefix',
     permissionId: 'report.view',
-    hiddenForRoles: ['MANAGER'],
   },
 ]
 
