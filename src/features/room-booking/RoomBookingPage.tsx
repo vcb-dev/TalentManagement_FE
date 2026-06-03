@@ -466,6 +466,11 @@ export default function RoomBookingPage() {
       queryClient.invalidateQueries({ queryKey: ['room-bookings'] })
       speak('Đã hủy lịch họp')
     },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
+      setError(msg)
+      speak(`Lỗi: ${msg}`)
+    },
     onSettled: () => setProcessingId(null),
   })
 
@@ -475,6 +480,11 @@ export default function RoomBookingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['room-bookings'] })
       speak('Đã duyệt lịch họp thành công')
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
+      setError(msg)
+      speak(`Lỗi: ${msg}`)
     },
     onSettled: () => setProcessingId(null),
   })
@@ -486,6 +496,11 @@ export default function RoomBookingPage() {
       queryClient.invalidateQueries({ queryKey: ['room-bookings'] })
       setRejectId(null)
       speak('Đã từ chối lịch họp')
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
+      setError(msg)
+      speak(`Lỗi: ${msg}`)
     },
     onSettled: () => setProcessingId(null),
   })
