@@ -1,12 +1,10 @@
-import { useId, useMemo } from 'react'
+import { useEffect, useId, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
 import { useForm, useWatch, type Control } from 'react-hook-form'
 import { toast } from 'sonner'
 import { Building2, RefreshCw, Upload } from 'lucide-react'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
-import { StarEmblem } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -25,7 +23,7 @@ import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { type PatchMeUserBody, usePatchMeUser, useUploadMePortrait } from '@/features/profile/hooks'
 import { profileApi } from '@/features/profile/api'
-import { organizationApi } from '@/features/organization/api'
+import { organizationApi, type OrgTreeTeam } from '@/features/organization/api'
 import type { MyProfilePage } from '@/features/profile/types'
 import {
   formatUserDateForReadonlyDisplay,
@@ -167,11 +165,13 @@ function renderField(
     u: MeUserSelf
     control: ReturnType<typeof useForm<EditRecord>>['control']
     divisions?: Array<{ id: string; name: string }>
+    teams?: Array<{ id: string; name: string }>
+    teamSelectDisabled?: boolean
     positions?: Array<{ value: string; label: string }>
     jobTitles?: Array<{ value: string; label: string }>
   }
 ) {
-  const { u, control, divisions, positions, jobTitles } = ctx
+  const { u, control, divisions, teams, teamSelectDisabled, positions, jobTitles } = ctx
   const forceReadonly = field.key === 'directManager'
 
   if (field.kind === 'portrait') {
@@ -203,9 +203,34 @@ function renderField(
         triggerClassName={cn(fieldControlClass, inputEditable)}
         customLabel={<FieldLabel>{field.label}</FieldLabel>}
       >
+        <SelectItem value="__none">Chưa chọn</SelectItem>
         {divisions?.map((d) => (
           <SelectItem key={d.id} value={d.id}>
             {d.name}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (field.kind === 'team-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder={teamSelectDisabled ? 'Chọn phòng ban trước' : 'Chọn team'}
+        disabled={teamSelectDisabled}
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable, teamSelectDisabled && 'opacity-70')}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        <SelectItem value="__none">Chưa chọn</SelectItem>
+        {teams?.map((team) => (
+          <SelectItem key={team.id} value={team.id}>
+            {team.name}
           </SelectItem>
         ))}
       </SelectController>
@@ -415,11 +440,15 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
   const user = useAuthStore((s) => s.user)
   const { mutate: patchUser, isPending: patchPending } = usePatchMeUser()
   const { mutate: uploadPortrait, isPending: portraitUploading } = useUploadMePortrait()
-  const { data: divisionsData } = useQuery({
-    queryKey: ['organization', 'divisions-list'],
-    queryFn: () => organizationApi.getDivisionsList(),
+  const { data: orgTreeData, isSuccess: orgTreeReady } = useQuery({
+    queryKey: ['organization-tree'],
+    queryFn: () => organizationApi.getTree(),
   })
-  const divisions = useMemo(() => divisionsData ?? [], [divisionsData])
+  const orgDepartments = useMemo(() => orgTreeData?.departments ?? [], [orgTreeData])
+  const divisions = useMemo(
+    () => orgDepartments.map((department) => ({ id: department.id, name: department.name })),
+    [orgDepartments]
+  )
   const { data: positionsData } = useQuery({
     queryKey: ['profile', 'positions'],
     queryFn: () => profileApi.getPositions(),
@@ -434,24 +463,26 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     defaultValues: userToEdit(u),
   })
   const { control, handleSubmit } = form
+  const selectedDivisionId = useWatch({ control, name: 'divisionId' }) ?? ''
+  const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
+  const teamsForSelectedDivision = useMemo<OrgTreeTeam[]>(() => {
+    if (!selectedDivisionId) return []
+    return orgDepartments.find((department) => department.id === selectedDivisionId)?.teams ?? []
+  }, [orgDepartments, selectedDivisionId])
+  const teamSelectDisabled = !selectedDivisionId || teamsForSelectedDivision.length === 0
+
+  useEffect(() => {
+    if (!orgTreeReady || !selectedDivisionId || !selectedTeamId) return
+    const teamStillInDepartment = teamsForSelectedDivision.some(
+      (team) => team.id === selectedTeamId
+    )
+    if (!teamStillInDepartment) {
+      form.setValue('teamId', '', { shouldDirty: true, shouldTouch: true })
+    }
+  }, [form, orgTreeReady, selectedDivisionId, selectedTeamId, teamsForSelectedDivision])
 
   const role = user?.role ?? 'MEMBER'
-  const totalStars = Math.max(page.currentLevel.totalStars || 0, 0)
-  const filledStars = Math.min(Math.max(page.currentLevel.filledStars || 0, 0), totalStars)
-  const levelProgressPct = Math.max(0, Math.min(100, page.currentLevel.levelProgressPct || 0))
-  const learningPathSearch = useMemo(
-    () => ({
-      levelId: page.placement?.levelId ?? mapCurrentTitleToLevelId(page.currentLevel.title),
-      starId: page.placement?.starId ?? Math.max(1, page.currentLevel.currentStarIndex || 1),
-    }),
-    [
-      page.placement?.levelId,
-      page.placement?.starId,
-      page.currentLevel.title,
-      page.currentLevel.currentStarIndex,
-    ]
-  )
-
+  const currentLevelId = mapCurrentTitleToLevelId(page.currentLevel.title)
   const onPortraitFile = (file: File) => {
     uploadPortrait(file, {
       onSuccess: (res) => {
@@ -500,12 +531,23 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     })
   )
 
-  const fieldCtx = { u, control, divisions, positions, jobTitles }
+  const fieldCtx = {
+    u,
+    control,
+    divisions,
+    teams: teamsForSelectedDivision,
+    teamSelectDisabled,
+    positions,
+    jobTitles,
+  }
   const avatarUploadInputId = useId()
 
   return (
     <Form {...form}>
-      <div className="relative -m-5 min-h-[calc(100vh-3rem)] bg-slate-50/50 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-6 text-foreground md:-m-6 md:pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:-m-8 dark:bg-slate-950">
+      <div
+        className="relative -m-5 min-h-[calc(100vh-3rem)] bg-slate-50/50 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-6 text-foreground md:-m-6 md:pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:-m-8 dark:bg-slate-950"
+        data-current-level-id={currentLevelId}
+      >
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute -left-20 -top-16 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute -right-16 top-24 h-80 w-80 rounded-full bg-indigo-500/10 blur-3xl" />

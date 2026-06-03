@@ -1,4 +1,5 @@
 import type { MeUserSelf } from '@/features/profile/userSelf.types'
+import { DEFAULT_DEPARTMENT_ID, DEFAULT_TEAM_ID } from '@/features/hr-admin/hrOrgOptions'
 
 /** Dữ liệu demo cho `GET /me/user` khi bật mock API. */
 export const MOCK_USER_SELF: MeUserSelf = {
@@ -18,6 +19,8 @@ export const MOCK_USER_SELF: MeUserSelf = {
   jobTitle: 'Chuyên viên',
   teamGroup: 'Team KD-02',
   departmentName: 'Kinh doanh',
+  divisionId: DEFAULT_DEPARTMENT_ID,
+  teamId: DEFAULT_TEAM_ID,
   directManager: 'Lê Minh',
   portraitRef: null,
   gender: 'Nam',
@@ -51,4 +54,6 @@ export const MOCK_USER_SELF: MeUserSelf = {
   profileReviewDate: null,
   cvAttachmentRef: null,
   notes: null,
+  teamPosition: null,
+  currentLearningClassName: null,
 }

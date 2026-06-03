@@ -17,6 +17,7 @@ export interface MeUserSelf {
   teamGroup: string | null
   departmentName: string | null
   divisionId: string | null
+  teamId: string | null
   directManager: string | null
   portraitRef: string | null
   gender: string | null
@@ -91,6 +92,7 @@ export const ME_USER_PATCH_KEYS = [
   'cvAttachmentRef',
   'notes',
   'divisionId',
+  'teamId',
   'teamPosition',
 ] as const
 
