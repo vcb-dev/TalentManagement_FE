@@ -226,6 +226,7 @@ export const organizationApi = {
           id: t.id,
           name: t.name,
           departmentId: t.departmentId,
+          isTrafficTeam: false,
           _count: { users: 0 },
         })),
       }))
