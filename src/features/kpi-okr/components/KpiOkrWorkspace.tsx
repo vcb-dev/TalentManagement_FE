@@ -775,16 +775,32 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   )
 }
 
-function nameForMember(members: TeamMemberRow[], userId: string): string {
+function nameForMember(
+  members: TeamMemberRow[],
+  userId: string,
+  rows?: PerformanceAssignment[]
+): string {
   const m = members.find((x) => x.userId === userId)
   const name = m?.displayName?.trim()
   if (name) return name
+  const assignmentName = rows
+    ?.find((row) => row.assigneeDisplayName?.trim())
+    ?.assigneeDisplayName?.trim()
+  if (assignmentName) return assignmentName
+  const email =
+    m?.email?.trim() || rows?.find((row) => row.assigneeEmail?.trim())?.assigneeEmail?.trim()
+  if (email) return email
   return 'chưa có tên'
 }
 
-function memberMetaForDisplay(members: TeamMemberRow[], userId: string): string {
+function memberMetaForDisplay(
+  members: TeamMemberRow[],
+  userId: string,
+  rows?: PerformanceAssignment[]
+): string {
   const m = members.find((x) => x.userId === userId)
-  const email = m?.email?.trim()
+  const email =
+    m?.email?.trim() || rows?.find((row) => row.assigneeEmail?.trim())?.assigneeEmail?.trim()
   if (email) return email
   return ''
 }
@@ -1739,7 +1755,7 @@ function AssignmentTableSingleUser({
   /** Epic 4: member chỉnh Evidence / số liệu / tự đánh giá cho đúng user của mình — cả tháng này (planning) lẫn tháng trước (results). */
   const allowSelfEdit =
     memberSelfEditableResults && Boolean(prioritizeUserId && userId === prioritizeUserId)
-  const memberMetaLine = memberMetaForDisplay(members, userId)
+  const memberMetaLine = memberMetaForDisplay(members, userId, rows)
 
   /** Epic 5.5: các row bắt buộc nhập Số liệu chưa có giá trị. */
   const mandatoryUnfilled = allowSelfEdit
@@ -1838,11 +1854,11 @@ function AssignmentTableSingleUser({
               isPlanning ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
             )}
           >
-            {nameForMember(members, userId).charAt(0).toUpperCase()}
+            {nameForMember(members, userId, rows).charAt(0).toUpperCase()}
           </div>
           <div>
             <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              {nameForMember(members, userId)}
+              {nameForMember(members, userId, rows)}
             </div>
             {memberMetaLine ? <div className="text-xs text-slate-500">{memberMetaLine}</div> : null}
           </div>
@@ -2007,7 +2023,7 @@ function UserAssignmentWorkbench({
           {userEntries.map(([uid, rows]) => {
             const active = uid === activeUserId
             const isPlanning = leaderMode === 'planning'
-            const tabMeta = memberMetaForDisplay(members, uid)
+            const tabMeta = memberMetaForDisplay(members, uid, rows)
             return (
               <button
                 key={uid}
@@ -2030,9 +2046,9 @@ function UserAssignmentWorkbench({
                     'truncate text-sm font-bold',
                     active ? 'text-white' : 'text-slate-800 dark:text-slate-100'
                   )}
-                  title={nameForMember(members, uid)}
+                  title={nameForMember(members, uid, rows)}
                 >
-                  {nameForMember(members, uid)}
+                  {nameForMember(members, uid, rows)}
                 </span>
                 {tabMeta ? (
                   <span

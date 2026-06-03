@@ -47,6 +47,7 @@ export type PerformanceAssignment = {
   managerEvalStatus?: string | null
   managerReviewNote?: string | null
   assigneeDisplayName?: string | null
+  assigneeEmail?: string | null
   createdByUserId: string | null
   createdAt: string
   updatedAt: string
