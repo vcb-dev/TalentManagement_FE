@@ -27,11 +27,11 @@ function assertOrgCrudNotMock(action: string): void {
 }
 
 /**
- * CRUD phòng ban (divisions) & team (backend `OrgController`).
+ * CRUD phòng ban & team (`OrgController`).
  *
- * Lưu ý: "phòng ban" ở màn tổ chức = `divisions` (organizational unit).
- * `departments` giờ dành riêng cho chuyên môn (professional position) và
- * có CRUD tách riêng nếu cần.
+ * API `/org/divisions` → bảng `team` (phòng ban).
+ * API `/org/teams` → bảng `divisions` (nhóm member — giữ data hiện có).
+ * `departments` = chuyên môn (professional position).
  */
 export const orgCrudApi = {
   createDivision: async (payload: {
@@ -111,7 +111,7 @@ export type OrgTreeResponse = {
 export type OrgAdminTeamRow = {
   id: string
   name: string
-  /** Giữ tên `departmentId` để không phá các kiểu dùng chung; logic là divisionId. */
+  /** Giữ tên `departmentId` (BC FE): id phòng ban cha (`team_groups`). */
   departmentId: string
   isTrafficTeam: boolean
   _count: { users: number }
