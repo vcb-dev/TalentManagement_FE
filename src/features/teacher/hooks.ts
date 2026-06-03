@@ -166,3 +166,20 @@ export function useRejectClassRegistration(classId: string) {
     },
   })
 }
+
+export function useRemoveTeacherClassMember(classId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { userId: string; reason: string; isMakeup?: boolean }) =>
+      teacherApi.removeClassMember(classId, input.userId, {
+        reason: input.reason,
+        isMakeup: input.isMakeup,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: teacherKeys.classDetail(classId) })
+      void qc.invalidateQueries({ queryKey: teacherKeys.classes() })
+      toast.success('Đã xóa học viên khỏi lớp')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}

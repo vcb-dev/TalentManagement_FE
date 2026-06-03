@@ -140,4 +140,16 @@ export const teacherApi = {
     )
     return safeParse(z.object({ ok: z.boolean() }), res.data, 'POST reject registration')
   },
+
+  removeClassMember: async (
+    classId: string,
+    userId: string,
+    input: { reason: string; isMakeup?: boolean }
+  ) => {
+    const res = await apiClient.post<unknown>(
+      `/teacher/classes/${classId}/members/${userId}/remove`,
+      input
+    )
+    return safeParse(z.object({ ok: z.boolean() }), res.data, 'POST remove class member')
+  },
 }

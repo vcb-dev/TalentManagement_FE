@@ -1,6 +1,7 @@
-import { Mail } from 'lucide-react'
+import { Mail, Trash2 } from 'lucide-react'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { CARD_ENTRANCE, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -10,6 +11,7 @@ export interface TeacherClassMemberCardProps {
   member: ClassMemberRow
   selected: boolean
   onSelect: () => void
+  onRemove?: () => void
   cardIndex?: number
 }
 
@@ -17,6 +19,7 @@ export function TeacherClassMemberCard({
   member,
   selected,
   onSelect,
+  onRemove,
   cardIndex,
 }: TeacherClassMemberCardProps) {
   const hasResult = member.examResult != null && member.examResult.length > 0
@@ -74,6 +77,22 @@ export function TeacherClassMemberCard({
           <span className="truncate">{member.email}</span>
         </p>
       </div>
+
+      {onRemove ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full rounded-xl border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50"
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove()
+          }}
+        >
+          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+          {member.isMakeup ? 'Xóa học bù' : 'Xóa khỏi lớp'}
+        </Button>
+      ) : null}
     </Card>
   )
 }

@@ -43,6 +43,14 @@ import {
   PAGE_HEADER_SURFACE,
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import {
@@ -64,6 +72,7 @@ import {
   useTeacherUpdateSchedule,
   useApproveClassRegistration,
   useRejectClassRegistration,
+  useRemoveTeacherClassMember,
   useTeacherClassRegistrations,
   useTeacherRoadmapItems,
 } from '@/features/teacher/hooks'
@@ -182,6 +191,27 @@ function TimeHmField({
   )
 }
 
+function MemberRemoveButton({
+  member,
+  onRemove,
+}: {
+  member: ClassMemberRow
+  onRemove: (member: ClassMemberRow) => void
+}) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="rounded-xl border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50"
+      onClick={() => onRemove(member)}
+    >
+      <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+      {member.isMakeup ? 'Xóa học bù' : 'Xóa khỏi lớp'}
+    </Button>
+  )
+}
+
 export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const routeHash = useRouterState({ select: (s) => s.location.hash })
   const { data } = useTeacherClassDetail(classId)
@@ -193,6 +223,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const deleteSchedule = useTeacherDeleteSchedule(classId)
   const approveRegistration = useApproveClassRegistration(classId)
   const rejectRegistration = useRejectClassRegistration(classId)
+  const removeClassMember = useRemoveTeacherClassMember(classId)
   const title = data?.name || `Lớp ${classId}`
   const members: ClassMemberRow[] = useMemo(
     () =>
@@ -235,6 +266,13 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const [rejectReasonById, setRejectReasonById] = useState<Record<string, string>>({})
   const [approvingRegistrationId, setApprovingRegistrationId] = useState<string | null>(null)
   const [rejectingRegistrationId, setRejectingRegistrationId] = useState<string | null>(null)
+  const [removeTarget, setRemoveTarget] = useState<ClassMemberRow | null>(null)
+  const [removeReason, setRemoveReason] = useState('')
+
+  const openRemoveDialog = (member: ClassMemberRow) => {
+    setRemoveTarget(member)
+    setRemoveReason('')
+  }
 
   const updateAttendance = useTeacherUpdateAttendance(classId)
 
@@ -1031,6 +1069,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           ) : (
                             <span className="font-bold text-muted-foreground/40">—</span>
                           )}
+                          <MemberRemoveButton member={m} onRemove={openRemoveDialog} />
                         </div>
                       ) : (
                         <>
@@ -1121,6 +1160,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                               </SelectContent>
                             </Select>
                           </div>
+                          <MemberRemoveButton member={m} onRemove={openRemoveDialog} />
                         </>
                       )}
                     </div>
@@ -1142,12 +1182,16 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           <th className="px-8 py-6 text-xs font-black uppercase tracking-[0.15em] text-slate-400">
                             Kết quả cuối khóa
                           </th>
+                          <th className="px-8 py-6 text-xs font-black uppercase tracking-[0.15em] text-slate-400">
+                            Thao tác
+                          </th>
                         </>
                       ) : (
                         <>
                           <th className="px-6 py-4 text-left">Ngày / Giờ</th>
                           <th className="px-6 py-4 text-left">Nội dung</th>
                           <th className="px-6 py-4 text-center">Điểm danh</th>
+                          <th className="px-6 py-4 text-right">Thao tác</th>
                         </>
                       )}
                     </tr>
@@ -1215,6 +1259,9 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                                 ) : (
                                   <span className="text-muted-foreground/40 font-bold">—</span>
                                 )}
+                              </td>
+                              <td className="px-6 py-4">
+                                <MemberRemoveButton member={m} onRemove={openRemoveDialog} />
                               </td>
                             </>
                           ) : (
@@ -1312,6 +1359,9 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                                   </Select>
                                 </div>
                               </td>
+                              <td className="px-6 py-4 text-right">
+                                <MemberRemoveButton member={m} onRemove={openRemoveDialog} />
+                              </td>
                             </>
                           )}
                         </tr>
@@ -1364,6 +1414,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     cardIndex={idx}
                     selected={selectedId === m.id}
                     onSelect={() => setSelectedId((id) => (id === m.id ? null : m.id))}
+                    onRemove={() => openRemoveDialog(m)}
                   />
                 ))}
               </div>
@@ -1405,6 +1456,82 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
         scheduleId={activeScheduleId || ''}
         sessionTitle={selectedSchedule?.topic || 'Buổi học'}
       />
+
+      <Dialog
+        open={removeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !removeClassMember.isPending) {
+            setRemoveTarget(null)
+            setRemoveReason('')
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {removeTarget?.isMakeup ? 'Xóa học viên học bù?' : 'Xóa học viên khỏi lớp?'}
+            </DialogTitle>
+            <DialogDescription>
+              {removeTarget
+                ? `Học viên "${removeTarget.name}" sẽ bị xóa và nhận email thông báo kèm lý do. Lịch sử điểm danh và chấm bài vẫn được giữ lại.`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="remove-reason" className="text-sm font-semibold text-foreground">
+              Lý do xóa <span className="text-destructive">*</span>
+            </label>
+            <Input
+              id="remove-reason"
+              value={removeReason}
+              onChange={(e) => setRemoveReason(e.target.value)}
+              placeholder="Nhập lý do gửi cho học viên..."
+              className="rounded-xl"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setRemoveTarget(null)
+                setRemoveReason('')
+              }}
+              disabled={removeClassMember.isPending}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              loading={removeClassMember.isPending}
+              onClick={() => {
+                const reason = removeReason.trim()
+                if (!reason) {
+                  toast.error('Vui lòng nhập lý do xóa')
+                  return
+                }
+                if (!removeTarget) return
+                removeClassMember.mutate(
+                  {
+                    userId: removeTarget.id,
+                    reason,
+                    isMakeup: removeTarget.isMakeup,
+                  },
+                  {
+                    onSuccess: () => {
+                      setRemoveTarget(null)
+                      setRemoveReason('')
+                    },
+                  }
+                )
+              }}
+            >
+              Xác nhận xóa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
