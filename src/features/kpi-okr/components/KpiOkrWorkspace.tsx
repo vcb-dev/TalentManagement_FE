@@ -288,7 +288,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     if (!isMemberView) return rows
     const selfId = user?.id?.trim()
     if (!selfId) return []
-    return rows.filter((row) => row.assigneeUserId === selfId)
+    return rows.filter((row) => row.assigneeUserId === selfId && shouldShowAssignmentForMember(row))
   }, [assignmentsQ.data, isMemberView, user?.id])
 
   const visibleAssignmentsPrevMonth = useMemo(() => {
@@ -296,7 +296,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     if (!isMemberView) return rows
     const selfId = user?.id?.trim()
     if (!selfId) return []
-    return rows.filter((row) => row.assigneeUserId === selfId)
+    return rows.filter((row) => row.assigneeUserId === selfId && shouldShowAssignmentForMember(row))
   }, [assignmentsPrevQ.data, isMemberView, user?.id])
 
   const windowConfigsQ = useQuery({
@@ -1703,6 +1703,10 @@ function groupAssignmentsByUser(assignments: PerformanceAssignment[]) {
     arr.sort((a, b) => a.priority - b.priority || a.createdAt.localeCompare(b.createdAt))
   }
   return m
+}
+
+function shouldShowAssignmentForMember(row: PerformanceAssignment) {
+  return row.priority !== 3 && row.category !== 'BENEFIT'
 }
 
 /** Đưa user được ưu tiên (vd. chính mình) lên đầu danh sách chọn nhân sự. */
