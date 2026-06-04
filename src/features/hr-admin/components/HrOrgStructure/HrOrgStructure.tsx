@@ -16,6 +16,7 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react'
+import { OrgUserAvatar } from '@/components/shared/EmployeeAvatar'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -697,9 +698,7 @@ export function HrOrgStructure() {
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card className="border-primary/30 bg-gradient-to-br from-primary/15 via-card to-card shadow-sm">
             <CardContent className="px-2.5 py-2 sm:p-6">
-              <p className="text-xs font-medium leading-tight text-primary sm:text-xs">
-                Phòng ban
-              </p>
+              <p className="text-xs font-medium leading-tight text-primary sm:text-xs">Phòng ban</p>
               <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground drop-shadow-sm sm:mt-0 sm:text-2xl">
                 {summary.deptCount}
               </p>
@@ -1394,40 +1393,8 @@ function memberRowDisplayName(m: TeamMemberRow): string {
   return m.displayName?.trim() || m.email?.trim() || m.userId.slice(0, 8)
 }
 
-function memberRowInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) {
-    const a = parts[0]![0]
-    const b = parts[parts.length - 1]![0]
-    return `${a}${b}`.toUpperCase()
-  }
-  const p = name.trim()
-  if (p.length >= 2) return p.slice(0, 2).toUpperCase()
-  return `${p[0] ?? '?'}?`.toUpperCase()
-}
-
 function TeamMemberAvatarCell({ m }: { m: TeamMemberRow }) {
-  const label = memberRowDisplayName(m)
-  const raw = m.avatarUrl?.trim()
-  const src = raw && /^https?:\/\//i.test(raw) ? raw : null
-  if (src) {
-    return (
-      <img
-        src={src}
-        alt=""
-        className="h-9 w-9 rounded-full object-cover ring-1 ring-border"
-        loading="lazy"
-      />
-    )
-  }
-  return (
-    <div
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/25 to-primary/5 text-xs font-semibold text-primary ring-1 ring-primary/15"
-      aria-hidden
-    >
-      {memberRowInitials(label)}
-    </div>
-  )
+  return <OrgUserAvatar name={memberRowDisplayName(m)} avatarUrl={m.avatarUrl ?? m.portraitRef} />
 }
 
 function memberRowRole(m: TeamMemberRow): Role {
@@ -1828,13 +1795,7 @@ function EligibleUserRowItem({
   const name = row.displayName?.trim() || row.email?.trim() || '—'
   return (
     <li className="flex items-center gap-3 px-2 py-2.5 sm:px-3">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/70 bg-muted/40 text-xs font-semibold uppercase text-muted-foreground">
-        {row.avatarUrl ? (
-          <img src={row.avatarUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <span>{(name[0] ?? '?').toUpperCase()}</span>
-        )}
-      </div>
+      <OrgUserAvatar name={name} avatarUrl={row.avatarUrl} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{name}</div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
