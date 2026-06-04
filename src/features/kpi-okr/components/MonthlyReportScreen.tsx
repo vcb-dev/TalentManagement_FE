@@ -11,6 +11,8 @@ import {
   Users,
   UserRound,
   Target,
+  Pencil,
+  Eye,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -93,7 +95,7 @@ function EvalBadge({ status }: { status: string | null | undefined }) {
 }
 
 const memberEditInputCls =
-  'h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950'
+  'h-10 w-full rounded-xl border border-slate-200 bg-slate-50/30 px-3.5 text-sm transition-all focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none dark:border-slate-800 dark:bg-slate-950 dark:focus:bg-slate-950 dark:focus:border-indigo-500'
 
 function MonthlyReportFormSection({
   title,
@@ -116,32 +118,43 @@ function MonthlyReportFormSection({
 }
 
 function MonthlyReportKpiContextCard({ item }: { item: PerformanceAssignment }) {
+  const isKpi = item.kind === 'KPI'
   return (
-    <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/25">
+    <div
+      className={cn(
+        'mt-3.5 rounded-xl border border-l-4 p-4 shadow-sm transition-all',
+        isKpi
+          ? 'border-slate-200 border-l-indigo-500 bg-gradient-to-br from-indigo-50/40 via-white to-white dark:border-slate-800 dark:border-l-indigo-500 dark:from-indigo-950/10'
+          : 'border-slate-200 border-l-fuchsia-500 bg-gradient-to-br from-fuchsia-50/40 via-white to-white dark:border-slate-800 dark:border-l-fuchsia-500 dark:from-fuchsia-950/10'
+      )}
+    >
       <div className="flex flex-wrap items-center gap-2">
         <Badge
-          className={
-            item.kind === 'KPI'
-              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-              : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
-          }
+          className={cn(
+            'rounded-md px-2 py-0.5 text-2xs font-bold tracking-wider shadow-none border-none',
+            isKpi
+              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300'
+              : 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950/50 dark:text-fuchsia-300'
+          )}
         >
           {item.kind}
         </Badge>
         <PriorityText priority={item.priority} />
-        <span className="text-xs tabular-nums text-slate-500">
+        <span className="text-xs tabular-nums text-slate-400 dark:text-slate-500">
           Ngày xét: {formatKpiSetAt(item.kpiSetAt)}
         </span>
       </div>
-      <p className="mt-2 text-sm font-medium leading-snug text-slate-900 dark:text-slate-100">
+      <p className="mt-2.5 text-sm font-bold leading-relaxed text-slate-800 dark:text-slate-100">
         {item.content}
       </p>
-      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-        <span className="font-medium text-slate-500">Chỉ tiêu:</span>{' '}
-        <span className="font-semibold text-indigo-700 dark:text-indigo-300">
+      <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+        <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+          Chỉ tiêu:
+        </span>
+        <span className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
           {item.targetMetric?.trim() || '—'}
         </span>
-      </p>
+      </div>
     </div>
   )
 }
@@ -157,9 +170,28 @@ function MonthlyReportDetailOpenButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-100 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500/20 active:scale-95 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:bg-slate-800"
     >
-      <ChevronDown className="h-3 w-3" />
+      <Eye className="h-3.5 w-3.5 text-slate-500" />
+      {label}
+    </button>
+  )
+}
+
+function MonthlyReportEditButton({
+  onClick,
+  label = 'Nhập',
+}: {
+  onClick: () => void
+  label?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-all hover:bg-indigo-100/80 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50"
+    >
+      <Pencil className="h-3.5 w-3.5" />
       {label}
     </button>
   )
@@ -242,6 +274,7 @@ function MonthlyReportMemberEditPanel({
                 { label: 'NOT — chưa đạt', value: 'NOT' },
               ]}
               disabled={saving}
+              triggerClassName="h-10 px-3.5 py-0 bg-slate-50/30 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none transition-all focus:border-indigo-500 focus:bg-white hover:bg-slate-100/50 dark:border-slate-800 dark:bg-slate-950 dark:focus:bg-slate-950"
             />
           </div>
         </div>
@@ -257,7 +290,7 @@ function MonthlyReportMemberEditPanel({
           rows={3}
           disabled={saving}
           placeholder="Nhận xét về kết quả thực hiện mục tiêu này..."
-          className="min-h-[88px] w-full resize-y rounded-lg border border-slate-200 bg-white p-3 text-sm dark:border-slate-700 dark:bg-slate-950"
+          className="min-h-[88px] w-full resize-y rounded-xl border border-slate-200 bg-slate-50/30 p-3.5 text-sm transition-all focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none dark:border-slate-800 dark:bg-slate-950 dark:focus:bg-slate-950 dark:focus:border-indigo-500"
         />
       </MonthlyReportFormSection>
 
@@ -265,7 +298,7 @@ function MonthlyReportMemberEditPanel({
         title="Minh chứng"
         hint="Tải ảnh hoặc dán link — giúp quản lý đối soát kết quả."
       >
-        <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+        <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-4 dark:border-slate-800 dark:bg-slate-900/20">
           <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={saving} />
         </div>
       </MonthlyReportFormSection>
@@ -287,7 +320,7 @@ function MonthlyReportMemberEditPanel({
           variant="outline"
           disabled={saving}
           onClick={onClose}
-          className="flex-1 sm:flex-none"
+          className="flex-1 sm:flex-none rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold transition-all active:scale-95"
         >
           Hủy
         </Button>
@@ -295,7 +328,7 @@ function MonthlyReportMemberEditPanel({
           type="button"
           disabled={saving}
           onClick={() => void save().then(() => onClose())}
-          className="flex-1 px-6 sm:flex-none"
+          className="flex-1 px-6 sm:flex-none rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-200 dark:shadow-none transition-all hover:-translate-y-0.5 active:translate-y-0"
         >
           {saving ? 'Đang lưu...' : 'Lưu kết quả'}
         </Button>
@@ -317,7 +350,7 @@ function MonthlyReportMemberEditDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(92vh,760px)] max-w-xl flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+      <DialogContent className="flex max-h-[min(92vh,780px)] max-w-xl flex-col gap-0 overflow-hidden rounded-2xl border border-slate-100 p-0 shadow-2xl dark:border-slate-800 sm:max-w-xl sm:rounded-2xl">
         <div className="shrink-0 border-b border-slate-100 px-5 pb-4 pt-5 dark:border-slate-800 sm:px-6">
           <DialogHeader className="space-y-1 text-left">
             <DialogTitle className="text-lg">Nhập kết quả KPI/OKR</DialogTitle>
@@ -433,7 +466,7 @@ function MonthlyReportMemberTableRow({
           <EvalBadge status={item.managerEvalStatus} />
         </td>
         <td className="whitespace-nowrap px-2 py-2.5 text-right">
-          <MonthlyReportDetailOpenButton onClick={() => setOpen(true)} label="Nhập" />
+          <MonthlyReportEditButton onClick={() => setOpen(true)} label="Nhập" />
         </td>
       </tr>
       <MonthlyReportMemberEditDialog

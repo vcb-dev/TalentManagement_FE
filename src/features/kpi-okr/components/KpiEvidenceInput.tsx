@@ -266,11 +266,11 @@ export function KpiEvidenceInput({
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 gap-1.5 text-xs"
+          className="h-9 gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
           disabled={disabled || uploading}
           onClick={() => inputRef.current?.click()}
         >
-          <Upload className="h-3.5 w-3.5" />
+          <Upload className="h-4 w-4 text-slate-500" />
           {uploading ? 'Đang tải…' : 'Tải ảnh'}
         </Button>
         <span className="text-xs text-muted-foreground">
@@ -284,19 +284,24 @@ export function KpiEvidenceInput({
         disabled={disabled}
         placeholder="Link minh chứng, đường dẫn ảnh, hoặc mô tả…"
         className={cn(
-          'min-h-[72px] resize-y rounded-md border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950',
+          'min-h-[72px] resize-y rounded-xl border border-slate-200 bg-white p-3 text-xs transition-all focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none dark:border-slate-800 dark:bg-slate-950 dark:focus:border-indigo-500',
           textareaClassName
         )}
       />
       {previewUrls.length > 0 ? (
-        <div className="flex flex-wrap gap-2 rounded-md border border-slate-100 bg-slate-50/50 p-2 dark:border-slate-800 dark:bg-slate-900/30">
+        <div className="flex flex-wrap gap-2.5 rounded-xl border border-slate-100 bg-slate-50/50 p-2.5 dark:border-slate-800 dark:bg-slate-900/30">
           {previewUrls.map((src, i) => (
-            <div key={`${src}#${i}`} className="relative shrink-0">
-              <a href={src} target="_blank" rel="noreferrer" className="block">
+            <div key={`${src}#${i}`} className="relative shrink-0 group">
+              <a
+                href={src}
+                target="_blank"
+                rel="noreferrer"
+                className="block overflow-hidden rounded-lg shadow-sm transition-all hover:shadow-md"
+              >
                 <img
                   src={src}
                   alt=""
-                  className="h-16 max-w-[120px] rounded border border-slate-200 object-cover dark:border-slate-700"
+                  className="h-16 max-w-[120px] rounded-lg border border-slate-200 object-cover transition-transform duration-200 group-hover:scale-105 dark:border-slate-700"
                 />
               </a>
               {!disabled ? (
@@ -304,7 +309,7 @@ export function KpiEvidenceInput({
                   type="button"
                   variant="destructive"
                   size="icon"
-                  className="absolute -right-1.5 -top-1.5 z-10 h-6 w-6 rounded-full p-0 shadow-md"
+                  className="absolute -right-1.5 -top-1.5 z-10 h-6 w-6 rounded-full p-0 shadow-md transition-transform hover:scale-110"
                   title="Gỡ ảnh khỏi minh chứng"
                   aria-label="Gỡ ảnh khỏi minh chứng"
                   onClick={(e) => {

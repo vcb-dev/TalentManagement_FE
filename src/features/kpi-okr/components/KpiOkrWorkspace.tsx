@@ -70,6 +70,7 @@ import {
   type ImportAssignmentItem,
 } from '@/features/kpi-okr/kpiOkrSheetImport'
 import { parseQuestionnaireImportFile } from '@/features/kpi-okr/questionnaireGridImport'
+import { OrgUserAvatar } from '@/components/shared/EmployeeAvatar'
 import { organizationApi, type TeamMemberRow } from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { toast } from 'sonner'
@@ -826,6 +827,15 @@ function memberMetaForDisplay(
     m?.email?.trim() || rows?.find((row) => row.assigneeEmail?.trim())?.assigneeEmail?.trim()
   if (email) return email
   return ''
+}
+
+function findTeamMember(members: TeamMemberRow[], userId: string): TeamMemberRow | undefined {
+  return members.find((x) => x.userId === userId)
+}
+
+function teamMemberPortrait(m: TeamMemberRow | undefined): string | null | undefined {
+  if (!m) return null
+  return m.avatarUrl ?? m.portraitRef
 }
 
 const XL_INPUT = cn(
@@ -2044,14 +2054,14 @@ function AssignmentTableSingleUser({
         )}
       >
         <div className="flex items-center gap-3">
-          <div
+          <OrgUserAvatar
+            name={nameForMember(members, userId, rows)}
+            avatarUrl={teamMemberPortrait(findTeamMember(members, userId))}
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-full font-bold',
-              isPlanning ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
+              'h-9 w-9 shrink-0 text-xs',
+              isPlanning ? 'ring-blue-200' : 'ring-emerald-200'
             )}
-          >
-            {nameForMember(members, userId, rows).charAt(0).toUpperCase()}
-          </div>
+          />
           <div>
             <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
               {nameForMember(members, userId, rows)}
@@ -2331,15 +2341,25 @@ function UserAssignmentWorkbench({
                     : 'border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900'
                 )}
               >
-                <span
-                  className={cn(
-                    'truncate text-sm font-bold',
-                    active ? 'text-white' : 'text-slate-800 dark:text-slate-100'
-                  )}
-                  title={nameForMember(members, uid, rows)}
-                >
-                  {nameForMember(members, uid, rows)}
-                </span>
+                <div className="flex min-w-0 items-center gap-2">
+                  <OrgUserAvatar
+                    name={nameForMember(members, uid, rows)}
+                    avatarUrl={teamMemberPortrait(findTeamMember(members, uid))}
+                    className={cn(
+                      'h-8 w-8 shrink-0 text-[10px]',
+                      active ? 'ring-2 ring-white/60' : ''
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      'min-w-0 truncate text-sm font-bold',
+                      active ? 'text-white' : 'text-slate-800 dark:text-slate-100'
+                    )}
+                    title={nameForMember(members, uid, rows)}
+                  >
+                    {nameForMember(members, uid, rows)}
+                  </span>
+                </div>
                 {tabMeta ? (
                   <span
                     className={cn(
@@ -2560,13 +2580,13 @@ function WorkReportPanel({
           </div>
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2 overflow-hidden">
-              {members.slice(0, 5).map((m, i) => (
-                <div
-                  key={i}
-                  className="inline-block h-7 w-7 rounded-full bg-slate-200 ring-2 ring-white dark:bg-slate-800 dark:ring-slate-950 flex items-center justify-center text-xs font-bold text-slate-600"
-                >
-                  {(m.displayName || '?').charAt(0)}
-                </div>
+              {members.slice(0, 5).map((m) => (
+                <OrgUserAvatar
+                  key={m.userId}
+                  name={m.displayName?.trim() || m.email?.trim() || '?'}
+                  avatarUrl={teamMemberPortrait(m)}
+                  className="h-7 w-7 text-[10px] ring-2 ring-white dark:ring-slate-950"
+                />
               ))}
               {members.length > 5 && (
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 ring-2 ring-white dark:bg-slate-800 dark:ring-slate-950 text-xs font-medium text-slate-500">

@@ -1004,6 +1004,7 @@ export type UserSnapshotResponse = {
     employeeCode: string | null
     divisionName: string | null
     teamName: string | null
+    avatarUrl?: string | null
   }
   latestOkr: { content: string; kpiSetAt: string | null; status: string } | null
   topKpiP1: {

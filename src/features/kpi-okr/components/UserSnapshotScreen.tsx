@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { performanceApi } from '@/features/kpi-okr/api'
 import { Target, Star, TrendingUp, Clock, ChevronLeft, Building2, Briefcase } from 'lucide-react'
+import { OrgUserAvatar } from '@/components/shared/EmployeeAvatar'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { UserWorkReportHistory } from './UserWorkReportHistory'
@@ -60,9 +62,11 @@ export function UserSnapshotScreen() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-xl font-bold text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300">
-            {profile.displayName?.charAt(0) ?? '?'}
-          </div>
+          <OrgUserAvatar
+            name={profile.displayName?.trim() || profile.email?.trim() || '?'}
+            avatarUrl={resolvePublicAssetUrl(profile.avatarUrl)}
+            className="h-14 w-14 text-lg"
+          />
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
               {profile.displayName || 'Chưa có tên'}
