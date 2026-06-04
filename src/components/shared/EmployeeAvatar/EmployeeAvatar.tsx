@@ -6,11 +6,19 @@ export interface EmployeeAvatarProps {
   className?: string
   /** Ảnh đại diện (URL) — nếu có thì ưu tiên hiển thị thay chữ cái. */
   photoUrl?: string | null
+  /** Lớp khi không có ảnh (vd. màu theo vai trò trên thẻ danh sách). */
+  fallbackClassName?: string
   /** Chấm xanh “đang online” như UI quiz */
   showOnlineDot?: boolean
 }
 
-export function EmployeeAvatar({ name, className, photoUrl, showOnlineDot }: EmployeeAvatarProps) {
+export function EmployeeAvatar({
+  name,
+  className,
+  photoUrl,
+  fallbackClassName,
+  showOnlineDot,
+}: EmployeeAvatarProps) {
   const initials = name
     .split(' ')
     .map((p) => p[0])
@@ -25,7 +33,10 @@ export function EmployeeAvatar({ name, className, photoUrl, showOnlineDot }: Emp
     <div className={cn('relative inline-flex shrink-0', showOnlineDot && 'pb-0.5 pr-0.5')}>
       <Avatar
         className={cn(
-          'flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-game-soft to-[hsl(248_90%_92%)] text-xs font-bold text-game-soft-foreground shadow-[0_2px_8px_rgb(106_90_224/0.2)] ring-2 ring-white',
+          'flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-xs font-bold shadow-[0_2px_8px_rgb(106_90_224/0.2)] ring-2 ring-white',
+          fallbackClassName
+            ? ''
+            : 'bg-gradient-to-br from-game-soft to-[hsl(248_90%_92%)] text-game-soft-foreground',
           className
         )}
       >
@@ -37,7 +48,12 @@ export function EmployeeAvatar({ name, className, photoUrl, showOnlineDot }: Emp
             referrerPolicy="no-referrer"
           />
         ) : null}
-        <AvatarFallback className="bg-transparent text-xs font-bold text-game-soft-foreground">
+        <AvatarFallback
+          className={cn(
+            'rounded-[inherit] text-xs font-bold',
+            fallbackClassName ?? 'bg-transparent text-game-soft-foreground'
+          )}
+        >
           {initials || '?'}
         </AvatarFallback>
       </Avatar>

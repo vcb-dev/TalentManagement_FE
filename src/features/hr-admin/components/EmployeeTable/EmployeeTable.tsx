@@ -1,6 +1,7 @@
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { DataTable, type DataTableColumn } from '@/components/shared/DataTable'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
+import { employeePortraitUrl } from '@/features/hr-admin/components/HrEmployeeList/employeeListUtils'
 import { RoleBadge } from '@/components/shared/RoleBadge'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
@@ -48,7 +49,7 @@ export function EmployeeTable({
       header: 'Nhân viên',
       cell: (e) => (
         <div className="flex items-center gap-2">
-          <EmployeeAvatar name={e.name} />
+          <EmployeeAvatar name={e.name} photoUrl={employeePortraitUrl(e.avatarUrl)} />
           <span>{e.name}</span>
         </div>
       ),
@@ -112,7 +113,7 @@ export function EmployeeTable({
           renderMobileRow={(e) => (
             <div className="space-y-3">
               <div className="flex items-start gap-3">
-                <EmployeeAvatar name={e.name} />
+                <EmployeeAvatar name={e.name} photoUrl={employeePortraitUrl(e.avatarUrl)} />
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-foreground">{e.name}</p>
                   <p className="mt-0.5 break-all text-xs text-muted-foreground">{e.email}</p>

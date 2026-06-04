@@ -1,4 +1,4 @@
-﻿import { Link } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { MoreHorizontal, X } from 'lucide-react'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { toast } from 'sonner'
@@ -6,9 +6,10 @@ import { CARD_ENTRANCE } from '@/lib/cardMotion'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import {
   avatarClassForRole,
-  initialsFromName,
+  employeePortraitUrl,
   levelPillText,
   roleBadgeClass,
   roleShortLabel,
@@ -92,7 +93,7 @@ export function EmployeeDetailSheet({
   if (!employee) return null
 
   const xpPct = Math.min(100, Math.round((employee.currentStar / 6) * 100))
-  const ini = initialsFromName(employee.name)
+  const portraitUrl = employeePortraitUrl(employee.avatarUrl)
   const tierLine = levelPillText(employee.currentLevel)
   const positionLabel = ROLE_LABEL_VI[employee.role]
   const idShort = shortId(employee.id)
@@ -138,14 +139,12 @@ export function EmployeeDetailSheet({
               className="pointer-events-none absolute -inset-2 rounded-3xl bg-gradient-to-br from-primary/20 to-cyan-400/20 blur-xl"
               aria-hidden
             />
-            <div
-              className={cn(
-                'relative flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-primary/20 text-3xl font-extrabold shadow-lg ring-2 ring-background',
-                avatarClassForRole(employee.role)
-              )}
-            >
-              {ini}
-            </div>
+            <EmployeeAvatar
+              name={employee.name}
+              photoUrl={portraitUrl}
+              fallbackClassName={cn('font-extrabold', avatarClassForRole(employee.role))}
+              className="relative h-24 w-24 rounded-2xl border-4 border-primary/20 text-3xl font-extrabold shadow-lg ring-2 ring-background"
+            />
             <span
               className={cn(
                 'absolute -bottom-1 -right-1 h-7 w-7 rounded-full border-4 border-card shadow-sm',

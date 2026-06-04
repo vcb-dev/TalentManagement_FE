@@ -1,5 +1,6 @@
 import { CircleHelp, Pencil } from 'lucide-react'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
+import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { CARD_ENTRANCE, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -8,8 +9,8 @@ import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
   avatarClassForRole,
   employeeDeptDisplay,
+  employeePortraitUrl,
   employeeTeamsDisplay,
-  initialsFromName,
   levelPillText,
   roleBadgeClass,
   roleShortLabel,
@@ -75,7 +76,7 @@ export function EmployeeCard({
 }: EmployeeCardProps) {
   const tierLine = levelPillText(employee.currentLevel)
   const inactive = employee.status === 'INACTIVE'
-  const meta = initialsFromName(employee.name)
+  const portraitUrl = employeePortraitUrl(employee.avatarUrl)
   const deptLine = employeeDeptDisplay(employee)
   const teamLine = employeeTeamsDisplay(employee)
   const positionLabel = ROLE_LABEL_VI[employee.role]
@@ -165,18 +166,21 @@ export function EmployeeCard({
         className={cn('mb-5 flex items-start justify-between gap-2 sm:gap-3', compact && 'mb-3')}
       >
         <div className="relative shrink-0">
-          <div
+          <EmployeeAvatar
+            name={employee.name}
+            photoUrl={portraitUrl}
+            fallbackClassName={cn(
+              'font-extrabold leading-tight',
+              avatarClassForRole(employee.role)
+            )}
             className={cn(
-              'flex items-center justify-center rounded-2xl font-extrabold leading-tight shadow-md ring-2 ring-background',
+              'rounded-2xl font-extrabold shadow-md ring-2 ring-background',
               compact
                 ? 'h-[3.75rem] w-[3.75rem] text-base sm:h-[5.25rem] sm:w-[5.25rem] sm:text-xl md:h-[5.75rem] md:w-[5.75rem] md:text-2xl'
                 : 'h-[5.25rem] w-[5.25rem] text-xl sm:h-[5.75rem] sm:w-[5.75rem] sm:text-2xl',
-              avatarClassForRole(employee.role),
               inactive && 'grayscale-[0.35]'
             )}
-          >
-            {meta}
-          </div>
+          />
           <span
             className={cn(
               'absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-[3px] border-card shadow-sm',

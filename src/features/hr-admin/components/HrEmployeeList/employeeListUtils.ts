@@ -1,4 +1,5 @@
 import type { EmployeeEntity } from '@/features/hr-admin/api'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import type { EmployeeLevel } from '@/types/employee'
 import type { Role } from '@/types/auth'
 
@@ -71,6 +72,11 @@ const LEVEL_PILL_TEXT: Record<EmployeeLevel, string> = {
 
 export function levelPillText(level: EmployeeLevel): string {
   return LEVEL_PILL_TEXT[level] ?? LEVEL_PILL_TEXT.tap_su
+}
+
+/** URL ảnh đại diện từ `user_app_profiles.avatar_url` (upload hoặc URL ngoài). */
+export function employeePortraitUrl(avatarUrl: string | null | undefined): string | undefined {
+  return resolvePublicAssetUrl(avatarUrl)
 }
 
 /** Màu avatar theo vai trò (giống mock). */

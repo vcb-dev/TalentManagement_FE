@@ -143,12 +143,6 @@ function formatAnswerWindow(year: number, month: number): string {
   return `01/${mm}/${year} → 05/${nmm}/${nextYear}`
 }
 
-/** Tháng liền kề trước (dùng cho luồng: tháng này nhập mục tiêu + kết quả tháng trước). */
-function prevMonthYear(year: number, month: number): { prevYear: number; prevMonth: number } {
-  if (month <= 1) return { prevYear: year - 1, prevMonth: 12 }
-  return { prevYear: year, prevMonth: month - 1 }
-}
-
 export type KpiOkrWorkspaceProps = {
   variant: 'leader' | 'member' | 'manager'
   title: string
@@ -225,15 +219,9 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     return () => window.clearTimeout(id)
   }, [user?.teamIds, departments, selectedTeamId, isMemberView])
 
-  const { prevYear, prevMonth } = useMemo(() => prevMonthYear(year, month), [year, month])
-
   const assignKey = useMemo(
     () => ['kpi-assignments', selectedTeamId, year, month] as const,
     [selectedTeamId, year, month]
-  )
-  const assignPrevKey = useMemo(
-    () => ['kpi-assignments', selectedTeamId, prevYear, prevMonth] as const,
-    [selectedTeamId, prevYear, prevMonth]
   )
   const sumKey = useMemo(
     () => ['kpi-summaries', selectedTeamId, year, month] as const,
@@ -267,15 +255,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     enabled: Boolean(selectedTeamId) && !isMockApiEnabled(),
   })
 
-  const assignmentsPrevQ = useQuery({
-    queryKey: assignPrevKey,
-    queryFn: () =>
-      selectedTeamId
-        ? performanceApi.listAssignments(selectedTeamId, prevYear, prevMonth)
-        : Promise.resolve([] as PerformanceAssignment[]),
-    enabled: Boolean(selectedTeamId) && !isMockApiEnabled(),
-  })
-
   const summariesQ = useQuery({
     queryKey: sumKey,
     queryFn: () =>
@@ -292,14 +271,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     if (!selfId) return []
     return rows.filter((row) => row.assigneeUserId === selfId && shouldShowAssignmentForMember(row))
   }, [assignmentsQ.data, isMemberView, user?.id])
-
-  const visibleAssignmentsPrevMonth = useMemo(() => {
-    const rows = assignmentsPrevQ.data ?? []
-    if (!isMemberView) return rows
-    const selfId = user?.id?.trim()
-    if (!selfId) return []
-    return rows.filter((row) => row.assigneeUserId === selfId && shouldShowAssignmentForMember(row))
-  }, [assignmentsPrevQ.data, isMemberView, user?.id])
 
   const windowConfigsQ = useQuery({
     queryKey: ['performance', 'window-configs'],
@@ -341,7 +312,49 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     [selectedTeamId, year, month, assignmentWindowBounds]
   )
 
-  // Epic 4 — PATCH .../me; áp dụng mục tiêu tháng này và kết quả tháng trước
+  const selectedTeamForSeed = useMemo(() => {
+    if (!selectedTeamId) return null
+    for (const d of departments) {
+      const t = d.teams.find((x) => x.id === selectedTeamId)
+      if (t) return { id: t.id, name: t.name }
+    }
+    return null
+  }, [departments, selectedTeamId])
+
+  const isTrafficTeamSelected = isTrafficTeam(
+    selectedTeamId,
+    catalogAllowlistQ.data?.trafficTeamIds ?? null,
+    selectedTeamForSeed?.name ?? null
+  )
+
+  const goalApprovalKey = ['kpi-approval-request', selectedTeamId, year, month, 'goal'] as const
+  const resultApprovalKey = ['kpi-approval-request', selectedTeamId, year, month, 'result'] as const
+  const goalApprovalQ = useQuery({
+    queryKey: goalApprovalKey,
+    queryFn: () => performanceApi.getApprovalRequest(selectedTeamId!, year, month, 'goal'),
+    enabled: Boolean(selectedTeamId) && isTrafficTeamSelected && !isMockApiEnabled(),
+    staleTime: 30_000,
+  })
+  const resultApprovalQ = useQuery({
+    queryKey: resultApprovalKey,
+    queryFn: () => performanceApi.getApprovalRequest(selectedTeamId!, year, month, 'result'),
+    enabled: Boolean(selectedTeamId) && isTrafficTeamSelected && !isMockApiEnabled(),
+    staleTime: 30_000,
+  })
+  const goalApprovalRequest = goalApprovalQ.data ?? null
+  const resultApprovalRequest = resultApprovalQ.data ?? null
+  const isGoalApprovalLocked =
+    isTrafficTeamSelected &&
+    variant === 'leader' &&
+    (goalApprovalRequest?.status === 'pending' || goalApprovalRequest?.status === 'approved')
+  // Lock kết quả khi đang chờ duyệt (pending) - chỉ áp dụng cho Traffic team
+  // - pending: locked (Leader và Member không được sửa)
+  // - approved: Mở (Leader và Member được sửa)
+  // - rejected: Mở (Leader được sửa để gửi duyệt lại, Member không được sửa)
+  const isResultApprovalLocked =
+    isTrafficTeamSelected && resultApprovalRequest?.status === 'pending'
+
+  // Epic 4 — PATCH .../me; nhập kết quả (số liệu / evidence / tự đánh giá) theo kỳ đang chọn
   // Member chỉ được nhập khi result đã được Manager duyệt (approved)
   // Traffic team: pending/rejected = không được nhập; approved = được nhập
   // Non-Traffic team: luôn được nhập nếu có quyền
@@ -359,15 +372,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     isCatalogEnabledDepartment(selectedDept, catalogAllowlistQ.data?.mergedDivisionIds ?? null)
   )
 
-  const selectedTeamForSeed = useMemo(() => {
-    if (!selectedTeamId) return null
-    for (const d of departments) {
-      const t = d.teams.find((x) => x.id === selectedTeamId)
-      if (t) return { id: t.id, name: t.name }
-    }
-    return null
-  }, [departments, selectedTeamId])
-
   useEffect(() => {
     if (!selectedTeamId) return
     window.localStorage.setItem(
@@ -375,46 +379,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
       JSON.stringify({ teamId: selectedTeamId, year, month })
     )
   }, [selectedTeamId, year, month])
-
-  const isTrafficTeamSelected = isTrafficTeam(
-    selectedTeamId,
-    catalogAllowlistQ.data?.trafficTeamIds ?? null,
-    selectedTeamForSeed?.name ?? null
-  )
-
-  const goalApprovalKey = ['kpi-approval-request', selectedTeamId, year, month, 'goal'] as const
-  const resultApprovalKey = [
-    'kpi-approval-request',
-    selectedTeamId,
-    prevYear,
-    prevMonth,
-    'result',
-  ] as const
-  const goalApprovalQ = useQuery({
-    queryKey: goalApprovalKey,
-    queryFn: () => performanceApi.getApprovalRequest(selectedTeamId!, year, month, 'goal'),
-    enabled: Boolean(selectedTeamId) && isTrafficTeamSelected && !isMockApiEnabled(),
-    staleTime: 30_000,
-  })
-  const resultApprovalQ = useQuery({
-    queryKey: resultApprovalKey,
-    queryFn: () =>
-      performanceApi.getApprovalRequest(selectedTeamId!, prevYear, prevMonth, 'result'),
-    enabled: Boolean(selectedTeamId) && isTrafficTeamSelected && !isMockApiEnabled(),
-    staleTime: 30_000,
-  })
-  const goalApprovalRequest = goalApprovalQ.data ?? null
-  const resultApprovalRequest = resultApprovalQ.data ?? null
-  const isGoalApprovalLocked =
-    isTrafficTeamSelected &&
-    variant === 'leader' &&
-    (goalApprovalRequest?.status === 'pending' || goalApprovalRequest?.status === 'approved')
-  // Lock kết quả khi đang chờ duyệt (pending) - chỉ áp dụng cho Traffic team
-  // - pending: locked (Leader và Member không được sửa)
-  // - approved: Mở (Leader và Member được sửa)
-  // - rejected: Mở (Leader được sửa để gửi duyệt lại, Member không được sửa)
-  const isResultApprovalLocked =
-    isTrafficTeamSelected && resultApprovalRequest?.status === 'pending'
 
   const [submittingGoalApproval, setSubmittingGoalApproval] = useState(false)
   const [submittingResultApproval, setSubmittingResultApproval] = useState(false)
@@ -436,7 +400,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     if (!selectedTeamId) return
     setSubmittingResultApproval(true)
     try {
-      await performanceApi.submitForApproval(selectedTeamId, prevYear, prevMonth, 'result')
+      await performanceApi.submitForApproval(selectedTeamId, year, month, 'result')
       void qc.invalidateQueries({ queryKey: resultApprovalKey })
       toast.success('Đã gửi duyệt kết quả thành công')
     } catch (err: unknown) {
@@ -444,7 +408,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     } finally {
       setSubmittingResultApproval(false)
     }
-  }, [selectedTeamId, prevYear, prevMonth, qc, resultApprovalKey])
+  }, [selectedTeamId, year, month, qc, resultApprovalKey])
 
   const selectedTemplateCode = useMemo(() => {
     if (isTrafficTeamSelected) return 'TRAFFIC_TEAM_NV'
@@ -482,7 +446,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: assignKey })
-    void qc.invalidateQueries({ queryKey: assignPrevKey })
     void qc.invalidateQueries({ queryKey: sumKey })
     // Tự động tính lại tổng hợp sau 1.5s debounce — gộp nhiều lần save liên tiếp thành 1 lần gọi.
     if (selectedTeamId && !isMockApiEnabled()) {
@@ -493,7 +456,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           .then(() => void qc.invalidateQueries({ queryKey: sumKey }))
       }, 1500)
     }
-  }, [qc, assignKey, assignPrevKey, sumKey, selectedTeamId, prevYear, prevMonth])
+  }, [qc, assignKey, sumKey, selectedTeamId, year, month])
 
   const mockHint = isMockApiEnabled()
 
@@ -775,9 +738,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
       <div className="space-y-6">
         <WorkReportPanel
           assignmentsThisMonth={visibleAssignmentsThisMonth}
-          assignmentsPrevMonth={visibleAssignmentsPrevMonth}
           loadingThis={assignmentsQ.isLoading}
-          loadingPrev={assignmentsPrevQ.isLoading}
           members={visibleMembers}
           membersLoading={membersForTeamQ.isLoading}
           canEditTeam={
@@ -793,8 +754,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           selectedTeamId={selectedTeamId}
           year={year}
           month={month}
-          prevYear={prevYear}
-          prevMonth={prevMonth}
           currentUserId={user?.id}
           onRefresh={refresh}
           assignmentWindowOpen={assignmentWindowOpen && !isGoalApprovalLocked}
@@ -812,7 +771,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
             isTrafficTeamSelected &&
             variant === 'leader' &&
             (!resultApprovalRequest || resultApprovalRequest.status === 'rejected') &&
-            visibleAssignmentsPrevMonth.length > 0
+            visibleAssignmentsThisMonth.length > 0
           }
         />
         <SummaryPanel
@@ -1958,7 +1917,7 @@ function AssignmentTableSingleUser({
     })
   }, [rawRows, isManagerCascade])
   const isPlanning = leaderMode === 'planning'
-  /** Epic 4: member chỉnh Evidence / số liệu / tự đánh giá cho đúng user của mình — cả tháng này (planning) lẫn tháng trước (results). */
+  /** Epic 4: member chỉnh Evidence / số liệu / tự đánh giá cho đúng user của mình (chế độ results). */
   const allowSelfEdit =
     memberSelfEditableResults &&
     !resultsReadOnly &&
@@ -2457,9 +2416,7 @@ function UserAssignmentWorkbench({
 
 function WorkReportPanel({
   assignmentsThisMonth,
-  assignmentsPrevMonth,
   loadingThis,
-  loadingPrev,
   members,
   membersLoading,
   canEditTeam,
@@ -2467,8 +2424,6 @@ function WorkReportPanel({
   selectedTeamId,
   year,
   month,
-  prevYear,
-  prevMonth,
   currentUserId,
   onRefresh,
   assignmentWindowOpen,
@@ -2485,9 +2440,7 @@ function WorkReportPanel({
   canSubmitResultApproval,
 }: {
   assignmentsThisMonth: PerformanceAssignment[]
-  assignmentsPrevMonth: PerformanceAssignment[]
   loadingThis: boolean
-  loadingPrev: boolean
   members: TeamMemberRow[]
   membersLoading: boolean
   canEditTeam: boolean
@@ -2495,8 +2448,6 @@ function WorkReportPanel({
   selectedTeamId: string
   year: number
   month: number
-  prevYear: number
-  prevMonth: number
   currentUserId: string | undefined
   onRefresh: () => void
   assignmentWindowOpen: boolean
@@ -2563,9 +2514,9 @@ function WorkReportPanel({
     () => groupAssignmentsByUser(assignmentsThisMonth),
     [assignmentsThisMonth]
   )
-  const byUserPrev = useMemo(
-    () => groupAssignmentsByUser(assignmentsPrevMonth),
-    [assignmentsPrevMonth]
+  const byUserResults = useMemo(
+    () => groupAssignmentsByUser(assignmentsThisMonth),
+    [assignmentsThisMonth]
   )
 
   if (!selectedTeamId) {
@@ -2577,7 +2528,7 @@ function WorkReportPanel({
       </Card>
     )
   }
-  if (loadingThis || loadingPrev || membersLoading) {
+  if (loadingThis || membersLoading) {
     return (
       <Card className={cn(CARD_ENTRANCE)}>
         <CardHeader>
@@ -2668,11 +2619,12 @@ function WorkReportPanel({
             <div className="flex items-center gap-2 mb-1">
               <div className="h-6 w-1 rounded-full bg-emerald-600" />
               <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                2. Kết quả & đánh giá tháng trước — T{prevMonth}/{prevYear}
+                2. Kết quả & đánh giá — T{month}/{year}
               </h2>
             </div>
             <p className="text-sm text-slate-500">
-              Evidence / số liệu / tự đánh giá của nhân viên và đánh giá QL cho kỳ trước (Epic 4).
+              Evidence / số liệu / tự đánh giá của nhân viên và đánh giá QL cho kỳ T{month}/{year}{' '}
+              (Epic 4).
             </p>
           </div>
         </div>
@@ -2681,7 +2633,7 @@ function WorkReportPanel({
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-yellow-400/50 bg-yellow-50 px-4 py-3 dark:border-yellow-700/40 dark:bg-yellow-950/30">
             <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-yellow-400" />
             <div className="flex-1 text-sm font-medium text-yellow-800 dark:text-yellow-200">
-              Kết quả T{prevMonth}/{prevYear} đang chờ Manager duyệt — không thể chỉnh sửa.
+              Kết quả T{month}/{year} đang chờ Manager duyệt — không thể chỉnh sửa.
             </div>
           </div>
         )}
@@ -2689,7 +2641,7 @@ function WorkReportPanel({
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-green-400/50 bg-green-50 px-4 py-3 dark:border-green-700/40 dark:bg-green-950/30">
             <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
             <div className="flex-1 text-sm font-medium text-green-800 dark:text-green-200">
-              Kết quả T{prevMonth}/{prevYear} đã được Manager duyệt.
+              Kết quả T{month}/{year} đã được Manager duyệt.
             </div>
           </div>
         )}
@@ -2710,12 +2662,12 @@ function WorkReportPanel({
         )}
 
         <UserAssignmentWorkbench
-          byUser={byUserPrev}
+          byUser={byUserResults}
           members={members}
           canEditTeam={canEditTeam}
           onRefresh={onRefresh}
           leaderMode="results"
-          emptyText={`Chưa có dữ liệu KPI/OKR cho tháng ${prevMonth}/${prevYear}.`}
+          emptyText={`Chưa có dữ liệu KPI/OKR cho tháng ${month}/${year}.`}
           prioritizeUserId={currentUserId}
           showUserList={!isMemberView}
           memberSelfEditableResults={canMemberEditSelfResults && !isResultApprovalLocked}
@@ -3439,7 +3391,7 @@ function SummaryPanel({
 
   const emptyBlurb = useMemo(() => {
     if (viewerVariant !== 'member') {
-      return `Chưa có bản tổng hợp cho kỳ T${month}/${year} — nhập đánh giá tháng trước rồi bấm tính lại (leader).`
+      return `Chưa có bản tổng hợp cho kỳ T${month}/${year} — nhập kết quả & đánh giá rồi bấm tính lại (leader).`
     }
     if (!prioritizeAssigneeUserId?.trim()) {
       return 'Không thể hiển thị tổng hợp cá nhân (thiếu thông tin tài khoản).'

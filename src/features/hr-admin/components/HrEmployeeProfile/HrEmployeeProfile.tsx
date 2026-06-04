@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { FormProvider, type Control, useForm, useWatch } from 'react-hook-form'
 import type { LucideIcon } from 'lucide-react'
@@ -26,6 +26,8 @@ import { useDeactivateEmployee, useUpdateEmployee } from '@/features/hr-admin/ho
 import { DEFAULT_TEAM_ID } from '@/features/hr-admin/hrOrgOptions'
 import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 import {
+  avatarClassForRole,
+  employeePortraitUrl,
   levelMeta,
   levelPillText,
   shortId,
@@ -303,253 +305,259 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
 
   return (
     <>
-    <FormProvider {...editForm}>
-      <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-indigo-50/60 via-sky-50/40 to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
-        <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 pb-6 pt-6 md:px-6 lg:flex-row lg:items-start lg:gap-8 lg:pt-8">
-          <aside className="w-full shrink-0 lg:w-[280px]">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:mb-0 lg:block">
-              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                <Link
-                  to="/hr-admin"
-                  search={{ page: 1, pageSize: 15 }}
-                  className="font-semibold text-primary hover:underline"
-                >
-                  ← Danh sách nhân sự
-                </Link>
-                <span className="text-muted-foreground/50">/</span>
-                <span className="font-semibold text-foreground">{employee.name}</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5 lg:hidden"></div>
-            </div>
-
-            <div className="flex flex-col gap-6 rounded-2xl border border-indigo-200/60 bg-gradient-to-b from-white via-indigo-50/30 to-sky-50/30 p-5 shadow-[0_14px_34px_-22px_rgba(59,130,246,0.35)]">
-              <div className="relative mx-auto">
-                <EmployeeAvatar
-                  name={employee.name}
-                  showOnlineDot={employee.status === 'ACTIVE'}
-                  className="h-32 w-32 rounded-2xl border-[3px] border-white text-2xl shadow-[var(--shadow-game-float)] ring-4 ring-primary/15 sm:h-44 sm:w-44 sm:text-4xl"
-                />
-              </div>
-
-              <div>
-                <div className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                  Phân công
+      <FormProvider {...editForm}>
+        <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-indigo-50/60 via-sky-50/40 to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
+          <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 pb-6 pt-6 md:px-6 lg:flex-row lg:items-start lg:gap-8 lg:pt-8">
+            <aside className="w-full shrink-0 lg:w-[280px]">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:mb-0 lg:block">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <Link
+                    to="/hr-admin"
+                    search={{ page: 1, pageSize: 15 }}
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    ← Danh sách nhân sự
+                  </Link>
+                  <span className="text-muted-foreground/50">/</span>
+                  <span className="font-semibold text-foreground">{employee.name}</span>
                 </div>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-sm font-semibold leading-snug text-foreground">
-                        {deptName}
-                      </span>
-                      <span className="shrink-0 rounded-md bg-indigo-500/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-indigo-800">
-                        Chính
-                      </span>
-                    </div>
+                <div className="flex flex-wrap items-center gap-1.5 lg:hidden"></div>
+              </div>
+
+              <div className="flex flex-col gap-6 rounded-2xl border border-indigo-200/60 bg-gradient-to-b from-white via-indigo-50/30 to-sky-50/30 p-5 shadow-[0_14px_34px_-22px_rgba(59,130,246,0.35)]">
+                <div className="relative mx-auto">
+                  <EmployeeAvatar
+                    name={employee.name}
+                    photoUrl={employeePortraitUrl(employee.avatarUrl)}
+                    fallbackClassName={avatarClassForRole(employee.role)}
+                    showOnlineDot={employee.status === 'ACTIVE'}
+                    className="h-32 w-32 rounded-2xl border-[3px] border-white text-2xl shadow-[var(--shadow-game-float)] ring-4 ring-primary/15 sm:h-44 sm:w-44 sm:text-4xl"
+                  />
+                </div>
+
+                <div>
+                  <div className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    Phân công
                   </div>
-                  {hasAnyTeam ? (
+                  <div className="space-y-4">
                     <div>
                       <div className="flex items-start justify-between gap-2">
                         <span className="text-sm font-semibold leading-snug text-foreground">
-                          {teamName}
+                          {deptName}
                         </span>
-                        <span className="shrink-0 rounded-md bg-cyan-500/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-cyan-800">
-                          Nhóm
+                        <span className="shrink-0 rounded-md bg-indigo-500/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-indigo-800">
+                          Chính
                         </span>
                       </div>
                     </div>
-                  ) : null}
+                    {hasAnyTeam ? (
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-sm font-semibold leading-snug text-foreground">
+                            {teamName}
+                          </span>
+                          <span className="shrink-0 rounded-md bg-cyan-500/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-cyan-800">
+                            Nhóm
+                          </span>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="h-px bg-border" />
+
+                <div>
+                  <div className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    Kỹ năng &amp; huy hiệu
+                  </div>
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
+                      <Award
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                      <span>{levelPillText(employee.currentLevel)}</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
+                      <RoleBadgeIcon
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                      <span>{ROLE_LABEL_VI[employee.role]}</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
+                      <CheckCircle2
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                      <span>{statusLabelVi(employee.status)}</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
+            </aside>
 
-              <div className="h-px bg-border" />
-
-              <div>
-                <div className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                  Kỹ năng &amp; huy hiệu
-                </div>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                    <Award
-                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    <span>{levelPillText(employee.currentLevel)}</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                    <RoleBadgeIcon
-                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    <span>{ROLE_LABEL_VI[employee.role]}</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                    <CheckCircle2
-                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    <span>{statusLabelVi(employee.status)}</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </aside>
-
-          <main className="min-w-0 flex-1">
-            <div className="mb-4 hidden flex-wrap items-center justify-end gap-2 lg:flex">
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
-              >
-                Hủy hoạt động
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={onDemoAction('Lưu thay đổi: kết nối API sau.')}
-              >
-                Lưu thay đổi
-              </Button>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl border border-indigo-200/60 bg-gradient-to-b from-white to-indigo-50/20 shadow-[0_16px_36px_-22px_rgba(30,64,175,0.35)]">
-              <div className="border-b border-indigo-100/90 bg-gradient-to-r from-indigo-50/65 via-white to-cyan-50/45 px-5 py-5 md:px-6">
-                <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
-                  {employee.name}
-                </h1>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                  <Building2
-                    className="h-4 w-4 shrink-0 text-primary/70"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  <span>{hasAnyTeam ? `${deptName} · ${teamName}` : deptName}</span>
-                </div>
-                <p className="mt-2 text-lg font-semibold text-indigo-700 md:text-xl">
-                  {ROLE_LABEL_VI[employee.role]} ·{' '}
-                  {LEVEL_LABELS[employee.currentLevel as LevelCode]}
-                </p>
-
-                <div className="mt-4 flex flex-wrap items-center border-t border-border/60 pt-4">
-                  <FiveStarRank filled={rankStarsFive} />
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
-                    <RoleBadgeIcon
-                      className="h-3.5 w-3.5 shrink-0 text-primary/90"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    {ROLE_LABEL_VI[employee.role]}
-                  </span>
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1.5 rounded-full border border-primary/15 px-2.5 py-1 text-xs font-medium',
-                      tierClass
-                    )}
-                  >
-                    <Award
-                      className="h-3.5 w-3.5 shrink-0 opacity-90"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    {tierLabel}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
-                    <CheckCircle2
-                      className="h-3.5 w-3.5 shrink-0 text-primary/90"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    {statusLabelVi(employee.status)}
-                  </span>
-                </div>
+            <main className="min-w-0 flex-1">
+              <div className="mb-4 hidden flex-wrap items-center justify-end gap-2 lg:flex">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
+                >
+                  Hủy hoạt động
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={onDemoAction('Lưu thay đổi: kết nối API sau.')}
+                >
+                  Lưu thay đổi
+                </Button>
               </div>
 
-              <nav
-                className="flex flex-wrap gap-0 border-b border-indigo-100/80 bg-white/65 px-1 sm:px-2 md:px-4"
-                aria-label="Mục hồ sơ nhân viên"
-              >
-                {tabLabels.map((label, i) => {
-                  const Icon = tabIcons[i]!
-                  const active = tab === i
-                  return (
-                    <Button
-                      key={label}
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setTab(i)}
+              <div className="overflow-hidden rounded-2xl border border-indigo-200/60 bg-gradient-to-b from-white to-indigo-50/20 shadow-[0_16px_36px_-22px_rgba(30,64,175,0.35)]">
+                <div className="border-b border-indigo-100/90 bg-gradient-to-r from-indigo-50/65 via-white to-cyan-50/45 px-5 py-5 md:px-6">
+                  <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
+                    {employee.name}
+                  </h1>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                    <Building2
+                      className="h-4 w-4 shrink-0 text-primary/70"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
+                    <span>{hasAnyTeam ? `${deptName} · ${teamName}` : deptName}</span>
+                  </div>
+                  <p className="mt-2 text-lg font-semibold text-indigo-700 md:text-xl">
+                    {ROLE_LABEL_VI[employee.role]} ·{' '}
+                    {LEVEL_LABELS[employee.currentLevel as LevelCode]}
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap items-center border-t border-border/60 pt-4">
+                    <FiveStarRank filled={rankStarsFive} />
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
+                      <RoleBadgeIcon
+                        className="h-3.5 w-3.5 shrink-0 text-primary/90"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                      {ROLE_LABEL_VI[employee.role]}
+                    </span>
+                    <span
                       className={cn(
-                        'relative inline-flex h-auto min-h-0 items-center gap-1.5 rounded-none px-2 py-3 text-xs font-semibold transition-colors sm:gap-2 sm:px-3 sm:py-3.5 sm:text-sm md:px-4',
-                        active
-                          ? 'text-indigo-700 hover:bg-transparent hover:text-indigo-700'
-                          : 'text-muted-foreground hover:bg-indigo-50/70 hover:text-indigo-700'
+                        'inline-flex items-center gap-1.5 rounded-full border border-primary/15 px-2.5 py-1 text-xs font-medium',
+                        tierClass
                       )}
                     >
-                      <Icon
-                        className="h-3.5 w-3.5 shrink-0 opacity-85 sm:h-4 sm:w-4"
+                      <Award
+                        className="h-3.5 w-3.5 shrink-0 opacity-90"
                         strokeWidth={2}
+                        aria-hidden
                       />
-                      {label}
-                      {active ? (
-                        <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-indigo-600 sm:left-3 sm:right-3 md:left-4 md:right-4" />
-                      ) : null}
-                    </Button>
-                  )
-                })}
-              </nav>
+                      {tierLabel}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
+                      <CheckCircle2
+                        className="h-3.5 w-3.5 shrink-0 text-primary/90"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                      {statusLabelVi(employee.status)}
+                    </span>
+                  </div>
+                </div>
 
-              <div className="page-shell">
-                {tab === 0 && (
-                  <OverviewTab
-                    employee={employee}
-                    tierLabel={tierLabel}
-                    tierClass={tierClass}
-                    xpPct={xpPct}
-                    maxStars={maxStars}
-                    levelStarVariants={levelStarVariants}
-                  />
-                )}
-                {tab === 1 && <LearningPathTab employee={employee} levelIdx={levelIdx} />}
-                {tab === 2 && <ExamResultsTab />}
-                {tab === 3 && <WorkHistoryTab />}
-                {tab === 4 && (
-                  <EditTab
-                    employee={employee}
-                    control={editControl}
-                    empCode={empCode}
-                    canEdit={canEdit}
-                    canDeactivate={canDeactivate}
-                    isSaving={isSaving}
-                    onSave={handleSaveProfile}
-                    onDeactivate={handleDeactivateProfile}
-                    onReactivate={handleReactivateProfile}
-                  />
-                )}
+                <nav
+                  className="flex flex-wrap gap-0 border-b border-indigo-100/80 bg-white/65 px-1 sm:px-2 md:px-4"
+                  aria-label="Mục hồ sơ nhân viên"
+                >
+                  {tabLabels.map((label, i) => {
+                    const Icon = tabIcons[i]!
+                    const active = tab === i
+                    return (
+                      <Button
+                        key={label}
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setTab(i)}
+                        className={cn(
+                          'relative inline-flex h-auto min-h-0 items-center gap-1.5 rounded-none px-2 py-3 text-xs font-semibold transition-colors sm:gap-2 sm:px-3 sm:py-3.5 sm:text-sm md:px-4',
+                          active
+                            ? 'text-indigo-700 hover:bg-transparent hover:text-indigo-700'
+                            : 'text-muted-foreground hover:bg-indigo-50/70 hover:text-indigo-700'
+                        )}
+                      >
+                        <Icon
+                          className="h-3.5 w-3.5 shrink-0 opacity-85 sm:h-4 sm:w-4"
+                          strokeWidth={2}
+                        />
+                        {label}
+                        {active ? (
+                          <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-indigo-600 sm:left-3 sm:right-3 md:left-4 md:right-4" />
+                        ) : null}
+                      </Button>
+                    )
+                  })}
+                </nav>
+
+                <div className="page-shell">
+                  {tab === 0 && (
+                    <OverviewTab
+                      employee={employee}
+                      tierLabel={tierLabel}
+                      tierClass={tierClass}
+                      xpPct={xpPct}
+                      maxStars={maxStars}
+                      levelStarVariants={levelStarVariants}
+                    />
+                  )}
+                  {tab === 1 && <LearningPathTab employee={employee} levelIdx={levelIdx} />}
+                  {tab === 2 && <ExamResultsTab />}
+                  {tab === 3 && <WorkHistoryTab />}
+                  {tab === 4 && (
+                    <EditTab
+                      employee={employee}
+                      control={editControl}
+                      empCode={empCode}
+                      canEdit={canEdit}
+                      canDeactivate={canDeactivate}
+                      isSaving={isSaving}
+                      onSave={handleSaveProfile}
+                      onDeactivate={handleDeactivateProfile}
+                      onReactivate={handleReactivateProfile}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          </main>
+            </main>
+          </div>
         </div>
-      </div>
-    </FormProvider>
-    <ConfirmDialog
-      open={confirmAction !== null}
-      onOpenChange={(open) => { if (!open) setConfirmAction(null) }}
-      title={confirmAction === 'deactivate' ? 'Vô hiệu hóa tài khoản?' : 'Kích hoạt lại tài khoản?'}
-      description={
-        confirmAction === 'deactivate'
-          ? 'Nhân viên sẽ không thể đăng nhập sau khi bị vô hiệu hóa.'
-          : 'Nhân viên sẽ được khôi phục quyền đăng nhập.'
-      }
-      confirmLabel={confirmAction === 'deactivate' ? 'Vô hiệu hóa' : 'Kích hoạt'}
-      destructive={confirmAction === 'deactivate'}
-      onConfirm={handleConfirmAction}
-    />
+      </FormProvider>
+      <ConfirmDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null)
+        }}
+        title={
+          confirmAction === 'deactivate' ? 'Vô hiệu hóa tài khoản?' : 'Kích hoạt lại tài khoản?'
+        }
+        description={
+          confirmAction === 'deactivate'
+            ? 'Nhân viên sẽ không thể đăng nhập sau khi bị vô hiệu hóa.'
+            : 'Nhân viên sẽ được khôi phục quyền đăng nhập.'
+        }
+        confirmLabel={confirmAction === 'deactivate' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+        destructive={confirmAction === 'deactivate'}
+        onConfirm={handleConfirmAction}
+      />
     </>
   )
 }

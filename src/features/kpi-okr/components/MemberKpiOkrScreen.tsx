@@ -9,7 +9,7 @@ export function MemberKpiOkrScreen() {
       <KpiOkrWorkspace
         variant="member"
         title="KPI & OKR của tôi"
-        description="Mỗi lần nhập theo tháng: xem mục tiêu tháng đang chọn và cập nhật kết quả (tiến độ) cho tháng trước. Có tổng chỉ số và form câu hỏi theo tháng."
+        description="Mỗi lần nhập theo tháng: xem mục tiêu và cập nhật kết quả (tiến độ) cùng kỳ đã chọn. Có tổng chỉ số và form câu hỏi theo tháng."
       />
     </div>
   )
