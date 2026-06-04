@@ -29,6 +29,7 @@ import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
 import { useKpiOkrAutoSeed } from '@/features/kpi-okr/components/hooks/useKpiOkrAutoSeed'
 import {
   performanceApi,
+  type ApprovalRequest,
   type PerformanceAssignment,
   type PerformanceQuestionnaire,
   type PerformanceSummaryRow,
@@ -49,6 +50,7 @@ import {
   ContentCell,
   EvalStatusBadge,
   KindBadge,
+  PLANNING_ASSIGN_TABLE_HEAD,
   PriorityBadge,
   XL_TH,
   XL_BORDER,
@@ -340,9 +342,16 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   )
 
   // Epic 4 — PATCH .../me; áp dụng mục tiêu tháng này và kết quả tháng trước
+  // Member chỉ được nhập khi result đã được Manager duyệt (approved)
+  // Traffic team: pending/rejected = không được nhập; approved = được nhập
+  // Non-Traffic team: luôn được nhập nếu có quyền
   const canMemberEditSelfResults = useMemo(
-    () => Boolean(user?.id) && eff.has('kpi.edit_own') && !isMockApiEnabled(),
-    [user?.id, eff]
+    () =>
+      Boolean(user?.id) &&
+      eff.has('kpi.edit_own') &&
+      !isMockApiEnabled() &&
+      (!isTrafficTeamSelected || resultApprovalRequest?.status === 'approved'),
+    [user?.id, eff, isTrafficTeamSelected, resultApprovalRequest?.status]
   )
 
   const isKinhDoanhTeam = Boolean(
@@ -373,37 +382,69 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     selectedTeamForSeed?.name ?? null
   )
 
-  const approvalKey = ['kpi-approval-request', selectedTeamId, year, month] as const
-  const approvalQ = useQuery({
-    queryKey: approvalKey,
-    queryFn: () => performanceApi.getApprovalRequest(selectedTeamId!, year, month),
-    enabled:
-      Boolean(selectedTeamId) &&
-      isTrafficTeamSelected &&
-      variant === 'leader' &&
-      !isMockApiEnabled(),
+  const goalApprovalKey = ['kpi-approval-request', selectedTeamId, year, month, 'goal'] as const
+  const resultApprovalKey = [
+    'kpi-approval-request',
+    selectedTeamId,
+    prevYear,
+    prevMonth,
+    'result',
+  ] as const
+  const goalApprovalQ = useQuery({
+    queryKey: goalApprovalKey,
+    queryFn: () => performanceApi.getApprovalRequest(selectedTeamId!, year, month, 'goal'),
+    enabled: Boolean(selectedTeamId) && isTrafficTeamSelected && !isMockApiEnabled(),
     staleTime: 30_000,
   })
-  const approvalRequest = approvalQ.data ?? null
-  const isApprovalLocked =
+  const resultApprovalQ = useQuery({
+    queryKey: resultApprovalKey,
+    queryFn: () =>
+      performanceApi.getApprovalRequest(selectedTeamId!, prevYear, prevMonth, 'result'),
+    enabled: Boolean(selectedTeamId) && isTrafficTeamSelected && !isMockApiEnabled(),
+    staleTime: 30_000,
+  })
+  const goalApprovalRequest = goalApprovalQ.data ?? null
+  const resultApprovalRequest = resultApprovalQ.data ?? null
+  const isGoalApprovalLocked =
     isTrafficTeamSelected &&
     variant === 'leader' &&
-    (approvalRequest?.status === 'pending' || approvalRequest?.status === 'approved')
+    (goalApprovalRequest?.status === 'pending' || goalApprovalRequest?.status === 'approved')
+  // Lock kết quả khi đang chờ duyệt (pending) - chỉ áp dụng cho Traffic team
+  // - pending: locked (Leader và Member không được sửa)
+  // - approved: Mở (Leader và Member được sửa)
+  // - rejected: Mở (Leader được sửa để gửi duyệt lại, Member không được sửa)
+  const isResultApprovalLocked =
+    isTrafficTeamSelected && resultApprovalRequest?.status === 'pending'
 
-  const [submittingApproval, setSubmittingApproval] = useState(false)
+  const [submittingGoalApproval, setSubmittingGoalApproval] = useState(false)
+  const [submittingResultApproval, setSubmittingResultApproval] = useState(false)
   const handleSubmitForApproval = useCallback(async () => {
     if (!selectedTeamId) return
-    setSubmittingApproval(true)
+    setSubmittingGoalApproval(true)
     try {
-      await performanceApi.submitForApproval(selectedTeamId, year, month)
-      void qc.invalidateQueries({ queryKey: approvalKey })
-      toast.success('Đã gửi duyệt KPI/OKR thành công')
+      await performanceApi.submitForApproval(selectedTeamId, year, month, 'goal')
+      void qc.invalidateQueries({ queryKey: goalApprovalKey })
+      toast.success('Đã gửi duyệt mục tiêu KPI/OKR thành công')
     } catch (err: unknown) {
       toast.error('Gửi duyệt thất bại: ' + getApiErrorMessage(err))
     } finally {
-      setSubmittingApproval(false)
+      setSubmittingGoalApproval(false)
     }
-  }, [selectedTeamId, year, month, qc, approvalKey])
+  }, [selectedTeamId, year, month, qc, goalApprovalKey])
+
+  const handleSubmitResultApproval = useCallback(async () => {
+    if (!selectedTeamId) return
+    setSubmittingResultApproval(true)
+    try {
+      await performanceApi.submitForApproval(selectedTeamId, prevYear, prevMonth, 'result')
+      void qc.invalidateQueries({ queryKey: resultApprovalKey })
+      toast.success('Đã gửi duyệt kết quả thành công')
+    } catch (err: unknown) {
+      toast.error('Gửi duyệt kết quả thất bại: ' + getApiErrorMessage(err))
+    } finally {
+      setSubmittingResultApproval(false)
+    }
+  }, [selectedTeamId, prevYear, prevMonth, qc, resultApprovalKey])
 
   const selectedTemplateCode = useMemo(() => {
     if (isTrafficTeamSelected) return 'TRAFFIC_TEAM_NV'
@@ -647,33 +688,35 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         <>
           {/* Status banner — informational only, no action button here */}
           <div className="mb-4">
-            {approvalRequest?.status === 'pending' && (
+            {goalApprovalRequest?.status === 'pending' && (
               <div className="flex items-center gap-3 rounded-xl border border-yellow-400/50 bg-yellow-50 px-4 py-3 dark:border-yellow-700/40 dark:bg-yellow-950/30">
                 <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-yellow-400" />
                 <div className="flex-1 text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                  KPI/OKR tháng {month}/{year} đang chờ Manager duyệt — không thể chỉnh sửa.
+                  Mục tiêu KPI/OKR tháng {month}/{year} đang chờ Manager duyệt — không thể chỉnh
+                  sửa.
                 </div>
               </div>
             )}
-            {approvalRequest?.status === 'approved' && (
+            {goalApprovalRequest?.status === 'approved' && (
               <div className="flex items-center gap-3 rounded-xl border border-green-400/50 bg-green-50 px-4 py-3 dark:border-green-700/40 dark:bg-green-950/30">
                 <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                 <div className="flex-1 text-sm font-medium text-green-800 dark:text-green-200">
-                  KPI/OKR tháng {month}/{year} đã được duyệt.
+                  Mục tiêu KPI/OKR tháng {month}/{year} đã được duyệt.
                 </div>
               </div>
             )}
-            {approvalRequest?.status === 'rejected' && (
+            {goalApprovalRequest?.status === 'rejected' && (
               <div className="rounded-xl border border-red-400/50 bg-red-50 px-4 py-3 dark:border-red-700/40 dark:bg-red-950/30">
                 <div className="flex items-center gap-3">
                   <X className="h-4 w-4 text-red-600 dark:text-red-400" />
                   <div className="flex-1 text-sm font-medium text-red-800 dark:text-red-200">
-                    KPI/OKR tháng {month}/{year} bị từ chối — bạn có thể chỉnh sửa và gửi lại.
+                    Mục tiêu KPI/OKR tháng {month}/{year} bị từ chối — bạn có thể chỉnh sửa và gửi
+                    lại.
                   </div>
                 </div>
-                {approvalRequest.note && (
+                {goalApprovalRequest.note && (
                   <p className="mt-1.5 pl-7 text-xs text-red-700 dark:text-red-300">
-                    Lý do: {approvalRequest.note}
+                    Lý do: {goalApprovalRequest.note}
                   </p>
                 )}
               </div>
@@ -681,50 +724,51 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           </div>
 
           {/* Sticky bottom bar — modern SaaS pattern: context + action together */}
-          {(!approvalRequest || approvalRequest.status === 'rejected') && assignmentWindowOpen && (
-            <div className="sticky bottom-0 z-40 -mx-3 md:-mx-4">
-              <div className="mx-3 mb-3 md:mx-4 md:mb-4 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95 sm:px-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  {/* Left: context */}
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
-                      <ClipboardList className="h-4.5 w-4.5" />
+          {(!goalApprovalRequest || goalApprovalRequest.status === 'rejected') &&
+            assignmentWindowOpen && (
+              <div className="sticky bottom-0 z-40 -mx-3 md:-mx-4">
+                <div className="mx-3 mb-3 md:mx-4 md:mb-4 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95 sm:px-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    {/* Left: context */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                        <ClipboardList className="h-4.5 w-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                          Gửi duyệt KPI/OKR —{' '}
+                          {selectedTeamForSeed?.name ?? `Team ${selectedTeamId.slice(0, 8)}`}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Tháng {month}/{year} · {assignmentsThisMonth.length} mục tiêu · Gửi lên
+                          Manager phụ trách
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
-                        Gửi duyệt KPI/OKR —{' '}
-                        {selectedTeamForSeed?.name ?? `Team ${selectedTeamId.slice(0, 8)}`}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Tháng {month}/{year} · {assignmentsThisMonth.length} mục tiêu · Gửi lên
-                        Manager phụ trách
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Right: action button */}
-                  <Button
-                    onClick={() => void handleSubmitForApproval()}
-                    disabled={submittingApproval || !assignmentsThisMonth.length}
-                    size="default"
-                    className="shrink-0 gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 shadow-md shadow-blue-500/25 transition-all hover:shadow-lg hover:shadow-blue-500/30 disabled:opacity-50"
-                  >
-                    {submittingApproval ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        Đang gửi...
-                      </>
-                    ) : (
-                      <>
-                        <FileUp className="h-4 w-4" />
-                        Gửi duyệt
-                      </>
-                    )}
-                  </Button>
+                    {/* Right: action button */}
+                    <Button
+                      onClick={() => void handleSubmitForApproval()}
+                      disabled={submittingGoalApproval || !assignmentsThisMonth.length}
+                      size="default"
+                      className="shrink-0 gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 shadow-md shadow-blue-500/25 transition-all hover:shadow-lg hover:shadow-blue-500/30 disabled:opacity-50"
+                    >
+                      {submittingGoalApproval ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          Đang gửi...
+                        </>
+                      ) : (
+                        <>
+                          <FileUp className="h-4 w-4" />
+                          Gửi duyệt
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
         </>
       )}
 
@@ -736,7 +780,15 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           loadingPrev={assignmentsPrevQ.isLoading}
           members={visibleMembers}
           membersLoading={membersForTeamQ.isLoading}
-          canEditTeam={canEditTeam && !isApprovalLocked}
+          canEditTeam={
+            canEditTeam &&
+            !isGoalApprovalLocked &&
+            // Leader Traffic: được sửa khi result rejected (gửi lại) hoặc approved (đã duyệt), không được sửa khi pending
+            // Non-Leader: luôn được sửa (không bị restriction)
+            (variant !== 'leader' ||
+              !isTrafficTeamSelected ||
+              resultApprovalRequest?.status !== 'pending')
+          }
           isMemberView={isMemberView}
           selectedTeamId={selectedTeamId}
           year={year}
@@ -745,11 +797,23 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           prevMonth={prevMonth}
           currentUserId={user?.id}
           onRefresh={refresh}
-          assignmentWindowOpen={assignmentWindowOpen && !isApprovalLocked}
+          assignmentWindowOpen={assignmentWindowOpen && !isGoalApprovalLocked}
           assignmentWindowBounds={assignmentWindowBounds}
           canMemberEditSelfResults={canMemberEditSelfResults}
+          planningReadOnly={isGoalApprovalLocked}
           templateCode={selectedTemplateCode}
           isManagerCascade={isManagerVariant}
+          isTrafficTeam={isTrafficTeamSelected}
+          resultApprovalRequest={resultApprovalRequest}
+          isResultApprovalLocked={isResultApprovalLocked}
+          onSubmitResultApproval={handleSubmitResultApproval}
+          submittingResultApproval={submittingResultApproval}
+          canSubmitResultApproval={
+            isTrafficTeamSelected &&
+            variant === 'leader' &&
+            (!resultApprovalRequest || resultApprovalRequest.status === 'rejected') &&
+            visibleAssignmentsPrevMonth.length > 0
+          }
         />
         <SummaryPanel
           rows={summariesQ.data ?? []}
@@ -814,7 +878,51 @@ const XL_TEXTAREA = cn(
   'placeholder:text-slate-400'
 )
 
-function useMemberSelfAssignmentEdit(row: PerformanceAssignment, onSaved: () => void) {
+export type MemberSelfEditDraft = {
+  evidence: string
+  numericRaw: string
+  numericUnit: string
+  selfEvalStatus: string
+  selfReviewNote: string
+}
+
+function memberSelfDraftsEqual(a: MemberSelfEditDraft, b: MemberSelfEditDraft) {
+  return (
+    a.evidence === b.evidence &&
+    a.numericRaw === b.numericRaw &&
+    a.numericUnit === b.numericUnit &&
+    a.selfEvalStatus === b.selfEvalStatus &&
+    a.selfReviewNote === b.selfReviewNote
+  )
+}
+
+function draftToPatchBody(draft: MemberSelfEditDraft) {
+  const nTrim = draft.numericRaw.trim()
+  let numericValue: number | null = null
+  if (nTrim.length > 0) {
+    const n = Number(nTrim.replace(/\./g, '').replace(',', '.'))
+    if (!Number.isFinite(n)) return 'invalid' as const
+    numericValue = n
+  }
+  return {
+    evidence: draft.evidence.trim() ? draft.evidence.trim() : null,
+    numericValue,
+    numericUnit: draft.numericUnit.trim() ? draft.numericUnit.trim().toUpperCase() : null,
+    selfEvalStatus: draft.selfEvalStatus.trim() ? draft.selfEvalStatus.trim() : null,
+    selfReviewNote: draft.selfReviewNote.trim() ? draft.selfReviewNote.trim() : null,
+  }
+}
+
+function useMemberSelfAssignmentEdit(
+  row: PerformanceAssignment,
+  onSaved: () => void,
+  opts?: {
+    hideRowSave?: boolean
+    disabled?: boolean
+    onDraftChange?: (draft: MemberSelfEditDraft) => void
+  }
+) {
+  const disabled = opts?.disabled ?? false
   const [evidence, setEvidence] = useState(row.evidence ?? '')
   const [numericRaw, setNumericRaw] = useState(
     row.numericValue != null ? String(row.numericValue) : ''
@@ -824,6 +932,8 @@ function useMemberSelfAssignmentEdit(row: PerformanceAssignment, onSaved: () => 
   const [selfReviewNote, setSelfReviewNote] = useState(row.selfReviewNote ?? '')
   const [saving, setSaving] = useState(false)
   const [numericFocused, setNumericFocused] = useState(false)
+  const onDraftChangeRef = useRef(opts?.onDraftChange)
+  onDraftChangeRef.current = opts?.onDraftChange
 
   useEffect(() => {
     setEvidence(row.evidence ?? '')
@@ -839,6 +949,16 @@ function useMemberSelfAssignmentEdit(row: PerformanceAssignment, onSaved: () => 
     row.selfEvalStatus,
     row.selfReviewNote,
   ])
+
+  useEffect(() => {
+    onDraftChangeRef.current?.({
+      evidence,
+      numericRaw,
+      numericUnit,
+      selfEvalStatus,
+      selfReviewNote,
+    })
+  }, [evidence, numericRaw, numericUnit, selfEvalStatus, selfReviewNote])
 
   /** Giá trị hiển thị: khi focus → raw digits, khi blur → định dạng dấu chấm ngàn */
   const numericDisplayValue = numericFocused
@@ -906,6 +1026,8 @@ function useMemberSelfAssignmentEdit(row: PerformanceAssignment, onSaved: () => 
     setSelfReviewNote,
     saving,
     save,
+    disabled,
+    hideRowSave: opts?.hideRowSave ?? false,
   }
 }
 
@@ -913,10 +1035,16 @@ function MemberSelfAssignmentRow({
   row,
   rowStripe,
   onSaved,
+  hideRowSave,
+  disabled,
+  onDraftChange,
 }: {
   row: PerformanceAssignment
   rowStripe: boolean
   onSaved: () => void
+  hideRowSave?: boolean
+  disabled?: boolean
+  onDraftChange?: (draft: MemberSelfEditDraft) => void
 }) {
   const isMandatory = isMandatoryMetric(row.content)
   const {
@@ -935,7 +1063,9 @@ function MemberSelfAssignmentRow({
     setSelfReviewNote,
     saving,
     save,
-  } = useMemberSelfAssignmentEdit(row, onSaved)
+    hideRowSave: hideSave,
+    disabled: inputsDisabled,
+  } = useMemberSelfAssignmentEdit(row, onSaved, { hideRowSave, disabled, onDraftChange })
 
   const td = xlTd(rowStripe)
 
@@ -984,6 +1114,7 @@ function MemberSelfAssignmentRow({
             )}
             placeholder={isMandatory ? 'Bắt buộc nhập' : '—'}
             aria-required={isMandatory}
+            disabled={inputsDisabled || saving}
           />
           {isMandatory && (
             <span
@@ -1001,15 +1132,21 @@ function MemberSelfAssignmentRow({
           onChange={(e) => setNumericUnit(e.target.value)}
           className={XL_INPUT}
           placeholder="VND"
+          disabled={inputsDisabled || saving}
         />
       </TableCell>
       <TableCell className={cn(td, 'min-w-[220px] max-w-[320px] p-2 align-top')}>
-        <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={saving} />
+        <KpiEvidenceInput
+          value={evidence}
+          onChange={setEvidence}
+          disabled={inputsDisabled || saving}
+        />
       </TableCell>
       <TableCell className={cn(td, 'p-2 align-middle')}>
         <CustomSelect
           value={selfEvalStatus || '__none'}
           onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
+          disabled={inputsDisabled || saving}
           options={[
             { label: '—', value: '__none' },
             { label: 'OK', value: 'OK' },
@@ -1022,6 +1159,7 @@ function MemberSelfAssignmentRow({
           rows={2}
           className={cn(XL_TEXTAREA, 'mt-1 min-h-[52px]')}
           placeholder="Nhận xét"
+          disabled={inputsDisabled || saving}
         />
       </TableCell>
       <TableCell className={td}>
@@ -1037,24 +1175,26 @@ function MemberSelfAssignmentRow({
           )}
         </div>
       </TableCell>
-      <TableCell
-        className={cn(
-          td,
-          'sticky right-0 z-10 whitespace-nowrap bg-white text-right shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-950'
-        )}
-      >
-        {!isMockApiEnabled() ? (
-          <Button
-            type="button"
-            size="sm"
-            className="rounded-lg font-semibold"
-            disabled={saving}
-            onClick={() => void save()}
-          >
-            {saving ? 'Đang lưu…' : 'Lưu'}
-          </Button>
-        ) : null}
-      </TableCell>
+      {!hideSave ? (
+        <TableCell
+          className={cn(
+            td,
+            'sticky right-0 z-10 whitespace-nowrap bg-white text-right shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-950'
+          )}
+        >
+          {!isMockApiEnabled() ? (
+            <Button
+              type="button"
+              size="sm"
+              className="rounded-lg font-semibold"
+              disabled={saving || inputsDisabled}
+              onClick={() => void save()}
+            >
+              {saving ? 'Đang lưu…' : 'Lưu'}
+            </Button>
+          ) : null}
+        </TableCell>
+      ) : null}
     </TableRow>
   )
 }
@@ -1062,9 +1202,11 @@ function MemberSelfAssignmentRow({
 function ReadOnlyAssignmentRow({
   row,
   rowStripe,
+  mode = 'results',
 }: {
   row: PerformanceAssignment
   rowStripe: boolean
+  mode?: 'planning' | 'results'
 }) {
   const td = xlTd(rowStripe)
   return (
@@ -1096,7 +1238,18 @@ function ReadOnlyAssignmentRow({
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
         {formatViNumber(row.targetMetric) || '—'}
       </TableCell>
-      <AssignmentEpic4ReadCells row={row} td={td} />
+      {mode === 'planning' ? (
+        <>
+          <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-sm')}>
+            {formatViNumber(row.numericValue)}
+          </TableCell>
+          <TableCell className={cn(td, 'text-xs uppercase')}>
+            <div className="w-[64px] truncate">{row.numericUnit ?? '—'}</div>
+          </TableCell>
+        </>
+      ) : (
+        <AssignmentEpic4ReadCells row={row} td={td} />
+      )}
       <TableCell className={td}>
         <div className="flex flex-col gap-1">
           <EvalStatusBadge status={row.managerEvalStatus} />
@@ -1123,9 +1276,11 @@ function ReadOnlyAssignmentRow({
 function ReadOnlyAssignmentMobileCard({
   row,
   rowStripe,
+  mode = 'results',
 }: {
   row: PerformanceAssignment
   rowStripe: boolean
+  mode?: 'planning' | 'results'
 }) {
   return (
     <div className={cn('space-y-3 p-4', rowStripe ? 'bg-slate-50/30 dark:bg-slate-900/20' : '')}>
@@ -1146,9 +1301,21 @@ function ReadOnlyAssignmentMobileCard({
       <p className="text-sm font-semibold tabular-nums text-primary">
         Chỉ tiêu: {row.targetMetric || '—'}
       </p>
-      <AssignmentEpic4ReadStack row={row} />
+      {mode === 'planning' ? (
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <span>
+            <span className="font-semibold text-muted-foreground">Số liệu: </span>
+            {formatViNumber(row.numericValue)}
+          </span>
+          <span className="text-xs uppercase text-muted-foreground">
+            Đơn vị: {row.numericUnit ?? '—'}
+          </span>
+        </div>
+      ) : (
+        <AssignmentEpic4ReadStack row={row} />
+      )}
       <div className="flex flex-col gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <span className="text-xs font-bold uppercase text-muted-foreground">Đánh giá QL</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Quản lý xét duyệt</span>
         <EvalStatusBadge status={row.managerEvalStatus} />
         {row.managerReviewNote ? (
           <p className="break-words text-xs italic text-slate-500">{row.managerReviewNote}</p>
@@ -1162,10 +1329,16 @@ function MemberSelfAssignmentMobileCard({
   row,
   rowStripe,
   onSaved,
+  hideRowSave,
+  disabled,
+  onDraftChange,
 }: {
   row: PerformanceAssignment
   rowStripe: boolean
   onSaved: () => void
+  hideRowSave?: boolean
+  disabled?: boolean
+  onDraftChange?: (draft: MemberSelfEditDraft) => void
 }) {
   const isMandatory = isMandatoryMetric(row.content)
   const {
@@ -1184,7 +1357,9 @@ function MemberSelfAssignmentMobileCard({
     setSelfReviewNote,
     saving,
     save,
-  } = useMemberSelfAssignmentEdit(row, onSaved)
+    hideRowSave: hideSave,
+    disabled: inputsDisabled,
+  } = useMemberSelfAssignmentEdit(row, onSaved, { hideRowSave, disabled, onDraftChange })
 
   return (
     <div className={cn('space-y-3 p-4', rowStripe ? 'bg-slate-50/30 dark:bg-slate-900/20' : '')}>
@@ -1232,6 +1407,7 @@ function MemberSelfAssignmentMobileCard({
             )}
             placeholder={isMandatory ? 'Bắt buộc nhập' : '—'}
             aria-required={isMandatory}
+            disabled={inputsDisabled || saving}
           />
         </div>
         <div className="space-y-1">
@@ -1241,18 +1417,24 @@ function MemberSelfAssignmentMobileCard({
             onChange={(e) => setNumericUnit(e.target.value)}
             className={XL_INPUT}
             placeholder="VND"
+            disabled={inputsDisabled || saving}
           />
         </div>
       </div>
       <div className="space-y-1">
         <span className="text-xs font-bold uppercase text-muted-foreground">Minh chứng</span>
-        <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={saving} />
+        <KpiEvidenceInput
+          value={evidence}
+          onChange={setEvidence}
+          disabled={inputsDisabled || saving}
+        />
       </div>
       <div className="space-y-2">
         <span className="text-xs font-bold uppercase text-muted-foreground">Tự đánh giá</span>
         <CustomSelect
           value={selfEvalStatus || '__none'}
           onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
+          disabled={inputsDisabled || saving}
           options={[
             { label: '—', value: '__none' },
             { label: 'OK', value: 'OK' },
@@ -1265,21 +1447,22 @@ function MemberSelfAssignmentMobileCard({
           rows={2}
           className={cn(XL_TEXTAREA, 'mt-1 min-h-[52px] max-w-none')}
           placeholder="Nhận xét"
+          disabled={inputsDisabled || saving}
         />
       </div>
       <div className="flex flex-col gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <span className="text-xs font-bold uppercase text-muted-foreground">Đánh giá QL</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Quản lý xét duyệt</span>
         <EvalStatusBadge status={row.managerEvalStatus} />
         {row.managerReviewNote ? (
           <p className="break-words text-xs italic text-slate-500">{row.managerReviewNote}</p>
         ) : null}
       </div>
-      {!isMockApiEnabled() ? (
+      {!hideSave && !isMockApiEnabled() ? (
         <Button
           type="button"
           size="sm"
           className="h-10 w-full rounded-lg font-semibold"
-          disabled={saving}
+          disabled={saving || inputsDisabled}
           onClick={() => void save()}
         >
           {saving ? 'Đang lưu…' : 'Lưu'}
@@ -1479,7 +1662,18 @@ function LeaderAssignmentRow({
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
         {formatViNumber(row.targetMetric) || '—'}
       </TableCell>
-      <AssignmentEpic4ReadCells row={row} td={td} />
+      {mode === 'planning' ? (
+        <>
+          <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-sm')}>
+            {formatViNumber(row.numericValue)}
+          </TableCell>
+          <TableCell className={cn(td, 'text-xs uppercase')}>
+            <div className="w-[64px] truncate">{row.numericUnit ?? '—'}</div>
+          </TableCell>
+        </>
+      ) : (
+        <AssignmentEpic4ReadCells row={row} td={td} />
+      )}
       <TableCell className={td}>
         <div className="flex flex-col gap-1">
           <EvalStatusBadge status={row.managerEvalStatus} />
@@ -1730,9 +1924,13 @@ function AssignmentTableSingleUser({
   onRefresh,
   leaderMode,
   memberSelfEditableResults,
+  planningReadOnly,
   prioritizeUserId,
   templateCode,
   isManagerCascade,
+  hideRowSave,
+  resultsReadOnly,
+  onDraftRowChange,
 }: {
   userId: string
   rows: PerformanceAssignment[]
@@ -1741,9 +1939,13 @@ function AssignmentTableSingleUser({
   onRefresh: () => void
   leaderMode: 'planning' | 'results'
   memberSelfEditableResults: boolean
+  planningReadOnly?: boolean
   prioritizeUserId?: string
   templateCode?: string
   isManagerCascade?: boolean
+  hideRowSave?: boolean
+  resultsReadOnly?: boolean
+  onDraftRowChange?: (rowId: string, draft: MemberSelfEditDraft) => void
 }) {
   // Manager variant: dedup rows by content — each metric shown once for team-wide cascade operations
   const rows = useMemo(() => {
@@ -1758,23 +1960,31 @@ function AssignmentTableSingleUser({
   const isPlanning = leaderMode === 'planning'
   /** Epic 4: member chỉnh Evidence / số liệu / tự đánh giá cho đúng user của mình — cả tháng này (planning) lẫn tháng trước (results). */
   const allowSelfEdit =
-    memberSelfEditableResults && Boolean(prioritizeUserId && userId === prioritizeUserId)
+    memberSelfEditableResults &&
+    !resultsReadOnly &&
+    !(leaderMode === 'planning' && planningReadOnly) &&
+    Boolean(prioritizeUserId && userId === prioritizeUserId)
   const memberMetaLine = memberMetaForDisplay(members, userId, rows)
 
   /** Epic 5.5: các row bắt buộc nhập Số liệu chưa có giá trị. */
   const mandatoryUnfilled = allowSelfEdit
     ? rows.filter((r) => isMandatoryMetric(r.content) && r.numericValue == null)
     : []
+  const tableHeads = useMemo(() => {
+    const base = isPlanning ? [...PLANNING_ASSIGN_TABLE_HEAD] : [...ASSIGN_TABLE_HEAD]
+    if (hideRowSave && !isPlanning) return base.filter((h) => h !== 'Thao tác')
+    return base
+  }, [isPlanning, hideRowSave])
 
   const tableHeader = (
     <TableHeader>
       <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
-        {ASSIGN_TABLE_HEAD.map((h, i) => (
+        {tableHeads.map((h, i) => (
           <TableHead
             key={h}
             className={cn(
               XL_TH,
-              i === ASSIGN_TABLE_HEAD.length - 1 &&
+              i === tableHeads.length - 1 &&
                 'sticky right-0 z-20 bg-slate-50/95 backdrop-blur-md shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-900/95'
             )}
           >
@@ -1789,12 +1999,17 @@ function AssignmentTableSingleUser({
     <TableBody>
       {rows.length === 0 ? (
         <TableRow>
-          <TableCell colSpan={ASSIGN_TABLE_HEAD.length} className="h-32 text-center text-slate-400">
+          <TableCell colSpan={tableHeads.length} className="h-32 text-center text-slate-400">
             Chưa có dữ liệu cho nhân sự này.
           </TableCell>
         </TableRow>
       ) : (
         rows.map((r, idx) => {
+          if (resultsReadOnly) {
+            return (
+              <ReadOnlyAssignmentRow key={r.id} row={r} rowStripe={idx % 2 === 1} mode="results" />
+            )
+          }
           if (allowSelfEdit && leaderMode === 'results') {
             return (
               <MemberSelfAssignmentRow
@@ -1802,6 +2017,12 @@ function AssignmentTableSingleUser({
                 row={r}
                 rowStripe={idx % 2 === 1}
                 onSaved={onRefresh}
+                hideRowSave={hideRowSave}
+                onDraftChange={
+                  hideRowSave && onDraftRowChange
+                    ? (draft) => onDraftRowChange(r.id, draft)
+                    : undefined
+                }
               />
             )
           }
@@ -1820,6 +2041,16 @@ function AssignmentTableSingleUser({
             )
           }
           if (allowSelfEdit) {
+            if (leaderMode === 'planning') {
+              return (
+                <ReadOnlyAssignmentRow
+                  key={r.id}
+                  row={r}
+                  rowStripe={idx % 2 === 1}
+                  mode={leaderMode}
+                />
+              )
+            }
             return (
               <MemberSelfAssignmentRow
                 key={r.id}
@@ -1829,7 +2060,9 @@ function AssignmentTableSingleUser({
               />
             )
           }
-          return <ReadOnlyAssignmentRow key={r.id} row={r} rowStripe={idx % 2 === 1} />
+          return (
+            <ReadOnlyAssignmentRow key={r.id} row={r} rowStripe={idx % 2 === 1} mode={leaderMode} />
+          )
         })
       )}
     </TableBody>
@@ -1891,7 +2124,7 @@ function AssignmentTableSingleUser({
       )}
       {canEditTeam ? (
         <div className="max-h-[min(70vh,calc(100vh-400px))] min-w-0 overflow-auto [scrollbar-width:thin] md:hidden">
-          <Table className="w-full min-w-[1180px]">
+          <Table className={cn('w-full', isPlanning ? 'min-w-[980px]' : 'min-w-[1180px]')}>
             {tableHeader}
             {tableBody}
           </Table>
@@ -1904,6 +2137,16 @@ function AssignmentTableSingleUser({
             </div>
           ) : (
             rows.map((r, idx) => {
+              if (resultsReadOnly) {
+                return (
+                  <ReadOnlyAssignmentMobileCard
+                    key={r.id}
+                    row={r}
+                    rowStripe={idx % 2 === 1}
+                    mode="results"
+                  />
+                )
+              }
               if (allowSelfEdit && leaderMode === 'results') {
                 return (
                   <MemberSelfAssignmentMobileCard
@@ -1911,10 +2154,26 @@ function AssignmentTableSingleUser({
                     row={r}
                     rowStripe={idx % 2 === 1}
                     onSaved={onRefresh}
+                    hideRowSave={hideRowSave}
+                    onDraftChange={
+                      hideRowSave && onDraftRowChange
+                        ? (draft) => onDraftRowChange(r.id, draft)
+                        : undefined
+                    }
                   />
                 )
               }
               if (allowSelfEdit) {
+                if (leaderMode === 'planning') {
+                  return (
+                    <ReadOnlyAssignmentMobileCard
+                      key={r.id}
+                      row={r}
+                      rowStripe={idx % 2 === 1}
+                      mode={leaderMode}
+                    />
+                  )
+                }
                 return (
                   <MemberSelfAssignmentMobileCard
                     key={r.id}
@@ -1924,13 +2183,20 @@ function AssignmentTableSingleUser({
                   />
                 )
               }
-              return <ReadOnlyAssignmentMobileCard key={r.id} row={r} rowStripe={idx % 2 === 1} />
+              return (
+                <ReadOnlyAssignmentMobileCard
+                  key={r.id}
+                  row={r}
+                  rowStripe={idx % 2 === 1}
+                  mode={leaderMode}
+                />
+              )
             })
           )}
         </div>
       )}
       <div className="hidden max-h-[calc(100vh-400px)] min-w-0 overflow-auto [scrollbar-width:thin] md:block">
-        <Table className="w-full min-w-[1180px]">
+        <Table className={cn('w-full', isPlanning ? 'min-w-[980px]' : 'min-w-[1180px]')}>
           {tableHeader}
           {tableBody}
         </Table>
@@ -1949,8 +2215,19 @@ function UserAssignmentWorkbench({
   prioritizeUserId,
   showUserList = true,
   memberSelfEditableResults,
+  planningReadOnly,
   templateCode,
   isManagerCascade,
+  resultsBatchDraft,
+  resultsReadOnly,
+  onDraftRowChange,
+  onSaveResultsDraft,
+  savingResultsDraft,
+  draftRowIds,
+  isTrafficTeam,
+  onSubmitResultApproval,
+  submittingResultApproval,
+  canSubmitResultApproval,
 }: {
   byUser: Map<string, PerformanceAssignment[]>
   members: TeamMemberRow[]
@@ -1962,8 +2239,19 @@ function UserAssignmentWorkbench({
   prioritizeUserId?: string
   showUserList?: boolean
   memberSelfEditableResults: boolean
+  planningReadOnly?: boolean
   templateCode?: string
   isManagerCascade?: boolean
+  resultsBatchDraft?: boolean
+  resultsReadOnly?: boolean
+  onDraftRowChange?: (rowId: string, draft: MemberSelfEditDraft) => void
+  onSaveResultsDraft?: (rowIds: string[]) => void | Promise<void>
+  savingResultsDraft?: boolean
+  draftRowIds?: string[]
+  isTrafficTeam?: boolean
+  onSubmitResultApproval?: () => void | Promise<void>
+  submittingResultApproval?: boolean
+  canSubmitResultApproval?: boolean
 }) {
   const userEntries = useMemo(
     () => orderUserEntriesFirst(Array.from(byUser.entries()), prioritizeUserId),
@@ -1984,20 +2272,59 @@ function UserAssignmentWorkbench({
   const activeUserId = selectedUserId && byUser.has(selectedUserId) ? selectedUserId : defaultUserId
   const activeRows = byUser.get(activeUserId) ?? []
 
+  const resultsActionBar =
+    leaderMode === 'results' && resultsBatchDraft ? (
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {!isMockApiEnabled() && memberSelfEditableResults ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-lg font-semibold"
+            disabled={savingResultsDraft || resultsReadOnly || !draftRowIds?.length}
+            onClick={() => {
+              const ids = activeRows.map((r) => r.id).filter((id) => draftRowIds?.includes(id))
+              void onSaveResultsDraft?.(ids)
+            }}
+          >
+            {savingResultsDraft ? 'Đang lưu…' : 'Lưu bản nháp'}
+          </Button>
+        ) : null}
+        {isTrafficTeam && canSubmitResultApproval && onSubmitResultApproval ? (
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-lg bg-emerald-600 font-semibold text-white hover:bg-emerald-700"
+            disabled={submittingResultApproval}
+            onClick={() => void onSubmitResultApproval()}
+          >
+            {submittingResultApproval ? 'Đang gửi…' : 'Gửi duyệt kết quả'}
+          </Button>
+        ) : null}
+      </div>
+    ) : null
+
   if (!showUserList) {
     return (
-      <AssignmentTableSingleUser
-        userId={activeUserId}
-        rows={activeRows}
-        members={members}
-        canEditTeam={canEditTeam}
-        onRefresh={onRefresh}
-        leaderMode={leaderMode}
-        memberSelfEditableResults={memberSelfEditableResults}
-        prioritizeUserId={prioritizeUserId}
-        templateCode={templateCode}
-        isManagerCascade={isManagerCascade}
-      />
+      <div className="space-y-3">
+        {resultsActionBar}
+        <AssignmentTableSingleUser
+          userId={activeUserId}
+          rows={activeRows}
+          members={members}
+          canEditTeam={canEditTeam}
+          onRefresh={onRefresh}
+          leaderMode={leaderMode}
+          memberSelfEditableResults={memberSelfEditableResults}
+          planningReadOnly={planningReadOnly}
+          prioritizeUserId={prioritizeUserId}
+          templateCode={templateCode}
+          isManagerCascade={isManagerCascade}
+          hideRowSave={resultsBatchDraft}
+          resultsReadOnly={resultsReadOnly}
+          onDraftRowChange={onDraftRowChange}
+        />
+      </div>
     )
   }
 
@@ -2104,8 +2431,9 @@ function UserAssignmentWorkbench({
         role="tabpanel"
         id={`kpi-user-panel-${leaderMode}-${activeUserId}`}
         aria-labelledby={`kpi-tab-${leaderMode}-${activeUserId}`}
-        className="min-w-0"
+        className="min-w-0 space-y-3"
       >
+        {resultsActionBar}
         <AssignmentTableSingleUser
           userId={activeUserId}
           rows={activeRows}
@@ -2114,9 +2442,13 @@ function UserAssignmentWorkbench({
           onRefresh={onRefresh}
           leaderMode={leaderMode}
           memberSelfEditableResults={memberSelfEditableResults}
+          planningReadOnly={planningReadOnly}
           prioritizeUserId={prioritizeUserId}
           templateCode={templateCode}
           isManagerCascade={isManagerCascade}
+          hideRowSave={resultsBatchDraft}
+          resultsReadOnly={resultsReadOnly}
+          onDraftRowChange={onDraftRowChange}
         />
       </div>
     </div>
@@ -2142,8 +2474,15 @@ function WorkReportPanel({
   assignmentWindowOpen,
   assignmentWindowBounds,
   canMemberEditSelfResults,
+  planningReadOnly,
   templateCode,
   isManagerCascade,
+  isTrafficTeam,
+  resultApprovalRequest,
+  isResultApprovalLocked,
+  onSubmitResultApproval,
+  submittingResultApproval,
+  canSubmitResultApproval,
 }: {
   assignmentsThisMonth: PerformanceAssignment[]
   assignmentsPrevMonth: PerformanceAssignment[]
@@ -2163,9 +2502,63 @@ function WorkReportPanel({
   assignmentWindowOpen: boolean
   assignmentWindowBounds: { startDay: number; endDay: number }
   canMemberEditSelfResults: boolean
+  planningReadOnly?: boolean
   templateCode?: string
   isManagerCascade?: boolean
+  isTrafficTeam?: boolean
+  resultApprovalRequest?: ApprovalRequest | null
+  isResultApprovalLocked?: boolean
+  onSubmitResultApproval?: () => void | Promise<void>
+  submittingResultApproval?: boolean
+  canSubmitResultApproval?: boolean
 }) {
+  const [draftByRowId, setDraftByRowId] = useState<Record<string, MemberSelfEditDraft>>({})
+  const [savingDraft, setSavingDraft] = useState(false)
+
+  const handleDraftRowChange = useCallback((rowId: string, draft: MemberSelfEditDraft) => {
+    setDraftByRowId((prev) => {
+      const existing = prev[rowId]
+      if (existing && memberSelfDraftsEqual(existing, draft)) return prev
+      return { ...prev, [rowId]: draft }
+    })
+  }, [])
+
+  const handleSaveResultsDraft = useCallback(
+    async (rowIds: string[]) => {
+      if (!rowIds.length) {
+        toast.info('Chưa có thay đổi để lưu.')
+        return
+      }
+      setSavingDraft(true)
+      try {
+        let saved = 0
+        for (const rowId of rowIds) {
+          const draft = draftByRowId[rowId]
+          if (!draft) continue
+          const body = draftToPatchBody(draft)
+          if (body === 'invalid') {
+            toast.error('Số liệu không hợp lệ — kiểm tra lại trước khi lưu.')
+            setSavingDraft(false)
+            return
+          }
+          await performanceApi.patchAssignmentSelf(rowId, body)
+          saved += 1
+        }
+        if (saved > 0) {
+          toast.success(`Đã lưu bản nháp (${saved} dòng).`)
+          onRefresh()
+        } else {
+          toast.info('Chưa có thay đổi để lưu.')
+        }
+      } catch {
+        toast.error('Không lưu được bản nháp. Kiểm tra quyền hoặc thử lại.')
+      } finally {
+        setSavingDraft(false)
+      }
+    },
+    [draftByRowId, onRefresh]
+  )
+
   const byUserThis = useMemo(
     () => groupAssignmentsByUser(assignmentsThisMonth),
     [assignmentsThisMonth]
@@ -2207,12 +2600,11 @@ function WorkReportPanel({
             <div className="flex items-center gap-2 mb-1">
               <div className="h-6 w-1 rounded-full bg-blue-600" />
               <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                1. Mục tiêu KPI/OKR tháng này — T{month}/{year}
+                1. Chốt mục tiêu mới KPI/OKR cho tháng {month}/{year}
               </h2>
             </div>
             <p className="text-sm text-slate-500">
-              Lập mục tiêu cho team; nhân viên có thể cập nhật Evidence, số liệu và tự đánh giá các
-              chỉ tiêu của chính mình trong kỳ này (Epic 4).
+              Lập và chốt mục tiêu KPI/OKR mới cho team trong kỳ này.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -2264,6 +2656,7 @@ function WorkReportPanel({
           prioritizeUserId={currentUserId}
           showUserList={!isMemberView}
           memberSelfEditableResults={canMemberEditSelfResults}
+          planningReadOnly={planningReadOnly}
           templateCode={templateCode}
           isManagerCascade={isManagerCascade}
         />
@@ -2283,6 +2676,39 @@ function WorkReportPanel({
             </p>
           </div>
         </div>
+
+        {isTrafficTeam && resultApprovalRequest?.status === 'pending' && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-yellow-400/50 bg-yellow-50 px-4 py-3 dark:border-yellow-700/40 dark:bg-yellow-950/30">
+            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-yellow-400" />
+            <div className="flex-1 text-sm font-medium text-yellow-800 dark:text-yellow-200">
+              Kết quả T{prevMonth}/{prevYear} đang chờ Manager duyệt — không thể chỉnh sửa.
+            </div>
+          </div>
+        )}
+        {isTrafficTeam && resultApprovalRequest?.status === 'approved' && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-green-400/50 bg-green-50 px-4 py-3 dark:border-green-700/40 dark:bg-green-950/30">
+            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <div className="flex-1 text-sm font-medium text-green-800 dark:text-green-200">
+              Kết quả T{prevMonth}/{prevYear} đã được Manager duyệt.
+            </div>
+          </div>
+        )}
+        {isTrafficTeam && resultApprovalRequest?.status === 'rejected' && (
+          <div className="mb-4 rounded-xl border border-red-400/50 bg-red-50 px-4 py-3 dark:border-red-700/40 dark:bg-red-950/30">
+            <div className="flex items-center gap-3">
+              <X className="h-4 w-4 text-red-600 dark:text-red-400" />
+              <div className="flex-1 text-sm font-medium text-red-800 dark:text-red-200">
+                Kết quả bị từ chối — bạn có thể chỉnh sửa và gửi duyệt lại.
+              </div>
+            </div>
+            {resultApprovalRequest.note ? (
+              <p className="mt-1.5 pl-7 text-xs text-red-700 dark:text-red-300">
+                Lý do: {resultApprovalRequest.note}
+              </p>
+            ) : null}
+          </div>
+        )}
+
         <UserAssignmentWorkbench
           byUser={byUserPrev}
           members={members}
@@ -2292,9 +2718,19 @@ function WorkReportPanel({
           emptyText={`Chưa có dữ liệu KPI/OKR cho tháng ${prevMonth}/${prevYear}.`}
           prioritizeUserId={currentUserId}
           showUserList={!isMemberView}
-          memberSelfEditableResults={canMemberEditSelfResults}
+          memberSelfEditableResults={canMemberEditSelfResults && !isResultApprovalLocked}
           templateCode={templateCode}
           isManagerCascade={isManagerCascade}
+          resultsBatchDraft
+          resultsReadOnly={isResultApprovalLocked}
+          onDraftRowChange={handleDraftRowChange}
+          onSaveResultsDraft={handleSaveResultsDraft}
+          savingResultsDraft={savingDraft}
+          draftRowIds={Object.keys(draftByRowId)}
+          isTrafficTeam={isTrafficTeam}
+          onSubmitResultApproval={onSubmitResultApproval}
+          submittingResultApproval={submittingResultApproval}
+          canSubmitResultApproval={canSubmitResultApproval}
         />
       </section>
     </div>

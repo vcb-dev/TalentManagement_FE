@@ -4,12 +4,15 @@ import { useAuthStore } from '@/stores/auth.store'
 
 export type ApprovalRequestStatus = 'pending' | 'approved' | 'rejected'
 
+export type ApprovalRequestType = 'goal' | 'result'
+
 export type ApprovalRequest = {
   id: string
   teamId: string
   teamName?: string
   year: number
   month: number
+  type: ApprovalRequestType
   status: ApprovalRequestStatus
   submittedByUserId: string
   approvedByUserId: string | null
@@ -865,12 +868,13 @@ export const performanceApi = {
   getApprovalRequest: async (
     teamId: string,
     year: number,
-    month: number
+    month: number,
+    type: ApprovalRequestType = 'goal'
   ): Promise<ApprovalRequest | null> => {
     if (isMockApiEnabled()) return null
     const res = await apiClient.get<ApprovalRequest | null>(
       `/performance/teams/${teamId}/approval-request`,
-      { params: { year, month } }
+      { params: { year, month, type } }
     )
     return res.data
   },
@@ -878,12 +882,13 @@ export const performanceApi = {
   submitForApproval: async (
     teamId: string,
     year: number,
-    month: number
+    month: number,
+    type: ApprovalRequestType = 'goal'
   ): Promise<ApprovalRequest> => {
     if (isMockApiEnabled()) throw new Error('Mock: không gửi duyệt qua API')
     const res = await apiClient.post<ApprovalRequest>(
       `/performance/teams/${teamId}/approval-request`,
-      { year, month }
+      { year, month, type }
     )
     return res.data
   },
@@ -892,6 +897,7 @@ export const performanceApi = {
     status?: string
     year?: number
     month?: number
+    type?: ApprovalRequestType
   }): Promise<ApprovalRequest[]> => {
     if (isMockApiEnabled()) return []
     const res = await apiClient.get<ApprovalRequest[]>(

@@ -7,8 +7,18 @@ import { getApiErrorMessage } from '@/lib/axios'
 import {
   performanceApi,
   type ApprovalRequest,
+  type ApprovalRequestType,
   type PerformanceAssignment,
 } from '@/features/kpi-okr/api'
+import {
+  EvalStatusBadge,
+  formatViNumber,
+} from '@/features/kpi-okr/components/kpiAssignmentTableShared'
+import {
+  EvidenceImagePreviews,
+  evidenceImageUrlsFromText,
+  evidenceTextWithoutUploadPaths,
+} from '@/features/kpi-okr/components/KpiEvidenceInput'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -74,6 +84,161 @@ function PriorityText({ priority }: { priority: number }) {
   if (priority === 2) return <span className="font-semibold text-amber-600 text-xs">P2 - TB</span>
   if (priority === 3) return <span className="font-semibold text-slate-500 text-xs">P3 - Thấp</span>
   return <span className="text-xs text-slate-400">—</span>
+}
+
+function TeamResultInline({
+  teamId,
+  year,
+  month,
+}: {
+  teamId: string
+  year: number
+  month: number
+}) {
+  const assignmentsQ = useQuery({
+    queryKey: ['kpi-assignments-result', teamId, year, month],
+    queryFn: () => performanceApi.listAssignments(teamId, year, month),
+    enabled: !isMockApiEnabled(),
+  })
+
+  if (assignmentsQ.isLoading) {
+    return (
+      <div className="space-y-2 p-3">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    )
+  }
+
+  const assignments = assignmentsQ.data ?? []
+  if (assignments.length === 0) {
+    return <p className="p-3 text-center text-xs text-slate-400">Chưa có kết quả KPI/OKR nào.</p>
+  }
+
+  const grouped: { userId: string; name: string; items: PerformanceAssignment[] }[] = []
+  for (const a of assignments) {
+    const last = grouped[grouped.length - 1]
+    if (last && last.userId === a.assigneeUserId) {
+      last.items.push(a)
+    } else {
+      grouped.push({
+        userId: a.assigneeUserId,
+        name: a.assigneeDisplayName ?? a.assigneeUserId,
+        items: [a],
+      })
+    }
+  }
+
+  const resultTableHead = [
+    'Ngày xét',
+    'Hạng mục',
+    'Ưu tiên',
+    'Nội dung',
+    'Chỉ tiêu',
+    'Số liệu',
+    'Đơn vị',
+    'Minh chứng',
+    'Tự đánh giá',
+    'Nhận xét NV',
+  ] as const
+
+  return (
+    <div className="px-3 pb-3 space-y-4">
+      {grouped.map((g) => (
+        <div key={g.userId} className="rounded-lg border overflow-hidden">
+          <div className="bg-slate-100 dark:bg-slate-700 px-3 py-1.5 flex items-center gap-2">
+            <User className="h-3.5 w-3.5 text-slate-500" />
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{g.name}</span>
+            <span className="text-xs text-slate-400">({g.items.length} kết quả)</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[960px] text-xs">
+              <thead>
+                <tr className="border-b bg-slate-50 dark:bg-slate-800/50">
+                  {resultTableHead.map((h) => (
+                    <th
+                      key={h}
+                      className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {g.items.map((a) => {
+                  const displayEv = evidenceTextWithoutUploadPaths(a.evidence)
+                  const hasImagePreviews = evidenceImageUrlsFromText(a.evidence).length > 0
+                  return (
+                    <tr
+                      key={a.id}
+                      className="border-b last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
+                    >
+                      <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-slate-500">
+                        {formatKpiSetAt(a.kpiSetAt)}
+                      </td>
+                      <td className="px-2.5 py-2">
+                        <span
+                          className={cn(
+                            'inline-block rounded px-1.5 py-0.5 text-[10px] font-bold',
+                            a.kind === 'KPI'
+                              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                              : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
+                          )}
+                        >
+                          {a.kind}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        <PriorityText priority={a.priority} />
+                      </td>
+                      <td className="px-2.5 py-2 max-w-[280px] whitespace-pre-wrap text-slate-700 dark:text-slate-200">
+                        {a.content}
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2 tabular-nums font-semibold text-slate-700 dark:text-slate-200">
+                        {a.targetMetric?.trim() || '—'}
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2 tabular-nums font-semibold text-slate-800 dark:text-slate-100">
+                        {formatViNumber(a.numericValue)}
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2 text-xs uppercase text-slate-600">
+                        {a.numericUnit?.trim() || '—'}
+                      </td>
+                      <td className="max-w-[160px] min-w-[120px] px-2.5 py-2">
+                        {displayEv ? (
+                          <span className="line-clamp-3 whitespace-pre-wrap break-all text-slate-600">
+                            {displayEv}
+                          </span>
+                        ) : hasImagePreviews ? null : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                        <EvidenceImagePreviews
+                          evidence={a.evidence}
+                          maxHeightClass="h-12 max-w-[72px]"
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        <EvalStatusBadge status={a.selfEvalStatus ?? null} />
+                      </td>
+                      <td className="max-w-[200px] px-2.5 py-2 text-slate-600 dark:text-slate-300">
+                        {a.selfReviewNote?.trim() ? (
+                          <span className="line-clamp-3 whitespace-pre-wrap">
+                            {a.selfReviewNote}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function TeamKpiInline({ teamId, year, month }: { teamId: string; year: number; month: number }) {
@@ -249,6 +414,7 @@ export function ManagerKpiApprovalScreen() {
   const { year: y0, month: m0 } = nowYm()
   const [year, setYear] = useState(y0)
   const [month, setMonth] = useState(m0)
+  const [approvalType, setApprovalType] = useState<ApprovalRequestType>('goal')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [rejectRequest, setRejectRequest] = useState<ApprovalRequest | null>(null)
@@ -263,7 +429,7 @@ export function ManagerKpiApprovalScreen() {
     })
   }, [])
 
-  const approvalKey = ['kpi-approval-requests', statusFilter, year, month] as const
+  const approvalKey = ['kpi-approval-requests', statusFilter, year, month, approvalType] as const
   const requestsQ = useQuery({
     queryKey: approvalKey,
     queryFn: () =>
@@ -271,6 +437,7 @@ export function ManagerKpiApprovalScreen() {
         status: statusFilter === 'all' ? undefined : statusFilter,
         year,
         month,
+        type: approvalType,
       }),
     enabled: !isMockApiEnabled(),
     staleTime: 30_000,
@@ -285,7 +452,11 @@ export function ManagerKpiApprovalScreen() {
       setApprovingId(req.id)
       try {
         await performanceApi.approveRequest(req.id)
-        toast.success(`Đã duyệt KPI/OKR team ${req.teamName ?? ''}`)
+        toast.success(
+          req.type === 'result'
+            ? `Đã duyệt kết quả team ${req.teamName ?? ''}`
+            : `Đã duyệt mục tiêu KPI/OKR team ${req.teamName ?? ''}`
+        )
         refresh()
       } catch (err: unknown) {
         toast.error('Duyệt thất bại: ' + getApiErrorMessage(err))
@@ -324,9 +495,30 @@ export function ManagerKpiApprovalScreen() {
             Duyệt KPI/OKR Traffic Teams
           </h1>
           <p className="text-indigo-100/80 max-w-2xl text-sm font-medium">
-            Xem xét và duyệt/từ chối KPI/OKR do Leader các team traffic gửi lên theo tháng.
+            Duyệt mục tiêu đầu tháng hoặc kết quả cuối tháng do Leader team traffic gửi lên.
           </p>
         </div>
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={approvalType === 'goal' ? 'default' : 'outline'}
+          className="rounded-xl"
+          onClick={() => setApprovalType('goal')}
+        >
+          Mục tiêu đầu tháng
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={approvalType === 'result' ? 'default' : 'outline'}
+          className="rounded-xl"
+          onClick={() => setApprovalType('result')}
+        >
+          Kết quả cuối tháng
+        </Button>
       </div>
 
       {/* Filters */}
@@ -430,7 +622,10 @@ export function ManagerKpiApprovalScreen() {
       {!requestsQ.isLoading && requests.length === 0 && (
         <Card className={CARD_ENTRANCE}>
           <CardContent className="py-12 text-center">
-            <p className="text-slate-500">Không có yêu cầu duyệt nào trong kỳ này.</p>
+            <p className="text-slate-500">
+              Không có yêu cầu {approvalType === 'result' ? 'kết quả' : 'mục tiêu'} nào trong kỳ
+              này.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -493,8 +688,12 @@ export function ManagerKpiApprovalScreen() {
                     {/* Divider */}
                     <div className="border-t" />
 
-                    {/* KPI content */}
-                    <TeamKpiInline teamId={req.teamId} year={req.year} month={req.month} />
+                    {/* KPI / kết quả */}
+                    {req.type === 'result' ? (
+                      <TeamResultInline teamId={req.teamId} year={req.year} month={req.month} />
+                    ) : (
+                      <TeamKpiInline teamId={req.teamId} year={req.year} month={req.month} />
+                    )}
 
                     {/* Actions bar */}
                     {req.status === 'pending' && (
@@ -526,7 +725,7 @@ export function ManagerKpiApprovalScreen() {
                             ) : (
                               <>
                                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                                Duyệt
+                                {req.type === 'result' ? 'Duyệt kết quả' : 'Duyệt mục tiêu'}
                               </>
                             )}
                           </Button>

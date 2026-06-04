@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Calendar,
@@ -16,7 +16,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -32,7 +31,6 @@ import {
   getMaxViewableYm,
   isKpiPeriodSelectable,
 } from '@/features/kpi-okr/kpiPeriodLimits'
-import { isTrafficTeam, MANDATORY_METRICS_BY_TEMPLATE } from '@/features/kpi-okr/catalogHelpers'
 import { FormPanel } from '@/features/kpi-okr/components/KpiOkrWorkspace'
 import { useMonthlyReportSelfEdit } from '@/features/kpi-okr/components/hooks/useMonthlyReportSelfEdit'
 import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
@@ -46,6 +44,14 @@ import {
   KpiEvidenceInput,
 } from '@/features/kpi-okr/components/KpiEvidenceInput'
 import { CustomSelect } from '@/components/shared/CustomSelect'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { WorkReportTab } from './WorkReportTab'
 
 function nowYm() {
@@ -86,101 +92,88 @@ function EvalBadge({ status }: { status: string | null | undefined }) {
   )
 }
 
-/** Epic 4 — nhập liệu dạng stack (mobile) */
-function MonthlyReportEpic4EditableStack({
-  evidence,
-  setEvidence,
-  numericRaw,
-  setNumericRaw,
-  numericUnit,
-  setNumericUnit,
-  selfEvalStatus,
-  setSelfEvalStatus,
-  selfReviewNote,
-  setSelfReviewNote,
-  disabled,
-}: {
-  evidence: string
-  setEvidence: (v: string) => void
-  numericRaw: string
-  setNumericRaw: (v: string) => void
-  numericUnit: string
-  setNumericUnit: (v: string) => void
-  selfEvalStatus: string
-  setSelfEvalStatus: (v: string) => void
-  selfReviewNote: string
-  setSelfReviewNote: (v: string) => void
-  disabled?: boolean
-}) {
-  const inputCls =
-    'h-8 min-w-[72px] rounded-md border border-slate-200 bg-white px-2 text-xs dark:border-slate-700 dark:bg-slate-950'
+const memberEditInputCls =
+  'h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950'
 
+function MonthlyReportFormSection({
+  title,
+  hint,
+  children,
+}: {
+  title: string
+  hint?: string
+  children: ReactNode
+}) {
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label className="text-xs font-bold uppercase text-muted-foreground">Số liệu</Label>
-          <Input
-            value={numericRaw}
-            onChange={(e) => setNumericRaw(e.target.value)}
-            className={inputCls}
-            placeholder="—"
-            disabled={disabled}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs font-bold uppercase text-muted-foreground">Đơn vị</Label>
-          <Input
-            value={numericUnit}
-            onChange={(e) => setNumericUnit(e.target.value)}
-            className={inputCls}
-            placeholder="Đơn vị"
-            disabled={disabled}
-          />
-        </div>
+    <section className="space-y-3">
+      <div>
+        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</h4>
+        {hint ? <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{hint}</p> : null}
       </div>
-      <div className="space-y-1">
-        <Label className="text-xs font-bold uppercase text-muted-foreground">Minh chứng</Label>
-        <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={disabled} />
+      {children}
+    </section>
+  )
+}
+
+function MonthlyReportKpiContextCard({ item }: { item: PerformanceAssignment }) {
+  return (
+    <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/25">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge
+          className={
+            item.kind === 'KPI'
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+              : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
+          }
+        >
+          {item.kind}
+        </Badge>
+        <PriorityText priority={item.priority} />
+        <span className="text-xs tabular-nums text-slate-500">
+          Ngày xét: {formatKpiSetAt(item.kpiSetAt)}
+        </span>
       </div>
-      <CustomSelect
-        label="Tự đánh giá"
-        value={selfEvalStatus || '__none'}
-        onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
-        options={[
-          { label: '—', value: '__none' },
-          { label: 'OK', value: 'OK' },
-          { label: 'NOT', value: 'NOT' },
-        ]}
-        disabled={disabled}
-      />
-      <div className="space-y-1">
-        <Label className="text-xs font-bold uppercase text-muted-foreground">Tự nhận xét</Label>
-        <Textarea
-          value={selfReviewNote}
-          onChange={(e) => setSelfReviewNote(e.target.value)}
-          rows={2}
-          disabled={disabled}
-          className="min-h-[52px] resize-y rounded-md border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950"
-          placeholder="Tự nhận xét"
-        />
-      </div>
+      <p className="mt-2 text-sm font-medium leading-snug text-slate-900 dark:text-slate-100">
+        {item.content}
+      </p>
+      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <span className="font-medium text-slate-500">Chỉ tiêu:</span>{' '}
+        <span className="font-semibold text-indigo-700 dark:text-indigo-300">
+          {item.targetMetric?.trim() || '—'}
+        </span>
+      </p>
     </div>
   )
 }
 
-// ─── Expandable editable row (member) ────────────────────────────────────────
+function MonthlyReportDetailOpenButton({
+  onClick,
+  label = 'Chi tiết',
+}: {
+  onClick: () => void
+  label?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+    >
+      <ChevronDown className="h-3 w-3" />
+      {label}
+    </button>
+  )
+}
 
-function MonthlyReportMemberExpandableRow({
+function MonthlyReportMemberEditPanel({
   item,
   onSaved,
-  colCount,
+  onClose,
 }: {
   item: PerformanceAssignment
   onSaved: () => void
-  colCount: number
+  onClose: () => void
 }) {
-  const [open, setOpen] = useState(false)
   const {
     evidence,
     setEvidence,
@@ -196,13 +189,217 @@ function MonthlyReportMemberExpandableRow({
     save,
   } = useMonthlyReportSelfEdit(item, onSaved)
 
-  const inputCls =
-    'h-8 rounded-md border border-slate-200 bg-white px-2 text-xs dark:border-slate-700 dark:bg-slate-950'
+  return (
+    <div className="space-y-5">
+      <MonthlyReportFormSection
+        title="Kết quả thực hiện"
+        hint="Nhập số liệu đạt được, đơn vị và tự đánh giá theo chỉ tiêu phía trên."
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-12">
+          <div className="space-y-1.5 sm:col-span-5">
+            <label
+              htmlFor={`numeric-${item.id}`}
+              className="text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
+              Số liệu
+            </label>
+            <Input
+              id={`numeric-${item.id}`}
+              value={numericRaw}
+              onChange={(e) => setNumericRaw(e.target.value)}
+              className={memberEditInputCls}
+              placeholder="VD: 1500000"
+              disabled={saving}
+              inputMode="decimal"
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-3">
+            <label
+              htmlFor={`unit-${item.id}`}
+              className="text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
+              Đơn vị
+            </label>
+            <Input
+              id={`unit-${item.id}`}
+              value={numericUnit}
+              onChange={(e) => setNumericUnit(e.target.value)}
+              className={memberEditInputCls}
+              placeholder="VND, %, đơn..."
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-4">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Tự đánh giá
+            </label>
+            <CustomSelect
+              value={selfEvalStatus || '__none'}
+              onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
+              options={[
+                { label: 'Chưa chọn', value: '__none' },
+                { label: 'OK — đạt', value: 'OK' },
+                { label: 'NOT — chưa đạt', value: 'NOT' },
+              ]}
+              disabled={saving}
+            />
+          </div>
+        </div>
+      </MonthlyReportFormSection>
+
+      <MonthlyReportFormSection
+        title="Tự nhận xét"
+        hint="Mô tả ngắn kết quả, khó khăn hoặc giải trình (nếu có)."
+      >
+        <Textarea
+          value={selfReviewNote}
+          onChange={(e) => setSelfReviewNote(e.target.value)}
+          rows={3}
+          disabled={saving}
+          placeholder="Nhận xét về kết quả thực hiện mục tiêu này..."
+          className="min-h-[88px] w-full resize-y rounded-lg border border-slate-200 bg-white p-3 text-sm dark:border-slate-700 dark:bg-slate-950"
+        />
+      </MonthlyReportFormSection>
+
+      <MonthlyReportFormSection
+        title="Minh chứng"
+        hint="Tải ảnh hoặc dán link — giúp quản lý đối soát kết quả."
+      >
+        <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+          <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={saving} />
+        </div>
+      </MonthlyReportFormSection>
+
+      {item.managerReviewNote?.trim() ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+          <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
+            Nhận xét từ quản lý
+          </p>
+          <p className="mt-1 text-sm text-amber-900/90 dark:text-amber-100/90">
+            {item.managerReviewNote}
+          </p>
+        </div>
+      ) : null}
+
+      <DialogFooter className="gap-2 border-t border-slate-100 px-0 pt-4 sm:gap-2 dark:border-slate-800">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={saving}
+          onClick={onClose}
+          className="flex-1 sm:flex-none"
+        >
+          Hủy
+        </Button>
+        <Button
+          type="button"
+          disabled={saving}
+          onClick={() => void save().then(() => onClose())}
+          className="flex-1 px-6 sm:flex-none"
+        >
+          {saving ? 'Đang lưu...' : 'Lưu kết quả'}
+        </Button>
+      </DialogFooter>
+    </div>
+  )
+}
+
+function MonthlyReportMemberEditDialog({
+  item,
+  onSaved,
+  open,
+  onOpenChange,
+}: {
+  item: PerformanceAssignment
+  onSaved: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[min(92vh,760px)] max-w-xl flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+        <div className="shrink-0 border-b border-slate-100 px-5 pb-4 pt-5 dark:border-slate-800 sm:px-6">
+          <DialogHeader className="space-y-1 text-left">
+            <DialogTitle className="text-lg">Nhập kết quả KPI/OKR</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Cập nhật số liệu, tự đánh giá và minh chứng cho mục tiêu đã giao.
+            </DialogDescription>
+          </DialogHeader>
+          <MonthlyReportKpiContextCard item={item} />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+          {open ? (
+            <MonthlyReportMemberEditPanel
+              item={item}
+              onSaved={onSaved}
+              onClose={() => onOpenChange(false)}
+            />
+          ) : null}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function MonthlyReportReadOnlyDetailPanel({ item }: { item: PerformanceAssignment }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="space-y-3">
+        {item.selfReviewNote?.trim() ? (
+          <div>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Tự nhận xét
+            </p>
+            <p className="text-sm italic text-slate-700 dark:text-slate-300">
+              {item.selfReviewNote}
+            </p>
+          </div>
+        ) : null}
+        {item.managerReviewNote?.trim() ? (
+          <div>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              QL nhận xét
+            </p>
+            <p className="text-sm italic text-slate-600 dark:text-slate-400">
+              {item.managerReviewNote}
+            </p>
+          </div>
+        ) : null}
+        {!item.selfReviewNote?.trim() && !item.managerReviewNote?.trim() ? (
+          <p className="text-sm text-slate-400">Chưa có nhận xét</p>
+        ) : null}
+      </div>
+      <div>
+        {item.evidence?.trim() ? (
+          <>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Minh chứng
+            </p>
+            <p className="whitespace-pre-wrap text-xs text-slate-600 dark:text-slate-400">
+              {item.evidence}
+            </p>
+            <EvidenceImagePreviews evidence={item.evidence} maxHeightClass="h-16 max-w-[120px]" />
+          </>
+        ) : (
+          <p className="text-sm text-slate-400">Chưa có minh chứng</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MonthlyReportMemberTableRow({
+  item,
+  onSaved,
+}: {
+  item: PerformanceAssignment
+  onSaved: () => void
+}) {
+  const [open, setOpen] = useState(false)
 
   return (
-    <Fragment>
-      {/* ── Compact main row ── */}
-      <tr className="border-b last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+    <>
+      <tr className="border-b transition-colors last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
         <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-slate-500">
           {formatKpiSetAt(item.kpiSetAt)}
         </td>
@@ -220,11 +417,11 @@ function MonthlyReportMemberExpandableRow({
         <td className="whitespace-nowrap px-3 py-2.5">
           <PriorityText priority={item.priority} />
         </td>
-        <td className="px-3 py-2.5 max-w-[280px] whitespace-pre-wrap text-sm">{item.content}</td>
-        <td className="whitespace-nowrap px-3 py-2.5 tabular-nums font-semibold text-primary">
+        <td className="max-w-[280px] whitespace-pre-wrap px-3 py-2.5 text-sm">{item.content}</td>
+        <td className="whitespace-nowrap px-3 py-2.5 font-semibold tabular-nums text-primary">
           {item.targetMetric?.trim() || '—'}
         </td>
-        <td className="whitespace-nowrap px-3 py-2.5 text-xs text-slate-600 tabular-nums">
+        <td className="whitespace-nowrap px-3 py-2.5 text-xs tabular-nums text-slate-600">
           {item.numericValue != null
             ? `${item.numericValue}${item.numericUnit ? ' ' + item.numericUnit : ''}`
             : '—'}
@@ -236,133 +433,20 @@ function MonthlyReportMemberExpandableRow({
           <EvalBadge status={item.managerEvalStatus} />
         </td>
         <td className="whitespace-nowrap px-2 py-2.5 text-right">
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            className={cn(
-              'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
-              open
-                ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
-            )}
-          >
-            {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            {open ? 'Thu gọn' : 'Chi tiết'}
-          </button>
+          <MonthlyReportDetailOpenButton onClick={() => setOpen(true)} label="Nhập" />
         </td>
       </tr>
-
-      {/* ── Expanded detail panel ── */}
-      {open && (
-        <tr className="border-b bg-slate-50/70 dark:bg-slate-900/40">
-          <td colSpan={colCount} className="px-4 py-4">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {/* Left: Số liệu + Tự đánh giá + Tự nhận xét */}
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Số liệu
-                    </label>
-                    <Input
-                      value={numericRaw}
-                      onChange={(e) => setNumericRaw(e.target.value)}
-                      className={cn(inputCls, 'w-28')}
-                      placeholder="—"
-                      disabled={saving}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Đơn vị
-                    </label>
-                    <Input
-                      value={numericUnit}
-                      onChange={(e) => setNumericUnit(e.target.value)}
-                      className={cn(inputCls, 'w-24')}
-                      placeholder="VNĐ, %..."
-                      disabled={saving}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Tự đánh giá
-                    </label>
-                    <CustomSelect
-                      value={selfEvalStatus || '__none'}
-                      onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
-                      options={[
-                        { label: '—', value: '__none' },
-                        { label: 'OK', value: 'OK' },
-                        { label: 'NOT', value: 'NOT' },
-                      ]}
-                      disabled={saving}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Tự nhận xét
-                  </label>
-                  <Textarea
-                    value={selfReviewNote}
-                    onChange={(e) => setSelfReviewNote(e.target.value)}
-                    rows={4}
-                    disabled={saving}
-                    placeholder="Nhận xét về kết quả thực hiện mục tiêu này..."
-                    className="w-full resize-y rounded-md border border-slate-200 bg-white p-2.5 text-sm dark:border-slate-700 dark:bg-slate-950"
-                  />
-                </div>
-
-                {item.managerReviewNote?.trim() && (
-                  <div className="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      QL nhận xét
-                    </p>
-                    <p className="text-sm italic text-slate-600 dark:text-slate-400">
-                      {item.managerReviewNote}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Right: Minh chứng */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Minh chứng
-                </label>
-                <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={saving} />
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-end">
-              <Button
-                type="button"
-                size="sm"
-                disabled={saving}
-                onClick={() => void save().then(() => setOpen(false))}
-                className="px-6"
-              >
-                {saving ? 'Đang lưu...' : 'Lưu'}
-              </Button>
-            </div>
-          </td>
-        </tr>
-      )}
-    </Fragment>
+      <MonthlyReportMemberEditDialog
+        item={item}
+        onSaved={onSaved}
+        open={open}
+        onOpenChange={setOpen}
+      />
+    </>
   )
 }
 
-// ─── Expandable read-only row ─────────────────────────────────────────────────
-
-function MonthlyReportReadOnlyExpandableRow({
-  item,
-  colCount,
-}: {
-  item: PerformanceAssignment
-  colCount: number
-}) {
+function MonthlyReportReadOnlyTableRow({ item }: { item: PerformanceAssignment }) {
   const [open, setOpen] = useState(false)
   const num =
     item.numericValue != null
@@ -370,8 +454,8 @@ function MonthlyReportReadOnlyExpandableRow({
       : '—'
 
   return (
-    <Fragment>
-      <tr className="border-b last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+    <>
+      <tr className="border-b transition-colors last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
         <td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-slate-500">
           {formatKpiSetAt(item.kpiSetAt)}
         </td>
@@ -389,11 +473,11 @@ function MonthlyReportReadOnlyExpandableRow({
         <td className="whitespace-nowrap px-3 py-2.5">
           <PriorityText priority={item.priority} />
         </td>
-        <td className="px-3 py-2.5 max-w-[280px] whitespace-pre-wrap text-sm">{item.content}</td>
-        <td className="whitespace-nowrap px-3 py-2.5 tabular-nums font-semibold text-primary">
+        <td className="max-w-[280px] whitespace-pre-wrap px-3 py-2.5 text-sm">{item.content}</td>
+        <td className="whitespace-nowrap px-3 py-2.5 font-semibold tabular-nums text-primary">
           {item.targetMetric?.trim() || '—'}
         </td>
-        <td className="whitespace-nowrap px-3 py-2.5 text-xs text-slate-600 tabular-nums">{num}</td>
+        <td className="whitespace-nowrap px-3 py-2.5 text-xs tabular-nums text-slate-600">{num}</td>
         <td className="px-3 py-2.5">
           <EvalBadge status={item.selfEvalStatus} />
         </td>
@@ -401,72 +485,26 @@ function MonthlyReportReadOnlyExpandableRow({
           <EvalBadge status={item.managerEvalStatus} />
         </td>
         <td className="whitespace-nowrap px-2 py-2.5 text-right">
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            className={cn(
-              'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
-              open
-                ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
-            )}
-          >
-            {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            {open ? 'Thu gọn' : 'Chi tiết'}
-          </button>
+          <MonthlyReportDetailOpenButton onClick={() => setOpen(true)} />
         </td>
       </tr>
-
-      {open && (
-        <tr className="border-b bg-slate-50/70 dark:bg-slate-900/40">
-          <td colSpan={colCount} className="px-4 py-4">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="space-y-3">
-                {item.selfReviewNote?.trim() && (
-                  <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Tự nhận xét
-                    </p>
-                    <p className="text-sm italic text-slate-700 dark:text-slate-300">
-                      {item.selfReviewNote}
-                    </p>
-                  </div>
-                )}
-                {item.managerReviewNote?.trim() && (
-                  <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      QL nhận xét
-                    </p>
-                    <p className="text-sm italic text-slate-600 dark:text-slate-400">
-                      {item.managerReviewNote}
-                    </p>
-                  </div>
-                )}
-                {!item.selfReviewNote?.trim() && !item.managerReviewNote?.trim() && (
-                  <p className="text-sm text-slate-400">Chưa có nhận xét</p>
-                )}
-              </div>
-              <div>
-                {item.evidence?.trim() && (
-                  <>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Minh chứng
-                    </p>
-                    <p className="whitespace-pre-wrap text-xs text-slate-600 dark:text-slate-400">
-                      {item.evidence}
-                    </p>
-                    <EvidenceImagePreviews
-                      evidence={item.evidence}
-                      maxHeightClass="h-16 max-w-[120px]"
-                    />
-                  </>
-                )}
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
-    </Fragment>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[min(90vh,640px)] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Chi tiết mục tiêu</DialogTitle>
+            <DialogDescription asChild>
+              <p className="text-left text-sm text-slate-600 dark:text-slate-400">{item.content}</p>
+            </DialogDescription>
+          </DialogHeader>
+          <MonthlyReportReadOnlyDetailPanel item={item} />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Đóng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -552,7 +590,7 @@ function MonthlyReportDetailEditableMobileCard({
   item: PerformanceAssignment
   onSaved: () => void
 }) {
-  const edit = useMonthlyReportSelfEdit(item, onSaved)
+  const [open, setOpen] = useState(false)
   return (
     <div className="space-y-3 border-b border-blue-100/50 py-4 first:pt-0 last:border-0 dark:border-blue-900/30">
       <div className="tabular-nums text-xs text-slate-500">{formatKpiSetAt(item.kpiSetAt)}</div>
@@ -572,38 +610,26 @@ function MonthlyReportDetailEditableMobileCard({
       <p className="text-sm font-semibold tabular-nums text-primary">
         {item.targetMetric?.trim() || '—'}
       </p>
-      <MonthlyReportEpic4EditableStack
-        evidence={edit.evidence}
-        setEvidence={edit.setEvidence}
-        numericRaw={edit.numericRaw}
-        setNumericRaw={edit.setNumericRaw}
-        numericUnit={edit.numericUnit}
-        setNumericUnit={edit.setNumericUnit}
-        selfEvalStatus={edit.selfEvalStatus}
-        setSelfEvalStatus={edit.setSelfEvalStatus}
-        selfReviewNote={edit.selfReviewNote}
-        setSelfReviewNote={edit.setSelfReviewNote}
-        disabled={edit.saving}
-      />
-      <div>
-        <span className="text-xs font-bold uppercase text-muted-foreground">QL đánh giá</span>
-        <div className="mt-1">
-          <EvalBadge status={item.managerEvalStatus} />
-        </div>
+      <div className="flex flex-wrap gap-3 text-xs text-slate-600">
+        <span>
+          Kết quả:{' '}
+          {item.numericValue != null
+            ? `${item.numericValue}${item.numericUnit ? ' ' + item.numericUnit : ''}`
+            : '—'}
+        </span>
+        <span>
+          Tự ĐG: <EvalBadge status={item.selfEvalStatus} />
+        </span>
       </div>
-      <div>
-        <span className="text-xs font-bold uppercase text-muted-foreground">QL nhận xét</span>
-        <p className="text-xs italic text-slate-500">{item.managerReviewNote?.trim() || '—'}</p>
-      </div>
-      <Button
-        type="button"
-        size="sm"
-        className="h-10 w-full"
-        disabled={edit.saving}
-        onClick={() => void edit.save()}
-      >
-        {edit.saving ? '…' : 'Lưu'}
+      <Button type="button" size="sm" className="h-9 w-full" onClick={() => setOpen(true)}>
+        Nhập kết quả
       </Button>
+      <MonthlyReportMemberEditDialog
+        item={item}
+        onSaved={onSaved}
+        open={open}
+        onOpenChange={setOpen}
+      />
     </div>
   )
 }
@@ -692,11 +718,6 @@ export function MonthlyReportScreen() {
 
   const detailRows = selectedDetailUserId ? (assignmentsByUser.get(selectedDetailUserId) ?? []) : []
 
-  // Tính tiến độ chỉ số cố định theo team type
-  const selectedTeamForReport = useMemo(
-    () => departments.flatMap((d) => d.teams).find((t) => t.id === selectedTeamId) ?? null,
-    [departments, selectedTeamId]
-  )
   useEffect(() => {
     if (!selectedTeamId) return
     window.localStorage.setItem(
@@ -704,28 +725,6 @@ export function MonthlyReportScreen() {
       JSON.stringify({ teamId: selectedTeamId, year, month })
     )
   }, [selectedTeamId, year, month])
-  const isTrafficTeamReport = isTrafficTeam(
-    selectedTeamId || null,
-    null,
-    selectedTeamForReport?.name ?? null
-  )
-  const fixedTemplateCode = isTrafficTeamReport ? 'TRAFFIC_TEAM_NV' : 'SALES_NV'
-  const fixedMetricsList = MANDATORY_METRICS_BY_TEMPLATE[fixedTemplateCode] ?? []
-
-  const fixedMetricsProgress = useMemo(() => {
-    if (!fixedMetricsList.length || !assignmentsData.length) return []
-    const totalMembers = new Set(assignmentsData.map((a) => a.assigneeUserId)).size
-    return fixedMetricsList.map((metricContent) => {
-      const matching = assignmentsData.filter((a) => a.content === metricContent)
-      const filled = matching.filter((a) => a.numericValue != null).length
-      const total = matching.length || totalMembers
-      const sum = matching.reduce(
-        (acc, a) => acc + (a.numericValue != null ? Number(a.numericValue) : 0),
-        0
-      )
-      return { content: metricContent, filled, total, sum }
-    })
-  }, [assignmentsData, fixedMetricsList])
 
   const eff = useMemo(() => resolveEffectivePermissionSet(user), [user])
   const allowEpic4SelfEdit =
@@ -1097,31 +1096,6 @@ export function MonthlyReportScreen() {
                         </tbody>
                       </table>
                     </div>
-                    {fixedMetricsProgress.length > 0 && (
-                      <div className="border-t px-4 py-3">
-                        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                          Chỉ số cố định
-                        </p>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {fixedMetricsProgress.map(({ content, filled, total, sum }) => (
-                            <div
-                              key={content}
-                              className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/50"
-                            >
-                              <span
-                                className="truncate text-xs text-slate-600 dark:text-slate-400"
-                                title={content}
-                              >
-                                {content}
-                              </span>
-                              <span className="ml-2 shrink-0 text-xs tabular-nums text-slate-500">
-                                {sum > 0 ? sum.toLocaleString('vi-VN') : '—'} · {filled}/{total}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
                 {summaryExpanded && summaryRows.length === 0 && (
@@ -1208,7 +1182,7 @@ export function MonthlyReportScreen() {
                             )
                           )}
                         </div>
-                        {/* Desktop: expandable row table — no horizontal scroll */}
+                        {/* Desktop: bảng + modal nhập liệu */}
                         <div className="hidden md:block">
                           <table className="w-full text-sm">
                             <thead>
@@ -1243,18 +1217,13 @@ export function MonthlyReportScreen() {
                             <tbody>
                               {detailRows.map((item) =>
                                 allowEpic4SelfEdit ? (
-                                  <MonthlyReportMemberExpandableRow
+                                  <MonthlyReportMemberTableRow
                                     key={item.id}
                                     item={item}
                                     onSaved={invalidateMonthlyAssignments}
-                                    colCount={9}
                                   />
                                 ) : (
-                                  <MonthlyReportReadOnlyExpandableRow
-                                    key={item.id}
-                                    item={item}
-                                    colCount={9}
-                                  />
+                                  <MonthlyReportReadOnlyTableRow key={item.id} item={item} />
                                 )
                               )}
                             </tbody>

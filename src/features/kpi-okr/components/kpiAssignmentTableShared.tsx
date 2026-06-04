@@ -105,6 +105,19 @@ export const ASSIGN_TABLE_HEAD = [
   'Thao tác',
 ] as const
 
+export const PLANNING_ASSIGN_TABLE_HEAD = [
+  'Kỳ',
+  'Ngày xét',
+  'Hạng mục',
+  'Ưu tiên',
+  'Nội dung',
+  'Chỉ tiêu',
+  'Số liệu',
+  'Đơn vị',
+  'Quản lý xét duyệt',
+  'Thao tác',
+] as const
+
 export function EvalStatusBadge({ status }: { status: string | null | undefined }) {
   if (!status || status === '__none') return <span className="text-slate-400">—</span>
 
