@@ -571,37 +571,6 @@ export const performanceApi = {
     return res.data
   },
 
-  // ─── Sprint 3: Manager đánh giá Leader ──────────────────────────────
-
-  listLeaderEvaluations: async (teamId: string, year: number, month: number) => {
-    if (isMockApiEnabled()) return [] as LeaderEvaluationRow[]
-    const res = await apiClient.get<LeaderEvaluationRow[]>(
-      '/performance/manager/leaders/evaluations',
-      { params: { teamId, year, month } }
-    )
-    return res.data
-  },
-
-  patchLeaderEvaluation: async (
-    userId: string,
-    year: number,
-    month: number,
-    body: {
-      overallComment?: string | null
-      managerScoreLabel?: string | null
-      criteriaNotOk?: string | null
-      evaluatedAt?: string | null
-    }
-  ) => {
-    if (isMockApiEnabled()) throw new Error('Mock')
-    const res = await apiClient.patch<LeaderEvaluationRow>(
-      `/performance/manager/leaders/${userId}/evaluations`,
-      body,
-      { params: { year, month } }
-    )
-    return res.data
-  },
-
   // ─── Sprint 3 / Epic 7: Báo cáo nâng cấp ───────────────────────────
 
   listDepartmentSummaries: async (departmentId: string, year: number, month: number) => {
@@ -951,25 +920,6 @@ export type AutoSeedResponse = {
   }>
   totalCreated: number
   totalSkipped: number
-}
-
-export type LeaderEvaluationRow = {
-  userId: string
-  displayName: string | null
-  email: string | null
-  teamId: string | null
-  kpiOkCount: number
-  kpiNotCount: number
-  okrOkCount: number
-  okrNotCount: number
-  evaluation: {
-    id: string
-    evaluateeRole: string
-    overallComment: string | null
-    managerScoreLabel: string | null
-    criteriaNotOk: string | null
-    evaluatedAt: string | null
-  } | null
 }
 
 export type MonthlyReport = {

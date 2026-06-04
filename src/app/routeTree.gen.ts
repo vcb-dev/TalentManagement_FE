@@ -56,7 +56,6 @@ import { Route as ProtectedLeaderTeamIndexRouteImport } from './routes/_protecte
 import { Route as ProtectedTeacherClassesClassIdRouteImport } from './routes/_protected/teacher/classes/$classId'
 import { Route as ProtectedManagerTeamEmployeeIdRouteImport } from './routes/_protected/manager/team/$employeeId'
 import { Route as ProtectedManagerPeopleUserIdRouteImport } from './routes/_protected/manager/people.$userId'
-import { Route as ProtectedManagerKpiOkrLeaderReviewRouteImport } from './routes/_protected/manager/kpi-okr/leader-review'
 import { Route as ProtectedManagerGradeClassClassIdRouteImport } from './routes/_protected/manager/grade-class/$classId'
 import { Route as ProtectedLearningPathLevelIdStarIdRouteImport } from './routes/_protected/learning-path/$levelId/$starId'
 import { Route as ProtectedLeaderTeamEmployeeIdRouteImport } from './routes/_protected/leader/team/$employeeId'
@@ -325,12 +324,6 @@ const ProtectedManagerPeopleUserIdRoute =
     path: '/manager/people/$userId',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
-const ProtectedManagerKpiOkrLeaderReviewRoute =
-  ProtectedManagerKpiOkrLeaderReviewRouteImport.update({
-    id: '/manager/kpi-okr/leader-review',
-    path: '/manager/kpi-okr/leader-review',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
 const ProtectedManagerGradeClassClassIdRoute =
   ProtectedManagerGradeClassClassIdRouteImport.update({
     id: '/manager/grade-class/$classId',
@@ -456,7 +449,6 @@ export interface FileRoutesByFullPath {
   '/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
   '/manager/grade-class/$classId': typeof ProtectedManagerGradeClassClassIdRouteWithChildren
-  '/manager/kpi-okr/leader-review': typeof ProtectedManagerKpiOkrLeaderReviewRoute
   '/manager/people/$userId': typeof ProtectedManagerPeopleUserIdRoute
   '/manager/team/$employeeId': typeof ProtectedManagerTeamEmployeeIdRoute
   '/teacher/classes/$classId': typeof ProtectedTeacherClassesClassIdRoute
@@ -516,7 +508,6 @@ export interface FileRoutesByTo {
   '/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
   '/manager/grade-class/$classId': typeof ProtectedManagerGradeClassClassIdRouteWithChildren
-  '/manager/kpi-okr/leader-review': typeof ProtectedManagerKpiOkrLeaderReviewRoute
   '/manager/people/$userId': typeof ProtectedManagerPeopleUserIdRoute
   '/manager/team/$employeeId': typeof ProtectedManagerTeamEmployeeIdRoute
   '/teacher/classes/$classId': typeof ProtectedTeacherClassesClassIdRoute
@@ -579,7 +570,6 @@ export interface FileRoutesById {
   '/_protected/leader/team/$employeeId': typeof ProtectedLeaderTeamEmployeeIdRoute
   '/_protected/learning-path/$levelId/$starId': typeof ProtectedLearningPathLevelIdStarIdRoute
   '/_protected/manager/grade-class/$classId': typeof ProtectedManagerGradeClassClassIdRouteWithChildren
-  '/_protected/manager/kpi-okr/leader-review': typeof ProtectedManagerKpiOkrLeaderReviewRoute
   '/_protected/manager/people/$userId': typeof ProtectedManagerPeopleUserIdRoute
   '/_protected/manager/team/$employeeId': typeof ProtectedManagerTeamEmployeeIdRoute
   '/_protected/teacher/classes/$classId': typeof ProtectedTeacherClassesClassIdRoute
@@ -641,7 +631,6 @@ export interface FileRouteTypes {
     | '/leader/team/$employeeId'
     | '/learning-path/$levelId/$starId'
     | '/manager/grade-class/$classId'
-    | '/manager/kpi-okr/leader-review'
     | '/manager/people/$userId'
     | '/manager/team/$employeeId'
     | '/teacher/classes/$classId'
@@ -701,7 +690,6 @@ export interface FileRouteTypes {
     | '/leader/team/$employeeId'
     | '/learning-path/$levelId/$starId'
     | '/manager/grade-class/$classId'
-    | '/manager/kpi-okr/leader-review'
     | '/manager/people/$userId'
     | '/manager/team/$employeeId'
     | '/teacher/classes/$classId'
@@ -763,7 +751,6 @@ export interface FileRouteTypes {
     | '/_protected/leader/team/$employeeId'
     | '/_protected/learning-path/$levelId/$starId'
     | '/_protected/manager/grade-class/$classId'
-    | '/_protected/manager/kpi-okr/leader-review'
     | '/_protected/manager/people/$userId'
     | '/_protected/manager/team/$employeeId'
     | '/_protected/teacher/classes/$classId'
@@ -1112,13 +1099,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedManagerPeopleUserIdRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/manager/kpi-okr/leader-review': {
-      id: '/_protected/manager/kpi-okr/leader-review'
-      path: '/manager/kpi-okr/leader-review'
-      fullPath: '/manager/kpi-okr/leader-review'
-      preLoaderRoute: typeof ProtectedManagerKpiOkrLeaderReviewRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
     '/_protected/manager/grade-class/$classId': {
       id: '/_protected/manager/grade-class/$classId'
       path: '/manager/grade-class/$classId'
@@ -1280,7 +1260,6 @@ interface ProtectedRouteRouteChildren {
   ProtectedLeaderTeamEmployeeIdRoute: typeof ProtectedLeaderTeamEmployeeIdRoute
   ProtectedLearningPathLevelIdStarIdRoute: typeof ProtectedLearningPathLevelIdStarIdRoute
   ProtectedManagerGradeClassClassIdRoute: typeof ProtectedManagerGradeClassClassIdRouteWithChildren
-  ProtectedManagerKpiOkrLeaderReviewRoute: typeof ProtectedManagerKpiOkrLeaderReviewRoute
   ProtectedManagerPeopleUserIdRoute: typeof ProtectedManagerPeopleUserIdRoute
   ProtectedManagerTeamEmployeeIdRoute: typeof ProtectedManagerTeamEmployeeIdRoute
   ProtectedTeacherClassesClassIdRoute: typeof ProtectedTeacherClassesClassIdRoute
@@ -1343,8 +1322,6 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
     ProtectedLearningPathLevelIdStarIdRoute,
   ProtectedManagerGradeClassClassIdRoute:
     ProtectedManagerGradeClassClassIdRouteWithChildren,
-  ProtectedManagerKpiOkrLeaderReviewRoute:
-    ProtectedManagerKpiOkrLeaderReviewRoute,
   ProtectedManagerPeopleUserIdRoute: ProtectedManagerPeopleUserIdRoute,
   ProtectedManagerTeamEmployeeIdRoute: ProtectedManagerTeamEmployeeIdRoute,
   ProtectedTeacherClassesClassIdRoute: ProtectedTeacherClassesClassIdRoute,

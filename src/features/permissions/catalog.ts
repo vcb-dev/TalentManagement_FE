@@ -413,7 +413,7 @@ export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly stri
   'mod.kpi': [
     'KPI & OKR cá nhân (/kpi-okr)',
     'KPI & OKR trong nhóm — trưởng nhóm (/leader/kpi-okr, khi được cấp quyền nhóm)',
-    'Đánh giá trưởng nhóm (KPI/OKR) — quản lý (/manager/kpi-okr/leader-review)',
+    'Duyệt KPI/OKR Traffic Teams (/manager/kpi-approval)',
     'Cửa sổ giao KPI/OKR theo tháng (/hr-admin/settings/kpi-windows, quyền HR)',
     'Phòng ban áp dụng danh mục KPI (/hr-admin/settings/kpi-catalog-allowlist, quyền HR)',
   ],

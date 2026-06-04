@@ -395,13 +395,6 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
     match: 'prefix',
     permissionId: 'hr.org.manage',
   },
-  {
-    to: '/manager/kpi-okr/leader-review',
-    label: 'Đánh giá trưởng nhóm',
-    icon: ShieldCheck,
-    match: 'prefix',
-    permissionId: 'kpi.leader_review',
-  },
 ]
 
 const TEACHER_CLASS_ITEMS: AppNavItem[] = [
