@@ -61,6 +61,8 @@ export type PerformanceAssignment = {
   selfEvalStatus?: string | null
   selfReviewNote?: string | null
   selfEvaluatedAt?: string | null
+  finalEvalStatus?: string | null
+  finalEvaluatedAt?: string | null
   // Epic 9: Catalog hooks
   category?: string | null
   tenureStage?: string | null
@@ -878,10 +880,14 @@ export const performanceApi = {
     return res.data
   },
 
-  approveRequest: async (id: string): Promise<ApprovalRequest> => {
+  approveRequest: async (
+    id: string,
+    evaluations?: { assignmentId: string; status: 'OK' | 'NOT' }[]
+  ): Promise<ApprovalRequest> => {
     if (isMockApiEnabled()) throw new Error('Mock')
     const res = await apiClient.patch<ApprovalRequest>(
-      `/performance/approval-requests/${id}/approve`
+      `/performance/approval-requests/${id}/approve`,
+      { evaluations }
     )
     return res.data
   },

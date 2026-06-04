@@ -272,6 +272,7 @@ function ItemsTable({
                       size="icon"
                       className="h-7 w-7"
                       onClick={() => onEdit(item)}
+                      title="Sửa"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
@@ -280,6 +281,7 @@ function ItemsTable({
                       size="icon"
                       className="h-7 w-7 text-red-500 hover:text-red-600"
                       onClick={() => onDelete(item)}
+                      title="Xóa"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

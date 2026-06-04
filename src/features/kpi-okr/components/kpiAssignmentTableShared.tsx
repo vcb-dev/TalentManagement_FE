@@ -3,6 +3,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TableCell } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import { CheckCircle2, XCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { PerformanceAssignment } from '@/features/kpi-okr/api'
 import {
   EvidenceImagePreviews,
@@ -101,7 +103,8 @@ export const ASSIGN_TABLE_HEAD = [
   'Đơn vị',
   'Minh chứng',
   'Tự đánh giá',
-  'Đánh giá QL',
+  'Đánh giá Leader',
+  'Đánh giá Manager',
   'Thao tác',
 ] as const
 
@@ -118,22 +121,50 @@ export const PLANNING_ASSIGN_TABLE_HEAD = [
   'Thao tác',
 ] as const
 
-export function EvalStatusBadge({ status }: { status: string | null | undefined }) {
+export function EvalStatusBadge({
+  status,
+  type = 'leader',
+}: {
+  status: string | null | undefined
+  type?: 'self' | 'leader' | 'manager'
+}) {
   if (!status || status === '__none') return <span className="text-slate-400">—</span>
 
-  const isOk = status === 'OK'
+  const isOk = status.trim().toUpperCase() === 'OK'
+
+  const typeLabel = {
+    self: 'Tự đánh giá',
+    leader: 'Leader đánh giá',
+    manager: 'Manager đánh giá',
+  }[type]
+
+  const statusLabel = isOk ? 'Đạt' : 'Chưa đạt'
+  const tooltipText = `${typeLabel}: ${statusLabel}`
+
   return (
-    <Badge
-      variant="outline"
-      className={cn(
-        'h-5 px-1.5 text-xs font-bold shadow-none rounded-md',
-        isOk
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
-          : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300'
-      )}
-    >
-      {status}
-    </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge
+          variant="outline"
+          className={cn(
+            'h-6 pl-1.5 pr-2 py-0.5 text-xs font-bold shadow-none rounded-full inline-flex items-center gap-1 cursor-help transition-all select-none',
+            isOk
+              ? 'border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300'
+              : 'border-rose-200 bg-rose-50/50 text-rose-700 hover:bg-rose-50 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300'
+          )}
+        >
+          {isOk ? (
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+          ) : (
+            <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+          )}
+          <span>{status}</span>
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">
+        {tooltipText}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -220,7 +251,7 @@ export function AssignmentEpic4ReadStack({ row }: { row: PerformanceAssignment }
       />
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-bold uppercase text-muted-foreground">Tự đánh giá:</span>
-        <EvalStatusBadge status={row.selfEvalStatus ?? null} />
+        <EvalStatusBadge status={row.selfEvalStatus ?? null} type="self" />
       </div>
     </div>
   )
@@ -249,7 +280,7 @@ export function AssignmentEpic4ReadCells({ row, td }: { row: PerformanceAssignme
         <EvidenceImagePreviews evidence={row.evidence} maxHeightClass="h-12 max-w-[72px]" />
       </TableCell>
       <TableCell className={td}>
-        <EvalStatusBadge status={row.selfEvalStatus ?? null} />
+        <EvalStatusBadge status={row.selfEvalStatus ?? null} type="self" />
       </TableCell>
     </>
   )

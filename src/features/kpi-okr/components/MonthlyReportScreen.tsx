@@ -14,7 +14,10 @@ import {
   Pencil,
   Eye,
   Lock,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -76,22 +79,50 @@ function PriorityText({ priority }: { priority: number }) {
   return <span className="text-slate-400">—</span>
 }
 
-function EvalBadge({ status }: { status: string | null | undefined }) {
+function EvalBadge({
+  status,
+  type = 'leader',
+}: {
+  status: string | null | undefined
+  type?: 'self' | 'leader' | 'manager'
+}) {
   const v = status?.trim().toUpperCase()
   if (!v || v === '__NONE') return <span className="text-slate-400">—</span>
   const isOk = v === 'OK'
+
+  const typeLabel = {
+    self: 'Tự đánh giá',
+    leader: 'Leader đánh giá',
+    manager: 'Manager đánh giá',
+  }[type]
+
+  const statusLabel = isOk ? 'Đạt' : 'Chưa đạt'
+  const tooltipText = `${typeLabel}: ${statusLabel}`
+
   return (
-    <Badge
-      variant="outline"
-      className={cn(
-        'h-5 px-1.5 text-xs font-bold shadow-none rounded-md',
-        isOk
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
-          : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300'
-      )}
-    >
-      {v}
-    </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge
+          variant="outline"
+          className={cn(
+            'h-6 pl-1.5 pr-2 py-0.5 text-xs font-bold shadow-none rounded-full inline-flex items-center gap-1 cursor-help transition-all select-none',
+            isOk
+              ? 'border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300'
+              : 'border-rose-200 bg-rose-50/50 text-rose-700 hover:bg-rose-50 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300'
+          )}
+        >
+          {isOk ? (
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+          ) : (
+            <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+          )}
+          <span>{v}</span>
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">
+        {tooltipText}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -461,10 +492,13 @@ function MonthlyReportMemberTableRow({
             : '—'}
         </td>
         <td className="px-3 py-2.5">
-          <EvalBadge status={item.selfEvalStatus} />
+          <EvalBadge status={item.selfEvalStatus} type="self" />
         </td>
         <td className="px-3 py-2.5">
-          <EvalBadge status={item.managerEvalStatus} />
+          <EvalBadge status={item.managerEvalStatus} type="leader" />
+        </td>
+        <td className="px-3 py-2.5">
+          <EvalBadge status={item.finalEvalStatus} type="manager" />
         </td>
         <td className="whitespace-nowrap px-2 py-2.5 text-right">
           <MonthlyReportEditButton onClick={() => setOpen(true)} label="Nhập" />
@@ -513,10 +547,13 @@ function MonthlyReportReadOnlyTableRow({ item }: { item: PerformanceAssignment }
         </td>
         <td className="whitespace-nowrap px-3 py-2.5 text-xs tabular-nums text-slate-600">{num}</td>
         <td className="px-3 py-2.5">
-          <EvalBadge status={item.selfEvalStatus} />
+          <EvalBadge status={item.selfEvalStatus} type="self" />
         </td>
         <td className="px-3 py-2.5">
-          <EvalBadge status={item.managerEvalStatus} />
+          <EvalBadge status={item.managerEvalStatus} type="leader" />
+        </td>
+        <td className="px-3 py-2.5">
+          <EvalBadge status={item.finalEvalStatus} type="manager" />
         </td>
         <td className="whitespace-nowrap px-2 py-2.5 text-right">
           <MonthlyReportDetailOpenButton onClick={() => setOpen(true)} />
@@ -588,7 +625,7 @@ function MonthlyReportDetailReadOnlyCard({ item }: { item: PerformanceAssignment
       <div>
         <span className="text-xs font-bold uppercase text-muted-foreground">Tự đánh giá</span>
         <div className="mt-1">
-          <EvalBadge status={item.selfEvalStatus} />
+          <EvalBadge status={item.selfEvalStatus} type="self" />
         </div>
       </div>
       <div>
@@ -602,16 +639,22 @@ function MonthlyReportDetailReadOnlyCard({ item }: { item: PerformanceAssignment
         </p>
       </div>
       <div>
-        <span className="text-xs font-bold uppercase text-muted-foreground">QL đánh giá</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Leader đánh giá</span>
         <div className="mt-1">
-          <EvalBadge status={item.managerEvalStatus} />
+          <EvalBadge status={item.managerEvalStatus} type="leader" />
         </div>
       </div>
       <div>
-        <span className="text-xs font-bold uppercase text-muted-foreground">QL nhận xét</span>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Leader nhận xét</span>
         <p className="break-words text-xs italic text-slate-500">
           {item.managerReviewNote?.trim() || '—'}
         </p>
+      </div>
+      <div>
+        <span className="text-xs font-bold uppercase text-muted-foreground">Manager đánh giá</span>
+        <div className="mt-1">
+          <EvalBadge status={item.finalEvalStatus} type="manager" />
+        </div>
       </div>
     </div>
   )
@@ -652,7 +695,7 @@ function MonthlyReportDetailEditableMobileCard({
             : '—'}
         </span>
         <span>
-          Tự ĐG: <EvalBadge status={item.selfEvalStatus} />
+          Tự ĐG: <EvalBadge status={item.selfEvalStatus} type="self" />
         </span>
       </div>
       <Button type="button" size="sm" className="h-9 w-full" onClick={() => setOpen(true)}>
@@ -772,6 +815,19 @@ export function MonthlyReportScreen() {
     )
   }, [selectedTeamId, year, month])
 
+  // Khi Manager vừa duyệt kết quả (status -> approved), backend set finalEvalStatus cho từng item.
+  // Cần làm mới assignment + tổng hợp để member thấy cột "Manager ĐG" thay vì cache cũ (trống).
+  useEffect(() => {
+    if (resultApprovalRequest?.status === 'approved') {
+      void qc.invalidateQueries({
+        queryKey: ['monthly-report-assignments', selectedTeamId, year, month],
+      })
+      void qc.invalidateQueries({
+        queryKey: ['monthly-report-summaries', selectedTeamId, year, month],
+      })
+    }
+  }, [resultApprovalRequest?.status, qc, selectedTeamId, year, month])
+
   const eff = useMemo(() => resolveEffectivePermissionSet(user), [user])
   const allowEpic4SelfEdit =
     Boolean(userId) &&
@@ -817,7 +873,7 @@ export function MonthlyReportScreen() {
   }
 
   const okCount = assignmentsData.filter(
-    (x) => (x.managerEvalStatus ?? '').trim().toUpperCase() === 'OK'
+    (x) => (x.finalEvalStatus ?? x.managerEvalStatus ?? '').trim().toUpperCase() === 'OK'
   ).length
 
   const teamMemberName = (userId: string) => {
@@ -1268,7 +1324,10 @@ export function MonthlyReportScreen() {
                                   Tự ĐG
                                 </th>
                                 <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
-                                  QL ĐG
+                                  Leader ĐG
+                                </th>
+                                <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
+                                  Manager ĐG
                                 </th>
                                 <th className="px-3 py-3 text-right font-semibold text-slate-500"></th>
                               </tr>

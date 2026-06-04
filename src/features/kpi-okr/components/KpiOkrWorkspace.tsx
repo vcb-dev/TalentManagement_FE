@@ -6,6 +6,7 @@ import {
   AlignLeft,
   CheckCircle2,
   ClipboardList,
+  ClipboardCheck,
   Download,
   Eye,
   FileUp,
@@ -76,6 +77,7 @@ import { organizationApi, type TeamMemberRow } from '@/features/organization/api
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -381,6 +383,16 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     )
   }, [selectedTeamId, year, month])
 
+  // Khi Manager vừa duyệt kết quả (status -> approved), backend đã set finalEvalStatus cho từng
+  // assignment. Màn Leader/Member chuyển sang read-only nhưng dùng cache assignment cũ (chưa có
+  // finalEvalStatus) → cột "Đánh giá Manager" trống. Làm mới assignment + tổng hợp để hiển thị đúng.
+  useEffect(() => {
+    if (resultApprovalRequest?.status === 'approved') {
+      void qc.invalidateQueries({ queryKey: assignKey })
+      void qc.invalidateQueries({ queryKey: sumKey })
+    }
+  }, [resultApprovalRequest?.status, qc, assignKey, sumKey])
+
   const [submittingGoalApproval, setSubmittingGoalApproval] = useState(false)
   const [submittingResultApproval, setSubmittingResultApproval] = useState(false)
   const handleSubmitForApproval = useCallback(async () => {
@@ -589,18 +601,25 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
               {assignmentsThisMonth.length} mục tiêu
             </Badge>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-            onClick={() => {
-              void treeQ.refetch()
-              void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
-              refresh()
-            }}
-          >
-            <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                onClick={() => {
+                  void treeQ.refetch()
+                  void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
+                  refresh()
+                }}
+              >
+                <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              Làm mới dữ liệu
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -852,6 +871,8 @@ export type MemberSelfEditDraft = {
   numericUnit: string
   selfEvalStatus: string
   selfReviewNote: string
+  managerEvalStatus?: string
+  managerReviewNote?: string
 }
 
 function memberSelfDraftsEqual(a: MemberSelfEditDraft, b: MemberSelfEditDraft) {
@@ -860,7 +881,9 @@ function memberSelfDraftsEqual(a: MemberSelfEditDraft, b: MemberSelfEditDraft) {
     a.numericRaw === b.numericRaw &&
     a.numericUnit === b.numericUnit &&
     a.selfEvalStatus === b.selfEvalStatus &&
-    a.selfReviewNote === b.selfReviewNote
+    a.selfReviewNote === b.selfReviewNote &&
+    a.managerEvalStatus === b.managerEvalStatus &&
+    a.managerReviewNote === b.managerReviewNote
   )
 }
 
@@ -878,6 +901,8 @@ function draftToPatchBody(draft: MemberSelfEditDraft) {
     numericUnit: draft.numericUnit.trim() ? draft.numericUnit.trim().toUpperCase() : null,
     selfEvalStatus: draft.selfEvalStatus.trim() ? draft.selfEvalStatus.trim() : null,
     selfReviewNote: draft.selfReviewNote.trim() ? draft.selfReviewNote.trim() : null,
+    managerEvalStatus: draft.managerEvalStatus?.trim() ? draft.managerEvalStatus.trim() : null,
+    managerReviewNote: draft.managerReviewNote?.trim() ? draft.managerReviewNote.trim() : null,
   }
 }
 
@@ -888,6 +913,7 @@ function useMemberSelfAssignmentEdit(
     hideRowSave?: boolean
     disabled?: boolean
     onDraftChange?: (draft: MemberSelfEditDraft) => void
+    canEditLeaderEval?: boolean
   }
 ) {
   const disabled = opts?.disabled ?? false
@@ -898,6 +924,8 @@ function useMemberSelfAssignmentEdit(
   const [numericUnit, setNumericUnit] = useState(row.numericUnit ?? '')
   const [selfEvalStatus, setSelfEvalStatus] = useState(row.selfEvalStatus ?? '')
   const [selfReviewNote, setSelfReviewNote] = useState(row.selfReviewNote ?? '')
+  const [managerEvalStatus, setManagerEvalStatus] = useState(row.managerEvalStatus ?? '')
+  const [managerReviewNote, setManagerReviewNote] = useState(row.managerReviewNote ?? '')
   const [saving, setSaving] = useState(false)
   const [numericFocused, setNumericFocused] = useState(false)
   const onDraftChangeRef = useRef(opts?.onDraftChange)
@@ -909,6 +937,8 @@ function useMemberSelfAssignmentEdit(
     setNumericUnit(row.numericUnit ?? '')
     setSelfEvalStatus(row.selfEvalStatus ?? '')
     setSelfReviewNote(row.selfReviewNote ?? '')
+    setManagerEvalStatus(row.managerEvalStatus ?? '')
+    setManagerReviewNote(row.managerReviewNote ?? '')
   }, [
     row.id,
     row.evidence,
@@ -916,6 +946,8 @@ function useMemberSelfAssignmentEdit(
     row.numericUnit,
     row.selfEvalStatus,
     row.selfReviewNote,
+    row.managerEvalStatus,
+    row.managerReviewNote,
   ])
 
   useEffect(() => {
@@ -925,8 +957,18 @@ function useMemberSelfAssignmentEdit(
       numericUnit,
       selfEvalStatus,
       selfReviewNote,
+      managerEvalStatus,
+      managerReviewNote,
     })
-  }, [evidence, numericRaw, numericUnit, selfEvalStatus, selfReviewNote])
+  }, [
+    evidence,
+    numericRaw,
+    numericUnit,
+    selfEvalStatus,
+    selfReviewNote,
+    managerEvalStatus,
+    managerReviewNote,
+  ])
 
   /** Giá trị hiển thị: khi focus → raw digits, khi blur → định dạng dấu chấm ngàn */
   const numericDisplayValue = numericFocused
@@ -962,13 +1004,20 @@ function useMemberSelfAssignmentEdit(
     }
     setSaving(true)
     try {
-      await performanceApi.patchAssignmentSelf(row.id, {
+      const payload = {
         evidence: evidence.trim() ? evidence.trim() : null,
         numericValue,
         numericUnit: numericUnit.trim() ? numericUnit.trim().toUpperCase() : null,
         selfEvalStatus: selfEvalStatus.trim() ? selfEvalStatus.trim() : null,
         selfReviewNote: selfReviewNote.trim() ? selfReviewNote.trim() : null,
-      })
+        managerEvalStatus: managerEvalStatus.trim() ? managerEvalStatus.trim() : null,
+        managerReviewNote: managerReviewNote.trim() ? managerReviewNote.trim() : null,
+      }
+      if (opts?.canEditLeaderEval) {
+        await performanceApi.patchAssignment(row.id, payload)
+      } else {
+        await performanceApi.patchAssignmentSelf(row.id, payload)
+      }
       toast.success('Đã lưu.')
       onSaved()
     } catch {
@@ -992,6 +1041,10 @@ function useMemberSelfAssignmentEdit(
     setSelfEvalStatus,
     selfReviewNote,
     setSelfReviewNote,
+    managerEvalStatus,
+    setManagerEvalStatus,
+    managerReviewNote,
+    setManagerReviewNote,
     saving,
     save,
     disabled,
@@ -1006,6 +1059,7 @@ function MemberSelfAssignmentRow({
   hideRowSave,
   disabled,
   onDraftChange,
+  canEditLeaderEval,
 }: {
   row: PerformanceAssignment
   rowStripe: boolean
@@ -1013,6 +1067,7 @@ function MemberSelfAssignmentRow({
   hideRowSave?: boolean
   disabled?: boolean
   onDraftChange?: (draft: MemberSelfEditDraft) => void
+  canEditLeaderEval?: boolean
 }) {
   const isMandatory = isMandatoryMetric(row.content)
   const {
@@ -1029,11 +1084,18 @@ function MemberSelfAssignmentRow({
     setSelfEvalStatus,
     selfReviewNote,
     setSelfReviewNote,
+    managerEvalStatus,
+    setManagerEvalStatus,
     saving,
     save,
     hideRowSave: hideSave,
     disabled: inputsDisabled,
-  } = useMemberSelfAssignmentEdit(row, onSaved, { hideRowSave, disabled, onDraftChange })
+  } = useMemberSelfAssignmentEdit(row, onSaved, {
+    hideRowSave,
+    disabled,
+    onDraftChange,
+    canEditLeaderEval,
+  })
 
   const td = xlTd(rowStripe)
 
@@ -1113,7 +1175,12 @@ function MemberSelfAssignmentRow({
       <TableCell className={cn(td, 'p-2 align-middle')}>
         <CustomSelect
           value={selfEvalStatus || '__none'}
-          onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
+          onValueChange={(v) => {
+            const next = v === '__none' ? '' : v
+            setSelfEvalStatus(next)
+            // Phương án 2: Leader tự chấm dòng của mình → đồng bộ luôn sang Đánh giá Leader
+            if (canEditLeaderEval) setManagerEvalStatus(next)
+          }}
           disabled={inputsDisabled || saving}
           options={[
             { label: '—', value: '__none' },
@@ -1131,17 +1198,25 @@ function MemberSelfAssignmentRow({
         />
       </TableCell>
       <TableCell className={td}>
-        <div className="flex flex-col gap-1">
-          <EvalStatusBadge status={row.managerEvalStatus} />
-          {row.managerReviewNote && (
-            <div
-              className="text-xs text-slate-500 italic max-w-[150px] truncate"
-              title={row.managerReviewNote}
-            >
-              {row.managerReviewNote}
-            </div>
-          )}
-        </div>
+        {canEditLeaderEval ? (
+          // Dòng của chính Leader: ẩn ô chỉnh sửa, chỉ hiển thị (đồng bộ tự động từ Tự đánh giá)
+          <div className="flex flex-col gap-1">
+            <EvalStatusBadge status={managerEvalStatus || null} type="leader" />
+            <span className="text-[10px] italic text-slate-400">Tự đồng bộ từ Tự đánh giá</span>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1">
+            <EvalStatusBadge status={row.managerEvalStatus} type="leader" />
+            {row.managerReviewNote && (
+              <div
+                className="text-xs text-slate-500 italic max-w-[150px] truncate"
+                title={row.managerReviewNote}
+              >
+                {row.managerReviewNote}
+              </div>
+            )}
+          </div>
+        )}
       </TableCell>
       {!hideSave ? (
         <TableCell
@@ -1220,7 +1295,7 @@ function ReadOnlyAssignmentRow({
       )}
       <TableCell className={td}>
         <div className="flex flex-col gap-1">
-          <EvalStatusBadge status={row.managerEvalStatus} />
+          <EvalStatusBadge status={row.managerEvalStatus} type="leader" />
           {row.managerReviewNote && (
             <div
               className="text-xs text-slate-500 italic max-w-[150px] truncate"
@@ -1230,6 +1305,9 @@ function ReadOnlyAssignmentRow({
             </div>
           )}
         </div>
+      </TableCell>
+      <TableCell className={td}>
+        <EvalStatusBadge status={row.finalEvalStatus} type="manager" />
       </TableCell>
       <TableCell
         className={cn(
@@ -1284,7 +1362,7 @@ function ReadOnlyAssignmentMobileCard({
       )}
       <div className="flex flex-col gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
         <span className="text-xs font-bold uppercase text-muted-foreground">Quản lý xét duyệt</span>
-        <EvalStatusBadge status={row.managerEvalStatus} />
+        <EvalStatusBadge status={row.managerEvalStatus} type="leader" />
         {row.managerReviewNote ? (
           <p className="break-words text-xs italic text-slate-500">{row.managerReviewNote}</p>
         ) : null}
@@ -1420,7 +1498,7 @@ function MemberSelfAssignmentMobileCard({
       </div>
       <div className="flex flex-col gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
         <span className="text-xs font-bold uppercase text-muted-foreground">Quản lý xét duyệt</span>
-        <EvalStatusBadge status={row.managerEvalStatus} />
+        <EvalStatusBadge status={row.managerEvalStatus} type="leader" />
         {row.managerReviewNote ? (
           <p className="break-words text-xs italic text-slate-500">{row.managerReviewNote}</p>
         ) : null}
@@ -1644,7 +1722,7 @@ function LeaderAssignmentRow({
       )}
       <TableCell className={td}>
         <div className="flex flex-col gap-1">
-          <EvalStatusBadge status={row.managerEvalStatus} />
+          <EvalStatusBadge status={row.managerEvalStatus} type="leader" />
           {row.managerReviewNote && (
             <div
               className="text-xs text-slate-500 italic max-w-[150px] truncate"
@@ -1654,6 +1732,9 @@ function LeaderAssignmentRow({
             </div>
           )}
         </div>
+      </TableCell>
+      <TableCell className={td}>
+        <EvalStatusBadge status={row.finalEvalStatus} type="manager" />
       </TableCell>
       <TableCell
         className={cn(
@@ -1665,18 +1746,29 @@ function LeaderAssignmentRow({
           <>
             <div className="flex items-center justify-end gap-0.5">
               <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    disabled={deleting}
-                    className="h-8 w-8 rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-800"
-                  >
-                    <Pencil className="h-4 w-4" />
-                    <span className="sr-only">Sửa</span>
-                  </Button>
-                </DialogTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={deleting}
+                        className="h-8 w-8 rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-800"
+                      >
+                        {mode === 'planning' ? (
+                          <Pencil className="h-4 w-4" />
+                        ) : (
+                          <ClipboardCheck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                        )}
+                        <span className="sr-only">{mode === 'planning' ? 'Sửa' : 'Đánh giá'}</span>
+                      </Button>
+                    </DialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    {mode === 'planning' ? 'Sửa mục tiêu' : 'Chấm điểm / Đánh giá'}
+                  </TooltipContent>
+                </Tooltip>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>
@@ -1791,18 +1883,24 @@ function LeaderAssignmentRow({
                 </DialogContent>
               </Dialog>
               {canDelete ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  disabled={deleting || isSubmitting}
-                  className="h-8 w-8 rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
-                  title="Xóa mục tiêu"
-                  onClick={() => setDeleteConfirmOpen(true)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span className="sr-only">Xóa</span>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={deleting || isSubmitting}
+                      className="h-8 w-8 rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+                      onClick={() => setDeleteConfirmOpen(true)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Xóa</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    Xóa mục tiêu
+                  </TooltipContent>
+                </Tooltip>
               ) : isMandatory ? (
                 <span
                   className="flex h-8 w-8 items-center justify-center text-slate-300"
@@ -1986,6 +2084,7 @@ function AssignmentTableSingleUser({
                 rowStripe={idx % 2 === 1}
                 onSaved={onRefresh}
                 hideRowSave={hideRowSave}
+                canEditLeaderEval={canEditTeam}
                 onDraftChange={
                   hideRowSave && onDraftRowChange
                     ? (draft) => onDraftRowChange(r.id, draft)
@@ -2025,6 +2124,7 @@ function AssignmentTableSingleUser({
                 row={r}
                 rowStripe={idx % 2 === 1}
                 onSaved={onRefresh}
+                canEditLeaderEval={canEditTeam}
               />
             )
           }
@@ -2197,6 +2297,7 @@ function UserAssignmentWorkbench({
   submittingResultApproval,
   canSubmitResultApproval,
   submitBlockedByDraft,
+  submitBlockedByEvaluations,
 }: {
   byUser: Map<string, PerformanceAssignment[]>
   members: TeamMemberRow[]
@@ -2223,6 +2324,7 @@ function UserAssignmentWorkbench({
   canSubmitResultApproval?: boolean
   /** Khi true: "Gửi duyệt" hiển thị nhưng disabled vì còn bản nháp chưa lưu. */
   submitBlockedByDraft?: boolean
+  submitBlockedByEvaluations?: boolean
 }) {
   const userEntries = useMemo(
     () => orderUserEntriesFirst(Array.from(byUser.entries()), prioritizeUserId),
@@ -2262,23 +2364,29 @@ function UserAssignmentWorkbench({
           </Button>
         ) : null}
         {isTrafficTeam &&
-        (canSubmitResultApproval || submitBlockedByDraft) &&
+        (canSubmitResultApproval || submitBlockedByDraft || submitBlockedByEvaluations) &&
         onSubmitResultApproval ? (
           <div className="flex flex-col items-end gap-0.5">
             <Button
               type="button"
               size="sm"
               className="rounded-lg bg-emerald-600 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={submittingResultApproval || submitBlockedByDraft}
+              disabled={
+                submittingResultApproval || submitBlockedByDraft || submitBlockedByEvaluations
+              }
               onClick={() => void onSubmitResultApproval()}
             >
               {submittingResultApproval ? 'Đang gửi…' : 'Gửi duyệt kết quả'}
             </Button>
-            {submitBlockedByDraft && (
+            {submitBlockedByDraft ? (
               <p className="text-[11px] text-amber-600 dark:text-amber-400">
                 Lưu bản nháp trước khi gửi duyệt
               </p>
-            )}
+            ) : submitBlockedByEvaluations ? (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                Cần đánh giá hết KPI/OKR của các thành viên
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -2624,7 +2732,16 @@ function ResultsSection({
             setSavingDraft(false)
             return
           }
-          await performanceApi.patchAssignmentSelf(rowId, body)
+          if (canEditResults) {
+            // Leader chấm dòng của chính mình: dùng endpoint đầy đủ để lưu cả Đánh giá Leader
+            await performanceApi.patchAssignment(rowId, body)
+          } else {
+            // Member tự nhập: endpoint /me cấm các trường manager → loại bỏ trước khi gửi
+            const { managerEvalStatus: _m, managerReviewNote: _n, ...selfBody } = body
+            void _m
+            void _n
+            await performanceApi.patchAssignmentSelf(rowId, selfBody)
+          }
           saved += 1
         }
         if (saved > 0) {
@@ -2641,11 +2758,19 @@ function ResultsSection({
         setSavingDraft(false)
       }
     },
-    [draftByRowId, onRefresh]
+    [draftByRowId, onRefresh, canEditResults]
   )
 
   // Còn thay đổi chưa lưu → khoá nút "Gửi duyệt kết quả"
   const hasPendingDraft = Object.keys(draftByRowId).length > 0
+
+  const allAssignmentsEvaluated = useMemo(() => {
+    const allAssignments = Array.from(byUser.values()).flat()
+    if (allAssignments.length === 0) return false
+    return allAssignments.every(
+      (a) => a.managerEvalStatus === 'OK' || a.managerEvalStatus === 'NOT'
+    )
+  }, [byUser])
 
   return (
     <section id="results-section" className="scroll-mt-24">
@@ -2730,6 +2855,7 @@ function ResultsSection({
           submittingResultApproval={submittingResultApproval}
           canSubmitResultApproval={canSubmitResultApproval}
           submitBlockedByDraft={hasPendingDraft}
+          submitBlockedByEvaluations={!allAssignmentsEvaluated}
         />
       )}
     </section>
@@ -3460,15 +3586,22 @@ function MiniCreateForm({
                           </td>
                           <td className="px-1 py-2">
                             {fields.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 rounded-lg text-slate-400 hover:text-destructive"
-                                onClick={() => remove(index)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 rounded-lg text-slate-400 hover:text-destructive"
+                                    onClick={() => remove(index)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  Xóa dòng này
+                                </TooltipContent>
+                              </Tooltip>
                             )}
                           </td>
                         </tr>

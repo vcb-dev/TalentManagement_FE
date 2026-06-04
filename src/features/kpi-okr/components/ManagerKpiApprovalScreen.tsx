@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Clock, X, ChevronDown, ChevronUp, User } from 'lucide-react'
 import { toast } from 'sonner'
@@ -90,16 +90,64 @@ function TeamResultInline({
   teamId,
   year,
   month,
+  requestStatus,
+  onEvaluationsChange,
 }: {
   teamId: string
   year: number
   month: number
+  requestStatus: ApprovalRequest['status']
+  onEvaluationsChange?: (
+    evals: { assignmentId: string; status: 'OK' | 'NOT' }[],
+    allEvaluated: boolean
+  ) => void
 }) {
   const assignmentsQ = useQuery({
     queryKey: ['kpi-assignments-result', teamId, year, month],
     queryFn: () => performanceApi.listAssignments(teamId, year, month),
     enabled: !isMockApiEnabled(),
   })
+
+  const [evalMap, setEvalMap] = useState<Record<string, 'OK' | 'NOT'>>({})
+
+  const assignments = assignmentsQ.data ?? []
+
+  useEffect(() => {
+    if (assignments.length > 0) {
+      const initialMap: Record<string, 'OK' | 'NOT'> = {}
+      for (const a of assignments) {
+        if (a.finalEvalStatus === 'OK' || a.finalEvalStatus === 'NOT') {
+          initialMap[a.id] = a.finalEvalStatus as 'OK' | 'NOT'
+        }
+      }
+      setEvalMap(initialMap)
+    }
+  }, [assignments])
+
+  useEffect(() => {
+    if (onEvaluationsChange && assignments.length > 0) {
+      const evals = assignments
+        .filter((a) => evalMap[a.id] === 'OK' || evalMap[a.id] === 'NOT')
+        .map((a) => ({
+          assignmentId: a.id,
+          status: evalMap[a.id] as 'OK' | 'NOT',
+        }))
+      const allEvaluated = assignments.every(
+        (a) => evalMap[a.id] === 'OK' || evalMap[a.id] === 'NOT'
+      )
+      onEvaluationsChange(evals, allEvaluated)
+    }
+  }, [assignments, evalMap, onEvaluationsChange])
+
+  const handleStatusChange = (assignmentId: string, status: string) => {
+    const nextMap = { ...evalMap }
+    if (status === '__none' || !status) {
+      delete nextMap[assignmentId]
+    } else {
+      nextMap[assignmentId] = status as 'OK' | 'NOT'
+    }
+    setEvalMap(nextMap)
+  }
 
   if (assignmentsQ.isLoading) {
     return (
@@ -110,7 +158,6 @@ function TeamResultInline({
     )
   }
 
-  const assignments = assignmentsQ.data ?? []
   if (assignments.length === 0) {
     return <p className="p-3 text-center text-xs text-slate-400">Chưa có kết quả KPI/OKR nào.</p>
   }
@@ -140,6 +187,8 @@ function TeamResultInline({
     'Minh chứng',
     'Tự đánh giá',
     'Nhận xét NV',
+    'Đánh giá Leader',
+    'Đánh giá Manager',
   ] as const
 
   return (
@@ -218,7 +267,7 @@ function TeamResultInline({
                         />
                       </td>
                       <td className="whitespace-nowrap px-2.5 py-2">
-                        <EvalStatusBadge status={a.selfEvalStatus ?? null} />
+                        <EvalStatusBadge status={a.selfEvalStatus ?? null} type="self" />
                       </td>
                       <td className="max-w-[200px] px-2.5 py-2 text-slate-600 dark:text-slate-300">
                         {a.selfReviewNote?.trim() ? (
@@ -227,6 +276,38 @@ function TeamResultInline({
                           </span>
                         ) : (
                           <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        <div className="flex flex-col gap-1">
+                          <EvalStatusBadge status={a.managerEvalStatus ?? null} type="leader" />
+                          {a.managerReviewNote?.trim() && (
+                            <span
+                              className="text-[10px] text-slate-400 block max-w-[120px] truncate"
+                              title={a.managerReviewNote}
+                            >
+                              {a.managerReviewNote}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        {requestStatus === 'pending' ? (
+                          <Select
+                            value={evalMap[a.id] || '__none'}
+                            onValueChange={(v) => handleStatusChange(a.id, v)}
+                          >
+                            <SelectTrigger className="h-8 w-20 rounded-md border-slate-200">
+                              <SelectValue placeholder="—" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none">—</SelectItem>
+                              <SelectItem value="OK">OK</SelectItem>
+                              <SelectItem value="NOT">NOT</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <EvalStatusBadge status={a.finalEvalStatus ?? null} type="manager" />
                         )}
                       </td>
                     </tr>
@@ -420,6 +501,29 @@ export function ManagerKpiApprovalScreen() {
   const [rejectRequest, setRejectRequest] = useState<ApprovalRequest | null>(null)
   const [approvingId, setApprovingId] = useState<string | null>(null)
 
+  const [evaluationsByReqId, setEvaluationsByReqId] = useState<
+    Record<string, { assignmentId: string; status: 'OK' | 'NOT' }[]>
+  >({})
+  const [allEvaluatedByReqId, setAllEvaluatedByReqId] = useState<Record<string, boolean>>({})
+
+  const handleEvaluationsChange = useCallback(
+    (
+      reqId: string,
+      evals: { assignmentId: string; status: 'OK' | 'NOT' }[],
+      allEvaluated: boolean
+    ) => {
+      setEvaluationsByReqId((prev) => {
+        if (JSON.stringify(prev[reqId]) === JSON.stringify(evals)) return prev
+        return { ...prev, [reqId]: evals }
+      })
+      setAllEvaluatedByReqId((prev) => {
+        if (prev[reqId] === allEvaluated) return prev
+        return { ...prev, [reqId]: allEvaluated }
+      })
+    },
+    []
+  )
+
   const toggleExpand = useCallback((id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev)
@@ -445,13 +549,17 @@ export function ManagerKpiApprovalScreen() {
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ['kpi-approval-requests'] })
+    // Sau khi duyệt, finalEvalStatus được set → làm mới danh sách assignment inline để hiển thị
+    // "Đánh giá Manager" (read-only) thay vì cache cũ còn trống.
+    void qc.invalidateQueries({ queryKey: ['kpi-assignments-result'] })
   }, [qc])
 
   const handleApprove = useCallback(
     async (req: ApprovalRequest) => {
       setApprovingId(req.id)
       try {
-        await performanceApi.approveRequest(req.id)
+        const evaluations = evaluationsByReqId[req.id] ?? []
+        await performanceApi.approveRequest(req.id, evaluations)
         toast.success(
           req.type === 'result'
             ? `Đã duyệt kết quả team ${req.teamName ?? ''}`
@@ -464,7 +572,7 @@ export function ManagerKpiApprovalScreen() {
         setApprovingId(null)
       }
     },
-    [refresh]
+    [refresh, evaluationsByReqId]
   )
 
   const yearOptions = Array.from({ length: 3 }, (_, i) => y0 - 1 + i)
@@ -690,7 +798,15 @@ export function ManagerKpiApprovalScreen() {
 
                     {/* KPI / kết quả */}
                     {req.type === 'result' ? (
-                      <TeamResultInline teamId={req.teamId} year={req.year} month={req.month} />
+                      <TeamResultInline
+                        teamId={req.teamId}
+                        year={req.year}
+                        month={req.month}
+                        requestStatus={req.status}
+                        onEvaluationsChange={(evals, allEvaluated) =>
+                          handleEvaluationsChange(req.id, evals, allEvaluated)
+                        }
+                      />
                     ) : (
                       <TeamKpiInline teamId={req.teamId} year={req.year} month={req.month} />
                     )}
@@ -717,7 +833,10 @@ export function ManagerKpiApprovalScreen() {
                               e.stopPropagation()
                               void handleApprove(req)
                             }}
-                            disabled={approvingId === req.id}
+                            disabled={
+                              approvingId === req.id ||
+                              (req.type === 'result' && !allEvaluatedByReqId[req.id])
+                            }
                             className="bg-green-600 hover:bg-green-700 text-white"
                           >
                             {approvingId === req.id ? (

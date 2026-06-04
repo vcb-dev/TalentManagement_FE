@@ -14,7 +14,7 @@ import { isMockApiEnabled } from '@/lib/mockEnv'
  * (Đồng nhất với logic ở `MonthlyReportScreen` và `KpiOkrWorkspace`.)
  */
 function isAssignmentOk(row: PerformanceAssignment): boolean {
-  return (row.managerEvalStatus ?? '').trim().toUpperCase() === 'OK'
+  return (row.finalEvalStatus ?? row.managerEvalStatus ?? '').trim().toUpperCase() === 'OK'
 }
 
 /** Trạng thái tổng quát — gom "blocked" vào "chưa đạt" cho donut nhẹ. */
@@ -199,7 +199,7 @@ function aggregatePerPersonFromAssignments(
     const prev = byUser.get(a.assigneeUserId)
     const member = membersById.get(a.assigneeUserId)
     const name = member?.displayName?.trim() || member?.email?.trim() || prev?.name || 'Thành viên'
-    const ev = (a.managerEvalStatus ?? '').trim().toUpperCase()
+    const ev = (a.finalEvalStatus ?? a.managerEvalStatus ?? '').trim().toUpperCase()
     byUser.set(a.assigneeUserId, {
       kpiOk: (prev?.kpiOk ?? 0) + (a.kind === 'KPI' && ev === 'OK' ? 1 : 0),
       kpiNot: (prev?.kpiNot ?? 0) + (a.kind === 'KPI' && ev === 'NOT' ? 1 : 0),
@@ -236,7 +236,7 @@ function computeTopPriority(assignments: PerformanceAssignment[], limit = 6): To
     })
     .slice(0, limit)
     .map((row) => {
-      const raw = (row.managerEvalStatus ?? '').trim().toUpperCase()
+      const raw = (row.finalEvalStatus ?? row.managerEvalStatus ?? '').trim().toUpperCase()
       const evalStatus: TopPriorityItem['evalStatus'] =
         raw === 'OK' ? 'OK' : raw === 'NOT' ? 'NOT' : null
       return {
@@ -398,7 +398,7 @@ export function useKpiDashboardData(params: {
     const evalBreakdown = { ok: 0, not: 0, pending: 0 }
     for (const a of assignments) {
       statusBreakdown[statusOf(a)] += 1
-      const raw = (a.managerEvalStatus ?? '').trim().toUpperCase()
+      const raw = (a.finalEvalStatus ?? a.managerEvalStatus ?? '').trim().toUpperCase()
       if (raw === 'OK') evalBreakdown.ok += 1
       else if (raw === 'NOT') evalBreakdown.not += 1
       else evalBreakdown.pending += 1

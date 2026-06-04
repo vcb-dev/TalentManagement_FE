@@ -1,4 +1,4 @@
-﻿// @ts-nocheck -- uses file-based router params not yet in route tree
+// @ts-nocheck -- uses file-based router params not yet in route tree
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, useSearch } from '@tanstack/react-router'
@@ -185,7 +185,7 @@ export function UserSnapshotScreen() {
                           {topKpiP1.numericUnit ? ` ${topKpiP1.numericUnit}` : ''}
                         </span>
                       )}
-                      <EvalBadge status={topKpiP1.managerEvalStatus} />
+                      <EvalBadge status={topKpiP1.finalEvalStatus ?? topKpiP1.managerEvalStatus} />
                     </div>
                   </div>
                 ) : (

@@ -662,7 +662,7 @@ export function MemberKpiPanel({
     for (const a of assignments) {
       const s = map.get(a.assigneeUserId) ?? { total: 0, ok: 0, not: 0 }
       s.total++
-      const ev = (a.managerEvalStatus ?? '').trim().toUpperCase()
+      const ev = (a.finalEvalStatus ?? a.managerEvalStatus ?? '').trim().toUpperCase()
       if (ev === 'OK') s.ok++
       else if (ev === 'NOT') s.not++
       map.set(a.assigneeUserId, s)
@@ -772,7 +772,9 @@ export function MemberKpiPanel({
                   <ul className="mt-1 space-y-1.5">
                     {selectedItems.map((a) => {
                       const prio = priorityLabel(a.priority)
-                      const ev = (a.managerEvalStatus ?? '').trim().toUpperCase()
+                      const ev = (a.finalEvalStatus ?? a.managerEvalStatus ?? '')
+                        .trim()
+                        .toUpperCase()
                       const evalStatus = ev === 'OK' ? 'OK' : ev === 'NOT' ? 'NOT' : null
                       return (
                         <li

@@ -475,11 +475,7 @@ function AddItemButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 w-full gap-1 text-xs sm:h-7 sm:w-auto"
-        >
+        <Button variant="outline" size="sm" className="h-8 w-full gap-1 text-xs sm:h-7 sm:w-auto">
           <Plus className="h-3 w-3" />
           Thêm item
         </Button>
@@ -607,7 +603,7 @@ function EditItemButton({ item, onSaved }: { item: any; onSaved: () => void }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-6 w-6 rounded">
+        <Button variant="ghost" size="icon" className="h-6 w-6 rounded" title="Sửa">
           <Pencil className="h-3 w-3 text-slate-400" />
         </Button>
       </DialogTrigger>
@@ -666,6 +662,7 @@ function DeleteItemButton({ itemId, onDeleted }: { itemId: string; onDeleted: ()
       size="icon"
       className="h-6 w-6 rounded hover:bg-rose-50 hover:text-rose-600"
       onClick={handleDelete}
+      title="Xóa"
     >
       <Trash2 className="h-3 w-3" />
     </Button>
