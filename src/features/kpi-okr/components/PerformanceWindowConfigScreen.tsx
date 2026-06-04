@@ -1,4 +1,4 @@
-﻿import { useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { CalendarRange, Info, Pencil } from 'lucide-react'
@@ -31,6 +31,32 @@ function clampDay(n: number): number {
   return Math.min(31, Math.max(1, Math.floor(n)))
 }
 
+const DEFAULT_WINDOW_DAYS = {
+  assignStartDay: 1,
+  assignEndDay: 2,
+  answerStartDay: 1,
+  answerEndDay: 5,
+} as const
+
+function findWindowConfigForForm(
+  rows: PerformanceWindowConfig[] | undefined,
+  year: number,
+  month: number,
+  scope: 'global' | 'team',
+  teamId: string
+): PerformanceWindowConfig | null {
+  if (!rows?.length) return null
+  if (scope === 'team' && !teamId.trim()) return null
+  return (
+    rows.find(
+      (r) =>
+        r.year === year &&
+        r.month === month &&
+        (scope === 'global' ? r.teamId == null : r.teamId === teamId.trim())
+    ) ?? null
+  )
+}
+
 export function PerformanceWindowConfigScreen() {
   const queryClient = useQueryClient()
   const mock = isMockApiEnabled()
@@ -42,10 +68,10 @@ export function PerformanceWindowConfigScreen() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [scope, setScope] = useState<'global' | 'team'>('global')
   const [teamId, setTeamId] = useState('')
-  const [assignStartDay, setAssignStartDay] = useState(1)
-  const [assignEndDay, setAssignEndDay] = useState(2)
-  const [answerStartDay, setAnswerStartDay] = useState(1)
-  const [answerEndDay, setAnswerEndDay] = useState(5)
+  const [assignStartDay, setAssignStartDay] = useState<number>(DEFAULT_WINDOW_DAYS.assignStartDay)
+  const [assignEndDay, setAssignEndDay] = useState<number>(DEFAULT_WINDOW_DAYS.assignEndDay)
+  const [answerStartDay, setAnswerStartDay] = useState<number>(DEFAULT_WINDOW_DAYS.answerStartDay)
+  const [answerEndDay, setAnswerEndDay] = useState<number>(DEFAULT_WINDOW_DAYS.answerEndDay)
 
   const listQ = useQuery({
     queryKey: ['performance', 'window-configs'],
@@ -58,18 +84,6 @@ export function PerformanceWindowConfigScreen() {
     const m = new Map(allTeams.map((t) => [t.value, t.label] as const))
     return (id: string | null) => (id ? (m.get(id) ?? id.slice(0, 8)) : 'Toàn hệ thống')
   }, [allTeams])
-
-  const upsertM = useMutation({
-    mutationFn: performanceApi.upsertWindowConfig,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['performance', 'window-configs'] })
-      toast.success('Đã lưu cấu hình cửa sổ.')
-    },
-    onError: (e: unknown) => {
-      const msg = e && typeof e === 'object' && 'message' in e ? String((e as Error).message) : ''
-      toast.error(msg || 'Không lưu được — kiểm tra quyền kpi.window_override và dữ liệu.')
-    },
-  })
 
   const applyRowToForm = (row: PerformanceWindowConfig) => {
     setYear(row.year)
@@ -85,6 +99,39 @@ export function PerformanceWindowConfigScreen() {
       setScope('global')
       setTeamId('')
     }
+  }
+
+  useEffect(() => {
+    if (mock || listQ.isLoading || !listQ.isSuccess) return
+    const row = findWindowConfigForForm(listQ.data, year, month, scope, teamId)
+    if (row) {
+      setAssignStartDay(row.assignStartDay)
+      setAssignEndDay(row.assignEndDay)
+      setAnswerStartDay(row.answerStartDay)
+      setAnswerEndDay(row.answerEndDay)
+    } else {
+      setAssignStartDay(DEFAULT_WINDOW_DAYS.assignStartDay)
+      setAssignEndDay(DEFAULT_WINDOW_DAYS.assignEndDay)
+      setAnswerStartDay(DEFAULT_WINDOW_DAYS.answerStartDay)
+      setAnswerEndDay(DEFAULT_WINDOW_DAYS.answerEndDay)
+    }
+  }, [mock, listQ.isLoading, listQ.isSuccess, listQ.data, year, month, scope, teamId])
+
+  const upsertM = useMutation({
+    mutationFn: performanceApi.upsertWindowConfig,
+    onSuccess: async (saved) => {
+      applyRowToForm(saved)
+      await queryClient.invalidateQueries({ queryKey: ['performance', 'window-configs'] })
+      toast.success('Đã lưu cấu hình cửa sổ.')
+    },
+    onError: (e: unknown) => {
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as Error).message) : ''
+      toast.error(msg || 'Không lưu được — kiểm tra quyền kpi.window_override và dữ liệu.')
+    },
+  })
+
+  const editRowFromList = (row: PerformanceWindowConfig) => {
+    applyRowToForm(row)
     setTimeout(() => {
       formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 0)
@@ -331,7 +378,7 @@ export function PerformanceWindowConfigScreen() {
                       variant="outline"
                       size="sm"
                       className="w-full gap-1"
-                      onClick={() => applyRowToForm(row)}
+                      onClick={() => editRowFromList(row)}
                       disabled={mock}
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -370,7 +417,7 @@ export function PerformanceWindowConfigScreen() {
                             variant="outline"
                             size="sm"
                             className="gap-1"
-                            onClick={() => applyRowToForm(row)}
+                            onClick={() => editRowFromList(row)}
                             disabled={mock}
                           >
                             <Pencil className="h-3.5 w-3.5" />
