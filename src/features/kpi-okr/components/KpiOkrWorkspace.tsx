@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray, useWatch, Controller } from 'react-hook-form'
 import {
+  AlertTriangle,
   AlignLeft,
   CheckCircle2,
   ClipboardList,
@@ -348,25 +349,24 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     isTrafficTeamSelected &&
     variant === 'leader' &&
     (goalApprovalRequest?.status === 'pending' || goalApprovalRequest?.status === 'approved')
-  // Lock kết quả khi đang chờ duyệt (pending) - chỉ áp dụng cho Traffic team
-  // - pending: locked (Leader và Member không được sửa)
-  // - approved: Mở (Leader và Member được sửa)
-  // - rejected: Mở (Leader được sửa để gửi duyệt lại, Member không được sửa)
+  // Lock kết quả - chỉ áp dụng cho Traffic team. Áp dụng CHUNG cho cả Leader và Member:
+  // - pending: locked (đang chờ Manager duyệt)
+  // - approved: locked (đã duyệt, chốt kết quả)
+  // - rejected / chưa gửi (null): mở để nhập/sửa
   const isResultApprovalLocked =
-    isTrafficTeamSelected && resultApprovalRequest?.status === 'pending'
+    isTrafficTeamSelected &&
+    (resultApprovalRequest?.status === 'pending' || resultApprovalRequest?.status === 'approved')
 
   // Epic 4 — PATCH .../me; nhập kết quả (số liệu / evidence / tự đánh giá) theo kỳ đang chọn
-  // Member chỉ được nhập khi result đã được Manager duyệt (approved)
-  // Traffic team: pending/rejected = không được nhập; approved = được nhập
-  // Non-Traffic team: luôn được nhập nếu có quyền
-  const canMemberEditSelfResults = useMemo(
-    () =>
-      Boolean(user?.id) &&
-      eff.has('kpi.edit_own') &&
-      !isMockApiEnabled() &&
-      (!isTrafficTeamSelected || resultApprovalRequest?.status === 'approved'),
-    [user?.id, eff, isTrafficTeamSelected, resultApprovalRequest?.status]
-  )
+  // Non-Traffic team: luôn được nhập nếu có quyền.
+  // Traffic team (cả Leader và Member): chỉ nhập/sửa khi chưa gửi (null) hoặc bị từ chối (rejected);
+  // KHOÁ khi đang chờ duyệt (pending) hoặc đã được duyệt (approved).
+  const canMemberEditSelfResults = useMemo(() => {
+    if (!user?.id || !eff.has('kpi.edit_own') || isMockApiEnabled()) return false
+    if (!isTrafficTeamSelected) return true
+    const st = resultApprovalRequest?.status
+    return st !== 'pending' && st !== 'approved'
+  }, [user?.id, eff, isTrafficTeamSelected, resultApprovalRequest?.status])
 
   const isKinhDoanhTeam = Boolean(
     selectedDept &&
@@ -742,15 +742,11 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           loadingThis={assignmentsQ.isLoading}
           members={visibleMembers}
           membersLoading={membersForTeamQ.isLoading}
-          canEditTeam={
-            canEditTeam &&
-            !isGoalApprovalLocked &&
-            // Leader Traffic: được sửa khi result rejected (gửi lại) hoặc approved (đã duyệt), không được sửa khi pending
-            // Non-Leader: luôn được sửa (không bị restriction)
-            (variant !== 'leader' ||
-              !isTrafficTeamSelected ||
-              resultApprovalRequest?.status !== 'pending')
-          }
+          // Bảng "Chốt mục tiêu": khoá khi mục tiêu đang chờ duyệt / đã duyệt (goal lock).
+          canEditTeam={canEditTeam && !isGoalApprovalLocked}
+          // Bảng "Kết quả & đánh giá": ĐỘC LẬP với goal lock — chỉ khoá khi kết quả
+          // đang chờ Manager duyệt (pending). null / rejected / approved → Leader được nhập kết quả.
+          canEditResults={canEditTeam && !isResultApprovalLocked}
           isMemberView={isMemberView}
           selectedTeamId={selectedTeamId}
           year={year}
@@ -764,6 +760,9 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           templateCode={selectedTemplateCode}
           isManagerCascade={isManagerVariant}
           isTrafficTeam={isTrafficTeamSelected}
+          // Bảng "Kết quả & đánh giá" chỉ hiển thị chỉ số khi mục tiêu đã được duyệt
+          // (traffic team). Non-traffic không có luồng duyệt mục tiêu → luôn hiển thị.
+          goalApproved={!isTrafficTeamSelected || goalApprovalRequest?.status === 'approved'}
           resultApprovalRequest={resultApprovalRequest}
           isResultApprovalLocked={isResultApprovalLocked}
           onSubmitResultApproval={handleSubmitResultApproval}
@@ -2197,6 +2196,7 @@ function UserAssignmentWorkbench({
   onSubmitResultApproval,
   submittingResultApproval,
   canSubmitResultApproval,
+  submitBlockedByDraft,
 }: {
   byUser: Map<string, PerformanceAssignment[]>
   members: TeamMemberRow[]
@@ -2221,6 +2221,8 @@ function UserAssignmentWorkbench({
   onSubmitResultApproval?: () => void | Promise<void>
   submittingResultApproval?: boolean
   canSubmitResultApproval?: boolean
+  /** Khi true: "Gửi duyệt" hiển thị nhưng disabled vì còn bản nháp chưa lưu. */
+  submitBlockedByDraft?: boolean
 }) {
   const userEntries = useMemo(
     () => orderUserEntriesFirst(Array.from(byUser.entries()), prioritizeUserId),
@@ -2259,16 +2261,25 @@ function UserAssignmentWorkbench({
             {savingResultsDraft ? 'Đang lưu…' : 'Lưu bản nháp'}
           </Button>
         ) : null}
-        {isTrafficTeam && canSubmitResultApproval && onSubmitResultApproval ? (
-          <Button
-            type="button"
-            size="sm"
-            className="rounded-lg bg-emerald-600 font-semibold text-white hover:bg-emerald-700"
-            disabled={submittingResultApproval}
-            onClick={() => void onSubmitResultApproval()}
-          >
-            {submittingResultApproval ? 'Đang gửi…' : 'Gửi duyệt kết quả'}
-          </Button>
+        {isTrafficTeam &&
+        (canSubmitResultApproval || submitBlockedByDraft) &&
+        onSubmitResultApproval ? (
+          <div className="flex flex-col items-end gap-0.5">
+            <Button
+              type="button"
+              size="sm"
+              className="rounded-lg bg-emerald-600 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={submittingResultApproval || submitBlockedByDraft}
+              onClick={() => void onSubmitResultApproval()}
+            >
+              {submittingResultApproval ? 'Đang gửi…' : 'Gửi duyệt kết quả'}
+            </Button>
+            {submitBlockedByDraft && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                Lưu bản nháp trước khi gửi duyệt
+              </p>
+            )}
+          </div>
         ) : null}
       </div>
     ) : null
@@ -2434,51 +2445,152 @@ function UserAssignmentWorkbench({
   )
 }
 
-function WorkReportPanel({
-  assignmentsThisMonth,
-  loadingThis,
+/**
+ * Bảng 1 — "Chốt mục tiêu mới KPI/OKR". Tách riêng khỏi bảng Kết quả để logic
+ * (quyền sửa, khoá khi duyệt mục tiêu) không lẫn với bảng Kết quả.
+ */
+function PlanningSection({
+  byUser,
   members,
-  membersLoading,
   canEditTeam,
+  onRefresh,
+  currentUserId,
   isMemberView,
   selectedTeamId,
   year,
   month,
-  currentUserId,
-  onRefresh,
   assignmentWindowOpen,
-  assignmentWindowBounds,
-  canMemberEditSelfResults,
   planningReadOnly,
+  memberSelfEditableResults,
+  templateCode,
+  isManagerCascade,
+}: {
+  byUser: Map<string, PerformanceAssignment[]>
+  members: TeamMemberRow[]
+  canEditTeam: boolean
+  onRefresh: () => void
+  currentUserId: string | undefined
+  isMemberView: boolean
+  selectedTeamId: string
+  year: number
+  month: number
+  assignmentWindowOpen: boolean
+  planningReadOnly?: boolean
+  memberSelfEditableResults: boolean
+  templateCode?: string
+  isManagerCascade?: boolean
+}) {
+  return (
+    <section id="planning-section" className="scroll-mt-24">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-6 w-1 rounded-full bg-blue-600" />
+            <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              1. Chốt mục tiêu mới KPI/OKR cho tháng {month}/{year}
+            </h2>
+          </div>
+          <p className="text-sm text-slate-500">
+            Lập và chốt mục tiêu KPI/OKR mới cho team trong kỳ này.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex -space-x-2 overflow-hidden">
+            {members.slice(0, 5).map((m) => (
+              <OrgUserAvatar
+                key={m.userId}
+                name={m.displayName?.trim() || m.email?.trim() || '?'}
+                avatarUrl={teamMemberPortrait(m)}
+                className="h-7 w-7 text-[10px] ring-2 ring-white dark:ring-slate-950"
+              />
+            ))}
+            {members.length > 5 && (
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 ring-2 ring-white dark:bg-slate-800 dark:ring-slate-950 text-xs font-medium text-slate-500">
+                +{members.length - 5}
+              </div>
+            )}
+          </div>
+          {canEditTeam &&
+            selectedTeamId &&
+            !isMockApiEnabled() &&
+            assignmentWindowOpen &&
+            (isManagerCascade ? (
+              <ManagerCascadeAddForm
+                teamId={selectedTeamId}
+                year={year}
+                month={month}
+                onCreated={onRefresh}
+              />
+            ) : (
+              <MiniCreateForm
+                teamId={selectedTeamId}
+                year={year}
+                month={month}
+                members={members}
+                defaultAssigneeId={currentUserId ?? ''}
+                onCreated={onRefresh}
+              />
+            ))}
+        </div>
+      </div>
+      <UserAssignmentWorkbench
+        byUser={byUser}
+        members={members}
+        canEditTeam={canEditTeam}
+        onRefresh={onRefresh}
+        leaderMode="planning"
+        emptyText="Chưa có mục tiêu cho tháng này."
+        prioritizeUserId={currentUserId}
+        showUserList={!isMemberView}
+        memberSelfEditableResults={memberSelfEditableResults}
+        planningReadOnly={planningReadOnly}
+        templateCode={templateCode}
+        isManagerCascade={isManagerCascade}
+      />
+    </section>
+  )
+}
+
+/**
+ * Bảng 2 — "Kết quả & đánh giá". Tách riêng khỏi bảng Mục tiêu.
+ * - Sở hữu state bản nháp (draft) riêng.
+ * - Traffic team: chỉ hiển thị chỉ số KPI/OKR khi mục tiêu đã được duyệt (`goalApproved`).
+ */
+function ResultsSection({
+  byUser,
+  members,
+  canEditResults,
+  onRefresh,
+  currentUserId,
+  isMemberView,
+  year,
+  month,
+  memberSelfEditableResults,
   templateCode,
   isManagerCascade,
   isTrafficTeam,
   resultApprovalRequest,
   isResultApprovalLocked,
+  goalApproved,
   onSubmitResultApproval,
   submittingResultApproval,
   canSubmitResultApproval,
 }: {
-  assignmentsThisMonth: PerformanceAssignment[]
-  loadingThis: boolean
+  byUser: Map<string, PerformanceAssignment[]>
   members: TeamMemberRow[]
-  membersLoading: boolean
-  canEditTeam: boolean
+  canEditResults: boolean
+  onRefresh: () => void
+  currentUserId: string | undefined
   isMemberView: boolean
-  selectedTeamId: string
   year: number
   month: number
-  currentUserId: string | undefined
-  onRefresh: () => void
-  assignmentWindowOpen: boolean
-  assignmentWindowBounds: { startDay: number; endDay: number }
-  canMemberEditSelfResults: boolean
-  planningReadOnly?: boolean
+  memberSelfEditableResults: boolean
   templateCode?: string
   isManagerCascade?: boolean
   isTrafficTeam?: boolean
   resultApprovalRequest?: ApprovalRequest | null
   isResultApprovalLocked?: boolean
+  goalApproved: boolean
   onSubmitResultApproval?: () => void | Promise<void>
   submittingResultApproval?: boolean
   canSubmitResultApproval?: boolean
@@ -2517,6 +2629,8 @@ function WorkReportPanel({
         }
         if (saved > 0) {
           toast.success(`Đã lưu bản nháp (${saved} dòng).`)
+          // Xóa draft sau khi lưu thành công → mở khoá nút "Gửi duyệt kết quả"
+          setDraftByRowId({})
           onRefresh()
         } else {
           toast.info('Chưa có thay đổi để lưu.')
@@ -2530,14 +2644,152 @@ function WorkReportPanel({
     [draftByRowId, onRefresh]
   )
 
-  const byUserThis = useMemo(
-    () => groupAssignmentsByUser(assignmentsThisMonth),
-    [assignmentsThisMonth]
+  // Còn thay đổi chưa lưu → khoá nút "Gửi duyệt kết quả"
+  const hasPendingDraft = Object.keys(draftByRowId).length > 0
+
+  return (
+    <section id="results-section" className="scroll-mt-24">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-6 w-1 rounded-full bg-emerald-600" />
+            <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              2. Kết quả & đánh giá — T{month}/{year}
+            </h2>
+          </div>
+          <p className="text-sm text-slate-500">
+            Evidence / số liệu / tự đánh giá của nhân viên và đánh giá QL cho kỳ T{month}/{year}{' '}
+            (Epic 4).
+          </p>
+        </div>
+      </div>
+
+      {isTrafficTeam && resultApprovalRequest?.status === 'pending' && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-yellow-400/50 bg-yellow-50 px-4 py-3 dark:border-yellow-700/40 dark:bg-yellow-950/30">
+          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-yellow-400" />
+          <div className="flex-1 text-sm font-medium text-yellow-800 dark:text-yellow-200">
+            Kết quả T{month}/{year} đang chờ Manager duyệt — không thể chỉnh sửa.
+          </div>
+        </div>
+      )}
+      {isTrafficTeam && resultApprovalRequest?.status === 'approved' && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-green-400/50 bg-green-50 px-4 py-3 dark:border-green-700/40 dark:bg-green-950/30">
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <div className="flex-1 text-sm font-medium text-green-800 dark:text-green-200">
+            Kết quả T{month}/{year} đã được Manager duyệt.
+          </div>
+        </div>
+      )}
+      {isTrafficTeam && resultApprovalRequest?.status === 'rejected' && (
+        <div className="mb-4 rounded-xl border border-red-400/50 bg-red-50 px-4 py-3 dark:border-red-700/40 dark:bg-red-950/30">
+          <div className="flex items-center gap-3">
+            <X className="h-4 w-4 text-red-600 dark:text-red-400" />
+            <div className="flex-1 text-sm font-medium text-red-800 dark:text-red-200">
+              Kết quả bị từ chối — bạn có thể chỉnh sửa và gửi duyệt lại.
+            </div>
+          </div>
+          {resultApprovalRequest.note ? (
+            <p className="mt-1.5 pl-7 text-xs text-red-700 dark:text-red-300">
+              Lý do: {resultApprovalRequest.note}
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      {!goalApproved ? (
+        <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 px-6 text-center dark:border-amber-800/50 dark:bg-amber-950/20">
+          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+            Mục tiêu KPI/OKR tháng {month}/{year} chưa được duyệt.
+          </p>
+          <p className="text-xs text-amber-600/80 dark:text-amber-400/80">
+            Chỉ số KPI/OKR sẽ hiển thị để nhập kết quả sau khi mục tiêu được Manager duyệt.
+          </p>
+        </div>
+      ) : (
+        <UserAssignmentWorkbench
+          byUser={byUser}
+          members={members}
+          canEditTeam={canEditResults}
+          onRefresh={onRefresh}
+          leaderMode="results"
+          emptyText={`Chưa có dữ liệu KPI/OKR cho tháng ${month}/${year}.`}
+          prioritizeUserId={currentUserId}
+          showUserList={!isMemberView}
+          memberSelfEditableResults={memberSelfEditableResults && !isResultApprovalLocked}
+          templateCode={templateCode}
+          isManagerCascade={isManagerCascade}
+          resultsBatchDraft
+          resultsReadOnly={isResultApprovalLocked}
+          onDraftRowChange={handleDraftRowChange}
+          onSaveResultsDraft={handleSaveResultsDraft}
+          savingResultsDraft={savingDraft}
+          draftRowIds={Object.keys(draftByRowId)}
+          isTrafficTeam={isTrafficTeam}
+          onSubmitResultApproval={onSubmitResultApproval}
+          submittingResultApproval={submittingResultApproval}
+          canSubmitResultApproval={canSubmitResultApproval}
+          submitBlockedByDraft={hasPendingDraft}
+        />
+      )}
+    </section>
   )
-  const byUserResults = useMemo(
-    () => groupAssignmentsByUser(assignmentsThisMonth),
-    [assignmentsThisMonth]
-  )
+}
+
+function WorkReportPanel({
+  assignmentsThisMonth,
+  loadingThis,
+  members,
+  membersLoading,
+  canEditTeam,
+  canEditResults,
+  isMemberView,
+  selectedTeamId,
+  year,
+  month,
+  currentUserId,
+  onRefresh,
+  assignmentWindowOpen,
+  assignmentWindowBounds,
+  canMemberEditSelfResults,
+  planningReadOnly,
+  templateCode,
+  isManagerCascade,
+  isTrafficTeam,
+  goalApproved,
+  resultApprovalRequest,
+  isResultApprovalLocked,
+  onSubmitResultApproval,
+  submittingResultApproval,
+  canSubmitResultApproval,
+}: {
+  assignmentsThisMonth: PerformanceAssignment[]
+  loadingThis: boolean
+  members: TeamMemberRow[]
+  membersLoading: boolean
+  canEditTeam: boolean
+  canEditResults: boolean
+  isMemberView: boolean
+  selectedTeamId: string
+  year: number
+  month: number
+  currentUserId: string | undefined
+  onRefresh: () => void
+  assignmentWindowOpen: boolean
+  assignmentWindowBounds: { startDay: number; endDay: number }
+  canMemberEditSelfResults: boolean
+  planningReadOnly?: boolean
+  templateCode?: string
+  isManagerCascade?: boolean
+  isTrafficTeam?: boolean
+  goalApproved: boolean
+  resultApprovalRequest?: ApprovalRequest | null
+  isResultApprovalLocked?: boolean
+  onSubmitResultApproval?: () => void | Promise<void>
+  submittingResultApproval?: boolean
+  canSubmitResultApproval?: boolean
+}) {
+  const byUser = useMemo(() => groupAssignmentsByUser(assignmentsThisMonth), [assignmentsThisMonth])
 
   if (!selectedTeamId) {
     return (
@@ -2565,146 +2817,43 @@ function WorkReportPanel({
 
   return (
     <div className="space-y-12">
-      <section id="planning-section" className="scroll-mt-24">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="h-6 w-1 rounded-full bg-blue-600" />
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                1. Chốt mục tiêu mới KPI/OKR cho tháng {month}/{year}
-              </h2>
-            </div>
-            <p className="text-sm text-slate-500">
-              Lập và chốt mục tiêu KPI/OKR mới cho team trong kỳ này.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex -space-x-2 overflow-hidden">
-              {members.slice(0, 5).map((m) => (
-                <OrgUserAvatar
-                  key={m.userId}
-                  name={m.displayName?.trim() || m.email?.trim() || '?'}
-                  avatarUrl={teamMemberPortrait(m)}
-                  className="h-7 w-7 text-[10px] ring-2 ring-white dark:ring-slate-950"
-                />
-              ))}
-              {members.length > 5 && (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 ring-2 ring-white dark:bg-slate-800 dark:ring-slate-950 text-xs font-medium text-slate-500">
-                  +{members.length - 5}
-                </div>
-              )}
-            </div>
-            {canEditTeam &&
-              selectedTeamId &&
-              !isMockApiEnabled() &&
-              assignmentWindowOpen &&
-              (isManagerCascade ? (
-                <ManagerCascadeAddForm
-                  teamId={selectedTeamId}
-                  year={year}
-                  month={month}
-                  onCreated={onRefresh}
-                />
-              ) : (
-                <MiniCreateForm
-                  teamId={selectedTeamId}
-                  year={year}
-                  month={month}
-                  members={members}
-                  defaultAssigneeId={currentUserId ?? ''}
-                  onCreated={onRefresh}
-                />
-              ))}
-          </div>
-        </div>
-        <UserAssignmentWorkbench
-          byUser={byUserThis}
-          members={members}
-          canEditTeam={canEditTeam}
-          onRefresh={onRefresh}
-          leaderMode="planning"
-          emptyText="Chưa có mục tiêu cho tháng này."
-          prioritizeUserId={currentUserId}
-          showUserList={!isMemberView}
-          memberSelfEditableResults={canMemberEditSelfResults}
-          planningReadOnly={planningReadOnly}
-          templateCode={templateCode}
-          isManagerCascade={isManagerCascade}
-        />
-      </section>
+      <PlanningSection
+        byUser={byUser}
+        members={members}
+        canEditTeam={canEditTeam}
+        onRefresh={onRefresh}
+        currentUserId={currentUserId}
+        isMemberView={isMemberView}
+        selectedTeamId={selectedTeamId}
+        year={year}
+        month={month}
+        assignmentWindowOpen={assignmentWindowOpen}
+        planningReadOnly={planningReadOnly}
+        memberSelfEditableResults={canMemberEditSelfResults}
+        templateCode={templateCode}
+        isManagerCascade={isManagerCascade}
+      />
 
-      <section id="results-section" className="scroll-mt-24">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="h-6 w-1 rounded-full bg-emerald-600" />
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                2. Kết quả & đánh giá — T{month}/{year}
-              </h2>
-            </div>
-            <p className="text-sm text-slate-500">
-              Evidence / số liệu / tự đánh giá của nhân viên và đánh giá QL cho kỳ T{month}/{year}{' '}
-              (Epic 4).
-            </p>
-          </div>
-        </div>
-
-        {isTrafficTeam && resultApprovalRequest?.status === 'pending' && (
-          <div className="mb-4 flex items-center gap-3 rounded-xl border border-yellow-400/50 bg-yellow-50 px-4 py-3 dark:border-yellow-700/40 dark:bg-yellow-950/30">
-            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-yellow-400" />
-            <div className="flex-1 text-sm font-medium text-yellow-800 dark:text-yellow-200">
-              Kết quả T{month}/{year} đang chờ Manager duyệt — không thể chỉnh sửa.
-            </div>
-          </div>
-        )}
-        {isTrafficTeam && resultApprovalRequest?.status === 'approved' && (
-          <div className="mb-4 flex items-center gap-3 rounded-xl border border-green-400/50 bg-green-50 px-4 py-3 dark:border-green-700/40 dark:bg-green-950/30">
-            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <div className="flex-1 text-sm font-medium text-green-800 dark:text-green-200">
-              Kết quả T{month}/{year} đã được Manager duyệt.
-            </div>
-          </div>
-        )}
-        {isTrafficTeam && resultApprovalRequest?.status === 'rejected' && (
-          <div className="mb-4 rounded-xl border border-red-400/50 bg-red-50 px-4 py-3 dark:border-red-700/40 dark:bg-red-950/30">
-            <div className="flex items-center gap-3">
-              <X className="h-4 w-4 text-red-600 dark:text-red-400" />
-              <div className="flex-1 text-sm font-medium text-red-800 dark:text-red-200">
-                Kết quả bị từ chối — bạn có thể chỉnh sửa và gửi duyệt lại.
-              </div>
-            </div>
-            {resultApprovalRequest.note ? (
-              <p className="mt-1.5 pl-7 text-xs text-red-700 dark:text-red-300">
-                Lý do: {resultApprovalRequest.note}
-              </p>
-            ) : null}
-          </div>
-        )}
-
-        <UserAssignmentWorkbench
-          byUser={byUserResults}
-          members={members}
-          canEditTeam={canEditTeam}
-          onRefresh={onRefresh}
-          leaderMode="results"
-          emptyText={`Chưa có dữ liệu KPI/OKR cho tháng ${month}/${year}.`}
-          prioritizeUserId={currentUserId}
-          showUserList={!isMemberView}
-          memberSelfEditableResults={canMemberEditSelfResults && !isResultApprovalLocked}
-          templateCode={templateCode}
-          isManagerCascade={isManagerCascade}
-          resultsBatchDraft
-          resultsReadOnly={isResultApprovalLocked}
-          onDraftRowChange={handleDraftRowChange}
-          onSaveResultsDraft={handleSaveResultsDraft}
-          savingResultsDraft={savingDraft}
-          draftRowIds={Object.keys(draftByRowId)}
-          isTrafficTeam={isTrafficTeam}
-          onSubmitResultApproval={onSubmitResultApproval}
-          submittingResultApproval={submittingResultApproval}
-          canSubmitResultApproval={canSubmitResultApproval}
-        />
-      </section>
+      <ResultsSection
+        byUser={byUser}
+        members={members}
+        canEditResults={canEditResults}
+        onRefresh={onRefresh}
+        currentUserId={currentUserId}
+        isMemberView={isMemberView}
+        year={year}
+        month={month}
+        memberSelfEditableResults={canMemberEditSelfResults}
+        templateCode={templateCode}
+        isManagerCascade={isManagerCascade}
+        isTrafficTeam={isTrafficTeam}
+        resultApprovalRequest={resultApprovalRequest}
+        isResultApprovalLocked={isResultApprovalLocked}
+        goalApproved={goalApproved}
+        onSubmitResultApproval={onSubmitResultApproval}
+        submittingResultApproval={submittingResultApproval}
+        canSubmitResultApproval={canSubmitResultApproval}
+      />
     </div>
   )
 }

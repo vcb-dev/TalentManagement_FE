@@ -13,6 +13,7 @@ import {
   Target,
   Pencil,
   Eye,
+  Lock,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -721,6 +722,18 @@ export function MonthlyReportScreen() {
   })
   const assignmentsData = assignmentsQ.data ?? []
 
+  // Trạng thái duyệt KẾT QUẢ của team theo kỳ (chỉ traffic team mới có request — team khác trả null).
+  // Khóa nhập của member khi đang chờ duyệt (pending) hoặc đã được duyệt (approved).
+  const resultApprovalQ = useQuery({
+    queryKey: ['monthly-report-result-approval', selectedTeamId, year, month],
+    queryFn: () => performanceApi.getApprovalRequest(selectedTeamId, year, month, 'result'),
+    enabled: Boolean(selectedTeamId) && !isMockApiEnabled(),
+    staleTime: 30_000,
+  })
+  const resultApprovalRequest = resultApprovalQ.data ?? null
+  const isResultLocked =
+    resultApprovalRequest?.status === 'pending' || resultApprovalRequest?.status === 'approved'
+
   const monthlyReportQ = useQuery({
     queryKey: ['monthly-report', selectedDept?.id, year, month],
     queryFn: () => performanceApi.getMonthlyReport(selectedDept?.id ?? '', year, month),
@@ -765,7 +778,9 @@ export function MonthlyReportScreen() {
     !canSeeTeamWide &&
     selectedDetailUserId === userId &&
     eff.has('kpi.edit_own') &&
-    !isMockApiEnabled()
+    !isMockApiEnabled() &&
+    // Khóa nhập khi kết quả đang chờ duyệt (pending) hoặc đã được duyệt (approved)
+    !isResultLocked
 
   const invalidateMonthlyAssignments = useCallback(() => {
     void qc.invalidateQueries({
@@ -1191,6 +1206,17 @@ export function MonthlyReportScreen() {
                               {teamMemberName(uid)}
                             </button>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {!canSeeTeamWide && isResultLocked && (
+                      <div className="mx-4 mt-3 flex items-start gap-2.5 rounded-xl border border-amber-300/70 bg-amber-50 px-4 py-3 dark:border-amber-800/50 dark:bg-amber-950/20">
+                        <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                        <div className="text-sm text-amber-700 dark:text-amber-300">
+                          {resultApprovalRequest?.status === 'approved'
+                            ? 'Kết quả KPI/OKR kỳ này đã được Manager duyệt — không thể chỉnh sửa.'
+                            : 'Kết quả KPI/OKR kỳ này đang chờ Manager duyệt — không thể chỉnh sửa.'}
                         </div>
                       </div>
                     )}
