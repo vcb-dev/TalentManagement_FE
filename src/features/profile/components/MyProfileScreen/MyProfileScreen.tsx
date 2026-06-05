@@ -24,6 +24,10 @@ import { useAuthStore } from '@/stores/auth.store'
 import { type PatchMeUserBody, usePatchMeUser, useUploadMePortrait } from '@/features/profile/hooks'
 import { profileApi } from '@/features/profile/api'
 import { organizationApi, type OrgTreeTeam } from '@/features/organization/api'
+import {
+  EmployeeExtraTeamsField,
+  extraTeamIdsEqual,
+} from '@/features/hr-admin/components/EmployeeExtraTeamsField'
 import type { MyProfilePage } from '@/features/profile/types'
 import {
   formatUserDateForReadonlyDisplay,
@@ -115,10 +119,16 @@ function mapCurrentTitleToLevelId(
   return 'biet_viec'
 }
 
-type EditRecord = Record<MeUserPatchKey, string>
+type EditRecord = Record<MeUserPatchKey, string> & { extraTeamIds: string[] }
 
 function emptyEditRecord(): EditRecord {
-  return Object.fromEntries(ME_USER_PATCH_KEYS.map((k) => [k, ''])) as EditRecord
+  return {
+    ...(Object.fromEntries(ME_USER_PATCH_KEYS.map((k) => [k, ''])) as Record<
+      MeUserPatchKey,
+      string
+    >),
+    extraTeamIds: [],
+  }
 }
 
 function userToEdit(u: MeUserSelf): EditRecord {
@@ -133,14 +143,19 @@ function userToEdit(u: MeUserSelf): EditRecord {
   if (!r.displayName && u.fullNameLegal) {
     r.displayName = u.fullNameLegal
   }
+  r.extraTeamIds = u.extraTeamIds ?? u.teamIds?.slice(1) ?? []
   return r
 }
 
-function toPatch(edit: EditRecord): PatchMeUserBody {
+function toPatch(edit: EditRecord, original: MeUserSelf): PatchMeUserBody {
   const nz = (s: string) => (s.trim() === '' ? null : s.trim())
   const body = {} as PatchMeUserBody
   for (const k of ME_USER_PATCH_KEYS) {
     body[k] = nz(edit[k] ?? '')
+  }
+  const origExtras = original.extraTeamIds ?? original.teamIds?.slice(1) ?? []
+  if (!extraTeamIdsEqual(edit.extraTeamIds ?? [], origExtras)) {
+    body.extraTeamIds = edit.extraTeamIds ?? []
   }
   return body
 }
@@ -469,6 +484,13 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     if (!selectedDivisionId) return []
     return orgDepartments.find((department) => department.id === selectedDivisionId)?.teams ?? []
   }, [orgDepartments, selectedDivisionId])
+  const allTeamOptions = useMemo(
+    () =>
+      orgDepartments.flatMap((department) =>
+        department.teams.map((team) => ({ value: team.id, label: team.name }))
+      ),
+    [orgDepartments]
+  )
   const teamSelectDisabled = !selectedDivisionId || teamsForSelectedDivision.length === 0
 
   useEffect(() => {
@@ -516,14 +538,19 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     'indigo',
   ]
   const onSaveProfile = handleSubmit((values) =>
-    patchUser(toPatch(values), {
+    patchUser(toPatch(values, u), {
       onSuccess: () => {
-        form.reset(values) // Reset form để clear dirty state
+        form.reset(values)
         toast.success('Đã lưu')
         if (user && values.displayName) {
+          const primary = values.teamId?.trim() || null
+          const teamIds = primary
+            ? [primary, ...(values.extraTeamIds ?? []).filter((id) => id !== primary)]
+            : [...(values.extraTeamIds ?? [])]
           useAuthStore.getState().setUser({
             ...user,
             name: values.displayName,
+            teamIds,
           })
         }
       },
@@ -617,6 +644,14 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                         </p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           {workEditableFields.map((f) => renderField(f, fieldCtx))}
+                          <div className="sm:col-span-2">
+                            <EmployeeExtraTeamsField
+                              control={control}
+                              name="extraTeamIds"
+                              primaryTeamId={selectedTeamId}
+                              allTeams={allTeamOptions}
+                            />
+                          </div>
                         </div>
                       </div>
                     ) : null}

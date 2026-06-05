@@ -888,20 +888,55 @@ export function MonthlyReportScreen() {
   const maxViewYm = getMaxViewableYm()
 
   const treeQ = useHrOrgTree()
-  const departments = useMemo(() => treeQ.data?.departments ?? [], [treeQ.data])
+  const departments = useMemo(() => {
+    const all = treeQ.data?.departments ?? []
+    if (canSeeTeamWide) return all
+    const myIds = new Set((user?.teamIds ?? []).filter(Boolean))
+    if (!myIds.size) return []
+    return all
+      .map((dept) => ({
+        ...dept,
+        teams: dept.teams.filter((team) => myIds.has(team.id)),
+      }))
+      .filter((dept) => dept.teams.length > 0)
+  }, [treeQ.data, canSeeTeamWide, user?.teamIds])
   const selectedDept = useMemo(
     () => departments.find((d) => d.teams.some((t) => t.id === selectedTeamId)),
     [departments, selectedTeamId]
   )
-  const teamsInDept = selectedDept?.teams ?? departments[0]?.teams ?? []
+  const memberTeamIds = useMemo(() => (user?.teamIds ?? []).filter(Boolean), [user?.teamIds])
+  const memberMultiTeam = !canSeeTeamWide && memberTeamIds.length > 1
+  const memberTeamOptions = useMemo(
+    () =>
+      departments
+        .flatMap((d) => d.teams.map((t) => ({ ...t, deptName: d.name })))
+        .sort((a, b) => a.name.localeCompare(b.name, 'vi')),
+    [departments]
+  )
+  const teamsInDept = useMemo(() => {
+    const base = selectedDept?.teams ?? departments[0]?.teams ?? []
+    if (canSeeTeamWide) return base
+    const myIds = new Set(memberTeamIds)
+    return base.filter((t) => myIds.has(t.id))
+  }, [selectedDept, departments, canSeeTeamWide, memberTeamIds])
 
   useEffect(() => {
     if (selectedTeamId) return
-    const myFirstTeam = user?.teamIds?.[0]
+    const storageKey = user?.id ? `monthly-report-team-${user.id}` : null
+    const saved = storageKey ? localStorage.getItem(storageKey) : null
+    const preferredId =
+      saved && memberTeamIds.includes(saved)
+        ? saved
+        : memberTeamIds.find((id) => departments.some((d) => d.teams.some((t) => t.id === id)))
     const fallback = departments[0]?.teams[0]?.id ?? ''
-    const id = window.setTimeout(() => setSelectedTeamId(myFirstTeam ?? fallback), 0)
+    const id = window.setTimeout(() => setSelectedTeamId(preferredId ?? fallback), 0)
     return () => window.clearTimeout(id)
-  }, [selectedTeamId, user?.teamIds, departments])
+  }, [selectedTeamId, memberTeamIds, departments, user?.id])
+
+  useEffect(() => {
+    if (!memberMultiTeam || !selectedTeamId || !user?.id) return
+    localStorage.setItem(`monthly-report-team-${user.id}`, selectedTeamId)
+  }, [memberMultiTeam, selectedTeamId, user?.id])
 
   const membersQ = useQuery({
     queryKey: ['monthly-report-members', selectedTeamId],
@@ -1128,9 +1163,12 @@ export function MonthlyReportScreen() {
         {/* Phòng ban */}
         <Select
           value={selectedDept?.id ?? '__none'}
+          disabled={!canSeeTeamWide}
           onValueChange={(value) => {
             const dept = departments.find((d) => d.id === value)
-            setSelectedTeamId(dept?.teams[0]?.id ?? '')
+            const nextTeam =
+              dept?.teams.find((t) => memberTeamIds.includes(t.id))?.id ?? dept?.teams[0]?.id ?? ''
+            setSelectedTeamId(nextTeam)
           }}
         >
           <SelectTrigger className="h-8 w-[160px] rounded-lg border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800 [&>span]:truncate [&>span]:whitespace-nowrap">
@@ -1149,18 +1187,28 @@ export function MonthlyReportScreen() {
         {/* Nhóm */}
         <Select
           value={selectedTeamId || '__none'}
+          disabled={!canSeeTeamWide && !memberMultiTeam}
           onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
         >
           <SelectTrigger className="h-8 w-[145px] rounded-lg border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800 [&>span]:truncate [&>span]:whitespace-nowrap">
-            <SelectValue placeholder="Nhóm" />
+            <SelectValue placeholder={memberMultiTeam ? 'Nhóm đang xem' : 'Nhóm'} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__none">Tất cả</SelectItem>
-            {teamsInDept.map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                {t.name}
-              </SelectItem>
-            ))}
+            {(memberMultiTeam ? memberTeamOptions : teamsInDept).map((t) => {
+              const deptSuffix =
+                memberMultiTeam && 'deptName' in t && typeof t.deptName === 'string'
+                  ? t.deptName
+                  : null
+              return (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                  {deptSuffix ? (
+                    <span className="ml-1 text-xs text-slate-400">· {deptSuffix}</span>
+                  ) : null}
+                </SelectItem>
+              )
+            })}
           </SelectContent>
         </Select>
 

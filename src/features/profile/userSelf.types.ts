@@ -18,6 +18,10 @@ export interface MeUserSelf {
   departmentName: string | null
   divisionId: string | null
   teamId: string | null
+  /** Nhóm bổ sung (ngoài teamId theo phòng ban). */
+  extraTeamIds?: string[]
+  /** Primary + extras — computed từ BE. */
+  teamIds?: string[]
   directManager: string | null
   portraitRef: string | null
   gender: string | null

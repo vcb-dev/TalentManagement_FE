@@ -139,6 +139,7 @@ export type TeamMemberRow = {
   status: 'ACTIVE' | 'INACTIVE' | 'PROBATION' | 'RESERVED'
   avatarUrl: string | null
   portraitRef: string | null
+  membership?: 'primary' | 'extra' | 'secondary'
 }
 
 export type EligibleUserRow = {
@@ -261,12 +262,21 @@ export const organizationApi = {
   addTeamMember: async (
     teamId: string,
     userId: string
-  ): Promise<{ teamId: string; userId: string; movedFromTeamId: string | null }> => {
+  ): Promise<{
+    teamId: string
+    userId: string
+    movedFromTeamId: string | null
+    addedAsExtra?: boolean
+    /** @deprecated Dùng addedAsExtra */
+    addedAsSecondary?: boolean
+  }> => {
     assertOrgCrudNotMock('thêm thành viên')
     const res = await apiClient.post<{
       teamId: string
       userId: string
       movedFromTeamId: string | null
+      addedAsExtra?: boolean
+      addedAsSecondary?: boolean
     }>(`/organization/teams/${teamId}/members`, { userId })
     return res.data
   },

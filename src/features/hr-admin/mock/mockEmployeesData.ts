@@ -5,7 +5,6 @@ import { HR_DEPARTMENT_IDS, HR_TEAM_OPTIONS } from '@/features/hr-admin/hrOrgOpt
 
 export type CreateEmployeeMeta = {
   initialLevel?: 'tap_su' | 'biet_viec'
-  secondaryTeamId?: string
 }
 
 const DEPT = HR_DEPARTMENT_IDS.khoiKinhDoanh
@@ -206,10 +205,9 @@ export function mockPatchEmployee(
     next.teamIds = [patch.teamId, ...cur.teamIds.slice(1)]
     next.teamNames = next.teamIds.map(teamLabelForMock)
   }
-  if (patch.secondaryTeamId !== undefined) {
+  if (patch.extraTeamIds !== undefined) {
     const primary = next.teamIds[0] ?? MOCK_TEAM_NS01
-    const s = patch.secondaryTeamId.trim()
-    next.teamIds = s ? [primary, s] : [primary]
+    next.teamIds = [primary, ...patch.extraTeamIds.filter((id) => id !== primary)]
     next.teamNames = next.teamIds.map(teamLabelForMock)
   }
   if (patch.status !== undefined) next.status = patch.status
@@ -227,9 +225,7 @@ export function mockCreateEmployee(
 ): EmployeeEntity {
   const now = new Date().toISOString()
   const id = crypto.randomUUID()
-  const teamIds = [input.teamId]
-  const sec = meta?.secondaryTeamId?.trim()
-  if (sec && sec.length === 36) teamIds.push(sec)
+  const teamIds = [input.teamId, ...(input.extraTeamIds ?? []).filter((id) => id !== input.teamId)]
   const row: EmployeeEntity = {
     id,
     name: input.name,

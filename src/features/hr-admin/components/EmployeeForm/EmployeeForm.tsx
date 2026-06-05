@@ -20,6 +20,7 @@ import { SelectItem } from '@/components/ui/select'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import type { CreateEmployeeForm } from '@/features/hr-admin/schemas'
+import { EmployeeExtraTeamsField } from '@/features/hr-admin/components/EmployeeExtraTeamsField'
 import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 
 const ROLE_OPTIONS: { value: CreateEmployeeForm['role']; label: string }[] = [
@@ -54,6 +55,7 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
   const { handleSubmit, control } = form
   const { departments, teamsByDept, allTeams } = useHrOrgSelectOptions()
   const departmentId = useWatch({ control, name: 'departmentId' })
+  const teamId = useWatch({ control, name: 'teamId' })
   const teamOptions =
     (departmentId && teamsByDept.get(departmentId)?.length
       ? teamsByDept.get(departmentId)
@@ -171,7 +173,7 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                   <SelectController
                     control={control}
                     name="teamId"
-                    label="Team chính"
+                    label="Nhóm (theo phòng ban)"
                     required
                     labelClassName={labelClass}
                     triggerClassName={selectTriggerClass}
@@ -182,20 +184,12 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       </SelectItem>
                     ))}
                   </SelectController>
-                  <SelectController
+                  <EmployeeExtraTeamsField
                     control={control}
-                    name="secondaryTeamId"
-                    label="Team phụ (tùy chọn)"
-                    labelClassName={labelClass}
-                    triggerClassName={selectTriggerClass}
-                  >
-                    <SelectItem value="__none">-- Không gán --</SelectItem>
-                    {allTeams.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectController>
+                    name="extraTeamIds"
+                    primaryTeamId={teamId ?? ''}
+                    allTeams={allTeams}
+                  />
                   <SelectController
                     control={control}
                     name="initialLevel"

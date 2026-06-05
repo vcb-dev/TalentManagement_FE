@@ -73,9 +73,14 @@ import {
   type OrgAdminTeamRow,
   type TeamMemberRow,
 } from '@/features/organization/api'
+import { employeeKeys } from '@/features/hr-admin/queryKeys'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { usePermission } from '@/hooks/usePermission'
 import type { ApiError } from '@/types/api'
+
+function isExtraTeamMember(m: TeamMemberRow): boolean {
+  return m.membership === 'extra' || m.membership === 'secondary'
+}
 
 function readApiErrorMessage(err: unknown): string {
   if (isAxiosError<ApiError>(err)) {
@@ -1442,18 +1447,19 @@ function TeamMembersPanel({
   const invalidateMembers = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: teamMembersQueryKey(teamId) })
     void queryClient.invalidateQueries({ queryKey: DIVISIONS_WITH_TEAMS_QUERY_KEY })
+    void queryClient.invalidateQueries({ queryKey: employeeKeys.all })
   }, [queryClient, teamId])
 
   const addMemberM = useMutation({
     mutationFn: (userId: string) => organizationApi.addTeamMember(teamId, userId),
     onSuccess: (data) => {
       if (data.movedFromTeamId) {
-        toast.success('Đã chuyển nhân sự sang nhóm này (đã gỡ khỏi nhóm cũ)')
+        toast.success('Đã chuyển nhóm chính sang nhóm này')
         void queryClient.invalidateQueries({
           queryKey: teamMembersQueryKey(data.movedFromTeamId),
         })
       } else {
-        toast.success('Đã thêm thành viên vào nhóm')
+        toast.success('Đã gán nhóm chính')
       }
       invalidateMembers()
       void queryClient.invalidateQueries({ queryKey: ['organization', 'eligible-users'] })
@@ -1464,7 +1470,7 @@ function TeamMembersPanel({
   const removeMemberM = useMutation({
     mutationFn: (userId: string) => organizationApi.removeTeamMember(teamId, userId),
     onSuccess: () => {
-      toast.success('Đã xoá thành viên khỏi nhóm')
+      toast.success('Đã gỡ nhóm chính khỏi nhóm này')
       setPendingRemove(null)
       invalidateMembers()
     },
@@ -1604,7 +1610,14 @@ function TeamMembersPanel({
                           <TeamMemberAvatarCell m={m} />
                         </TableCell>
                         <TableCell className="align-middle font-medium">
-                          <div className="max-w-[220px] truncate">{memberRowDisplayName(m)}</div>
+                          <div className="flex max-w-[220px] items-center gap-1.5">
+                            <span className="truncate">{memberRowDisplayName(m)}</span>
+                            {m.membership === 'extra' || m.membership === 'secondary' ? (
+                              <Badge variant="outline" className="shrink-0 text-[10px]">
+                                Bổ sung
+                              </Badge>
+                            ) : null}
+                          </div>
                           {m.employeeCodePrimary ? (
                             <div className="truncate text-xs font-normal text-muted-foreground">
                               <span className="font-medium text-muted-foreground/90">Mã NV:</span>{' '}
@@ -1627,18 +1640,27 @@ function TeamMembersPanel({
                         </TableCell>
                         {canManage ? (
                           <TableCell className="pr-3 text-right align-middle">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                              onClick={() => setPendingRemove(m)}
-                              disabled={removing}
-                              title="Gỡ khỏi nhóm"
-                            >
-                              <UserMinus className="mr-1.5 h-4 w-4" />
-                              {removing ? 'Đang xoá…' : 'Xoá'}
-                            </Button>
+                            {isExtraTeamMember(m) ? (
+                              <span
+                                className="text-xs text-muted-foreground"
+                                title="Gỡ nhóm bổ sung tại hồ sơ nhân sự"
+                              >
+                                —
+                              </span>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => setPendingRemove(m)}
+                                disabled={removing}
+                                title="Gỡ nhóm chính khỏi nhóm"
+                              >
+                                <UserMinus className="mr-1.5 h-4 w-4" />
+                                {removing ? 'Đang gỡ…' : 'Gỡ'}
+                              </Button>
+                            )}
                           </TableCell>
                         ) : null}
                       </TableRow>
@@ -1665,10 +1687,10 @@ function TeamMembersPanel({
       {canManage ? (
         <OrgCrudConfirmDialog
           open={Boolean(pendingRemove)}
-          title="Gỡ thành viên khỏi nhóm?"
+          title="Gỡ nhóm chính?"
           body={
             pendingRemove
-              ? `Sẽ gỡ «${memberRowDisplayName(pendingRemove)}» khỏi nhóm «${teamName}». Hành động này không xoá tài khoản; có thể thêm lại sau.`
+              ? `Sẽ gỡ nhóm chính của «${memberRowDisplayName(pendingRemove)}» khỏi «${teamName}». Các nhóm bổ sung (nếu có) không thay đổi.`
               : ''
           }
           pending={removeMemberM.isPending}
@@ -1723,10 +1745,10 @@ function AddTeamMemberDialog({
     >
       <DialogContent className="flex h-[min(86vh,720px)] w-[calc(100vw-1rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="shrink-0 space-y-1 border-b border-border/70 px-6 py-5">
-          <DialogTitle>Thêm thành viên vào «{teamName}»</DialogTitle>
+          <DialogTitle>Gán / chuyển nhóm chính — «{teamName}»</DialogTitle>
           <DialogDescription>
-            Tìm theo tên, email hoặc mã nhân viên. Nhân sự đang thuộc nhóm khác sẽ được chuyển sang
-            nhóm này khi bạn chọn.
+            Tìm theo tên, email hoặc mã nhân viên để gán hoặc chuyển nhóm chính (theo phòng ban của
+            nhóm này). Không thay đổi các nhóm bổ sung.
           </DialogDescription>
         </DialogHeader>
 
@@ -1750,6 +1772,15 @@ function AddTeamMemberDialog({
               <Skeleton className="h-14 w-full rounded-lg" />
               <Skeleton className="h-14 w-full rounded-lg" />
               <Skeleton className="h-14 w-full rounded-lg" />
+            </div>
+          ) : eligibleQ.isError ? (
+            <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
+              <p className="text-sm font-medium text-destructive">
+                {readApiErrorMessage(eligibleQ.error)}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Không thể tìm nhân sự. Kiểm tra kết nối hệ thống và thử lại.
+              </p>
             </div>
           ) : rows.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
@@ -1804,10 +1835,12 @@ function EligibleUserRowItem({
         </div>
         {row.currentTeamName ? (
           <div className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
-            Đang thuộc nhóm: {row.currentTeamName} (sẽ chuyển sang nhóm mới)
+            Nhóm chính hiện tại: {row.currentTeamName} — sẽ chuyển sang nhóm này
           </div>
         ) : (
-          <div className="mt-0.5 text-xs text-muted-foreground">Chưa thuộc nhóm nào</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            Chưa có nhóm chính — sẽ gán làm nhóm chính
+          </div>
         )}
       </div>
       <Button
@@ -1819,7 +1852,7 @@ function EligibleUserRowItem({
         disabled={pending}
       >
         <UserPlus className="mr-1.5 h-4 w-4" />
-        Thêm
+        {row.currentTeamId ? 'Chuyển' : 'Gán'}
       </Button>
     </li>
   )

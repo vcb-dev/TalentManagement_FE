@@ -20,6 +20,8 @@ function toApiPayload(values: CreateEmployeeForm): CreateEmployeeInput {
   if (birth) payload.birthDate = birth
   const start = values.startDate?.trim()
   if (start) payload.startDate = start
+  const extras = (values.extraTeamIds ?? []).filter((id) => id !== values.teamId)
+  if (extras.length > 0) payload.extraTeamIds = extras
   return payload
 }
 
@@ -34,7 +36,7 @@ export function useEmployeeForm(onSuccess?: () => void) {
       teamId: DEFAULT_TEAM_ID,
       phone: '',
       birthDate: '',
-      secondaryTeamId: '',
+      extraTeamIds: [],
       initialLevel: 'tap_su',
       startDate: '',
       notifyEmail: true,
@@ -45,13 +47,11 @@ export function useEmployeeForm(onSuccess?: () => void) {
 
   const onSubmit = (values: CreateEmployeeForm) => {
     const input = toApiPayload(values)
-    const sec = values.secondaryTeamId?.trim()
     create.mutate(
       {
         input,
         meta: {
           initialLevel: values.initialLevel,
-          secondaryTeamId: sec && sec.length === 36 ? sec : undefined,
         },
       },
       { onSuccess: () => onSuccess?.() }

@@ -62,22 +62,17 @@ export const createEmployeeSchema = z.object({
 /** Form đầy đủ (gửi API chỉ các trường trong CreateEmployeeInput + meta mock). */
 export const createEmployeeFormSchema = createEmployeeSchema
   .extend({
-    secondaryTeamId: z
-      .string()
-      .transform((s) => s.trim())
-      .refine((s) => s.length === 0 || z.string().uuid().safeParse(s).success, {
-        message: 'Team phụ không hợp lệ',
-      }),
+    extraTeamIds: z.array(z.string().uuid()).default([]),
     startDate: optionalDateString,
     initialLevel: z.enum(['tap_su', 'biet_viec']).default('tap_su'),
     notifyEmail: z.boolean().default(true),
   })
   .superRefine((data, ctx) => {
-    if (data.secondaryTeamId && data.teamId && data.secondaryTeamId === data.teamId) {
+    if (data.extraTeamIds.includes(data.teamId)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Team phụ phải khác team chính',
-        path: ['secondaryTeamId'],
+        message: 'Nhóm bổ sung phải khác nhóm theo phòng ban',
+        path: ['extraTeamIds'],
       })
     }
   })

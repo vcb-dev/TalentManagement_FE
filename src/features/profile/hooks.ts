@@ -7,7 +7,9 @@ import { profileKeys } from '@/features/profile/queryKeys'
 import { dashboardKeys } from '@/features/dashboard/queryKeys'
 import type { MeUserPatchKey } from '@/features/profile/userSelf.types'
 
-export type PatchMeUserBody = Partial<Record<MeUserPatchKey, string | null>>
+export type PatchMeUserBody = Partial<Record<MeUserPatchKey, string | null>> & {
+  extraTeamIds?: string[]
+}
 
 export function useMyProfilePage() {
   return useQuery({

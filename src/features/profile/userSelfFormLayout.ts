@@ -34,7 +34,7 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
     title: 'Công việc & tổ chức',
     fields: [
       { key: 'divisionId', label: 'Phòng ban', kind: 'division-select' },
-      { key: 'teamId', label: 'Team', kind: 'team-select' },
+      { key: 'teamId', label: 'Nhóm (theo phòng ban)', kind: 'team-select' },
       { key: 'jobTitle', label: 'Vị trí chuyên môn', kind: 'job-title-select' },
       { key: 'teamPosition', label: 'Vị trí', kind: 'position-select' },
       { key: 'startDateWork', label: 'Ngày bắt đầu làm việc' },

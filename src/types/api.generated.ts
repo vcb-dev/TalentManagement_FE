@@ -213,6 +213,8 @@ export interface components {
             departmentId: string;
             /** Format: uuid */
             teamId: string;
+            /** @description Nhóm bổ sung (ngoài teamId theo phòng ban) */
+            extraTeamIds?: string[];
             phone?: string;
             birthDate?: string;
             /** @description Ngày bắt đầu làm việc (start_date_work) */
@@ -235,8 +237,8 @@ export interface components {
             birthDate?: string;
             /** @description Ngày bắt đầu làm việc */
             startDate?: string;
-            /** @description UUID team phụ trên FE; gửi chuỗi rỗng để xóa */
-            secondaryTeamId?: string;
+            /** @description Danh sách nhóm bổ sung (ngoài teamId theo phòng ban) */
+            extraTeamIds?: string[];
             /** @enum {string} */
             currentLevel?: "tap_su" | "biet_viec" | "duoc_viec" | "dong_gop_ket_qua" | "tuong";
             /** @enum {string} */

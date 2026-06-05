@@ -198,6 +198,8 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     [departments, selectedTeamId]
   )
   const teamsInDept = selectedDept?.teams ?? departments[0]?.teams ?? []
+  const memberTeamIds = useMemo(() => (user?.teamIds ?? []).filter(Boolean), [user?.teamIds])
+  const memberMultiTeam = isMemberView && memberTeamIds.length > 1
   /** MANAGER: bộ lọc hiển thị TẤT CẢ team, không gò theo phòng ban. */
   const allTeamsFlat = useMemo(
     () =>
@@ -206,17 +208,24 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         .sort((a, b) => a.name.localeCompare(b.name, 'vi')),
     [departments]
   )
+  const memberTeamOptions = useMemo(
+    () => allTeamsFlat.filter((t) => memberTeamIds.includes(t.id)),
+    [allTeamsFlat, memberTeamIds]
+  )
 
   useEffect(() => {
     if (selectedTeamId) return
-    const ids = user?.teamIds?.filter(Boolean) ?? []
-    const firstMemberTeamId = ids.find((id) =>
-      departments.some((d) => d.teams.some((t) => t.id === id))
-    )
+    const ids = memberTeamIds
+    const storageKey = user?.id ? `kpi-workspace-team-${user.id}` : null
+    const saved = storageKey ? localStorage.getItem(storageKey) : null
+    const preferredId =
+      saved && ids.includes(saved)
+        ? saved
+        : ids.find((id) => departments.some((d) => d.teams.some((t) => t.id === id)))
     const fallbackTeamId = departments[0]?.teams[0]?.id
     const id = window.setTimeout(() => {
-      if (firstMemberTeamId) {
-        setSelectedTeamId(firstMemberTeamId)
+      if (preferredId) {
+        setSelectedTeamId(preferredId)
         return
       }
       if (!isMemberView && fallbackTeamId) {
@@ -224,7 +233,12 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
       }
     }, 0)
     return () => window.clearTimeout(id)
-  }, [user?.teamIds, departments, selectedTeamId, isMemberView])
+  }, [memberTeamIds, departments, selectedTeamId, isMemberView, user?.id])
+
+  useEffect(() => {
+    if (!isMemberView || !memberMultiTeam || !selectedTeamId || !user?.id) return
+    localStorage.setItem(`kpi-workspace-team-${user.id}`, selectedTeamId)
+  }, [isMemberView, memberMultiTeam, selectedTeamId, user?.id])
 
   const assignKey = useMemo(
     () => ['kpi-assignments', selectedTeamId, year, month] as const,
@@ -592,20 +606,27 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           )}
           <Select
             value={selectedTeamId || '__none'}
-            disabled={isMemberView}
+            disabled={isMemberView && !memberMultiTeam}
             onValueChange={(value) => setSelectedTeamId(value === '__none' ? '' : value)}
           >
             <SelectTrigger className="h-9 w-[135px] rounded-lg border-0 bg-slate-100 text-sm hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 [&>span]:truncate [&>span]:whitespace-nowrap">
-              <SelectValue placeholder="Nhóm" />
+              <SelectValue placeholder={memberMultiTeam ? 'Nhóm đang xem' : 'Nhóm'} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__none">Tất cả</SelectItem>
-              {(isManagerReadOnly || isManagerVariant ? allTeamsFlat : teamsInDept).map((t) => (
+              {(isManagerReadOnly || isManagerVariant
+                ? allTeamsFlat
+                : memberMultiTeam
+                  ? memberTeamOptions
+                  : teamsInDept
+              ).map((t) => (
                 <SelectItem key={t.id} value={t.id}>
                   {t.name}
-                  {(isManagerReadOnly || isManagerVariant) && 'deptName' in t && t.deptName && (
-                    <span className="ml-1 text-xs text-slate-400">· {t.deptName}</span>
-                  )}
+                  {(isManagerReadOnly || isManagerVariant || memberMultiTeam) &&
+                    'deptName' in t &&
+                    t.deptName && (
+                      <span className="ml-1 text-xs text-slate-400">· {t.deptName}</span>
+                    )}
                 </SelectItem>
               ))}
             </SelectContent>

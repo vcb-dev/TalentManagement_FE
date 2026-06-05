@@ -24,6 +24,10 @@ import {
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { useDeactivateEmployee, useUpdateEmployee } from '@/features/hr-admin/hooks'
 import { DEFAULT_TEAM_ID } from '@/features/hr-admin/hrOrgOptions'
+import {
+  EmployeeExtraTeamsField,
+  extraTeamIdsEqual,
+} from '@/features/hr-admin/components/EmployeeExtraTeamsField'
 import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 import {
   avatarClassForRole,
@@ -155,7 +159,7 @@ type EmployeeEditFormValues = {
   phone: string
   birthDate: string
   startDate: string
-  secondaryTeamId: string
+  extraTeamIds: string[]
   currentLevel: EmployeeEntity['currentLevel']
 }
 
@@ -185,7 +189,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
       phone: employee.phone?.trim() ?? '',
       birthDate: employee.birthDate?.trim() ?? '',
       startDate: employee.startDate?.trim() ?? '',
-      secondaryTeamId: employee.teamIds[1] ?? '',
+      extraTeamIds: employee.teamIds.slice(1),
       currentLevel: employee.currentLevel,
     },
   })
@@ -202,7 +206,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
       phone: employee.phone?.trim() ?? '',
       birthDate: employee.birthDate?.trim() ?? '',
       startDate: employee.startDate?.trim() ?? '',
-      secondaryTeamId: employee.teamIds[1] ?? '',
+      extraTeamIds: employee.teamIds.slice(1),
       currentLevel: employee.currentLevel,
     })
   }, [
@@ -236,9 +240,10 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
     if (values.birthDate.trim() !== origBirth) patch.birthDate = values.birthDate.trim()
     const origStart = employee.startDate?.trim() ?? ''
     if (values.startDate.trim() !== origStart) patch.startDate = values.startDate.trim()
-    const origSec = employee.teamIds[1]?.trim() ?? ''
-    if (values.secondaryTeamId.trim() !== origSec) {
-      patch.secondaryTeamId = values.secondaryTeamId.trim()
+    const origExtras = employee.teamIds.slice(1)
+    const nextExtras = values.extraTeamIds ?? []
+    if (!extraTeamIdsEqual(origExtras, nextExtras)) {
+      patch.extraTeamIds = nextExtras
     }
     if (values.currentLevel !== employee.currentLevel) patch.currentLevel = values.currentLevel
     return Object.keys(patch).length > 0 ? patch : null
@@ -980,9 +985,9 @@ function EditTab({
   const orgSel = useHrOrgSelectOptions()
   const orgDisabled = !canEdit || isSaving
   const inactive = employee.status === 'INACTIVE'
-  const [editRole, editDepartmentId, editTeamId, editSecondaryTeamId] = useWatch({
+  const [editRole, editDepartmentId, editTeamId] = useWatch({
     control,
-    name: ['role', 'departmentId', 'teamId', 'secondaryTeamId'],
+    name: ['role', 'departmentId', 'teamId'],
   })
 
   const departmentOptions = useMemo(() => {
@@ -1004,17 +1009,6 @@ function EditTab({
     }
     return dedupeOptionsByValue(base)
   }, [orgSel.teamsByDept, orgSel.allTeams, editDepartmentId, editTeamId, employee])
-
-  const secondaryTeamOptions = useMemo(() => {
-    const base = [...orgSel.allTeams]
-    const v = (editSecondaryTeamId ?? '').trim()
-    if (v && !base.some((o) => o.value === v)) {
-      const fromAll = orgSel.allTeams.find((o) => o.value === v)?.label
-      const label = teamSelectLabel(v, fromAll, employee, 1)
-      return dedupeOptionsByValue([{ value: v, label }, ...base])
-    }
-    return dedupeOptionsByValue(base)
-  }, [orgSel.allTeams, editSecondaryTeamId, employee])
 
   const roleSelectOptions = useMemo((): Role[] => {
     if (editRole === 'TEACHER') {
@@ -1061,7 +1055,7 @@ function EditTab({
           <SelectController
             control={control}
             name="teamId"
-            label="Nhóm chính"
+            label="Nhóm (theo phòng ban)"
             className="mb-3"
             disabled={orgDisabled}
           >
@@ -1071,20 +1065,14 @@ function EditTab({
               </SelectItem>
             ))}
           </SelectController>
-          <SelectController
+          <EmployeeExtraTeamsField
             control={control}
-            name="secondaryTeamId"
-            label="Nhóm phụ (tùy chọn)"
-            className="mb-3"
+            name="extraTeamIds"
+            primaryTeamId={editTeamId ?? ''}
+            allTeams={orgSel.allTeams}
             disabled={orgDisabled}
-          >
-            <SelectItem value="__none">— Không gán —</SelectItem>
-            {secondaryTeamOptions.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectController>
+            className="mb-3"
+          />
           <DateController
             control={control}
             name="startDate"
