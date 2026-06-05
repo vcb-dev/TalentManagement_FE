@@ -116,6 +116,14 @@ export const ALL_MANDATORY_METRICS_FE: readonly string[] = [
   ...new Set(Object.values(MANDATORY_METRICS_BY_TEMPLATE).flat()),
 ]
 
+/**
+ * Member / báo cáo phòng Kinh doanh: ẩn P3 và phúc lợi (BENEFIT) — chỉ hiển thị KPI chính.
+ * Đồng bộ KpiOkrWorkspace (member) và MonthlyReportScreen.
+ */
+export function shouldShowAssignmentForMember(row: PerformanceAssignment): boolean {
+  return row.priority !== 3 && row.category !== 'BENEFIT'
+}
+
 /** Trả true nếu row KPI này bắt buộc nhập Số liệu (tính theo templateCode nếu có, fallback SALES_NV). */
 export function isMandatoryMetric(
   content: string | null | undefined,

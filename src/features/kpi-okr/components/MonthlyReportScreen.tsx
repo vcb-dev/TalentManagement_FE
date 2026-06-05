@@ -59,6 +59,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { WorkReportTab } from './WorkReportTab'
+import {
+  isCatalogEnabledDepartment,
+  isTrafficTeam,
+  shouldShowAssignmentForMember,
+} from '@/features/kpi-okr/catalogHelpers'
 
 function nowYm() {
   const d = new Date()
@@ -456,9 +461,11 @@ function MonthlyReportReadOnlyDetailPanel({ item }: { item: PerformanceAssignmen
 function MonthlyReportMemberTableRow({
   item,
   onSaved,
+  hideManagerEvalColumn,
 }: {
   item: PerformanceAssignment
   onSaved: () => void
+  hideManagerEvalColumn?: boolean
 }) {
   const [open, setOpen] = useState(false)
 
@@ -497,9 +504,11 @@ function MonthlyReportMemberTableRow({
         <td className="px-3 py-2.5">
           <EvalBadge status={item.managerEvalStatus} type="leader" />
         </td>
-        <td className="px-3 py-2.5">
-          <EvalBadge status={item.finalEvalStatus} type="manager" />
-        </td>
+        {!hideManagerEvalColumn ? (
+          <td className="px-3 py-2.5">
+            <EvalBadge status={item.finalEvalStatus} type="manager" />
+          </td>
+        ) : null}
         <td className="whitespace-nowrap px-2 py-2.5 text-right">
           <MonthlyReportEditButton onClick={() => setOpen(true)} label="Nhập" />
         </td>
@@ -514,7 +523,13 @@ function MonthlyReportMemberTableRow({
   )
 }
 
-function MonthlyReportReadOnlyTableRow({ item }: { item: PerformanceAssignment }) {
+function MonthlyReportReadOnlyTableRow({
+  item,
+  hideManagerEvalColumn,
+}: {
+  item: PerformanceAssignment
+  hideManagerEvalColumn?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const num =
     item.numericValue != null
@@ -552,9 +567,11 @@ function MonthlyReportReadOnlyTableRow({ item }: { item: PerformanceAssignment }
         <td className="px-3 py-2.5">
           <EvalBadge status={item.managerEvalStatus} type="leader" />
         </td>
-        <td className="px-3 py-2.5">
-          <EvalBadge status={item.finalEvalStatus} type="manager" />
-        </td>
+        {!hideManagerEvalColumn ? (
+          <td className="px-3 py-2.5">
+            <EvalBadge status={item.finalEvalStatus} type="manager" />
+          </td>
+        ) : null}
         <td className="whitespace-nowrap px-2 py-2.5 text-right">
           <MonthlyReportDetailOpenButton onClick={() => setOpen(true)} />
         </td>
@@ -579,7 +596,13 @@ function MonthlyReportReadOnlyTableRow({ item }: { item: PerformanceAssignment }
   )
 }
 
-function MonthlyReportDetailReadOnlyCard({ item }: { item: PerformanceAssignment }) {
+function MonthlyReportDetailReadOnlyCard({
+  item,
+  hideManagerEvalColumn,
+}: {
+  item: PerformanceAssignment
+  hideManagerEvalColumn?: boolean
+}) {
   return (
     <div className="space-y-3 border-b border-blue-100/50 py-4 first:pt-0 last:border-0 dark:border-blue-900/30">
       <div className="tabular-nums text-xs text-slate-500">{formatKpiSetAt(item.kpiSetAt)}</div>
@@ -650,12 +673,16 @@ function MonthlyReportDetailReadOnlyCard({ item }: { item: PerformanceAssignment
           {item.managerReviewNote?.trim() || '—'}
         </p>
       </div>
-      <div>
-        <span className="text-xs font-bold uppercase text-muted-foreground">Manager đánh giá</span>
-        <div className="mt-1">
-          <EvalBadge status={item.finalEvalStatus} type="manager" />
+      {!hideManagerEvalColumn ? (
+        <div>
+          <span className="text-xs font-bold uppercase text-muted-foreground">
+            Manager đánh giá
+          </span>
+          <div className="mt-1">
+            <EvalBadge status={item.finalEvalStatus} type="manager" />
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   )
 }
@@ -758,12 +785,41 @@ export function MonthlyReportScreen() {
     enabled: Boolean(selectedTeamId) && !isMockApiEnabled(),
   })
 
+  const catalogAllowlistQ = useQuery({
+    queryKey: ['performance', 'catalog-division-allowlist'],
+    queryFn: () => performanceApi.getCatalogDivisionAllowlist(),
+    staleTime: 60_000,
+    enabled: !isMockApiEnabled(),
+  })
+
   const assignmentsQ = useQuery({
     queryKey: ['monthly-report-assignments', selectedTeamId, year, month],
     queryFn: () => performanceApi.listAssignments(selectedTeamId, year, month),
     enabled: Boolean(selectedTeamId) && !isMockApiEnabled(),
   })
-  const assignmentsData = assignmentsQ.data ?? []
+  const assignmentsDataRaw = assignmentsQ.data ?? []
+
+  const isKinhDoanhDept = Boolean(
+    selectedDept &&
+    isCatalogEnabledDepartment(selectedDept, catalogAllowlistQ.data?.mergedDivisionIds ?? null)
+  )
+  const selectedTeam = useMemo(
+    () => teamsInDept.find((t) => t.id === selectedTeamId) ?? null,
+    [teamsInDept, selectedTeamId]
+  )
+  const hideManagerEvalColumn = Boolean(
+    isKinhDoanhDept &&
+    !isTrafficTeam(
+      selectedTeamId,
+      catalogAllowlistQ.data?.trafficTeamIds ?? null,
+      selectedTeam?.name ?? null
+    )
+  )
+
+  const assignmentsData = useMemo(() => {
+    if (!isKinhDoanhDept) return assignmentsDataRaw
+    return assignmentsDataRaw.filter(shouldShowAssignmentForMember)
+  }, [assignmentsDataRaw, isKinhDoanhDept])
 
   // Trạng thái duyệt KẾT QUẢ của team theo kỳ (chỉ traffic team mới có request — team khác trả null).
   // Khóa nhập của member khi đang chờ duyệt (pending) hoặc đã được duyệt (approved).
@@ -791,21 +847,27 @@ export function MonthlyReportScreen() {
       ? summariesData
       : summariesData.filter((x) => x.assigneeUserId === userId)
 
-  const assignmentsByUser = new Map<string, typeof assignmentsData>()
-  for (const item of assignmentsData) {
-    const rows = assignmentsByUser.get(item.assigneeUserId) ?? []
-    rows.push(item)
-    assignmentsByUser.set(item.assigneeUserId, rows)
-  }
+  const assignmentsByUser = useMemo(() => {
+    const m = new Map<string, PerformanceAssignment[]>()
+    for (const item of assignmentsData) {
+      const rows = m.get(item.assigneeUserId) ?? []
+      rows.push(item)
+      m.set(item.assigneeUserId, rows)
+    }
+    return m
+  }, [assignmentsData])
 
-  const selectedDetailUserId = (() => {
+  const selectedDetailUserId = useMemo(() => {
     if (selectedUserId && assignmentsByUser.has(selectedUserId)) return selectedUserId
     if (!canSeeTeamWide && userId && assignmentsByUser.has(userId)) return userId
     const first = assignmentsByUser.keys().next().value
     return typeof first === 'string' ? first : ''
-  })()
+  }, [selectedUserId, assignmentsByUser, canSeeTeamWide, userId])
 
-  const detailRows = selectedDetailUserId ? (assignmentsByUser.get(selectedDetailUserId) ?? []) : []
+  const detailRows = useMemo(
+    () => (selectedDetailUserId ? (assignmentsByUser.get(selectedDetailUserId) ?? []) : []),
+    [selectedDetailUserId, assignmentsByUser]
+  )
 
   useEffect(() => {
     if (!selectedTeamId) return
@@ -872,9 +934,12 @@ export function MonthlyReportScreen() {
       })
   }
 
-  const okCount = assignmentsData.filter(
-    (x) => (x.finalEvalStatus ?? x.managerEvalStatus ?? '').trim().toUpperCase() === 'OK'
-  ).length
+  const okCount = assignmentsData.filter((x) => {
+    const status = hideManagerEvalColumn
+      ? (x.managerEvalStatus ?? '')
+      : (x.finalEvalStatus ?? x.managerEvalStatus ?? '')
+    return status.trim().toUpperCase() === 'OK'
+  }).length
 
   const teamMemberName = (userId: string) => {
     const row = membersQ.data?.members.find((m) => m.userId === userId)
@@ -1293,7 +1358,11 @@ export function MonthlyReportScreen() {
                                 onSaved={invalidateMonthlyAssignments}
                               />
                             ) : (
-                              <MonthlyReportDetailReadOnlyCard key={item.id} item={item} />
+                              <MonthlyReportDetailReadOnlyCard
+                                key={item.id}
+                                item={item}
+                                hideManagerEvalColumn={hideManagerEvalColumn}
+                              />
                             )
                           )}
                         </div>
@@ -1326,9 +1395,11 @@ export function MonthlyReportScreen() {
                                 <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
                                   Leader ĐG
                                 </th>
-                                <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
-                                  Manager ĐG
-                                </th>
+                                {!hideManagerEvalColumn ? (
+                                  <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
+                                    Manager ĐG
+                                  </th>
+                                ) : null}
                                 <th className="px-3 py-3 text-right font-semibold text-slate-500"></th>
                               </tr>
                             </thead>
@@ -1339,9 +1410,14 @@ export function MonthlyReportScreen() {
                                     key={item.id}
                                     item={item}
                                     onSaved={invalidateMonthlyAssignments}
+                                    hideManagerEvalColumn={hideManagerEvalColumn}
                                   />
                                 ) : (
-                                  <MonthlyReportReadOnlyTableRow key={item.id} item={item} />
+                                  <MonthlyReportReadOnlyTableRow
+                                    key={item.id}
+                                    item={item}
+                                    hideManagerEvalColumn={hideManagerEvalColumn}
+                                  />
                                 )
                               )}
                             </tbody>

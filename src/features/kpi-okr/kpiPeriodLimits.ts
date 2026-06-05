@@ -87,3 +87,79 @@ export function resolveAssignmentWindowForTeam(
   if (globalCfg) return { startDay: globalCfg.assignStartDay, endDay: globalCfg.assignEndDay }
   return { startDay: 1, endDay: 2 }
 }
+
+/** Số ngày trong tháng (month 1–12). */
+export function daysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate()
+}
+
+/**
+ * Cửa sổ chốt KPI phòng Kinh doanh: từ ngày đầu tháng kỳ → ngày cuối tháng kế tiếp.
+ * Mặc định T6/2026: 01/06/2026 – 05/07/2026. HR override theo team qua window-config.
+ */
+export type KinhDoanhResultsCloseConfigSlice = {
+  teamId: string | null
+  year: number
+  month: number
+  answerStartDay: number
+  answerEndDay: number
+}
+
+export type KinhDoanhResultsCloseBounds = { startDay: number; endDay: number }
+
+export function kinhDoanhResultsCloseEndYm(
+  year: number,
+  month: number
+): {
+  year: number
+  month: number
+} {
+  if (month === 12) return { year: year + 1, month: 1 }
+  return { year, month: month + 1 }
+}
+
+export function resolveKinhDoanhResultsCloseWindowForTeam(
+  teamId: string,
+  year: number,
+  month: number,
+  configs: KinhDoanhResultsCloseConfigSlice[]
+): KinhDoanhResultsCloseBounds {
+  const specific = configs.find((c) => c.teamId === teamId && c.year === year && c.month === month)
+  if (specific) {
+    return { startDay: specific.answerStartDay, endDay: specific.answerEndDay }
+  }
+  return { startDay: 1, endDay: 5 }
+}
+
+/** Nhãn hiển thị khung chốt, vd. "1/6/2026 – 5/7/2026". */
+export function formatKinhDoanhResultsCloseRange(
+  year: number,
+  month: number,
+  bounds: KinhDoanhResultsCloseBounds
+): string {
+  const endYm = kinhDoanhResultsCloseEndYm(year, month)
+  return `${bounds.startDay}/${month}/${year} – ${bounds.endDay}/${endYm.month}/${endYm.year}`
+}
+
+export function getKinhDoanhResultsCloseWindowPhase(
+  year: number,
+  month: number,
+  cfg: KinhDoanhResultsCloseBounds = { startDay: 1, endDay: 5 },
+  now: Date = new Date()
+): AssignmentWindowPhase {
+  const start = new Date(year, month - 1, cfg.startDay, 0, 0, 0, 0)
+  const endYm = kinhDoanhResultsCloseEndYm(year, month)
+  const end = new Date(endYm.year, endYm.month - 1, cfg.endDay, 23, 59, 59, 999)
+  if (now < start) return 'before'
+  if (now > end) return 'after'
+  return 'open'
+}
+
+export function isKinhDoanhResultsCloseWindowOpen(
+  year: number,
+  month: number,
+  cfg: KinhDoanhResultsCloseBounds = { startDay: 1, endDay: 5 },
+  now: Date = new Date()
+): boolean {
+  return getKinhDoanhResultsCloseWindowPhase(year, month, cfg, now) === 'open'
+}

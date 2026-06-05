@@ -6,6 +6,9 @@ import {
   getAssignmentWindowPhase,
   isAssignmentWindowOpen,
   resolveAssignmentWindowForTeam,
+  resolveKinhDoanhResultsCloseWindowForTeam,
+  isKinhDoanhResultsCloseWindowOpen,
+  daysInMonth,
   type AssignmentWindowConfigSlice,
 } from '../kpiPeriodLimits'
 
@@ -134,5 +137,44 @@ describe('resolveAssignmentWindowForTeam', () => {
   it('fallback về mặc định 1–2 khi không có config nào', () => {
     const result = resolveAssignmentWindowForTeam(TEAM_ID, 2026, 6, baseConfigs)
     expect(result).toEqual({ startDay: 1, endDay: 2 })
+  })
+})
+
+describe('resolveKinhDoanhResultsCloseWindowForTeam', () => {
+  const TEAM_ID = 'team-kd'
+
+  it('mặc định ngày 1 tháng kỳ đến ngày 5 tháng sau', () => {
+    expect(resolveKinhDoanhResultsCloseWindowForTeam(TEAM_ID, 2026, 6, [])).toEqual({
+      startDay: 1,
+      endDay: 5,
+    })
+    expect(daysInMonth(2026, 2)).toBe(28)
+  })
+
+  it('ưu tiên config theo team', () => {
+    const configs = [{ teamId: TEAM_ID, year: 2026, month: 6, answerStartDay: 1, answerEndDay: 25 }]
+    expect(resolveKinhDoanhResultsCloseWindowForTeam(TEAM_ID, 2026, 6, configs)).toEqual({
+      startDay: 1,
+      endDay: 25,
+    })
+  })
+})
+
+describe('isKinhDoanhResultsCloseWindowOpen', () => {
+  it('mở từ 1/6 đến hết 5/7, khóa sau 5/7', () => {
+    const midJune = new Date(2026, 5, 15, 12, 0, 0)
+    const july3 = new Date(2026, 6, 3, 12, 0, 0)
+    const afterJuly5 = new Date(2026, 6, 6, 0, 0, 0)
+    const beforeJune = new Date(2026, 4, 31, 23, 0, 0)
+    expect(isKinhDoanhResultsCloseWindowOpen(2026, 6, { startDay: 1, endDay: 5 }, midJune)).toBe(
+      true
+    )
+    expect(isKinhDoanhResultsCloseWindowOpen(2026, 6, { startDay: 1, endDay: 5 }, july3)).toBe(true)
+    expect(isKinhDoanhResultsCloseWindowOpen(2026, 6, { startDay: 1, endDay: 5 }, afterJuly5)).toBe(
+      false
+    )
+    expect(isKinhDoanhResultsCloseWindowOpen(2026, 6, { startDay: 1, endDay: 5 }, beforeJune)).toBe(
+      false
+    )
   })
 })

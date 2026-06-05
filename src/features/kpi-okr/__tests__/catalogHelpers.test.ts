@@ -8,7 +8,33 @@ import {
   isTrafficTeam,
   MANDATORY_METRICS_BY_TEMPLATE,
   TRAFFIC_TEAM_IDS_FALLBACK,
+  shouldShowAssignmentForMember,
 } from '../catalogHelpers'
+import type { PerformanceAssignment } from '../api'
+
+function row(partial: Partial<PerformanceAssignment>): PerformanceAssignment {
+  return {
+    id: '1',
+    teamId: 't',
+    year: 2026,
+    month: 6,
+    assigneeUserId: 'u',
+    kind: 'KPI',
+    content: 'x',
+    priority: 1,
+    createdAt: '',
+    updatedAt: '',
+    ...partial,
+  } as PerformanceAssignment
+}
+
+describe('shouldShowAssignmentForMember', () => {
+  it('ẩn P3 và BENEFIT', () => {
+    expect(shouldShowAssignmentForMember(row({ priority: 3 }))).toBe(false)
+    expect(shouldShowAssignmentForMember(row({ category: 'BENEFIT' }))).toBe(false)
+    expect(shouldShowAssignmentForMember(row({ priority: 2, category: 'KPI_BONUS' }))).toBe(true)
+  })
+})
 
 describe('isMandatoryMetric', () => {
   it('SALES_NV: "Doanh thu lên đơn" là bắt buộc', () => {
