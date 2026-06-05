@@ -84,16 +84,48 @@ export const XL_TH = cn(
   'sticky top-0 z-10 whitespace-nowrap bg-slate-50/80 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500 shadow-sm backdrop-blur-md dark:bg-slate-900/90 dark:text-slate-400'
 )
 
-/** Cột đánh giá — width cố định để dropdown Leader không tràn sang Manager. */
-export const EVAL_LEADER_HEAD = 'min-w-[152px] w-[152px] max-w-[152px]'
-export const EVAL_MANAGER_HEAD = 'min-w-[136px] w-[136px] max-w-[136px]'
-export const EVAL_LEADER_CELL = cn(EVAL_LEADER_HEAD, 'p-2 align-middle')
-export const EVAL_MANAGER_CELL = cn(EVAL_MANAGER_HEAD, 'whitespace-nowrap')
+/** Width cột bảng Kết quả — đủ rộng để input không đè lên nhau (không dùng table-fixed). */
+const RESULTS_COL: Record<string, string> = {
+  Kỳ: 'w-[84px] min-w-[84px]',
+  'Ngày xét': 'w-[96px] min-w-[96px]',
+  'Hạng mục': 'w-[88px] min-w-[88px]',
+  'Ưu tiên': 'w-[96px] min-w-[96px]',
+  'Nội dung': 'w-[200px] min-w-[200px]',
+  'Chỉ tiêu': 'w-[84px] min-w-[84px]',
+  'Số liệu': 'w-[112px] min-w-[112px]',
+  'Đơn vị': 'w-[92px] min-w-[92px]',
+  'Minh chứng': 'w-[272px] min-w-[272px]',
+  'Tự đánh giá': 'w-[172px] min-w-[172px]',
+  'Đánh giá Leader': 'w-[172px] min-w-[172px]',
+  'Đánh giá Manager': 'w-[132px] min-w-[132px]',
+  'Thao tác': 'w-[96px] min-w-[96px]',
+}
 
+export const EVAL_LEADER_HEAD = RESULTS_COL['Đánh giá Leader']!
+export const EVAL_MANAGER_HEAD = RESULTS_COL['Đánh giá Manager']!
+export const EVAL_LEADER_CELL = cn(EVAL_LEADER_HEAD, 'overflow-hidden p-2 align-middle')
+export const EVAL_MANAGER_CELL = cn(
+  EVAL_MANAGER_HEAD,
+  'overflow-hidden whitespace-nowrap p-2 align-middle'
+)
+
+export const CELL_NUMERIC = cn(RESULTS_COL['Số liệu'], 'overflow-hidden p-2 align-middle')
+export const CELL_UNIT = cn(RESULTS_COL['Đơn vị'], 'overflow-hidden p-2 align-middle')
+export const CELL_EVIDENCE = cn(RESULTS_COL['Minh chứng'], 'overflow-hidden p-2 align-top')
+export const CELL_SELF_EVAL = cn(RESULTS_COL['Tự đánh giá'], 'overflow-hidden p-2 align-top')
+
+export function resultsColumnHeadClass(header: string): string | undefined {
+  return RESULTS_COL[header]
+}
+
+/** @deprecated Dùng resultsColumnHeadClass */
 export function evalColumnHeadClass(header: string): string | undefined {
-  if (header === 'Đánh giá Leader') return EVAL_LEADER_HEAD
-  if (header === 'Đánh giá Manager') return EVAL_MANAGER_HEAD
-  return undefined
+  return resultsColumnHeadClass(header)
+}
+
+/** min-width tổng bảng Kết quả (cộng padding ~80px). */
+export function resultsTableMinWidthClass(hideManagerEvalColumn: boolean): string {
+  return hideManagerEvalColumn ? 'min-w-[1560px]' : 'min-w-[1700px]'
 }
 
 /** Select gọn trong ô bảng — tránh px-5/py-4 mặc định của CustomSelect. */
@@ -281,14 +313,13 @@ export function AssignmentEpic4ReadCells({ row, td }: { row: PerformanceAssignme
   const hasImagePreviews = imageUrls.length > 0
   return (
     <>
-      <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-sm')}>{num}</TableCell>
-      <TableCell className={cn(td, 'text-xs uppercase')}>
-        <div className="w-[64px] truncate">{row.numericUnit ?? '—'}</div>
+      <TableCell className={cn(td, CELL_NUMERIC, 'whitespace-nowrap tabular-nums text-sm')}>
+        {num}
       </TableCell>
-      <TableCell
-        className={cn(td, 'max-w-[160px] min-w-[120px] text-xs')}
-        title={displayEv || undefined}
-      >
+      <TableCell className={cn(td, CELL_UNIT, 'text-xs uppercase')}>
+        <div className="truncate">{row.numericUnit ?? '—'}</div>
+      </TableCell>
+      <TableCell className={cn(td, CELL_EVIDENCE, 'text-xs')} title={displayEv || undefined}>
         {displayEv ? (
           <span className="line-clamp-3 whitespace-pre-wrap break-all">{displayEv}</span>
         ) : hasImagePreviews ? null : (
@@ -296,7 +327,7 @@ export function AssignmentEpic4ReadCells({ row, td }: { row: PerformanceAssignme
         )}
         <EvidenceImagePreviews evidence={row.evidence} maxHeightClass="h-12 max-w-[72px]" />
       </TableCell>
-      <TableCell className={td}>
+      <TableCell className={cn(td, CELL_SELF_EVAL)}>
         <EvalStatusBadge status={row.selfEvalStatus ?? null} type="self" />
       </TableCell>
     </>

@@ -210,11 +210,14 @@ export function KpiEvidenceInput({
   onChange,
   textareaClassName,
   disabled,
+  compact,
 }: {
   value: string
   onChange: (next: string) => void
   textareaClassName?: string
   disabled?: boolean
+  /** Bảng KPI: ẩn hint dài, thu gọn nút/textarea. */
+  compact?: boolean
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -252,8 +255,8 @@ export function KpiEvidenceInput({
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className={cn('min-w-0 max-w-full', compact ? 'space-y-1.5' : 'space-y-2')}>
+      <div className="flex flex-wrap items-center gap-1.5">
         <input
           ref={inputRef}
           type="file"
@@ -266,21 +269,26 @@ export function KpiEvidenceInput({
           type="button"
           variant="outline"
           size="sm"
-          className="h-9 gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
+          className={cn(
+            'gap-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300',
+            compact ? 'h-8 px-2' : 'h-9 gap-1.5 rounded-xl px-3'
+          )}
           disabled={disabled || uploading}
           onClick={() => inputRef.current?.click()}
         >
-          <Upload className="h-4 w-4 text-slate-500" />
+          <Upload className={cn('text-slate-500', compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
           {uploading ? 'Đang tải…' : 'Tải ảnh'}
         </Button>
-        <span className="text-xs text-muted-foreground">
-          Hoặc dán link trong ô dưới · JPEG/PNG/WebP/GIF · tối đa 8MB
-        </span>
+        {!compact ? (
+          <span className="text-xs text-muted-foreground">
+            Hoặc dán link trong ô dưới · JPEG/PNG/WebP/GIF · tối đa 8MB
+          </span>
+        ) : null}
       </div>
       <Textarea
         value={visible}
         onChange={(e) => onChange(mergeVisibleWithUploadLines(e.target.value, uploadLines))}
-        rows={3}
+        rows={compact ? 2 : 3}
         disabled={disabled}
         placeholder="Link minh chứng, đường dẫn ảnh, hoặc mô tả…"
         className={cn(

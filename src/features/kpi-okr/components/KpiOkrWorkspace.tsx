@@ -53,13 +53,18 @@ import {
   AssignmentEpic4ReadCells,
   AssignmentEpic4ReadStack,
   ContentCell,
+  CELL_EVIDENCE,
+  CELL_NUMERIC,
+  CELL_SELF_EVAL,
+  CELL_UNIT,
   EVAL_LEADER_CELL,
   EVAL_MANAGER_CELL,
   EvalStatusBadge,
-  evalColumnHeadClass,
   KindBadge,
   PLANNING_ASSIGN_TABLE_HEAD,
   PriorityBadge,
+  resultsColumnHeadClass,
+  resultsTableMinWidthClass,
   TABLE_INLINE_SELECT_TRIGGER,
   XL_TH,
   XL_BORDER,
@@ -937,6 +942,12 @@ const XL_TEXTAREA = cn(
   'box-border min-h-[80px] w-full min-w-[200px] max-w-[420px] resize-y rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
   'placeholder:text-slate-400'
 )
+/** Textarea trong ô bảng — không ép min-w 200px để tránh tràn cột. */
+const TABLE_TEXTAREA = cn(
+  'box-border min-h-[52px] w-full min-w-0 max-w-full resize-y rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
+  'placeholder:text-slate-400'
+)
+const TABLE_EVIDENCE_TEXTAREA = 'min-h-[60px] min-w-0 max-w-full resize-y text-xs'
 
 export type MemberSelfEditDraft = {
   evidence: string
@@ -1535,8 +1546,8 @@ function MemberSelfAssignmentRow({
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
         {formatViNumber(row.targetMetric) || '—'}
       </TableCell>
-      <TableCell className={cn(td, 'w-[100px] p-2 align-middle')}>
-        <div className="relative">
+      <TableCell className={cn(td, CELL_NUMERIC)}>
+        <div className="relative min-w-0">
           <Input
             value={numericDisplayValue}
             onChange={(e) => handleNumericChange(e.target.value)}
@@ -1562,7 +1573,7 @@ function MemberSelfAssignmentRow({
           )}
         </div>
       </TableCell>
-      <TableCell className={cn(td, 'w-[80px] p-2 align-middle')}>
+      <TableCell className={cn(td, CELL_UNIT)}>
         <Input
           value={numericUnit}
           onChange={(e) => setNumericUnit(e.target.value)}
@@ -1571,48 +1582,56 @@ function MemberSelfAssignmentRow({
           disabled={inputsDisabled || saving}
         />
       </TableCell>
-      <TableCell className={cn(td, 'min-w-[220px] max-w-[320px] p-2 align-top')}>
-        <KpiEvidenceInput
-          value={evidence}
-          onChange={setEvidence}
-          disabled={inputsDisabled || saving}
-          textareaClassName={submitValidation?.evidence ? INVALID_FIELD_RING : undefined}
-        />
+      <TableCell className={cn(td, CELL_EVIDENCE)}>
+        <div className="min-w-0 max-w-full">
+          <KpiEvidenceInput
+            value={evidence}
+            onChange={setEvidence}
+            disabled={inputsDisabled || saving}
+            compact
+            textareaClassName={cn(
+              TABLE_EVIDENCE_TEXTAREA,
+              submitValidation?.evidence && INVALID_FIELD_RING
+            )}
+          />
+        </div>
       </TableCell>
-      <TableCell className={cn(td, 'min-w-[120px] max-w-[140px] p-2 align-middle')}>
-        <CustomSelect
-          value={selfEvalStatus || '__none'}
-          onValueChange={(v) => {
-            const next = v === '__none' ? '' : v
-            setSelfEvalStatus(next)
-            // Phương án 2: Leader tự chấm dòng của mình → đồng bộ luôn sang Đánh giá Leader
-            if (canEditLeaderEval) setManagerEvalStatus(next)
-          }}
-          disabled={inputsDisabled || saving}
-          className="min-w-0 w-full"
-          triggerClassName={cn(
-            TABLE_INLINE_SELECT_TRIGGER,
-            submitValidation?.selfEval && INVALID_FIELD_RING
-          )}
-          options={[
-            { label: '—', value: '__none' },
-            { label: 'OK', value: 'OK' },
-            { label: 'NOT', value: 'NOT' },
-          ]}
-        />
-        <textarea
-          value={selfReviewNote}
-          onChange={(e) => setSelfReviewNote(e.target.value)}
-          rows={2}
-          className={cn(XL_TEXTAREA, 'mt-1 min-h-[52px]')}
-          placeholder="Nhận xét"
-          disabled={inputsDisabled || saving}
-        />
+      <TableCell className={cn(td, CELL_SELF_EVAL)}>
+        <div className="min-w-0 max-w-full space-y-1">
+          <CustomSelect
+            value={selfEvalStatus || '__none'}
+            onValueChange={(v) => {
+              const next = v === '__none' ? '' : v
+              setSelfEvalStatus(next)
+              // Phương án 2: Leader tự chấm dòng của mình → đồng bộ luôn sang Đánh giá Leader
+              if (canEditLeaderEval) setManagerEvalStatus(next)
+            }}
+            disabled={inputsDisabled || saving}
+            className="!space-y-0 min-w-0 w-full"
+            triggerClassName={cn(
+              TABLE_INLINE_SELECT_TRIGGER,
+              submitValidation?.selfEval && INVALID_FIELD_RING
+            )}
+            options={[
+              { label: '—', value: '__none' },
+              { label: 'OK', value: 'OK' },
+              { label: 'NOT', value: 'NOT' },
+            ]}
+          />
+          <textarea
+            value={selfReviewNote}
+            onChange={(e) => setSelfReviewNote(e.target.value)}
+            rows={2}
+            className={TABLE_TEXTAREA}
+            placeholder="Nhận xét"
+            disabled={inputsDisabled || saving}
+          />
+        </div>
       </TableCell>
       <TableCell className={cn(td, EVAL_LEADER_CELL)}>
         {canEditLeaderEval ? (
           // Dòng của chính Leader: ẩn ô chỉnh sửa, chỉ hiển thị (đồng bộ tự động từ Tự đánh giá)
-          <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <EvalStatusBadge status={managerEvalStatus || null} type="leader" />
             <span className="text-[10px] italic text-slate-400">Tự đồng bộ từ Tự đánh giá</span>
           </div>
@@ -2169,7 +2188,7 @@ function LeaderAssignmentRow({
               value={leaderEvalDraft.managerEvalStatus || '__none'}
               onValueChange={(v) => leaderEvalDraft.setManagerEvalStatus(v === '__none' ? '' : v)}
               disabled={leaderEvalDraft.inputsDisabled}
-              className="min-w-0 w-full"
+              className="!space-y-0 min-w-0 w-full"
               triggerClassName={cn(
                 TABLE_INLINE_SELECT_TRIGGER,
                 submitValidation?.leaderEval && INVALID_FIELD_RING
@@ -2184,7 +2203,7 @@ function LeaderAssignmentRow({
               value={leaderEvalDraft.managerReviewNote}
               onChange={(e) => leaderEvalDraft.setManagerReviewNote(e.target.value)}
               rows={2}
-              className={cn(XL_TEXTAREA, 'mt-0 min-h-[44px] max-w-full min-w-0 text-xs')}
+              className={TABLE_TEXTAREA}
               placeholder="Nhận xét"
               disabled={leaderEvalDraft.inputsDisabled}
             />
@@ -2483,18 +2502,18 @@ function AssignmentTableSingleUser({
     return base
   }, [isPlanning, hideRowSave, hideManagerEvalColumn])
   const showTrailingActionCell = tableHeads.includes('Thao tác')
-  const resultsTableMinWidth = hideManagerEvalColumn ? 'min-w-[1180px]' : 'min-w-[1320px]'
+  const resultsTableMinWidth = resultsTableMinWidthClass(Boolean(hideManagerEvalColumn))
 
   const tableHeader = (
     <TableHeader>
       <TableRow className="hover:bg-transparent border-b-slate-100 dark:border-b-slate-800">
-        {tableHeads.map((h, i) => (
+        {tableHeads.map((h) => (
           <TableHead
             key={h}
             className={cn(
               XL_TH,
-              evalColumnHeadClass(h),
-              i === tableHeads.length - 1 &&
+              !isPlanning && resultsColumnHeadClass(h),
+              h === 'Thao tác' &&
                 'sticky right-0 z-20 bg-slate-50/95 backdrop-blur-md shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-900/95'
             )}
           >
@@ -2667,12 +2686,7 @@ function AssignmentTableSingleUser({
       )}
       {canEditTeam ? (
         <div className="max-h-[min(70vh,calc(100vh-400px))] min-w-0 overflow-auto [scrollbar-width:thin] md:hidden">
-          <Table
-            className={cn(
-              'w-full table-fixed',
-              isPlanning ? 'min-w-[980px]' : resultsTableMinWidth
-            )}
-          >
+          <Table className={cn('w-full', isPlanning ? 'min-w-[980px]' : resultsTableMinWidth)}>
             {tableHeader}
             {tableBody}
           </Table>
@@ -2745,12 +2759,111 @@ function AssignmentTableSingleUser({
         </div>
       )}
       <div className="hidden max-h-[calc(100vh-400px)] min-w-0 overflow-auto [scrollbar-width:thin] md:block">
-        <Table
-          className={cn('w-full table-fixed', isPlanning ? 'min-w-[980px]' : resultsTableMinWidth)}
-        >
+        <Table className={cn('w-full', isPlanning ? 'min-w-[980px]' : resultsTableMinWidth)}>
           {tableHeader}
           {tableBody}
         </Table>
+      </div>
+    </div>
+  )
+}
+
+/** Thanh thao tác cấp team — lưu/ghi đè draft & gửi duyệt cho mọi nhân sự trong kỳ. */
+function ResultsBatchActionBar({
+  year,
+  month,
+  memberCount,
+  canEditResults,
+  memberSelfEditableResults,
+  resultsReadOnly,
+  isTrafficTeam,
+  isKinhDoanhTeam,
+  kinhDoanhResultsCloseOpen,
+  kinhDoanhResultsCloseBounds,
+  onSaveResultsDraft,
+  savingResultsDraft,
+  draftRowIds,
+  onSubmitResultApproval,
+  submittingResultApproval,
+  canSubmitResultApproval,
+}: {
+  year: number
+  month: number
+  memberCount: number
+  canEditResults: boolean
+  memberSelfEditableResults: boolean
+  resultsReadOnly?: boolean
+  isTrafficTeam?: boolean
+  isKinhDoanhTeam?: boolean
+  kinhDoanhResultsCloseOpen?: boolean
+  kinhDoanhResultsCloseBounds?: { startDay: number; endDay: number }
+  onSaveResultsDraft?: () => void | Promise<void>
+  savingResultsDraft?: boolean
+  draftRowIds?: string[]
+  onSubmitResultApproval?: () => void | Promise<void>
+  submittingResultApproval?: boolean
+  canSubmitResultApproval?: boolean
+}) {
+  const saveDraftLabel = isKinhDoanhTeam ? 'Chốt KPI tháng này' : 'Lưu bản nháp'
+  const saveDraftSavingLabel = isKinhDoanhTeam ? 'Đang chốt…' : 'Đang lưu…'
+  const kinhDoanhCloseBlocked = Boolean(isKinhDoanhTeam && !kinhDoanhResultsCloseOpen)
+  const showSave = !isMockApiEnabled() && (memberSelfEditableResults || canEditResults)
+  const showSubmit = Boolean(isTrafficTeam && canSubmitResultApproval && onSubmitResultApproval)
+
+  if (!showSave && !showSubmit) return null
+
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded-xl border border-emerald-200/70 bg-emerald-50/40 px-4 py-3 dark:border-emerald-900/40 dark:bg-emerald-950/20 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+          Thao tác cho toàn team
+        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Áp dụng cho{' '}
+          <strong className="font-semibold text-slate-700 dark:text-slate-300">
+            tất cả {memberCount} nhân sự
+          </strong>{' '}
+          trong kỳ T{month}/{year} — gồm mọi thay đổi chưa lưu trên các tab nhân sự bên dưới.
+        </p>
+        {kinhDoanhCloseBlocked && kinhDoanhResultsCloseBounds ? (
+          <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+            Chốt KPI T{month}/{year}:{' '}
+            {formatKinhDoanhResultsCloseRange(year, month, kinhDoanhResultsCloseBounds)}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        {showSave ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-lg font-semibold"
+            disabled={
+              savingResultsDraft ||
+              submittingResultApproval ||
+              resultsReadOnly ||
+              kinhDoanhCloseBlocked ||
+              !draftRowIds?.length
+            }
+            onClick={() => {
+              void onSaveResultsDraft?.()
+            }}
+          >
+            {savingResultsDraft ? saveDraftSavingLabel : saveDraftLabel}
+          </Button>
+        ) : null}
+        {showSubmit ? (
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-lg bg-emerald-600 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={submittingResultApproval || savingResultsDraft}
+            onClick={() => void onSubmitResultApproval?.()}
+          >
+            {submittingResultApproval ? 'Đang gửi…' : 'Gửi duyệt kết quả'}
+          </Button>
+        ) : null}
       </div>
     </div>
   )
@@ -2772,18 +2885,10 @@ function UserAssignmentWorkbench({
   resultsBatchDraft,
   resultsReadOnly,
   onDraftRowChange,
-  onSaveResultsDraft,
-  savingResultsDraft,
-  draftRowIds,
   draftByRowId,
   submitValidationByRowId,
   isTrafficTeam,
-  onSubmitResultApproval,
-  submittingResultApproval,
-  canSubmitResultApproval,
   isKinhDoanhTeam,
-  kinhDoanhResultsCloseOpen,
-  kinhDoanhResultsCloseBounds,
   year,
   month,
 }: {
@@ -2805,18 +2910,10 @@ function UserAssignmentWorkbench({
   resultsBatchDraft?: boolean
   resultsReadOnly?: boolean
   onDraftRowChange?: (rowId: string, draft: MemberSelfEditDraft) => void
-  onSaveResultsDraft?: () => void | Promise<void>
-  savingResultsDraft?: boolean
-  draftRowIds?: string[]
   draftByRowId?: Record<string, MemberSelfEditDraft>
   submitValidationByRowId?: Record<string, RowSubmitValidationHighlight>
   isTrafficTeam?: boolean
-  onSubmitResultApproval?: () => void | Promise<void>
-  submittingResultApproval?: boolean
-  canSubmitResultApproval?: boolean
   isKinhDoanhTeam?: boolean
-  kinhDoanhResultsCloseOpen?: boolean
-  kinhDoanhResultsCloseBounds?: { startDay: number; endDay: number }
 }) {
   const userEntries = useMemo(
     () => orderUserEntriesFirst(Array.from(byUser.entries()), prioritizeUserId),
@@ -2837,59 +2934,11 @@ function UserAssignmentWorkbench({
   const activeUserId = selectedUserId && byUser.has(selectedUserId) ? selectedUserId : defaultUserId
   const activeRows = byUser.get(activeUserId) ?? []
 
-  const saveDraftLabel = isKinhDoanhTeam ? 'Chốt KPI tháng này' : 'Lưu bản nháp'
-  const saveDraftSavingLabel = isKinhDoanhTeam ? 'Đang chốt…' : 'Đang lưu…'
-  const kinhDoanhCloseBlocked = Boolean(isKinhDoanhTeam && !kinhDoanhResultsCloseOpen)
   const hideManagerEvalColumn = Boolean(isKinhDoanhTeam && !isTrafficTeam)
-
-  const resultsActionBar =
-    leaderMode === 'results' && resultsBatchDraft ? (
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {!isMockApiEnabled() && (memberSelfEditableResults || canEditTeam) ? (
-          <div className="flex flex-col items-end gap-0.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-lg font-semibold"
-              disabled={
-                savingResultsDraft ||
-                resultsReadOnly ||
-                kinhDoanhCloseBlocked ||
-                !draftRowIds?.length
-              }
-              onClick={() => {
-                void onSaveResultsDraft?.()
-              }}
-            >
-              {savingResultsDraft ? saveDraftSavingLabel : saveDraftLabel}
-            </Button>
-            {kinhDoanhCloseBlocked && kinhDoanhResultsCloseBounds ? (
-              <p className="max-w-[300px] text-right text-[11px] text-amber-600 dark:text-amber-400">
-                Chốt KPI T{month}/{year}:{' '}
-                {formatKinhDoanhResultsCloseRange(year, month, kinhDoanhResultsCloseBounds)}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-        {isTrafficTeam && canSubmitResultApproval && onSubmitResultApproval ? (
-          <Button
-            type="button"
-            size="sm"
-            className="rounded-lg bg-emerald-600 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={submittingResultApproval}
-            onClick={() => void onSubmitResultApproval()}
-          >
-            {submittingResultApproval ? 'Đang gửi…' : 'Gửi duyệt kết quả'}
-          </Button>
-        ) : null}
-      </div>
-    ) : null
 
   if (!showUserList) {
     return (
       <div className="space-y-3">
-        {resultsActionBar}
         <AssignmentTableSingleUser
           userId={activeUserId}
           rows={activeRows}
@@ -3042,7 +3091,6 @@ function UserAssignmentWorkbench({
         aria-labelledby={`kpi-tab-${leaderMode}-${activeUserId}`}
         className="min-w-0 space-y-3"
       >
-        {resultsActionBar}
         <AssignmentTableSingleUser
           userId={activeUserId}
           rows={activeRows}
@@ -3234,6 +3282,7 @@ function ResultsSection({
     Record<string, RowSubmitValidationHighlight>
   >({})
   const [savingDraft, setSavingDraft] = useState(false)
+  const [submittingApproval, setSubmittingApproval] = useState(false)
   const draftByRowIdRef = useRef(draftByRowId)
   draftByRowIdRef.current = draftByRowId
 
@@ -3448,14 +3497,14 @@ function ResultsSection({
   const handleSubmitResultApprovalWithDraft = useCallback(async () => {
     if (!onSubmitResultApproval) return
     if (!validateBeforeSubmitResultApproval()) return
-    setSavingDraft(true)
+    setSubmittingApproval(true)
     try {
       const ok = await persistPendingDrafts({ silent: true })
       if (!ok) return
       await onSubmitResultApproval()
       setSubmitValidationByRowId({})
     } finally {
-      setSavingDraft(false)
+      setSubmittingApproval(false)
     }
   }, [onSubmitResultApproval, persistPendingDrafts, validateBeforeSubmitResultApproval])
 
@@ -3538,6 +3587,30 @@ function ResultsSection({
               </div>
             </div>
           ) : null}
+          <ResultsBatchActionBar
+            year={year}
+            month={month}
+            memberCount={byUser.size}
+            canEditResults={canEditResults}
+            memberSelfEditableResults={
+              memberSelfEditableResults &&
+              !isResultApprovalLocked &&
+              Boolean(kinhDoanhResultsCloseOpen)
+            }
+            resultsReadOnly={
+              isResultApprovalLocked || Boolean(isKinhDoanhTeam && !kinhDoanhResultsCloseOpen)
+            }
+            isTrafficTeam={isTrafficTeam}
+            isKinhDoanhTeam={isKinhDoanhTeam}
+            kinhDoanhResultsCloseOpen={kinhDoanhResultsCloseOpen}
+            kinhDoanhResultsCloseBounds={kinhDoanhResultsCloseBounds}
+            onSaveResultsDraft={handleSaveResultsDraft}
+            savingResultsDraft={savingDraft}
+            draftRowIds={Object.keys(draftByRowId)}
+            onSubmitResultApproval={handleSubmitResultApprovalWithDraft}
+            submittingResultApproval={submittingResultApproval || submittingApproval}
+            canSubmitResultApproval={canSubmitResultApproval}
+          />
           <UserAssignmentWorkbench
             byUser={byUser}
             members={members}
@@ -3561,18 +3634,10 @@ function ResultsSection({
               isResultApprovalLocked || Boolean(isKinhDoanhTeam && !kinhDoanhResultsCloseOpen)
             }
             onDraftRowChange={handleDraftRowChange}
-            onSaveResultsDraft={handleSaveResultsDraft}
-            savingResultsDraft={savingDraft}
-            draftRowIds={Object.keys(draftByRowId)}
             draftByRowId={draftByRowId}
             submitValidationByRowId={submitValidationByRowId}
             isTrafficTeam={isTrafficTeam}
             isKinhDoanhTeam={isKinhDoanhTeam}
-            kinhDoanhResultsCloseOpen={kinhDoanhResultsCloseOpen}
-            kinhDoanhResultsCloseBounds={kinhDoanhResultsCloseBounds}
-            onSubmitResultApproval={handleSubmitResultApprovalWithDraft}
-            submittingResultApproval={submittingResultApproval || savingDraft}
-            canSubmitResultApproval={canSubmitResultApproval}
           />
         </>
       )}
