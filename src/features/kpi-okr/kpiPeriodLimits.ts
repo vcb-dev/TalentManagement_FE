@@ -1,3 +1,5 @@
+import { isKpiWindowBypassed } from './kpiWindowBypass'
+
 /**
  * Giới hạn bộ lọc kỳ KPI/OKR: chỉ xem được tới tháng kế tiếp so với tháng hiện tại (theo lịch).
  * Ví dụ hôm nay tháng 4 → tối đa chọn tới tháng 5 cùng năm; tháng 6–12 không chọn được.
@@ -63,6 +65,7 @@ export function isAssignmentWindowOpen(
   cfg: { startDay?: number; endDay?: number } = {},
   now: Date = new Date()
 ): boolean {
+  if (isKpiWindowBypassed(year, month)) return true
   return getAssignmentWindowPhase(year, month, cfg, now) === 'open'
 }
 
@@ -161,5 +164,17 @@ export function isKinhDoanhResultsCloseWindowOpen(
   cfg: KinhDoanhResultsCloseBounds = { startDay: 1, endDay: 5 },
   now: Date = new Date()
 ): boolean {
+  if (isKpiWindowBypassed(year, month)) return true
   return getKinhDoanhResultsCloseWindowPhase(year, month, cfg, now) === 'open'
+}
+
+/**
+ * Cửa sổ trả lời khảo sát: 01/month/year → 23:59 ngày 05 tháng liền sau.
+ * Đồng bộ với BE `assertAnswerWindowOpen`.
+ */
+export function isAnswerWindowOpen(year: number, month: number, now: Date = new Date()): boolean {
+  if (isKpiWindowBypassed(year, month)) return true
+  const start = new Date(year, month - 1, 1, 0, 0, 0, 0)
+  const end = new Date(year, month, 5, 23, 59, 59, 999)
+  return now >= start && now <= end
 }

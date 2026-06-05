@@ -46,6 +46,7 @@ import {
   getKinhDoanhResultsCloseWindowPhase,
   isKinhDoanhResultsCloseWindowOpen,
   formatKinhDoanhResultsCloseRange,
+  isAnswerWindowOpen,
 } from '@/features/kpi-okr/kpiPeriodLimits'
 import { KpiEvidenceInput } from '@/features/kpi-okr/components/KpiEvidenceInput'
 import {
@@ -139,17 +140,6 @@ import {
 function nowYm() {
   const n = new Date()
   return { year: n.getFullYear(), month: n.getMonth() + 1 }
-}
-
-/**
- * Cửa sổ mở form khảo sát: từ 00:00 ngày 01 của `month/year` đến 23:59 ngày 05 tháng liền sau.
- * Ví dụ kỳ T4/2026 mở từ 01/04/2026 đến 05/05/2026 23:59. Hết hạn thì FE khoá form,
- * BE (`assertAnswerWindowOpen` ở performance.service.ts) sẽ trả 403 nếu client cố gọi.
- */
-function isAnswerWindowOpen(year: number, month: number, now: Date = new Date()): boolean {
-  const start = new Date(year, month - 1, 1, 0, 0, 0, 0)
-  const end = new Date(year, month, 5, 23, 59, 59, 999)
-  return now >= start && now <= end
 }
 
 function formatAnswerWindow(year: number, month: number): string {

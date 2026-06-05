@@ -8,6 +8,7 @@ import {
   resolveAssignmentWindowForTeam,
   resolveKinhDoanhResultsCloseWindowForTeam,
   isKinhDoanhResultsCloseWindowOpen,
+  isAnswerWindowOpen,
   daysInMonth,
   type AssignmentWindowConfigSlice,
 } from '../kpiPeriodLimits'
@@ -112,8 +113,18 @@ describe('isAssignmentWindowOpen', () => {
     expect(isAssignmentWindowOpen(2026, 5, {}, day1)).toBe(true)
   })
 
-  it('trả false ngoài cửa sổ', () => {
-    expect(isAssignmentWindowOpen(2026, 5, {}, FIXED_NOW)).toBe(false)
+  it('trả false ngoài cửa sổ (kỳ không bypass)', () => {
+    expect(isAssignmentWindowOpen(2026, 4, {}, FIXED_NOW)).toBe(false)
+  })
+
+  it('bypass T5/2026 — mở dù đã qua cửa sổ giao', () => {
+    const june = new Date(2026, 5, 10, 12, 0, 0)
+    expect(isAssignmentWindowOpen(2026, 5, {}, june)).toBe(true)
+  })
+
+  it('không bypass T6/2026', () => {
+    const june10 = new Date(2026, 5, 10, 12, 0, 0)
+    expect(isAssignmentWindowOpen(2026, 6, {}, june10)).toBe(false)
   })
 })
 
@@ -160,7 +171,26 @@ describe('resolveKinhDoanhResultsCloseWindowForTeam', () => {
   })
 })
 
+describe('isAnswerWindowOpen', () => {
+  it('bypass T5/2026 — mở dù sau 05/06/2026', () => {
+    const afterSurveyClose = new Date(2026, 5, 10, 12, 0, 0)
+    expect(isAnswerWindowOpen(2026, 5, afterSurveyClose)).toBe(true)
+  })
+
+  it('không bypass T6/2026 trước 01/06', () => {
+    const may31 = new Date(2026, 4, 31, 23, 0, 0)
+    expect(isAnswerWindowOpen(2026, 6, may31)).toBe(false)
+  })
+})
+
 describe('isKinhDoanhResultsCloseWindowOpen', () => {
+  it('bypass T5/2026 — mở dù sau 05/06/2026', () => {
+    const afterClose = new Date(2026, 5, 10, 12, 0, 0)
+    expect(isKinhDoanhResultsCloseWindowOpen(2026, 5, { startDay: 1, endDay: 5 }, afterClose)).toBe(
+      true
+    )
+  })
+
   it('mở từ 1/6 đến hết 5/7, khóa sau 5/7', () => {
     const midJune = new Date(2026, 5, 15, 12, 0, 0)
     const july3 = new Date(2026, 6, 3, 12, 0, 0)
