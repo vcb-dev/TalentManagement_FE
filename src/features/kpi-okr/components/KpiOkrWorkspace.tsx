@@ -53,10 +53,14 @@ import {
   AssignmentEpic4ReadCells,
   AssignmentEpic4ReadStack,
   ContentCell,
+  EVAL_LEADER_CELL,
+  EVAL_MANAGER_CELL,
   EvalStatusBadge,
+  evalColumnHeadClass,
   KindBadge,
   PLANNING_ASSIGN_TABLE_HEAD,
   PriorityBadge,
+  TABLE_INLINE_SELECT_TRIGGER,
   XL_TH,
   XL_BORDER,
   formatKpiSetAt,
@@ -988,6 +992,99 @@ function normalizeDraftForLeaderSelf(
   }
 }
 
+function isManagerEvalComplete(status: string | null | undefined): boolean {
+  const s = (status ?? '').trim().toUpperCase()
+  return s === 'OK' || s === 'NOT'
+}
+
+/** Trạng thái Đánh giá Leader hiệu lực (gộp server + bản nháp chưa lưu). */
+export type RowSubmitValidationHighlight = {
+  numeric?: boolean
+  numericUnit?: boolean
+  evidence?: boolean
+  selfEval?: boolean
+  leaderEval?: boolean
+}
+
+/** Dùng red-500 — `destructive` chưa khai báo trong theme nên viền không hiện đỏ. */
+const INVALID_FIELD_RING =
+  '!border-2 !border-red-500 !ring-2 !ring-red-500/25 focus:!border-red-500 focus:!ring-red-500/35 focus-visible:!border-red-500 focus-visible:!ring-red-500/35'
+
+function resolveManagerEvalStatusForRow(
+  assignment: PerformanceAssignment,
+  draft: MemberSelfEditDraft | undefined,
+  opts: { currentUserId?: string; canEditResults: boolean }
+): string {
+  const isLeaderSelfRow = Boolean(
+    opts.currentUserId && assignment.assigneeUserId === opts.currentUserId
+  )
+  const normalizedDraft = draft ? normalizeDraftForLeaderSelf(draft, isLeaderSelfRow) : undefined
+  if (isLeaderSelfRow) {
+    return (
+      normalizedDraft?.managerEvalStatus ||
+      normalizedDraft?.selfEvalStatus ||
+      assignment.selfEvalStatus ||
+      assignment.managerEvalStatus ||
+      ''
+    )
+  }
+  if (normalizedDraft?.managerEvalStatus) return normalizedDraft.managerEvalStatus
+  if (opts.canEditResults) return assignment.managerEvalStatus ?? ''
+  return (
+    normalizedDraft?.managerEvalStatus ||
+    normalizedDraft?.selfEvalStatus ||
+    assignment.managerEvalStatus ||
+    assignment.selfEvalStatus ||
+    ''
+  )
+}
+
+function computeRowSubmitValidationHighlights(
+  assignment: PerformanceAssignment,
+  draft: MemberSelfEditDraft | undefined,
+  opts: { currentUserId?: string; canEditResults: boolean; templateCode?: string }
+): RowSubmitValidationHighlight {
+  const highlight: RowSubmitValidationHighlight = {}
+  const isLeaderSelfRow = Boolean(
+    opts.currentUserId && assignment.assigneeUserId === opts.currentUserId
+  )
+  const normalized = draft ? normalizeDraftForLeaderSelf(draft, isLeaderSelfRow) : undefined
+
+  if (normalized) {
+    const leaderEvalOnly = Boolean(opts.canEditResults && !isLeaderSelfRow)
+    if (draftToPatchBody(normalized, { leaderEvalOnly }) === 'invalid') {
+      highlight.numeric = true
+    }
+  }
+
+  const numericRaw =
+    normalized?.numericRaw ??
+    (assignment.numericValue != null ? String(assignment.numericValue) : '')
+  const evidence = (normalized?.evidence ?? assignment.evidence ?? '').trim()
+  const selfEval = normalized?.selfEvalStatus ?? assignment.selfEvalStatus ?? ''
+  const managerStatus = resolveManagerEvalStatusForRow(assignment, draft, {
+    currentUserId: opts.currentUserId,
+    canEditResults: opts.canEditResults,
+  })
+
+  if (isLeaderSelfRow && opts.currentUserId) {
+    if (!numericRaw.trim()) highlight.numeric = true
+    if (!(normalized?.numericUnit ?? assignment.numericUnit ?? '').trim()) {
+      highlight.numericUnit = true
+    }
+    if (!evidence) highlight.evidence = true
+    if (!isManagerEvalComplete(selfEval)) highlight.selfEval = true
+  } else if (opts.canEditResults && !isLeaderSelfRow) {
+    if (!isManagerEvalComplete(managerStatus)) highlight.leaderEval = true
+  }
+
+  return highlight
+}
+
+function hasValidationHighlight(h: RowSubmitValidationHighlight): boolean {
+  return Boolean(h.numeric || h.numericUnit || h.evidence || h.selfEval || h.leaderEval)
+}
+
 function draftToPatchBody(draft: MemberSelfEditDraft, opts?: { leaderEvalOnly?: boolean }) {
   if (opts?.leaderEvalOnly) {
     return {
@@ -1364,6 +1461,8 @@ function MemberSelfAssignmentRow({
   onDraftChange,
   canEditLeaderEval,
   pendingDraft,
+  submitValidation,
+  hideManagerEvalColumn,
 }: {
   row: PerformanceAssignment
   rowStripe: boolean
@@ -1373,6 +1472,8 @@ function MemberSelfAssignmentRow({
   onDraftChange?: (draft: MemberSelfEditDraft) => void
   canEditLeaderEval?: boolean
   pendingDraft?: MemberSelfEditDraft
+  submitValidation?: RowSubmitValidationHighlight
+  hideManagerEvalColumn?: boolean
 }) {
   const isMandatory = isMandatoryMetric(row.content)
   const {
@@ -1444,9 +1545,8 @@ function MemberSelfAssignmentRow({
             inputMode="numeric"
             className={cn(
               XL_INPUT,
-              isMandatory &&
-                !numericRaw.trim() &&
-                'border-destructive ring-1 ring-destructive/30 focus:ring-destructive/40'
+              (submitValidation?.numeric || (isMandatory && !numericRaw.trim())) &&
+                INVALID_FIELD_RING
             )}
             placeholder={isMandatory ? 'Bắt buộc nhập' : '—'}
             aria-required={isMandatory}
@@ -1466,7 +1566,7 @@ function MemberSelfAssignmentRow({
         <Input
           value={numericUnit}
           onChange={(e) => setNumericUnit(e.target.value)}
-          className={XL_INPUT}
+          className={cn(XL_INPUT, submitValidation?.numericUnit && INVALID_FIELD_RING)}
           placeholder="VND"
           disabled={inputsDisabled || saving}
         />
@@ -1476,9 +1576,10 @@ function MemberSelfAssignmentRow({
           value={evidence}
           onChange={setEvidence}
           disabled={inputsDisabled || saving}
+          textareaClassName={submitValidation?.evidence ? INVALID_FIELD_RING : undefined}
         />
       </TableCell>
-      <TableCell className={cn(td, 'p-2 align-middle')}>
+      <TableCell className={cn(td, 'min-w-[120px] max-w-[140px] p-2 align-middle')}>
         <CustomSelect
           value={selfEvalStatus || '__none'}
           onValueChange={(v) => {
@@ -1488,6 +1589,11 @@ function MemberSelfAssignmentRow({
             if (canEditLeaderEval) setManagerEvalStatus(next)
           }}
           disabled={inputsDisabled || saving}
+          className="min-w-0 w-full"
+          triggerClassName={cn(
+            TABLE_INLINE_SELECT_TRIGGER,
+            submitValidation?.selfEval && INVALID_FIELD_RING
+          )}
           options={[
             { label: '—', value: '__none' },
             { label: 'OK', value: 'OK' },
@@ -1503,19 +1609,19 @@ function MemberSelfAssignmentRow({
           disabled={inputsDisabled || saving}
         />
       </TableCell>
-      <TableCell className={td}>
+      <TableCell className={cn(td, EVAL_LEADER_CELL)}>
         {canEditLeaderEval ? (
           // Dòng của chính Leader: ẩn ô chỉnh sửa, chỉ hiển thị (đồng bộ tự động từ Tự đánh giá)
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1">
             <EvalStatusBadge status={managerEvalStatus || null} type="leader" />
             <span className="text-[10px] italic text-slate-400">Tự đồng bộ từ Tự đánh giá</span>
           </div>
         ) : (
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1">
             <EvalStatusBadge status={row.managerEvalStatus} type="leader" />
             {row.managerReviewNote && (
               <div
-                className="text-xs text-slate-500 italic max-w-[150px] truncate"
+                className="text-xs text-slate-500 italic max-w-[140px] truncate"
                 title={row.managerReviewNote}
               >
                 {row.managerReviewNote}
@@ -1524,6 +1630,11 @@ function MemberSelfAssignmentRow({
           </div>
         )}
       </TableCell>
+      {!hideManagerEvalColumn ? (
+        <TableCell className={cn(td, EVAL_MANAGER_CELL)}>
+          <EvalStatusBadge status={row.finalEvalStatus} type="manager" />
+        </TableCell>
+      ) : null}
       {!hideSave ? (
         <TableCell
           className={cn(
@@ -1603,12 +1714,12 @@ function ReadOnlyAssignmentRow({
       ) : (
         <AssignmentEpic4ReadCells row={row} td={td} />
       )}
-      <TableCell className={td}>
-        <div className="flex flex-col gap-1">
+      <TableCell className={cn(td, EVAL_LEADER_CELL)}>
+        <div className="flex min-w-0 flex-col gap-1">
           <EvalStatusBadge status={row.managerEvalStatus} type="leader" />
           {row.managerReviewNote && (
             <div
-              className="text-xs text-slate-500 italic max-w-[150px] truncate"
+              className="text-xs text-slate-500 italic max-w-[140px] truncate"
               title={row.managerReviewNote}
             >
               {row.managerReviewNote}
@@ -1616,8 +1727,8 @@ function ReadOnlyAssignmentRow({
           )}
         </div>
       </TableCell>
-      {!hideManagerEvalColumn ? (
-        <TableCell className={td}>
+      {mode !== 'planning' && !hideManagerEvalColumn ? (
+        <TableCell className={cn(td, EVAL_MANAGER_CELL)}>
           <EvalStatusBadge status={row.finalEvalStatus} type="manager" />
         </TableCell>
       ) : null}
@@ -1768,10 +1879,7 @@ function MemberSelfAssignmentMobileCard({
             onFocus={() => setNumericFocused(true)}
             onBlur={() => setNumericFocused(false)}
             inputMode="numeric"
-            className={cn(
-              XL_INPUT,
-              isMandatory && !numericRaw.trim() && 'border-destructive ring-1 ring-destructive/30'
-            )}
+            className={cn(XL_INPUT, isMandatory && !numericRaw.trim() && INVALID_FIELD_RING)}
             placeholder={isMandatory ? 'Bắt buộc nhập' : '—'}
             aria-required={isMandatory}
             disabled={inputsDisabled || saving}
@@ -1859,6 +1967,7 @@ function LeaderAssignmentRow({
   disabled,
   pendingDraft,
   hideManagerEvalColumn,
+  submitValidation,
 }: {
   row: PerformanceAssignment
   mode: 'planning' | 'results'
@@ -1873,6 +1982,7 @@ function LeaderAssignmentRow({
   disabled?: boolean
   pendingDraft?: MemberSelfEditDraft
   hideManagerEvalColumn?: boolean
+  submitValidation?: RowSubmitValidationHighlight
 }) {
   const [open, setOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -2046,13 +2156,24 @@ function LeaderAssignmentRow({
       ) : (
         <AssignmentEpic4ReadCells row={row} td={td} />
       )}
-      <TableCell className={cn(td, 'p-2 align-middle')}>
+      <TableCell
+        className={cn(
+          td,
+          EVAL_LEADER_CELL,
+          submitValidation?.leaderEval && 'bg-red-50 dark:bg-red-950/20'
+        )}
+      >
         {canEditLeaderInline ? (
-          <>
+          <div className="min-w-0 w-full max-w-full space-y-1">
             <CustomSelect
               value={leaderEvalDraft.managerEvalStatus || '__none'}
               onValueChange={(v) => leaderEvalDraft.setManagerEvalStatus(v === '__none' ? '' : v)}
               disabled={leaderEvalDraft.inputsDisabled}
+              className="min-w-0 w-full"
+              triggerClassName={cn(
+                TABLE_INLINE_SELECT_TRIGGER,
+                submitValidation?.leaderEval && INVALID_FIELD_RING
+              )}
               options={[
                 { label: '—', value: '__none' },
                 { label: 'OK', value: 'OK' },
@@ -2063,17 +2184,17 @@ function LeaderAssignmentRow({
               value={leaderEvalDraft.managerReviewNote}
               onChange={(e) => leaderEvalDraft.setManagerReviewNote(e.target.value)}
               rows={2}
-              className={cn(XL_TEXTAREA, 'mt-1 min-h-[52px] max-w-none')}
+              className={cn(XL_TEXTAREA, 'mt-0 min-h-[44px] max-w-full min-w-0 text-xs')}
               placeholder="Nhận xét"
               disabled={leaderEvalDraft.inputsDisabled}
             />
-          </>
+          </div>
         ) : (
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1">
             <EvalStatusBadge status={row.managerEvalStatus} type="leader" />
             {row.managerReviewNote && (
               <div
-                className="text-xs text-slate-500 italic max-w-[150px] truncate"
+                className="text-xs text-slate-500 italic max-w-[140px] truncate"
                 title={row.managerReviewNote}
               >
                 {row.managerReviewNote}
@@ -2082,8 +2203,8 @@ function LeaderAssignmentRow({
           </div>
         )}
       </TableCell>
-      {!hideManagerEvalColumn ? (
-        <TableCell className={td}>
+      {mode !== 'planning' && !hideManagerEvalColumn ? (
+        <TableCell className={cn(td, EVAL_MANAGER_CELL)}>
           <EvalStatusBadge status={row.finalEvalStatus} type="manager" />
         </TableCell>
       ) : null}
@@ -2307,6 +2428,7 @@ function AssignmentTableSingleUser({
   onDraftRowChange,
   draftByRowId,
   hideManagerEvalColumn,
+  submitValidationByRowId,
 }: {
   userId: string
   rows: PerformanceAssignment[]
@@ -2325,6 +2447,7 @@ function AssignmentTableSingleUser({
   draftByRowId?: Record<string, MemberSelfEditDraft>
   /** Phòng Kinh doanh: ẩn cột Đánh giá Manager (chỉ dùng Leader). */
   hideManagerEvalColumn?: boolean
+  submitValidationByRowId?: Record<string, RowSubmitValidationHighlight>
 }) {
   // Manager variant: dedup rows by content — each metric shown once for team-wide cascade operations
   const rows = useMemo(() => {
@@ -2360,6 +2483,7 @@ function AssignmentTableSingleUser({
     return base
   }, [isPlanning, hideRowSave, hideManagerEvalColumn])
   const showTrailingActionCell = tableHeads.includes('Thao tác')
+  const resultsTableMinWidth = hideManagerEvalColumn ? 'min-w-[1180px]' : 'min-w-[1320px]'
 
   const tableHeader = (
     <TableHeader>
@@ -2369,6 +2493,7 @@ function AssignmentTableSingleUser({
             key={h}
             className={cn(
               XL_TH,
+              evalColumnHeadClass(h),
               i === tableHeads.length - 1 &&
                 'sticky right-0 z-20 bg-slate-50/95 backdrop-blur-md shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.12)] dark:bg-slate-900/95'
             )}
@@ -2417,6 +2542,8 @@ function AssignmentTableSingleUser({
                     ? (draft) => onDraftRowChange(r.id, draft)
                     : undefined
                 }
+                submitValidation={submitValidationByRowId?.[r.id]}
+                hideManagerEvalColumn={hideManagerEvalColumn}
               />
             )
           }
@@ -2435,6 +2562,7 @@ function AssignmentTableSingleUser({
                 disabled={resultsReadOnly}
                 pendingDraft={draftByRowId?.[r.id]}
                 hideManagerEvalColumn={hideManagerEvalColumn}
+                submitValidation={submitValidationByRowId?.[r.id]}
                 onDraftChange={
                   hideRowSave && onDraftRowChange
                     ? (draft) => onDraftRowChange(r.id, draft)
@@ -2463,6 +2591,8 @@ function AssignmentTableSingleUser({
                 rowStripe={idx % 2 === 1}
                 onSaved={onRefresh}
                 canEditLeaderEval={canEditTeam}
+                submitValidation={submitValidationByRowId?.[r.id]}
+                hideManagerEvalColumn={hideManagerEvalColumn}
               />
             )
           }
@@ -2537,7 +2667,12 @@ function AssignmentTableSingleUser({
       )}
       {canEditTeam ? (
         <div className="max-h-[min(70vh,calc(100vh-400px))] min-w-0 overflow-auto [scrollbar-width:thin] md:hidden">
-          <Table className={cn('w-full', isPlanning ? 'min-w-[980px]' : 'min-w-[1180px]')}>
+          <Table
+            className={cn(
+              'w-full table-fixed',
+              isPlanning ? 'min-w-[980px]' : resultsTableMinWidth
+            )}
+          >
             {tableHeader}
             {tableBody}
           </Table>
@@ -2610,7 +2745,9 @@ function AssignmentTableSingleUser({
         </div>
       )}
       <div className="hidden max-h-[calc(100vh-400px)] min-w-0 overflow-auto [scrollbar-width:thin] md:block">
-        <Table className={cn('w-full', isPlanning ? 'min-w-[980px]' : 'min-w-[1180px]')}>
+        <Table
+          className={cn('w-full table-fixed', isPlanning ? 'min-w-[980px]' : resultsTableMinWidth)}
+        >
           {tableHeader}
           {tableBody}
         </Table>
@@ -2639,12 +2776,11 @@ function UserAssignmentWorkbench({
   savingResultsDraft,
   draftRowIds,
   draftByRowId,
+  submitValidationByRowId,
   isTrafficTeam,
   onSubmitResultApproval,
   submittingResultApproval,
   canSubmitResultApproval,
-  submitBlockedByDraft,
-  submitBlockedByEvaluations,
   isKinhDoanhTeam,
   kinhDoanhResultsCloseOpen,
   kinhDoanhResultsCloseBounds,
@@ -2673,13 +2809,11 @@ function UserAssignmentWorkbench({
   savingResultsDraft?: boolean
   draftRowIds?: string[]
   draftByRowId?: Record<string, MemberSelfEditDraft>
+  submitValidationByRowId?: Record<string, RowSubmitValidationHighlight>
   isTrafficTeam?: boolean
   onSubmitResultApproval?: () => void | Promise<void>
   submittingResultApproval?: boolean
   canSubmitResultApproval?: boolean
-  /** Khi true: "Gửi duyệt" hiển thị nhưng disabled vì còn bản nháp chưa lưu. */
-  submitBlockedByDraft?: boolean
-  submitBlockedByEvaluations?: boolean
   isKinhDoanhTeam?: boolean
   kinhDoanhResultsCloseOpen?: boolean
   kinhDoanhResultsCloseBounds?: { startDay: number; endDay: number }
@@ -2738,33 +2872,16 @@ function UserAssignmentWorkbench({
             ) : null}
           </div>
         ) : null}
-        {isTrafficTeam &&
-        (canSubmitResultApproval || submitBlockedByDraft || submitBlockedByEvaluations) &&
-        onSubmitResultApproval ? (
-          <div className="flex flex-col items-end gap-0.5">
-            <Button
-              type="button"
-              size="sm"
-              className="rounded-lg bg-emerald-600 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={
-                submittingResultApproval || submitBlockedByDraft || submitBlockedByEvaluations
-              }
-              onClick={() => void onSubmitResultApproval()}
-            >
-              {submittingResultApproval ? 'Đang gửi…' : 'Gửi duyệt kết quả'}
-            </Button>
-            {submitBlockedByDraft ? (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                {isKinhDoanhTeam
-                  ? 'Chốt KPI trước khi gửi duyệt'
-                  : 'Lưu bản nháp trước khi gửi duyệt'}
-              </p>
-            ) : submitBlockedByEvaluations ? (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                Cần đánh giá hết KPI/OKR của các thành viên
-              </p>
-            ) : null}
-          </div>
+        {isTrafficTeam && canSubmitResultApproval && onSubmitResultApproval ? (
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-lg bg-emerald-600 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={submittingResultApproval}
+            onClick={() => void onSubmitResultApproval()}
+          >
+            {submittingResultApproval ? 'Đang gửi…' : 'Gửi duyệt kết quả'}
+          </Button>
         ) : null}
       </div>
     ) : null
@@ -2790,6 +2907,7 @@ function UserAssignmentWorkbench({
           onDraftRowChange={onDraftRowChange}
           draftByRowId={draftByRowId}
           hideManagerEvalColumn={hideManagerEvalColumn}
+          submitValidationByRowId={submitValidationByRowId}
         />
       </div>
     )
@@ -2942,6 +3060,7 @@ function UserAssignmentWorkbench({
           onDraftRowChange={onDraftRowChange}
           draftByRowId={draftByRowId}
           hideManagerEvalColumn={hideManagerEvalColumn}
+          submitValidationByRowId={submitValidationByRowId}
         />
       </div>
     </div>
@@ -3111,6 +3230,9 @@ function ResultsSection({
   onRecalculateSummaries?: () => Promise<void>
 }) {
   const [draftByRowId, setDraftByRowId] = useState<Record<string, MemberSelfEditDraft>>({})
+  const [submitValidationByRowId, setSubmitValidationByRowId] = useState<
+    Record<string, RowSubmitValidationHighlight>
+  >({})
   const [savingDraft, setSavingDraft] = useState(false)
   const draftByRowIdRef = useRef(draftByRowId)
   draftByRowIdRef.current = draftByRowId
@@ -3144,118 +3266,198 @@ function ResultsSection({
         if (existing && memberSelfDraftsEqual(existing, normalized)) return prev
         return { ...prev, [rowId]: normalized }
       })
+      setSubmitValidationByRowId((prev) => {
+        if (!(rowId in prev)) return prev
+        const assignment = assignmentById.get(rowId)
+        if (!assignment) return prev
+        const nextHighlight = computeRowSubmitValidationHighlights(assignment, normalized, {
+          currentUserId,
+          canEditResults,
+          templateCode,
+        })
+        if (hasValidationHighlight(nextHighlight)) {
+          return { ...prev, [rowId]: nextHighlight }
+        }
+        const { [rowId]: _removed, ...rest } = prev
+        void _removed
+        return rest
+      })
     },
-    [assignmentById, currentUserId]
+    [assignmentById, currentUserId, canEditResults, templateCode]
+  )
+
+  const persistPendingDrafts = useCallback(
+    async (opts?: { silent?: boolean }): Promise<boolean> => {
+      if (isKinhDoanhTeam && !kinhDoanhResultsCloseOpen) {
+        const b = kinhDoanhResultsCloseBounds
+        toast.error(
+          b
+            ? `Đã hết thời gian chốt KPI T${month}/${year} (khung ${formatKinhDoanhResultsCloseRange(year, month, b)}).`
+            : `Đã hết thời gian chốt KPI T${month}/${year}.`
+        )
+        return false
+      }
+      const drafts = draftByRowIdRef.current
+      const rowIds = Object.keys(drafts)
+      if (!rowIds.length) {
+        if (!opts?.silent) {
+          toast.info(isKinhDoanhTeam ? 'Chưa có thay đổi để chốt.' : 'Chưa có thay đổi để lưu.')
+        }
+        return true
+      }
+      if (!opts?.silent) setSavingDraft(true)
+      try {
+        let saved = 0
+        for (const rowId of rowIds) {
+          let draft = drafts[rowId]
+          if (!draft) continue
+          const assignment = assignmentById.get(rowId)
+          const isLeaderSelfRow = Boolean(
+            assignment && currentUserId && assignment.assigneeUserId === currentUserId
+          )
+          if (isLeaderSelfRow) {
+            draft = normalizeDraftForLeaderSelf(draft, true)
+          }
+          const leaderEvalOnly = Boolean(
+            canEditResults &&
+            assignment &&
+            currentUserId &&
+            assignment.assigneeUserId !== currentUserId
+          )
+          const body = draftToPatchBody(draft, { leaderEvalOnly })
+          if (body === 'invalid') {
+            toast.error('Số liệu không hợp lệ — kiểm tra lại trước khi lưu.')
+            return false
+          }
+          if (canEditResults) {
+            await performanceApi.patchAssignment(rowId, body)
+          } else {
+            const { managerEvalStatus: _m, managerReviewNote: _n, ...selfBody } = body
+            void _m
+            void _n
+            await performanceApi.patchAssignmentSelf(rowId, selfBody)
+          }
+          saved += 1
+        }
+        if (saved > 0) {
+          setDraftByRowId({})
+          onRefresh({ skipAutoRecalc: isKinhDoanhTeam })
+          if (isKinhDoanhTeam && onRecalculateSummaries) {
+            try {
+              await onRecalculateSummaries()
+              if (!opts?.silent) {
+                toast.success(
+                  `Đã chốt KPI tháng ${month}/${year} (${saved} dòng) và cập nhật bảng hiệu suất.`
+                )
+              }
+            } catch {
+              if (!opts?.silent) {
+                toast.warning(
+                  `Đã chốt KPI (${saved} dòng) nhưng chưa tính được bảng hiệu suất — thử "Tính lại tổng hợp".`
+                )
+              }
+            }
+          } else if (!opts?.silent) {
+            toast.success(
+              isKinhDoanhTeam
+                ? `Đã chốt KPI tháng ${month}/${year} (${saved} dòng).`
+                : `Đã lưu bản nháp (${saved} dòng).`
+            )
+          }
+        }
+        return true
+      } catch {
+        toast.error(
+          isKinhDoanhTeam
+            ? 'Không chốt được KPI. Kiểm tra quyền hoặc thử lại.'
+            : 'Không lưu được bản nháp. Kiểm tra quyền hoặc thử lại.'
+        )
+        return false
+      } finally {
+        if (!opts?.silent) setSavingDraft(false)
+      }
+    },
+    [
+      onRefresh,
+      canEditResults,
+      assignmentById,
+      currentUserId,
+      isKinhDoanhTeam,
+      kinhDoanhResultsCloseOpen,
+      kinhDoanhResultsCloseBounds,
+      onRecalculateSummaries,
+      month,
+      year,
+    ]
   )
 
   const handleSaveResultsDraft = useCallback(async () => {
-    if (isKinhDoanhTeam && !kinhDoanhResultsCloseOpen) {
-      const b = kinhDoanhResultsCloseBounds
-      toast.error(
-        b
-          ? `Đã hết thời gian chốt KPI T${month}/${year} (khung ${formatKinhDoanhResultsCloseRange(year, month, b)}).`
-          : `Đã hết thời gian chốt KPI T${month}/${year}.`
-      )
-      return
+    await persistPendingDrafts()
+  }, [persistPendingDrafts])
+
+  const validateBeforeSubmitResultApproval = useCallback((): boolean => {
+    const allAssignments = Array.from(byUser.values()).flat()
+    if (!allAssignments.length) {
+      toast.error('Không có KPI/OKR nào để gửi duyệt.')
+      return false
     }
     const drafts = draftByRowIdRef.current
-    const rowIds = Object.keys(drafts)
-    if (!rowIds.length) {
-      toast.info(isKinhDoanhTeam ? 'Chưa có thay đổi để chốt.' : 'Chưa có thay đổi để lưu.')
-      return
+    const highlights: Record<string, RowSubmitValidationHighlight> = {}
+    let hasInvalidNumeric = false
+    let hasUnitGap = false
+    let hasSelfFieldGap = false
+    let unevaluatedCount = 0
+
+    for (const assignment of allAssignments) {
+      const rowHighlight = computeRowSubmitValidationHighlights(assignment, drafts[assignment.id], {
+        currentUserId,
+        canEditResults,
+        templateCode,
+      })
+      if (!hasValidationHighlight(rowHighlight)) continue
+      highlights[assignment.id] = rowHighlight
+      if (rowHighlight.numeric) hasInvalidNumeric = true
+      if (rowHighlight.numericUnit) hasUnitGap = true
+      if (rowHighlight.evidence || rowHighlight.selfEval) hasSelfFieldGap = true
+      if (rowHighlight.leaderEval) unevaluatedCount += 1
     }
+
+    setSubmitValidationByRowId(highlights)
+
+    const hasAnyHighlight = Object.values(highlights).some(hasValidationHighlight)
+    if (!hasAnyHighlight) {
+      return true
+    }
+
+    if (hasInvalidNumeric) {
+      toast.error('Số liệu không hợp lệ hoặc chưa nhập — kiểm tra các ô được đánh dấu đỏ.')
+    } else if (hasUnitGap) {
+      toast.error('Vui lòng nhập đơn vị — kiểm tra các ô được đánh dấu đỏ.')
+    } else if (unevaluatedCount > 0) {
+      toast.error(
+        `Cần đánh giá OK hoặc NOT cho tất cả KPI/OKR của các thành viên (còn ${unevaluatedCount} mục).`
+      )
+    } else if (hasSelfFieldGap) {
+      toast.error('Vui lòng điền đầy đủ minh chứng và tự đánh giá trước khi gửi duyệt.')
+    } else {
+      toast.error('Vui lòng hoàn thiện các ô được đánh dấu đỏ trước khi gửi duyệt.')
+    }
+    return false
+  }, [byUser, assignmentById, currentUserId, canEditResults, templateCode])
+
+  const handleSubmitResultApprovalWithDraft = useCallback(async () => {
+    if (!onSubmitResultApproval) return
+    if (!validateBeforeSubmitResultApproval()) return
     setSavingDraft(true)
     try {
-      let saved = 0
-      for (const rowId of rowIds) {
-        let draft = drafts[rowId]
-        if (!draft) continue
-        const assignment = assignmentById.get(rowId)
-        const isLeaderSelfRow = Boolean(
-          assignment && currentUserId && assignment.assigneeUserId === currentUserId
-        )
-        if (isLeaderSelfRow) {
-          draft = normalizeDraftForLeaderSelf(draft, true)
-        }
-        const leaderEvalOnly = Boolean(
-          canEditResults &&
-          assignment &&
-          currentUserId &&
-          assignment.assigneeUserId !== currentUserId
-        )
-        const body = draftToPatchBody(draft, { leaderEvalOnly })
-        if (body === 'invalid') {
-          toast.error('Số liệu không hợp lệ — kiểm tra lại trước khi lưu.')
-          setSavingDraft(false)
-          return
-        }
-        if (canEditResults) {
-          await performanceApi.patchAssignment(rowId, body)
-        } else {
-          // Member tự nhập: endpoint /me cấm các trường manager → loại bỏ trước khi gửi
-          const { managerEvalStatus: _m, managerReviewNote: _n, ...selfBody } = body
-          void _m
-          void _n
-          await performanceApi.patchAssignmentSelf(rowId, selfBody)
-        }
-        saved += 1
-      }
-      if (saved > 0) {
-        setDraftByRowId({})
-        onRefresh({ skipAutoRecalc: isKinhDoanhTeam })
-        if (isKinhDoanhTeam && onRecalculateSummaries) {
-          try {
-            await onRecalculateSummaries()
-            toast.success(
-              `Đã chốt KPI tháng ${month}/${year} (${saved} dòng) và cập nhật bảng hiệu suất.`
-            )
-          } catch {
-            toast.warning(
-              `Đã chốt KPI (${saved} dòng) nhưng chưa tính được bảng hiệu suất — thử "Tính lại tổng hợp".`
-            )
-          }
-        } else {
-          toast.success(
-            isKinhDoanhTeam
-              ? `Đã chốt KPI tháng ${month}/${year} (${saved} dòng).`
-              : `Đã lưu bản nháp (${saved} dòng).`
-          )
-        }
-      } else {
-        toast.info(isKinhDoanhTeam ? 'Chưa có thay đổi để chốt.' : 'Chưa có thay đổi để lưu.')
-      }
-    } catch {
-      toast.error(
-        isKinhDoanhTeam
-          ? 'Không chốt được KPI. Kiểm tra quyền hoặc thử lại.'
-          : 'Không lưu được bản nháp. Kiểm tra quyền hoặc thử lại.'
-      )
+      const ok = await persistPendingDrafts({ silent: true })
+      if (!ok) return
+      await onSubmitResultApproval()
+      setSubmitValidationByRowId({})
     } finally {
       setSavingDraft(false)
     }
-  }, [
-    onRefresh,
-    canEditResults,
-    assignmentById,
-    currentUserId,
-    isKinhDoanhTeam,
-    kinhDoanhResultsCloseOpen,
-    kinhDoanhResultsCloseBounds,
-    onRecalculateSummaries,
-    month,
-    year,
-  ])
-
-  // Còn thay đổi chưa lưu → khoá nút "Gửi duyệt kết quả"
-  const hasPendingDraft = Object.keys(draftByRowId).length > 0
-
-  const allAssignmentsEvaluated = useMemo(() => {
-    const allAssignments = Array.from(byUser.values()).flat()
-    if (allAssignments.length === 0) return false
-    return allAssignments.every(
-      (a) => a.managerEvalStatus === 'OK' || a.managerEvalStatus === 'NOT'
-    )
-  }, [byUser])
+  }, [onSubmitResultApproval, persistPendingDrafts, validateBeforeSubmitResultApproval])
 
   return (
     <section id="results-section" className="scroll-mt-24">
@@ -3363,15 +3565,14 @@ function ResultsSection({
             savingResultsDraft={savingDraft}
             draftRowIds={Object.keys(draftByRowId)}
             draftByRowId={draftByRowId}
+            submitValidationByRowId={submitValidationByRowId}
             isTrafficTeam={isTrafficTeam}
             isKinhDoanhTeam={isKinhDoanhTeam}
             kinhDoanhResultsCloseOpen={kinhDoanhResultsCloseOpen}
             kinhDoanhResultsCloseBounds={kinhDoanhResultsCloseBounds}
-            onSubmitResultApproval={onSubmitResultApproval}
-            submittingResultApproval={submittingResultApproval}
+            onSubmitResultApproval={handleSubmitResultApprovalWithDraft}
+            submittingResultApproval={submittingResultApproval || savingDraft}
             canSubmitResultApproval={canSubmitResultApproval}
-            submitBlockedByDraft={hasPendingDraft}
-            submitBlockedByEvaluations={!allAssignmentsEvaluated}
           />
         </>
       )}

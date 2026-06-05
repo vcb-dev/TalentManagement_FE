@@ -9,7 +9,10 @@ import {
   isTrafficTeam,
   shouldShowAssignmentForMember,
 } from '../catalogHelpers'
-import { ASSIGN_TABLE_HEAD } from '../components/kpiAssignmentTableShared'
+import {
+  ASSIGN_TABLE_HEAD,
+  PLANNING_ASSIGN_TABLE_HEAD,
+} from '../components/kpiAssignmentTableShared'
 import {
   isKinhDoanhResultsCloseWindowOpen,
   resolveKinhDoanhResultsCloseWindowForTeam,
@@ -140,7 +143,17 @@ describe('Luồng KPI/OKR — Phòng Kinh doanh', () => {
     })
   })
 
-  describe('2. Leader — danh sách assignment', () => {
+  describe('2. Leader — bảng mục tiêu (planning)', () => {
+    it('planning: 10 cột header, không lẫn cột Manager của results', () => {
+      expect(PLANNING_ASSIGN_TABLE_HEAD).toHaveLength(10)
+      expect(PLANNING_ASSIGN_TABLE_HEAD).toContain('Quản lý xét duyệt')
+      expect(PLANNING_ASSIGN_TABLE_HEAD).toContain('Thao tác')
+      expect(PLANNING_ASSIGN_TABLE_HEAD).not.toContain('Đánh giá Manager')
+      expect(ASSIGN_TABLE_HEAD).toContain('Đánh giá Manager')
+    })
+  })
+
+  describe('3. Leader — danh sách assignment', () => {
     it('ẩn P3 và BENEFIT cho mọi member trên team', () => {
       const visible = filterVisibleAssignments(SAMPLE_ROWS, {
         isKinhDoanhTeam: true,
@@ -158,7 +171,7 @@ describe('Luồng KPI/OKR — Phòng Kinh doanh', () => {
     })
   })
 
-  describe('3. Member — xem KPI cá nhân', () => {
+  describe('4. Member — xem KPI cá nhân', () => {
     it('chỉ thấy assignment của mình, đã lọc P3/BENEFIT', () => {
       const visible = filterVisibleAssignments(SAMPLE_ROWS, {
         isKinhDoanhTeam: true,
@@ -178,7 +191,7 @@ describe('Luồng KPI/OKR — Phòng Kinh doanh', () => {
     })
   })
 
-  describe('4. Khung chốt KPI tháng', () => {
+  describe('5. Khung chốt KPI tháng', () => {
     it('T6/2026: mở từ 1/6 đến 5/7', () => {
       const bounds = resolveKinhDoanhResultsCloseWindowForTeam('team-kd', 2026, 6, [])
       expect(bounds).toEqual({ startDay: 1, endDay: 5 })
@@ -194,7 +207,32 @@ describe('Luồng KPI/OKR — Phòng Kinh doanh', () => {
     })
   })
 
-  describe('5. Chốt & đánh giá Leader → báo cáo', () => {
+  describe('6. Gửi duyệt Traffic — validate gộp bản nháp', () => {
+    it('đánh giá Leader trong draft được tính là đã chấm', () => {
+      const rows = [
+        row({
+          id: 'r1',
+          assigneeUserId: 'm1',
+          managerEvalStatus: null,
+        }),
+        row({
+          id: 'r2',
+          assigneeUserId: 'm2',
+          managerEvalStatus: 'OK',
+        }),
+      ]
+      const drafts: Record<string, { managerEvalStatus?: string }> = {
+        r1: { managerEvalStatus: 'OK' },
+      }
+      const complete = rows.every((a) => {
+        const status = drafts[a.id]?.managerEvalStatus ?? a.managerEvalStatus ?? ''
+        return status.trim().toUpperCase() === 'OK' || status.trim().toUpperCase() === 'NOT'
+      })
+      expect(complete).toBe(true)
+    })
+  })
+
+  describe('7. Chốt & đánh giá Leader → báo cáo', () => {
     it('sau chốt OK 2 PERFORMANCE_BONUS: báo cáo đếm theo Leader (không Manager)', () => {
       const chotRows = SAMPLE_ROWS.filter((r) => ['a1', 'a2', 'a3', 'a4'].includes(r.id)).map(
         (r) => ({

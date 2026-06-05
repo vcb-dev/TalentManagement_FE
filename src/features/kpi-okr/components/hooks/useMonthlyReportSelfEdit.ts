@@ -34,19 +34,16 @@ export function useMonthlyReportSelfEdit(item: PerformanceAssignment, onSaved: (
     item.selfReviewNote,
   ])
 
-  const save = async () => {
+  const save = async (): Promise<boolean> => {
     const nTrim = numericRaw.trim()
     let numericValue: number | null = null
     if (nTrim.length > 0) {
-      const n = Number(nTrim.replace(',', '.'))
+      const n = Number(nTrim.replace(/\./g, '').replace(',', '.'))
       if (!Number.isFinite(n)) {
         toast.error('Số liệu không hợp lệ.')
-        return
+        return false
       }
       numericValue = n
-    }
-    if (item.status === 'done' && !evidence.trim()) {
-      toast.warning('Trạng thái Hoàn thành nhưng minh chứng đang trống.')
     }
     setSaving(true)
     try {
@@ -57,10 +54,12 @@ export function useMonthlyReportSelfEdit(item: PerformanceAssignment, onSaved: (
         selfEvalStatus: selfEvalStatus.trim() ? selfEvalStatus.trim() : null,
         selfReviewNote: selfReviewNote.trim() ? selfReviewNote.trim() : null,
       })
-      toast.success('Đã lưu.')
+      toast.success('Đã gửi báo cáo.')
       onSaved()
+      return true
     } catch (e) {
       toast.error(getApiErrorMessage(e))
+      return false
     } finally {
       setSaving(false)
     }

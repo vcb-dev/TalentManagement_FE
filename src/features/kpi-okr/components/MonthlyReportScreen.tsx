@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Calendar,
@@ -134,6 +135,81 @@ function EvalBadge({
 const memberEditInputCls =
   'h-10 w-full rounded-xl border border-slate-200 bg-slate-50/30 px-3.5 text-sm transition-all focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none dark:border-slate-800 dark:bg-slate-950 dark:focus:bg-slate-950 dark:focus:border-indigo-500'
 
+const memberReportInvalidRing =
+  '!border-2 !border-red-500 !ring-2 !ring-red-500/25 focus:!border-red-500 focus:!ring-red-500/35 focus-visible:!border-red-500 focus-visible:!ring-red-500/35'
+
+const memberReportSelectCls =
+  'h-10 px-3.5 py-0 bg-slate-50/30 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none transition-all focus:border-indigo-500 focus:bg-white hover:bg-slate-100/50 dark:border-slate-800 dark:bg-slate-950 dark:focus:bg-slate-950'
+
+const memberReportTextareaCls =
+  'min-h-[88px] w-full resize-y rounded-xl border border-slate-200 bg-slate-50/30 p-3.5 text-sm transition-all focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none dark:border-slate-800 dark:bg-slate-950 dark:focus:bg-slate-950 dark:focus:border-indigo-500'
+
+type MemberReportFieldErrors = {
+  numeric?: boolean
+  numericUnit?: boolean
+  selfEval?: boolean
+  evidence?: boolean
+}
+
+function isSelfEvalComplete(status: string): boolean {
+  const s = status.trim().toUpperCase()
+  return s === 'OK' || s === 'NOT'
+}
+
+function validateMemberReportForm(values: {
+  numericRaw: string
+  numericUnit: string
+  selfEvalStatus: string
+  evidence: string
+}): { valid: boolean; errors: MemberReportFieldErrors; message?: string } {
+  const errors: MemberReportFieldErrors = {}
+  const nTrim = values.numericRaw.trim()
+
+  if (!nTrim) {
+    errors.numeric = true
+  } else {
+    const n = Number(nTrim.replace(/\./g, '').replace(',', '.'))
+    if (!Number.isFinite(n)) errors.numeric = true
+  }
+
+  if (!values.numericUnit.trim()) errors.numericUnit = true
+  if (!isSelfEvalComplete(values.selfEvalStatus)) errors.selfEval = true
+  if (!values.evidence.trim()) errors.evidence = true
+
+  const valid = !Object.values(errors).some(Boolean)
+  if (!valid) {
+    if (errors.numeric && nTrim) {
+      return {
+        valid: false,
+        errors,
+        message: 'Số liệu không hợp lệ — kiểm tra các ô được đánh dấu đỏ.',
+      }
+    }
+    if (errors.numeric) {
+      return {
+        valid: false,
+        errors,
+        message: 'Vui lòng nhập số liệu — kiểm tra các ô được đánh dấu đỏ.',
+      }
+    }
+    if (errors.numericUnit) {
+      return {
+        valid: false,
+        errors,
+        message: 'Vui lòng nhập đơn vị — kiểm tra các ô được đánh dấu đỏ.',
+      }
+    }
+    if (errors.selfEval) {
+      return { valid: false, errors, message: 'Vui lòng chọn tự đánh giá OK hoặc NOT.' }
+    }
+    if (errors.evidence) {
+      return { valid: false, errors, message: 'Vui lòng bổ sung minh chứng trước khi gửi báo cáo.' }
+    }
+  }
+
+  return { valid, errors }
+}
+
 function MonthlyReportFormSection({
   title,
   hint,
@@ -217,7 +293,7 @@ function MonthlyReportDetailOpenButton({
 
 function MonthlyReportEditButton({
   onClick,
-  label = 'Nhập',
+  label = 'Gửi báo cáo',
 }: {
   onClick: () => void
   label?: string
@@ -243,6 +319,7 @@ function MonthlyReportMemberEditPanel({
   onSaved: () => void
   onClose: () => void
 }) {
+  const [fieldErrors, setFieldErrors] = useState<MemberReportFieldErrors>({})
   const {
     evidence,
     setEvidence,
@@ -257,6 +334,31 @@ function MonthlyReportMemberEditPanel({
     saving,
     save,
   } = useMonthlyReportSelfEdit(item, onSaved)
+
+  const clearFieldError = (key: keyof MemberReportFieldErrors) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev
+      const { [key]: _removed, ...rest } = prev
+      void _removed
+      return rest
+    })
+  }
+
+  const handleSubmit = async () => {
+    const { valid, errors, message } = validateMemberReportForm({
+      numericRaw,
+      numericUnit,
+      selfEvalStatus,
+      evidence,
+    })
+    setFieldErrors(errors)
+    if (!valid) {
+      toast.error(message ?? 'Vui lòng hoàn thiện các ô được đánh dấu đỏ.')
+      return
+    }
+    const ok = await save()
+    if (ok) onClose()
+  }
 
   return (
     <div className="space-y-5">
@@ -275,11 +377,15 @@ function MonthlyReportMemberEditPanel({
             <Input
               id={`numeric-${item.id}`}
               value={numericRaw}
-              onChange={(e) => setNumericRaw(e.target.value)}
-              className={memberEditInputCls}
+              onChange={(e) => {
+                setNumericRaw(e.target.value)
+                clearFieldError('numeric')
+              }}
+              className={cn(memberEditInputCls, fieldErrors.numeric && memberReportInvalidRing)}
               placeholder="VD: 1500000"
               disabled={saving}
               inputMode="decimal"
+              aria-invalid={fieldErrors.numeric || undefined}
             />
           </div>
           <div className="space-y-1.5 sm:col-span-3">
@@ -292,10 +398,14 @@ function MonthlyReportMemberEditPanel({
             <Input
               id={`unit-${item.id}`}
               value={numericUnit}
-              onChange={(e) => setNumericUnit(e.target.value)}
-              className={memberEditInputCls}
+              onChange={(e) => {
+                setNumericUnit(e.target.value)
+                clearFieldError('numericUnit')
+              }}
+              className={cn(memberEditInputCls, fieldErrors.numericUnit && memberReportInvalidRing)}
               placeholder="VND, %, đơn..."
               disabled={saving}
+              aria-invalid={fieldErrors.numericUnit || undefined}
             />
           </div>
           <div className="space-y-1.5 sm:col-span-4">
@@ -304,14 +414,21 @@ function MonthlyReportMemberEditPanel({
             </label>
             <CustomSelect
               value={selfEvalStatus || '__none'}
-              onValueChange={(v) => setSelfEvalStatus(v === '__none' ? '' : v)}
+              onValueChange={(v) => {
+                setSelfEvalStatus(v === '__none' ? '' : v)
+                clearFieldError('selfEval')
+              }}
               options={[
                 { label: 'Chưa chọn', value: '__none' },
                 { label: 'OK — đạt', value: 'OK' },
                 { label: 'NOT — chưa đạt', value: 'NOT' },
               ]}
               disabled={saving}
-              triggerClassName="h-10 px-3.5 py-0 bg-slate-50/30 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none transition-all focus:border-indigo-500 focus:bg-white hover:bg-slate-100/50 dark:border-slate-800 dark:bg-slate-950 dark:focus:bg-slate-950"
+              className="min-w-0 w-full"
+              triggerClassName={cn(
+                memberReportSelectCls,
+                fieldErrors.selfEval && memberReportInvalidRing
+              )}
             />
           </div>
         </div>
@@ -327,7 +444,7 @@ function MonthlyReportMemberEditPanel({
           rows={3}
           disabled={saving}
           placeholder="Nhận xét về kết quả thực hiện mục tiêu này..."
-          className="min-h-[88px] w-full resize-y rounded-xl border border-slate-200 bg-slate-50/30 p-3.5 text-sm transition-all focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none dark:border-slate-800 dark:bg-slate-950 dark:focus:bg-slate-950 dark:focus:border-indigo-500"
+          className={memberReportTextareaCls}
         />
       </MonthlyReportFormSection>
 
@@ -335,8 +452,21 @@ function MonthlyReportMemberEditPanel({
         title="Minh chứng"
         hint="Tải ảnh hoặc dán link — giúp quản lý đối soát kết quả."
       >
-        <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-4 dark:border-slate-800 dark:bg-slate-900/20">
-          <KpiEvidenceInput value={evidence} onChange={setEvidence} disabled={saving} />
+        <div
+          className={cn(
+            'rounded-xl border border-slate-200 bg-slate-50/30 p-4 dark:border-slate-800 dark:bg-slate-900/20',
+            fieldErrors.evidence && 'border-red-500 ring-2 ring-red-500/20'
+          )}
+        >
+          <KpiEvidenceInput
+            value={evidence}
+            onChange={(v) => {
+              setEvidence(v)
+              clearFieldError('evidence')
+            }}
+            disabled={saving}
+            textareaClassName={fieldErrors.evidence ? memberReportInvalidRing : undefined}
+          />
         </div>
       </MonthlyReportFormSection>
 
@@ -364,10 +494,10 @@ function MonthlyReportMemberEditPanel({
         <Button
           type="button"
           disabled={saving}
-          onClick={() => void save().then(() => onClose())}
+          onClick={() => void handleSubmit()}
           className="flex-1 px-6 sm:flex-none rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-200 dark:shadow-none transition-all hover:-translate-y-0.5 active:translate-y-0"
         >
-          {saving ? 'Đang lưu...' : 'Lưu kết quả'}
+          {saving ? 'Đang gửi…' : 'Gửi báo cáo'}
         </Button>
       </DialogFooter>
     </div>
@@ -510,7 +640,7 @@ function MonthlyReportMemberTableRow({
           </td>
         ) : null}
         <td className="whitespace-nowrap px-2 py-2.5 text-right">
-          <MonthlyReportEditButton onClick={() => setOpen(true)} label="Nhập" />
+          <MonthlyReportEditButton onClick={() => setOpen(true)} />
         </td>
       </tr>
       <MonthlyReportMemberEditDialog
@@ -726,7 +856,7 @@ function MonthlyReportDetailEditableMobileCard({
         </span>
       </div>
       <Button type="button" size="sm" className="h-9 w-full" onClick={() => setOpen(true)}>
-        Nhập kết quả
+        Gửi báo cáo
       </Button>
       <MonthlyReportMemberEditDialog
         item={item}

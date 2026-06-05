@@ -84,6 +84,23 @@ export const XL_TH = cn(
   'sticky top-0 z-10 whitespace-nowrap bg-slate-50/80 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500 shadow-sm backdrop-blur-md dark:bg-slate-900/90 dark:text-slate-400'
 )
 
+/** Cột đánh giá — width cố định để dropdown Leader không tràn sang Manager. */
+export const EVAL_LEADER_HEAD = 'min-w-[152px] w-[152px] max-w-[152px]'
+export const EVAL_MANAGER_HEAD = 'min-w-[136px] w-[136px] max-w-[136px]'
+export const EVAL_LEADER_CELL = cn(EVAL_LEADER_HEAD, 'p-2 align-middle')
+export const EVAL_MANAGER_CELL = cn(EVAL_MANAGER_HEAD, 'whitespace-nowrap')
+
+export function evalColumnHeadClass(header: string): string | undefined {
+  if (header === 'Đánh giá Leader') return EVAL_LEADER_HEAD
+  if (header === 'Đánh giá Manager') return EVAL_MANAGER_HEAD
+  return undefined
+}
+
+/** Select gọn trong ô bảng — tránh px-5/py-4 mặc định của CustomSelect. */
+export const TABLE_INLINE_SELECT_TRIGGER = cn(
+  '!h-9 !min-h-9 !w-full !min-w-0 !max-w-full !rounded-lg !px-2.5 !py-1.5 !text-xs !font-semibold !bg-white dark:!bg-slate-950'
+)
+
 export function xlTd(stripe: boolean) {
   return cn(
     XL_BORDER,
