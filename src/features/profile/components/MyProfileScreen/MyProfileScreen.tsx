@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useForm, useWatch, type Control } from 'react-hook-form'
@@ -23,7 +23,7 @@ import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { type PatchMeUserBody, usePatchMeUser, useUploadMePortrait } from '@/features/profile/hooks'
 import { profileApi } from '@/features/profile/api'
-import { organizationApi, type OrgTreeTeam } from '@/features/organization/api'
+import { organizationApi } from '@/features/organization/api'
 import {
   EmployeeExtraTeamsField,
   extraTeamIdsEqual,
@@ -181,12 +181,11 @@ function renderField(
     control: ReturnType<typeof useForm<EditRecord>>['control']
     divisions?: Array<{ id: string; name: string }>
     teams?: Array<{ id: string; name: string }>
-    teamSelectDisabled?: boolean
     positions?: Array<{ value: string; label: string }>
     jobTitles?: Array<{ value: string; label: string }>
   }
 ) {
-  const { u, control, divisions, teams, teamSelectDisabled, positions, jobTitles } = ctx
+  const { u, control, divisions, teams, positions, jobTitles } = ctx
   const forceReadonly = field.key === 'directManager'
 
   if (field.kind === 'portrait') {
@@ -235,11 +234,10 @@ function renderField(
         control={control}
         name={key}
         label={field.label}
-        placeholder={teamSelectDisabled ? 'Chọn phòng ban trước' : 'Chọn team'}
-        disabled={teamSelectDisabled}
+        placeholder="Chọn nhóm"
         className={cn('space-y-1.5', fieldBoxClass)}
         labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-        triggerClassName={cn(fieldControlClass, inputEditable, teamSelectDisabled && 'opacity-70')}
+        triggerClassName={cn(fieldControlClass, inputEditable)}
         customLabel={<FieldLabel>{field.label}</FieldLabel>}
       >
         <SelectItem value="__none">Chưa chọn</SelectItem>
@@ -455,14 +453,24 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
   const user = useAuthStore((s) => s.user)
   const { mutate: patchUser, isPending: patchPending } = usePatchMeUser()
   const { mutate: uploadPortrait, isPending: portraitUploading } = useUploadMePortrait()
-  const { data: orgTreeData, isSuccess: orgTreeReady } = useQuery({
-    queryKey: ['organization-tree'],
-    queryFn: () => organizationApi.getTree(),
+  const { data: divisionsList = [] } = useQuery({
+    queryKey: ['organization', 'divisions-list'],
+    queryFn: () => organizationApi.getDivisionsList(),
+    staleTime: 60_000,
   })
-  const orgDepartments = useMemo(() => orgTreeData?.departments ?? [], [orgTreeData])
+  const { data: teamsList = [] } = useQuery({
+    queryKey: ['organization', 'teams-list'],
+    queryFn: () => organizationApi.getTeamsList(),
+    staleTime: 60_000,
+  })
   const divisions = useMemo(
-    () => orgDepartments.map((department) => ({ id: department.id, name: department.name })),
-    [orgDepartments]
+    () => divisionsList.map((d) => ({ id: d.id, name: d.name })),
+    [divisionsList]
+  )
+  const teams = useMemo(() => teamsList.map((t) => ({ id: t.id, name: t.name })), [teamsList])
+  const allTeamOptions = useMemo(
+    () => teamsList.map((t) => ({ value: t.id, label: t.name })),
+    [teamsList]
   )
   const { data: positionsData } = useQuery({
     queryKey: ['profile', 'positions'],
@@ -478,30 +486,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     defaultValues: userToEdit(u),
   })
   const { control, handleSubmit } = form
-  const selectedDivisionId = useWatch({ control, name: 'divisionId' }) ?? ''
   const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
-  const teamsForSelectedDivision = useMemo<OrgTreeTeam[]>(() => {
-    if (!selectedDivisionId) return []
-    return orgDepartments.find((department) => department.id === selectedDivisionId)?.teams ?? []
-  }, [orgDepartments, selectedDivisionId])
-  const allTeamOptions = useMemo(
-    () =>
-      orgDepartments.flatMap((department) =>
-        department.teams.map((team) => ({ value: team.id, label: team.name }))
-      ),
-    [orgDepartments]
-  )
-  const teamSelectDisabled = !selectedDivisionId || teamsForSelectedDivision.length === 0
-
-  useEffect(() => {
-    if (!orgTreeReady || !selectedDivisionId || !selectedTeamId) return
-    const teamStillInDepartment = teamsForSelectedDivision.some(
-      (team) => team.id === selectedTeamId
-    )
-    if (!teamStillInDepartment) {
-      form.setValue('teamId', '', { shouldDirty: true, shouldTouch: true })
-    }
-  }, [form, orgTreeReady, selectedDivisionId, selectedTeamId, teamsForSelectedDivision])
 
   const role = user?.role ?? 'MEMBER'
   const currentLevelId = mapCurrentTitleToLevelId(page.currentLevel.title)
@@ -562,8 +547,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     u,
     control,
     divisions,
-    teams: teamsForSelectedDivision,
-    teamSelectDisabled,
+    teams,
     positions,
     jobTitles,
   }

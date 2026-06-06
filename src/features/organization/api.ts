@@ -192,6 +192,22 @@ export const organizationApi = {
     return res.data
   },
 
+  getTeamsList: async (): Promise<
+    Array<{ id: string; name: string; teamGroupId: string | null }>
+  > => {
+    if (isMockApiEnabled()) {
+      return HR_TEAM_OPTIONS.map((t) => ({
+        id: t.value,
+        name: t.label,
+        teamGroupId: t.departmentId,
+      }))
+    }
+    const res = await apiClient.get<
+      Array<{ id: string; name: string; teamGroupId: string | null }>
+    >('/organization/teams-list')
+    return res.data
+  },
+
   listDepartments: async () => {
     if (isMockApiEnabled()) {
       return HR_DEPARTMENT_OPTIONS.map((d) => ({
