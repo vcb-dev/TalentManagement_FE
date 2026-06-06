@@ -189,6 +189,15 @@ describe('Luồng KPI/OKR — Phòng Kinh doanh', () => {
       })
       expect(visible.map((r) => r.id)).toEqual(['a7'])
     })
+
+    it('member không có assignment vẫn không thấy KPI người khác (MonthlyReport fallback)', () => {
+      const visible = filterVisibleAssignments(SAMPLE_ROWS, {
+        isKinhDoanhTeam: false,
+        isMemberView: true,
+        userId: 'm-empty',
+      })
+      expect(visible).toHaveLength(0)
+    })
   })
 
   describe('5. Khung chốt KPI tháng', () => {
