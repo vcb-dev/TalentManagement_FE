@@ -5,10 +5,26 @@ import {
   useId,
   useMemo,
   useState,
+  useRef,
   type ReactNode,
 } from 'react'
+import { toast } from 'sonner'
 import { useForm, useWatch } from 'react-hook-form'
-import { Eye, X, Star, Edit3, School, Calendar, Send, Sparkles } from 'lucide-react'
+import {
+  Eye,
+  X,
+  Star,
+  Edit3,
+  School,
+  Calendar,
+  Send,
+  Sparkles,
+  FileText,
+  Upload,
+  Check,
+  AlertCircle,
+  Loader2,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { DateController } from '@/components/ui/form-controllers'
@@ -27,6 +43,7 @@ import {
   useMyEnrolledClass,
   useRegisterLearningClass,
   useRegisterMakeupSchedule,
+  useSubmitEvidence,
 } from '@/features/learning-path/hooks'
 import type { MeEnrolledClass } from '@/features/learning-path/schemas'
 import { cn } from '@/lib/utils'
@@ -239,6 +256,79 @@ export function MemberClassesPanel() {
 
   const cls = data?.enrolledClass ?? null
 
+  const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({})
+  const submitEvidence = useSubmitEvidence()
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
+
+  const reflectionTasks = useMemo(() => {
+    if (!cls?.schedules) return []
+    const tasks: any[] = []
+    cls.schedules.forEach((s: any) => {
+      ;(s.roadmapItems || []).forEach((ri: any) => {
+        const normalizedAssessment = (ri.assessment || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/đ/g, 'd')
+          .replace(/Đ/g, 'D')
+          .trim()
+
+        const isReflection =
+          normalizedAssessment.includes('phan tu') ||
+          normalizedAssessment.includes('tu luan') ||
+          normalizedAssessment.includes('review')
+
+        if (isReflection) {
+          tasks.push({
+            ...ri,
+            scheduleTopic: s.topic,
+            scheduleDateIso: s.dateIso,
+          })
+        }
+      })
+    })
+
+    const seen = new Set()
+    return tasks.filter((t) => {
+      if (seen.has(t.id)) return false
+      seen.add(t.id)
+      return true
+    })
+  }, [cls])
+
+  const getStarFromTopic = (topicName: string): string => {
+    const match = topicName.match(/Sao\s*(\d+)/i)
+    return match && match[1] ? match[1] : '1'
+  }
+
+  const handleUploadFile = (taskId: string, topic: string) => {
+    const file = selectedFiles[taskId]
+    if (!file) {
+      toast.error('Vui lòng chọn file trước khi nộp.')
+      return
+    }
+    const starId = getStarFromTopic(topic)
+    const levelId = cls.levelTo
+
+    submitEvidence.mutate(
+      {
+        levelId,
+        starId,
+        itemId: taskId,
+        file,
+        submissionType: 'FILE',
+      },
+      {
+        onSuccess: () => {
+          setSelectedFiles((prev) => ({ ...prev, [taskId]: null }))
+          if (fileRefs.current[taskId]) {
+            fileRefs.current[taskId]!.value = ''
+          }
+        },
+      }
+    )
+  }
+
   if (isLoading) {
     return <MemberScheduleTableSkeleton />
   }
@@ -403,6 +493,206 @@ export function MemberClassesPanel() {
           </div>
         </div>
       ) : null}
+
+      {reflectionTasks.length > 0 && (
+        <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white p-6 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.04)]">
+          <div className="border-b border-slate-50 pb-5 mb-6">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+              Nhiệm vụ lộ trình
+            </p>
+            <h3 className="text-lg font-black text-slate-900 mt-1">Bài Phản tư & Hạn nộp</h3>
+            <p className="text-xs font-bold text-slate-500 mt-1">
+              Danh sách các học phần yêu cầu viết/nộp phản tư cùng thời hạn do giảng viên thiết lập.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {reflectionTasks.map((task: any) => {
+              const isOverdue = task.deadline ? new Date() > new Date(task.deadline) : false
+              const hasSubmission = !!task.submission
+              const isAccepted = task.submission?.status === 'ACCEPTED'
+              const isRejected = task.submission?.status === 'REJECTED'
+              const isPending = task.submission?.status === 'PENDING'
+
+              const file = selectedFiles[task.id]
+              const isUploading =
+                submitEvidence.isPending && submitEvidence.variables?.itemId === task.id
+
+              return (
+                <div
+                  key={task.id}
+                  className={cn(
+                    'flex flex-col justify-between rounded-3xl border p-5 transition-all bg-slate-50/50 hover:bg-white hover:shadow-lg hover:shadow-slate-100',
+                    isAccepted
+                      ? 'border-emerald-100 bg-emerald-50/10'
+                      : isRejected
+                        ? 'border-rose-100 bg-rose-50/10'
+                        : isPending
+                          ? 'border-amber-100 bg-amber-50/10'
+                          : 'border-slate-100'
+                  )}
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={cn(
+                          'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-md',
+                          isAccepted
+                            ? 'bg-emerald-500 shadow-emerald-500/20'
+                            : isRejected
+                              ? 'bg-rose-500 shadow-rose-500/20'
+                              : isPending
+                                ? 'bg-amber-500 shadow-amber-500/20'
+                                : 'bg-primary shadow-primary/20'
+                        )}
+                      >
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="font-extrabold text-slate-950 text-base leading-snug truncate"
+                          title={task.objective}
+                        >
+                          {task.objective}
+                        </p>
+                        <p
+                          className="text-xs font-bold text-slate-400 mt-0.5 truncate"
+                          title={task.topic}
+                        >
+                          Chủ đề: {task.topic}
+                        </p>
+                        <p className="text-xs font-semibold text-slate-500 mt-1 truncate">
+                          Buổi: {task.scheduleTopic} ({task.scheduleDateIso})
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-100/80 pt-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">
+                          Hạn nộp
+                        </span>
+                        {task.deadline ? (
+                          <span
+                            className={cn(
+                              'text-xs font-black',
+                              isOverdue && !hasSubmission ? 'text-rose-600' : 'text-slate-700'
+                            )}
+                          >
+                            {new Date(task.deadline).toLocaleString('vi-VN', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        ) : (
+                          <span className="text-xs font-bold text-slate-400 italic">
+                            Chưa thiết lập hạn nộp
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                          Trạng thái
+                        </span>
+                        {isAccepted ? (
+                          <Badge className="border-0 bg-emerald-500 text-white font-extrabold uppercase tracking-wider text-[10px] px-2 py-0.5 shadow-sm">
+                            Đạt {task.submission.score ? `(${task.submission.score}đ)` : ''}
+                          </Badge>
+                        ) : isRejected ? (
+                          <Badge className="border-0 bg-rose-500 text-white font-extrabold uppercase tracking-wider text-[10px] px-2 py-0.5 shadow-sm">
+                            Thi lại {task.submission.score ? `(${task.submission.score}đ)` : ''}
+                          </Badge>
+                        ) : isPending ? (
+                          <Badge className="border-0 bg-amber-500 text-white font-extrabold uppercase tracking-wider text-[10px] px-2 py-0.5 shadow-sm">
+                            Chờ duyệt
+                          </Badge>
+                        ) : (
+                          <Badge className="border-0 bg-slate-200 text-slate-500 font-extrabold uppercase tracking-wider text-[10px] px-2 py-0.5">
+                            Chưa nộp
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {hasSubmission && (
+                      <div className="rounded-2xl bg-white p-3 border border-slate-100/50 space-y-2 text-xs">
+                        <div className="flex items-center justify-between gap-2 min-w-0">
+                          <span className="font-bold text-slate-700 truncate">
+                            File: {task.submission.fileName}
+                          </span>
+                          {task.submission.fileRef && (
+                            <a
+                              href={task.submission.fileRef}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="shrink-0 text-primary hover:underline font-bold text-xs"
+                            >
+                              Tải về
+                            </a>
+                          )}
+                        </div>
+                        {task.submission.managerComment && (
+                          <p className="text-slate-500 font-medium border-t border-slate-50 pt-2">
+                            <span className="font-extrabold text-slate-700">GV nhận xét:</span>{' '}
+                            {task.submission.managerComment}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {(!hasSubmission || isRejected) && (
+                    <div className="mt-5 border-t border-slate-100/80 pt-4 space-y-3">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="file"
+                          ref={(el) => {
+                            fileRefs.current[task.id] = el
+                          }}
+                          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                          onChange={(e) => {
+                            const fileObj = e.target.files?.[0] || null
+                            setSelectedFiles((prev) => ({ ...prev, [task.id]: fileObj }))
+                          }}
+                          className="hidden"
+                          id={`file-input-${task.id}`}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById(`file-input-${task.id}`)?.click()}
+                          className="h-10 rounded-xl px-4 text-xs font-extrabold flex-1 border-slate-200 hover:bg-slate-50 truncate animate-none"
+                        >
+                          <Upload className="mr-1.5 h-3.5 w-3.5" />
+                          {file ? file.name : 'Chọn tài liệu (pdf, docs...)'}
+                        </Button>
+                        <Button
+                          type="button"
+                          disabled={!file || isUploading}
+                          onClick={() => handleUploadFile(task.id, task.topic)}
+                          className="h-10 rounded-xl px-5 text-xs font-black uppercase tracking-widest bg-primary text-white shadow-md hover:bg-primary/95 disabled:opacity-50 shadow-primary/20 shrink-0"
+                        >
+                          {isUploading ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            'Nộp bài'
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-[10px] font-semibold text-slate-400 text-center">
+                        Dung lượng tối đa 25MB. Hỗ trợ PDF, Word, Ảnh minh chứng.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.04)]">
         <div className="border-b border-slate-50 bg-slate-50/30 px-8 py-5">

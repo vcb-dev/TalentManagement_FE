@@ -3,18 +3,12 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import {
   ArrowLeft,
   CalendarDays,
-  Filter,
   Pencil,
   Search,
   Trash2,
   X,
   Star,
-  Edit3,
-  ClipboardCheck,
   CheckCircle2,
-  FileDown,
-  LayoutGrid,
-  Table as TableIcon,
   XCircle,
 } from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
@@ -37,12 +31,7 @@ import {
   InputController,
   InputFieldController,
 } from '@/components/ui/form-controllers'
-import {
-  PAGE_HEADER_DESCRIPTION,
-  PAGE_HEADER_GRADIENT,
-  PAGE_HEADER_SURFACE,
-  PAGE_HEADER_TITLE,
-} from '@/components/shared/PageHeader'
+
 import {
   Dialog,
   DialogContent,
@@ -52,14 +41,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
-import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
-import {
-  clampHourPart,
-  clampMinutePart,
-  digitsOnlyMax2,
-  joinTimeHm,
-  splitTimeToParts,
-} from '@/lib/time24h'
+
+import { joinTimeHm, splitTimeToParts } from '@/lib/time24h'
 import { cn } from '@/lib/utils'
 import { SessionEvaluationModal } from './SessionEvaluationModal'
 import { ViewEvaluationsModal } from './ViewEvaluationsModal'
@@ -129,65 +112,19 @@ function isScheduleEnded(schedule: { dateIso: string; endTime: string }) {
   )
 }
 
-function TimeHmField({
-  label,
-  hour,
-  minute,
-  onHourChange,
-  onMinuteChange,
-  onHourBlur,
-  onMinuteBlur,
-  idPrefix,
-}: {
-  label: string
-  hour: string
-  minute: string
-  onHourChange: (v: string) => void
-  onMinuteChange: (v: string) => void
-  onHourBlur: () => void
-  onMinuteBlur: () => void
-  idPrefix: string
-}) {
+function allowsReflectionSubmission(assessment?: string | null) {
+  if (!assessment) return false
+  const normalized = assessment
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .trim()
   return (
-    <div className="block text-xs font-semibold text-muted-foreground">
-      <span className="mb-0 block">{label}</span>
-      <div className="mt-1 flex items-center gap-1.5">
-        <Input
-          id={`${idPrefix}-h`}
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="00"
-          maxLength={2}
-          value={hour}
-          onChange={(e) => onHourChange(digitsOnlyMax2(e.target.value))}
-          onBlur={onHourBlur}
-          className="h-auto w-[3.25rem] rounded-xl border border-border bg-background py-2.5 text-center font-mono text-sm tabular-nums shadow-none outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15"
-          aria-label={`${label} — giờ`}
-        />
-        <span
-          className="select-none pb-0.5 text-lg font-semibold leading-none text-muted-foreground"
-          aria-hidden
-        >
-          :
-        </span>
-        <Input
-          id={`${idPrefix}-m`}
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="00"
-          maxLength={2}
-          value={minute}
-          onChange={(e) => onMinuteChange(digitsOnlyMax2(e.target.value))}
-          onBlur={onMinuteBlur}
-          className="h-auto w-[3.25rem] rounded-xl border border-border bg-background py-2.5 text-center font-mono text-sm tabular-nums shadow-none outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15"
-          aria-label={`${label} — phút`}
-        />
-      </div>
-    </div>
+    normalized.includes('phan tu') ||
+    normalized.includes('tu luan') ||
+    normalized.includes('review')
   )
 }
 
@@ -250,7 +187,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const filtersForm = useForm<{ filterKey: (typeof FILTERS)[number]['key']; searchDraft: string }>({
     defaultValues: { filterKey: 'all', searchDraft: '' },
   })
-  const filterKey = useWatch({ control: filtersForm.control, name: 'filterKey' }) ?? 'all'
+
   const searchDraft = useWatch({ control: filtersForm.control, name: 'searchDraft' }) ?? ''
   const deferredSearchDraft = useDeferredValue(searchDraft)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table')
@@ -261,7 +198,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
   // Evaluation modal state
   const [evalModalOpen, setEvalModalOpen] = useState(false)
-  const [evalTarget, setEvalTarget] = useState<{ userId: string; userName: string } | null>(null)
+  const [evalTarget, _setEvalTarget] = useState<{ userId: string; userName: string } | null>(null)
   const [viewEvalModalOpen, setViewEvalModalOpen] = useState(false)
   const [rejectReasonById, setRejectReasonById] = useState<Record<string, string>>({})
   const [approvingRegistrationId, setApprovingRegistrationId] = useState<string | null>(null)
@@ -305,6 +242,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       topic: '',
       location: '',
       roadmapItemIds: [] as string[],
+      roadmapItemDeadlines: {} as Record<string, string>,
     },
   })
   const {
@@ -313,10 +251,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     reset: resetScheduleValues,
     setValue: setScheduleValue,
   } = scheduleForm
-  const [startHour, startMinute, endHour, endMinute] = useWatch({
-    control: scheduleControl,
-    name: ['startHour', 'startMinute', 'endHour', 'endMinute'],
-  })
+
   const selectedRoadmapItemIds =
     useWatch({
       control: scheduleControl,
@@ -332,6 +267,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     topic: '',
     location: '',
     roadmapItemIds: [] as string[],
+    roadmapItemDeadlines: {} as Record<string, string>,
   }
 
   const toggleRoadmapItem = (itemId: string, checked: boolean) => {
@@ -351,6 +287,16 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     const [eh, em] = splitTimeToParts(s.endTime)
     const todayMin = getTodayIsoLocal()
     const dateIso = s.dateIso >= todayMin ? s.dateIso : todayMin
+
+    const deadlines: Record<string, string> = {}
+    s.roadmapItems?.forEach((item) => {
+      if (item.deadline) {
+        const date = new Date(item.deadline)
+        const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000)
+        deadlines[item.id] = offsetDate.toISOString().slice(0, 16)
+      }
+    })
+
     resetScheduleValues({
       dateIso,
       startHour: sh,
@@ -360,6 +306,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       topic: s.topic,
       location: s.location ?? '',
       roadmapItemIds: s.roadmapItems?.map((item) => item.id) ?? [],
+      roadmapItemDeadlines: deadlines,
     })
   }
 
@@ -391,54 +338,6 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     resetScheduleValues(scheduleInitial)
   }
 
-  const onSubmitSchedule = () => {
-    const todayMin = getTodayIsoLocal()
-    const values = getScheduleValues()
-    if (!values.dateIso) {
-      toast.error('Chọn ngày học.')
-      return
-    }
-    if (values.dateIso < todayMin) {
-      toast.error('Chỉ được chọn ngày từ hôm nay trở đi.')
-      return
-    }
-    const startTime = joinTimeHm(values.startHour, values.startMinute)
-    const endTime = joinTimeHm(values.endHour, values.endMinute)
-    if (startTime >= endTime) {
-      toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
-      return
-    }
-    if (!values.roadmapItemIds.length) {
-      toast.error('Vui lòng chọn ít nhất một học phần trong lộ trình.')
-      return
-    }
-    const input = {
-      dateIso: values.dateIso,
-      startTime,
-      endTime,
-      topic: values.topic.trim(),
-      location: values.location.trim() || null,
-      roadmapItemIds: values.roadmapItemIds,
-    }
-    const overlap = findOverlappingSchedule(schedules, input, editingScheduleId)
-    if (overlap) {
-      toast.error(
-        `Buổi học bị trùng với "${overlap.topic}" (${overlap.startTime} - ${overlap.endTime}).`
-      )
-      return
-    }
-    if (editingScheduleId) {
-      updateSchedule.mutate(
-        { scheduleId: editingScheduleId, input },
-        {
-          onSuccess: () => resetScheduleForm(),
-        }
-      )
-      return
-    }
-    createSchedule.mutate(input, { onSuccess: () => resetScheduleForm() })
-  }
-
   const filtered = useMemo(() => {
     let list = activeScheduleId
       ? members.filter((m) => !m.isMakeup || m.makeupScheduleIds?.includes(activeScheduleId))
@@ -455,12 +354,6 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const total = activeScheduleId ? filtered.length : members.filter((m) => !m.isMakeup).length
   const page = 1
   const totalPages = 1
-
-  const scrollToFilters = () => {
-    document
-      .getElementById('teacher-class-detail-filters')
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
 
   useEffect(() => {
     const h = routeHash?.replace(/^#/, '') ?? ''
@@ -809,6 +702,14 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                       onSubmit={scheduleForm.handleSubmit((vals) => {
                         const startTime = joinTimeHm(vals.startHour, vals.startMinute)
                         const endTime = joinTimeHm(vals.endHour, vals.endMinute)
+                        const localDeadlines = vals.roadmapItemDeadlines || {}
+                        const roadmapItemDeadlines: Record<string, string> = {}
+                        for (const itemId of vals.roadmapItemIds) {
+                          const dl = localDeadlines[itemId]
+                          if (dl) {
+                            roadmapItemDeadlines[itemId] = new Date(dl).toISOString()
+                          }
+                        }
                         const payload = {
                           dateIso: vals.dateIso,
                           startTime,
@@ -816,6 +717,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           topic: vals.topic.trim(),
                           location: vals.location.trim() || null,
                           roadmapItemIds: vals.roadmapItemIds,
+                          roadmapItemDeadlines,
                         }
                         if (startTime >= endTime) {
                           toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
@@ -954,32 +856,62 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                                 <div className="space-y-2">
                                   {items.map((item) => {
                                     const checked = selectedRoadmapItemIds.includes(item.id)
+                                    const requiresReflection = allowsReflectionSubmission(
+                                      item.assessment
+                                    )
                                     return (
-                                      <label
+                                      <div
                                         key={item.id}
                                         className={cn(
-                                          'flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-3 text-sm transition-colors',
+                                          'flex flex-col gap-3 rounded-xl border bg-white p-3 text-sm transition-colors md:flex-row md:items-center md:justify-between',
                                           checked
                                             ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/10'
                                             : 'border-slate-100 hover:border-primary/20'
                                         )}
                                       >
-                                        <Checkbox
-                                          checked={checked}
-                                          onCheckedChange={(value) =>
-                                            toggleRoadmapItem(item.id, value === true)
-                                          }
-                                          className="mt-0.5"
-                                        />
-                                        <span className="min-w-0">
-                                          <span className="block font-bold text-slate-900">
-                                            {item.objective}
+                                        <label className="flex cursor-pointer items-start gap-3 flex-1 min-w-0">
+                                          <Checkbox
+                                            checked={checked}
+                                            onCheckedChange={(value) =>
+                                              toggleRoadmapItem(item.id, value === true)
+                                            }
+                                            className="mt-0.5"
+                                          />
+                                          <span className="min-w-0">
+                                            <span className="block font-bold text-slate-900">
+                                              {item.objective}
+                                            </span>
+                                            <span className="mt-1 block text-xs font-semibold text-slate-400">
+                                              {item.assessment || 'Chưa có hình thức đánh giá'}
+                                            </span>
                                           </span>
-                                          <span className="mt-1 block text-xs font-semibold text-slate-400">
-                                            {item.assessment || 'Chưa có hình thức đánh giá'}
-                                          </span>
-                                        </span>
-                                      </label>
+                                        </label>
+                                        {checked && requiresReflection && (
+                                          <div className="flex flex-col gap-1 shrink-0 w-full md:w-auto min-w-[180px]">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                              Hạn nộp phản tư
+                                            </span>
+                                            <input
+                                              type="datetime-local"
+                                              value={
+                                                (
+                                                  getScheduleValues(
+                                                    'roadmapItemDeadlines'
+                                                  ) as Record<string, string>
+                                                )?.[item.id] || ''
+                                              }
+                                              onChange={(e) =>
+                                                setScheduleValue(
+                                                  `roadmapItemDeadlines.${item.id}`,
+                                                  e.target.value,
+                                                  { shouldDirty: true, shouldValidate: true }
+                                                )
+                                              }
+                                              className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 focus:border-primary focus:outline-none"
+                                            />
+                                          </div>
+                                        )}
+                                      </div>
                                     )
                                   })}
                                 </div>
