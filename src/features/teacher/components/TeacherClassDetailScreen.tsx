@@ -10,6 +10,7 @@ import {
   Star,
   CheckCircle2,
   XCircle,
+  Clock,
 } from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -195,6 +196,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null)
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+  const [isCreatingDeadlineOnly, setIsCreatingDeadlineOnly] = useState(false)
 
   // Evaluation modal state
   const [evalModalOpen, setEvalModalOpen] = useState(false)
@@ -335,6 +337,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
   const resetScheduleForm = () => {
     setEditingScheduleId(null)
+    setIsCreatingDeadlineOnly(false)
     resetScheduleValues(scheduleInitial)
   }
 
@@ -587,6 +590,29 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                 <CalendarDays className="mr-2 h-5 w-5" />
                 THÊM BUỔI MỚI
               </Button>
+              <Button
+                variant="outline"
+                className="h-14 rounded-2xl border-primary text-primary hover:bg-primary/5 px-8 text-base font-black shadow-lg transition-all hover:scale-105 active:scale-95"
+                onClick={() => {
+                  resetScheduleForm()
+                  scheduleForm.reset({
+                    dateIso: getTodayIsoLocal(),
+                    startHour: '00',
+                    startMinute: '00',
+                    endHour: '23',
+                    endMinute: '59',
+                    topic: 'Hạn nộp bài phản tư',
+                    location: 'Nộp bài trực tuyến',
+                    roadmapItemIds: [],
+                    roadmapItemDeadlines: {},
+                  })
+                  setIsCreatingDeadlineOnly(true)
+                  setScheduleModalOpen(true)
+                }}
+              >
+                <Clock className="mr-2 h-5 w-5" />
+                TẠO HẠN NỘP
+              </Button>
             </div>
 
             {/* Session Navigation inside the card */}
@@ -678,10 +704,16 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                 <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-5">
                   <div className="min-w-0">
                     <h2 className="text-xl font-black tracking-tight text-slate-950">
-                      {editingScheduleId ? 'CẬP NHẬT BUỔI HỌC' : 'THÊM BUỔI HỌC MỚI'}
+                      {isCreatingDeadlineOnly
+                        ? 'TẠO HẠN NỘP BÀI PHẢN TƯ'
+                        : editingScheduleId
+                          ? 'CẬP NHẬT BUỔI HỌC'
+                          : 'THÊM BUỔI HỌC MỚI'}
                     </h2>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Thông tin chi tiết buổi đào tạo trực tiếp
+                      {isCreatingDeadlineOnly
+                        ? 'Thiết lập hạn nộp bài cho học viên theo lộ trình học'
+                        : 'Thông tin chi tiết buổi đào tạo trực tiếp'}
                     </p>
                   </div>
                   <Button
@@ -763,7 +795,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           <DateController
                             control={scheduleForm.control}
                             name="dateIso"
-                            label="Ngày học"
+                            label={isCreatingDeadlineOnly ? 'Ngày nộp bài' : 'Ngày học'}
                             required
                             datePickerClassName="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10"
                           />
@@ -779,7 +811,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
                           <div className="space-y-2">
                             <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                              Thời gian bắt đầu
+                              {isCreatingDeadlineOnly ? 'Khung giờ mở nộp' : 'Thời gian bắt đầu'}
                             </label>
                             <div className="flex items-center gap-2">
                               <InputController
@@ -806,7 +838,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
                           <div className="space-y-2">
                             <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                              Thời gian kết thúc
+                              {isCreatingDeadlineOnly ? 'Khung giờ đóng nộp' : 'Thời gian kết thúc'}
                             </label>
                             <div className="flex items-center gap-2">
                               <InputController
@@ -935,7 +967,11 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           className="h-10 rounded-xl bg-primary px-7 font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90"
                           loading={createSchedule.isPending || updateSchedule.isPending}
                         >
-                          {editingScheduleId ? 'CẬP NHẬT' : 'LƯU BUỔI HỌC'}
+                          {isCreatingDeadlineOnly
+                            ? 'LƯU HẠN NỘP'
+                            : editingScheduleId
+                              ? 'CẬP NHẬT'
+                              : 'LƯU BUỔI HỌC'}
                         </Button>
                       </div>
                     </form>
