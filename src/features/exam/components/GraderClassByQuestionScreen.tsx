@@ -47,6 +47,9 @@ export function GraderClassByQuestionScreen({
   // Plus global notes for each submission: Record<submissionId, string>
   const [localGrades, setLocalGrades] = useState<Record<string, Record<string, LocalGrade>>>({})
   const [submissionNotes, setSubmissionNotes] = useState<Record<string, string>>({})
+  const [fileGrades, setFileGrades] = useState<Record<string, { score: string; comment: string }>>(
+    {}
+  )
 
   useEffect(() => {
     console.log('[Grader] classId from params:', classId)
@@ -129,6 +132,92 @@ export function GraderClassByQuestionScreen({
       return answers && typeof answers === 'object' && 'fileUrl' in answers
     })
   }, [currentClass, scheduleId, classSubmissions])
+
+  // Initialize file grades from existing submissions
+  useEffect(() => {
+    if (isFileExam && classSubmissions.length > 0 && Object.keys(fileGrades).length === 0) {
+      const init: Record<string, { score: string; comment: string }> = {}
+      classSubmissions.forEach((sub) => {
+        init[sub.id] = {
+          score: sub.totalScore != null ? String(sub.totalScore) : '',
+          comment: sub.graderNote || '',
+        }
+      })
+      setFileGrades(init)
+    }
+  }, [isFileExam, classSubmissions])
+
+  const handleFileGradeChange = (subId: string, field: 'score' | 'comment', value: string) => {
+    setFileGrades((prev) => ({
+      ...prev,
+      [subId]: { ...prev[subId], [field]: value },
+    }))
+  }
+
+  const handleFileExamSaveDraft = async () => {
+    let successCount = 0
+    let failCount = 0
+    for (const sub of classSubmissions) {
+      const grade = fileGrades[sub.id]
+      if (!grade) continue
+      const score = grade.score ? parseInt(grade.score, 10) : 0
+      try {
+        await gradeMutation.mutateAsync({
+          submissionId: sub.id,
+          grades: {},
+          graderNote: grade.comment,
+          status: 'grading',
+          totalScore: score,
+        })
+        successCount++
+      } catch {
+        failCount++
+      }
+    }
+    if (successCount > 0) toast.success(`Đã lưu bản nháp cho ${successCount} học viên`)
+    if (failCount > 0) toast.error(`Lỗi khi lưu cho ${failCount} học viên`)
+  }
+
+  const handleFileExamComplete = async () => {
+    for (const sub of classSubmissions) {
+      const grade = fileGrades[sub.id]
+      if (!grade || !grade.score) {
+        toast.error(`Vui lòng nhập điểm cho ${sub.fullName}`)
+        return
+      }
+      const scoreNum = parseInt(grade.score, 10)
+      if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+        toast.error(`Điểm của ${sub.fullName} phải từ 0 đến 100`)
+        return
+      }
+    }
+
+    let successCount = 0
+    let failCount = 0
+    for (const sub of classSubmissions) {
+      const grade = fileGrades[sub.id]
+      const score = parseInt(grade.score, 10)
+      const outcome = score >= 50 ? 'DAT' : 'CHO_HOC_LAI'
+      try {
+        await gradeMutation.mutateAsync({
+          submissionId: sub.id,
+          grades: {},
+          graderNote: grade.comment,
+          status: 'done',
+          totalScore: score,
+          outcome,
+        })
+        successCount++
+      } catch {
+        failCount++
+      }
+    }
+    if (successCount > 0) {
+      toast.success(`Đã hoàn thành chấm bài cho ${successCount} học viên`)
+      setTimeout(() => void navigate({ to: '/manager/grading' }), 500)
+    }
+    if (failCount > 0) toast.error(`Lỗi khi lưu cho ${failCount} học viên`)
+  }
 
   // Initialize local state from submissions
   useEffect(() => {
@@ -344,6 +433,8 @@ export function GraderClassByQuestionScreen({
   }
 
   if (isFileExam) {
+    const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? ''
+
     return (
       <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-slate-50/50 text-sm text-foreground overflow-hidden">
         {/* Top Header Bar */}
@@ -369,11 +460,40 @@ export function GraderClassByQuestionScreen({
               </div>
             </div>
           </div>
+          <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={gradeMutation.isPending}
+              className="rounded-xl px-5 font-bold border-primary text-primary hover:bg-primary/5 transition-all active:scale-95"
+              onClick={() => void handleFileExamSaveDraft()}
+            >
+              {gradeMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Lưu bản nháp
+            </Button>
+            <Button
+              size="sm"
+              disabled={gradeMutation.isPending}
+              className="rounded-xl px-5 font-bold shadow-md shadow-primary/20 bg-primary hover:bg-primary/90 transition-all active:scale-95"
+              onClick={() => void handleFileExamComplete()}
+            >
+              {gradeMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
+              Hoàn thành
+            </Button>
+          </div>
         </div>
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-5xl mx-auto space-y-6">
+          <div className="max-w-6xl mx-auto space-y-6">
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-black text-slate-900 mb-6">
                 Bài nộp từ học viên ({classSubmissions.length})
@@ -390,39 +510,47 @@ export function GraderClassByQuestionScreen({
                   <table className="w-full border-collapse text-left text-sm">
                     <thead>
                       <tr className="bg-slate-50">
-                        <th className="px-6 py-4 font-bold text-slate-600">Học viên</th>
-                        <th className="px-6 py-4 font-bold text-slate-600">File bài làm</th>
-                        <th className="px-6 py-4 font-bold text-slate-600 text-center">
+                        <th className="px-4 py-4 font-bold text-slate-600">Học viên</th>
+                        <th className="px-4 py-4 font-bold text-slate-600">File bài làm</th>
+                        <th className="px-4 py-4 font-bold text-slate-600 text-center">
                           Trạng thái
                         </th>
-                        <th className="px-6 py-4 font-bold text-slate-600 text-center">Điểm số</th>
-                        <th className="px-6 py-4 font-bold text-slate-600 text-right">Thao tác</th>
+                        <th className="px-4 py-4 font-bold text-slate-600 text-center w-[120px]">
+                          Điểm (0-100)
+                        </th>
+                        <th className="px-4 py-4 font-bold text-slate-600 w-[280px]">Nhận xét</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {classSubmissions.map((sub) => {
                         const answers = sub.answers as any
-                        const fileUrl = answers?.fileUrl || ''
+                        const rawFileUrl: string = answers?.fileUrl || ''
+                        const fileUrl = rawFileUrl.startsWith('/uploads/')
+                          ? `${apiBase}${rawFileUrl}`
+                          : rawFileUrl
                         const fileName = answers?.fileName || 'Tài liệu'
+                        const grade = fileGrades[sub.id] || { score: '', comment: '' }
 
                         return (
                           <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="px-6 py-5 font-bold text-slate-800">{sub.fullName}</td>
-                            <td className="px-6 py-5">
+                            <td className="px-4 py-4 font-bold text-slate-800 whitespace-nowrap">
+                              {sub.fullName}
+                            </td>
+                            <td className="px-4 py-4">
                               {fileUrl ? (
                                 <a
                                   href={fileUrl}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-primary hover:underline font-bold text-xs"
+                                  className="inline-flex items-center gap-1.5 text-primary hover:underline font-bold text-xs bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors"
                                 >
-                                  {fileName}
+                                  📄 {fileName}
                                 </a>
                               ) : (
                                 <span className="text-slate-400 italic">Chưa nộp file</span>
                               )}
                             </td>
-                            <td className="px-6 py-5 text-center">
+                            <td className="px-4 py-4 text-center">
                               <span
                                 className={cn(
                                   'inline-flex rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap',
@@ -440,22 +568,29 @@ export function GraderClassByQuestionScreen({
                                     : 'Chờ chấm'}
                               </span>
                             </td>
-                            <td className="px-6 py-5 text-center font-bold text-slate-700">
-                              {sub.totalScore !== null ? `${sub.totalScore}%` : '—'}
-                            </td>
-                            <td className="px-6 py-5 text-right">
-                              <Button
-                                size="sm"
-                                className="font-bold rounded-xl px-4"
-                                onClick={() =>
-                                  void navigate({
-                                    to: `/exam/${sub.id}/grade`,
-                                    search: { employeeId: sub.userId },
-                                  })
+                            <td className="px-4 py-4 text-center">
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                placeholder="—"
+                                value={grade.score}
+                                onChange={(e) =>
+                                  handleFileGradeChange(sub.id, 'score', e.target.value)
                                 }
-                              >
-                                {sub.status === 'done' ? 'Xem lại / Sửa' : 'Chấm bài'}
-                              </Button>
+                                className="w-20 mx-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-sm font-bold text-slate-800 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                            </td>
+                            <td className="px-4 py-4">
+                              <textarea
+                                placeholder="Nhập nhận xét..."
+                                value={grade.comment}
+                                onChange={(e) =>
+                                  handleFileGradeChange(sub.id, 'comment', e.target.value)
+                                }
+                                rows={2}
+                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm resize-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all"
+                              />
                             </td>
                           </tr>
                         )
@@ -465,6 +600,33 @@ export function GraderClassByQuestionScreen({
                 </div>
               )}
             </div>
+
+            {/* Bottom action buttons (mobile-friendly) */}
+            {classSubmissions.length > 0 && (
+              <div className="flex items-center justify-end gap-3 pt-2 pb-8">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  disabled={gradeMutation.isPending}
+                  className="h-12 rounded-2xl px-8 font-bold border-primary text-primary hover:bg-primary/5 transition-all active:scale-95"
+                  onClick={() => void handleFileExamSaveDraft()}
+                >
+                  {gradeMutation.isPending && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
+                  <Save className="h-5 w-5 mr-2" />
+                  Lưu bản nháp
+                </Button>
+                <Button
+                  size="lg"
+                  disabled={gradeMutation.isPending}
+                  className="h-12 rounded-2xl px-8 font-bold shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 transition-all active:scale-95"
+                  onClick={() => void handleFileExamComplete()}
+                >
+                  {gradeMutation.isPending && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
+                  <CheckCircle2 className="h-5 w-5 mr-2" />
+                  Hoàn thành chấm bài
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
