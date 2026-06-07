@@ -20,7 +20,7 @@ export const checklistResponseSchema = z.object({
 
 export const submissionApiSchema = z.object({
   id: z.string().uuid(),
-  starId: z.string(),
+  starId: z.string().nullish().optional(),
   itemId: z.string().nullish(),
   status: z.enum(['PENDING', 'ACCEPTED', 'REJECTED', 'GRADED']),
   fileName: z.string(),
