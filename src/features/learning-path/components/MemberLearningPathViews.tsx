@@ -718,7 +718,7 @@ export function MemberClassesPanel() {
                     )}
                   </div>
 
-                  {(!hasSubmission || isRejected) && !isOverdue && (
+                  {!hasSubmission && !isOverdue && (
                     <div className="mt-5 border-t border-slate-100/80 pt-4 space-y-3">
                       <div className="flex flex-col sm:flex-row gap-2">
                         <input
