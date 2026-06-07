@@ -294,7 +294,9 @@ export function MemberClassesPanel() {
           normalizedAssessment.includes('test') ||
           normalizedAssessment.includes('kiem tra') ||
           normalizedAssessment.includes('assessment') ||
-          s.isExam
+          s.isExam ||
+          s.location === 'Nộp bài trực tuyến' ||
+          s.topic?.includes('Hạn nộp')
 
         const isDeadlineSlot = s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
 
@@ -681,7 +683,7 @@ export function MemberClassesPanel() {
                           </Badge>
                         ) : isPending ? (
                           <Badge className="border-0 bg-amber-500 text-white font-extrabold uppercase tracking-wider text-[10px] px-2 py-0.5 shadow-sm">
-                            Chờ duyệt
+                            Chờ chấm
                           </Badge>
                         ) : (
                           <Badge className="border-0 bg-slate-200 text-slate-500 font-extrabold uppercase tracking-wider text-[10px] px-2 py-0.5">
