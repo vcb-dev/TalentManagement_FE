@@ -27,6 +27,7 @@ export interface GraderChamThiScreenProps {
 type GradeFormValues = {
   graderNote: string
   grades: Record<string, { criteria: string[]; score: number; isGraded?: boolean }>
+  totalScore?: number
 }
 
 const CRITERIA_WEIGHTS: Record<string, number> = {
@@ -226,7 +227,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
   }, [])
 
   const gradeForm = useForm<GradeFormValues>({
-    defaultValues: { graderNote: '', grades: {} },
+    defaultValues: { graderNote: '', grades: {}, totalScore: 0 },
   })
 
   useEffect(() => {
@@ -242,6 +243,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
     gradeForm.reset({
       graderNote: submission.graderNote ?? '',
       grades: mappedGrades,
+      totalScore: submission.totalScore ?? 0,
     })
   }, [submission, gradeForm])
 
@@ -267,6 +269,8 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
     return answeredEntries.length
   }, [submission, answeredEntries.length])
 
+  const isFileSubmission = typeof answersObj === 'object' && 'fileUrl' in answersObj
+
   const handleComplete = (status: 'grading' | 'done') => {
     const graderNote = gradeForm.getValues('graderNote') ?? ''
     if (status === 'done' && !graderNote.trim()) {
@@ -277,7 +281,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
     const currentGrades = gradeForm.getValues('grades') ?? {}
 
     // Validation for 'done' status
-    if (status === 'done') {
+    if (status === 'done' && !isFileSubmission) {
       let index = 0
       for (const [qId] of answeredEntries) {
         const g = currentGrades[qId] as any
@@ -297,8 +301,9 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
       }
     }
 
-    const totalScore =
-      totalQuestionsInExam > 0
+    const totalScore = isFileSubmission
+      ? Number(gradeForm.getValues('totalScore') || 0)
+      : totalQuestionsInExam > 0
         ? Math.round(
             Object.values(currentGrades).reduce((acc, g) => acc + (g as any).score, 0) /
               totalQuestionsInExam
@@ -309,7 +314,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
         submissionId: examId,
         graderNote,
         status,
-        grades: currentGrades,
+        grades: isFileSubmission ? undefined : currentGrades,
         totalScore,
       },
       {
@@ -447,36 +452,67 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
               </div>
 
               {/* Answers */}
-              <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-muted-foreground">
-                  Phần làm bài của thí sinh ({answeredEntries.length} câu)
-                </h2>
-                {answeredEntries.length === 0 ? (
-                  <p className="italic text-muted-foreground">
-                    Không có câu trả lời nào được ghi nhận.
-                  </p>
-                ) : (
-                  <div className="space-y-5">
-                    {answeredEntries.map(([qId, answer], idx) => {
-                      const questionText = questionMap[qId] || `Câu hỏi ${idx + 1}`
-
-                      return (
-                        <GraderQuestionItem
-                          key={qId}
-                          qId={qId}
-                          idx={idx}
-                          answer={answer}
-                          questionText={questionText}
-                          control={gradeForm.control}
-                          getValues={gradeForm.getValues}
-                          setValue={gradeForm.setValue}
-                          disabled={submission.status === 'done' && !gradeMutation.isPending}
-                        />
-                      )
-                    })}
+              {isFileSubmission ? (
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                  <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-muted-foreground">
+                    Bài làm của thí sinh (File đính kèm)
+                  </h2>
+                  <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0">
+                      <ArrowLeft className="-rotate-90 h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-slate-800 truncate">
+                        {answersObj.fileName || 'File bài thi'}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Học viên đã tải lên file bài thi
+                      </p>
+                    </div>
+                    {answersObj.fileUrl && (
+                      <a
+                        href={answersObj.fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="h-9 rounded-xl px-4 flex items-center bg-primary text-white text-xs font-black uppercase tracking-widest shadow-sm hover:bg-primary/95 transition-all"
+                      >
+                        Tải về / Xem tệp
+                      </a>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                  <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-muted-foreground">
+                    Phần làm bài của thí sinh ({answeredEntries.length} câu)
+                  </h2>
+                  {answeredEntries.length === 0 ? (
+                    <p className="italic text-muted-foreground">
+                      Không có câu trả lời nào được ghi nhận.
+                    </p>
+                  ) : (
+                    <div className="space-y-5">
+                      {answeredEntries.map(([qId, answer], idx) => {
+                        const questionText = questionMap[qId] || `Câu hỏi ${idx + 1}`
+
+                        return (
+                          <GraderQuestionItem
+                            key={qId}
+                            qId={qId}
+                            idx={idx}
+                            answer={answer}
+                            questionText={questionText}
+                            control={gradeForm.control}
+                            getValues={gradeForm.getValues}
+                            setValue={gradeForm.setValue}
+                            disabled={submission.status === 'done' && !gradeMutation.isPending}
+                          />
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Grader note */}
               <div className="rounded-xl border border-primary/20 bg-card p-5 shadow-sm">
@@ -515,17 +551,41 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                 </h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Số câu trả lời</span>
-                    <span className="font-bold text-foreground">{answeredEntries.length}</span>
+                    <span className="text-muted-foreground">
+                      {isFileSubmission ? 'Hình thức nộp' : 'Số câu trả lời'}
+                    </span>
+                    <span className="font-bold text-foreground">
+                      {isFileSubmission ? 'File đính kèm' : `${answeredEntries.length} câu`}
+                    </span>
                   </div>
                   <div className="my-2 h-px w-full bg-border" />
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-foreground">Tổng điểm trung bình</span>
-                    <LiveTotalScore
-                      control={gradeForm.control}
-                      answeredCount={totalQuestionsInExam}
-                    />
-                  </div>
+                  {isFileSubmission ? (
+                    <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                        Điểm bài thi (0 - 100) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={gradeForm.watch('totalScore') ?? ''}
+                        onChange={(e) => {
+                          const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0))
+                          gradeForm.setValue('totalScore', val, { shouldValidate: true })
+                        }}
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-center font-extrabold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25"
+                        disabled={submission.status === 'done' && !gradeMutation.isPending}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-foreground">Tổng điểm trung bình</span>
+                      <LiveTotalScore
+                        control={gradeForm.control}
+                        answeredCount={totalQuestionsInExam}
+                      />
+                    </div>
+                  )}
                   <div className="my-2 h-px w-full bg-border" />
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Trạng thái</span>

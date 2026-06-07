@@ -120,6 +120,16 @@ export function GraderClassByQuestionScreen({
     }
   }, [currentClass, classId, classSubmissions])
 
+  const isFileExam = useMemo(() => {
+    const schedule = currentClass?.schedules?.find((s: any) => s.id === scheduleId)
+    if (schedule?.location === 'Nộp bài trực tuyến') return true
+
+    return classSubmissions.some((s) => {
+      const answers = s.answers as any
+      return answers && typeof answers === 'object' && 'fileUrl' in answers
+    })
+  }, [currentClass, scheduleId, classSubmissions])
+
   // Initialize local state from submissions
   useEffect(() => {
     if (classSubmissions.length > 0 && Object.keys(localGrades).length === 0) {
@@ -329,6 +339,134 @@ export function GraderClassByQuestionScreen({
       <div className="flex min-h-[400px] flex-col items-center justify-center gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground font-medium">Đang tải dữ liệu chấm thi...</p>
+      </div>
+    )
+  }
+
+  if (isFileExam) {
+    return (
+      <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-slate-50/50 text-sm text-foreground overflow-hidden">
+        {/* Top Header Bar */}
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white/90 px-8 py-4 shadow-sm z-20 backdrop-blur-md">
+          <div className="flex items-center gap-4 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full hover:bg-slate-100 transition-colors"
+              onClick={() => void navigate({ to: '/manager/grading' })}
+            >
+              <ArrowLeft className="h-5 w-5 text-slate-600" />
+            </Button>
+            <div className="min-w-0">
+              <h1 className="text-lg font-extrabold text-slate-900 truncate tracking-tight">
+                {currentClass?.name || 'Lớp học'} - Bài thi tự luận/Nộp file
+              </h1>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
+                  Chế độ: Chấm bài thi nộp file
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="max-w-5xl mx-auto space-y-6">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-black text-slate-900 mb-6">
+                Bài nộp từ học viên ({classSubmissions.length})
+              </h2>
+
+              {classSubmissions.length === 0 ? (
+                <div className="text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100">
+                  <p className="text-slate-400 font-semibold text-sm">
+                    Chưa có học viên nào nộp bài thi.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-2xl border border-slate-100">
+                  <table className="w-full border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="bg-slate-50">
+                        <th className="px-6 py-4 font-bold text-slate-600">Học viên</th>
+                        <th className="px-6 py-4 font-bold text-slate-600">File bài làm</th>
+                        <th className="px-6 py-4 font-bold text-slate-600 text-center">
+                          Trạng thái
+                        </th>
+                        <th className="px-6 py-4 font-bold text-slate-600 text-center">Điểm số</th>
+                        <th className="px-6 py-4 font-bold text-slate-600 text-right">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {classSubmissions.map((sub) => {
+                        const answers = sub.answers as any
+                        const fileUrl = answers?.fileUrl || ''
+                        const fileName = answers?.fileName || 'Tài liệu'
+
+                        return (
+                          <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-5 font-bold text-slate-800">{sub.fullName}</td>
+                            <td className="px-6 py-5">
+                              {fileUrl ? (
+                                <a
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-primary hover:underline font-bold text-xs"
+                                >
+                                  {fileName}
+                                </a>
+                              ) : (
+                                <span className="text-slate-400 italic">Chưa nộp file</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-5 text-center">
+                              <span
+                                className={cn(
+                                  'inline-flex rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap',
+                                  sub.status === 'done'
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : sub.status === 'grading'
+                                      ? 'bg-amber-100 text-amber-700'
+                                      : 'bg-rose-100 text-rose-700'
+                                )}
+                              >
+                                {sub.status === 'done'
+                                  ? 'Đã chấm'
+                                  : sub.status === 'grading'
+                                    ? 'Đang chấm'
+                                    : 'Chờ chấm'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-5 text-center font-bold text-slate-700">
+                              {sub.totalScore !== null ? `${sub.totalScore}%` : '—'}
+                            </td>
+                            <td className="px-6 py-5 text-right">
+                              <Button
+                                size="sm"
+                                className="font-bold rounded-xl px-4"
+                                onClick={() =>
+                                  void navigate({
+                                    to: `/exam/${sub.id}/grade`,
+                                    search: { employeeId: sub.userId },
+                                  })
+                                }
+                              >
+                                {sub.status === 'done' ? 'Xem lại / Sửa' : 'Chấm bài'}
+                              </Button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

@@ -49,6 +49,8 @@ import type { MeEnrolledClass } from '@/features/learning-path/schemas'
 import { cn } from '@/lib/utils'
 import { SessionEvaluationModal } from '@/features/teacher/components/SessionEvaluationModal'
 import { useAuthStore } from '@/stores/auth.store'
+import { useSubmitExam } from '@/features/exam/hooks'
+import { apiClient } from '@/lib/axios'
 
 function Modal({
   open,
@@ -265,6 +267,8 @@ export function MemberClassesPanel() {
 
   const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({})
   const submitEvidence = useSubmitEvidence()
+  const submitExam = useSubmitExam()
+  const [uploadingTaskId, setUploadingTaskId] = useState<string | null>(null)
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const reflectionTasks = useMemo(() => {
@@ -285,11 +289,25 @@ export function MemberClassesPanel() {
           normalizedAssessment.includes('tu luan') ||
           normalizedAssessment.includes('review')
 
-        if (isReflection) {
+        const isExam =
+          normalizedAssessment.includes('thi') ||
+          normalizedAssessment.includes('test') ||
+          normalizedAssessment.includes('kiem tra') ||
+          normalizedAssessment.includes('assessment') ||
+          s.isExam
+
+        const isDeadlineSlot = s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
+
+        if (isReflection || isExam || isDeadlineSlot) {
           tasks.push({
             ...ri,
+            scheduleId: s.id,
             scheduleTopic: s.topic,
             scheduleDateIso: s.dateIso,
+            isExam,
+            deadline:
+              ri.deadline ||
+              (s.endTime ? `${s.dateIso}T${s.endTime}:00+07:00` : `${s.dateIso}T23:59:00+07:00`),
           })
         }
       })
@@ -308,32 +326,81 @@ export function MemberClassesPanel() {
     return match && match[1] ? match[1] : '1'
   }
 
-  const handleUploadFile = (taskId: string, topic: string) => {
+  const handleUploadFile = async (taskId: string, topic: string) => {
     const file = selectedFiles[taskId]
     if (!file) {
       toast.error('Vui lòng chọn file trước khi nộp.')
       return
     }
-    const starId = getStarFromTopic(topic)
-    const levelId = cls.levelTo
 
-    submitEvidence.mutate(
-      {
-        levelId,
-        starId,
-        itemId: taskId,
-        file,
-        submissionType: 'FILE',
-      },
-      {
-        onSuccess: () => {
-          setSelectedFiles((prev) => ({ ...prev, [taskId]: null }))
-          if (fileRefs.current[taskId]) {
-            fileRefs.current[taskId]!.value = ''
+    const task = reflectionTasks.find((t) => t.id === taskId)
+    if (!task) return
+
+    setUploadingTaskId(taskId)
+
+    if (task.isExam) {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      try {
+        const uploadRes = await apiClient.post<{ fileUrl: string; fileName: string }>(
+          '/exams/upload-file',
+          formData,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
+        )
+        const { fileUrl, fileName } = uploadRes.data
+
+        submitExam.mutate(
+          {
+            classId: cls.id,
+            scheduleId: task.scheduleId,
+            answers: { fileUrl, fileName },
+          },
+          {
+            onSuccess: () => {
+              toast.success('Đã nộp bài thi thành công!')
+              setSelectedFiles((prev) => ({ ...prev, [taskId]: null }))
+              if (fileRefs.current[taskId]) {
+                fileRefs.current[taskId]!.value = ''
+              }
+            },
+            onError: (err) => {
+              toast.error('Gửi bài thi thất bại.')
+            },
+            onSettled: () => {
+              setUploadingTaskId(null)
+            },
           }
-        },
+        )
+      } catch (err) {
+        toast.error('Tải file lên thất bại.')
+        setUploadingTaskId(null)
       }
-    )
+    } else {
+      const starId = getStarFromTopic(topic)
+      const levelId = cls.levelTo
+
+      submitEvidence.mutate(
+        {
+          levelId,
+          starId,
+          itemId: taskId,
+          file,
+          submissionType: 'FILE',
+        },
+        {
+          onSuccess: () => {
+            setSelectedFiles((prev) => ({ ...prev, [taskId]: null }))
+            if (fileRefs.current[taskId]) {
+              fileRefs.current[taskId]!.value = ''
+            }
+          },
+          onSettled: () => {
+            setUploadingTaskId(null)
+          },
+        }
+      )
+    }
   }
 
   if (isLoading) {
@@ -507,9 +574,10 @@ export function MemberClassesPanel() {
             <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
               Nhiệm vụ lộ trình
             </p>
-            <h3 className="text-lg font-black text-slate-900 mt-1">Lịch nộp phản tư</h3>
+            <h3 className="text-lg font-black text-slate-900 mt-1">Lịch nộp phản tư & Bài thi</h3>
             <p className="text-xs font-bold text-slate-500 mt-1">
-              Danh sách các học phần yêu cầu viết/nộp phản tư cùng thời hạn do giảng viên thiết lập.
+              Danh sách các học phần yêu cầu viết phản tư hoặc nộp bài thi cùng thời hạn do giảng
+              viên thiết lập.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -521,8 +589,7 @@ export function MemberClassesPanel() {
               const isPending = task.submission?.status === 'PENDING'
 
               const file = selectedFiles[task.id]
-              const isUploading =
-                submitEvidence.isPending && submitEvidence.variables?.itemId === task.id
+              const isUploading = uploadingTaskId === task.id
 
               return (
                 <div
