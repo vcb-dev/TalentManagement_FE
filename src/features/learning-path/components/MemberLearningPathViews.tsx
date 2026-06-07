@@ -51,6 +51,7 @@ import { SessionEvaluationModal } from '@/features/teacher/components/SessionEva
 import { useAuthStore } from '@/stores/auth.store'
 import { useSubmitExam } from '@/features/exam/hooks'
 import { apiClient } from '@/lib/axios'
+import { useQueryClient } from '@tanstack/react-query'
 
 function Modal({
   open,
@@ -229,6 +230,7 @@ function AvailableClassesSection({ currentClassId }: { currentClassId?: string |
 
 export function MemberClassesPanel() {
   const user = useAuthStore((s) => s.user)
+  const queryClient = useQueryClient()
   const filterForm = useForm<{ startDate: string; endDate: string }>({
     defaultValues: { startDate: '', endDate: '' },
   })
@@ -365,6 +367,7 @@ export function MemberClassesPanel() {
               if (fileRefs.current[taskId]) {
                 fileRefs.current[taskId]!.value = ''
               }
+              void queryClient.invalidateQueries({ queryKey: ['learning'] })
             },
             onError: (err) => {
               toast.error('Gửi bài thi thất bại.')
@@ -396,6 +399,7 @@ export function MemberClassesPanel() {
             if (fileRefs.current[taskId]) {
               fileRefs.current[taskId]!.value = ''
             }
+            void queryClient.invalidateQueries({ queryKey: ['learning'] })
           },
           onSettled: () => {
             setUploadingTaskId(null)
