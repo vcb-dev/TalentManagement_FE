@@ -197,7 +197,7 @@ export function GraderClassByQuestionScreen({
     for (const sub of classSubmissions) {
       const grade = fileGrades[sub.id]
       const score = parseInt(grade.score, 10)
-      const outcome = score >= 50 ? 'DAT' : 'CHO_HOC_LAI'
+      const outcome = score >= 80 ? 'DAT' : 'CHO_HOC_LAI'
       try {
         await gradeMutation.mutateAsync({
           submissionId: sub.id,
@@ -600,33 +600,6 @@ export function GraderClassByQuestionScreen({
                 </div>
               )}
             </div>
-
-            {/* Bottom action buttons (mobile-friendly) */}
-            {classSubmissions.length > 0 && (
-              <div className="flex items-center justify-end gap-3 pt-2 pb-8">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  disabled={gradeMutation.isPending}
-                  className="h-12 rounded-2xl px-8 font-bold border-primary text-primary hover:bg-primary/5 transition-all active:scale-95"
-                  onClick={() => void handleFileExamSaveDraft()}
-                >
-                  {gradeMutation.isPending && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
-                  <Save className="h-5 w-5 mr-2" />
-                  Lưu bản nháp
-                </Button>
-                <Button
-                  size="lg"
-                  disabled={gradeMutation.isPending}
-                  className="h-12 rounded-2xl px-8 font-bold shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90 transition-all active:scale-95"
-                  onClick={() => void handleFileExamComplete()}
-                >
-                  {gradeMutation.isPending && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
-                  <CheckCircle2 className="h-5 w-5 mr-2" />
-                  Hoàn thành chấm bài
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       </div>
