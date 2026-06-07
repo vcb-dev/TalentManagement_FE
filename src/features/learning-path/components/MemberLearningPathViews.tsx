@@ -255,6 +255,13 @@ export function MemberClassesPanel() {
   const closeMembers = useCallback(() => setMembersOpen(false), [])
 
   const cls = data?.enrolledClass ?? null
+  const isDeadlineOnly = useCallback((s: any) => {
+    return s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
+  }, [])
+  const regularSchedules = useMemo(() => {
+    if (!cls?.schedules) return []
+    return cls.schedules.filter((s: any) => !isDeadlineOnly(s))
+  }, [cls?.schedules, isDeadlineOnly])
 
   const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({})
   const submitEvidence = useSubmitEvidence()
@@ -500,7 +507,7 @@ export function MemberClassesPanel() {
             <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
               Nhiệm vụ lộ trình
             </p>
-            <h3 className="text-lg font-black text-slate-900 mt-1">Bài Phản tư & Hạn nộp</h3>
+            <h3 className="text-lg font-black text-slate-900 mt-1">Lịch nộp phản tư</h3>
             <p className="text-xs font-bold text-slate-500 mt-1">
               Danh sách các học phần yêu cầu viết/nộp phản tư cùng thời hạn do giảng viên thiết lập.
             </p>
@@ -644,7 +651,7 @@ export function MemberClassesPanel() {
                     )}
                   </div>
 
-                  {(!hasSubmission || isRejected) && (
+                  {(!hasSubmission || isRejected) && !isOverdue && (
                     <div className="mt-5 border-t border-slate-100/80 pt-4 space-y-3">
                       <div className="flex flex-col sm:flex-row gap-2">
                         <input
@@ -686,6 +693,11 @@ export function MemberClassesPanel() {
                         Dung lượng tối đa 25MB. Hỗ trợ PDF, Word, Ảnh minh chứng.
                       </p>
                     </div>
+                  )}
+                  {isOverdue && !hasSubmission && (
+                    <p className="text-xs font-bold text-rose-500 text-center mt-3 bg-rose-50 py-2.5 rounded-xl border border-rose-100">
+                      Đã quá hạn nộp bài. Không thể nộp tài liệu minh chứng.
+                    </p>
                   )}
                 </div>
               )
@@ -741,12 +753,12 @@ export function MemberClassesPanel() {
 
         <div className={cn('transition-opacity', isFetching && 'opacity-60')}>
           <div className="divide-y divide-slate-50 md:hidden">
-            {cls.schedules.length === 0 ? (
+            {regularSchedules.length === 0 ? (
               <div className="px-4 py-16 text-center">
                 <p className="text-sm font-bold text-slate-400">Không tìm thấy lịch học nào</p>
               </div>
             ) : (
-              cls.schedules.map((s) => (
+              regularSchedules.map((s) => (
                 <div key={s.id} className="space-y-3 p-4">
                   <div>
                     <p className="text-xs font-bold text-slate-900">{formatDateIsoVi(s.dateIso)}</p>
@@ -846,7 +858,7 @@ export function MemberClassesPanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {cls.schedules.length === 0 ? (
+                {regularSchedules.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-8 py-20 text-center">
                       <p className="text-sm font-bold text-slate-400">
@@ -855,7 +867,7 @@ export function MemberClassesPanel() {
                     </td>
                   </tr>
                 ) : (
-                  cls.schedules.map((s) => (
+                  regularSchedules.map((s) => (
                     <tr key={s.id} className="group transition-colors hover:bg-slate-50/50">
                       <td className="px-8 py-5">
                         <div className="space-y-1">

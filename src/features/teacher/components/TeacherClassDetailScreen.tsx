@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
   ArrowLeft,
@@ -154,6 +154,17 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const routeHash = useRouterState({ select: (s) => s.location.hash })
   const { data } = useTeacherClassDetail(classId)
   const { data: schedules = [] } = useTeacherSchedules(classId)
+  const isDeadlineOnly = useCallback((s: { topic: string; location?: string | null }) => {
+    return s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
+  }, [])
+  const regularSchedules = useMemo(
+    () => schedules.filter((s) => !isDeadlineOnly(s)),
+    [schedules, isDeadlineOnly]
+  )
+  const deadlineSchedules = useMemo(
+    () => schedules.filter((s) => isDeadlineOnly(s)),
+    [schedules, isDeadlineOnly]
+  )
   const { data: roadmapItems = [] } = useTeacherRoadmapItems(classId)
   const { data: registrations = [] } = useTeacherClassRegistrations(classId)
   const createSchedule = useTeacherCreateSchedule(classId)
@@ -217,14 +228,14 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
   // Tự động chọn buổi học đầu tiên nếu có dữ liệu và chưa chọn buổi nào
   useEffect(() => {
-    if (schedules && schedules.length > 0 && !activeScheduleId) {
-      setActiveScheduleId(schedules[0]?.id || null)
+    if (regularSchedules && regularSchedules.length > 0 && !activeScheduleId) {
+      setActiveScheduleId(regularSchedules[0]?.id || null)
     }
-  }, [schedules, activeScheduleId])
+  }, [regularSchedules, activeScheduleId])
 
   const selectedSchedule = useMemo(
-    () => schedules.find((s) => s.id === activeScheduleId),
-    [schedules, activeScheduleId]
+    () => regularSchedules.find((s) => s.id === activeScheduleId),
+    [regularSchedules, activeScheduleId]
   )
   const roadmapItemsByTopic = useMemo(() => {
     const groups = new Map<string, typeof roadmapItems>()
@@ -580,43 +591,45 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                   </p>
                 </div>
               </div>
-              <Button
-                className="h-14 rounded-2xl bg-primary px-8 text-base font-black text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95"
-                onClick={() => {
-                  resetScheduleForm()
-                  setScheduleModalOpen(true)
-                }}
-              >
-                <CalendarDays className="mr-2 h-5 w-5" />
-                THÊM BUỔI MỚI
-              </Button>
-              <Button
-                variant="outline"
-                className="h-14 rounded-2xl border-primary text-primary hover:bg-primary/5 px-8 text-base font-black shadow-lg transition-all hover:scale-105 active:scale-95"
-                onClick={() => {
-                  resetScheduleForm()
-                  scheduleForm.reset({
-                    dateIso: getTodayIsoLocal(),
-                    startHour: '00',
-                    startMinute: '00',
-                    endHour: '23',
-                    endMinute: '59',
-                    topic: 'Hạn nộp bài phản tư',
-                    location: 'Nộp bài trực tuyến',
-                    roadmapItemIds: [],
-                    roadmapItemDeadlines: {},
-                  })
-                  setIsCreatingDeadlineOnly(true)
-                  setScheduleModalOpen(true)
-                }}
-              >
-                <Clock className="mr-2 h-5 w-5" />
-                TẠO HẠN NỘP
-              </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  className="h-14 rounded-2xl bg-primary px-8 text-base font-black text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95"
+                  onClick={() => {
+                    resetScheduleForm()
+                    setScheduleModalOpen(true)
+                  }}
+                >
+                  <CalendarDays className="mr-2 h-5 w-5" />
+                  THÊM BUỔI MỚI
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-14 rounded-2xl border-primary text-primary hover:bg-primary/5 px-8 text-base font-black shadow-lg transition-all hover:scale-105 active:scale-95"
+                  onClick={() => {
+                    resetScheduleForm()
+                    scheduleForm.reset({
+                      dateIso: getTodayIsoLocal(),
+                      startHour: '00',
+                      startMinute: '00',
+                      endHour: '23',
+                      endMinute: '59',
+                      topic: 'Hạn nộp bài phản tư',
+                      location: 'Nộp bài trực tuyến',
+                      roadmapItemIds: [],
+                      roadmapItemDeadlines: {},
+                    })
+                    setIsCreatingDeadlineOnly(true)
+                    setScheduleModalOpen(true)
+                  }}
+                >
+                  <Clock className="mr-2 h-5 w-5" />
+                  TẠO HẠN NỘP
+                </Button>
+              </div>
             </div>
 
             {/* Session Navigation inside the card */}
-            {schedules.length > 0 && (
+            {regularSchedules.length > 0 && (
               <div className="border-t border-slate-50 bg-slate-50/50 p-4 sm:px-12">
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -631,7 +644,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                   >
                     TỔNG QUAN LỚP
                   </Button>
-                  {schedules.map((s, idx) => {
+                  {regularSchedules.map((s, idx) => {
                     const isActive = activeScheduleId === s.id
                     return (
                       <Button
@@ -977,6 +990,79 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     </form>
                   </Form>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Lịch nộp phản tư Card — TEACHER */}
+          {deadlineSchedules.length > 0 && (
+            <div className="mb-12 overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl shadow-slate-200/50">
+              <div className="flex flex-col gap-3 border-b border-slate-100 p-8 sm:px-12">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
+                  Lộ trình học
+                </p>
+                <h3 className="text-2xl font-black text-slate-900">
+                  Lịch nộp phản tư ({deadlineSchedules.length})
+                </h3>
+                <p className="text-sm font-semibold text-slate-400">
+                  Danh sách các hạn nộp phản tư do giảng viên thiết lập cho lớp học
+                </p>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {deadlineSchedules.map((s) => (
+                  <div
+                    key={s.id}
+                    className="grid gap-4 p-6 lg:grid-cols-[1fr_240px] lg:items-center hover:bg-slate-50/50 transition-colors"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Badge className="rounded-lg border-0 bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-primary">
+                          Hạn nộp
+                        </Badge>
+                        <p className="text-base font-black text-slate-950">{s.topic}</p>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Hạn nộp:{' '}
+                        <span className="font-bold text-slate-700">
+                          {s.dateIso} · {s.startTime} - {s.endTime}
+                        </span>
+                      </p>
+                      {s.roadmapItems?.length ? (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {s.roadmapItems.map((item) => (
+                            <Badge
+                              key={item.id}
+                              variant="outline"
+                              className="rounded-lg px-2 py-0.5 text-[10px] font-bold border-slate-200 bg-slate-50 text-slate-600"
+                            >
+                              {item.objective}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 rounded-xl border-primary/20 px-4 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5"
+                        onClick={() => onEditSchedule(s.id)}
+                      >
+                        <Pencil className="mr-1.5 h-4 w-4" />
+                        Sửa
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 rounded-xl border-rose-200 px-4 text-xs font-black uppercase tracking-widest text-rose-600 hover:bg-rose-50"
+                        onClick={() => onDeleteSchedule(s.id)}
+                      >
+                        <Trash2 className="mr-1.5 h-4 w-4" />
+                        Xóa
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
