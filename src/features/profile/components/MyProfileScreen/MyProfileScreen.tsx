@@ -463,10 +463,17 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     queryFn: () => organizationApi.getTeamsList(),
     staleTime: 60_000,
   })
+  const form = useForm<EditRecord>({
+    defaultValues: userToEdit(u),
+  })
+  const { control, handleSubmit } = form
+  const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
+
   const divisions = useMemo(
     () => divisionsList.map((d) => ({ id: d.id, name: d.name })),
     [divisionsList]
   )
+  // Hiển thị tất cả nhóm, không lọc theo phòng ban
   const teams = useMemo(() => teamsList.map((t) => ({ id: t.id, name: t.name })), [teamsList])
   const allTeamOptions = useMemo(
     () => teamsList.map((t) => ({ value: t.id, label: t.name })),
@@ -482,11 +489,6 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     queryFn: () => profileApi.getJobTitles(),
   })
   const jobTitles = useMemo(() => jobTitlesData ?? [], [jobTitlesData])
-  const form = useForm<EditRecord>({
-    defaultValues: userToEdit(u),
-  })
-  const { control, handleSubmit } = form
-  const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
 
   const role = user?.role ?? 'MEMBER'
   const currentLevelId = mapCurrentTitleToLevelId(page.currentLevel.title)
