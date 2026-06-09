@@ -319,8 +319,9 @@ export function MemberClassesPanel() {
 
     const seen = new Set()
     return tasks.filter((t) => {
-      if (seen.has(t.id)) return false
-      seen.add(t.id)
+      const key = `${t.id}_${t.scheduleId}`
+      if (seen.has(key)) return false
+      seen.add(key)
       return true
     })
   }, [cls])
@@ -330,17 +331,18 @@ export function MemberClassesPanel() {
     return match && match[1] ? match[1] : '1'
   }
 
-  const handleUploadFile = async (taskId: string, topic: string) => {
-    const file = selectedFiles[taskId]
+  const handleUploadFile = async (taskUniqueId: string, topic: string) => {
+    if (!cls) return
+    const file = selectedFiles[taskUniqueId]
     if (!file) {
       toast.error('Vui lòng chọn file trước khi nộp.')
       return
     }
 
-    const task = reflectionTasks.find((t) => t.id === taskId)
+    const task = reflectionTasks.find((t) => `${t.id}_${t.scheduleId}` === taskUniqueId)
     if (!task) return
 
-    setUploadingTaskId(taskId)
+    setUploadingTaskId(taskUniqueId)
 
     if (task.isExam) {
       const formData = new FormData()
@@ -363,13 +365,13 @@ export function MemberClassesPanel() {
           {
             onSuccess: () => {
               toast.success('Đã nộp bài thi thành công!')
-              setSelectedFiles((prev) => ({ ...prev, [taskId]: null }))
-              if (fileRefs.current[taskId]) {
-                fileRefs.current[taskId]!.value = ''
+              setSelectedFiles((prev) => ({ ...prev, [taskUniqueId]: null }))
+              if (fileRefs.current[taskUniqueId]) {
+                fileRefs.current[taskUniqueId]!.value = ''
               }
               void queryClient.invalidateQueries({ queryKey: ['learning'] })
             },
-            onError: (err) => {
+            onError: (_err) => {
               toast.error('Gửi bài thi thất bại.')
             },
             onSettled: () => {
@@ -389,15 +391,15 @@ export function MemberClassesPanel() {
         {
           levelId,
           starId,
-          itemId: taskId,
+          itemId: task.id,
           file,
           submissionType: 'FILE',
         },
         {
           onSuccess: () => {
-            setSelectedFiles((prev) => ({ ...prev, [taskId]: null }))
-            if (fileRefs.current[taskId]) {
-              fileRefs.current[taskId]!.value = ''
+            setSelectedFiles((prev) => ({ ...prev, [taskUniqueId]: null }))
+            if (fileRefs.current[taskUniqueId]) {
+              fileRefs.current[taskUniqueId]!.value = ''
             }
             void queryClient.invalidateQueries({ queryKey: ['learning'] })
           },
@@ -588,18 +590,19 @@ export function MemberClassesPanel() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {reflectionTasks.map((task: any) => {
+              const taskUniqueId = `${task.id}_${task.scheduleId}`
               const isOverdue = task.deadline ? new Date() > new Date(task.deadline) : false
               const hasSubmission = !!task.submission
               const isAccepted = task.submission?.status === 'ACCEPTED'
               const isRejected = task.submission?.status === 'REJECTED'
               const isPending = task.submission?.status === 'PENDING'
 
-              const file = selectedFiles[task.id]
-              const isUploading = uploadingTaskId === task.id
+              const file = selectedFiles[taskUniqueId]
+              const isUploading = uploadingTaskId === taskUniqueId
 
               return (
                 <div
-                  key={task.id}
+                  key={taskUniqueId}
                   className={cn(
                     'flex flex-col justify-between rounded-3xl border p-5 transition-all bg-slate-50/50 hover:bg-white hover:shadow-lg hover:shadow-slate-100',
                     isAccepted
@@ -730,20 +733,22 @@ export function MemberClassesPanel() {
                         <input
                           type="file"
                           ref={(el) => {
-                            fileRefs.current[task.id] = el
+                            fileRefs.current[taskUniqueId] = el
                           }}
                           accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
                           onChange={(e) => {
                             const fileObj = e.target.files?.[0] || null
-                            setSelectedFiles((prev) => ({ ...prev, [task.id]: fileObj }))
+                            setSelectedFiles((prev) => ({ ...prev, [taskUniqueId]: fileObj }))
                           }}
                           className="hidden"
-                          id={`file-input-${task.id}`}
+                          id={`file-input-${taskUniqueId}`}
                         />
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => document.getElementById(`file-input-${task.id}`)?.click()}
+                          onClick={() =>
+                            document.getElementById(`file-input-${taskUniqueId}`)?.click()
+                          }
                           className="h-10 rounded-xl px-4 text-xs font-extrabold flex-1 border-slate-200 hover:bg-slate-50 truncate animate-none"
                         >
                           <Upload className="mr-1.5 h-3.5 w-3.5" />
@@ -752,7 +757,7 @@ export function MemberClassesPanel() {
                         <Button
                           type="button"
                           disabled={!file || isUploading}
-                          onClick={() => handleUploadFile(task.id, task.topic)}
+                          onClick={() => handleUploadFile(taskUniqueId, task.topic)}
                           className="h-10 rounded-xl px-5 text-xs font-black uppercase tracking-widest bg-primary text-white shadow-md hover:bg-primary/95 disabled:opacity-50 shadow-primary/20 shrink-0"
                         >
                           {isUploading ? (
