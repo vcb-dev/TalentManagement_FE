@@ -9,6 +9,10 @@ import {
 import { organizationApi, type TeamMemberRow } from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 
+function isKpiEligibleMember(m: TeamMemberRow): boolean {
+  return m.requiresKpiOkr !== false
+}
+
 /**
  * Cờ để đánh giá chỉ tiêu là "đạt": QL đã đánh giá OK.
  * (Đồng nhất với logic ở `MonthlyReportScreen` và `KpiOkrWorkspace`.)
@@ -345,11 +349,16 @@ export function useKpiDashboardData(params: {
     const isPersonal = Boolean(selfId)
 
     const members = membersQ.data?.members ?? []
-    const activeMembers = members.filter((m) => m.status !== 'INACTIVE')
-    const membersById = new Map(members.map((m) => [m.userId, m]))
+    const activeMembers = members.filter((m) => m.status !== 'INACTIVE' && isKpiEligibleMember(m))
+    const membersById = new Map(activeMembers.map((m) => [m.userId, m]))
+    const eligibleIds = new Set(activeMembers.map((m) => m.userId))
 
-    let assignments = mergeAssignments(assignmentQueries.map((q) => q.data ?? []))
-    let summaries = summariesQueries.flatMap((q) => q.data ?? [])
+    let assignments = mergeAssignments(assignmentQueries.map((q) => q.data ?? [])).filter((a) =>
+      eligibleIds.has(a.assigneeUserId)
+    )
+    let summaries = summariesQueries
+      .flatMap((q) => q.data ?? [])
+      .filter((s) => eligibleIds.has(s.assigneeUserId))
     const questionnaire = mergeQuestionnaires(questionnaireQueries.map((q) => q.data))
 
     if (isPersonal) {

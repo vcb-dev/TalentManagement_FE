@@ -12,6 +12,9 @@ import {
   resolveTemplateCodeForTeam,
   TRAFFIC_TEAM_IDS_FALLBACK,
   shouldShowAssignmentForMember,
+  memberRequiresKpiOkr,
+  filterKpiEligibleMembers,
+  kpiEligibleUserIdSet,
 } from '../catalogHelpers'
 import type { PerformanceAssignment } from '../api'
 
@@ -138,5 +141,35 @@ describe('requiresKpiApproval', () => {
 
   it('ưu tiên flag requiresKpiApproval từ org tree', () => {
     expect(requiresKpiApproval('regular-team-id', [], true)).toBe(true)
+  })
+})
+
+describe('memberRequiresKpiOkr / filterKpiEligibleMembers', () => {
+  it('Part-time non-Traffic miễn KPI', () => {
+    expect(memberRequiresKpiOkr({ teamPosition: 'Partime', requiresKpiOkr: false }, false)).toBe(
+      false
+    )
+    expect(memberRequiresKpiOkr({ teamPosition: 'Partime' }, false)).toBe(false)
+  })
+
+  it('Part-time Traffic vẫn cần KPI', () => {
+    expect(memberRequiresKpiOkr({ teamPosition: 'Partime' }, true)).toBe(true)
+  })
+
+  it('filterKpiEligibleMembers loại Part-time khi không Traffic', () => {
+    const members = [
+      { userId: 'ft', teamPosition: 'Fulltime Chính thức' },
+      { userId: 'pt', teamPosition: 'Partime' },
+    ]
+    expect(filterKpiEligibleMembers(members, false).map((m) => m.userId)).toEqual(['ft'])
+    expect(filterKpiEligibleMembers(members, true).map((m) => m.userId)).toEqual(['ft', 'pt'])
+  })
+
+  it('kpiEligibleUserIdSet', () => {
+    const members = [
+      { userId: 'a', requiresKpiOkr: true },
+      { userId: 'b', requiresKpiOkr: false },
+    ]
+    expect(kpiEligibleUserIdSet(members, false)).toEqual(new Set(['a']))
   })
 })

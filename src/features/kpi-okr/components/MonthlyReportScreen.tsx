@@ -64,6 +64,8 @@ import {
   isCatalogEnabledDepartment,
   requiresKpiApproval,
   shouldShowAssignmentForMember,
+  isTrafficTeam,
+  kpiEligibleUserIdSet,
 } from '@/features/kpi-okr/catalogHelpers'
 
 function nowYm() {
@@ -979,8 +981,19 @@ export function MonthlyReportScreen() {
   )
   const hideManagerEvalColumn = Boolean(isKinhDoanhDept && !requiresKpiApprovalSelected)
 
+  const isTrafficTeamSelected = isTrafficTeam(
+    selectedTeamId,
+    catalogAllowlistQ.data?.trafficTeamIds ?? null,
+    selectedTeam?.name ?? null
+  )
+
+  const kpiEligibleAssigneeIds = useMemo(
+    () => kpiEligibleUserIdSet(membersQ.data?.members ?? [], isTrafficTeamSelected),
+    [membersQ.data?.members, isTrafficTeamSelected]
+  )
+
   const assignmentsData = useMemo(() => {
-    let rows = assignmentsDataRaw
+    let rows = assignmentsDataRaw.filter((r) => kpiEligibleAssigneeIds.has(r.assigneeUserId))
     if (isKinhDoanhDept) {
       rows = rows.filter(shouldShowAssignmentForMember)
     }
@@ -988,7 +1001,7 @@ export function MonthlyReportScreen() {
       rows = rows.filter((r) => r.assigneeUserId === userId)
     }
     return rows
-  }, [assignmentsDataRaw, isKinhDoanhDept, canSeeTeamWide, userId])
+  }, [assignmentsDataRaw, isKinhDoanhDept, canSeeTeamWide, userId, kpiEligibleAssigneeIds])
 
   // Trạng thái duyệt KẾT QUẢ của team theo kỳ (chỉ traffic team mới có request — team khác trả null).
   // Khóa nhập của member khi đang chờ duyệt (pending) hoặc đã được duyệt (approved).

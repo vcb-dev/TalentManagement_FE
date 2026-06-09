@@ -213,6 +213,50 @@ export function requiresKpiApproval(
   return (kpiApprovalTeamIdsFromApi ?? []).includes(teamId)
 }
 
+/** Regex Part-time — đồng bộ BE employment-type.ts */
+const PART_TIME_PATTERN =
+  /(part[._\s-]?time|cộng[._\s-]?tác[._\s-]?viên|cong[._\s-]?tac[._\s-]?vien|\bctv\b|partime)/i
+
+export type MemberEmploymentFields = {
+  teamPosition?: string | null
+  jobTitle?: string | null
+  requiresKpiOkr?: boolean | null
+}
+
+function fieldIsPartTime(value: string | null | undefined): boolean {
+  const s = (value ?? '').trim()
+  return s.length > 0 && PART_TIME_PATTERN.test(s)
+}
+
+/** Part-time nếu teamPosition hoặc jobTitle khớp regex. */
+export function isPartTimeMember(member: MemberEmploymentFields): boolean {
+  return fieldIsPartTime(member.teamPosition) || fieldIsPartTime(member.jobTitle)
+}
+
+/** Member có cần KPI/OKR không (Part-time miễn trừ team Traffic). */
+export function memberRequiresKpiOkr(
+  member: MemberEmploymentFields,
+  isTrafficTeam: boolean
+): boolean {
+  if (member.requiresKpiOkr != null) return member.requiresKpiOkr
+  if (isTrafficTeam) return true
+  return !isPartTimeMember(member)
+}
+
+export function filterKpiEligibleMembers<T extends MemberEmploymentFields & { userId?: string }>(
+  members: T[],
+  isTrafficTeam: boolean
+): T[] {
+  return members.filter((m) => memberRequiresKpiOkr(m, isTrafficTeam))
+}
+
+export function kpiEligibleUserIdSet(
+  members: Array<MemberEmploymentFields & { userId: string }>,
+  isTrafficTeam: boolean
+): Set<string> {
+  return new Set(filterKpiEligibleMembers(members, isTrafficTeam).map((m) => m.userId))
+}
+
 /**
  * Group assignments theo category và sắp xếp theo thứ tự hiển thị.
  * Trả null nếu không có assignment nào có category (phòng không thuộc catalog).

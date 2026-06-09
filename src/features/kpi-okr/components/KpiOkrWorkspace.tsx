@@ -81,6 +81,9 @@ import {
   isTrafficTeam,
   requiresKpiApproval,
   resolveTemplateCodeForTeam,
+  filterKpiEligibleMembers,
+  kpiEligibleUserIdSet,
+  memberRequiresKpiOkr,
 } from '@/features/kpi-okr/catalogHelpers'
 import {
   parseKpiOkrImportFile,
@@ -345,6 +348,23 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     selectedTeamForSeed?.requiresKpiApproval ?? null
   )
 
+  const kpiEligibleMembers = useMemo(
+    () => filterKpiEligibleMembers(visibleMembers, isTrafficTeamSelected),
+    [visibleMembers, isTrafficTeamSelected]
+  )
+
+  const kpiEligibleAssigneeIds = useMemo(
+    () => kpiEligibleUserIdSet(membersForTeamQ.data?.members ?? [], isTrafficTeamSelected),
+    [membersForTeamQ.data?.members, isTrafficTeamSelected]
+  )
+
+  const memberSelfKpiExempt = useMemo(() => {
+    if (!isMemberView || !user?.id) return false
+    const self = (membersForTeamQ.data?.members ?? []).find((m) => m.userId === user.id)
+    if (!self) return false
+    return !memberRequiresKpiOkr(self, isTrafficTeamSelected)
+  }, [isMemberView, user?.id, membersForTeamQ.data?.members, isTrafficTeamSelected])
+
   const goalApprovalKey = ['kpi-approval-request', selectedTeamId, year, month, 'goal'] as const
   const resultApprovalKey = ['kpi-approval-request', selectedTeamId, year, month, 'result'] as const
   const goalApprovalQ = useQuery({
@@ -432,9 +452,11 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     return 'SALES_NV'
   }, [isTrafficTeamSelected, selectedTeamForSeed])
 
-  /** Phòng Kinh doanh: ẩn P3 + BENEFIT cho mọi vai trò (member + leader/manager xem team). */
+  /** Phòng Kinh doanh: ẩn P3 + BENEFIT; loại member Part-time (non-Traffic) khỏi KPI/OKR. */
   const visibleAssignmentsThisMonth = useMemo(() => {
-    const rows = assignmentsQ.data ?? []
+    const rows = (assignmentsQ.data ?? []).filter((row) =>
+      kpiEligibleAssigneeIds.has(row.assigneeUserId)
+    )
     const passesLivestreamDisplay = (row: PerformanceAssignment) =>
       selectedTemplateCode !== 'LIVESTREAM_NV' ||
       row.category === 'KPI_BONUS' ||
@@ -451,7 +473,14 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
       return rows.filter(shouldShowAssignmentForMember)
     }
     return rows
-  }, [assignmentsQ.data, isMemberView, user?.id, isKinhDoanhTeam, selectedTemplateCode])
+  }, [
+    assignmentsQ.data,
+    isMemberView,
+    user?.id,
+    isKinhDoanhTeam,
+    selectedTemplateCode,
+    kpiEligibleAssigneeIds,
+  ])
 
   useEffect(() => {
     if (!selectedTeamId) return
@@ -849,10 +878,15 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
       )}
 
       <div className="space-y-6">
+        {memberSelfKpiExempt && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            Bạn là nhân sự Part-time — không cần thiết lập KPI/OKR cho team này.
+          </div>
+        )}
         <WorkReportPanel
           assignmentsThisMonth={visibleAssignmentsThisMonth}
           loadingThis={assignmentsQ.isLoading}
-          members={visibleMembers}
+          members={kpiEligibleMembers}
           membersLoading={membersForTeamQ.isLoading}
           // Bảng "Chốt mục tiêu": khoá khi mục tiêu đang chờ duyệt / đã duyệt (goal lock).
           canEditTeam={canEditTeam && !isGoalApprovalLocked}
@@ -871,7 +905,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           planningReadOnly={isGoalApprovalLocked}
           templateCode={selectedTemplateCode}
           isManagerCascade={isManagerVariant}
-          isTrafficTeam={requiresKpiApprovalSelected}
+          isTrafficTeam={isTrafficTeamSelected}
           // Bảng "Kết quả & đánh giá" chỉ hiển thị chỉ số khi mục tiêu đã được duyệt
           // (traffic team). Non-traffic không có luồng duyệt mục tiêu → luôn hiển thị.
           goalApproved={!requiresKpiApprovalSelected || goalApprovalRequest?.status === 'approved'}

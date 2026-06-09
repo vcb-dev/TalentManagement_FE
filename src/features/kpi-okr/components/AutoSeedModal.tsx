@@ -69,7 +69,7 @@ export function AutoSeedModal({
   const queryClient = useQueryClient()
 
   const memberUsers = useMemo(
-    () => members.filter((m) => m.role === 'MEMBER' || !m.role),
+    () => members.filter((m) => (m.role === 'MEMBER' || !m.role) && m.requiresKpiOkr !== false),
     [members]
   )
 
