@@ -136,10 +136,8 @@ export default function GlobalNotificationListener() {
       // Hàm helper kiểm tra xem phòng họp có thuộc phạm vi cảnh báo của tài khoản này không
       const isTargetBooking = (b: MeetingBooking) => {
         if (isRoomAccount) {
-          if (roomParam) {
-            return b.room.toLowerCase() === roomParam.toLowerCase()
-          }
-          return true
+          const targetRoom = roomParam || 'Tầng 6'
+          return b.room.toLowerCase() === targetRoom.toLowerCase()
         }
         return b.userId === user.id
       }
@@ -219,9 +217,7 @@ export default function GlobalNotificationListener() {
 
         // Nếu là tài khoản phòng họp, hoặc người dùng thông thường có ca họp kết thúc trước đó
         const isRelevantForUser = isRoomAccount
-          ? roomParam
-            ? other.room.toLowerCase() === roomParam.toLowerCase()
-            : true
+          ? (roomParam || 'Tầng 6').toLowerCase() === other.room.toLowerCase()
           : bookingsRef.current.some(
               (myOld) =>
                 myOld.userId === user.id &&
