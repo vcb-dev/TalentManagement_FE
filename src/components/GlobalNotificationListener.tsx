@@ -93,7 +93,11 @@ export default function GlobalNotificationListener() {
       const nowTs = now.getTime()
       const td = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
 
-      const isRoomAccount = user.email === 'vienchibao.dev@gmail.com'
+      const emailLower = (user.email || '').trim().toLowerCase()
+      const isRoomAccount =
+        emailLower === 'vienchibao.dev@gmail.com' ||
+        emailLower === 'vienibaodev@gmail.com' ||
+        emailLower === 'vienchibaodev@gmail.com'
       const isAdmin = ['MANAGER', 'HR', 'BOD'].includes(user.role || '')
       if (isAdmin && !isRoomAccount) return
       const urlParams = new URLSearchParams(window.location.search)
