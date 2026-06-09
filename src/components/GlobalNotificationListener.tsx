@@ -82,6 +82,36 @@ export default function GlobalNotificationListener() {
     if (!user) return
 
     const check = async () => {
+      // 0. Đồng bộ từ localStorage trước để tránh lệch tab/thiết bị
+      const saved = localStorage.getItem('vcb_notified_ids')
+      let currentNotified = notifiedRef.current
+      if (saved) {
+        try {
+          const arr = JSON.parse(saved)
+          if (Array.isArray(arr)) {
+            currentNotified = new Set(arr)
+            notifiedRef.current = currentNotified
+          }
+        } catch (e) {
+          console.error('Failed to reload notified ids:', e)
+        }
+      }
+
+      // Tự động tắt cảnh báo đã được tắt ở tab khác
+      setExpiredRooms((prev) =>
+        prev.filter((r) => {
+          const keyMap: Record<string, string> = {
+            my_end: '_ended',
+            someone_else_start: '_remind_me',
+            overridden: '_overridden',
+            warning_5m: '_warning_5m',
+            warning_starting_5m: '_starting_5m',
+          }
+          const suffix = keyMap[r.alertType]
+          return suffix ? !currentNotified.has(r.id + suffix) : true
+        })
+      )
+
       try {
         const fresh = await getBookings()
         bookingsRef.current = fresh
