@@ -434,12 +434,14 @@ export default function GlobalNotificationListener() {
                         'text-lg font-bold',
                         r.alertType === 'someone_else_start'
                           ? 'text-red-600'
-                          : r.alertType === 'warning_5m'
+                          : r.alertType === 'warning_5m' || r.alertType === 'warning_starting_1m'
                             ? 'text-amber-600'
                             : 'text-blue-600'
                       )}
                     >
-                      {r.alertType === 'someone_else_start' ? r.timeFrom : r.timeTo}
+                      {r.alertType === 'someone_else_start' || r.alertType === 'warning_starting_1m'
+                        ? r.timeFrom
+                        : r.timeTo}
                     </p>
                   </div>
                 </div>
