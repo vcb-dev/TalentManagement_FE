@@ -257,12 +257,13 @@ function renderField(
         control={control}
         name={key}
         label={field.label}
-        placeholder="Chọn vị trí"
+        placeholder={field.key === 'contractType' ? 'Chọn loại hợp đồng / vị trí' : 'Chọn vị trí'}
         className={cn('space-y-1.5', fieldBoxClass)}
         labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
         triggerClassName={cn(fieldControlClass, inputEditable)}
         customLabel={<FieldLabel>{field.label}</FieldLabel>}
       >
+        <SelectItem value="__none">Chưa chọn</SelectItem>
         {positions?.map((p) => (
           <SelectItem key={p.value} value={p.value}>
             {p.label}
