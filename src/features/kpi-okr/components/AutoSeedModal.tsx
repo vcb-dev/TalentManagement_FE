@@ -189,9 +189,6 @@ export function AutoSeedModal({
                   ) : (
                     <>
                       <SelectItem value="SALES_NV">SALES_NV — NV Kinh doanh (4 stage)</SelectItem>
-                      <SelectItem value="LIVESTREAM_NV">
-                        LIVESTREAM_NV — NV Livestream (1 stage)
-                      </SelectItem>
                       <SelectItem value="VAN_DON_NV">
                         VAN_DON_NV — NV Xử lý đơn & bảo hành (1 stage)
                       </SelectItem>

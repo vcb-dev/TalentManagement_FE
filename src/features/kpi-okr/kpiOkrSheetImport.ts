@@ -10,7 +10,6 @@ export type ImportAssignmentItem = {
   content: string
   priority?: number
   targetMetric?: string | null
-  kpiSetAt?: string | null
   reviewerName?: string | null
   managerEvalStatus?: string | null
   managerReviewNote?: string | null
@@ -82,37 +81,6 @@ function parseTargetMetric(v: unknown): string | null {
   if (typeof v === 'number' && Number.isFinite(v)) return String(v)
   const s = String(v).trim()
   return s ? s.slice(0, 200) : null
-}
-
-/** Excel serial hoặc chuỗi ngày → ISO (giữa trưa local như form thủ công). */
-export function cellToKpiIso(val: unknown): string | null {
-  if (val === null || val === undefined || val === '') return null
-  if (typeof val === 'number' && Number.isFinite(val)) {
-    const p = XLSX.SSF.parse_date_code(val)
-    if (!p?.y) return null
-    const y = p.y
-    const mo = String(p.m).padStart(2, '0')
-    const d = String(p.d).padStart(2, '0')
-    const dt = new Date(`${y}-${mo}-${d}T12:00:00`)
-    return Number.isNaN(dt.getTime()) ? null : dt.toISOString()
-  }
-  const s = String(val).trim()
-  if (!s) return null
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-    const dt = new Date(`${s.slice(0, 10)}T12:00:00`)
-    return Number.isNaN(dt.getTime()) ? null : dt.toISOString()
-  }
-  const m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/)
-  if (m) {
-    const day = m[1]
-    const mo = m[2]
-    const y = m[3]
-    if (day != null && mo != null && y != null) {
-      const dt = new Date(`${y}-${mo.padStart(2, '0')}-${day.padStart(2, '0')}T12:00:00`)
-      return Number.isNaN(dt.getTime()) ? null : dt.toISOString()
-    }
-  }
-  return null
 }
 
 function parseManagerEval(v: unknown): string | null {
@@ -202,12 +170,6 @@ export function matrixToImportItems(
     'content',
   ])
   const ixTarget = findColIndex(headerRow, ['Chỉ số mục tiêu', 'chi so muc tieu', 'target'])
-  const ixKpiDate = findColIndex(headerRow, [
-    'Ngày set KPI/OKRs',
-    'ngay set kpi',
-    'ngay set',
-    'kpi set',
-  ])
   const ixReviewer = findColIndex(headerRow, ['Người đánh giá', 'nguoi danh gia', 'reviewer'])
   const ixQlEval = findColIndex(headerRow, ['QL ĐÁNH GIÁ', 'ql danh gia', 'danh gia ql'])
   const ixQlNote = findColIndex(headerRow, ['QL NHẬN XÉT', 'ql nhan xet', 'nhan xet ql'])
@@ -267,7 +229,6 @@ export function matrixToImportItems(
       continue
     }
 
-    const kpiIso = ixKpiDate >= 0 ? cellToKpiIso(getCell(row, ixKpiDate)) : null
     const reviewerName =
       ixReviewer >= 0 ? String(getCell(row, ixReviewer) ?? '').trim() || null : null
     const managerEvalStatus = ixQlEval >= 0 ? parseManagerEval(getCell(row, ixQlEval)) : null
@@ -294,7 +255,6 @@ export function matrixToImportItems(
       content,
       priority,
       targetMetric: ixTarget >= 0 ? parseTargetMetric(getCell(row, ixTarget)) : null,
-      kpiSetAt: kpiIso,
       reviewerName,
       managerEvalStatus: managerEvalStatus ?? undefined,
       managerReviewNote,

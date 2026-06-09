@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react'
@@ -23,39 +23,72 @@ import { categoryLabel, categoryBadgeClass } from '@/features/kpi-okr/catalogHel
 
 type TemplateItem = CatalogItem['items'][number]
 
-const STAGES = [
+const MANAGED_TEMPLATES = [
+  {
+    code: 'SALES_NV',
+    label: 'NV Kinh doanh',
+    description: 'Tự động gán cho Sales thường theo giai đoạn thâm niên M1 → M2 → M3 → Chính thức.',
+  },
+  {
+    code: 'LIVESTREAM_NV',
+    label: 'NV Livestream',
+    description: 'Tự động gán riêng cho Livestream 1 và Livestream 2, chỉ dùng stage Chính thức.',
+  },
+] as const
+
+type ManagedTemplateCode = (typeof MANAGED_TEMPLATES)[number]['code']
+
+const SALES_STAGES = [
   { value: 'M1', label: 'Tháng 1 (M1)' },
   { value: 'M2', label: 'Tháng 2 (M2)' },
   { value: 'M3', label: 'Tháng 3 (M3)' },
   { value: 'OFFICIAL', label: 'Chính thức' },
 ] as const
 
-const CATEGORY_OPTIONS = [
+const LIVESTREAM_STAGES = [{ value: 'OFFICIAL', label: 'Chính thức' }] as const
+
+const SALES_CATEGORY_OPTIONS = [
   { value: 'KPI_BONUS', label: 'B. Thưởng KPIs' },
   { value: 'PERFORMANCE_BONUS', label: 'D. Thưởng hiệu suất' },
 ] as const
 
-type VisibleCategory = 'KPI_BONUS' | 'PERFORMANCE_BONUS'
+const LIVESTREAM_CATEGORY_OPTIONS = [
+  { value: 'KPI_BONUS', label: 'B. Thưởng KPIs' },
+  { value: 'PERFORMANCE_BONUS', label: 'D. Thưởng hiệu suất' },
+] as const
+
+type VisibleCategory = 'BASE' | 'KPI_BONUS' | 'PERFORMANCE_BONUS'
+type CategoryOption = { value: VisibleCategory; label: string }
 
 // ─── Add / Edit dialog ────────────────────────────────────────────────────────
 
 function ItemDialog({
   open,
   onClose,
+  catalogCode,
   stage,
+  stageOptions,
+  categoryOptions,
+  defaultCategory,
+  showCategoryPicker,
   editing,
   onSaved,
 }: {
   open: boolean
   onClose: () => void
+  catalogCode: ManagedTemplateCode
   stage: string
+  stageOptions: readonly { value: string; label: string }[]
+  categoryOptions: readonly CategoryOption[]
+  defaultCategory: VisibleCategory
+  showCategoryPicker: boolean
   editing: TemplateItem | null
   onSaved: () => void
 }) {
   const [saving, setSaving] = useState(false)
   const [content, setContent] = useState(editing?.content ?? '')
   const [category, setCategory] = useState<VisibleCategory>(
-    (editing?.category as VisibleCategory | undefined) ?? 'KPI_BONUS'
+    (editing?.category as VisibleCategory | undefined) ?? defaultCategory
   )
   const [dailyTarget, setDailyTarget] = useState(editing?.dailyTarget ?? '')
   const [monthlyTarget, setMonthlyTarget] = useState(editing?.monthlyTarget ?? '')
@@ -65,7 +98,11 @@ function ItemDialog({
   const [numericUnit, setNumericUnit] = useState(editing?.numericUnit ?? '')
   const [sortOrder, setSortOrder] = useState(String(editing?.sortOrder ?? 99))
 
-  const stageLabel = STAGES.find((s) => s.value === stage)?.label ?? stage
+  useEffect(() => {
+    setCategory((editing?.category as VisibleCategory | undefined) ?? defaultCategory)
+  }, [defaultCategory, editing])
+
+  const stageLabel = stageOptions.find((s) => s.value === stage)?.label ?? stage
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,12 +121,17 @@ function ItemDialog({
         await performanceApi.patchCatalogItem(editing.id, payload)
         toast.success('Đã cập nhật chỉ số.')
       } else {
-        await performanceApi.createCatalogItem('SALES_NV', {
-          ...payload,
+        await performanceApi.createCatalogItem(catalogCode, {
+          content: payload.content,
+          dailyTarget: dailyTarget.trim() || undefined,
+          monthlyTarget: monthlyTarget.trim() || undefined,
+          numericTarget: numericTarget ? parseFloat(numericTarget) : undefined,
+          numericUnit: numericUnit.trim() || undefined,
+          sortOrder: payload.sortOrder,
           tenureStage: stage,
           category,
           kind: 'KPI',
-          priority: 2,
+          priority: category === 'BASE' ? 1 : 2,
         })
         toast.success('Đã thêm chỉ số.')
       }
@@ -121,7 +163,7 @@ function ItemDialog({
             />
           </div>
 
-          {!editing && (
+          {!editing && showCategoryPicker && (
             <div>
               <Label htmlFor="category">Loại KPI *</Label>
               <select
@@ -130,7 +172,7 @@ function ItemDialog({
                 value={category}
                 onChange={(e) => setCategory(e.target.value as VisibleCategory)}
               >
-                {CATEGORY_OPTIONS.map((o) => (
+                {categoryOptions.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -303,36 +345,59 @@ export function SalesKpiCatalogScreen() {
   const role = useAuthStore((s) => s.user?.role)
   const canEdit = role === 'MANAGER' || canId('kpi.catalog_edit')
 
+  const [activeTemplateCode, setActiveTemplateCode] = useState<ManagedTemplateCode>('SALES_NV')
   const [activeStage, setActiveStage] = useState<string>('M1')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<TemplateItem | null>(null)
   const qc = useQueryClient()
 
+  const activeTemplate = MANAGED_TEMPLATES.find((tpl) => tpl.code === activeTemplateCode)
+  const isLivestreamTemplate = activeTemplateCode === 'LIVESTREAM_NV'
+  const stageOptions = isLivestreamTemplate ? LIVESTREAM_STAGES : SALES_STAGES
+  const categoryOptions = isLivestreamTemplate
+    ? LIVESTREAM_CATEGORY_OPTIONS
+    : SALES_CATEGORY_OPTIONS
+  const visibleCategories = useMemo<VisibleCategory[]>(
+    () => categoryOptions.map((option) => option.value),
+    [categoryOptions]
+  )
+
+  useEffect(() => {
+    setActiveStage(stageOptions[0].value)
+    setDialogOpen(false)
+    setEditing(null)
+  }, [activeTemplateCode, stageOptions])
+
   const { data: catalog, isLoading } = useQuery({
-    queryKey: ['performance', 'catalog', 'SALES_NV'],
-    queryFn: () => performanceApi.getCatalog('SALES_NV'),
+    queryKey: ['performance', 'catalog', activeTemplateCode],
+    queryFn: () => performanceApi.getCatalog(activeTemplateCode),
     staleTime: 60_000,
   })
 
-  const itemsByCategory = useMemo<Record<VisibleCategory, TemplateItem[]>>(() => {
+  const itemsByCategory = useMemo<Partial<Record<VisibleCategory, TemplateItem[]>>>(() => {
     const all = catalog?.items ?? []
     const stageItems = all.filter(
       (i) =>
-        i.tenureStage === activeStage &&
-        (i.category === 'KPI_BONUS' || i.category === 'PERFORMANCE_BONUS')
+        i.tenureStage === activeStage && visibleCategories.includes(i.category as VisibleCategory)
     )
-    return {
-      KPI_BONUS: stageItems
-        .filter((i) => i.category === 'KPI_BONUS')
+    return Object.fromEntries(
+      visibleCategories.map((cat) => [
+        cat,
+        stageItems.filter((i) => i.category === cat).sort((a, b) => a.sortOrder - b.sortOrder),
+      ])
+    ) as Partial<Record<VisibleCategory, TemplateItem[]>>
+  }, [catalog, activeStage, visibleCategories])
+
+  const flatItems = useMemo(
+    () =>
+      visibleCategories
+        .flatMap((cat) => itemsByCategory[cat] ?? [])
         .sort((a, b) => a.sortOrder - b.sortOrder),
-      PERFORMANCE_BONUS: stageItems
-        .filter((i) => i.category === 'PERFORMANCE_BONUS')
-        .sort((a, b) => a.sortOrder - b.sortOrder),
-    }
-  }, [catalog, activeStage])
+    [itemsByCategory, visibleCategories]
+  )
 
   const invalidate = () =>
-    void qc.invalidateQueries({ queryKey: ['performance', 'catalog', 'SALES_NV'] })
+    void qc.invalidateQueries({ queryKey: ['performance', 'catalog', activeTemplateCode] })
 
   const openAdd = () => {
     setEditing(null)
@@ -377,19 +442,53 @@ export function SalesKpiCatalogScreen() {
         )}
       </div>
 
+      <div className="mb-5 flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
+        {MANAGED_TEMPLATES.map((tpl) => (
+          <button
+            key={tpl.code}
+            type="button"
+            onClick={() => setActiveTemplateCode(tpl.code)}
+            className={cn(
+              'min-w-44 rounded-md px-3 py-2 text-left text-sm transition-colors',
+              activeTemplateCode === tpl.code
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+            )}
+          >
+            <span className="block font-semibold">{tpl.label}</span>
+            <span
+              className={cn(
+                'mt-0.5 block text-xs',
+                activeTemplateCode === tpl.code ? 'text-indigo-100' : 'text-slate-400'
+              )}
+            >
+              {tpl.code}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Info banner */}
       <div className="mb-5 flex items-start gap-2 rounded-lg border border-indigo-200 bg-indigo-50/50 p-3 dark:border-indigo-900 dark:bg-indigo-950/30">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
         <p className="text-xs text-indigo-700 dark:text-indigo-300">
-          Danh mục template <strong>SALES_NV</strong> — tự động gán cho thành viên Phòng Kinh doanh
-          theo giai đoạn thâm niên (M1 → M2 → M3 → Chính thức). Chỉ hiển thị{' '}
-          <strong>B. Thưởng KPIs</strong> và <strong>D. Thưởng hiệu suất</strong>.
+          Danh mục template <strong>{activeTemplateCode}</strong> — {activeTemplate?.description}{' '}
+          {isLivestreamTemplate ? (
+            <>
+              Chỉ hiển thị <strong>danh sách KPI</strong>.
+            </>
+          ) : (
+            <>
+              Chỉ hiển thị{' '}
+              <strong>{visibleCategories.map((cat) => categoryLabel(cat)).join(' và ')}</strong>.
+            </>
+          )}
         </p>
       </div>
 
       {/* Stage tabs */}
       <div className="mb-5 flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-        {STAGES.map((s) => (
+        {stageOptions.map((s) => (
           <button
             key={s.value}
             type="button"
@@ -414,9 +513,19 @@ export function SalesKpiCatalogScreen() {
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-32 w-full" />
         </div>
+      ) : isLivestreamTemplate ? (
+        <div className="space-y-3">
+          <div className="text-xs text-slate-400">{flatItems.length} KPI</div>
+          <ItemsTable
+            items={flatItems}
+            canEdit={canEdit}
+            onEdit={openEdit}
+            onDelete={handleDelete}
+          />
+        </div>
       ) : (
         <div className="space-y-8">
-          {(['KPI_BONUS', 'PERFORMANCE_BONUS'] as const).map((cat) => (
+          {visibleCategories.map((cat) => (
             <section key={cat}>
               <div className="mb-3 flex items-center gap-2">
                 <span
@@ -427,10 +536,12 @@ export function SalesKpiCatalogScreen() {
                 >
                   {categoryLabel(cat)}
                 </span>
-                <span className="text-xs text-slate-400">{itemsByCategory[cat].length} chỉ số</span>
+                <span className="text-xs text-slate-400">
+                  {(itemsByCategory[cat] ?? []).length} chỉ số
+                </span>
               </div>
               <ItemsTable
-                items={itemsByCategory[cat]}
+                items={itemsByCategory[cat] ?? []}
                 canEdit={canEdit}
                 onEdit={openEdit}
                 onDelete={handleDelete}
@@ -443,10 +554,15 @@ export function SalesKpiCatalogScreen() {
       {/* Dialog */}
       {canEdit && (
         <ItemDialog
-          key={editing?.id ?? 'new'}
+          key={`${activeTemplateCode}-${editing?.id ?? 'new'}`}
           open={dialogOpen}
           onClose={() => setDialogOpen(false)}
+          catalogCode={activeTemplateCode}
           stage={activeStage}
+          stageOptions={stageOptions}
+          categoryOptions={categoryOptions}
+          defaultCategory={visibleCategories[0] ?? 'KPI_BONUS'}
+          showCategoryPicker={!isLivestreamTemplate}
           editing={editing}
           onSaved={invalidate}
         />

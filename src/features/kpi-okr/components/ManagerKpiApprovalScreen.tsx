@@ -600,10 +600,10 @@ export function ManagerKpiApprovalScreen() {
         <div className="absolute right-0 top-0 h-full w-1/3 bg-white/10 [mask-image:linear-gradient(to_left,white,transparent)]" />
         <div className="relative z-10">
           <h1 className="text-2xl font-black tracking-tight mb-2 sm:text-3xl">
-            Duyệt KPI/OKR Traffic Teams
+            Duyệt KPI/OKR theo team
           </h1>
           <p className="text-indigo-100/80 max-w-2xl text-sm font-medium">
-            Duyệt mục tiêu đầu tháng hoặc kết quả cuối tháng do Leader team traffic gửi lên.
+            Duyệt mục tiêu đầu tháng hoặc kết quả cuối tháng do Leader gửi lên.
           </p>
         </div>
       </div>

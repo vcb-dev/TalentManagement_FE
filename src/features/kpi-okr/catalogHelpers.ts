@@ -40,10 +40,24 @@ export function categoryBadgeClass(category: string | null | undefined): string 
 /**
  * Mapping team → templateCode (đồng bộ BE resolveTemplateCodeForTeam).
  */
+function normalizeTemplateKey(value: string | null | undefined): string {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+export function isLivestreamCatalogTeam(team: { code?: string | null; name: string }): boolean {
+  const keys = [team.code, team.name].map(normalizeTemplateKey)
+  return keys.some((key) => key === 'livestream 1' || key === 'livestream 2')
+}
+
 export function resolveTemplateCodeForTeam(team: { code?: string | null; name: string }): string {
-  const key = (team.code ?? team.name ?? '').toLowerCase()
-  if (/livestream|live\b/.test(key)) return 'LIVESTREAM_NV'
-  if (/vận[_\s]?đơn|van[._\s-]?don|bảo[_\s]?hành/i.test(key)) return 'VAN_DON_NV'
+  const key = normalizeTemplateKey(team.code ?? team.name)
+  if (/van[_\s.-]?don|bao[_\s]?hanh/.test(key)) return 'VAN_DON_NV'
   return 'SALES_NV'
 }
 
@@ -187,6 +201,16 @@ export function isTrafficTeam(
   }
   if (teamName) return TRAFFIC_TEAM_NAME_RE.test(teamName.trim())
   return false
+}
+
+export function requiresKpiApproval(
+  teamId: string | null | undefined,
+  kpiApprovalTeamIdsFromApi?: readonly string[] | null,
+  orgTreeFlag?: boolean | null
+): boolean {
+  if (orgTreeFlag) return true
+  if (!teamId) return false
+  return (kpiApprovalTeamIdsFromApi ?? []).includes(teamId)
 }
 
 /**

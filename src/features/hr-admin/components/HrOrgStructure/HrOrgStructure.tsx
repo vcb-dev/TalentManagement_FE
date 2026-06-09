@@ -359,7 +359,7 @@ export function HrOrgStructure() {
 
   const [crudModal, setCrudModal] = useState<OrgCrudModal>(null)
   const [crudName, setCrudName] = useState('')
-  const [trafficFlag, setTrafficFlag] = useState(false)
+  const [approvalFlag, setApprovalFlag] = useState(false)
   const emptyDivisionForm = useMemo<DivisionFormValues>(
     () => ({ name: '', code: '', description: '', isActive: true }),
     []
@@ -422,17 +422,17 @@ export function HrOrgStructure() {
     mutationFn: ({
       name,
       divisionId,
-      isTrafficTeam,
+      requiresKpiApproval,
     }: {
       name: string
       divisionId: string
-      isTrafficTeam: boolean
-    }) => orgCrudApi.createTeam(name, divisionId, isTrafficTeam),
+      requiresKpiApproval: boolean
+    }) => orgCrudApi.createTeam(name, divisionId, requiresKpiApproval),
     onSuccess: () => {
       toast.success('Đã tạo nhóm')
       setCrudModal(null)
       setCrudName('')
-      setTrafficFlag(false)
+      setApprovalFlag(false)
       invalidateOrgStructure()
     },
     onError: (e) => toast.error(readApiErrorMessage(e)),
@@ -442,17 +442,17 @@ export function HrOrgStructure() {
     mutationFn: ({
       id,
       name,
-      isTrafficTeam,
+      requiresKpiApproval,
     }: {
       id: string
       name: string
-      isTrafficTeam: boolean
-    }) => orgCrudApi.updateTeam(id, { name, isTrafficTeam }),
+      requiresKpiApproval: boolean
+    }) => orgCrudApi.updateTeam(id, { name, requiresKpiApproval }),
     onSuccess: () => {
       toast.success('Đã cập nhật nhóm')
       setCrudModal(null)
       setCrudName('')
-      setTrafficFlag(false)
+      setApprovalFlag(false)
       invalidateOrgStructure()
     },
     onError: (e) => toast.error(readApiErrorMessage(e)),
@@ -494,7 +494,7 @@ export function HrOrgStructure() {
 
   const openCreateTeamForDept = useCallback((dept: OrgAdminDivisionRow) => {
     setCrudName('')
-    setTrafficFlag(false)
+    setApprovalFlag(false)
     setCrudModal({ kind: 'team-create', dept })
   }, [])
 
@@ -534,9 +534,9 @@ export function HrOrgStructure() {
     }
     if (!crudModal) return
     if (crudModal.kind === 'team-create')
-      createTeamM.mutate({ name, divisionId: crudModal.dept.id, isTrafficTeam: trafficFlag })
+      createTeamM.mutate({ name, divisionId: crudModal.dept.id, requiresKpiApproval: approvalFlag })
     else if (crudModal.kind === 'team-edit')
-      updateTeamM.mutate({ id: crudModal.team.id, name, isTrafficTeam: trafficFlag })
+      updateTeamM.mutate({ id: crudModal.team.id, name, requiresKpiApproval: approvalFlag })
   }, [crudModal, crudName, createTeamM, updateTeamM])
 
   const submitDeleteModal = useCallback(() => {
@@ -1024,7 +1024,7 @@ export function HrOrgStructure() {
                               mockBanner={mockBanner}
                               onEditTeam={() => {
                                 setCrudName(team.name)
-                                setTrafficFlag(team.isTrafficTeam ?? false)
+                                setApprovalFlag(team.requiresKpiApproval ?? false)
                                 setCrudModal({ kind: 'team-edit', team })
                               }}
                               onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
@@ -1066,7 +1066,7 @@ export function HrOrgStructure() {
                               mockBanner={mockBanner}
                               onEditTeam={() => {
                                 setCrudName(team.name)
-                                setTrafficFlag(team.isTrafficTeam ?? false)
+                                setApprovalFlag(team.requiresKpiApproval ?? false)
                                 setCrudModal({ kind: 'team-edit', team })
                               }}
                               onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
@@ -1167,18 +1167,18 @@ export function HrOrgStructure() {
         onClose={() => {
           setCrudModal(null)
           setCrudName('')
-          setTrafficFlag(false)
+          setApprovalFlag(false)
         }}
         onSubmit={submitNameModal}
       >
         <div className="flex items-center gap-2 pt-1">
           <Checkbox
-            id="team-traffic-flag"
-            checked={trafficFlag}
-            onCheckedChange={(v) => setTrafficFlag(Boolean(v))}
+            id="team-kpi-approval-flag"
+            checked={approvalFlag}
+            onCheckedChange={(v) => setApprovalFlag(Boolean(v))}
           />
-          <Label htmlFor="team-traffic-flag" className="cursor-pointer text-sm font-normal">
-            Nhóm Traffic — áp dụng công thức xếp hạng Traffic
+          <Label htmlFor="team-kpi-approval-flag" className="cursor-pointer text-sm font-normal">
+            Áp dụng luồng Manager duyệt KPI/OKR
           </Label>
         </div>
       </OrgCrudNameDialog>
@@ -1230,12 +1230,12 @@ function TeamCardMobile({
       <div className="min-w-0 space-y-2">
         <div className="flex flex-wrap items-center gap-2 break-words text-base font-semibold leading-snug text-foreground">
           {team.name}
-          {team.isTrafficTeam && (
+          {team.requiresKpiApproval && (
             <Badge
               variant="outline"
               className="border-sky-200 bg-sky-50 text-xs font-bold text-sky-600 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400"
             >
-              Traffic
+              Duyệt KPI/OKR
             </Badge>
           )}
         </div>
@@ -1319,12 +1319,12 @@ function FragmentTeamRow({
       <TableCell className="pl-6 align-top">
         <div className="flex items-center gap-2 font-semibold text-foreground">
           {team.name}
-          {team.isTrafficTeam && (
+          {team.requiresKpiApproval && (
             <Badge
               variant="outline"
               className="border-sky-200 bg-sky-50 text-xs font-bold text-sky-600 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400"
             >
-              Traffic
+              Duyệt KPI/OKR
             </Badge>
           )}
         </div>

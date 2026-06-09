@@ -60,13 +60,12 @@ export function getAssignmentWindowPhase(
 }
 
 export function isAssignmentWindowOpen(
-  year: number,
-  month: number,
-  cfg: { startDay?: number; endDay?: number } = {},
-  now: Date = new Date()
+  _year: number,
+  _month: number,
+  _cfg: { startDay?: number; endDay?: number } = {},
+  _now: Date = new Date()
 ): boolean {
-  if (isKpiWindowBypassed(year, month)) return true
-  return getAssignmentWindowPhase(year, month, cfg, now) === 'open'
+  return true
 }
 
 /** Khớp BE `resolveWindowConfig`: ưu tiên config theo team → global (teamId null) → mặc định 1–2. */

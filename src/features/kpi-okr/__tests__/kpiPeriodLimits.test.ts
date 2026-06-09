@@ -108,23 +108,10 @@ describe('getAssignmentWindowPhase', () => {
 })
 
 describe('isAssignmentWindowOpen', () => {
-  it('trả true trong cửa sổ', () => {
-    const day1 = new Date(2026, 4, 1, 10, 0, 0)
-    expect(isAssignmentWindowOpen(2026, 5, {}, day1)).toBe(true)
-  })
-
-  it('trả false ngoài cửa sổ (kỳ không bypass)', () => {
-    expect(isAssignmentWindowOpen(2026, 4, {}, FIXED_NOW)).toBe(false)
-  })
-
-  it('bypass T5/2026 — mở dù đã qua cửa sổ giao', () => {
-    const june = new Date(2026, 5, 10, 12, 0, 0)
-    expect(isAssignmentWindowOpen(2026, 5, {}, june)).toBe(true)
-  })
-
-  it('không bypass T6/2026', () => {
+  it('luôn mở — không giới hạn cửa sổ giao mục tiêu', () => {
+    expect(isAssignmentWindowOpen(2026, 4, {}, FIXED_NOW)).toBe(true)
     const june10 = new Date(2026, 5, 10, 12, 0, 0)
-    expect(isAssignmentWindowOpen(2026, 6, {}, june10)).toBe(false)
+    expect(isAssignmentWindowOpen(2026, 6, {}, june10)).toBe(true)
   })
 })
 

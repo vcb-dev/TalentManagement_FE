@@ -62,7 +62,7 @@ import {
 import { WorkReportTab } from './WorkReportTab'
 import {
   isCatalogEnabledDepartment,
-  isTrafficTeam,
+  requiresKpiApproval,
   shouldShowAssignmentForMember,
 } from '@/features/kpi-okr/catalogHelpers'
 
@@ -972,14 +972,12 @@ export function MonthlyReportScreen() {
     () => teamsInDept.find((t) => t.id === selectedTeamId) ?? null,
     [teamsInDept, selectedTeamId]
   )
-  const hideManagerEvalColumn = Boolean(
-    isKinhDoanhDept &&
-    !isTrafficTeam(
-      selectedTeamId,
-      catalogAllowlistQ.data?.trafficTeamIds ?? null,
-      selectedTeam?.name ?? null
-    )
+  const requiresKpiApprovalSelected = requiresKpiApproval(
+    selectedTeamId,
+    catalogAllowlistQ.data?.kpiApprovalTeamIds ?? null,
+    selectedTeam?.requiresKpiApproval ?? null
   )
+  const hideManagerEvalColumn = Boolean(isKinhDoanhDept && !requiresKpiApprovalSelected)
 
   const assignmentsData = useMemo(() => {
     if (!isKinhDoanhDept) return assignmentsDataRaw
@@ -991,7 +989,7 @@ export function MonthlyReportScreen() {
   const resultApprovalQ = useQuery({
     queryKey: ['monthly-report-result-approval', selectedTeamId, year, month],
     queryFn: () => performanceApi.getApprovalRequest(selectedTeamId, year, month, 'result'),
-    enabled: Boolean(selectedTeamId) && !isMockApiEnabled(),
+    enabled: Boolean(selectedTeamId) && requiresKpiApprovalSelected && !isMockApiEnabled(),
     staleTime: 30_000,
   })
   const resultApprovalRequest = resultApprovalQ.data ?? null

@@ -79,6 +79,7 @@ import {
   shouldShowAssignmentForMember,
   isMandatoryMetric,
   isTrafficTeam,
+  requiresKpiApproval,
   resolveTemplateCodeForTeam,
 } from '@/features/kpi-okr/catalogHelpers'
 import {
@@ -106,7 +107,6 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  DateController,
   InputController,
   SelectController,
   TextareaController,
@@ -329,7 +329,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     if (!selectedTeamId) return null
     for (const d of departments) {
       const t = d.teams.find((x) => x.id === selectedTeamId)
-      if (t) return { id: t.id, name: t.name }
+      if (t) return { id: t.id, name: t.name, requiresKpiApproval: t.requiresKpiApproval }
     }
     return null
   }, [departments, selectedTeamId])
@@ -339,25 +339,30 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     catalogAllowlistQ.data?.trafficTeamIds ?? null,
     selectedTeamForSeed?.name ?? null
   )
+  const requiresKpiApprovalSelected = requiresKpiApproval(
+    selectedTeamId,
+    catalogAllowlistQ.data?.kpiApprovalTeamIds ?? null,
+    selectedTeamForSeed?.requiresKpiApproval ?? null
+  )
 
   const goalApprovalKey = ['kpi-approval-request', selectedTeamId, year, month, 'goal'] as const
   const resultApprovalKey = ['kpi-approval-request', selectedTeamId, year, month, 'result'] as const
   const goalApprovalQ = useQuery({
     queryKey: goalApprovalKey,
     queryFn: () => performanceApi.getApprovalRequest(selectedTeamId!, year, month, 'goal'),
-    enabled: Boolean(selectedTeamId) && isTrafficTeamSelected && !isMockApiEnabled(),
+    enabled: Boolean(selectedTeamId) && requiresKpiApprovalSelected && !isMockApiEnabled(),
     staleTime: 30_000,
   })
   const resultApprovalQ = useQuery({
     queryKey: resultApprovalKey,
     queryFn: () => performanceApi.getApprovalRequest(selectedTeamId!, year, month, 'result'),
-    enabled: Boolean(selectedTeamId) && isTrafficTeamSelected && !isMockApiEnabled(),
+    enabled: Boolean(selectedTeamId) && requiresKpiApprovalSelected && !isMockApiEnabled(),
     staleTime: 30_000,
   })
   const goalApprovalRequest = goalApprovalQ.data ?? null
   const resultApprovalRequest = resultApprovalQ.data ?? null
   const isGoalApprovalLocked =
-    isTrafficTeamSelected &&
+    requiresKpiApprovalSelected &&
     variant === 'leader' &&
     (goalApprovalRequest?.status === 'pending' || goalApprovalRequest?.status === 'approved')
   // Lock kết quả - chỉ áp dụng cho Traffic team. Áp dụng CHUNG cho cả Leader và Member:
@@ -365,7 +370,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   // - approved: locked (đã duyệt, chốt kết quả)
   // - rejected / chưa gửi (null): mở để nhập/sửa
   const isResultApprovalLocked =
-    isTrafficTeamSelected &&
+    requiresKpiApprovalSelected &&
     (resultApprovalRequest?.status === 'pending' || resultApprovalRequest?.status === 'approved')
 
   // Epic 4 — PATCH .../me; nhập kết quả (số liệu / evidence / tự đánh giá) theo kỳ đang chọn
@@ -374,10 +379,10 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   // KHOÁ khi đang chờ duyệt (pending) hoặc đã được duyệt (approved).
   const canMemberEditSelfResults = useMemo(() => {
     if (!user?.id || !eff.has('kpi.edit_own') || isMockApiEnabled()) return false
-    if (!isTrafficTeamSelected) return true
+    if (!requiresKpiApprovalSelected) return true
     const st = resultApprovalRequest?.status
     return st !== 'pending' && st !== 'approved'
-  }, [user?.id, eff, isTrafficTeamSelected, resultApprovalRequest?.status])
+  }, [user?.id, eff, requiresKpiApprovalSelected, resultApprovalRequest?.status])
 
   const isKinhDoanhTeam = Boolean(
     selectedDept &&
@@ -421,11 +426,21 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     [isKinhDoanhTeam, year, month, kinhDoanhResultsCloseBounds]
   )
 
+  const selectedTemplateCode = useMemo(() => {
+    if (isTrafficTeamSelected) return 'TRAFFIC_TEAM_NV'
+    if (selectedTeamForSeed) return resolveTemplateCodeForTeam(selectedTeamForSeed)
+    return 'SALES_NV'
+  }, [isTrafficTeamSelected, selectedTeamForSeed])
+
   /** Phòng Kinh doanh: ẩn P3 + BENEFIT cho mọi vai trò (member + leader/manager xem team). */
   const visibleAssignmentsThisMonth = useMemo(() => {
     const rows = assignmentsQ.data ?? []
+    const passesLivestreamDisplay = (row: PerformanceAssignment) =>
+      selectedTemplateCode !== 'LIVESTREAM_NV' ||
+      row.category === 'KPI_BONUS' ||
+      row.category === 'PERFORMANCE_BONUS'
     const passesKinhDoanhDisplay = (row: PerformanceAssignment) =>
-      !isKinhDoanhTeam || shouldShowAssignmentForMember(row)
+      passesLivestreamDisplay(row) && (!isKinhDoanhTeam || shouldShowAssignmentForMember(row))
 
     if (isMemberView) {
       const selfId = user?.id?.trim()
@@ -436,7 +451,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
       return rows.filter(shouldShowAssignmentForMember)
     }
     return rows
-  }, [assignmentsQ.data, isMemberView, user?.id, isKinhDoanhTeam])
+  }, [assignmentsQ.data, isMemberView, user?.id, isKinhDoanhTeam, selectedTemplateCode])
 
   useEffect(() => {
     if (!selectedTeamId) return
@@ -485,12 +500,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
       setSubmittingResultApproval(false)
     }
   }, [selectedTeamId, year, month, qc, resultApprovalKey])
-
-  const selectedTemplateCode = useMemo(() => {
-    if (isTrafficTeamSelected) return 'TRAFFIC_TEAM_NV'
-    if (selectedTeamForSeed) return resolveTemplateCodeForTeam(selectedTeamForSeed)
-    return 'SALES_NV'
-  }, [isTrafficTeamSelected, selectedTeamForSeed])
 
   const assignmentsThisMonth = assignmentsQ.data ?? []
   const loadingThis = assignmentsQ.isLoading
@@ -751,7 +760,7 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
         </div>
       )}
 
-      {isTrafficTeamSelected && variant === 'leader' && selectedTeamId && (
+      {requiresKpiApprovalSelected && variant === 'leader' && selectedTeamId && (
         <>
           {/* Status banner — informational only, no action button here */}
           <div className="mb-4">
@@ -862,16 +871,16 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           planningReadOnly={isGoalApprovalLocked}
           templateCode={selectedTemplateCode}
           isManagerCascade={isManagerVariant}
-          isTrafficTeam={isTrafficTeamSelected}
+          isTrafficTeam={requiresKpiApprovalSelected}
           // Bảng "Kết quả & đánh giá" chỉ hiển thị chỉ số khi mục tiêu đã được duyệt
           // (traffic team). Non-traffic không có luồng duyệt mục tiêu → luôn hiển thị.
-          goalApproved={!isTrafficTeamSelected || goalApprovalRequest?.status === 'approved'}
+          goalApproved={!requiresKpiApprovalSelected || goalApprovalRequest?.status === 'approved'}
           resultApprovalRequest={resultApprovalRequest}
           isResultApprovalLocked={isResultApprovalLocked}
           onSubmitResultApproval={handleSubmitResultApproval}
           submittingResultApproval={submittingResultApproval}
           canSubmitResultApproval={
-            isTrafficTeamSelected &&
+            requiresKpiApprovalSelected &&
             variant === 'leader' &&
             (!resultApprovalRequest || resultApprovalRequest.status === 'rejected') &&
             visibleAssignmentsThisMonth.length > 0
@@ -1978,7 +1987,6 @@ function MemberSelfAssignmentMobileCard({
 }
 
 type LeaderEditFormValues = {
-  kpiSetAt: string
   priority: number
   content: string
   targetMetric: string
@@ -2020,7 +2028,6 @@ function LeaderAssignmentRow({
 
   const form = useForm<LeaderEditFormValues>({
     defaultValues: {
-      kpiSetAt: row.kpiSetAt ? row.kpiSetAt.slice(0, 10) : '',
       priority: row.priority,
       content: row.content,
       targetMetric: row.targetMetric ?? '',
@@ -2038,7 +2045,6 @@ function LeaderAssignmentRow({
   useEffect(() => {
     if (!open) return
     reset({
-      kpiSetAt: row.kpiSetAt ? row.kpiSetAt.slice(0, 10) : '',
       priority: row.priority,
       content: row.content,
       targetMetric: row.targetMetric ?? '',
@@ -2070,23 +2076,11 @@ function LeaderAssignmentRow({
       toast.error('Ưu tiên không hợp lệ.')
       return
     }
-    if (values.kpiSetAt.trim()) {
-      const dt = new Date(`${values.kpiSetAt.trim()}T12:00:00`)
-      if (Number.isNaN(dt.getTime())) {
-        toast.error('Ngày xét không hợp lệ.')
-        return
-      }
-    }
-
-    const kpiIso = values.kpiSetAt.trim()
-      ? new Date(`${values.kpiSetAt.trim()}T12:00:00`).toISOString()
-      : null
 
     const patch = {
       content: values.content.trim(),
       priority: values.priority,
       targetMetric: values.targetMetric.trim() || null,
-      kpiSetAt: kpiIso,
     }
 
     try {
@@ -2270,19 +2264,11 @@ function LeaderAssignmentRow({
                 <DialogHeader>
                   <DialogTitle>Sửa mục tiêu KPI/OKR</DialogTitle>
                   <DialogDescription>
-                    Cập nhật nội dung/ưu tiên/chỉ tiêu và ngày xét cho kỳ đang chọn.
+                    Cập nhật nội dung, ưu tiên và chỉ tiêu cho kỳ đang chọn.
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                   <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
-                    <DateController
-                      control={control}
-                      name="kpiSetAt"
-                      label="Ngày xét KPI/OKR"
-                      className="md:col-span-2 space-y-1 text-xs font-medium"
-                      datePickerClassName="h-9 rounded-lg border-slate-200"
-                      lockToMonth={{ year: row.year, month: row.month }}
-                    />
                     <SelectController
                       control={control}
                       name="priority"
@@ -3804,10 +3790,9 @@ function miniCreateEmptyLine(): {
   kind: 'KPI' | 'OKR'
   priority: number
   content: string
-  kpiSetAt: string
   targetMetric: string
 } {
-  return { kind: 'KPI', priority: 1, content: '', kpiSetAt: '', targetMetric: '' }
+  return { kind: 'KPI', priority: 1, content: '', targetMetric: '' }
 }
 
 /** Dialog đơn giản cho manager thêm chỉ số cho toàn team (cascade). */
@@ -3975,7 +3960,6 @@ function MiniCreateForm({
       kind: 'KPI' | 'OKR'
       priority: number
       content: string
-      kpiSetAt: string
       targetMetric: string
     }>
   }
@@ -4077,13 +4061,6 @@ function MiniCreateForm({
         toast.error(`Dòng ${i + 1}: Nội dung tối đa 500 ký tự.`)
         return
       }
-      if (line.kpiSetAt.trim()) {
-        const dt = new Date(`${line.kpiSetAt.trim()}T12:00:00`)
-        if (Number.isNaN(dt.getTime())) {
-          toast.error(`Dòng ${i + 1}: Ngày xét không hợp lệ.`)
-          return
-        }
-      }
     }
 
     const nAssign = values.assigneeUserIds.length
@@ -4098,9 +4075,6 @@ function MiniCreateForm({
       priority: Number(line.priority),
       content: line.content.trim(),
       targetMetric: line.targetMetric.trim() ? line.targetMetric.trim() : null,
-      kpiSetAt: line.kpiSetAt.trim()
-        ? new Date(`${line.kpiSetAt.trim()}T12:00:00`).toISOString()
-        : null,
     }))
 
     try {
@@ -4122,8 +4096,8 @@ function MiniCreateForm({
       })
       setOpen(false)
       onCreated()
-    } catch {
-      toast.error('Không tạo được mục tiêu. Vui lòng thử lại.')
+    } catch (err) {
+      toast.error(getApiErrorMessage(err) || 'Không tạo được mục tiêu. Vui lòng thử lại.')
     }
   })
 
@@ -4318,9 +4292,6 @@ function MiniCreateForm({
                           Ưu tiên
                         </th>
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">
-                          Ngày xét
-                        </th>
-                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">
                           Chỉ tiêu
                         </th>
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">
@@ -4362,15 +4333,6 @@ function MiniCreateForm({
                               <SelectItem value="2">P2 - TB</SelectItem>
                               <SelectItem value="3">P3 - Thấp</SelectItem>
                             </SelectController>
-                          </td>
-                          <td className="px-2 py-2">
-                            <DateController
-                              control={control}
-                              name={`lines.${index}.kpiSetAt`}
-                              label=""
-                              datePickerClassName="h-9 rounded-lg border-slate-200 text-sm w-[140px] dark:border-slate-700"
-                              lockToMonth={{ year, month }}
-                            />
                           </td>
                           <td className="px-2 py-2">
                             <InputController

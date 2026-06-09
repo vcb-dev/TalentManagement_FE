@@ -5,8 +5,11 @@
 import { describe, it, expect } from 'vitest'
 import {
   isMandatoryMetric,
+  isLivestreamCatalogTeam,
   isTrafficTeam,
+  requiresKpiApproval,
   MANDATORY_METRICS_BY_TEMPLATE,
+  resolveTemplateCodeForTeam,
   TRAFFIC_TEAM_IDS_FALLBACK,
   shouldShowAssignmentForMember,
 } from '../catalogHelpers'
@@ -33,6 +36,22 @@ describe('shouldShowAssignmentForMember', () => {
     expect(shouldShowAssignmentForMember(row({ priority: 3 }))).toBe(false)
     expect(shouldShowAssignmentForMember(row({ category: 'BENEFIT' }))).toBe(false)
     expect(shouldShowAssignmentForMember(row({ priority: 2, category: 'KPI_BONUS' }))).toBe(true)
+  })
+})
+
+describe('resolveTemplateCodeForTeam', () => {
+  it('Livestream 1/2 không còn tự dùng template LIVESTREAM_NV', () => {
+    expect(resolveTemplateCodeForTeam({ name: 'Livestream 1' })).toBe('SALES_NV')
+    expect(resolveTemplateCodeForTeam({ name: 'livestream 2' })).toBe('SALES_NV')
+    expect(isLivestreamCatalogTeam({ name: 'Livestream 1' })).toBe(true)
+    expect(isLivestreamCatalogTeam({ name: 'Livestream 2' })).toBe(true)
+  })
+
+  it('các team kinh doanh khác vẫn dùng SALES_NV', () => {
+    expect(resolveTemplateCodeForTeam({ name: 'Kinh Doanh 1' })).toBe('SALES_NV')
+    expect(resolveTemplateCodeForTeam({ name: 'Kinh Doanh 2' })).toBe('SALES_NV')
+    expect(resolveTemplateCodeForTeam({ name: 'Cửa Hàng' })).toBe('SALES_NV')
+    expect(resolveTemplateCodeForTeam({ name: 'Livestream 3' })).toBe('SALES_NV')
   })
 })
 
@@ -105,5 +124,19 @@ describe('isTrafficTeam', () => {
 
   it('TRAFFIC_TEAM_IDS_FALLBACK có đúng 8 team', () => {
     expect(TRAFFIC_TEAM_IDS_FALLBACK).toHaveLength(8)
+  })
+})
+
+describe('requiresKpiApproval', () => {
+  it('trả true cho team nằm trong allowlist duyệt KPI/OKR từ API', () => {
+    expect(requiresKpiApproval('approval-team-id', ['approval-team-id'])).toBe(true)
+  })
+
+  it('không dùng fallback Traffic để bật luồng duyệt khi API trả allowlist rỗng', () => {
+    expect(requiresKpiApproval(TRAFFIC_TEAM_IDS_FALLBACK[0], [])).toBe(false)
+  })
+
+  it('ưu tiên flag requiresKpiApproval từ org tree', () => {
+    expect(requiresKpiApproval('regular-team-id', [], true)).toBe(true)
   })
 })
