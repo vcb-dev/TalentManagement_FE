@@ -72,7 +72,7 @@ export default function GlobalNotificationListener() {
       if (r.alertType === 'someone_else_start') notifiedRef.current.add(r.id + '_remind_me')
       if (r.alertType === 'overridden') notifiedRef.current.add(r.id + '_overridden')
       if (r.alertType === 'warning_5m') notifiedRef.current.add(r.id + '_warning_5m')
-      if (r.alertType === 'warning_starting_5m') notifiedRef.current.add(r.id + '_starting_5m')
+      if (r.alertType === 'warning_starting_1m') notifiedRef.current.add(r.id + '_starting_1m')
     })
     saveNotified()
     setExpiredRooms([])
@@ -105,7 +105,7 @@ export default function GlobalNotificationListener() {
             someone_else_start: '_remind_me',
             overridden: '_overridden',
             warning_5m: '_warning_5m',
-            warning_starting_5m: '_starting_5m',
+            warning_starting_1m: '_starting_1m',
           }
           const suffix = keyMap[r.alertType]
           return suffix ? !currentNotified.has(r.id + suffix) : true
@@ -292,13 +292,13 @@ export default function GlobalNotificationListener() {
         ])
       }
 
-      // 5. Kiểm tra Sắp có ca họp mới bắt đầu (cảnh báo trước 5 phút)
+      // 5. Kiểm tra Sắp có ca họp mới bắt đầu (cảnh báo trước 1 phút)
       const upcomingWarning = bookingsRef.current.filter((b) => {
         if (!isTargetBooking(b)) return false
         if (
           b.status !== 'approved' ||
           b.date !== td ||
-          notifiedRef.current.has(b.id + '_starting_5m')
+          notifiedRef.current.has(b.id + '_starting_1m')
         )
           return false
 
@@ -313,13 +313,13 @@ export default function GlobalNotificationListener() {
         if (hasPredecessor) return false
 
         const startTs = new Date(`${b.date}T${b.timeFrom}:00+07:00`).getTime()
-        const warnStartTs = startTs - 5 * 60 * 1000 // trước 5 phút
+        const warnStartTs = startTs - 1 * 60 * 1000 // trước 1 phút
         return nowTs >= warnStartTs && nowTs < warnStartTs + 60000
       })
 
       if (upcomingWarning.length > 0) {
         upcomingWarning.forEach((b) => {
-          notifiedRef.current.add(b.id + '_starting_5m')
+          notifiedRef.current.add(b.id + '_starting_1m')
           const msg = `Phòng ${b.room} sắp có ca họp tiếp theo bắt đầu lúc ${b.timeFrom}. Vui lòng chuẩn bị để nhận phòng hoặc dọn dẹp nhường phòng.`
           speak(msg)
           showNotification('Sắp có ca họp mới', msg)
@@ -327,7 +327,7 @@ export default function GlobalNotificationListener() {
         saveNotified()
         setExpiredRooms((prev) => [
           ...prev,
-          ...upcomingWarning.map((b) => ({ ...b, alertType: 'warning_starting_5m' })),
+          ...upcomingWarning.map((b) => ({ ...b, alertType: 'warning_starting_1m' })),
         ])
       }
     }
@@ -343,12 +343,12 @@ export default function GlobalNotificationListener() {
     (r) => r.alertType === 'someone_else_start' || r.alertType === 'overridden'
   )
   const hasWarning = expiredRooms.some(
-    (r) => r.alertType === 'warning_5m' || r.alertType === 'warning_starting_5m'
+    (r) => r.alertType === 'warning_5m' || r.alertType === 'warning_starting_1m'
   )
   const titleText = isHighPriority
     ? 'Yêu cầu nhường phòng'
     : hasWarning
-      ? expiredRooms.some((r) => r.alertType === 'warning_starting_5m')
+      ? expiredRooms.some((r) => r.alertType === 'warning_starting_1m')
         ? 'Sắp có ca họp mới'
         : 'Sắp hết giờ họp'
       : 'Thông báo kết thúc'
@@ -389,7 +389,7 @@ export default function GlobalNotificationListener() {
                   'rounded-2xl p-5 border flex flex-col gap-2',
                   r.alertType === 'someone_else_start'
                     ? 'bg-red-50 border-red-100'
-                    : r.alertType === 'warning_5m' || r.alertType === 'warning_starting_5m'
+                    : r.alertType === 'warning_5m' || r.alertType === 'warning_starting_1m'
                       ? 'bg-amber-50 border-amber-100'
                       : 'bg-blue-50 border-blue-100'
                 )}
@@ -401,7 +401,7 @@ export default function GlobalNotificationListener() {
                         'text-xs font-semibold uppercase tracking-wide',
                         r.alertType === 'someone_else_start'
                           ? 'text-red-400'
-                          : r.alertType === 'warning_5m' || r.alertType === 'warning_starting_5m'
+                          : r.alertType === 'warning_5m' || r.alertType === 'warning_starting_1m'
                             ? 'text-amber-500'
                             : 'text-blue-400'
                       )}
@@ -416,7 +416,7 @@ export default function GlobalNotificationListener() {
                         'text-xs font-semibold uppercase tracking-wide',
                         r.alertType === 'someone_else_start'
                           ? 'text-red-400'
-                          : r.alertType === 'warning_5m' || r.alertType === 'warning_starting_5m'
+                          : r.alertType === 'warning_5m' || r.alertType === 'warning_starting_1m'
                             ? 'text-amber-500'
                             : 'text-blue-400'
                       )}
@@ -425,7 +425,7 @@ export default function GlobalNotificationListener() {
                         ? 'Ca bắt đầu'
                         : r.alertType === 'warning_5m'
                           ? 'Sắp hết giờ'
-                          : r.alertType === 'warning_starting_5m'
+                          : r.alertType === 'warning_starting_1m'
                             ? 'Sắp bắt đầu'
                             : 'Giờ kết thúc'}
                     </p>
@@ -449,7 +449,7 @@ export default function GlobalNotificationListener() {
                       'text-sm font-medium italic',
                       r.alertType === 'someone_else_start'
                         ? 'text-red-700'
-                        : r.alertType === 'warning_5m' || r.alertType === 'warning_starting_5m'
+                        : r.alertType === 'warning_5m' || r.alertType === 'warning_starting_1m'
                           ? 'text-amber-700'
                           : 'text-blue-700'
                     )}
@@ -458,7 +458,7 @@ export default function GlobalNotificationListener() {
                       ? '⚠️ Đồng nghiệp đang đợi. Vui lòng nhường phòng ngay!'
                       : r.alertType === 'warning_5m'
                         ? '⚠️ Phiên họp sắp kết thúc. Vui lòng dọn dẹp đồ đạc!'
-                        : r.alertType === 'warning_starting_5m'
+                        : r.alertType === 'warning_starting_1m'
                           ? '⚠️ Ca họp tiếp theo sắp bắt đầu. Vui lòng chuẩn bị nhận phòng!'
                           : bookingsRef.current.some(
                                 (o) =>
