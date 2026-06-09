@@ -1,21 +1,17 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
   ArrowLeft,
   CalendarDays,
-  Filter,
   Pencil,
   Search,
   Trash2,
   X,
   Star,
-  Edit3,
-  ClipboardCheck,
   CheckCircle2,
-  FileDown,
-  LayoutGrid,
-  Table as TableIcon,
   XCircle,
+  Clock,
 } from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -37,12 +33,7 @@ import {
   InputController,
   InputFieldController,
 } from '@/components/ui/form-controllers'
-import {
-  PAGE_HEADER_DESCRIPTION,
-  PAGE_HEADER_GRADIENT,
-  PAGE_HEADER_SURFACE,
-  PAGE_HEADER_TITLE,
-} from '@/components/shared/PageHeader'
+
 import {
   Dialog,
   DialogContent,
@@ -52,14 +43,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
-import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
-import {
-  clampHourPart,
-  clampMinutePart,
-  digitsOnlyMax2,
-  joinTimeHm,
-  splitTimeToParts,
-} from '@/lib/time24h'
+
+import { joinTimeHm, splitTimeToParts } from '@/lib/time24h'
 import { cn } from '@/lib/utils'
 import { SessionEvaluationModal } from './SessionEvaluationModal'
 import { ViewEvaluationsModal } from './ViewEvaluationsModal'
@@ -129,65 +114,19 @@ function isScheduleEnded(schedule: { dateIso: string; endTime: string }) {
   )
 }
 
-function TimeHmField({
-  label,
-  hour,
-  minute,
-  onHourChange,
-  onMinuteChange,
-  onHourBlur,
-  onMinuteBlur,
-  idPrefix,
-}: {
-  label: string
-  hour: string
-  minute: string
-  onHourChange: (v: string) => void
-  onMinuteChange: (v: string) => void
-  onHourBlur: () => void
-  onMinuteBlur: () => void
-  idPrefix: string
-}) {
+function allowsReflectionSubmission(assessment?: string | null) {
+  if (!assessment) return false
+  const normalized = assessment
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .trim()
   return (
-    <div className="block text-xs font-semibold text-muted-foreground">
-      <span className="mb-0 block">{label}</span>
-      <div className="mt-1 flex items-center gap-1.5">
-        <Input
-          id={`${idPrefix}-h`}
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="00"
-          maxLength={2}
-          value={hour}
-          onChange={(e) => onHourChange(digitsOnlyMax2(e.target.value))}
-          onBlur={onHourBlur}
-          className="h-auto w-[3.25rem] rounded-xl border border-border bg-background py-2.5 text-center font-mono text-sm tabular-nums shadow-none outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15"
-          aria-label={`${label} — giờ`}
-        />
-        <span
-          className="select-none pb-0.5 text-lg font-semibold leading-none text-muted-foreground"
-          aria-hidden
-        >
-          :
-        </span>
-        <Input
-          id={`${idPrefix}-m`}
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="00"
-          maxLength={2}
-          value={minute}
-          onChange={(e) => onMinuteChange(digitsOnlyMax2(e.target.value))}
-          onBlur={onMinuteBlur}
-          className="h-auto w-[3.25rem] rounded-xl border border-border bg-background py-2.5 text-center font-mono text-sm tabular-nums shadow-none outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15"
-          aria-label={`${label} — phút`}
-        />
-      </div>
-    </div>
+    normalized.includes('phan tu') ||
+    normalized.includes('tu luan') ||
+    normalized.includes('review')
   )
 }
 
@@ -216,6 +155,17 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const routeHash = useRouterState({ select: (s) => s.location.hash })
   const { data } = useTeacherClassDetail(classId)
   const { data: schedules = [] } = useTeacherSchedules(classId)
+  const isDeadlineOnly = useCallback((s: { topic: string; location?: string | null }) => {
+    return s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
+  }, [])
+  const regularSchedules = useMemo(
+    () => schedules.filter((s) => !isDeadlineOnly(s)),
+    [schedules, isDeadlineOnly]
+  )
+  const deadlineSchedules = useMemo(
+    () => schedules.filter((s) => isDeadlineOnly(s)),
+    [schedules, isDeadlineOnly]
+  )
   const { data: roadmapItems = [] } = useTeacherRoadmapItems(classId)
   const { data: registrations = [] } = useTeacherClassRegistrations(classId)
   const createSchedule = useTeacherCreateSchedule(classId)
@@ -250,7 +200,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const filtersForm = useForm<{ filterKey: (typeof FILTERS)[number]['key']; searchDraft: string }>({
     defaultValues: { filterKey: 'all', searchDraft: '' },
   })
-  const filterKey = useWatch({ control: filtersForm.control, name: 'filterKey' }) ?? 'all'
+
   const searchDraft = useWatch({ control: filtersForm.control, name: 'searchDraft' }) ?? ''
   const deferredSearchDraft = useDeferredValue(searchDraft)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('table')
@@ -258,10 +208,11 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null)
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+  const [isCreatingDeadlineOnly, setIsCreatingDeadlineOnly] = useState(false)
 
   // Evaluation modal state
   const [evalModalOpen, setEvalModalOpen] = useState(false)
-  const [evalTarget, setEvalTarget] = useState<{ userId: string; userName: string } | null>(null)
+  const [evalTarget, _setEvalTarget] = useState<{ userId: string; userName: string } | null>(null)
   const [viewEvalModalOpen, setViewEvalModalOpen] = useState(false)
   const [rejectReasonById, setRejectReasonById] = useState<Record<string, string>>({})
   const [approvingRegistrationId, setApprovingRegistrationId] = useState<string | null>(null)
@@ -278,14 +229,14 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
   // Tự động chọn buổi học đầu tiên nếu có dữ liệu và chưa chọn buổi nào
   useEffect(() => {
-    if (schedules && schedules.length > 0 && !activeScheduleId) {
-      setActiveScheduleId(schedules[0]?.id || null)
+    if (regularSchedules && regularSchedules.length > 0 && !activeScheduleId) {
+      setActiveScheduleId(regularSchedules[0]?.id || null)
     }
-  }, [schedules, activeScheduleId])
+  }, [regularSchedules, activeScheduleId])
 
   const selectedSchedule = useMemo(
-    () => schedules.find((s) => s.id === activeScheduleId),
-    [schedules, activeScheduleId]
+    () => regularSchedules.find((s) => s.id === activeScheduleId),
+    [regularSchedules, activeScheduleId]
   )
   const roadmapItemsByTopic = useMemo(() => {
     const groups = new Map<string, typeof roadmapItems>()
@@ -305,6 +256,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       topic: '',
       location: '',
       roadmapItemIds: [] as string[],
+      roadmapItemDeadlines: {} as Record<string, string>,
     },
   })
   const {
@@ -313,10 +265,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     reset: resetScheduleValues,
     setValue: setScheduleValue,
   } = scheduleForm
-  const [startHour, startMinute, endHour, endMinute] = useWatch({
-    control: scheduleControl,
-    name: ['startHour', 'startMinute', 'endHour', 'endMinute'],
-  })
+
   const selectedRoadmapItemIds =
     useWatch({
       control: scheduleControl,
@@ -332,6 +281,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     topic: '',
     location: '',
     roadmapItemIds: [] as string[],
+    roadmapItemDeadlines: {} as Record<string, string>,
   }
 
   const toggleRoadmapItem = (itemId: string, checked: boolean) => {
@@ -351,6 +301,16 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     const [eh, em] = splitTimeToParts(s.endTime)
     const todayMin = getTodayIsoLocal()
     const dateIso = s.dateIso >= todayMin ? s.dateIso : todayMin
+
+    const deadlines: Record<string, string> = {}
+    s.roadmapItems?.forEach((item) => {
+      if (item.deadline) {
+        const date = new Date(item.deadline)
+        const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000)
+        deadlines[item.id] = offsetDate.toISOString().slice(0, 16)
+      }
+    })
+
     resetScheduleValues({
       dateIso,
       startHour: sh,
@@ -360,6 +320,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       topic: s.topic,
       location: s.location ?? '',
       roadmapItemIds: s.roadmapItems?.map((item) => item.id) ?? [],
+      roadmapItemDeadlines: deadlines,
     })
   }
 
@@ -388,55 +349,8 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
   const resetScheduleForm = () => {
     setEditingScheduleId(null)
+    setIsCreatingDeadlineOnly(false)
     resetScheduleValues(scheduleInitial)
-  }
-
-  const onSubmitSchedule = () => {
-    const todayMin = getTodayIsoLocal()
-    const values = getScheduleValues()
-    if (!values.dateIso) {
-      toast.error('Chọn ngày học.')
-      return
-    }
-    if (values.dateIso < todayMin) {
-      toast.error('Chỉ được chọn ngày từ hôm nay trở đi.')
-      return
-    }
-    const startTime = joinTimeHm(values.startHour, values.startMinute)
-    const endTime = joinTimeHm(values.endHour, values.endMinute)
-    if (startTime >= endTime) {
-      toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
-      return
-    }
-    if (!values.roadmapItemIds.length) {
-      toast.error('Vui lòng chọn ít nhất một học phần trong lộ trình.')
-      return
-    }
-    const input = {
-      dateIso: values.dateIso,
-      startTime,
-      endTime,
-      topic: values.topic.trim(),
-      location: values.location.trim() || null,
-      roadmapItemIds: values.roadmapItemIds,
-    }
-    const overlap = findOverlappingSchedule(schedules, input, editingScheduleId)
-    if (overlap) {
-      toast.error(
-        `Buổi học bị trùng với "${overlap.topic}" (${overlap.startTime} - ${overlap.endTime}).`
-      )
-      return
-    }
-    if (editingScheduleId) {
-      updateSchedule.mutate(
-        { scheduleId: editingScheduleId, input },
-        {
-          onSuccess: () => resetScheduleForm(),
-        }
-      )
-      return
-    }
-    createSchedule.mutate(input, { onSuccess: () => resetScheduleForm() })
   }
 
   const filtered = useMemo(() => {
@@ -455,12 +369,6 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const total = activeScheduleId ? filtered.length : members.filter((m) => !m.isMakeup).length
   const page = 1
   const totalPages = 1
-
-  const scrollToFilters = () => {
-    document
-      .getElementById('teacher-class-detail-filters')
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
 
   useEffect(() => {
     const h = routeHash?.replace(/^#/, '') ?? ''
@@ -684,20 +592,45 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                   </p>
                 </div>
               </div>
-              <Button
-                className="h-14 rounded-2xl bg-primary px-8 text-base font-black text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95"
-                onClick={() => {
-                  resetScheduleForm()
-                  setScheduleModalOpen(true)
-                }}
-              >
-                <CalendarDays className="mr-2 h-5 w-5" />
-                THÊM BUỔI MỚI
-              </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  className="h-14 rounded-2xl bg-primary px-8 text-base font-black text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95"
+                  onClick={() => {
+                    resetScheduleForm()
+                    setScheduleModalOpen(true)
+                  }}
+                >
+                  <CalendarDays className="mr-2 h-5 w-5" />
+                  THÊM BUỔI MỚI
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-14 rounded-2xl border-primary text-primary hover:bg-primary/5 px-8 text-base font-black shadow-lg transition-all hover:scale-105 active:scale-95"
+                  onClick={() => {
+                    resetScheduleForm()
+                    scheduleForm.reset({
+                      dateIso: getTodayIsoLocal(),
+                      startHour: '00',
+                      startMinute: '00',
+                      endHour: '23',
+                      endMinute: '59',
+                      topic: 'Hạn nộp bài phản tư',
+                      location: 'Nộp bài trực tuyến',
+                      roadmapItemIds: [],
+                      roadmapItemDeadlines: {},
+                    })
+                    setIsCreatingDeadlineOnly(true)
+                    setScheduleModalOpen(true)
+                  }}
+                >
+                  <Clock className="mr-2 h-5 w-5" />
+                  TẠO HẠN NỘP
+                </Button>
+              </div>
             </div>
 
             {/* Session Navigation inside the card */}
-            {schedules.length > 0 && (
+            {regularSchedules.length > 0 && (
               <div className="border-t border-slate-50 bg-slate-50/50 p-4 sm:px-12">
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -712,7 +645,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                   >
                     TỔNG QUAN LỚP
                   </Button>
-                  {schedules.map((s, idx) => {
+                  {regularSchedules.map((s, idx) => {
                     const isActive = activeScheduleId === s.id
                     return (
                       <Button
@@ -777,238 +710,75 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
             )}
           </div>
 
-          {/* Management Modal */}
-          {scheduleModalOpen && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/25 p-4 animate-in fade-in duration-200">
-              <div className="absolute inset-0" onClick={closeScheduleModal} />
-              <div className="relative flex max-h-[calc(100vh-6rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 animate-in zoom-in-95 duration-200">
-                <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-5">
-                  <div className="min-w-0">
-                    <h2 className="text-xl font-black tracking-tight text-slate-950">
-                      {editingScheduleId ? 'CẬP NHẬT BUỔI HỌC' : 'THÊM BUỔI HỌC MỚI'}
-                    </h2>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Thông tin chi tiết buổi đào tạo trực tiếp
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-9 w-9 rounded-xl p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                    onClick={closeScheduleModal}
-                    aria-label="Đóng"
+          {/* Lịch nộp phản tư Card — TEACHER */}
+          {deadlineSchedules.length > 0 && (
+            <div className="mb-12 overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl shadow-slate-200/50">
+              <div className="flex flex-col gap-3 border-b border-slate-100 p-8 sm:px-12">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">
+                  Lộ trình học
+                </p>
+                <h3 className="text-2xl font-black text-slate-900">
+                  Lịch nộp phản tư ({deadlineSchedules.length})
+                </h3>
+                <p className="text-sm font-semibold text-slate-400">
+                  Danh sách các hạn nộp phản tư do giảng viên thiết lập cho lớp học
+                </p>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {deadlineSchedules.map((s) => (
+                  <div
+                    key={s.id}
+                    className="grid gap-4 p-6 lg:grid-cols-[1fr_240px] lg:items-center hover:bg-slate-50/50 transition-colors"
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="min-h-0 overflow-y-auto bg-slate-50/70 px-6 py-5">
-                  <Form {...scheduleForm}>
-                    <form
-                      className="space-y-5"
-                      onSubmit={scheduleForm.handleSubmit((vals) => {
-                        const startTime = joinTimeHm(vals.startHour, vals.startMinute)
-                        const endTime = joinTimeHm(vals.endHour, vals.endMinute)
-                        const payload = {
-                          dateIso: vals.dateIso,
-                          startTime,
-                          endTime,
-                          topic: vals.topic.trim(),
-                          location: vals.location.trim() || null,
-                          roadmapItemIds: vals.roadmapItemIds,
-                        }
-                        if (startTime >= endTime) {
-                          toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
-                          return
-                        }
-                        if (!vals.roadmapItemIds.length) {
-                          toast.error('Vui lòng chọn ít nhất một học phần trong lộ trình.')
-                          return
-                        }
-                        const overlap = findOverlappingSchedule(
-                          schedules,
-                          payload,
-                          editingScheduleId
-                        )
-                        if (overlap) {
-                          toast.error(
-                            `Buổi học bị trùng với "${overlap.topic}" (${overlap.startTime} - ${overlap.endTime}).`
-                          )
-                          return
-                        }
-                        if (editingScheduleId) {
-                          updateSchedule.mutate(
-                            { scheduleId: editingScheduleId, input: payload },
-                            {
-                              onSuccess: () => {
-                                closeScheduleModal()
-                                toast.success('Đã cập nhật buổi học')
-                              },
-                            }
-                          )
-                        } else {
-                          createSchedule.mutate(payload, {
-                            onSuccess: () => {
-                              closeScheduleModal()
-                              toast.success('Đã thêm buổi học mới')
-                            },
-                          })
-                        }
-                      })}
-                    >
-                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                          <DateController
-                            control={scheduleForm.control}
-                            name="dateIso"
-                            label="Ngày học"
-                            required
-                            datePickerClassName="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10"
-                          />
-                          <InputController
-                            control={scheduleForm.control}
-                            name="location"
-                            label="Địa điểm / Phòng"
-                            placeholder="VD: Phòng họp A, Zoom..."
-                            inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
-                          />
-                        </div>
-
-                        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-                          <div className="space-y-2">
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                              Thời gian bắt đầu
-                            </label>
-                            <div className="flex items-center gap-2">
-                              <InputController
-                                control={scheduleForm.control}
-                                name="startHour"
-                                label="Giờ"
-                                labelClassName="sr-only"
-                                type="number"
-                                className="w-20"
-                                inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
-                              />
-                              <span className="font-bold text-slate-300">:</span>
-                              <InputController
-                                control={scheduleForm.control}
-                                name="startMinute"
-                                label="Phút"
-                                labelClassName="sr-only"
-                                type="number"
-                                className="w-20"
-                                inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                              Thời gian kết thúc
-                            </label>
-                            <div className="flex items-center gap-2">
-                              <InputController
-                                control={scheduleForm.control}
-                                name="endHour"
-                                label="Giờ"
-                                labelClassName="sr-only"
-                                type="number"
-                                className="w-20"
-                                inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
-                              />
-                              <span className="font-bold text-slate-300">:</span>
-                              <InputController
-                                control={scheduleForm.control}
-                                name="endMinute"
-                                label="Phút"
-                                labelClassName="sr-only"
-                                type="number"
-                                className="w-20"
-                                inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
-                              />
-                            </div>
-                          </div>
-                        </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Badge className="rounded-lg border-0 bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-primary">
+                          Hạn nộp
+                        </Badge>
+                        <p className="text-base font-black text-slate-950">{s.topic}</p>
                       </div>
-
-                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <div className="flex flex-wrap items-end justify-between gap-2">
-                          <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                            Học phần trong lộ trình
-                          </label>
-                          <span className="text-xs font-bold text-primary">
-                            Đã chọn {selectedRoadmapItemIds.length} học phần
-                          </span>
+                      <p className="text-xs font-semibold text-slate-500">
+                        Hạn nộp:{' '}
+                        <span className="font-bold text-slate-700">
+                          {s.dateIso} · {s.startTime} - {s.endTime}
+                        </span>
+                      </p>
+                      {s.roadmapItems?.length ? (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {s.roadmapItems.map((item) => (
+                            <Badge
+                              key={item.id}
+                              variant="outline"
+                              className="rounded-lg px-2 py-0.5 text-[10px] font-bold border-slate-200 bg-slate-50 text-slate-600"
+                            >
+                              {item.objective}
+                            </Badge>
+                          ))}
                         </div>
-                        <div className="mt-3 max-h-64 space-y-4 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
-                          {roadmapItemsByTopic.length === 0 ? (
-                            <p className="text-sm font-semibold text-slate-400">
-                              Chưa có học phần phù hợp với cấp của lớp này.
-                            </p>
-                          ) : (
-                            roadmapItemsByTopic.map(([topic, items]) => (
-                              <div key={topic} className="space-y-2">
-                                <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                  {topic}
-                                </p>
-                                <div className="space-y-2">
-                                  {items.map((item) => {
-                                    const checked = selectedRoadmapItemIds.includes(item.id)
-                                    return (
-                                      <label
-                                        key={item.id}
-                                        className={cn(
-                                          'flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-3 text-sm transition-colors',
-                                          checked
-                                            ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/10'
-                                            : 'border-slate-100 hover:border-primary/20'
-                                        )}
-                                      >
-                                        <Checkbox
-                                          checked={checked}
-                                          onCheckedChange={(value) =>
-                                            toggleRoadmapItem(item.id, value === true)
-                                          }
-                                          className="mt-0.5"
-                                        />
-                                        <span className="min-w-0">
-                                          <span className="block font-bold text-slate-900">
-                                            {item.objective}
-                                          </span>
-                                          <span className="mt-1 block text-xs font-semibold text-slate-400">
-                                            {item.assessment || 'Chưa có hình thức đánh giá'}
-                                          </span>
-                                        </span>
-                                      </label>
-                                    )
-                                  })}
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="sticky bottom-0 -mx-6 -mb-5 flex justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="h-10 rounded-xl px-5 font-bold text-slate-600 hover:bg-slate-100"
-                          onClick={closeScheduleModal}
-                        >
-                          HỦY BỎ
-                        </Button>
-                        <Button
-                          type="submit"
-                          className="h-10 rounded-xl bg-primary px-7 font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90"
-                          loading={createSchedule.isPending || updateSchedule.isPending}
-                        >
-                          {editingScheduleId ? 'CẬP NHẬT' : 'LƯU BUỔI HỌC'}
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                </div>
+                      ) : null}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 rounded-xl border-primary/20 px-4 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5"
+                        onClick={() => onEditSchedule(s.id)}
+                      >
+                        <Pencil className="mr-1.5 h-4 w-4" />
+                        Sửa
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 rounded-xl border-rose-200 px-4 text-xs font-black uppercase tracking-widest text-rose-600 hover:bg-rose-50"
+                        onClick={() => onDeleteSchedule(s.id)}
+                      >
+                        <Trash2 className="mr-1.5 h-4 w-4" />
+                        Xóa
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -1436,6 +1206,291 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
           ) : null}
         </div>
       </div>
+
+      {/* Management Modal */}
+      {scheduleModalOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/25 p-4 animate-in fade-in duration-200">
+            <div className="absolute inset-0" onClick={closeScheduleModal} />
+            <div className="relative flex max-h-[calc(100vh-6rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 animate-in zoom-in-95 duration-200">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-5">
+                <div className="min-w-0">
+                  <h2 className="text-xl font-black tracking-tight text-slate-950">
+                    {isCreatingDeadlineOnly
+                      ? 'TẠO HẠN NỘP BÀI PHẢN TƯ'
+                      : editingScheduleId
+                        ? 'CẬP NHẬT BUỔI HỌC'
+                        : 'THÊM BUỔI HỌC MỚI'}
+                  </h2>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {isCreatingDeadlineOnly
+                      ? 'Thiết lập hạn nộp bài cho học viên theo lộ trình học'
+                      : 'Thông tin chi tiết buổi đào tạo trực tiếp'}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-9 w-9 rounded-xl p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  onClick={closeScheduleModal}
+                  aria-label="Đóng"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="min-h-0 overflow-y-auto bg-slate-50/70 px-6 py-5">
+                <Form {...scheduleForm}>
+                  <form
+                    className="space-y-5"
+                    onSubmit={scheduleForm.handleSubmit((vals) => {
+                      const startTime = joinTimeHm(vals.startHour, vals.startMinute)
+                      const endTime = joinTimeHm(vals.endHour, vals.endMinute)
+                      const localDeadlines = vals.roadmapItemDeadlines || {}
+                      const roadmapItemDeadlines: Record<string, string> = {}
+                      for (const itemId of vals.roadmapItemIds) {
+                        const dl = localDeadlines[itemId]
+                        if (dl) {
+                          roadmapItemDeadlines[itemId] = new Date(dl).toISOString()
+                        }
+                      }
+                      const payload = {
+                        dateIso: vals.dateIso,
+                        startTime,
+                        endTime,
+                        topic: vals.topic.trim(),
+                        location: vals.location.trim() || null,
+                        roadmapItemIds: vals.roadmapItemIds,
+                        roadmapItemDeadlines,
+                      }
+                      if (startTime >= endTime) {
+                        toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
+                        return
+                      }
+                      if (!vals.roadmapItemIds.length) {
+                        toast.error('Vui lòng chọn ít nhất một học phần trong lộ trình.')
+                        return
+                      }
+                      const overlap = findOverlappingSchedule(schedules, payload, editingScheduleId)
+                      if (overlap) {
+                        toast.error(
+                          `Buổi học bị trùng với "${overlap.topic}" (${overlap.startTime} - ${overlap.endTime}).`
+                        )
+                        return
+                      }
+                      if (editingScheduleId) {
+                        updateSchedule.mutate(
+                          { scheduleId: editingScheduleId, input: payload },
+                          {
+                            onSuccess: () => {
+                              closeScheduleModal()
+                              toast.success('Đã cập nhật buổi học')
+                            },
+                          }
+                        )
+                      } else {
+                        createSchedule.mutate(payload, {
+                          onSuccess: () => {
+                            closeScheduleModal()
+                            toast.success('Đã thêm buổi học mới')
+                          },
+                        })
+                      }
+                    })}
+                  >
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                        <DateController
+                          control={scheduleForm.control}
+                          name="dateIso"
+                          label={isCreatingDeadlineOnly ? 'Ngày nộp bài' : 'Ngày học'}
+                          required
+                          datePickerClassName="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10"
+                        />
+                        <InputController
+                          control={scheduleForm.control}
+                          name="location"
+                          label="Địa điểm / Phòng"
+                          placeholder="VD: Phòng họp A, Zoom..."
+                          inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
+                        />
+                      </div>
+
+                      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                            {isCreatingDeadlineOnly ? 'Khung giờ mở nộp' : 'Thời gian bắt đầu'}
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <InputController
+                              control={scheduleForm.control}
+                              name="startHour"
+                              label="Giờ"
+                              labelClassName="sr-only"
+                              type="number"
+                              className="w-20"
+                              inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
+                            />
+                            <span className="font-bold text-slate-300">:</span>
+                            <InputController
+                              control={scheduleForm.control}
+                              name="startMinute"
+                              label="Phút"
+                              labelClassName="sr-only"
+                              type="number"
+                              className="w-20"
+                              inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                            {isCreatingDeadlineOnly ? 'Khung giờ đóng nộp' : 'Thời gian kết thúc'}
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <InputController
+                              control={scheduleForm.control}
+                              name="endHour"
+                              label="Giờ"
+                              labelClassName="sr-only"
+                              type="number"
+                              className="w-20"
+                              inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
+                            />
+                            <span className="font-bold text-slate-300">:</span>
+                            <InputController
+                              control={scheduleForm.control}
+                              name="endMinute"
+                              label="Phút"
+                              labelClassName="sr-only"
+                              type="number"
+                              className="w-20"
+                              inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex flex-wrap items-end justify-between gap-2">
+                        <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                          Học phần trong lộ trình
+                        </label>
+                        <span className="text-xs font-bold text-primary">
+                          Đã chọn {selectedRoadmapItemIds.length} học phần
+                        </span>
+                      </div>
+                      <div className="mt-3 max-h-64 space-y-4 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        {roadmapItemsByTopic.length === 0 ? (
+                          <p className="text-sm font-semibold text-slate-400">
+                            Chưa có học phần phù hợp với cấp của lớp này.
+                          </p>
+                        ) : (
+                          roadmapItemsByTopic.map(([topic, items]) => (
+                            <div key={topic} className="space-y-2">
+                              <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                {topic}
+                              </p>
+                              <div className="space-y-2">
+                                {items.map((item) => {
+                                  const checked = selectedRoadmapItemIds.includes(item.id)
+                                  const requiresReflection = allowsReflectionSubmission(
+                                    item.assessment
+                                  )
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      className={cn(
+                                        'flex flex-col gap-3 rounded-xl border bg-white p-3 text-sm transition-colors md:flex-row md:items-center md:justify-between',
+                                        checked
+                                          ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/10'
+                                          : 'border-slate-100 hover:border-primary/20'
+                                      )}
+                                    >
+                                      <label className="flex cursor-pointer items-start gap-3 flex-1 min-w-0">
+                                        <Checkbox
+                                          checked={checked}
+                                          onCheckedChange={(value) =>
+                                            toggleRoadmapItem(item.id, value === true)
+                                          }
+                                          className="mt-0.5"
+                                        />
+                                        <span className="min-w-0">
+                                          <span className="block font-bold text-slate-900">
+                                            {item.objective}
+                                          </span>
+                                          <span className="mt-1 block text-xs font-semibold text-slate-400">
+                                            {item.assessment || 'Chưa có hình thức đánh giá'}
+                                          </span>
+                                        </span>
+                                      </label>
+                                      {checked && requiresReflection && (
+                                        <div className="flex flex-col gap-1 shrink-0 w-full md:w-auto min-w-[180px]">
+                                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                            Hạn nộp phản tư
+                                          </span>
+                                          <input
+                                            type="datetime-local"
+                                            value={
+                                              (
+                                                getScheduleValues('roadmapItemDeadlines') as Record<
+                                                  string,
+                                                  string
+                                                >
+                                              )?.[item.id] || ''
+                                            }
+                                            onChange={(e) =>
+                                              setScheduleValue(
+                                                `roadmapItemDeadlines.${item.id}`,
+                                                e.target.value,
+                                                { shouldDirty: true, shouldValidate: true }
+                                              )
+                                            }
+                                            className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 focus:border-primary focus:outline-none"
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="sticky bottom-0 -mx-6 -mb-5 flex justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-10 rounded-xl px-5 font-bold text-slate-600 hover:bg-slate-100"
+                        onClick={closeScheduleModal}
+                      >
+                        HỦY BỎ
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="h-10 rounded-xl bg-primary px-7 font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90"
+                        loading={createSchedule.isPending || updateSchedule.isPending}
+                      >
+                        {isCreatingDeadlineOnly
+                          ? 'LƯU HẠN NỘP'
+                          : editingScheduleId
+                            ? 'CẬP NHẬT'
+                            : 'LƯU BUỔI HỌC'}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Evaluation Modal */}
       {evalTarget && (

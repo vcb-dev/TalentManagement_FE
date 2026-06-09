@@ -20,7 +20,7 @@ export const checklistResponseSchema = z.object({
 
 export const submissionApiSchema = z.object({
   id: z.string().uuid(),
-  starId: z.string(),
+  starId: z.string().nullish().optional(),
   itemId: z.string().nullish(),
   status: z.enum(['PENDING', 'ACCEPTED', 'REJECTED', 'GRADED']),
   fileName: z.string(),
@@ -56,6 +56,9 @@ const scheduleSlotSchema = z.object({
         topic: z.string(),
         objective: z.string(),
         rowOrder: z.number().int().optional(),
+        assessment: z.string().nullable().optional(),
+        deadline: z.string().datetime().nullable().optional(),
+        submission: submissionApiSchema.nullable().optional(),
       })
     )
     .optional()

@@ -257,12 +257,13 @@ function renderField(
         control={control}
         name={key}
         label={field.label}
-        placeholder="Chọn vị trí"
+        placeholder={field.key === 'contractType' ? 'Chọn loại hợp đồng / vị trí' : 'Chọn vị trí'}
         className={cn('space-y-1.5', fieldBoxClass)}
         labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
         triggerClassName={cn(fieldControlClass, inputEditable)}
         customLabel={<FieldLabel>{field.label}</FieldLabel>}
       >
+        <SelectItem value="__none">Chưa chọn</SelectItem>
         {positions?.map((p) => (
           <SelectItem key={p.value} value={p.value}>
             {p.label}
@@ -463,10 +464,17 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     queryFn: () => organizationApi.getTeamsList(),
     staleTime: 60_000,
   })
+  const form = useForm<EditRecord>({
+    defaultValues: userToEdit(u),
+  })
+  const { control, handleSubmit } = form
+  const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
+
   const divisions = useMemo(
     () => divisionsList.map((d) => ({ id: d.id, name: d.name })),
     [divisionsList]
   )
+  // Hiển thị tất cả nhóm, không lọc theo phòng ban
   const teams = useMemo(() => teamsList.map((t) => ({ id: t.id, name: t.name })), [teamsList])
   const allTeamOptions = useMemo(
     () => teamsList.map((t) => ({ value: t.id, label: t.name })),
@@ -482,11 +490,6 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     queryFn: () => profileApi.getJobTitles(),
   })
   const jobTitles = useMemo(() => jobTitlesData ?? [], [jobTitlesData])
-  const form = useForm<EditRecord>({
-    defaultValues: userToEdit(u),
-  })
-  const { control, handleSubmit } = form
-  const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
 
   const role = user?.role ?? 'MEMBER'
   const currentLevelId = mapCurrentTitleToLevelId(page.currentLevel.title)

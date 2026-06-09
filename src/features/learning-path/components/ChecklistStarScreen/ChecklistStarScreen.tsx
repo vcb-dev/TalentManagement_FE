@@ -968,13 +968,13 @@ export function ChecklistStarScreen({
                               <div
                                 className={cn(
                                   'relative overflow-hidden rounded-[28px] p-8 text-center border-2 transition-all duration-500',
-                                  (displaySubmission?.score || 0) >= 60
+                                  (displaySubmission?.score || 0) >= 80
                                     ? 'bg-emerald-50/50 border-emerald-100 shadow-emerald-100/20'
                                     : 'bg-rose-50/50 border-rose-100 shadow-rose-100/20'
                                 )}
                               >
                                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                                  {(displaySubmission?.score || 0) >= 60 ? (
+                                  {(displaySubmission?.score || 0) >= 80 ? (
                                     <Trophy className="h-24 w-24" />
                                   ) : (
                                     <XCircle className="h-24 w-24" />
@@ -989,7 +989,7 @@ export function ChecklistStarScreen({
                                   <div
                                     className={cn(
                                       'text-7xl font-black tabular-nums tracking-tighter mb-2',
-                                      (displaySubmission?.score || 0) >= 60
+                                      (displaySubmission?.score || 0) >= 80
                                         ? 'text-emerald-600'
                                         : 'text-rose-600'
                                     )}
@@ -1000,12 +1000,12 @@ export function ChecklistStarScreen({
                                   <div
                                     className={cn(
                                       'flex items-center gap-2 px-5 py-2 rounded-full text-sm font-black uppercase tracking-widest border shadow-sm',
-                                      (displaySubmission?.score || 0) >= 60
+                                      (displaySubmission?.score || 0) >= 80
                                         ? 'bg-emerald-500 text-white border-emerald-400'
                                         : 'bg-rose-500 text-white border-rose-400'
                                     )}
                                   >
-                                    {(displaySubmission?.score || 0) >= 60 ? (
+                                    {(displaySubmission?.score || 0) >= 80 ? (
                                       <>
                                         <CheckCircle2 className="h-4 w-4" /> Đạt yêu cầu
                                       </>

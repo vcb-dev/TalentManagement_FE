@@ -93,7 +93,10 @@ export function ManagerGradingScreen() {
 
     for (const c of classes) {
       const teacherName = c.teacher?.name || '—'
-      const examSchedules = c.schedules?.filter((s) => s.isExam) || []
+      const examSchedules =
+        c.schedules?.filter(
+          (s) => s.isExam || s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
+        ) || []
       const classDurationMin = (c.examQuestions as any)?.duration || 60
 
       if (examSchedules.length === 0) {

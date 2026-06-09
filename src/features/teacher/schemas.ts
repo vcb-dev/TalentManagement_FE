@@ -45,6 +45,7 @@ export const teacherRoadmapItemApiSchema = z.object({
   trainer: z.string().nullable().optional(),
   assessment: z.string().nullable().optional(),
   rowOrder: z.number().int(),
+  deadline: z.string().datetime().nullable().optional(),
 })
 
 export const teacherGradeResponseSchema = z.object({

@@ -980,9 +980,15 @@ export function MonthlyReportScreen() {
   const hideManagerEvalColumn = Boolean(isKinhDoanhDept && !requiresKpiApprovalSelected)
 
   const assignmentsData = useMemo(() => {
-    if (!isKinhDoanhDept) return assignmentsDataRaw
-    return assignmentsDataRaw.filter(shouldShowAssignmentForMember)
-  }, [assignmentsDataRaw, isKinhDoanhDept])
+    let rows = assignmentsDataRaw
+    if (isKinhDoanhDept) {
+      rows = rows.filter(shouldShowAssignmentForMember)
+    }
+    if (!canSeeTeamWide && userId) {
+      rows = rows.filter((r) => r.assigneeUserId === userId)
+    }
+    return rows
+  }, [assignmentsDataRaw, isKinhDoanhDept, canSeeTeamWide, userId])
 
   // Trạng thái duyệt KẾT QUẢ của team theo kỳ (chỉ traffic team mới có request — team khác trả null).
   // Khóa nhập của member khi đang chờ duyệt (pending) hoặc đã được duyệt (approved).
@@ -1021,8 +1027,8 @@ export function MonthlyReportScreen() {
   }, [assignmentsData])
 
   const selectedDetailUserId = useMemo(() => {
+    if (!canSeeTeamWide) return userId ?? ''
     if (selectedUserId && assignmentsByUser.has(selectedUserId)) return selectedUserId
-    if (!canSeeTeamWide && userId && assignmentsByUser.has(userId)) return userId
     const first = assignmentsByUser.keys().next().value
     return typeof first === 'string' ? first : ''
   }, [selectedUserId, assignmentsByUser, canSeeTeamWide, userId])

@@ -111,6 +111,7 @@ export function useSubmitEvidence() {
     onSuccess: (_d, vars) => {
       void qc.invalidateQueries({ queryKey: learningKeys.checklist(vars.levelId, vars.starId) })
       void qc.invalidateQueries({ queryKey: learningKeys.submissions(vars.starId) })
+      void qc.invalidateQueries({ queryKey: [...learningKeys.all, 'me-enrolled-class'] })
       toast.success('Đã gửi minh chứng')
     },
     onError: (err) => {

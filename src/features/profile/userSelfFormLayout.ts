@@ -40,7 +40,7 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
       { key: 'startDateWork', label: 'Ngày bắt đầu làm việc' },
       { key: 'employmentStatus', label: 'Tình trạng làm việc' },
       { key: 'employeeCodePrimary', label: 'Mã nhân viên' },
-      { key: 'contractType', label: 'Loại hợp đồng / vị trí' },
+      { key: 'contractType', label: 'Loại hợp đồng / vị trí', kind: 'position-select' },
       { key: 'directManager', label: 'Quản lý trực tiếp' },
       { key: 'workplaceBranch', label: 'Chi nhánh / nơi làm việc' },
       { key: 'hrOfficerName', label: 'Cán bộ HR phụ trách' },
