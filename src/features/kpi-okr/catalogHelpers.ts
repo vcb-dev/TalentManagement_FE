@@ -55,6 +55,11 @@ export function isLivestreamCatalogTeam(team: { code?: string | null; name: stri
   return keys.some((key) => key === 'livestream 1' || key === 'livestream 2')
 }
 
+export function isCatalogSeedExcludedTeam(team: { code?: string | null; name: string }): boolean {
+  const keys = [team.code, team.name].map(normalizeTemplateKey)
+  return keys.some((key) => /^cua hang(?:\b|$)/.test(key))
+}
+
 export function resolveTemplateCodeForTeam(team: { code?: string | null; name: string }): string {
   const key = normalizeTemplateKey(team.code ?? team.name)
   if (/van[_\s.-]?don|bao[_\s]?hanh/.test(key)) return 'VAN_DON_NV'

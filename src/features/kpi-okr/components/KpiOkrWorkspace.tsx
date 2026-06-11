@@ -76,6 +76,7 @@ import {
 } from '@/features/kpi-okr/components/kpiAssignmentTableShared'
 import {
   isCatalogEnabledDepartment,
+  isCatalogSeedExcludedTeam,
   shouldShowAssignmentForMember,
   isMandatoryMetric,
   isTrafficTeam,
@@ -501,6 +502,7 @@ export function KpiOkrWorkspace({
 
   const selectedTemplateCode = useMemo(() => {
     if (isTrafficTeamSelected) return 'TRAFFIC_TEAM_NV'
+    if (selectedTeamForSeed && isCatalogSeedExcludedTeam(selectedTeamForSeed)) return undefined
     if (selectedTeamForSeed) return resolveTemplateCodeForTeam(selectedTeamForSeed)
     return 'SALES_NV'
   }, [isTrafficTeamSelected, selectedTeamForSeed])
@@ -3293,16 +3295,18 @@ function PlanningSection({
             assignmentWindowOpen &&
             (isManagerCascade ? (
               <div className="flex flex-wrap justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="gap-2 rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                  onClick={() => void handleSyncCatalogSeed()}
-                  disabled={syncingCatalog}
-                >
-                  <RefreshCw className={cn('h-4 w-4', syncingCatalog && 'animate-spin')} />
-                  {syncingCatalog ? 'Đang đồng bộ...' : 'Đồng bộ KPI theo cấu hình'}
-                </Button>
+                {templateCode ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => void handleSyncCatalogSeed()}
+                    disabled={syncingCatalog}
+                  >
+                    <RefreshCw className={cn('h-4 w-4', syncingCatalog && 'animate-spin')} />
+                    {syncingCatalog ? 'Đang đồng bộ...' : 'Đồng bộ KPI theo cấu hình'}
+                  </Button>
+                ) : null}
                 <ManagerCascadeAddForm
                   teamId={selectedTeamId}
                   year={year}

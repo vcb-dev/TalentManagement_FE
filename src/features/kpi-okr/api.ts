@@ -69,6 +69,7 @@ export type PerformanceAssignment = {
   tenureStage?: string | null
   dailyTarget?: string | null
   templateItemId?: string | null
+  periodTemplateItemId?: string | null
 }
 
 export type PerformanceSummaryRow = {
@@ -659,9 +660,11 @@ export const performanceApi = {
     return res.data
   },
 
-  getCatalog: async (code: string) => {
+  getCatalog: async (code: string, year?: number, month?: number) => {
     if (isMockApiEnabled()) throw new Error('Mock')
-    const res = await apiClient.get<CatalogItem>(`/performance/catalogs/${code}`)
+    const res = await apiClient.get<CatalogItem>(`/performance/catalogs/${code}`, {
+      params: year && month ? { year, month } : undefined,
+    })
     return res.data
   },
 
@@ -699,6 +702,8 @@ export const performanceApi = {
       numericTarget?: number
       numericUnit?: string
       notes?: string
+      year?: number
+      month?: number
     }
   ) => {
     if (isMockApiEnabled()) throw new Error('Mock')
@@ -1044,8 +1049,14 @@ export type CatalogItem = {
   name: string
   description: string | null
   active: boolean
+  year?: number
+  month?: number
+  periodId?: string
+  readOnly?: boolean
   items: Array<{
     id: string
+    periodId?: string
+    sourceTemplateItemId?: string | null
     tenureStage: string
     category: string
     kind: string

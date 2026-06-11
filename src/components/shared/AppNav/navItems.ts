@@ -449,7 +449,7 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
   },
   {
     to: '/leader/kpi-approval',
-    label: 'Duyệt KPI Traffic',
+    label: 'Duyệt KPI theo team',
     icon: ClipboardCheck,
     match: 'prefix',
     hiddenForRoles: ['LEADER', 'MEMBER', 'HR', 'TEACHER', 'BOD'],

@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react'
+import { Plus, Pencil, Trash2, AlertTriangle, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -48,12 +55,32 @@ const SALES_CATEGORY_OPTIONS = [
 type VisibleCategory = 'BASE' | 'KPI_BONUS' | 'PERFORMANCE_BONUS'
 type CategoryOption = { value: VisibleCategory; label: string }
 
+const getVietnamYearMonth = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(new Date())
+  return {
+    year: Number(parts.find((part) => part.type === 'year')?.value),
+    month: Number(parts.find((part) => part.type === 'month')?.value),
+  }
+}
+
+const buildMonthOptions = (year: number, currentPeriod: { year: number; month: number }) =>
+  Array.from(
+    { length: year === currentPeriod.year ? currentPeriod.month : 12 },
+    (_, idx) => idx + 1
+  )
+
 // ─── Add / Edit dialog ────────────────────────────────────────────────────────
 
 function ItemDialog({
   open,
   onClose,
   catalogCode,
+  year,
+  month,
   stage,
   stageOptions,
   categoryOptions,
@@ -65,6 +92,8 @@ function ItemDialog({
   open: boolean
   onClose: () => void
   catalogCode: ManagedTemplateCode
+  year: number
+  month: number
   stage: string
   stageOptions: readonly { value: string; label: string }[]
   categoryOptions: readonly CategoryOption[]
@@ -110,6 +139,8 @@ function ItemDialog({
         toast.success('Đã cập nhật chỉ số.')
       } else {
         await performanceApi.createCatalogItem(catalogCode, {
+          year,
+          month,
           content: payload.content,
           dailyTarget: dailyTarget.trim() || undefined,
           monthlyTarget: monthlyTarget.trim() || undefined,
@@ -336,14 +367,25 @@ export function SalesKpiCatalogScreen({ embedded = false }: SalesKpiCatalogScree
   const { canId } = usePermission()
   const role = useAuthStore((s) => s.user?.role)
   const canEdit = role === 'MANAGER' || canId('kpi.catalog_edit')
+  const currentPeriod = useMemo(() => getVietnamYearMonth(), [])
 
   const [activeTemplateCode, setActiveTemplateCode] = useState<ManagedTemplateCode>('SALES_NV')
+  const [selectedYear, setSelectedYear] = useState(currentPeriod.year)
+  const [selectedMonth, setSelectedMonth] = useState(currentPeriod.month)
   const [activeStage, setActiveStage] = useState<string>('M1')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<TemplateItem | null>(null)
   const qc = useQueryClient()
 
   const activeTemplate = MANAGED_TEMPLATES.find((tpl) => tpl.code === activeTemplateCode)
+  const yearOptions = useMemo(
+    () => Array.from({ length: 4 }, (_, idx) => currentPeriod.year - 3 + idx),
+    [currentPeriod.year]
+  )
+  const monthOptions = useMemo(
+    () => buildMonthOptions(selectedYear, currentPeriod),
+    [currentPeriod, selectedYear]
+  )
   const stageOptions = SALES_STAGES
   const categoryOptions = SALES_CATEGORY_OPTIONS
   const visibleCategories = useMemo<VisibleCategory[]>(
@@ -357,11 +399,21 @@ export function SalesKpiCatalogScreen({ embedded = false }: SalesKpiCatalogScree
     setEditing(null)
   }, [activeTemplateCode, stageOptions])
 
+  useEffect(() => {
+    const maxMonth = selectedYear === currentPeriod.year ? currentPeriod.month : 12
+    if (selectedMonth > maxMonth) {
+      setSelectedMonth(maxMonth)
+    }
+  }, [currentPeriod.month, currentPeriod.year, selectedMonth, selectedYear])
+
   const { data: catalog, isLoading } = useQuery({
-    queryKey: ['performance', 'catalog', activeTemplateCode],
-    queryFn: () => performanceApi.getCatalog(activeTemplateCode),
+    queryKey: ['performance', 'catalog', activeTemplateCode, selectedYear, selectedMonth],
+    queryFn: () => performanceApi.getCatalog(activeTemplateCode, selectedYear, selectedMonth),
     staleTime: 60_000,
   })
+  const selectedIsCurrent =
+    selectedYear === currentPeriod.year && selectedMonth === currentPeriod.month
+  const canEditPeriod = canEdit && selectedIsCurrent && !catalog?.readOnly
 
   const itemsByCategory = useMemo<Partial<Record<VisibleCategory, TemplateItem[]>>>(() => {
     const all = catalog?.items ?? []
@@ -377,20 +429,28 @@ export function SalesKpiCatalogScreen({ embedded = false }: SalesKpiCatalogScree
     ) as Partial<Record<VisibleCategory, TemplateItem[]>>
   }, [catalog, activeStage, visibleCategories])
 
-  const invalidate = () =>
-    void qc.invalidateQueries({ queryKey: ['performance', 'catalog', activeTemplateCode] })
+  const invalidate = () => {
+    void qc.invalidateQueries({
+      queryKey: ['performance', 'catalog', activeTemplateCode, selectedYear, selectedMonth],
+    })
+    void qc.invalidateQueries({ queryKey: ['performance', 'assignments'] })
+    void qc.invalidateQueries({ queryKey: ['performance'] })
+  }
 
   const openAdd = () => {
+    if (!canEditPeriod) return
     setEditing(null)
     setDialogOpen(true)
   }
 
   const openEdit = (item: TemplateItem) => {
+    if (!canEditPeriod) return
     setEditing(item)
     setDialogOpen(true)
   }
 
   const handleDelete = async (item: TemplateItem) => {
+    if (!canEditPeriod) return
     if (!confirm(`Xóa chỉ số "${item.content}"?\nThao tác này không ảnh hưởng đến các kỳ đã giao.`))
       return
     try {
@@ -424,12 +484,47 @@ export function SalesKpiCatalogScreen({ embedded = false }: SalesKpiCatalogScree
             áp dụng khi auto-seed kỳ tiếp theo.
           </p>
         </div>
-        {canEdit && (
-          <Button onClick={openAdd} className="shrink-0 gap-2">
-            <Plus className="h-4 w-4" />
-            Thêm chỉ số
-          </Button>
-        )}
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <CalendarDays className="h-4 w-4 text-indigo-500" />
+            <Select
+              value={String(selectedMonth)}
+              onValueChange={(value) => setSelectedMonth(Number(value))}
+            >
+              <SelectTrigger className="h-8 w-[112px] border-0 bg-transparent px-2 shadow-none focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((month) => (
+                  <SelectItem key={month} value={String(month)}>
+                    Thang {month}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={String(selectedYear)}
+              onValueChange={(value) => setSelectedYear(Number(value))}
+            >
+              <SelectTrigger className="h-8 w-[92px] border-0 bg-transparent px-2 shadow-none focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map((year) => (
+                  <SelectItem key={year} value={String(year)}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {canEditPeriod && (
+            <Button onClick={openAdd} className="shrink-0 gap-2">
+              <Plus className="h-4 w-4" />
+              Thêm chỉ số
+            </Button>
+          )}
+        </div>
       </div>
 
       {MANAGED_TEMPLATES.length > 1 && (
@@ -469,6 +564,12 @@ export function SalesKpiCatalogScreen({ embedded = false }: SalesKpiCatalogScree
           <strong>{visibleCategories.map((cat) => categoryLabel(cat)).join(' và ')}</strong>.
         </p>
       </div>
+
+      {!selectedIsCurrent && (
+        <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+          Ky da qua chi duoc xem lich su snapshot, khong cho sua cau hinh.
+        </div>
+      )}
 
       {/* Stage tabs */}
       <div className="mb-5 flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
@@ -516,7 +617,7 @@ export function SalesKpiCatalogScreen({ embedded = false }: SalesKpiCatalogScree
               </div>
               <ItemsTable
                 items={itemsByCategory[cat] ?? []}
-                canEdit={canEdit}
+                canEdit={canEditPeriod}
                 onEdit={openEdit}
                 onDelete={handleDelete}
               />
@@ -526,12 +627,14 @@ export function SalesKpiCatalogScreen({ embedded = false }: SalesKpiCatalogScree
       )}
 
       {/* Dialog */}
-      {canEdit && (
+      {canEditPeriod && (
         <ItemDialog
-          key={`${activeTemplateCode}-${editing?.id ?? 'new'}`}
+          key={`${activeTemplateCode}-${selectedYear}-${selectedMonth}-${editing?.id ?? 'new'}`}
           open={dialogOpen}
           onClose={() => setDialogOpen(false)}
           catalogCode={activeTemplateCode}
+          year={selectedYear}
+          month={selectedMonth}
           stage={activeStage}
           stageOptions={stageOptions}
           categoryOptions={categoryOptions}
