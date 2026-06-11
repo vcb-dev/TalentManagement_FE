@@ -140,6 +140,31 @@ function isGeneralRewardRule(rule: Rule): boolean {
   return !rule.teamId || cat === 'GENERAL' || cat === 'CHUNG'
 }
 
+function toOptimisticRecord(
+  emp: Employee,
+  rule: Rule,
+  note: string,
+  created: { id: string; createdAt?: string }
+): RecordEntity {
+  return {
+    id: created.id,
+    userId: emp.id,
+    kind: rule.type,
+    title: rule.title,
+    amount: rule.amount ?? null,
+    note: note || rule.note || null,
+    createdAt: created.createdAt ?? new Date().toISOString(),
+    user: {
+      fullNameLegal: emp.fullNameLegal || emp.name || '',
+      email: emp.email,
+    },
+    createdBy: { fullNameLegal: '' },
+    rule,
+  }
+}
+
+type FetchScope = 'full' | 'records' | 'rules'
+
 export default function RewardsPage() {
   const currentUser = useAuthStore((s) => s.user)
   const isPrivileged =
@@ -206,32 +231,72 @@ export default function RewardsPage() {
     note: '',
   })
 
-  const fetchData = async (silent = false) => {
+  const fetchData = async (
+    silent = false,
+    scope: FetchScope = 'full',
+    opts?: { deferEmployees?: boolean }
+  ) => {
     if (!silent) setLoading(true)
     try {
       const rulesUrl = isPrivileged ? '/reward/rules' : '/reward/my-rules'
-      const rulesRes = await apiClient.get<Rule[]>(rulesUrl)
-      setRules(rulesRes.data || [])
+      const tasks: Promise<void>[] = []
 
-      if (isPrivileged) {
-        const employeesRes = await apiClient.get<any>('/employees?pageSize=3000')
-        setEmployees(employeesRes.data?.data || [])
-
-        const recordsRes = await apiClient.get<RecordEntity[]>('/reward/records')
-        setAllRecords(recordsRes.data || [])
+      if (scope === 'full' || scope === 'rules') {
+        tasks.push(
+          apiClient.get<Rule[]>(rulesUrl).then((res) => {
+            setRules(res.data || [])
+          })
+        )
       }
 
-      const myRes = await apiClient.get<RecordEntity[]>('/reward/my-records')
-      setMyRecords(myRes.data || [])
+      if (scope === 'full' && isPrivileged && !opts?.deferEmployees) {
+        tasks.push(
+          apiClient.get<{ data?: Employee[] }>('/employees?pageSize=3000').then((res) => {
+            setEmployees(res.data?.data || [])
+          })
+        )
+      }
+
+      if (scope === 'full' || scope === 'records') {
+        if (isPrivileged) {
+          tasks.push(
+            apiClient.get<RecordEntity[]>('/reward/records').then((res) => {
+              setAllRecords(res.data || [])
+            })
+          )
+        }
+      }
+
+      tasks.push(
+        apiClient.get<RecordEntity[]>('/reward/my-records').then((res) => {
+          setMyRecords(res.data || [])
+        })
+      )
+
+      await Promise.all(tasks)
     } catch (error) {
       console.error('Failed to fetch rewards data:', error)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
+  const fetchEmployeesInBackground = () => {
+    if (!isPrivileged) return
+    void apiClient
+      .get<{ data?: Employee[] }>('/employees?pageSize=3000')
+      .then((res) => setEmployees(res.data?.data || []))
+      .catch((error) => console.error('Failed to fetch employees:', error))
+  }
+
+  /** Làm mới records nền — không chặn UI, không reload employees. */
+  const refreshRecordsInBackground = () => {
+    void fetchData(true, 'records')
+  }
+
   useEffect(() => {
-    fetchData()
+    void fetchData(false, 'full', { deferEmployees: isPrivileged })
+    fetchEmployeesInBackground()
   }, [isPrivileged])
 
   // Auto-expand teams when searching or filtering
@@ -334,21 +399,22 @@ export default function RewardsPage() {
 
   const handleSubmitActions = async () => {
     if (!selectedEmp || selectedRuleIds.size === 0) return
+    const emp = selectedEmp
+    const newRuleIds = Array.from(selectedRuleIds).filter((id) => !appliedRuleIds.has(id))
+    const ruleList = rules.filter((r) => newRuleIds.includes(r.id))
+
+    if (ruleList.length === 0) {
+      setShowActionPanel(false)
+      setActionTeamContext(null)
+      return
+    }
+
     setSubmitting(true)
     try {
-      // Only post NEWLY selected rules
-      const newRuleIds = Array.from(selectedRuleIds).filter((id) => !appliedRuleIds.has(id))
-      const ruleList = rules.filter((r) => newRuleIds.includes(r.id))
-
-      if (ruleList.length === 0) {
-        setShowActionPanel(false)
-        return
-      }
-
-      await Promise.all(
+      const createdResponses = await Promise.all(
         ruleList.map((rule) =>
-          apiClient.post('/reward/records', {
-            userId: selectedEmp.id,
+          apiClient.post<{ id: string; createdAt?: string }>('/reward/records', {
+            userId: emp.id,
             kind: rule.type,
             title: rule.title,
             amount: Number(rule.amount || 0),
@@ -357,15 +423,24 @@ export default function RewardsPage() {
           })
         )
       )
-      setShowActionPanel(false)
-      await fetchData(true)
-      toast.success(
-        `Đã ghi nhận ${selectedRuleIds.size} nội dung cho ${selectedEmp.name || selectedEmp.fullNameLegal}`
+
+      const optimisticRows = ruleList.map((rule, idx) =>
+        toOptimisticRecord(emp, rule, customNote || rule.note || '', createdResponses[idx]!.data)
       )
+      setAllRecords((prev) => [...optimisticRows, ...prev])
+      setAppliedRuleIds((prev) => new Set([...prev, ...newRuleIds]))
+
+      const empName = emp.name || emp.fullNameLegal
+      setShowActionPanel(false)
+      setActionTeamContext(null)
+      setSelectedEmp(null)
+      setSubmitting(false)
+
+      toast.success(`Đã ghi nhận ${ruleList.length} nội dung cho ${empName}`)
+      refreshRecordsInBackground()
     } catch (error) {
       console.error('Failed to submit rewards:', error)
       toast.error('Có lỗi xảy ra khi ghi nhận.')
-    } finally {
       setSubmitting(false)
     }
   }
@@ -377,7 +452,7 @@ export default function RewardsPage() {
       loading: 'Đang xóa quy định...',
       success: () => {
         setDeleteConfirmId(null)
-        fetchData(true)
+        fetchData(true, 'rules')
         return 'Đã xóa quy định thành công'
       },
       error: 'Không thể xóa quy định này',
@@ -401,7 +476,7 @@ export default function RewardsPage() {
       loading: editingRuleId ? 'Đang cập nhật...' : 'Đang tạo mới...',
       success: () => {
         setShowRuleModal(false)
-        fetchData(true)
+        fetchData(true, 'rules')
         return editingRuleId ? 'Đã cập nhật quy chuẩn' : 'Đã thêm quy chuẩn mới'
       },
       error: 'Lỗi khi lưu quy chuẩn',
