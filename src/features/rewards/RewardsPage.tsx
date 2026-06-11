@@ -47,6 +47,8 @@ type RecordEntity = {
   title: string
   amount?: number | null
   note?: string | null
+  year?: number | null
+  month?: number | null
   createdAt: string
   user: {
     fullNameLegal: string
@@ -107,6 +109,138 @@ const getDisplayCategory = (cat: string) => {
   return CATEGORY_MAPPING[normalized] || normalized
 }
 
+function resolveTeamDisplayCategory(teamName: string | null | undefined): string {
+  if (!teamName?.trim()) return 'CHUNG'
+  const raw = detectCategoryFromTeamName(teamName)
+  if (raw === 'TRAFFIC') return 'CHUNG'
+  return getDisplayCategory(raw)
+}
+
+function detectCategoryFromTeamName(teamName: string) {
+  const name = teamName.toUpperCase()
+  if (name.includes('HUYK') || name.includes('GLOBAL')) return 'TRAFFIC'
+  if (name.includes('TMĐT') || name.includes('TMDT')) return 'TMĐT'
+  if (name.includes('LIVESTREAM')) return 'LIVESTREAM'
+  if (name.includes('KINH DOANH')) return 'KINH DOANH'
+  if (name.includes('LOGISTIC')) return 'LOGISTIC'
+  if (name.includes('SẢN XUẤT') || name.includes('SAN XUAT') || name.includes('XƯỞNG'))
+    return 'SẢN XUẤT'
+  if (name.includes('VẬN ĐƠN') || name.includes('VAN DON')) return 'VẬN ĐƠN'
+  if (name.includes('CỬA HÀNG') || name.includes('SHOWROOM') || name.includes('CUA HANG'))
+    return 'CỬA HÀNG'
+  if (name.includes('ADS')) return 'ADS'
+  if (name.includes('MEDIA')) return 'MEDIA'
+  if (name.includes('EDITOR')) return 'EDITOR'
+  if (name.includes('TECH') || name.includes('CÔNG NGHỆ')) return 'TECH'
+  if (name.includes('KẾ TOÁN') || name.includes('KE TOAN')) return 'KẾ TOÁN'
+  if (name.includes('HÀNH CHÍNH')) return 'HÀNH CHÍNH'
+  return 'CHUNG'
+}
+
+function isGeneralRewardRule(rule: Rule): boolean {
+  const cat = rule.category.toUpperCase().replace(/_/g, ' ')
+  return !rule.teamId || cat === 'GENERAL' || cat === 'CHUNG'
+}
+
+function toOptimisticRecord(
+  emp: Employee,
+  rule: Rule,
+  note: string,
+  created: { id: string; createdAt?: string },
+  year: number,
+  month: number
+): RecordEntity {
+  return {
+    id: created.id,
+    userId: emp.id,
+    kind: rule.type,
+    title: rule.title,
+    amount: rule.amount ?? null,
+    note: note || rule.note || null,
+    year,
+    month,
+    createdAt: created.createdAt ?? new Date().toISOString(),
+    user: {
+      fullNameLegal: emp.fullNameLegal || emp.name || '',
+      email: emp.email,
+    },
+    createdBy: { fullNameLegal: '' },
+    rule,
+  }
+}
+
+function recordPeriodFromEntity(record: RecordEntity): { year: number; month: number } {
+  if (record.year != null && record.month != null) {
+    return { year: record.year, month: record.month }
+  }
+  const d = new Date(record.createdAt)
+  return { year: d.getFullYear(), month: d.getMonth() + 1 }
+}
+
+function recordMatchesPeriod(record: RecordEntity, year: number, month: number): boolean {
+  const p = recordPeriodFromEntity(record)
+  return p.year === year && p.month === month
+}
+
+function getRecordedRuleIdsForUser(
+  records: RecordEntity[],
+  userId: string,
+  year: number,
+  month: number
+): Set<string> {
+  const ids = records
+    .filter((r) => r.userId === userId && recordMatchesPeriod(r, year, month))
+    .map((r) => r.rule?.id)
+    .filter(Boolean) as string[]
+  return new Set(ids)
+}
+
+function RecordPeriodPicker({
+  year,
+  month,
+  onChange,
+  className,
+}: {
+  year: number
+  month: number
+  onChange: (year: number, month: number) => void
+  className?: string
+}) {
+  const yearOptions = useMemo(() => {
+    const current = new Date().getFullYear()
+    return Array.from({ length: 4 }, (_, i) => current - i).map((y) => ({
+      label: String(y),
+      value: String(y),
+    }))
+  }, [])
+
+  return (
+    <div className={`flex flex-wrap items-center gap-2 ${className ?? ''}`}>
+      <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
+      <CustomSelect
+        className="min-w-[130px]"
+        value={String(month)}
+        onValueChange={(val) => onChange(year, Number(val))}
+        options={Array.from({ length: 12 }, (_, i) => ({
+          label: `Tháng ${i + 1}`,
+          value: String(i + 1),
+        }))}
+      />
+      <CustomSelect
+        className="min-w-[100px]"
+        value={String(year)}
+        onValueChange={(val) => onChange(Number(val), month)}
+        options={yearOptions}
+      />
+      <span className="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-black uppercase tracking-wider whitespace-nowrap">
+        T{month}/{year}
+      </span>
+    </div>
+  )
+}
+
+type FetchScope = 'full' | 'records' | 'rules'
+
 export default function RewardsPage() {
   const currentUser = useAuthStore((s) => s.user)
   const isPrivileged =
@@ -142,6 +276,10 @@ export default function RewardsPage() {
   // Action States
   const [showActionPanel, setShowActionPanel] = useState(false)
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null)
+  const [actionTeamContext, setActionTeamContext] = useState<{
+    teamId: string
+    teamName: string
+  } | null>(null)
   const [actionKind, setActionKind] = useState<'REWARD' | 'PENALTY'>('PENALTY')
   const [selectedRuleIds, setSelectedRuleIds] = useState<Set<string>>(new Set())
   const [appliedRuleIds, setAppliedRuleIds] = useState<Set<string>>(new Set())
@@ -153,6 +291,15 @@ export default function RewardsPage() {
   const [historyTeamFilter, setHistoryTeamFilter] = useState<string>('all')
   const [historyPage, setHistoryPage] = useState(1)
   const itemsPerPage = 6
+
+  const [recordYear, setRecordYear] = useState(() => new Date().getFullYear())
+  const [recordMonth, setRecordMonth] = useState(() => new Date().getMonth() + 1)
+
+  const setRecordPeriod = (year: number, month: number) => {
+    setRecordYear(year)
+    setRecordMonth(month)
+    setHistoryPage(1)
+  }
 
   // Member search
   const [memberRuleSearch, setMemberRuleSearch] = useState('')
@@ -169,33 +316,85 @@ export default function RewardsPage() {
     note: '',
   })
 
-  const fetchData = async (silent = false) => {
+  const fetchData = async (
+    silent = false,
+    scope: FetchScope = 'full',
+    opts?: { deferEmployees?: boolean }
+  ) => {
     if (!silent) setLoading(true)
     try {
       const rulesUrl = isPrivileged ? '/reward/rules' : '/reward/my-rules'
-      const rulesRes = await apiClient.get<Rule[]>(rulesUrl)
-      setRules(rulesRes.data || [])
+      const tasks: Promise<void>[] = []
 
-      if (isPrivileged) {
-        const employeesRes = await apiClient.get<any>('/employees?pageSize=3000')
-        setEmployees(employeesRes.data?.data || [])
-
-        const recordsRes = await apiClient.get<RecordEntity[]>('/reward/records')
-        setAllRecords(recordsRes.data || [])
+      if (scope === 'full' || scope === 'rules') {
+        tasks.push(
+          apiClient.get<Rule[]>(rulesUrl).then((res) => {
+            setRules(res.data || [])
+          })
+        )
       }
 
-      const myRes = await apiClient.get<RecordEntity[]>('/reward/my-records')
-      setMyRecords(myRes.data || [])
+      if (scope === 'full' && isPrivileged && !opts?.deferEmployees) {
+        tasks.push(
+          apiClient.get<{ data?: Employee[] }>('/employees?pageSize=3000').then((res) => {
+            setEmployees(res.data?.data || [])
+          })
+        )
+      }
+
+      if (scope === 'full' || scope === 'records') {
+        if (isPrivileged) {
+          tasks.push(
+            apiClient.get<RecordEntity[]>('/reward/records').then((res) => {
+              setAllRecords(res.data || [])
+            })
+          )
+        }
+      }
+
+      tasks.push(
+        apiClient.get<RecordEntity[]>('/reward/my-records').then((res) => {
+          setMyRecords(res.data || [])
+        })
+      )
+
+      await Promise.all(tasks)
     } catch (error) {
       console.error('Failed to fetch rewards data:', error)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
+  const fetchEmployeesInBackground = () => {
+    if (!isPrivileged) return
+    void apiClient
+      .get<{ data?: Employee[] }>('/employees?pageSize=3000')
+      .then((res) => setEmployees(res.data?.data || []))
+      .catch((error) => console.error('Failed to fetch employees:', error))
+  }
+
+  /** Làm mới records nền — không chặn UI, không reload employees. */
+  const refreshRecordsInBackground = () => {
+    void fetchData(true, 'records')
+  }
+
   useEffect(() => {
-    fetchData()
+    void fetchData(false, 'full', { deferEmployees: isPrivileged })
+    fetchEmployeesInBackground()
   }, [isPrivileged])
+
+  useEffect(() => {
+    if (!showActionPanel || !selectedEmp) return
+    const recordedSet = getRecordedRuleIdsForUser(
+      allRecords,
+      selectedEmp.id,
+      recordYear,
+      recordMonth
+    )
+    setAppliedRuleIds(recordedSet)
+    setSelectedRuleIds(new Set(recordedSet))
+  }, [showActionPanel, selectedEmp?.id, recordYear, recordMonth, allRecords])
 
   // Auto-expand teams when searching or filtering
   useEffect(() => {
@@ -262,49 +461,23 @@ export default function RewardsPage() {
     return filtered
   }, [groupedEmployees, teamSearch, logTeamFilter])
 
-  const detectCategoryFromTeam = (teamName: string) => {
-    const name = teamName.toUpperCase()
-    if (name.includes('HUYK') || name.includes('GLOBAL')) return 'TRAFFIC'
-    if (name.includes('TMĐT') || name.includes('TMDT')) return 'TMĐT'
-    if (name.includes('LIVESTREAM')) return 'LIVESTREAM'
-    if (name.includes('KINH DOANH')) return 'KINH DOANH'
-    if (name.includes('LOGISTIC')) return 'LOGISTIC'
-    if (name.includes('SẢN XUẤT') || name.includes('SAN XUAT') || name.includes('XƯỞNG'))
-      return 'SẢN XUẤT'
-    if (name.includes('VẬN ĐƠN') || name.includes('VAN DON')) return 'VẬN ĐƠN'
-    if (name.includes('CỬA HÀNG') || name.includes('SHOWROOM') || name.includes('CUA HANG'))
-      return 'CỬA HÀNG'
-    if (name.includes('ADS')) return 'ADS'
-    if (name.includes('MEDIA')) return 'MEDIA'
-    if (name.includes('EDITOR')) return 'EDITOR'
-    if (name.includes('TECH') || name.includes('CÔNG NGHỆ')) return 'TECH'
-    if (name.includes('KẾ TOÁN') || name.includes('KE TOAN')) return 'KẾ TOÁN'
-    if (name.includes('HÀNH CHÍNH')) return 'HÀNH CHÍNH'
-    return 'CHUNG'
-  }
-
-  const handleOpenAction = (emp: any, kind: 'REWARD' | 'PENALTY') => {
+  const handleOpenAction = (
+    emp: Employee,
+    kind: 'REWARD' | 'PENALTY',
+    teamContext?: { teamId: string; teamName: string }
+  ) => {
     setSelectedEmp(emp)
     setActionKind(kind)
+    setActionTeamContext(teamContext ?? null)
 
-    // Find already recorded rules for this employee
-    const recorded = allRecords
-      .filter((r) => r.userId === emp.id)
-      .map((r) => r.rule?.id)
-      .filter(Boolean) as string[]
-
-    const recordedSet = new Set(recorded)
+    const recordedSet = getRecordedRuleIdsForUser(allRecords, emp.id, recordYear, recordMonth)
     setAppliedRuleIds(recordedSet)
-    setSelectedRuleIds(new Set(recorded))
+    setSelectedRuleIds(new Set(recordedSet))
     setCustomNote('')
 
-    const teamName = emp.teamNames && emp.teamNames.length > 0 ? emp.teamNames[0] : null
-    if (teamName) {
-      const cat = detectCategoryFromTeam(teamName)
-      setSelectedRuleCategory(cat !== 'TRAFFIC' ? cat : 'CHUNG')
-    } else {
-      setSelectedRuleCategory('CHUNG')
-    }
+    const teamName =
+      teamContext?.teamName || (emp.teamNames && emp.teamNames.length > 0 ? emp.teamNames[0] : null)
+    setSelectedRuleCategory(resolveTeamDisplayCategory(teamName))
 
     setShowActionPanel(true)
   }
@@ -318,38 +491,72 @@ export default function RewardsPage() {
 
   const handleSubmitActions = async () => {
     if (!selectedEmp || selectedRuleIds.size === 0) return
+    const emp = selectedEmp
+    const newRuleIds = Array.from(selectedRuleIds).filter((id) => !appliedRuleIds.has(id))
+    const ruleList = rules.filter((r) => newRuleIds.includes(r.id))
+
+    if (ruleList.length === 0) {
+      setShowActionPanel(false)
+      setActionTeamContext(null)
+      return
+    }
+
     setSubmitting(true)
     try {
-      // Only post NEWLY selected rules
-      const newRuleIds = Array.from(selectedRuleIds).filter((id) => !appliedRuleIds.has(id))
-      const ruleList = rules.filter((r) => newRuleIds.includes(r.id))
-
-      if (ruleList.length === 0) {
-        setShowActionPanel(false)
-        return
-      }
-
-      await Promise.all(
+      const createdResponses = await Promise.all(
         ruleList.map((rule) =>
-          apiClient.post('/reward/records', {
-            userId: selectedEmp.id,
+          apiClient.post<{ id: string; createdAt?: string }>('/reward/records', {
+            userId: emp.id,
             kind: rule.type,
             title: rule.title,
             amount: Number(rule.amount || 0),
             note: customNote || rule.note,
             ruleId: rule.id,
+            year: recordYear,
+            month: recordMonth,
           })
         )
       )
-      setShowActionPanel(false)
-      await fetchData(true)
-      toast.success(
-        `Đã ghi nhận ${selectedRuleIds.size} nội dung cho ${selectedEmp.name || selectedEmp.fullNameLegal}`
+
+      const optimisticRows = ruleList.map((rule, idx) =>
+        toOptimisticRecord(
+          emp,
+          rule,
+          customNote || rule.note || '',
+          createdResponses[idx]!.data,
+          recordYear,
+          recordMonth
+        )
       )
-    } catch (error) {
+      setAllRecords((prev) => [...optimisticRows, ...prev])
+      setAppliedRuleIds((prev) => new Set([...prev, ...newRuleIds]))
+
+      const empName = emp.name || emp.fullNameLegal
+      setShowActionPanel(false)
+      setActionTeamContext(null)
+      setSelectedEmp(null)
+      setSubmitting(false)
+
+      toast.success(
+        `Đã ghi nhận ${ruleList.length} nội dung cho ${empName} (T${recordMonth}/${recordYear})`
+      )
+      refreshRecordsInBackground()
+    } catch (error: unknown) {
       console.error('Failed to submit rewards:', error)
-      toast.error('Có lỗi xảy ra khi ghi nhận.')
-    } finally {
+      const msg =
+        error &&
+        typeof error === 'object' &&
+        'response' in error &&
+        error.response &&
+        typeof error.response === 'object' &&
+        'data' in error.response &&
+        error.response.data &&
+        typeof error.response.data === 'object' &&
+        'message' in error.response.data &&
+        typeof error.response.data.message === 'string'
+          ? error.response.data.message
+          : 'Có lỗi xảy ra khi ghi nhận.'
+      toast.error(msg)
       setSubmitting(false)
     }
   }
@@ -361,7 +568,7 @@ export default function RewardsPage() {
       loading: 'Đang xóa quy định...',
       success: () => {
         setDeleteConfirmId(null)
-        fetchData(true)
+        fetchData(true, 'rules')
         return 'Đã xóa quy định thành công'
       },
       error: 'Không thể xóa quy định này',
@@ -385,7 +592,7 @@ export default function RewardsPage() {
       loading: editingRuleId ? 'Đang cập nhật...' : 'Đang tạo mới...',
       success: () => {
         setShowRuleModal(false)
-        fetchData(true)
+        fetchData(true, 'rules')
         return editingRuleId ? 'Đã cập nhật quy chuẩn' : 'Đã thêm quy chuẩn mới'
       },
       error: 'Lỗi khi lưu quy chuẩn',
@@ -419,9 +626,7 @@ export default function RewardsPage() {
       .filter((r) => r.teamId && userTeamIds.includes(r.teamId))
       .map((r) => getDisplayCategory(r.category))
 
-    const userTeamCategory = currentUser?.team
-      ? getDisplayCategory(detectCategoryFromTeam(currentUser.team))
-      : null
+    const userTeamCategory = currentUser?.team ? resolveTeamDisplayCategory(currentUser.team) : null
 
     const allowedCategories = new Set(['CHUNG'])
     categoriesFromRules.forEach((c) => allowedCategories.add(c))
@@ -430,8 +635,37 @@ export default function RewardsPage() {
     return excelTabs.filter((tab) => allowedCategories.has(tab))
   }, [excelTabs, isPrivileged, currentUser, rules])
 
+  /** Tab + quy chuẩn trong modal ghi nhận — chỉ team của nhân sự + CHUNG. */
+  const actionModalTabs = useMemo(() => {
+    if (!showActionPanel) return excelTabs
+
+    const teamName = actionTeamContext?.teamName
+    const teamCategory = teamName ? resolveTeamDisplayCategory(teamName) : null
+    const allowed = new Set<string>(['CHUNG'])
+    if (teamCategory && teamCategory !== 'CHUNG') allowed.add(teamCategory)
+
+    const teamId = actionTeamContext?.teamId
+    rules.forEach((r) => {
+      if (teamId && r.teamId === teamId) {
+        allowed.add(getDisplayCategory(r.category))
+      }
+    })
+
+    const tabs = excelTabs.filter((tab) => allowed.has(tab))
+    return tabs.length > 0 ? tabs : ['CHUNG']
+  }, [showActionPanel, excelTabs, actionTeamContext, rules])
+
+  const actionScopeRules = useMemo(() => {
+    if (!showActionPanel) return rules
+
+    const teamId = actionTeamContext?.teamId
+    if (!teamId || teamId === 'no-team') return rules
+
+    return rules.filter((r) => isGeneralRewardRule(r) || r.teamId === teamId)
+  }, [showActionPanel, rules, actionTeamContext])
+
   const activeCategoryRules = useMemo(() => {
-    return rules.filter((r) => {
+    return actionScopeRules.filter((r) => {
       const displayCat = getDisplayCategory(r.category)
       if (r.type === 'PENALTY') return displayCat === selectedRuleCategory
       if (r.type === 'REWARD') {
@@ -442,9 +676,21 @@ export default function RewardsPage() {
       }
       return false
     })
-  }, [rules, selectedRuleCategory])
+  }, [actionScopeRules, selectedRuleCategory])
 
   const filteredActionRules = activeCategoryRules.filter((r) => r.type === actionKind)
+
+  const newSelectedRuleCount = useMemo(
+    () => Array.from(selectedRuleIds).filter((id) => !appliedRuleIds.has(id)).length,
+    [selectedRuleIds, appliedRuleIds]
+  )
+
+  useEffect(() => {
+    if (!showActionPanel || actionModalTabs.length === 0) return
+    if (!actionModalTabs.includes(selectedRuleCategory)) {
+      setSelectedRuleCategory(actionModalTabs[0]!)
+    }
+  }, [showActionPanel, actionModalTabs, selectedRuleCategory])
 
   const myTeamRules = useMemo(() => {
     if (!currentUser) return []
@@ -804,8 +1050,14 @@ export default function RewardsPage() {
                     ]}
                   />
 
+                  <RecordPeriodPicker
+                    year={recordYear}
+                    month={recordMonth}
+                    onChange={setRecordPeriod}
+                  />
+
                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest hidden lg:block ml-auto">
-                    Chọn Team → Chọn thành viên
+                    Chọn kỳ → Team → Ghi nhận
                   </p>
                 </div>
 
@@ -867,13 +1119,23 @@ export default function RewardsPage() {
                                   </div>
                                   <div className="flex gap-2">
                                     <button
-                                      onClick={() => handleOpenAction(emp, 'REWARD')}
+                                      onClick={() =>
+                                        handleOpenAction(emp, 'REWARD', {
+                                          teamId: tid,
+                                          teamName: group.name,
+                                        })
+                                      }
                                       className="flex-1 py-2.5 bg-emerald-50 text-emerald-700 rounded-2xl text-xs font-black uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all shadow-sm hover:shadow-emerald-100"
                                     >
                                       Thưởng
                                     </button>
                                     <button
-                                      onClick={() => handleOpenAction(emp, 'PENALTY')}
+                                      onClick={() =>
+                                        handleOpenAction(emp, 'PENALTY', {
+                                          teamId: tid,
+                                          teamName: group.name,
+                                        })
+                                      }
                                       className="flex-1 py-2.5 bg-rose-50 text-rose-700 rounded-2xl text-xs font-black uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all shadow-sm hover:shadow-rose-100"
                                     >
                                       Phạt
@@ -1092,9 +1354,19 @@ export default function RewardsPage() {
                     ]}
                   />
 
+                  <RecordPeriodPicker
+                    year={recordYear}
+                    month={recordMonth}
+                    onChange={setRecordPeriod}
+                  />
+
                   <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest ml-auto">
                     <History className="h-4 w-4" />
-                    Tổng: {allRecords.length}
+                    Tổng kỳ:{' '}
+                    {
+                      allRecords.filter((r) => recordMatchesPeriod(r, recordYear, recordMonth))
+                        .length
+                    }
                   </div>
                 </div>
 
@@ -1120,7 +1392,9 @@ export default function RewardsPage() {
                           const matchesTeam =
                             historyTeamFilter === 'all' || rec.user.team?.name === historyTeamFilter
 
-                          return matchesSearch && matchesTeam
+                          const matchesPeriod = recordMatchesPeriod(rec, recordYear, recordMonth)
+
+                          return matchesSearch && matchesTeam && matchesPeriod
                         })
                         const totalPages = Math.ceil(filtered.length / itemsPerPage)
                         const start = (historyPage - 1) * itemsPerPage
@@ -1223,11 +1497,14 @@ export default function RewardsPage() {
       <Dialog
         open={showActionPanel && !!selectedEmp}
         onOpenChange={(open) => {
-          if (!open) setShowActionPanel(false)
+          if (!open) {
+            setShowActionPanel(false)
+            setActionTeamContext(null)
+          }
         }}
       >
-        <DialogContent className="max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-white/20 shadow-2xl [&>button]:hidden">
-          <div className="bg-white rounded-[2.5rem] w-full shadow-2xl overflow-hidden border border-white/20">
+        <DialogContent className="max-w-2xl max-h-[90vh] rounded-[2.5rem] p-0 overflow-hidden border-white/20 shadow-2xl flex flex-col [&>button]:hidden">
+          <div className="bg-white rounded-[2.5rem] w-full shadow-2xl overflow-hidden border border-white/20 flex flex-col max-h-[90vh]">
             <div
               className={`px-10 py-8 text-white font-black uppercase text-sm tracking-[0.2em] flex justify-between items-center ${actionKind === 'REWARD' ? 'bg-emerald-600' : 'bg-rose-600'}`}
             >
@@ -1255,20 +1532,43 @@ export default function RewardsPage() {
               </Button>
             </div>
 
-            <div className="p-10 space-y-8">
-              <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar border-b border-slate-50">
-                {excelTabs.map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setSelectedRuleCategory(tab)}
-                    className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase whitespace-nowrap border-2 transition-all ${selectedRuleCategory === tab ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
-                  >
-                    {tab}
-                  </button>
-                ))}
+            <div className="flex flex-col flex-1 min-h-0">
+              <div className="px-10 pt-10 pb-4 space-y-6 shrink-0">
+                <RecordPeriodPicker
+                  year={recordYear}
+                  month={recordMonth}
+                  onChange={setRecordPeriod}
+                />
+                <p className="text-xs font-medium text-slate-500 -mt-2">
+                  Ghi nhận và trạng thái &quot;Đã ghi nhận&quot; chỉ áp dụng trong kỳ T{recordMonth}
+                  /{recordYear}
+                </p>
+                {actionTeamContext && (
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                    Team: {actionTeamContext.teamName}
+                  </p>
+                )}
+                {actionModalTabs.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar border-b border-slate-50">
+                    {actionModalTabs.map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setSelectedRuleCategory(tab)}
+                        className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase whitespace-nowrap border-2 transition-all ${selectedRuleCategory === tab ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {actionModalTabs.length === 1 && (
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+                    {actionModalTabs[0]}
+                  </p>
+                )}
               </div>
 
-              <div className="max-h-[50vh] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto px-10 space-y-3 custom-scrollbar">
                 {filteredActionRules.length > 0 ? (
                   filteredActionRules.map((rule) => (
                     <button
@@ -1316,33 +1616,38 @@ export default function RewardsPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                  Ghi chú chi tiết (Không bắt buộc)
-                </label>
-                <textarea
-                  placeholder="Nhập thêm chi tiết về trường hợp này..."
-                  value={customNote}
-                  onChange={(e) => setCustomNote(e.target.value)}
-                  className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-sm focus:border-indigo-500 outline-none transition-all"
-                  rows={2}
-                />
-              </div>
+              <div className="shrink-0 px-10 pb-10 pt-6 space-y-4 border-t border-slate-50 bg-white">
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                    Ghi chú chi tiết (Không bắt buộc)
+                  </label>
+                  <textarea
+                    placeholder="Nhập thêm chi tiết về trường hợp này..."
+                    value={customNote}
+                    onChange={(e) => setCustomNote(e.target.value)}
+                    className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-sm focus:border-indigo-500 outline-none transition-all"
+                    rows={2}
+                  />
+                </div>
 
-              <div className="pt-6 flex gap-4">
-                <button
-                  onClick={() => setShowActionPanel(false)}
-                  className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-3xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
-                >
-                  Đóng lại
-                </button>
-                <button
-                  onClick={handleSubmitActions}
-                  disabled={submitting || selectedRuleIds.size === 0}
-                  className={`flex-[2] py-5 rounded-3xl font-black uppercase text-xs tracking-[0.25em] shadow-2xl transition-all ${submitting || selectedRuleIds.size === 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : actionKind === 'REWARD' ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200' : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-200'}`}
-                >
-                  {submitting ? 'Đang xử lý...' : `Xác nhận (${selectedRuleIds.size})`}
-                </button>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => {
+                      setShowActionPanel(false)
+                      setActionTeamContext(null)
+                    }}
+                    className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-3xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
+                  >
+                    Đóng lại
+                  </button>
+                  <button
+                    onClick={handleSubmitActions}
+                    disabled={submitting || newSelectedRuleCount === 0}
+                    className={`flex-[2] py-5 rounded-3xl font-black uppercase text-xs tracking-[0.25em] shadow-2xl transition-all ${submitting || newSelectedRuleCount === 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : actionKind === 'REWARD' ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200' : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-200'}`}
+                  >
+                    {submitting ? 'Đang xử lý...' : `Xác nhận (${newSelectedRuleCount})`}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
