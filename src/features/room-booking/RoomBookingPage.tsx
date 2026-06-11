@@ -917,10 +917,10 @@ export default function RoomBookingPage() {
                         <CustomSelect
                           value={room}
                           onValueChange={(val) => setRoom(val)}
-                          options={[
-                            { label: 'Tầng 5', value: 'Tầng 5' },
-                            { label: 'Tầng 6', value: 'Tầng 6' },
-                          ]}
+                          options={MEETING_ROOMS.map((r) => ({
+                            label: r.label,
+                            value: r.id,
+                          }))}
                         />
                       </div>
                       <div className="space-y-2">

@@ -23,6 +23,7 @@ export const USER_WORK_ORG_READONLY_KEYS = [
   'startDateWork',
   'employeeCodePrimary',
   'hrOfficerName',
+  'teamPosition',
 ] as const satisfies readonly MeUserDisplayKey[]
 
 export function isWorkOrgReadonlyField(key: MeUserDisplayKey): boolean {
@@ -36,11 +37,10 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
       { key: 'divisionId', label: 'Phòng ban', kind: 'division-select' },
       { key: 'teamId', label: 'Nhóm (theo phòng ban)', kind: 'team-select' },
       { key: 'jobTitle', label: 'Vị trí chuyên môn', kind: 'job-title-select' },
-      { key: 'teamPosition', label: 'Vị trí', kind: 'position-select' },
       { key: 'startDateWork', label: 'Ngày bắt đầu làm việc' },
       { key: 'employmentStatus', label: 'Tình trạng làm việc' },
       { key: 'employeeCodePrimary', label: 'Mã nhân viên' },
-      { key: 'contractType', label: 'Loại hợp đồng / vị trí', kind: 'position-select' },
+      { key: 'teamPosition', label: 'Loại hợp đồng / vị trí' },
       { key: 'directManager', label: 'Quản lý trực tiếp' },
       { key: 'workplaceBranch', label: 'Chi nhánh / nơi làm việc' },
       { key: 'hrOfficerName', label: 'Cán bộ HR phụ trách' },

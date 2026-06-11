@@ -1,6 +1,7 @@
 export const MEETING_ROOMS = [
   { id: 'Tầng 5', label: 'Tầng 5' },
   { id: 'Tầng 6', label: 'Tầng 6' },
+  { id: 'Tầng 7', label: 'Tầng 7' },
 ] as const
 
 /** Khung giờ hiển thị trên lưới (khớp mockup 08:00–18:00). */
