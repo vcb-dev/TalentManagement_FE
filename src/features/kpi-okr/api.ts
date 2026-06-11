@@ -564,7 +564,12 @@ export const performanceApi = {
     teamId: string,
     year: number,
     month: number,
-    body?: { templateCode?: string; userIds?: string[]; dryRun?: boolean }
+    body?: {
+      templateCode?: string
+      userIds?: string[]
+      dryRun?: boolean
+      replaceExisting?: boolean
+    }
   ) => {
     if (isMockApiEnabled()) throw new Error('Mock')
     const res = await apiClient.post<AutoSeedResponse>(
@@ -928,6 +933,7 @@ export type AutoSeedResponse = {
   }>
   totalCreated: number
   totalSkipped: number
+  totalDeleted?: number
 }
 
 export type MonthlyReport = {

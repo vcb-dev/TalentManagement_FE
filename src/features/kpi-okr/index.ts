@@ -1,5 +1,6 @@
 export { MemberKpiOkrScreen } from './components/MemberKpiOkrScreen'
 export { LeaderKpiOkrScreen } from './components/LeaderKpiOkrScreen'
+export { ManagerSetKpiOkrScreen } from './components/ManagerSetKpiOkrScreen'
 export { ManagerKpiOkrScreen } from './components/ManagerKpiOkrScreen'
 export { ManagerKpiApprovalScreen } from './components/ManagerKpiApprovalScreen'
 export { MonthlyReportScreen } from './components/MonthlyReportScreen'

@@ -593,7 +593,7 @@ export function ManagerKpiOkrScreen() {
         </div>
         <div className="flex shrink-0 gap-2">
           <Button asChild variant="outline" className="gap-2">
-            <Link to="/leader/kpi-sales-config">
+            <Link to="/manager/kpi-okr">
               <Settings2 className="h-4 w-4" />
               Cấu hình KPI Kinh doanh
             </Link>

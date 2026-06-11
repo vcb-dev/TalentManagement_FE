@@ -113,7 +113,6 @@ export type SalesMandatoryMetric = (typeof SALES_MANDATORY_METRICS)[number]
 export const MANDATORY_METRICS_BY_TEMPLATE: Record<string, readonly string[]> = {
   SALES_NV: SALES_MANDATORY_METRICS,
   TRAFFIC_TEAM_NV: ['Traffic cá nhân tháng', 'Doanh thu cá nhân tháng'],
-  LIVESTREAM_NV: [],
   VAN_DON_NV: [],
 }
 

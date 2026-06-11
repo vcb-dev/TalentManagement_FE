@@ -91,7 +91,11 @@ import {
 } from '@/features/kpi-okr/kpiOkrSheetImport'
 import { parseQuestionnaireImportFile } from '@/features/kpi-okr/questionnaireGridImport'
 import { OrgUserAvatar } from '@/components/shared/EmployeeAvatar'
-import { organizationApi, type TeamMemberRow } from '@/features/organization/api'
+import {
+  organizationApi,
+  type OrgTreeDepartment,
+  type TeamMemberRow,
+} from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -157,9 +161,30 @@ export type KpiOkrWorkspaceProps = {
   variant: 'leader' | 'member' | 'manager'
   title: string
   description: string
+  teamScope?: 'all' | 'business'
 }
 
-export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspaceProps) {
+function normalizeOrgSearchText(value: string | null | undefined): string {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isBusinessDepartment(dept: OrgTreeDepartment): boolean {
+  const label = normalizeOrgSearchText(dept.name)
+  return label.includes('kinh doanh') || label.includes('sales')
+}
+
+export function KpiOkrWorkspace({
+  variant,
+  title,
+  description,
+  teamScope = 'all',
+}: KpiOkrWorkspaceProps) {
   const user = useAuthStore((s) => s.user)
   const isMemberView = variant === 'member'
   const isManagerVariant = variant === 'manager'
@@ -184,18 +209,42 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     return false
   }, [variant, eff, isManagerReadOnly])
 
+  const catalogAllowlistQ = useQuery({
+    queryKey: ['performance', 'catalog-division-allowlist'],
+    queryFn: () => performanceApi.getCatalogDivisionAllowlist(),
+    staleTime: 60_000,
+    enabled: !isMockApiEnabled(),
+  })
+
   const departments = useMemo(() => {
     const allDepartments = treeQ.data?.departments ?? []
-    if (!isMemberView) return allDepartments
+    const scopedDepartments =
+      teamScope === 'business'
+        ? (() => {
+            const businessDepartments = allDepartments.filter(isBusinessDepartment)
+            if (businessDepartments.length > 0) return businessDepartments
+            return allDepartments.filter((dept) =>
+              isCatalogEnabledDepartment(dept, catalogAllowlistQ.data?.mergedDivisionIds ?? null)
+            )
+          })()
+        : allDepartments
+
+    if (!isMemberView) return scopedDepartments
     const memberTeamIds = new Set((user?.teamIds ?? []).filter(Boolean))
     if (!memberTeamIds.size) return []
-    return allDepartments
+    return scopedDepartments
       .map((dept) => ({
         ...dept,
         teams: dept.teams.filter((team) => memberTeamIds.has(team.id)),
       }))
       .filter((dept) => dept.teams.length > 0)
-  }, [treeQ.data, isMemberView, user?.teamIds])
+  }, [
+    treeQ.data,
+    isMemberView,
+    user?.teamIds,
+    teamScope,
+    catalogAllowlistQ.data?.mergedDivisionIds,
+  ])
   const selectedDept = useMemo(
     () => departments.find((d) => d.teams.some((t) => t.id === selectedTeamId)),
     [departments, selectedTeamId]
@@ -215,9 +264,16 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     () => allTeamsFlat.filter((t) => memberTeamIds.includes(t.id)),
     [allTeamsFlat, memberTeamIds]
   )
+  const selectedTeamInScope = useMemo(
+    () =>
+      selectedTeamId
+        ? departments.some((dept) => dept.teams.some((team) => team.id === selectedTeamId))
+        : false,
+    [departments, selectedTeamId]
+  )
 
   useEffect(() => {
-    if (selectedTeamId) return
+    if (selectedTeamId && selectedTeamInScope) return
     const ids = memberTeamIds
     const storageKey = user?.id ? `kpi-workspace-team-${user.id}` : null
     const saved = storageKey ? localStorage.getItem(storageKey) : null
@@ -233,10 +289,14 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
       }
       if (!isMemberView && fallbackTeamId) {
         setSelectedTeamId(fallbackTeamId)
+        return
+      }
+      if (selectedTeamId && !selectedTeamInScope) {
+        setSelectedTeamId('')
       }
     }, 0)
     return () => window.clearTimeout(id)
-  }, [memberTeamIds, departments, selectedTeamId, isMemberView, user?.id])
+  }, [memberTeamIds, departments, selectedTeamId, selectedTeamInScope, isMemberView, user?.id])
 
   useEffect(() => {
     if (!isMemberView || !memberMultiTeam || !selectedTeamId || !user?.id) return
@@ -291,13 +351,6 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
   const windowConfigsQ = useQuery({
     queryKey: ['performance', 'window-configs'],
     queryFn: () => performanceApi.listWindowConfigs(),
-    staleTime: 60_000,
-    enabled: !isMockApiEnabled(),
-  })
-
-  const catalogAllowlistQ = useQuery({
-    queryKey: ['performance', 'catalog-division-allowlist'],
-    queryFn: () => performanceApi.getCatalogDivisionAllowlist(),
     staleTime: 60_000,
     enabled: !isMockApiEnabled(),
   })
@@ -452,17 +505,13 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
     return 'SALES_NV'
   }, [isTrafficTeamSelected, selectedTeamForSeed])
 
-  /** Phòng Kinh doanh: ẩn P3 + BENEFIT; loại member Part-time (non-Traffic) khỏi KPI/OKR. */
+  /** Phòng Kinh doanh: member/leader ẩn P3 + BENEFIT; manager xem đầy đủ để cấu hình. */
   const visibleAssignmentsThisMonth = useMemo(() => {
     const rows = (assignmentsQ.data ?? []).filter((row) =>
       kpiEligibleAssigneeIds.has(row.assigneeUserId)
     )
-    const passesLivestreamDisplay = (row: PerformanceAssignment) =>
-      selectedTemplateCode !== 'LIVESTREAM_NV' ||
-      row.category === 'KPI_BONUS' ||
-      row.category === 'PERFORMANCE_BONUS'
     const passesKinhDoanhDisplay = (row: PerformanceAssignment) =>
-      passesLivestreamDisplay(row) && (!isKinhDoanhTeam || shouldShowAssignmentForMember(row))
+      !isKinhDoanhTeam || shouldShowAssignmentForMember(row)
 
     if (isMemberView) {
       const selfId = user?.id?.trim()
@@ -470,15 +519,15 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
       return rows.filter((row) => row.assigneeUserId === selfId && passesKinhDoanhDisplay(row))
     }
     if (isKinhDoanhTeam) {
-      return rows.filter(shouldShowAssignmentForMember)
+      return isManagerVariant ? rows : rows.filter(shouldShowAssignmentForMember)
     }
     return rows
   }, [
     assignmentsQ.data,
     isMemberView,
+    isManagerVariant,
     user?.id,
     isKinhDoanhTeam,
-    selectedTemplateCode,
     kpiEligibleAssigneeIds,
   ])
 
@@ -936,14 +985,16 @@ export function KpiOkrWorkspace({ variant, title, description }: KpiOkrWorkspace
           prioritizeAssigneeUserId={user?.id}
           viewerVariant={variant}
         />
-        <FormPanel
-          teamId={selectedTeamId}
-          year={year}
-          month={month}
-          canEditTeam={canEditTeam}
-          currentUserId={user?.id ?? ''}
-          readOnly={isManagerReadOnly}
-        />
+        {!isManagerVariant && (
+          <FormPanel
+            teamId={selectedTeamId}
+            year={year}
+            month={month}
+            canEditTeam={canEditTeam}
+            currentUserId={user?.id ?? ''}
+            readOnly={isManagerReadOnly}
+          />
+        )}
       </div>
     </div>
   )
@@ -3181,6 +3232,31 @@ function PlanningSection({
   templateCode?: string
   isManagerCascade?: boolean
 }) {
+  const [syncingCatalog, setSyncingCatalog] = useState(false)
+
+  const handleSyncCatalogSeed = useCallback(async () => {
+    if (!selectedTeamId || !templateCode) return
+    const ok = window.confirm(
+      `Đồng bộ lại KPI theo cấu hình ${templateCode} cho team đang chọn trong T${month}/${year}?\n\nHệ thống sẽ xóa KPI seed cũ thuộc catalog và tạo lại đúng các chỉ số đang hiển thị trong cấu hình KPI Kinh doanh.`
+    )
+    if (!ok) return
+    setSyncingCatalog(true)
+    try {
+      const result = await performanceApi.autoSeedTeam(selectedTeamId, year, month, {
+        templateCode,
+        replaceExisting: true,
+      })
+      toast.success(
+        `Đã đồng bộ KPI theo cấu hình: xóa ${result.totalDeleted ?? 0}, tạo ${result.totalCreated} mục tiêu.`
+      )
+      onRefresh()
+    } catch (err) {
+      toast.error(getApiErrorMessage(err) || 'Không đồng bộ được KPI theo cấu hình.')
+    } finally {
+      setSyncingCatalog(false)
+    }
+  }, [month, onRefresh, selectedTeamId, templateCode, year])
+
   return (
     <section id="planning-section" className="scroll-mt-24">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -3216,12 +3292,24 @@ function PlanningSection({
             !isMockApiEnabled() &&
             assignmentWindowOpen &&
             (isManagerCascade ? (
-              <ManagerCascadeAddForm
-                teamId={selectedTeamId}
-                year={year}
-                month={month}
-                onCreated={onRefresh}
-              />
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2 rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                  onClick={() => void handleSyncCatalogSeed()}
+                  disabled={syncingCatalog}
+                >
+                  <RefreshCw className={cn('h-4 w-4', syncingCatalog && 'animate-spin')} />
+                  {syncingCatalog ? 'Đang đồng bộ...' : 'Đồng bộ KPI theo cấu hình'}
+                </Button>
+                <ManagerCascadeAddForm
+                  teamId={selectedTeamId}
+                  year={year}
+                  month={month}
+                  onCreated={onRefresh}
+                />
+              </div>
             ) : (
               <MiniCreateForm
                 teamId={selectedTeamId}

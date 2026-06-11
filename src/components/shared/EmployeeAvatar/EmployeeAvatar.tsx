@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
@@ -19,6 +20,7 @@ export function EmployeeAvatar({
   fallbackClassName,
   showOnlineDot,
 }: EmployeeAvatarProps) {
+  const [imageFailed, setImageFailed] = useState(false)
   const initials = name
     .split(' ')
     .map((p) => p[0])
@@ -27,7 +29,11 @@ export function EmployeeAvatar({
     .toUpperCase()
 
   const trimmedPhoto = photoUrl?.trim()
-  const showPhoto = Boolean(trimmedPhoto)
+  const showPhoto = Boolean(trimmedPhoto) && !imageFailed
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [trimmedPhoto])
 
   return (
     <div className={cn('relative inline-flex shrink-0', showOnlineDot && 'pb-0.5 pr-0.5')}>
@@ -46,6 +52,9 @@ export function EmployeeAvatar({
             alt=""
             className="object-cover"
             referrerPolicy="no-referrer"
+            onLoadingStatusChange={(status) => {
+              if (status === 'error') setImageFailed(true)
+            }}
           />
         ) : null}
         <AvatarFallback

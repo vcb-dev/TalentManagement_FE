@@ -438,6 +438,7 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
     icon: Target,
     match: 'prefix',
     permissionIdsAny: ['kpi.team_view', 'kpi.team_edit'],
+    hiddenForRoles: ['MANAGER'],
   },
   {
     to: '/leader/vinh-danh',
@@ -459,6 +460,17 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
     icon: BarChart3,
     match: 'prefix',
     permissionId: 'report.view',
+  },
+]
+
+export const MANAGER_KPI_ITEMS: AppNavItem[] = [
+  {
+    to: '/manager/kpi-okr',
+    label: 'Set KPI/OKR cho team',
+    icon: Target,
+    match: 'prefix',
+    permissionIdsAny: ['kpi.team_view', 'kpi.team_edit'],
+    hiddenForRoles: ['LEADER', 'MEMBER', 'HR', 'TEACHER', 'BOD'],
   },
 ]
 
@@ -494,6 +506,7 @@ export function flatSidebarNavItems(
 ): AppNavItem[] {
   const sources = [
     LEADER_KPI_ITEMS,
+    MANAGER_KPI_ITEMS,
     MEMBER_SELF_ITEMS,
     ROOM_BOOKING_ITEMS,
     MANAGER_OPS_ITEMS,
@@ -553,6 +566,7 @@ export function groupedSidebarNavItems(
         ...find(LEADER_KPI_ITEMS, '/dashboard'),
         ...find(MEMBER_SELF_ITEMS, '/dashboard'),
         ...find(LEADER_KPI_ITEMS, '/leader/kpi-okr'),
+        ...find(MANAGER_KPI_ITEMS, '/manager/kpi-okr'),
         ...find(LEADER_KPI_ITEMS, '/leader/vinh-danh'),
         ...find(LEADER_KPI_ITEMS, '/leader/kpi-approval'),
         ...find(MEMBER_SELF_ITEMS, '/rewards'),
@@ -638,6 +652,7 @@ export function mergeCompactHeaderNavItems(
   push(HR_ITEMS)
   push(SETTINGS_ITEMS)
   push(LEADER_KPI_ITEMS)
+  push(MANAGER_KPI_ITEMS)
   push(MANAGER_OPS_ITEMS)
   push(TEACHER_HEADER_ITEMS)
   push([CSKH_QUALITY_ITEM])

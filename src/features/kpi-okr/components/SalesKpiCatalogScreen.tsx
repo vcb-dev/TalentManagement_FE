@@ -29,11 +29,6 @@ const MANAGED_TEMPLATES = [
     label: 'NV Kinh doanh',
     description: 'Tự động gán cho Sales thường theo giai đoạn thâm niên M1 → M2 → M3 → Chính thức.',
   },
-  {
-    code: 'LIVESTREAM_NV',
-    label: 'NV Livestream',
-    description: 'Tự động gán riêng cho Livestream 1 và Livestream 2, chỉ dùng stage Chính thức.',
-  },
 ] as const
 
 type ManagedTemplateCode = (typeof MANAGED_TEMPLATES)[number]['code']
@@ -45,14 +40,7 @@ const SALES_STAGES = [
   { value: 'OFFICIAL', label: 'Chính thức' },
 ] as const
 
-const LIVESTREAM_STAGES = [{ value: 'OFFICIAL', label: 'Chính thức' }] as const
-
 const SALES_CATEGORY_OPTIONS = [
-  { value: 'KPI_BONUS', label: 'B. Thưởng KPIs' },
-  { value: 'PERFORMANCE_BONUS', label: 'D. Thưởng hiệu suất' },
-] as const
-
-const LIVESTREAM_CATEGORY_OPTIONS = [
   { value: 'KPI_BONUS', label: 'B. Thưởng KPIs' },
   { value: 'PERFORMANCE_BONUS', label: 'D. Thưởng hiệu suất' },
 ] as const
@@ -340,7 +328,11 @@ function ItemsTable({
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
-export function SalesKpiCatalogScreen() {
+export type SalesKpiCatalogScreenProps = {
+  embedded?: boolean
+}
+
+export function SalesKpiCatalogScreen({ embedded = false }: SalesKpiCatalogScreenProps) {
   const { canId } = usePermission()
   const role = useAuthStore((s) => s.user?.role)
   const canEdit = role === 'MANAGER' || canId('kpi.catalog_edit')
@@ -352,11 +344,8 @@ export function SalesKpiCatalogScreen() {
   const qc = useQueryClient()
 
   const activeTemplate = MANAGED_TEMPLATES.find((tpl) => tpl.code === activeTemplateCode)
-  const isLivestreamTemplate = activeTemplateCode === 'LIVESTREAM_NV'
-  const stageOptions = isLivestreamTemplate ? LIVESTREAM_STAGES : SALES_STAGES
-  const categoryOptions = isLivestreamTemplate
-    ? LIVESTREAM_CATEGORY_OPTIONS
-    : SALES_CATEGORY_OPTIONS
+  const stageOptions = SALES_STAGES
+  const categoryOptions = SALES_CATEGORY_OPTIONS
   const visibleCategories = useMemo<VisibleCategory[]>(
     () => categoryOptions.map((option) => option.value),
     [categoryOptions]
@@ -388,14 +377,6 @@ export function SalesKpiCatalogScreen() {
     ) as Partial<Record<VisibleCategory, TemplateItem[]>>
   }, [catalog, activeStage, visibleCategories])
 
-  const flatItems = useMemo(
-    () =>
-      visibleCategories
-        .flatMap((cat) => itemsByCategory[cat] ?? [])
-        .sort((a, b) => a.sortOrder - b.sortOrder),
-    [itemsByCategory, visibleCategories]
-  )
-
   const invalidate = () =>
     void qc.invalidateQueries({ queryKey: ['performance', 'catalog', activeTemplateCode] })
 
@@ -422,11 +403,20 @@ export function SalesKpiCatalogScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div
+      className={cn(
+        embedded ? 'mx-auto max-w-[1400px] px-3 pb-8 md:px-4' : 'mx-auto max-w-5xl px-4 py-8'
+      )}
+    >
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1
+            className={cn(
+              'font-bold tracking-tight text-slate-900 dark:text-slate-100',
+              embedded ? 'text-xl' : 'text-2xl'
+            )}
+          >
             Cấu hình KPI Kinh doanh
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -442,47 +432,41 @@ export function SalesKpiCatalogScreen() {
         )}
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
-        {MANAGED_TEMPLATES.map((tpl) => (
-          <button
-            key={tpl.code}
-            type="button"
-            onClick={() => setActiveTemplateCode(tpl.code)}
-            className={cn(
-              'min-w-44 rounded-md px-3 py-2 text-left text-sm transition-colors',
-              activeTemplateCode === tpl.code
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
-            )}
-          >
-            <span className="block font-semibold">{tpl.label}</span>
-            <span
+      {MANAGED_TEMPLATES.length > 1 && (
+        <div className="mb-5 flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
+          {MANAGED_TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.code}
+              type="button"
+              onClick={() => setActiveTemplateCode(tpl.code)}
               className={cn(
-                'mt-0.5 block text-xs',
-                activeTemplateCode === tpl.code ? 'text-indigo-100' : 'text-slate-400'
+                'min-w-44 rounded-md px-3 py-2 text-left text-sm transition-colors',
+                activeTemplateCode === tpl.code
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
               )}
             >
-              {tpl.code}
-            </span>
-          </button>
-        ))}
-      </div>
+              <span className="block font-semibold">{tpl.label}</span>
+              <span
+                className={cn(
+                  'mt-0.5 block text-xs',
+                  activeTemplateCode === tpl.code ? 'text-indigo-100' : 'text-slate-400'
+                )}
+              >
+                {tpl.code}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Info banner */}
       <div className="mb-5 flex items-start gap-2 rounded-lg border border-indigo-200 bg-indigo-50/50 p-3 dark:border-indigo-900 dark:bg-indigo-950/30">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
         <p className="text-xs text-indigo-700 dark:text-indigo-300">
           Danh mục template <strong>{activeTemplateCode}</strong> — {activeTemplate?.description}{' '}
-          {isLivestreamTemplate ? (
-            <>
-              Chỉ hiển thị <strong>danh sách KPI</strong>.
-            </>
-          ) : (
-            <>
-              Chỉ hiển thị{' '}
-              <strong>{visibleCategories.map((cat) => categoryLabel(cat)).join(' và ')}</strong>.
-            </>
-          )}
+          Chỉ hiển thị{' '}
+          <strong>{visibleCategories.map((cat) => categoryLabel(cat)).join(' và ')}</strong>.
         </p>
       </div>
 
@@ -512,16 +496,6 @@ export function SalesKpiCatalogScreen() {
           <Skeleton className="h-48 w-full" />
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-32 w-full" />
-        </div>
-      ) : isLivestreamTemplate ? (
-        <div className="space-y-3">
-          <div className="text-xs text-slate-400">{flatItems.length} KPI</div>
-          <ItemsTable
-            items={flatItems}
-            canEdit={canEdit}
-            onEdit={openEdit}
-            onDelete={handleDelete}
-          />
         </div>
       ) : (
         <div className="space-y-8">
@@ -562,7 +536,7 @@ export function SalesKpiCatalogScreen() {
           stageOptions={stageOptions}
           categoryOptions={categoryOptions}
           defaultCategory={visibleCategories[0] ?? 'KPI_BONUS'}
-          showCategoryPicker={!isLivestreamTemplate}
+          showCategoryPicker
           editing={editing}
           onSaved={invalidate}
         />
