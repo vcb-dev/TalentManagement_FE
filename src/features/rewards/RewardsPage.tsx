@@ -47,6 +47,8 @@ type RecordEntity = {
   title: string
   amount?: number | null
   note?: string | null
+  year?: number | null
+  month?: number | null
   createdAt: string
   user: {
     fullNameLegal: string
@@ -144,7 +146,9 @@ function toOptimisticRecord(
   emp: Employee,
   rule: Rule,
   note: string,
-  created: { id: string; createdAt?: string }
+  created: { id: string; createdAt?: string },
+  year: number,
+  month: number
 ): RecordEntity {
   return {
     id: created.id,
@@ -153,6 +157,8 @@ function toOptimisticRecord(
     title: rule.title,
     amount: rule.amount ?? null,
     note: note || rule.note || null,
+    year,
+    month,
     createdAt: created.createdAt ?? new Date().toISOString(),
     user: {
       fullNameLegal: emp.fullNameLegal || emp.name || '',
@@ -161,6 +167,76 @@ function toOptimisticRecord(
     createdBy: { fullNameLegal: '' },
     rule,
   }
+}
+
+function recordPeriodFromEntity(record: RecordEntity): { year: number; month: number } {
+  if (record.year != null && record.month != null) {
+    return { year: record.year, month: record.month }
+  }
+  const d = new Date(record.createdAt)
+  return { year: d.getFullYear(), month: d.getMonth() + 1 }
+}
+
+function recordMatchesPeriod(record: RecordEntity, year: number, month: number): boolean {
+  const p = recordPeriodFromEntity(record)
+  return p.year === year && p.month === month
+}
+
+function getRecordedRuleIdsForUser(
+  records: RecordEntity[],
+  userId: string,
+  year: number,
+  month: number
+): Set<string> {
+  const ids = records
+    .filter((r) => r.userId === userId && recordMatchesPeriod(r, year, month))
+    .map((r) => r.rule?.id)
+    .filter(Boolean) as string[]
+  return new Set(ids)
+}
+
+function RecordPeriodPicker({
+  year,
+  month,
+  onChange,
+  className,
+}: {
+  year: number
+  month: number
+  onChange: (year: number, month: number) => void
+  className?: string
+}) {
+  const yearOptions = useMemo(() => {
+    const current = new Date().getFullYear()
+    return Array.from({ length: 4 }, (_, i) => current - i).map((y) => ({
+      label: String(y),
+      value: String(y),
+    }))
+  }, [])
+
+  return (
+    <div className={`flex flex-wrap items-center gap-2 ${className ?? ''}`}>
+      <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
+      <CustomSelect
+        className="min-w-[130px]"
+        value={String(month)}
+        onValueChange={(val) => onChange(year, Number(val))}
+        options={Array.from({ length: 12 }, (_, i) => ({
+          label: `Tháng ${i + 1}`,
+          value: String(i + 1),
+        }))}
+      />
+      <CustomSelect
+        className="min-w-[100px]"
+        value={String(year)}
+        onValueChange={(val) => onChange(Number(val), month)}
+        options={yearOptions}
+      />
+      <span className="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-black uppercase tracking-wider whitespace-nowrap">
+        T{month}/{year}
+      </span>
+    </div>
+  )
 }
 
 type FetchScope = 'full' | 'records' | 'rules'
@@ -215,6 +291,15 @@ export default function RewardsPage() {
   const [historyTeamFilter, setHistoryTeamFilter] = useState<string>('all')
   const [historyPage, setHistoryPage] = useState(1)
   const itemsPerPage = 6
+
+  const [recordYear, setRecordYear] = useState(() => new Date().getFullYear())
+  const [recordMonth, setRecordMonth] = useState(() => new Date().getMonth() + 1)
+
+  const setRecordPeriod = (year: number, month: number) => {
+    setRecordYear(year)
+    setRecordMonth(month)
+    setHistoryPage(1)
+  }
 
   // Member search
   const [memberRuleSearch, setMemberRuleSearch] = useState('')
@@ -299,6 +384,18 @@ export default function RewardsPage() {
     fetchEmployeesInBackground()
   }, [isPrivileged])
 
+  useEffect(() => {
+    if (!showActionPanel || !selectedEmp) return
+    const recordedSet = getRecordedRuleIdsForUser(
+      allRecords,
+      selectedEmp.id,
+      recordYear,
+      recordMonth
+    )
+    setAppliedRuleIds(recordedSet)
+    setSelectedRuleIds(new Set(recordedSet))
+  }, [showActionPanel, selectedEmp?.id, recordYear, recordMonth, allRecords])
+
   // Auto-expand teams when searching or filtering
   useEffect(() => {
     if (teamSearch.trim() || logTeamFilter !== 'all') {
@@ -373,14 +470,9 @@ export default function RewardsPage() {
     setActionKind(kind)
     setActionTeamContext(teamContext ?? null)
 
-    const recorded = allRecords
-      .filter((r) => r.userId === emp.id)
-      .map((r) => r.rule?.id)
-      .filter(Boolean) as string[]
-
-    const recordedSet = new Set(recorded)
+    const recordedSet = getRecordedRuleIdsForUser(allRecords, emp.id, recordYear, recordMonth)
     setAppliedRuleIds(recordedSet)
-    setSelectedRuleIds(new Set(recorded))
+    setSelectedRuleIds(new Set(recordedSet))
     setCustomNote('')
 
     const teamName =
@@ -420,12 +512,21 @@ export default function RewardsPage() {
             amount: Number(rule.amount || 0),
             note: customNote || rule.note,
             ruleId: rule.id,
+            year: recordYear,
+            month: recordMonth,
           })
         )
       )
 
       const optimisticRows = ruleList.map((rule, idx) =>
-        toOptimisticRecord(emp, rule, customNote || rule.note || '', createdResponses[idx]!.data)
+        toOptimisticRecord(
+          emp,
+          rule,
+          customNote || rule.note || '',
+          createdResponses[idx]!.data,
+          recordYear,
+          recordMonth
+        )
       )
       setAllRecords((prev) => [...optimisticRows, ...prev])
       setAppliedRuleIds((prev) => new Set([...prev, ...newRuleIds]))
@@ -436,11 +537,26 @@ export default function RewardsPage() {
       setSelectedEmp(null)
       setSubmitting(false)
 
-      toast.success(`Đã ghi nhận ${ruleList.length} nội dung cho ${empName}`)
+      toast.success(
+        `Đã ghi nhận ${ruleList.length} nội dung cho ${empName} (T${recordMonth}/${recordYear})`
+      )
       refreshRecordsInBackground()
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to submit rewards:', error)
-      toast.error('Có lỗi xảy ra khi ghi nhận.')
+      const msg =
+        error &&
+        typeof error === 'object' &&
+        'response' in error &&
+        error.response &&
+        typeof error.response === 'object' &&
+        'data' in error.response &&
+        error.response.data &&
+        typeof error.response.data === 'object' &&
+        'message' in error.response.data &&
+        typeof error.response.data.message === 'string'
+          ? error.response.data.message
+          : 'Có lỗi xảy ra khi ghi nhận.'
+      toast.error(msg)
       setSubmitting(false)
     }
   }
@@ -934,8 +1050,14 @@ export default function RewardsPage() {
                     ]}
                   />
 
+                  <RecordPeriodPicker
+                    year={recordYear}
+                    month={recordMonth}
+                    onChange={setRecordPeriod}
+                  />
+
                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest hidden lg:block ml-auto">
-                    Chọn Team → Chọn thành viên
+                    Chọn kỳ → Team → Ghi nhận
                   </p>
                 </div>
 
@@ -1232,9 +1354,19 @@ export default function RewardsPage() {
                     ]}
                   />
 
+                  <RecordPeriodPicker
+                    year={recordYear}
+                    month={recordMonth}
+                    onChange={setRecordPeriod}
+                  />
+
                   <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest ml-auto">
                     <History className="h-4 w-4" />
-                    Tổng: {allRecords.length}
+                    Tổng kỳ:{' '}
+                    {
+                      allRecords.filter((r) => recordMatchesPeriod(r, recordYear, recordMonth))
+                        .length
+                    }
                   </div>
                 </div>
 
@@ -1260,7 +1392,9 @@ export default function RewardsPage() {
                           const matchesTeam =
                             historyTeamFilter === 'all' || rec.user.team?.name === historyTeamFilter
 
-                          return matchesSearch && matchesTeam
+                          const matchesPeriod = recordMatchesPeriod(rec, recordYear, recordMonth)
+
+                          return matchesSearch && matchesTeam && matchesPeriod
                         })
                         const totalPages = Math.ceil(filtered.length / itemsPerPage)
                         const start = (historyPage - 1) * itemsPerPage
@@ -1400,6 +1534,15 @@ export default function RewardsPage() {
 
             <div className="flex flex-col flex-1 min-h-0">
               <div className="px-10 pt-10 pb-4 space-y-6 shrink-0">
+                <RecordPeriodPicker
+                  year={recordYear}
+                  month={recordMonth}
+                  onChange={setRecordPeriod}
+                />
+                <p className="text-xs font-medium text-slate-500 -mt-2">
+                  Ghi nhận và trạng thái &quot;Đã ghi nhận&quot; chỉ áp dụng trong kỳ T{recordMonth}
+                  /{recordYear}
+                </p>
                 {actionTeamContext && (
                   <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
                     Team: {actionTeamContext.teamName}
