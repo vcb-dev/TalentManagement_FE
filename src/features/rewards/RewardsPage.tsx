@@ -107,6 +107,39 @@ const getDisplayCategory = (cat: string) => {
   return CATEGORY_MAPPING[normalized] || normalized
 }
 
+function resolveTeamDisplayCategory(teamName: string | null | undefined): string {
+  if (!teamName?.trim()) return 'CHUNG'
+  const raw = detectCategoryFromTeamName(teamName)
+  if (raw === 'TRAFFIC') return 'CHUNG'
+  return getDisplayCategory(raw)
+}
+
+function detectCategoryFromTeamName(teamName: string) {
+  const name = teamName.toUpperCase()
+  if (name.includes('HUYK') || name.includes('GLOBAL')) return 'TRAFFIC'
+  if (name.includes('TMĐT') || name.includes('TMDT')) return 'TMĐT'
+  if (name.includes('LIVESTREAM')) return 'LIVESTREAM'
+  if (name.includes('KINH DOANH')) return 'KINH DOANH'
+  if (name.includes('LOGISTIC')) return 'LOGISTIC'
+  if (name.includes('SẢN XUẤT') || name.includes('SAN XUAT') || name.includes('XƯỞNG'))
+    return 'SẢN XUẤT'
+  if (name.includes('VẬN ĐƠN') || name.includes('VAN DON')) return 'VẬN ĐƠN'
+  if (name.includes('CỬA HÀNG') || name.includes('SHOWROOM') || name.includes('CUA HANG'))
+    return 'CỬA HÀNG'
+  if (name.includes('ADS')) return 'ADS'
+  if (name.includes('MEDIA')) return 'MEDIA'
+  if (name.includes('EDITOR')) return 'EDITOR'
+  if (name.includes('TECH') || name.includes('CÔNG NGHỆ')) return 'TECH'
+  if (name.includes('KẾ TOÁN') || name.includes('KE TOAN')) return 'KẾ TOÁN'
+  if (name.includes('HÀNH CHÍNH')) return 'HÀNH CHÍNH'
+  return 'CHUNG'
+}
+
+function isGeneralRewardRule(rule: Rule): boolean {
+  const cat = rule.category.toUpperCase().replace(/_/g, ' ')
+  return !rule.teamId || cat === 'GENERAL' || cat === 'CHUNG'
+}
+
 export default function RewardsPage() {
   const currentUser = useAuthStore((s) => s.user)
   const isPrivileged =
@@ -142,6 +175,10 @@ export default function RewardsPage() {
   // Action States
   const [showActionPanel, setShowActionPanel] = useState(false)
   const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null)
+  const [actionTeamContext, setActionTeamContext] = useState<{
+    teamId: string
+    teamName: string
+  } | null>(null)
   const [actionKind, setActionKind] = useState<'REWARD' | 'PENALTY'>('PENALTY')
   const [selectedRuleIds, setSelectedRuleIds] = useState<Set<string>>(new Set())
   const [appliedRuleIds, setAppliedRuleIds] = useState<Set<string>>(new Set())
@@ -262,32 +299,15 @@ export default function RewardsPage() {
     return filtered
   }, [groupedEmployees, teamSearch, logTeamFilter])
 
-  const detectCategoryFromTeam = (teamName: string) => {
-    const name = teamName.toUpperCase()
-    if (name.includes('HUYK') || name.includes('GLOBAL')) return 'TRAFFIC'
-    if (name.includes('TMĐT') || name.includes('TMDT')) return 'TMĐT'
-    if (name.includes('LIVESTREAM')) return 'LIVESTREAM'
-    if (name.includes('KINH DOANH')) return 'KINH DOANH'
-    if (name.includes('LOGISTIC')) return 'LOGISTIC'
-    if (name.includes('SẢN XUẤT') || name.includes('SAN XUAT') || name.includes('XƯỞNG'))
-      return 'SẢN XUẤT'
-    if (name.includes('VẬN ĐƠN') || name.includes('VAN DON')) return 'VẬN ĐƠN'
-    if (name.includes('CỬA HÀNG') || name.includes('SHOWROOM') || name.includes('CUA HANG'))
-      return 'CỬA HÀNG'
-    if (name.includes('ADS')) return 'ADS'
-    if (name.includes('MEDIA')) return 'MEDIA'
-    if (name.includes('EDITOR')) return 'EDITOR'
-    if (name.includes('TECH') || name.includes('CÔNG NGHỆ')) return 'TECH'
-    if (name.includes('KẾ TOÁN') || name.includes('KE TOAN')) return 'KẾ TOÁN'
-    if (name.includes('HÀNH CHÍNH')) return 'HÀNH CHÍNH'
-    return 'CHUNG'
-  }
-
-  const handleOpenAction = (emp: any, kind: 'REWARD' | 'PENALTY') => {
+  const handleOpenAction = (
+    emp: Employee,
+    kind: 'REWARD' | 'PENALTY',
+    teamContext?: { teamId: string; teamName: string }
+  ) => {
     setSelectedEmp(emp)
     setActionKind(kind)
+    setActionTeamContext(teamContext ?? null)
 
-    // Find already recorded rules for this employee
     const recorded = allRecords
       .filter((r) => r.userId === emp.id)
       .map((r) => r.rule?.id)
@@ -298,13 +318,9 @@ export default function RewardsPage() {
     setSelectedRuleIds(new Set(recorded))
     setCustomNote('')
 
-    const teamName = emp.teamNames && emp.teamNames.length > 0 ? emp.teamNames[0] : null
-    if (teamName) {
-      const cat = detectCategoryFromTeam(teamName)
-      setSelectedRuleCategory(cat !== 'TRAFFIC' ? cat : 'CHUNG')
-    } else {
-      setSelectedRuleCategory('CHUNG')
-    }
+    const teamName =
+      teamContext?.teamName || (emp.teamNames && emp.teamNames.length > 0 ? emp.teamNames[0] : null)
+    setSelectedRuleCategory(resolveTeamDisplayCategory(teamName))
 
     setShowActionPanel(true)
   }
@@ -419,9 +435,7 @@ export default function RewardsPage() {
       .filter((r) => r.teamId && userTeamIds.includes(r.teamId))
       .map((r) => getDisplayCategory(r.category))
 
-    const userTeamCategory = currentUser?.team
-      ? getDisplayCategory(detectCategoryFromTeam(currentUser.team))
-      : null
+    const userTeamCategory = currentUser?.team ? resolveTeamDisplayCategory(currentUser.team) : null
 
     const allowedCategories = new Set(['CHUNG'])
     categoriesFromRules.forEach((c) => allowedCategories.add(c))
@@ -430,8 +444,37 @@ export default function RewardsPage() {
     return excelTabs.filter((tab) => allowedCategories.has(tab))
   }, [excelTabs, isPrivileged, currentUser, rules])
 
+  /** Tab + quy chuẩn trong modal ghi nhận — chỉ team của nhân sự + CHUNG. */
+  const actionModalTabs = useMemo(() => {
+    if (!showActionPanel) return excelTabs
+
+    const teamName = actionTeamContext?.teamName
+    const teamCategory = teamName ? resolveTeamDisplayCategory(teamName) : null
+    const allowed = new Set<string>(['CHUNG'])
+    if (teamCategory && teamCategory !== 'CHUNG') allowed.add(teamCategory)
+
+    const teamId = actionTeamContext?.teamId
+    rules.forEach((r) => {
+      if (teamId && r.teamId === teamId) {
+        allowed.add(getDisplayCategory(r.category))
+      }
+    })
+
+    const tabs = excelTabs.filter((tab) => allowed.has(tab))
+    return tabs.length > 0 ? tabs : ['CHUNG']
+  }, [showActionPanel, excelTabs, actionTeamContext, rules])
+
+  const actionScopeRules = useMemo(() => {
+    if (!showActionPanel) return rules
+
+    const teamId = actionTeamContext?.teamId
+    if (!teamId || teamId === 'no-team') return rules
+
+    return rules.filter((r) => isGeneralRewardRule(r) || r.teamId === teamId)
+  }, [showActionPanel, rules, actionTeamContext])
+
   const activeCategoryRules = useMemo(() => {
-    return rules.filter((r) => {
+    return actionScopeRules.filter((r) => {
       const displayCat = getDisplayCategory(r.category)
       if (r.type === 'PENALTY') return displayCat === selectedRuleCategory
       if (r.type === 'REWARD') {
@@ -442,9 +485,21 @@ export default function RewardsPage() {
       }
       return false
     })
-  }, [rules, selectedRuleCategory])
+  }, [actionScopeRules, selectedRuleCategory])
 
   const filteredActionRules = activeCategoryRules.filter((r) => r.type === actionKind)
+
+  const newSelectedRuleCount = useMemo(
+    () => Array.from(selectedRuleIds).filter((id) => !appliedRuleIds.has(id)).length,
+    [selectedRuleIds, appliedRuleIds]
+  )
+
+  useEffect(() => {
+    if (!showActionPanel || actionModalTabs.length === 0) return
+    if (!actionModalTabs.includes(selectedRuleCategory)) {
+      setSelectedRuleCategory(actionModalTabs[0]!)
+    }
+  }, [showActionPanel, actionModalTabs, selectedRuleCategory])
 
   const myTeamRules = useMemo(() => {
     if (!currentUser) return []
@@ -867,13 +922,23 @@ export default function RewardsPage() {
                                   </div>
                                   <div className="flex gap-2">
                                     <button
-                                      onClick={() => handleOpenAction(emp, 'REWARD')}
+                                      onClick={() =>
+                                        handleOpenAction(emp, 'REWARD', {
+                                          teamId: tid,
+                                          teamName: group.name,
+                                        })
+                                      }
                                       className="flex-1 py-2.5 bg-emerald-50 text-emerald-700 rounded-2xl text-xs font-black uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all shadow-sm hover:shadow-emerald-100"
                                     >
                                       Thưởng
                                     </button>
                                     <button
-                                      onClick={() => handleOpenAction(emp, 'PENALTY')}
+                                      onClick={() =>
+                                        handleOpenAction(emp, 'PENALTY', {
+                                          teamId: tid,
+                                          teamName: group.name,
+                                        })
+                                      }
                                       className="flex-1 py-2.5 bg-rose-50 text-rose-700 rounded-2xl text-xs font-black uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all shadow-sm hover:shadow-rose-100"
                                     >
                                       Phạt
@@ -1223,11 +1288,14 @@ export default function RewardsPage() {
       <Dialog
         open={showActionPanel && !!selectedEmp}
         onOpenChange={(open) => {
-          if (!open) setShowActionPanel(false)
+          if (!open) {
+            setShowActionPanel(false)
+            setActionTeamContext(null)
+          }
         }}
       >
-        <DialogContent className="max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-white/20 shadow-2xl [&>button]:hidden">
-          <div className="bg-white rounded-[2.5rem] w-full shadow-2xl overflow-hidden border border-white/20">
+        <DialogContent className="max-w-2xl max-h-[90vh] rounded-[2.5rem] p-0 overflow-hidden border-white/20 shadow-2xl flex flex-col [&>button]:hidden">
+          <div className="bg-white rounded-[2.5rem] w-full shadow-2xl overflow-hidden border border-white/20 flex flex-col max-h-[90vh]">
             <div
               className={`px-10 py-8 text-white font-black uppercase text-sm tracking-[0.2em] flex justify-between items-center ${actionKind === 'REWARD' ? 'bg-emerald-600' : 'bg-rose-600'}`}
             >
@@ -1255,20 +1323,34 @@ export default function RewardsPage() {
               </Button>
             </div>
 
-            <div className="p-10 space-y-8">
-              <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar border-b border-slate-50">
-                {excelTabs.map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setSelectedRuleCategory(tab)}
-                    className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase whitespace-nowrap border-2 transition-all ${selectedRuleCategory === tab ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
-                  >
-                    {tab}
-                  </button>
-                ))}
+            <div className="flex flex-col flex-1 min-h-0">
+              <div className="px-10 pt-10 pb-4 space-y-6 shrink-0">
+                {actionTeamContext && (
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                    Team: {actionTeamContext.teamName}
+                  </p>
+                )}
+                {actionModalTabs.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar border-b border-slate-50">
+                    {actionModalTabs.map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setSelectedRuleCategory(tab)}
+                        className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase whitespace-nowrap border-2 transition-all ${selectedRuleCategory === tab ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {actionModalTabs.length === 1 && (
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+                    {actionModalTabs[0]}
+                  </p>
+                )}
               </div>
 
-              <div className="max-h-[50vh] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto px-10 space-y-3 custom-scrollbar">
                 {filteredActionRules.length > 0 ? (
                   filteredActionRules.map((rule) => (
                     <button
@@ -1316,33 +1398,38 @@ export default function RewardsPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                  Ghi chú chi tiết (Không bắt buộc)
-                </label>
-                <textarea
-                  placeholder="Nhập thêm chi tiết về trường hợp này..."
-                  value={customNote}
-                  onChange={(e) => setCustomNote(e.target.value)}
-                  className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-sm focus:border-indigo-500 outline-none transition-all"
-                  rows={2}
-                />
-              </div>
+              <div className="shrink-0 px-10 pb-10 pt-6 space-y-4 border-t border-slate-50 bg-white">
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                    Ghi chú chi tiết (Không bắt buộc)
+                  </label>
+                  <textarea
+                    placeholder="Nhập thêm chi tiết về trường hợp này..."
+                    value={customNote}
+                    onChange={(e) => setCustomNote(e.target.value)}
+                    className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent rounded-2xl text-sm focus:border-indigo-500 outline-none transition-all"
+                    rows={2}
+                  />
+                </div>
 
-              <div className="pt-6 flex gap-4">
-                <button
-                  onClick={() => setShowActionPanel(false)}
-                  className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-3xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
-                >
-                  Đóng lại
-                </button>
-                <button
-                  onClick={handleSubmitActions}
-                  disabled={submitting || selectedRuleIds.size === 0}
-                  className={`flex-[2] py-5 rounded-3xl font-black uppercase text-xs tracking-[0.25em] shadow-2xl transition-all ${submitting || selectedRuleIds.size === 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : actionKind === 'REWARD' ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200' : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-200'}`}
-                >
-                  {submitting ? 'Đang xử lý...' : `Xác nhận (${selectedRuleIds.size})`}
-                </button>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => {
+                      setShowActionPanel(false)
+                      setActionTeamContext(null)
+                    }}
+                    className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-3xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all"
+                  >
+                    Đóng lại
+                  </button>
+                  <button
+                    onClick={handleSubmitActions}
+                    disabled={submitting || newSelectedRuleCount === 0}
+                    className={`flex-[2] py-5 rounded-3xl font-black uppercase text-xs tracking-[0.25em] shadow-2xl transition-all ${submitting || newSelectedRuleCount === 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : actionKind === 'REWARD' ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200' : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-200'}`}
+                  >
+                    {submitting ? 'Đang xử lý...' : `Xác nhận (${newSelectedRuleCount})`}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
