@@ -1,1164 +1,740 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
-import { FormProvider, type Control, useForm, useWatch } from 'react-hook-form'
-import type { LucideIcon } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
-import { toast } from 'sonner'
-import {
-  Award,
-  BarChart3,
-  Briefcase,
-  Building2,
-  Calendar,
-  CheckCircle2,
-  ClipboardList,
-  FiveStarRank,
-  GraduationCap,
-  PROFILE_TAB_ICONS,
-  ProfileStarTier,
-  Settings,
-  Target,
-  UserCircle,
-  Users,
-} from '@/components/icons'
+import { FormProvider, useForm, useWatch, type Control } from 'react-hook-form'
+
 import type { EmployeeEntity } from '@/features/hr-admin/api'
-import { useDeactivateEmployee, useUpdateEmployee } from '@/features/hr-admin/hooks'
-import { DEFAULT_TEAM_ID } from '@/features/hr-admin/hrOrgOptions'
+
+import { useAuthStore } from '@/stores/auth.store'
+import { useUploadMePortrait } from '@/features/profile/hooks'
+import { useQuery } from '@tanstack/react-query'
+import { organizationApi } from '@/features/organization/api'
+import { type MeUserDisplayKey, type MeUserSelf } from '@/features/profile/userSelf.types'
 import {
-  EmployeeExtraTeamsField,
-  extraTeamIdsEqual,
-} from '@/features/hr-admin/components/EmployeeExtraTeamsField'
-import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
+  isDateFormField,
+  isWorkOrgReadonlyField,
+  USER_SELF_FORM_SECTIONS,
+  type UserSelfFieldSpec,
+} from '@/features/profile/userSelfFormLayout'
 import {
-  avatarClassForRole,
-  employeePortraitUrl,
-  levelMeta,
-  levelPillText,
-  shortId,
-  statusLabelVi,
-} from '@/features/hr-admin/components/HrEmployeeList/employeeListUtils'
-import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
-import { LEVEL_LABELS, LEVELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
+  formatUserDateForReadonlyDisplay,
+  parseStoredDateToInputValue,
+} from '@/features/profile/profileDateUtils'
+import { useId, useMemo } from 'react'
+import { profileApi } from '@/features/profile/api'
+import { toast } from 'sonner'
+import type { MyProfilePage } from '@/features/profile/types'
+import { getApiErrorMessage } from '@/lib/axios'
+import { EmployeeExtraTeamsField, extraTeamIdsEqual } from '../EmployeeExtraTeamsField'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
-import { CARD_ENTRANCE_HOVER, CARD_HOVER, staggerStyle } from '@/lib/cardMotion'
-import type { EmployeeLevel } from '@/types/employee'
-import type { Role } from '@/types/auth'
-import type { PatchEmployeeInput } from '@/types/api'
-import { usePermission } from '@/hooks/usePermission'
-import { Button } from '@/components/ui/button'
+import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
+import { Building2, RefreshCw, Upload } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { DateController, InputController, SelectController } from '@/components/ui/form-controllers'
-import { SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-
-const PROFILE_EDIT_FIELD =
-  'h-11 rounded-lg border-0 bg-muted/40 px-3 py-2 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 disabled:opacity-60'
-
-type OptionItem = { value: string; label: string }
-
-function dedupeOptionsByValue(options: OptionItem[]): OptionItem[] {
-  const seen = new Set<string>()
-  return options.filter((option) => {
-    const value = option.value.trim()
-    if (!value || seen.has(value)) return false
-    seen.add(value)
-    return true
-  })
-}
-
-/** Tên phòng/nhóm cho select: ưu tiên cây tổ chức, rồi tên từ API; không dùng id rút gọn. */
-function departmentSelectLabel(
-  departmentId: string,
-  fromTree: string | undefined,
-  employee: EmployeeEntity
-): string {
-  const tree = fromTree?.trim()
-  if (tree) return tree
-  if (departmentId && departmentId === employee.departmentId) {
-    const n = employee.departmentName?.trim()
-    if (n) return n
-  }
-  return ''
-}
-
-function teamSelectLabel(
-  teamId: string,
-  fromTree: string | undefined,
-  employee: EmployeeEntity,
-  teamIndex: 0 | 1
-): string {
-  const tree = fromTree?.trim()
-  if (tree) return tree
-  if (teamId && employee.teamIds?.[teamIndex] === teamId) {
-    const n = employee.teamNames?.[teamIndex]?.trim()
-    if (n) return n
-  }
-  return ''
-}
-
-const LEVEL_ORDER: EmployeeLevel[] = [
-  'tap_su',
-  'biet_viec',
-  'duoc_viec',
-  'dong_gop_ket_qua',
-  'tuong',
-]
-
-const TABS = [
-  'Tổng quan',
-  'Lộ trình học',
-  'Kết quả thi',
-  'Lịch sử làm việc',
-  'Chỉnh sửa hồ sơ',
-] as const
-
-const TAB_ICONS_HR: LucideIcon[] = [
-  PROFILE_TAB_ICONS.overview,
-  PROFILE_TAB_ICONS.learning,
-  PROFILE_TAB_ICONS.exams,
-  PROFILE_TAB_ICONS.work,
-  Settings,
-]
-
-function starVariants(filledStars: number, totalStars: number): ('filled' | 'current' | 'empty')[] {
-  const n = Math.min(Math.max(totalStars, 1), 6)
-  const f = Math.min(Math.max(Math.floor(filledStars), 0), n)
-  const out: ('filled' | 'current' | 'empty')[] = []
-  for (let i = 0; i < n; i++) {
-    if (i < f) out.push('filled')
-    else if (i === f && f < n) out.push('current')
-    else out.push('empty')
-  }
-  return out
-}
-
-const ROLE_BADGE_ICONS: Record<Role, LucideIcon> = {
-  MEMBER: UserCircle,
-  LEADER: Target,
-  MANAGER: Briefcase,
-  HR: Building2,
-  TEACHER: ClipboardList,
-  BOD: BarChart3,
-}
-
-/** Role có thể chọn khi sửa hồ sơ (không gán Người chấm từ đây). */
-const PROFILE_EDIT_ROLE_OPTIONS_BASE: Role[] = ['MEMBER', 'LEADER', 'MANAGER', 'HR', 'BOD']
-
+import { Badge } from '@/components/ui/badge'
+import {
+  DateController,
+  InputController,
+  SelectController,
+  TextareaController,
+} from '@/components/ui/form-controllers'
+import { SelectItem } from '@/components/ui/select'
+import { createPortal } from 'react-dom'
+import { Button } from '@/components/ui/button'
+import { Link } from '@tanstack/react-router'
+import { useUpdateEmployeeById } from '../../hooks'
+import { EMPLOYEE_PATCH_KEYS, type EditEmployeeBody, type EmployeePatchKey } from '../../types'
 export interface HrEmployeeProfileProps {
   employee: EmployeeEntity
   /** Mặc định mở tab khi vào từ URL `?mode=edit`. */
   initialTab?: number
 }
+export type IHrEmployeeProfileState = MeUserSelf
+type EditRecord = Record<EmployeePatchKey, string> & { extraTeamIds: string[] }
 
-type EmployeeEditFormValues = {
-  name: string
-  email: string
-  role: Role
-  departmentId: string
-  teamId: string
-  phone: string
-  birthDate: string
-  startDate: string
-  extraTeamIds: string[]
-  currentLevel: EmployeeEntity['currentLevel']
-}
+const fieldStackGap = 'gap-1'
+const fieldBoxClass = ''
 
-export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfileProps) {
-  const { canId } = usePermission()
-  const canEdit = canId('hr.employees.edit')
-  const canDeactivate = canId('hr.employees.deactivate')
-  const updateEmployee = useUpdateEmployee()
-  const deactivateEmployee = useDeactivateEmployee()
-  const isSaving = updateEmployee.isPending || deactivateEmployee.isPending
+const inputEditable =
+  'border-slate-200 bg-white text-sm text-slate-700 shadow-sm transition-all focus:border-primary focus:ring-4 focus:ring-primary/10'
 
-  const maxTab = 4
-  const [tab, setTab] = useState(() => Math.min(maxTab, Math.max(0, initialTab)))
-  const { label: tierLabel, tierClass } = levelMeta(employee.currentLevel)
-  const maxStars = STARS_PER_LEVEL[employee.currentLevel as LevelCode] || 6
-  const xpPct =
-    maxStars > 0 ? Math.min(100, Math.round((employee.currentStar / maxStars) * 100)) : 0
-  const levelIdx = LEVEL_ORDER.indexOf(employee.currentLevel)
+const fieldControlClass =
+  'h-10 w-full rounded-xl border px-3 py-2 leading-snug outline-none transition-all'
 
-  const editForm = useForm<EmployeeEditFormValues>({
-    defaultValues: {
-      name: employee.name,
-      email: employee.email,
-      role: employee.role,
-      departmentId: employee.departmentId,
-      teamId: employee.teamIds[0] ?? DEFAULT_TEAM_ID,
-      phone: employee.phone?.trim() ?? '',
-      birthDate: employee.birthDate?.trim() ?? '',
-      startDate: employee.startDate?.trim() ?? '',
-      extraTeamIds: employee.teamIds.slice(1),
-      currentLevel: employee.currentLevel,
-    },
-  })
-  const { control: editControl, getValues: getEditValues, reset: resetEditForm } = editForm
-
-  /* Đồng bộ form sửa khi nhân viên được refetch sau lưu / điều hướng. */
-  useEffect(() => {
-    resetEditForm({
-      name: employee.name,
-      email: employee.email,
-      role: employee.role,
-      departmentId: employee.departmentId,
-      teamId: employee.teamIds[0] ?? DEFAULT_TEAM_ID,
-      phone: employee.phone?.trim() ?? '',
-      birthDate: employee.birthDate?.trim() ?? '',
-      startDate: employee.startDate?.trim() ?? '',
-      extraTeamIds: employee.teamIds.slice(1),
-      currentLevel: employee.currentLevel,
-    })
-  }, [
-    employee.id,
-    employee.updatedAt,
-    employee.name,
-    employee.email,
-    employee.role,
-    employee.departmentId,
-    employee.teamIds,
-    employee.phone,
-    employee.birthDate,
-    employee.startDate,
-    employee.currentLevel,
-    resetEditForm,
-  ])
-
-  const buildEditPatch = (values: EmployeeEditFormValues): PatchEmployeeInput | null => {
-    const patch: PatchEmployeeInput = {}
-    if (values.name.trim() !== employee.name) patch.name = values.name.trim()
-    if (values.email.trim() !== employee.email) patch.email = values.email.trim()
-    if (values.role !== employee.role) {
-      patch.role = values.role as NonNullable<PatchEmployeeInput['role']>
-    }
-    if (values.departmentId !== employee.departmentId) patch.departmentId = values.departmentId
-    const origTeam = employee.teamIds[0] ?? DEFAULT_TEAM_ID
-    if (values.teamId !== origTeam) patch.teamId = values.teamId
-    const origPhone = employee.phone?.trim() ?? ''
-    if (values.phone.trim() !== origPhone) patch.phone = values.phone.trim()
-    const origBirth = employee.birthDate?.trim() ?? ''
-    if (values.birthDate.trim() !== origBirth) patch.birthDate = values.birthDate.trim()
-    const origStart = employee.startDate?.trim() ?? ''
-    if (values.startDate.trim() !== origStart) patch.startDate = values.startDate.trim()
-    const origExtras = employee.teamIds.slice(1)
-    const nextExtras = values.extraTeamIds ?? []
-    if (!extraTeamIdsEqual(origExtras, nextExtras)) {
-      patch.extraTeamIds = nextExtras
-    }
-    if (values.currentLevel !== employee.currentLevel) patch.currentLevel = values.currentLevel
-    return Object.keys(patch).length > 0 ? patch : null
-  }
-
-  const handleSaveProfile = () => {
-    if (!canEdit) return
-    const patch = buildEditPatch(getEditValues())
-    if (!patch) {
-      toast.info('Không có thay đổi để lưu.')
-      return
-    }
-    updateEmployee.mutate({ id: employee.id, patch })
-  }
-
-  const [confirmAction, setConfirmAction] = useState<'deactivate' | 'reactivate' | null>(null)
-
-  const handleDeactivateProfile = () => {
-    if (!canDeactivate) return
-    setConfirmAction('deactivate')
-  }
-
-  const handleReactivateProfile = () => {
-    if (!canEdit) return
-    setConfirmAction('reactivate')
-  }
-
-  const handleConfirmAction = () => {
-    if (confirmAction === 'deactivate') deactivateEmployee.mutate(employee.id)
-    else if (confirmAction === 'reactivate')
-      updateEmployee.mutate({ id: employee.id, patch: { status: 'ACTIVE' } })
-    setConfirmAction(null)
-  }
-
-  const empCode = `VCB-${shortId(employee.id).toUpperCase()}`
-
-  const onDemoAction = (msg: string) => () => toast.info(msg)
-  const orgSel = useHrOrgSelectOptions()
-
-  const tabLabels = TABS
-  const tabIcons = TAB_ICONS_HR
-  const rankStarsFive = (xpPct / 100) * 5
-  const levelStarVariants = starVariants(employee.currentStar, maxStars)
-  const RoleBadgeIcon = ROLE_BADGE_ICONS[employee.role]
-  const deptName = useMemo(() => {
-    const fromApi = employee.departmentName?.trim()
-    if (fromApi) return fromApi
-    if (!employee.departmentId) return ''
-    return orgSel.departments.find((d) => d.value === employee.departmentId)?.label?.trim() ?? ''
-  }, [employee.departmentName, employee.departmentId, orgSel.departments])
-
-  const teamName = useMemo(() => {
-    const fromApi = (employee.teamNames ?? []).map((t) => t.trim()).filter(Boolean)
-    if (fromApi.length > 0) return fromApi.join(', ')
-    if (!employee.teamIds?.length) return ''
-    const teamNameById = new Map(orgSel.allTeams.map((t) => [t.value, t.label]))
-    const mapped = employee.teamIds
-      .map((id) => teamNameById.get(id)?.trim())
-      .filter((s): s is string => Boolean(s))
-    return mapped.join(', ')
-  }, [employee.teamNames, employee.teamIds, orgSel.allTeams])
-
-  const hasAnyTeam = Boolean(teamName.trim())
-
+function FieldLabel({ children }: { children: string }) {
   return (
-    <>
-      <FormProvider {...editForm}>
-        <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col overflow-hidden bg-gradient-to-b from-indigo-50/60 via-sky-50/40 to-app-canvas text-base text-foreground md:-m-6 lg:-m-8">
-          <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 pb-6 pt-6 md:px-6 lg:flex-row lg:items-start lg:gap-8 lg:pt-8">
-            <aside className="w-full shrink-0 lg:w-[280px]">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:mb-0 lg:block">
-                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <Link
-                    to="/hr-admin"
-                    search={{ page: 1, pageSize: 15 }}
-                    className="font-semibold text-primary hover:underline"
-                  >
-                    ← Danh sách nhân sự
-                  </Link>
-                  <span className="text-muted-foreground/50">/</span>
-                  <span className="font-semibold text-foreground">{employee.name}</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 lg:hidden"></div>
-              </div>
-
-              <div className="flex flex-col gap-6 rounded-2xl border border-indigo-200/60 bg-gradient-to-b from-white via-indigo-50/30 to-sky-50/30 p-5 shadow-[0_14px_34px_-22px_rgba(59,130,246,0.35)]">
-                <div className="relative mx-auto">
-                  <EmployeeAvatar
-                    name={employee.name}
-                    photoUrl={employeePortraitUrl(employee.avatarUrl)}
-                    fallbackClassName={avatarClassForRole(employee.role)}
-                    showOnlineDot={employee.status === 'ACTIVE'}
-                    className="h-32 w-32 rounded-2xl border-[3px] border-white text-2xl shadow-[var(--shadow-game-float)] ring-4 ring-primary/15 sm:h-44 sm:w-44 sm:text-4xl"
-                  />
-                </div>
-
-                <div>
-                  <div className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                    Phân công
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-sm font-semibold leading-snug text-foreground">
-                          {deptName}
-                        </span>
-                        <span className="shrink-0 rounded-md bg-indigo-500/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-indigo-800">
-                          Chính
-                        </span>
-                      </div>
-                    </div>
-                    {hasAnyTeam ? (
-                      <div>
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-sm font-semibold leading-snug text-foreground">
-                            {teamName}
-                          </span>
-                          <span className="shrink-0 rounded-md bg-cyan-500/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-cyan-800">
-                            Nhóm
-                          </span>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="h-px bg-border" />
-
-                <div>
-                  <div className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                    Kỹ năng &amp; huy hiệu
-                  </div>
-                  <ul className="space-y-2">
-                    <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                      <Award
-                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                        strokeWidth={2}
-                        aria-hidden
-                      />
-                      <span>{levelPillText(employee.currentLevel)}</span>
-                    </li>
-                    <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                      <RoleBadgeIcon
-                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                        strokeWidth={2}
-                        aria-hidden
-                      />
-                      <span>{ROLE_LABEL_VI[employee.role]}</span>
-                    </li>
-                    <li className="flex items-start gap-2 text-sm leading-snug text-foreground">
-                      <CheckCircle2
-                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/90"
-                        strokeWidth={2}
-                        aria-hidden
-                      />
-                      <span>{statusLabelVi(employee.status)}</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </aside>
-
-            <main className="min-w-0 flex-1">
-              <div className="mb-4 hidden flex-wrap items-center justify-end gap-2 lg:flex">
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={onDemoAction('Hủy hoạt động: cần xác nhận và API.')}
-                >
-                  Hủy hoạt động
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={onDemoAction('Lưu thay đổi: kết nối API sau.')}
-                >
-                  Lưu thay đổi
-                </Button>
-              </div>
-
-              <div className="overflow-hidden rounded-2xl border border-indigo-200/60 bg-gradient-to-b from-white to-indigo-50/20 shadow-[0_16px_36px_-22px_rgba(30,64,175,0.35)]">
-                <div className="border-b border-indigo-100/90 bg-gradient-to-r from-indigo-50/65 via-white to-cyan-50/45 px-5 py-5 md:px-6">
-                  <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
-                    {employee.name}
-                  </h1>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                    <Building2
-                      className="h-4 w-4 shrink-0 text-primary/70"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    <span>{hasAnyTeam ? `${deptName} · ${teamName}` : deptName}</span>
-                  </div>
-                  <p className="mt-2 text-lg font-semibold text-indigo-700 md:text-xl">
-                    {ROLE_LABEL_VI[employee.role]} ·{' '}
-                    {LEVEL_LABELS[employee.currentLevel as LevelCode]}
-                  </p>
-
-                  <div className="mt-4 flex flex-wrap items-center border-t border-border/60 pt-4">
-                    <FiveStarRank filled={rankStarsFive} />
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
-                      <RoleBadgeIcon
-                        className="h-3.5 w-3.5 shrink-0 text-primary/90"
-                        strokeWidth={2}
-                        aria-hidden
-                      />
-                      {ROLE_LABEL_VI[employee.role]}
-                    </span>
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-full border border-primary/15 px-2.5 py-1 text-xs font-medium',
-                        tierClass
-                      )}
-                    >
-                      <Award
-                        className="h-3.5 w-3.5 shrink-0 opacity-90"
-                        strokeWidth={2}
-                        aria-hidden
-                      />
-                      {tierLabel}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/[0.06] px-2.5 py-1 text-xs font-medium text-foreground">
-                      <CheckCircle2
-                        className="h-3.5 w-3.5 shrink-0 text-primary/90"
-                        strokeWidth={2}
-                        aria-hidden
-                      />
-                      {statusLabelVi(employee.status)}
-                    </span>
-                  </div>
-                </div>
-
-                <nav
-                  className="flex flex-wrap gap-0 border-b border-indigo-100/80 bg-white/65 px-1 sm:px-2 md:px-4"
-                  aria-label="Mục hồ sơ nhân viên"
-                >
-                  {tabLabels.map((label, i) => {
-                    const Icon = tabIcons[i]!
-                    const active = tab === i
-                    return (
-                      <Button
-                        key={label}
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setTab(i)}
-                        className={cn(
-                          'relative inline-flex h-auto min-h-0 items-center gap-1.5 rounded-none px-2 py-3 text-xs font-semibold transition-colors sm:gap-2 sm:px-3 sm:py-3.5 sm:text-sm md:px-4',
-                          active
-                            ? 'text-indigo-700 hover:bg-transparent hover:text-indigo-700'
-                            : 'text-muted-foreground hover:bg-indigo-50/70 hover:text-indigo-700'
-                        )}
-                      >
-                        <Icon
-                          className="h-3.5 w-3.5 shrink-0 opacity-85 sm:h-4 sm:w-4"
-                          strokeWidth={2}
-                        />
-                        {label}
-                        {active ? (
-                          <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-indigo-600 sm:left-3 sm:right-3 md:left-4 md:right-4" />
-                        ) : null}
-                      </Button>
-                    )
-                  })}
-                </nav>
-
-                <div className="page-shell">
-                  {tab === 0 && (
-                    <OverviewTab
-                      employee={employee}
-                      tierLabel={tierLabel}
-                      tierClass={tierClass}
-                      xpPct={xpPct}
-                      maxStars={maxStars}
-                      levelStarVariants={levelStarVariants}
-                    />
-                  )}
-                  {tab === 1 && <LearningPathTab employee={employee} levelIdx={levelIdx} />}
-                  {tab === 2 && <ExamResultsTab />}
-                  {tab === 3 && <WorkHistoryTab />}
-                  {tab === 4 && (
-                    <EditTab
-                      employee={employee}
-                      control={editControl}
-                      empCode={empCode}
-                      canEdit={canEdit}
-                      canDeactivate={canDeactivate}
-                      isSaving={isSaving}
-                      onSave={handleSaveProfile}
-                      onDeactivate={handleDeactivateProfile}
-                      onReactivate={handleReactivateProfile}
-                    />
-                  )}
-                </div>
-              </div>
-            </main>
-          </div>
-        </div>
-      </FormProvider>
-      <ConfirmDialog
-        open={confirmAction !== null}
-        onOpenChange={(open) => {
-          if (!open) setConfirmAction(null)
-        }}
-        title={
-          confirmAction === 'deactivate' ? 'Vô hiệu hóa tài khoản?' : 'Kích hoạt lại tài khoản?'
-        }
-        description={
-          confirmAction === 'deactivate'
-            ? 'Nhân viên sẽ không thể đăng nhập sau khi bị vô hiệu hóa.'
-            : 'Nhân viên sẽ được khôi phục quyền đăng nhập.'
-        }
-        confirmLabel={confirmAction === 'deactivate' ? 'Vô hiệu hóa' : 'Kích hoạt'}
-        destructive={confirmAction === 'deactivate'}
-        onConfirm={handleConfirmAction}
-      />
-    </>
+    <span className="mb-1.5 flex items-center gap-1.5">
+      <span className="h-3 w-0.5 rounded-full bg-slate-300" aria-hidden />
+      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{children}</span>
+    </span>
   )
 }
 
-function PfCard({
-  title,
-  children,
-  entranceIndex,
-}: {
+function emptyEditRecord(): EditRecord {
+  return {
+    ...(Object.fromEntries(EMPLOYEE_PATCH_KEYS.map((k) => [k, ''])) as Record<
+      EmployeePatchKey,
+      string
+    >),
+    extraTeamIds: [],
+  }
+}
+
+const Form = FormProvider
+
+function userToEdit(u: IHrEmployeeProfileState): EditRecord {
+  const r = emptyEditRecord()
+  for (const k of EMPLOYEE_PATCH_KEYS) {
+    if (isDateFormField(k)) {
+      r[k] = parseStoredDateToInputValue(u[k])
+    } else {
+      r[k] = u[k] == null ? '' : String(u[k])
+    }
+  }
+  if (!r.displayName && u.fullNameLegal) {
+    r.displayName = u.fullNameLegal
+  }
+  r.extraTeamIds = u.extraTeamIds ?? u.teamIds?.slice(1) ?? []
+  return r
+}
+
+function mapCurrentTitleToLevelId(
   title: string
-  children: ReactNode
-  entranceIndex?: number
+): 'tap_su' | 'biet_viec' | 'duoc_viec' | 'dong_gop_ket_qua' | 'tuong' {
+  const normalized = title.trim().toLowerCase()
+  if (normalized.includes('tập sự') || normalized.includes('tap su')) return 'tap_su'
+  if (normalized.includes('biết việc') || normalized.includes('biet viec')) return 'biet_viec'
+  if (normalized.includes('được việc') || normalized.includes('duoc viec')) return 'duoc_viec'
+  if (normalized.includes('đóng góp') || normalized.includes('dong gop')) return 'dong_gop_ket_qua'
+  if (normalized.includes('tướng') || normalized.includes('tuong')) return 'tuong'
+  return 'biet_viec'
+}
+
+function toPatch(edit: EditRecord, original: IHrEmployeeProfileState): EditEmployeeBody {
+  const nz = (s: string) => (s.trim() === '' ? null : s.trim())
+  const body = {} as EditEmployeeBody
+  for (const k of EMPLOYEE_PATCH_KEYS) {
+    body[k] = nz(edit[k] ?? '')
+  }
+  const origExtras = original.extraTeamIds ?? original.teamIds?.slice(1) ?? []
+  if (!extraTeamIdsEqual(edit.extraTeamIds ?? [], origExtras)) {
+    body.extraTeamIds = edit.extraTeamIds ?? []
+  }
+  return body
+}
+
+function workOrgReadonlyValue(employee: IHrEmployeeProfileState, key: MeUserDisplayKey): string {
+  if (key === 'startDateWork') return formatUserDateForReadonlyDisplay(employee.startDateWork)
+  const v = employee[key]
+  return v == null ? '—' : String(v)
+}
+
+function ProfileReadonlyInfo({
+  name,
+  label,
+  value,
+  control,
+  jobTitles,
+}: {
+  name: EmployeePatchKey
+  label: string
+  value: string
+  control: ReturnType<typeof useForm<EditRecord>>['control']
+  jobTitles?: Array<{ value: string; label: string }>
 }) {
   return (
     <div
       className={cn(
-        'mb-3.5 overflow-hidden rounded-[14px] border border-border bg-white shadow-[var(--shadow-card)]',
-        entranceIndex !== undefined ? CARD_ENTRANCE_HOVER : CARD_HOVER
+        'flex flex-col rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/30',
+        fieldStackGap
       )}
-      style={entranceIndex !== undefined ? staggerStyle(entranceIndex) : undefined}
     >
-      <div className="border-b border-teal-100 bg-gradient-to-r from-teal-500/12 via-primary/8 to-transparent px-3.5 py-3 text-xs font-bold uppercase tracking-[0.7px] text-primary md:text-sm">
-        {title}
-      </div>
-      <div className="p-3.5">{children}</div>
-    </div>
-  )
-}
-
-function OverviewTab({
-  employee,
-  tierLabel,
-  tierClass,
-  xpPct,
-  maxStars,
-  levelStarVariants,
-}: {
-  employee: EmployeeEntity
-  tierLabel: string
-  tierClass: string
-  xpPct: number
-  maxStars: number
-  levelStarVariants: ('filled' | 'current' | 'empty')[]
-}) {
-  return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(260px,300px)_1fr]">
-      <div className="space-y-4">
-        <PfCard title="Thống kê học tập" entranceIndex={0}>
-          <div className="space-y-0">
-            {(
-              [
-                { Icon: ClipboardList, label: 'Bài đã nộp (gần nhất)', value: '—' },
-                { Icon: CheckCircle2, label: 'Tỉ lệ đạt', value: '—' },
-                { Icon: GraduationCap, label: 'Kỳ thi đã qua', value: '—' },
-                { Icon: Calendar, label: 'Thời gian làm việc', value: '—' },
-                { Icon: Users, label: 'Mentee (nếu có)', value: '—' },
-              ] as const
-            ).map(({ Icon, label, value }) => (
-              <div
-                key={label}
-                className="flex justify-between border-b border-border py-2.5 text-sm last:border-0 md:text-base"
-              >
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <Icon
-                    className="h-3.5 w-3.5 shrink-0 text-primary/85"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  {label}
-                </span>
-                <span className="font-semibold text-foreground">{value}</span>
-              </div>
-            ))}
-          </div>
-        </PfCard>
-        <PfCard title="Thành tích" entranceIndex={1}>
-          <p className="text-sm text-muted-foreground">Chưa có dữ liệu từ hệ thống.</p>
-        </PfCard>
-      </div>
-      <div className="space-y-4">
-        <div
-          className={cn(
-            'rounded-2xl border border-primary/20 bg-gradient-to-br from-white via-sky-50/90 to-teal-50/80 p-5 text-foreground shadow-[var(--shadow-card)] ring-1 ring-primary/15',
-            CARD_ENTRANCE_HOVER
-          )}
-          style={staggerStyle(2)}
+      {name === 'teamPosition' ? (
+        <SelectController
+          key={name}
+          control={control}
+          name={name}
+          label={label}
+          placeholder="Chọn vị trí chuyên môn"
+          className={cn('space-y-1.5', fieldBoxClass)}
+          labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+          triggerClassName={cn(fieldControlClass, inputEditable)}
+          customLabel={<FieldLabel>{label}</FieldLabel>}
         >
-          <div className="mb-3 flex items-start justify-between gap-2">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
-                Cấp độ hiện tại
-              </div>
-              <div className="mt-0.5 text-[22px] font-extrabold text-slate-900 md:text-2xl">
-                {LEVEL_LABELS[employee.currentLevel as LevelCode]}
-              </div>
+          {jobTitles?.map((j) => (
+            <SelectItem key={j.value} value={j.value}>
+              {j.label}
+            </SelectItem>
+          ))}
+        </SelectController>
+      ) : (
+        <InputController
+          control={control}
+          value={value}
+          name={name}
+          label={label}
+          type="text"
+          autoComplete="off"
+          className={cn('space-y-1.5', fieldBoxClass)}
+          labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+          inputClassName={cn(fieldControlClass, inputEditable)}
+          customLabel={<FieldLabel>{label}</FieldLabel>}
+        />
+      )}
+    </div>
+  )
+}
+
+function renderField(
+  field: UserSelfFieldSpec,
+  ctx: {
+    employee: IHrEmployeeProfileState
+    control: ReturnType<typeof useForm<EditRecord>>['control']
+    divisions?: Array<{ id: string; name: string }>
+    teams?: Array<{ id: string; name: string }>
+    positions?: Array<{ value: string; label: string }>
+    jobTitles?: Array<{ value: string; label: string }>
+  }
+) {
+  const { employee, control, divisions, teams, positions, jobTitles } = ctx
+  const forceReadonly = field.key === 'directManager'
+
+  if (field.kind === 'portrait') {
+    return null
+  }
+
+  if (isWorkOrgReadonlyField(field.key) || forceReadonly) {
+    return (
+      <ProfileReadonlyInfo
+        name={field.key as EmployeePatchKey}
+        key={field.key}
+        label={field.label}
+        value={workOrgReadonlyValue(employee, field.key)}
+        control={control}
+        jobTitles={jobTitles}
+      />
+    )
+  }
+
+  const key = field.key as EmployeePatchKey
+
+  if (field.kind === 'division-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder="Chọn phòng ban"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        <SelectItem value="__none">Chưa chọn</SelectItem>
+        {divisions?.map((d) => (
+          <SelectItem key={d.id} value={d.id}>
+            {d.name}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (field.kind === 'team-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder="Chọn nhóm"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        <SelectItem value="__none">Chưa chọn</SelectItem>
+        {teams?.map((team) => (
+          <SelectItem key={team.id} value={team.id}>
+            {team.name}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (field.kind === 'position-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder={field.key === 'contractType' ? 'Chọn loại hợp đồng / vị trí' : 'Chọn vị trí'}
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        <SelectItem value="__none">Chưa chọn</SelectItem>
+        {positions?.map((p) => (
+          <SelectItem key={p.value} value={p.value}>
+            {p.label}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (field.kind === 'job-title-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder="Chọn vị trí chuyên môn"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        {jobTitles?.map((j) => (
+          <SelectItem key={j.value} value={j.value}>
+            {j.label}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (isDateFormField(field.key)) {
+    return (
+      <DateController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        datePickerClassName={cn(fieldControlClass, '[color-scheme:light]', inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      />
+    )
+  }
+
+  if (field.multiline) {
+    return (
+      <TextareaController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        className={cn('space-y-1.5 sm:col-span-2 lg:col-span-2', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        textareaClassName={cn(
+          'min-h-[80px] w-full resize-y rounded-lg border px-3 py-2 text-sm leading-relaxed outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
+          inputEditable
+        )}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      />
+    )
+  }
+
+  return (
+    <InputController
+      key={field.key}
+      control={control}
+      name={key}
+      label={field.label}
+      type="text"
+      autoComplete="off"
+      className={cn('space-y-1.5', fieldBoxClass)}
+      labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+      inputClassName={cn(fieldControlClass, inputEditable)}
+      customLabel={<FieldLabel>{field.label}</FieldLabel>}
+    />
+  )
+}
+
+function ProfileIdentityCard({
+  control,
+  u,
+  role,
+  currentLevelTitle,
+  portraitUploading,
+  avatarUploadInputId,
+  onPortraitFile,
+  fallbackUserName,
+  fallbackUserEmail,
+}: {
+  control: Control<EditRecord>
+  u: MeUserSelf
+  role: keyof typeof ROLE_LABEL_VI
+  currentLevelTitle: string
+  portraitUploading: boolean
+  avatarUploadInputId: string
+  onPortraitFile: (file: File) => void
+  fallbackUserName: string
+  fallbackUserEmail: string
+}) {
+  const watchedDisplayName = useWatch({ control, name: 'displayName' }) ?? ''
+  const watchedFullNameLegal = useWatch({ control, name: 'fullNameLegal' }) ?? ''
+  const portraitRef = useWatch({ control, name: 'portraitRef' }) ?? ''
+
+  const displayName = useMemo(() => {
+    const fromForm = watchedDisplayName.trim() || watchedFullNameLegal.trim()
+    if (fromForm) return fromForm
+    return u.displayName?.trim() || u.fullNameLegal?.trim() || fallbackUserName || 'Nhân viên'
+  }, [fallbackUserName, u, watchedDisplayName, watchedFullNameLegal])
+
+  const email = useMemo(() => {
+    return u.email?.trim() || fallbackUserEmail || '—'
+  }, [u, fallbackUserEmail])
+
+  return (
+    <div className="flex flex-col gap-6 md:flex-row md:items-center">
+      <div className="relative shrink-0">
+        <div className="relative h-24 w-24 overflow-hidden rounded-2xl border-4 border-white shadow-xl md:h-28 md:w-28 dark:border-slate-800">
+          <EmployeeAvatar
+            name={displayName}
+            photoUrl={resolvePublicAssetUrl(portraitRef)}
+            className="h-full w-full object-cover text-2xl"
+          />
+          {portraitUploading && (
+            <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+              <RefreshCw className="h-6 w-6 animate-spin text-white" />
             </div>
-            <span
-              className={cn(
-                'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold md:text-sm',
-                tierClass
-              )}
-            >
-              <Award className="h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
-              {tierLabel}
-            </span>
-          </div>
-          <p className="mb-2 text-sm text-muted-foreground md:text-base">
-            Tiến độ Sao {employee.currentStar}/{maxStars} ·{' '}
-            {LEVEL_LABELS[employee.currentLevel as LevelCode]}
-          </p>
-          <div className="mb-2.5 flex flex-wrap gap-1">
-            {levelStarVariants.map((v, i) => (
-              <span
-                key={i}
-                className="inline-flex cursor-default rounded-sm motion-safe:animate-[dash-star-pop_0.42s_ease-out_both] motion-reduce:animate-none"
-                style={{ animationDelay: `${i * 72}ms` }}
-              >
-                <ProfileStarTier variant={v} />
-              </span>
-            ))}
-          </div>
-          <div className="group/pb relative h-2 overflow-hidden rounded-full bg-primary/15">
-            <div
-              className="h-full origin-left rounded-full bg-gradient-to-r from-primary via-sky-600 to-accent motion-safe:animate-[profile-progress-fill_1.05s_cubic-bezier(0.22,1,0.36,1)_both] motion-reduce:animate-none"
-              style={{
-                width: `${xpPct}%`,
-                transformOrigin: '0 50%',
-                animationDelay: `${levelStarVariants.length * 72 + 80}ms`,
-              }}
-            />
-          </div>
-          <div className="mt-1.5 text-right text-xs text-muted-foreground md:text-sm">
-            {xpPct}% hoàn thành cấp độ
-          </div>
+          )}
+          <Input
+            id={avatarUploadInputId}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="sr-only"
+            disabled={portraitUploading}
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) onPortraitFile(f)
+              e.target.value = ''
+            }}
+          />
+          <label
+            htmlFor={avatarUploadInputId}
+            className={cn(
+              'absolute bottom-1 right-1 z-[2] flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-white shadow-md ring-2 ring-white transition-transform hover:scale-110 hover:bg-primary/90 active:scale-95 dark:ring-slate-900',
+              'md:bottom-1.5 md:right-1.5',
+              portraitUploading && 'pointer-events-none opacity-50'
+            )}
+            aria-label="Tải ảnh đại diện"
+          >
+            <Upload className="h-4 w-4" strokeWidth={2.25} />
+          </label>
         </div>
-        <PfCard title="Lịch sử thăng cấp" entranceIndex={3}>
-          <div className="relative px-3 py-1 pl-10">
-            <div
-              className="absolute bottom-4 left-[23px] top-4 w-0.5 rounded-full bg-gradient-to-b from-primary via-sky-500 to-accent opacity-[0.92]"
-              aria-hidden
-            />
-            <div className="relative mb-3.5">
-              <div className="absolute left-0 z-[1] flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white md:h-10 md:w-10 md:text-base">
-                {LEVEL_ORDER.indexOf(employee.currentLevel) + 1}
-              </div>
-              <div className="min-w-0 pl-12">
-                <div className="text-sm font-bold text-foreground md:text-base">
-                  {LEVEL_LABELS[employee.currentLevel as LevelCode]}{' '}
-                  <span className="text-primary">· Đang học</span>
-                </div>
-                <div className="text-xs text-muted-foreground md:text-sm">
-                  Cập nhật {new Date(employee.updatedAt).toLocaleDateString('vi-VN')}
-                </div>
-                <span
-                  className={cn(
-                    'mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-bold',
-                    tierClass
-                  )}
-                >
-                  {tierLabel}
-                </span>
-              </div>
-            </div>
-            <p className="pl-12 text-xs text-muted-foreground md:text-sm">
-              Các cấp trước được ẩn khi có API lịch sử đầy đủ.
-            </p>
+      </div>
+
+      <div className="min-w-0 flex-1 space-y-3">
+        <div>
+          <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+            {displayName}
+          </h2>
+          <p className="text-sm font-medium text-slate-500">{email}</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge
+            variant="outline"
+            className="h-6 border-indigo-400/30 bg-indigo-500/10 px-2 text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
+          >
+            {ROLE_LABEL_VI[role]}
+          </Badge>
+          <div className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+            <Building2 className="h-3 w-3" />
+            <span>{u.departmentName?.trim() || '—'}</span>
           </div>
-        </PfCard>
+          <Badge
+            variant="outline"
+            className="h-6 border-fuchsia-400/30 bg-fuchsia-500/10 px-2 text-xs font-semibold uppercase tracking-wide text-fuchsia-600 dark:border-fuchsia-900/50 dark:bg-fuchsia-950/30 dark:text-fuchsia-300"
+          >
+            Cấp độ: {currentLevelTitle}
+          </Badge>
+        </div>
       </div>
     </div>
   )
 }
 
-function LearningPathTab({ employee, levelIdx }: { employee: EmployeeEntity; levelIdx: number }) {
+function SectionTitle({
+  children,
+  icon,
+  variant = 'primary',
+}: {
+  children: string
+  icon?: React.ReactNode
+  variant?: 'primary' | 'indigo' | 'violet' | 'emerald'
+}) {
+  const configs = {
+    primary: 'bg-primary/10 text-primary',
+    indigo: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
+    violet: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
+    emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+  }
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(260px,300px)_1fr]">
-      <PfCard title="Tiến độ tổng thể" entranceIndex={0}>
-        <div className="space-y-0">
-          <div className="flex justify-between border-b border-border py-2">
-            <span className="text-xs text-muted-foreground">Cấp đang học</span>
-            <span className="text-sm font-bold">
-              {LEVEL_LABELS[employee.currentLevel as LevelCode]}
-            </span>
-          </div>
-          <div className="flex justify-between border-b border-border py-2">
-            <span className="text-xs text-muted-foreground">Sao hiện tại</span>
-            <span className="text-sm font-bold">
-              {employee.currentStar} / {STARS_PER_LEVEL[employee.currentLevel as LevelCode] || 6}
-            </span>
-          </div>
-          <div className="flex justify-between py-2">
-            <span className="text-xs text-muted-foreground">Trạng thái</span>
-            <span className="text-sm font-bold text-amber-700">Đang học</span>
-          </div>
+    <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
+      <div
+        className={cn(
+          'flex h-8 w-8 items-center justify-center rounded-lg font-bold',
+          configs[variant]
+        )}
+      >
+        {icon || <Building2 className="h-4 w-4" />}
+      </div>
+      <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
+        {children}
+      </h3>
+    </div>
+  )
+}
+
+export function HrEmployeeProfile({
+  employee,
+  page,
+}: {
+  employee: IHrEmployeeProfileState
+  page: MyProfilePage
+}) {
+  const user = useAuthStore((s) => s.user)
+  const { mutate: patchUser, isPending: patchPending } = useUpdateEmployeeById()
+  const { mutate: uploadPortrait, isPending: portraitUploading } = useUploadMePortrait()
+  const { data: divisionsList = [] } = useQuery({
+    queryKey: ['organization', 'divisions-list'],
+    queryFn: () => organizationApi.getDivisionsList(),
+    staleTime: 60_000,
+  })
+  const { data: teamsList = [] } = useQuery({
+    queryKey: ['organization', 'teams-list'],
+    queryFn: () => organizationApi.getTeamsList(),
+    staleTime: 60_000,
+  })
+  const form = useForm<EditRecord>({
+    defaultValues: userToEdit(employee),
+  })
+  const { control, handleSubmit } = form
+  const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
+
+  const divisions = useMemo(
+    () => divisionsList.map((d) => ({ id: d.id, name: d.name })),
+    [divisionsList]
+  )
+  // Hiển thị tất cả nhóm, không lọc theo phòng ban
+  const teams = useMemo(() => teamsList.map((t) => ({ id: t.id, name: t.name })), [teamsList])
+  const allTeamOptions = useMemo(
+    () => teamsList.map((t) => ({ value: t.id, label: t.name })),
+    [teamsList]
+  )
+  const { data: positionsData } = useQuery({
+    queryKey: ['profile', 'positions'],
+    queryFn: () => profileApi.getPositions(),
+  })
+  const positions = useMemo(() => positionsData ?? [], [positionsData])
+  const { data: jobTitlesData } = useQuery({
+    queryKey: ['profile', 'job-titles'],
+    queryFn: () => profileApi.getJobTitles(),
+  })
+  const jobTitles = useMemo(() => jobTitlesData ?? [], [jobTitlesData])
+
+  const role = user?.role ?? 'MEMBER'
+  const currentLevelId = mapCurrentTitleToLevelId(page.currentLevel.title)
+  const onPortraitFile = (file: File) => {
+    uploadPortrait(file, {
+      onSuccess: (res) => {
+        toast.success('Đã cập nhật ảnh đại diện')
+        form.setValue('portraitRef', res.portraitRef)
+        // Cập nhật vào auth store để Navbar thay đổi ngay
+        if (user) {
+          useAuthStore.getState().setUser({
+            ...user,
+            portraitRef: res.portraitRef,
+          })
+        }
+      },
+      onError: (err) => toast.error(getApiErrorMessage(err)),
+    })
+  }
+
+  const workSection = USER_SELF_FORM_SECTIONS[0]!
+  const workReadonlyFields = workSection.fields.filter(
+    (field) => isWorkOrgReadonlyField(field.key) || field.key === 'directManager'
+  )
+  const workEditableFields = workSection.fields.filter(
+    (field) => !isWorkOrgReadonlyField(field.key) && field.key !== 'directManager'
+  )
+  const detailSections = USER_SELF_FORM_SECTIONS.slice(1).filter((s) => s.title.trim() !== 'Khác')
+  const detailSectionVariants: ('indigo' | 'violet' | 'emerald' | 'primary')[] = [
+    'indigo',
+    'violet',
+    'emerald',
+    'primary',
+    'indigo',
+  ]
+  const onSaveProfile = handleSubmit((values) =>
+    patchUser({
+      id: employee.id,
+      patch: toPatch(values, employee) as unknown as IHrEmployeeProfileState,
+    })
+  )
+
+  const fieldCtx = {
+    employee,
+    control,
+    divisions,
+    teams,
+    positions,
+    jobTitles,
+  }
+  const avatarUploadInputId = useId()
+
+  return (
+    <Form {...form}>
+      <div
+        className="relative -m-5 min-h-[calc(100vh-3rem)] bg-slate-50/50 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-6 text-foreground md:-m-6 md:pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:-m-8 dark:bg-slate-950"
+        data-current-level-id={currentLevelId}
+      >
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute -left-20 -top-16 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute -right-16 top-24 h-80 w-80 rounded-full bg-indigo-500/10 blur-3xl" />
+          <div className="absolute bottom-8 left-1/3 h-56 w-56 -translate-x-1/2 rounded-full bg-violet-500/10 blur-3xl" />
         </div>
-      </PfCard>
-      <div>
-        <div className="relative pl-7">
-          <div className="absolute bottom-2 left-2.5 top-2 w-0.5 rounded-sm bg-gradient-to-b from-primary via-accent to-teal-200/55" />
-          {LEVEL_ORDER.map((lv, i) => {
-            const done = i < levelIdx
-            const active = i === levelIdx
-            const locked = i > levelIdx
-            return (
-              <div key={lv} className="relative mb-5">
-                <div
-                  className={cn(
-                    'absolute -left-[22px] top-1 h-3 w-3 rounded-full border-2 border-white',
-                    done && 'bg-emerald-500',
-                    active && 'bg-primary ring-2 ring-primary/40 ring-offset-2',
-                    locked && 'border-border bg-primary/10'
-                  )}
-                />
-                <div
-                  className={cn(
-                    'rounded-xl border p-3',
-                    done && 'border-emerald-300 bg-emerald-50',
-                    active && 'border-primary/30 bg-primary/10 shadow-[var(--shadow-card)]',
-                    locked && 'border-border bg-[#F8FAFC] opacity-45'
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold">
-                      {LEVEL_LABELS[lv]}{' '}
-                      {active && <span className="text-primary">· Đang học</span>}
-                    </span>
-                    <span
+
+        <div className="mx-auto w-full max-w-[1400px] px-4 md:px-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:mb-4 lg:block">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <Link
+                to="/hr-admin"
+                search={{ page: 1, pageSize: 15 }}
+                className="font-semibold text-primary hover:underline"
+              >
+                ← Danh sách nhân sự
+              </Link>
+              <span className="text-muted-foreground/50">/</span>
+              <span className="font-semibold text-foreground">{employee.fullNameLegal}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 lg:hidden"></div>
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+            <div className="space-y-6">
+              <section className="rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-transparent to-indigo-50/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute top-0 right-0 h-48 w-48 bg-primary/5 rounded-full -mr-24 -mt-24 blur-3xl" />
+                <div className="relative z-10">
+                  <ProfileIdentityCard
+                    control={control}
+                    u={employee}
+                    role={role}
+                    currentLevelTitle={page.currentLevel.title}
+                    portraitUploading={portraitUploading}
+                    avatarUploadInputId={avatarUploadInputId}
+                    onPortraitFile={onPortraitFile}
+                    fallbackUserName={user?.name ?? ''}
+                    fallbackUserEmail={user?.email ?? ''}
+                  />
+                </div>
+              </section>
+
+              <section className="rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
+                <div className="mb-8 flex items-center gap-3">
+                  <div className="h-8 w-1.5 rounded-full bg-gradient-to-b from-primary to-violet-600" />
+                  <h2 className="text-xl font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
+                    Chi tiết hồ sơ
+                  </h2>
+                </div>
+
+                <div className="space-y-8">
+                  <div className="rounded-2xl border border-slate-200 border-l-4 border-l-primary bg-white p-6 shadow-sm dark:border-slate-800 dark:border-l-primary dark:bg-slate-900/50">
+                    <SectionTitle variant="primary">{workSection.title}</SectionTitle>
+                    {workReadonlyFields.length > 0 ? (
+                      <div className="mb-8">
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-primary/50">
+                          Thông tin đồng bộ
+                        </p>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {workEditableFields.length > 0 ? (
+                      <div className="border-t border-slate-100 pt-6 dark:border-slate-800">
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Thông tin có thể cập nhật
+                        </p>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          {workEditableFields.map((f) => renderField(f, fieldCtx))}
+                          <div className="sm:col-span-2">
+                            <EmployeeExtraTeamsField
+                              control={control}
+                              name="extraTeamIds"
+                              primaryTeamId={selectedTeamId}
+                              allTeams={allTeamOptions}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {detailSections.map((section, idx) => (
+                    <div
+                      key={section.title}
                       className={cn(
-                        'rounded-full px-2 py-0.5 text-xs font-bold',
-                        done && 'bg-emerald-100 text-emerald-800',
-                        active && 'bg-primary/10 text-primary',
-                        locked && 'bg-slate-100 text-slate-600'
+                        'rounded-2xl border border-slate-200 border-l-4 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50',
+                        idx % 3 === 0
+                          ? 'border-l-indigo-500'
+                          : idx % 3 === 1
+                            ? 'border-l-violet-500'
+                            : 'border-l-emerald-500'
                       )}
                     >
-                      {done ? 'Hoàn thành' : active ? `Sao ${employee.currentStar}/6` : 'Chưa mở'}
-                    </span>
-                  </div>
+                      <SectionTitle variant={detailSectionVariants[idx]}>
+                        {section.title}
+                      </SectionTitle>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        {section.fields.map((f) => renderField(f, fieldCtx))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ExamResultsTab() {
-  return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(260px,300px)_1fr]">
-      <PfCard title="Tổng kết" entranceIndex={0}>
-        <div className="space-y-0">
-          {[
-            ['Tổng kỳ thi', '6'],
-            ['Đạt', '5'],
-            ['Bảo lưu', '1'],
-            ['Tỉ lệ đạt', '83%'],
-          ].map(([a, b]) => (
-            <div key={a} className="flex justify-between border-b border-border py-2 last:border-0">
-              <span className="text-xs text-muted-foreground">{a}</span>
-              <span className="text-sm font-bold">{b}</span>
+              </section>
             </div>
-          ))}
-        </div>
-      </PfCard>
-      <div className="space-y-2.5">
-        <ExamCard
-          title="Sao 5 — Được việc"
-          badge="Đang chấm"
-          badgeClass="bg-amber-100 text-amber-900"
-          variant="inprog"
-          stats={[
-            ['Ngày nộp', '22/03/2026'],
-            ['Người chấm', 'Lê Thu Hà'],
-            ['Tiến độ', '2/5 mục'],
-          ]}
-        />
-        <ExamCard
-          title="Sao 4 — Được việc"
-          badge="✓ Đạt"
-          badgeClass="bg-emerald-100 text-emerald-800"
-          variant="pass"
-          stats={[
-            ['Ngày thi', '15/03/2026'],
-            ['Người chấm', 'Lê Thu Hà'],
-            ['Kết quả', '5/5 mục'],
-          ]}
-          note='"Thực hiện đúng quy trình, mini-project chất lượng tốt."'
-        />
-      </div>
-    </div>
-  )
-}
-
-function ExamCard({
-  title,
-  badge,
-  badgeClass,
-  variant,
-  stats,
-  note,
-}: {
-  title: string
-  badge: string
-  badgeClass: string
-  variant: 'inprog' | 'pass' | 'warn'
-  stats: [string, string][]
-  note?: string
-}) {
-  const bg =
-    variant === 'pass'
-      ? 'border-emerald-200 bg-emerald-50'
-      : variant === 'warn'
-        ? 'border-amber-200 bg-amber-50'
-        : 'border-primary/30 bg-primary/10'
-  return (
-    <div className={cn('rounded-xl border p-3.5', bg)}>
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-bold">{title}</span>
-        <span className={cn('rounded-full px-2 py-0.5 text-xs font-bold', badgeClass)}>
-          {badge}
-        </span>
-      </div>
-      <div className="grid grid-cols-3 gap-1.5">
-        {stats.map(([l, v]) => (
-          <div key={l} className="rounded-lg bg-white/70 px-2 py-1.5">
-            <div className="text-xs font-semibold uppercase text-muted-foreground">{l}</div>
-            <div className="text-sm font-bold">{v}</div>
           </div>
-        ))}
-      </div>
-      {note ? (
-        <p className="mt-2 border-t border-black/5 pt-2 text-xs italic text-muted-foreground">
-          {note}
-        </p>
-      ) : null}
-    </div>
-  )
-}
-
-function WorkHistoryTab() {
-  return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(260px,300px)_1fr]">
-      <PfCard title="Tóm tắt" entranceIndex={0}>
-        <div className="space-y-0">
-          {[
-            ['Tổng thời gian', '—'],
-            ['Phòng ban hiện tại', '—'],
-            ['Team hiện tại', '—'],
-            ['Lần điều chuyển', '—'],
-          ].map(([a, b]) => (
-            <div key={a} className="flex justify-between border-b border-border py-2 last:border-0">
-              <span className="text-xs text-muted-foreground">{a}</span>
-              <span className="text-sm font-bold">{b}</span>
-            </div>
-          ))}
         </div>
-      </PfCard>
-      <div>
-        <h3 className="mb-3.5 text-sm font-bold text-foreground">Timeline sự kiện</h3>
-        <div className="relative pl-7">
-          <div className="absolute bottom-2 left-2.5 top-2 w-0.5 rounded-sm bg-gradient-to-b from-primary via-accent to-teal-200/55" />
-          {[
-            [
-              'Hoàn thành mốc học tập',
-              '20/03/2026 · Người chấm: Lê Thu Hà',
-              'Đạt',
-              'bg-emerald-500',
-            ],
-            ['Thăng cấp bậc', '05/01/2026 · Manager phê duyệt', 'Thăng cấp', 'bg-primary'],
-            ['Gia nhập & onboard', 'Theo dữ liệu hệ thống', 'Onboard', 'bg-slate-400'],
-          ].map(([t, m, b, dot], idx) => (
-            <div key={idx} className="relative mb-5">
+      </div>
+
+      {typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed inset-x-0 bottom-0 z-[60]"
+              role="presentation"
+            >
               <div
-                className={cn(
-                  'absolute -left-[22px] top-1 h-3 w-3 rounded-full border-2 border-white',
-                  dot
-                )}
-              />
-              <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 shadow-sm">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="text-sm font-bold">{t}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{m}</div>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-xs font-bold text-primary">
-                    {b}
-                  </span>
+                className="pointer-events-auto border-t border-slate-200/90 bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_-12px_rgba(15,23,42,0.12)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95"
+                role="region"
+                aria-label="Lưu hồ sơ"
+              >
+                <div className="mx-auto flex w-full max-w-[1400px] justify-stretch sm:justify-end">
+                  <Button
+                    type="button"
+                    disabled={patchPending}
+                    onClick={onSaveProfile}
+                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 font-bold text-white shadow-lg shadow-indigo-500/25 transition-all hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] disabled:opacity-60 sm:w-auto sm:min-w-[220px] sm:px-8"
+                  >
+                    {patchPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
+                  </Button>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function EditTab({
-  employee,
-  control,
-  empCode,
-  canEdit,
-  canDeactivate,
-  isSaving,
-  onSave,
-  onDeactivate,
-  onReactivate,
-}: {
-  employee: EmployeeEntity
-  control: Control<EmployeeEditFormValues>
-  empCode: string
-  canEdit: boolean
-  canDeactivate: boolean
-  isSaving: boolean
-  onSave: () => void
-  onDeactivate: () => void
-  onReactivate: () => void
-}) {
-  const orgSel = useHrOrgSelectOptions()
-  const orgDisabled = !canEdit || isSaving
-  const inactive = employee.status === 'INACTIVE'
-  const [editRole, editDepartmentId, editTeamId] = useWatch({
-    control,
-    name: ['role', 'departmentId', 'teamId'],
-  })
-
-  const departmentOptions = useMemo(() => {
-    const base = [...orgSel.departments]
-    if (editDepartmentId && !base.some((o) => o.value === editDepartmentId)) {
-      const label = departmentSelectLabel(editDepartmentId, undefined, employee)
-      return dedupeOptionsByValue([{ value: editDepartmentId, label }, ...base])
-    }
-    return dedupeOptionsByValue(base)
-  }, [orgSel.departments, editDepartmentId, employee])
-
-  const teamOptions = useMemo(() => {
-    const fromDept = orgSel.teamsByDept.get(editDepartmentId) ?? []
-    const base = [...fromDept]
-    if (editTeamId && !base.some((o) => o.value === editTeamId)) {
-      const fromAll = orgSel.allTeams.find((o) => o.value === editTeamId)?.label
-      const label = teamSelectLabel(editTeamId, fromAll, employee, 0)
-      return dedupeOptionsByValue([{ value: editTeamId, label }, ...base])
-    }
-    return dedupeOptionsByValue(base)
-  }, [orgSel.teamsByDept, orgSel.allTeams, editDepartmentId, editTeamId, employee])
-
-  const roleSelectOptions = useMemo((): Role[] => {
-    if (editRole === 'TEACHER') {
-      return ['TEACHER', ...PROFILE_EDIT_ROLE_OPTIONS_BASE]
-    }
-    return PROFILE_EDIT_ROLE_OPTIONS_BASE
-  }, [editRole])
-
-  const levelSelectOptions = useMemo(
-    () => LEVELS.map((lv) => ({ value: lv, label: LEVEL_LABELS[lv] })),
-    []
-  )
-
-  return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-      <div>
-        <PfCard title="Phân công tổ chức" entranceIndex={0}>
-          <SelectController
-            control={control}
-            name="role"
-            label="Vai trò"
-            className="mb-3"
-            disabled={orgDisabled}
-          >
-            {roleSelectOptions.map((r) => (
-              <SelectItem key={r} value={r}>
-                {ROLE_LABEL_VI[r]}
-              </SelectItem>
-            ))}
-          </SelectController>
-          <SelectController
-            control={control}
-            name="departmentId"
-            label="Phòng ban"
-            className="mb-3"
-            disabled={orgDisabled}
-          >
-            {departmentOptions.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectController>
-          <SelectController
-            control={control}
-            name="teamId"
-            label="Nhóm (theo phòng ban)"
-            className="mb-3"
-            disabled={orgDisabled}
-          >
-            {teamOptions.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectController>
-          <EmployeeExtraTeamsField
-            control={control}
-            name="extraTeamIds"
-            primaryTeamId={editTeamId ?? ''}
-            allTeams={orgSel.allTeams}
-            disabled={orgDisabled}
-            className="mb-3"
-          />
-          <DateController
-            control={control}
-            name="startDate"
-            label="Ngày bắt đầu"
-            disabled={orgDisabled}
-          />
-          <SelectController
-            control={control}
-            name="currentLevel"
-            label="Cấp năng lực (lộ trình)"
-            disabled={orgDisabled}
-          >
-            {levelSelectOptions.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectController>
-        </PfCard>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-          {inactive ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1 border-primary/35 bg-primary/10 py-2.5 text-sm font-bold text-primary hover:bg-primary/15"
-              disabled={!canEdit || isSaving}
-              onClick={onReactivate}
-            >
-              Kích hoạt lại
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="destructive"
-              className="flex-1 py-2.5 text-sm font-bold"
-              disabled={!canDeactivate || isSaving}
-              onClick={onDeactivate}
-            >
-              Hủy hoạt động
-            </Button>
-          )}
-          <Button
-            type="button"
-            className="flex-[2] py-2.5 text-sm font-bold"
-            disabled={!canEdit || isSaving}
-            onClick={onSave}
-          >
-            {isSaving ? 'Đang lưu…' : 'Lưu thay đổi'}
-          </Button>
-        </div>
-      </div>
-      <PfCard title="Thông tin cá nhân" entranceIndex={1}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <InputController control={control} name="name" label="Họ và tên" disabled={orgDisabled} />
-          <InputController
-            control={control}
-            name="email"
-            label="Địa chỉ email"
-            type="email"
-            disabled={orgDisabled}
-          />
-          <InputController
-            control={control}
-            name="phone"
-            label="Số điện thoại"
-            placeholder="09xx xxx xxx"
-            disabled={orgDisabled}
-          />
-          <DateController
-            control={control}
-            name="birthDate"
-            label="Ngày sinh"
-            disabled={orgDisabled}
-          />
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-              Mã nhân viên (hệ thống)
-            </label>
-            <Input
-              className={cn(PROFILE_EDIT_FIELD, 'bg-muted/50 text-muted-foreground')}
-              readOnly
-              value={empCode}
-            />
-          </div>
-        </div>
-      </PfCard>
-    </div>
+            </div>,
+            document.body
+          )
+        : null}
+    </Form>
   )
 }

@@ -1,8 +1,10 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 import { HrEmployeeProfile } from '@/features/hr-admin/components/HrEmployeeProfile'
-import { useEmployee } from '@/features/hr-admin/hooks'
+import { useEmployeeById } from '@/features/hr-admin/hooks'
 import { requireEmployeeDirectoryAccess } from '@/features/hr-admin/requireHrAdmin'
+import { useMyProfilePage } from '@/features/profile/hooks'
+import { RefreshCw } from 'lucide-react'
 
 const employeeSearchSchema = z.object({
   mode: z.enum(['view', 'edit']).optional(),
@@ -21,12 +23,15 @@ export const Route = createFileRoute('/_protected/hr-admin/$employeeId')({
 
 function EmployeeDetailPage() {
   const { employeeId } = Route.useParams()
-  const search = Route.useSearch()
-  const { data, isLoading } = useEmployee(employeeId)
-  if (isLoading) {
+  const { data, isLoading } = useEmployeeById(employeeId)
+
+  const { data: dataPage, isLoading: isLoadingPage } = useMyProfilePage()
+
+  if (isLoading || isLoadingPage) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-[#6B7F96]">
-        Đang tải…
+      <div className="flex flex-col items-center gap-4">
+        <RefreshCw className="h-8 w-8 animate-spin text-primary/40" />
+        <span className="font-bold tracking-wide text-xs uppercase">Đang tải hồ sơ…</span>
       </div>
     )
   }
@@ -37,5 +42,9 @@ function EmployeeDetailPage() {
       </div>
     )
   }
-  return <HrEmployeeProfile employee={data} initialTab={search.mode === 'edit' ? 4 : 0} />
+  if (!dataPage) {
+    return <div className="p-4 text-sm text-[#991B1B]">Không tìm thấy dữ liệu hồ sơ cá nhân.</div>
+  }
+
+  return <HrEmployeeProfile employee={data} page={dataPage} />
 }
