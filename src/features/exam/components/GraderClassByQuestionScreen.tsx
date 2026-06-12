@@ -79,60 +79,6 @@ export function GraderClassByQuestionScreen({
     Record<string, Record<string, 'chua_dat' | 'dat' | 'tot' | null>>
   >({})
 
-  const gradingType = (questionBank as any)?.gradingType || 'direct'
-
-  // Initialize rubric grades from existing submissions
-  useEffect(() => {
-    if (isFileExam && classSubmissions.length > 0 && Object.keys(rubricGrades).length === 0) {
-      const initRubric: Record<string, Record<string, 'chua_dat' | 'dat' | 'tot' | null>> = {}
-      classSubmissions.forEach((sub) => {
-        const subRubric = (sub.grades as any)?.rubric_reading || {}
-        initRubric[sub.id] = {
-          suy_ngam: subRubric.suy_ngam || null,
-          ket_noi: subRubric.ket_noi || null,
-          phat_trien: subRubric.phat_trien || null,
-        }
-      })
-      setRubricGrades(initRubric)
-    }
-  }, [isFileExam, classSubmissions, rubricGrades])
-
-  const handleRubricChange = (
-    subId: string,
-    criteriaId: string,
-    value: 'chua_dat' | 'dat' | 'tot' | null
-  ) => {
-    setRubricGrades((prev) => {
-      const nextStudent = {
-        ...(prev[subId] || { suy_ngam: null, ket_noi: null, phat_trien: null }),
-        [criteriaId]: value,
-      }
-
-      // Auto-calculate score and update fileGrades.score
-      let total = 0
-      let hasSelection = false
-      Object.entries(nextStudent).forEach(([cId, val]) => {
-        if (val) {
-          hasSelection = true
-          total += RUBRIC_CRITERIA_MAP[cId as 'suy_ngam' | 'ket_noi' | 'phat_trien']?.[val] || 0
-        }
-      })
-
-      setFileGrades((prevFile) => ({
-        ...prevFile,
-        [subId]: {
-          ...prevFile[subId],
-          score: hasSelection ? String(total) : '',
-        },
-      }))
-
-      return {
-        ...prev,
-        [subId]: nextStudent,
-      }
-    })
-  }
-
   useEffect(() => {
     console.log('[Grader] classId from params:', classId)
     console.log('[Grader] allSubmissions count:', allSubmissions.length)
@@ -214,6 +160,60 @@ export function GraderClassByQuestionScreen({
       return answers && typeof answers === 'object' && 'fileUrl' in answers
     })
   }, [currentClass, scheduleId, classSubmissions])
+
+  const gradingType = (questionBank as any)?.gradingType || 'direct'
+
+  // Initialize rubric grades from existing submissions
+  useEffect(() => {
+    if (isFileExam && classSubmissions.length > 0 && Object.keys(rubricGrades).length === 0) {
+      const initRubric: Record<string, Record<string, 'chua_dat' | 'dat' | 'tot' | null>> = {}
+      classSubmissions.forEach((sub) => {
+        const subRubric = (sub.grades as any)?.rubric_reading || {}
+        initRubric[sub.id] = {
+          suy_ngam: subRubric.suy_ngam || null,
+          ket_noi: subRubric.ket_noi || null,
+          phat_trien: subRubric.phat_trien || null,
+        }
+      })
+      setRubricGrades(initRubric)
+    }
+  }, [isFileExam, classSubmissions, rubricGrades])
+
+  const handleRubricChange = (
+    subId: string,
+    criteriaId: string,
+    value: 'chua_dat' | 'dat' | 'tot' | null
+  ) => {
+    setRubricGrades((prev) => {
+      const nextStudent = {
+        ...(prev[subId] || { suy_ngam: null, ket_noi: null, phat_trien: null }),
+        [criteriaId]: value,
+      }
+
+      // Auto-calculate score and update fileGrades.score
+      let total = 0
+      let hasSelection = false
+      Object.entries(nextStudent).forEach(([cId, val]) => {
+        if (val) {
+          hasSelection = true
+          total += RUBRIC_CRITERIA_MAP[cId as 'suy_ngam' | 'ket_noi' | 'phat_trien']?.[val] || 0
+        }
+      })
+
+      setFileGrades((prevFile) => ({
+        ...prevFile,
+        [subId]: {
+          ...prevFile[subId],
+          score: hasSelection ? String(total) : '',
+        },
+      }))
+
+      return {
+        ...prev,
+        [subId]: nextStudent,
+      }
+    })
+  }
 
   // Initialize file grades from existing submissions
   useEffect(() => {
