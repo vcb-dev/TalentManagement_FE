@@ -8,6 +8,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { useGradeSubmission, useManagerSubmissions } from '@/features/exam/hooks'
 import { useManagerClasses } from '@/features/manager/hooks'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export interface GraderClassByQuestionScreenProps {
   classId: string
@@ -18,6 +25,24 @@ const CRITERIA_WEIGHTS: Record<string, number> = {
   ly_thuyet: 40,
   thuc_te: 50,
   trinh_bay: 10,
+}
+
+const RUBRIC_CRITERIA_MAP = {
+  suy_ngam: {
+    chua_dat: 10,
+    dat: 25,
+    tot: 40,
+  },
+  ket_noi: {
+    chua_dat: 10,
+    dat: 20,
+    tot: 30,
+  },
+  phat_trien: {
+    chua_dat: 10,
+    dat: 20,
+    tot: 30,
+  },
 }
 
 type LocalGrade = { criteria: string[]; score: number; note: string; isGraded?: boolean }
@@ -50,6 +75,63 @@ export function GraderClassByQuestionScreen({
   const [fileGrades, setFileGrades] = useState<Record<string, { score: string; comment: string }>>(
     {}
   )
+  const [rubricGrades, setRubricGrades] = useState<
+    Record<string, Record<string, 'chua_dat' | 'dat' | 'tot' | null>>
+  >({})
+
+  const gradingType = (questionBank as any)?.gradingType || 'direct'
+
+  // Initialize rubric grades from existing submissions
+  useEffect(() => {
+    if (isFileExam && classSubmissions.length > 0 && Object.keys(rubricGrades).length === 0) {
+      const initRubric: Record<string, Record<string, 'chua_dat' | 'dat' | 'tot' | null>> = {}
+      classSubmissions.forEach((sub) => {
+        const subRubric = (sub.grades as any)?.rubric_reading || {}
+        initRubric[sub.id] = {
+          suy_ngam: subRubric.suy_ngam || null,
+          ket_noi: subRubric.ket_noi || null,
+          phat_trien: subRubric.phat_trien || null,
+        }
+      })
+      setRubricGrades(initRubric)
+    }
+  }, [isFileExam, classSubmissions, rubricGrades])
+
+  const handleRubricChange = (
+    subId: string,
+    criteriaId: string,
+    value: 'chua_dat' | 'dat' | 'tot' | null
+  ) => {
+    setRubricGrades((prev) => {
+      const nextStudent = {
+        ...(prev[subId] || { suy_ngam: null, ket_noi: null, phat_trien: null }),
+        [criteriaId]: value,
+      }
+
+      // Auto-calculate score and update fileGrades.score
+      let total = 0
+      let hasSelection = false
+      Object.entries(nextStudent).forEach(([cId, val]) => {
+        if (val) {
+          hasSelection = true
+          total += RUBRIC_CRITERIA_MAP[cId as 'suy_ngam' | 'ket_noi' | 'phat_trien']?.[val] || 0
+        }
+      })
+
+      setFileGrades((prevFile) => ({
+        ...prevFile,
+        [subId]: {
+          ...prevFile[subId],
+          score: hasSelection ? String(total) : '',
+        },
+      }))
+
+      return {
+        ...prev,
+        [subId]: nextStudent,
+      }
+    })
+  }
 
   useEffect(() => {
     console.log('[Grader] classId from params:', classId)
@@ -161,10 +243,13 @@ export function GraderClassByQuestionScreen({
       const grade = fileGrades[sub.id]
       if (!grade) continue
       const score = grade.score ? parseInt(grade.score, 10) : 0
+      const gradesPayload =
+        gradingType === 'rubric_reading' ? { rubric_reading: rubricGrades[sub.id] || {} } : {}
+
       try {
         await gradeMutation.mutateAsync({
           submissionId: sub.id,
-          grades: {},
+          grades: gradesPayload,
           graderNote: grade.comment,
           status: 'grading',
           totalScore: score,
@@ -181,14 +266,26 @@ export function GraderClassByQuestionScreen({
   const handleFileExamComplete = async () => {
     for (const sub of classSubmissions) {
       const grade = fileGrades[sub.id]
-      if (!grade || !grade.score) {
-        toast.error(`Vui lòng nhập điểm cho ${sub.fullName}`)
-        return
-      }
-      const scoreNum = parseInt(grade.score, 10)
-      if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
-        toast.error(`Điểm của ${sub.fullName} phải từ 0 đến 100`)
-        return
+      if (gradingType === 'rubric_reading') {
+        const studentRubric = rubricGrades[sub.id] || {}
+        const incomplete =
+          !studentRubric.suy_ngam || !studentRubric.ket_noi || !studentRubric.phat_trien
+        if (incomplete) {
+          toast.error(
+            `Vui lòng đánh giá đủ tất cả các tiêu chí trong bảng Rubric cho học viên ${sub.fullName}`
+          )
+          return
+        }
+      } else {
+        if (!grade || !grade.score) {
+          toast.error(`Vui lòng nhập điểm cho ${sub.fullName}`)
+          return
+        }
+        const scoreNum = parseInt(grade.score, 10)
+        if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+          toast.error(`Điểm của ${sub.fullName} phải từ 0 đến 100`)
+          return
+        }
       }
     }
 
@@ -196,13 +293,16 @@ export function GraderClassByQuestionScreen({
     let failCount = 0
     for (const sub of classSubmissions) {
       const grade = fileGrades[sub.id]
-      const score = parseInt(grade.score, 10)
+      const score = grade?.score ? parseInt(grade.score, 10) : 0
       const outcome = score >= 80 ? 'DAT' : 'CHO_HOC_LAI'
+      const gradesPayload =
+        gradingType === 'rubric_reading' ? { rubric_reading: rubricGrades[sub.id] || {} } : {}
+
       try {
         await gradeMutation.mutateAsync({
           submissionId: sub.id,
-          grades: {},
-          graderNote: grade.comment,
+          grades: gradesPayload,
+          graderNote: grade?.comment || '',
           status: 'done',
           totalScore: score,
           outcome,
@@ -515,10 +615,27 @@ export function GraderClassByQuestionScreen({
                         <th className="px-4 py-4 font-bold text-slate-600 text-center">
                           Trạng thái
                         </th>
-                        <th className="px-4 py-4 font-bold text-slate-600 text-center w-[120px]">
-                          Điểm (0-100)
-                        </th>
-                        <th className="px-4 py-4 font-bold text-slate-600 w-[280px]">Nhận xét</th>
+                        {gradingType === 'rubric_reading' ? (
+                          <>
+                            <th className="px-4 py-4 font-bold text-slate-600 w-[180px]">
+                              Suy ngẫm (40đ)
+                            </th>
+                            <th className="px-4 py-4 font-bold text-slate-600 w-[180px]">
+                              Kết nối (30đ)
+                            </th>
+                            <th className="px-4 py-4 font-bold text-slate-600 w-[180px]">
+                              Phát triển (30đ)
+                            </th>
+                            <th className="px-4 py-4 font-bold text-slate-600 text-center w-[90px]">
+                              Điểm
+                            </th>
+                          </>
+                        ) : (
+                          <th className="px-4 py-4 font-bold text-slate-600 text-center w-[120px]">
+                            Điểm (0-100)
+                          </th>
+                        )}
+                        <th className="px-4 py-4 font-bold text-slate-600 w-[240px]">Nhận xét</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -530,6 +647,11 @@ export function GraderClassByQuestionScreen({
                           : rawFileUrl
                         const fileName = answers?.fileName || 'Tài liệu'
                         const grade = fileGrades[sub.id] || { score: '', comment: '' }
+                        const studentRubric = rubricGrades[sub.id] || {
+                          suy_ngam: null,
+                          ket_noi: null,
+                          phat_trien: null,
+                        }
 
                         return (
                           <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors">
@@ -568,19 +690,135 @@ export function GraderClassByQuestionScreen({
                                     : 'Chờ chấm'}
                               </span>
                             </td>
-                            <td className="px-4 py-4 text-center">
-                              <input
-                                type="number"
-                                min={0}
-                                max={100}
-                                placeholder="—"
-                                value={grade.score}
-                                onChange={(e) =>
-                                  handleFileGradeChange(sub.id, 'score', e.target.value)
-                                }
-                                className="w-20 mx-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-sm font-bold text-slate-800 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
-                            </td>
+                            {gradingType === 'rubric_reading' ? (
+                              <>
+                                {/* Suy ngẫm */}
+                                <td className="px-4 py-4">
+                                  <Select
+                                    value={studentRubric.suy_ngam || ''}
+                                    onValueChange={(val) =>
+                                      handleRubricChange(sub.id, 'suy_ngam', val as any)
+                                    }
+                                    disabled={sub.status === 'done'}
+                                  >
+                                    <SelectTrigger className="h-9 w-full rounded-xl border-slate-200 bg-white font-bold text-xs">
+                                      <SelectValue placeholder="Chọn..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-slate-200 p-1 shadow-2xl">
+                                      <SelectItem
+                                        value="chua_dat"
+                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
+                                      >
+                                        Chưa đạt (10đ)
+                                      </SelectItem>
+                                      <SelectItem
+                                        value="dat"
+                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
+                                      >
+                                        Đạt (25đ)
+                                      </SelectItem>
+                                      <SelectItem
+                                        value="tot"
+                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
+                                      >
+                                        Tốt (40đ)
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+
+                                {/* Kết nối */}
+                                <td className="px-4 py-4">
+                                  <Select
+                                    value={studentRubric.ket_noi || ''}
+                                    onValueChange={(val) =>
+                                      handleRubricChange(sub.id, 'ket_noi', val as any)
+                                    }
+                                    disabled={sub.status === 'done'}
+                                  >
+                                    <SelectTrigger className="h-9 w-full rounded-xl border-slate-200 bg-white font-bold text-xs">
+                                      <SelectValue placeholder="Chọn..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-slate-200 p-1 shadow-2xl">
+                                      <SelectItem
+                                        value="chua_dat"
+                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
+                                      >
+                                        Chưa đạt (10đ)
+                                      </SelectItem>
+                                      <SelectItem
+                                        value="dat"
+                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
+                                      >
+                                        Đạt (20đ)
+                                      </SelectItem>
+                                      <SelectItem
+                                        value="tot"
+                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
+                                      >
+                                        Tốt (30đ)
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+
+                                {/* Phát triển */}
+                                <td className="px-4 py-4">
+                                  <Select
+                                    value={studentRubric.phat_trien || ''}
+                                    onValueChange={(val) =>
+                                      handleRubricChange(sub.id, 'phat_trien', val as any)
+                                    }
+                                    disabled={sub.status === 'done'}
+                                  >
+                                    <SelectTrigger className="h-9 w-full rounded-xl border-slate-200 bg-white font-bold text-xs">
+                                      <SelectValue placeholder="Chọn..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-slate-200 p-1 shadow-2xl">
+                                      <SelectItem
+                                        value="chua_dat"
+                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
+                                      >
+                                        Chưa đạt (10đ)
+                                      </SelectItem>
+                                      <SelectItem
+                                        value="dat"
+                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
+                                      >
+                                        Đạt (20đ)
+                                      </SelectItem>
+                                      <SelectItem
+                                        value="tot"
+                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
+                                      >
+                                        Tốt (30đ)
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+
+                                {/* Điểm hiển thị tự động */}
+                                <td className="px-4 py-4 text-center">
+                                  <span className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-100 px-3 text-xs font-black text-slate-800">
+                                    {grade.score ? `${grade.score}đ` : '—'}
+                                  </span>
+                                </td>
+                              </>
+                            ) : (
+                              <td className="px-4 py-4 text-center">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  placeholder="—"
+                                  value={grade.score}
+                                  onChange={(e) =>
+                                    handleFileGradeChange(sub.id, 'score', e.target.value)
+                                  }
+                                  className="w-20 mx-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-sm font-bold text-slate-800 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                              </td>
+                            )}
                             <td className="px-4 py-4">
                               <textarea
                                 placeholder="Nhập nhận xét..."
