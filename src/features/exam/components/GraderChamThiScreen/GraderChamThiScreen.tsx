@@ -739,7 +739,14 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                     </span>
                   </div>
                   <div className="my-2 h-px w-full bg-border" />
-                  {isFileSubmission ? (
+                  {gradingType === 'rubric_reading' ? (
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-foreground">Tổng điểm Rubric</span>
+                      <span className="text-lg font-black text-primary">
+                        {gradeForm.watch('totalScore') ?? 0}đ
+                      </span>
+                    </div>
+                  ) : isFileSubmission ? (
                     <div className="flex flex-col gap-2">
                       <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                         Điểm bài thi (0 - 100) <span className="text-rose-500">*</span>
