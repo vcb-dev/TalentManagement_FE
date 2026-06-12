@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 export interface GraderClassByQuestionScreenProps {
   classId: string
@@ -44,6 +45,36 @@ const RUBRIC_CRITERIA_MAP = {
     tot: 30,
   },
 }
+
+const RUBRIC_CRITERIA = [
+  {
+    id: 'suy_ngam',
+    title: 'Suy ngẫm và nhận thức cá nhân (40đ)',
+    options: {
+      chua_dat: { score: 10, desc: 'Chủ yếu nhắc lại nội dung sách.' },
+      dat: { score: 25, desc: 'Nêu được bài học hoặc nhận thức riêng.' },
+      tot: { score: 40, desc: 'Thể hiện sự thay đổi trong tư duy hoặc cách nhìn nhận vấn đề.' },
+    },
+  },
+  {
+    id: 'ket_noi',
+    title: 'Kết nối với thực tế (30đ)',
+    options: {
+      chua_dat: { score: 10, desc: 'Ít hoặc chưa liên hệ với thực tế.' },
+      dat: { score: 20, desc: 'Có liên hệ với bản thân hoặc công việc.' },
+      tot: { score: 30, desc: 'Liên hệ cụ thể và thể hiện khả năng vận dụng.' },
+    },
+  },
+  {
+    id: 'phat_trien',
+    title: 'Phát triển ý tưởng (30đ)',
+    options: {
+      chua_dat: { score: 10, desc: 'Chưa có quan điểm riêng.' },
+      dat: { score: 20, desc: 'Có quan điểm hoặc câu hỏi riêng.' },
+      tot: { score: 30, desc: 'Có phản biện, mở rộng hoặc đề xuất cách áp dụng mới.' },
+    },
+  },
+]
 
 type LocalGrade = { criteria: string[]; score: number; note: string; isGraded?: boolean }
 
@@ -78,6 +109,7 @@ export function GraderClassByQuestionScreen({
   const [rubricGrades, setRubricGrades] = useState<
     Record<string, Record<string, 'chua_dat' | 'dat' | 'tot' | null>>
   >({})
+  const [gradingStudentId, setGradingStudentId] = useState<string | null>(null)
 
   useEffect(() => {
     console.log('[Grader] classId from params:', classId)
@@ -615,26 +647,9 @@ export function GraderClassByQuestionScreen({
                         <th className="px-4 py-4 font-bold text-slate-600 text-center">
                           Trạng thái
                         </th>
-                        {gradingType === 'rubric_reading' ? (
-                          <>
-                            <th className="px-4 py-4 font-bold text-slate-600 w-[180px]">
-                              Suy ngẫm (40đ)
-                            </th>
-                            <th className="px-4 py-4 font-bold text-slate-600 w-[180px]">
-                              Kết nối (30đ)
-                            </th>
-                            <th className="px-4 py-4 font-bold text-slate-600 w-[180px]">
-                              Phát triển (30đ)
-                            </th>
-                            <th className="px-4 py-4 font-bold text-slate-600 text-center w-[90px]">
-                              Điểm
-                            </th>
-                          </>
-                        ) : (
-                          <th className="px-4 py-4 font-bold text-slate-600 text-center w-[120px]">
-                            Điểm (0-100)
-                          </th>
-                        )}
+                        <th className="px-4 py-4 font-bold text-slate-600 text-center w-[150px]">
+                          {gradingType === 'rubric_reading' ? 'Điểm' : 'Điểm (0-100)'}
+                        </th>
                         <th className="px-4 py-4 font-bold text-slate-600 w-[240px]">Nhận xét</th>
                       </tr>
                     </thead>
@@ -690,122 +705,23 @@ export function GraderClassByQuestionScreen({
                                     : 'Chờ chấm'}
                               </span>
                             </td>
-                            {gradingType === 'rubric_reading' ? (
-                              <>
-                                {/* Suy ngẫm */}
-                                <td className="px-4 py-4">
-                                  <Select
-                                    value={studentRubric.suy_ngam || ''}
-                                    onValueChange={(val) =>
-                                      handleRubricChange(sub.id, 'suy_ngam', val as any)
-                                    }
-                                    disabled={sub.status === 'done'}
-                                  >
-                                    <SelectTrigger className="h-9 w-full rounded-xl border-slate-200 bg-white font-bold text-xs">
-                                      <SelectValue placeholder="Chọn..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-slate-200 p-1 shadow-2xl">
-                                      <SelectItem
-                                        value="chua_dat"
-                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
-                                      >
-                                        Chưa đạt (10đ)
-                                      </SelectItem>
-                                      <SelectItem
-                                        value="dat"
-                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
-                                      >
-                                        Đạt (25đ)
-                                      </SelectItem>
-                                      <SelectItem
-                                        value="tot"
-                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
-                                      >
-                                        Tốt (40đ)
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </td>
-
-                                {/* Kết nối */}
-                                <td className="px-4 py-4">
-                                  <Select
-                                    value={studentRubric.ket_noi || ''}
-                                    onValueChange={(val) =>
-                                      handleRubricChange(sub.id, 'ket_noi', val as any)
-                                    }
-                                    disabled={sub.status === 'done'}
-                                  >
-                                    <SelectTrigger className="h-9 w-full rounded-xl border-slate-200 bg-white font-bold text-xs">
-                                      <SelectValue placeholder="Chọn..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-slate-200 p-1 shadow-2xl">
-                                      <SelectItem
-                                        value="chua_dat"
-                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
-                                      >
-                                        Chưa đạt (10đ)
-                                      </SelectItem>
-                                      <SelectItem
-                                        value="dat"
-                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
-                                      >
-                                        Đạt (20đ)
-                                      </SelectItem>
-                                      <SelectItem
-                                        value="tot"
-                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
-                                      >
-                                        Tốt (30đ)
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </td>
-
-                                {/* Phát triển */}
-                                <td className="px-4 py-4">
-                                  <Select
-                                    value={studentRubric.phat_trien || ''}
-                                    onValueChange={(val) =>
-                                      handleRubricChange(sub.id, 'phat_trien', val as any)
-                                    }
-                                    disabled={sub.status === 'done'}
-                                  >
-                                    <SelectTrigger className="h-9 w-full rounded-xl border-slate-200 bg-white font-bold text-xs">
-                                      <SelectValue placeholder="Chọn..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-slate-200 p-1 shadow-2xl">
-                                      <SelectItem
-                                        value="chua_dat"
-                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
-                                      >
-                                        Chưa đạt (10đ)
-                                      </SelectItem>
-                                      <SelectItem
-                                        value="dat"
-                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
-                                      >
-                                        Đạt (20đ)
-                                      </SelectItem>
-                                      <SelectItem
-                                        value="tot"
-                                        className="rounded-lg py-1.5 text-xs font-bold text-slate-700"
-                                      >
-                                        Tốt (30đ)
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </td>
-
-                                {/* Điểm hiển thị tự động */}
-                                <td className="px-4 py-4 text-center">
-                                  <span className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-100 px-3 text-xs font-black text-slate-800">
-                                    {grade.score ? `${grade.score}đ` : '—'}
-                                  </span>
-                                </td>
-                              </>
-                            ) : (
-                              <td className="px-4 py-4 text-center">
+                            <td className="px-4 py-4 text-center">
+                              {gradingType === 'rubric_reading' ? (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className={cn(
+                                    'h-9 w-full rounded-xl text-xs font-bold transition-all whitespace-nowrap',
+                                    grade.score
+                                      ? 'bg-primary/5 border-primary/20 text-primary font-black'
+                                      : 'border-dashed border-primary/40 text-primary'
+                                  )}
+                                  onClick={() => setGradingStudentId(sub.id)}
+                                >
+                                  {grade.score ? `${grade.score}đ 📋` : 'Chấm Rubric 📋'}
+                                </Button>
+                              ) : (
                                 <input
                                   type="number"
                                   min={0}
@@ -817,8 +733,8 @@ export function GraderClassByQuestionScreen({
                                   }
                                   className="w-20 mx-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-sm font-bold text-slate-800 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
-                              </td>
-                            )}
+                              )}
+                            </td>
                             <td className="px-4 py-4">
                               <textarea
                                 placeholder="Nhập nhận xét..."
@@ -1218,6 +1134,141 @@ export function GraderClassByQuestionScreen({
           </div>
         </div>
       )}
+
+      {gradingStudentId &&
+        (() => {
+          const sub = classSubmissions.find((s) => s.id === gradingStudentId)
+          if (!sub) return null
+          const studentRubric = rubricGrades[sub.id] || {
+            suy_ngam: null,
+            ket_noi: null,
+            phat_trien: null,
+          }
+          const grade = fileGrades[sub.id] || { score: '', comment: '' }
+
+          return (
+            <Dialog
+              open={!!gradingStudentId}
+              onOpenChange={(open) => !open && setGradingStudentId(null)}
+            >
+              <DialogContent className="max-w-3xl rounded-2xl border-slate-200 p-6 shadow-2xl bg-white max-h-[90vh] overflow-y-auto">
+                <DialogHeader className="border-b border-slate-100 pb-4">
+                  <DialogTitle className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                    Bảng chấm Rubric - {sub.fullName}
+                  </DialogTitle>
+                  <p className="text-xs font-semibold text-slate-500 mt-1">
+                    Lớp: {currentClass?.name || '—'} | Kỳ thi: {sub.schedule?.topic || '—'}
+                  </p>
+                </DialogHeader>
+
+                <div className="mt-4 space-y-6">
+                  <div className="overflow-x-auto rounded-xl border border-slate-100">
+                    <table className="w-full border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 bg-slate-50">
+                          <th className="px-4 py-3 font-bold text-slate-700 w-1/3">Tiêu chí</th>
+                          <th className="px-4 py-3 font-bold text-orange-600 text-center w-2/9">
+                            Chưa đạt
+                          </th>
+                          <th className="px-4 py-3 font-bold text-emerald-600 text-center w-2/9">
+                            Đạt
+                          </th>
+                          <th className="px-4 py-3 font-bold text-indigo-600 text-center w-2/9">
+                            Tốt
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {RUBRIC_CRITERIA.map((criteria) => {
+                          const currentValue = studentRubric[criteria.id] || null
+                          return (
+                            <tr
+                              key={criteria.id}
+                              className="hover:bg-slate-50/50 transition-colors"
+                            >
+                              <td className="px-4 py-4 font-bold text-slate-800 vertical-align-top">
+                                {criteria.title}
+                              </td>
+                              {Object.entries(criteria.options).map(([optKey, optVal]) => {
+                                const isChecked = currentValue === optKey
+                                const colorClass =
+                                  optKey === 'chua_dat'
+                                    ? 'data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600'
+                                    : optKey === 'dat'
+                                      ? 'data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600'
+                                      : 'data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600'
+                                return (
+                                  <td
+                                    key={optKey}
+                                    className={cn(
+                                      'px-4 py-4 text-center cursor-pointer transition-all',
+                                      isChecked &&
+                                        (optKey === 'chua_dat'
+                                          ? 'bg-orange-50/30'
+                                          : optKey === 'dat'
+                                            ? 'bg-emerald-50/30'
+                                            : 'bg-indigo-50/30')
+                                    )}
+                                    onClick={() => {
+                                      if (sub.status === 'done' && !gradeMutation.isPending) return
+                                      handleRubricChange(sub.id, criteria.id, optKey as any)
+                                    }}
+                                  >
+                                    <div className="flex flex-col items-center gap-2">
+                                      <Checkbox
+                                        className={cn('h-5 w-5 rounded-full border-2', colorClass)}
+                                        checked={isChecked}
+                                        disabled={sub.status === 'done' && !gradeMutation.isPending}
+                                      />
+                                      <span
+                                        className={cn(
+                                          'text-xs font-black uppercase',
+                                          isChecked
+                                            ? optKey === 'chua_dat'
+                                              ? 'text-orange-600'
+                                              : optKey === 'dat'
+                                                ? 'text-emerald-600'
+                                                : 'text-indigo-600'
+                                            : 'text-slate-400'
+                                        )}
+                                      >
+                                        {optVal.score}đ
+                                      </span>
+                                      <span className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-[150px] mx-auto block">
+                                        {optVal.desc}
+                                      </span>
+                                    </div>
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <span className="text-sm font-bold text-slate-700">Tổng điểm tạm tính:</span>
+                    <span className="text-lg font-black text-primary">
+                      {grade.score ? `${grade.score}đ` : '0đ'}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <Button
+                      type="button"
+                      className="rounded-xl font-bold px-6"
+                      onClick={() => setGradingStudentId(null)}
+                    >
+                      Xác nhận & Đóng
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )
+        })()}
     </div>
   )
 }
