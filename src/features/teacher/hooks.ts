@@ -119,6 +119,8 @@ export function useTeacherDeleteSchedule(classId: string) {
 
 export function useTeacherUpdateAttendance(classId: string) {
   const qc = useQueryClient()
+  const queryKey = teacherKeys.schedules(classId)
+
   return useMutation({
     mutationFn: ({
       scheduleId,
@@ -127,11 +129,60 @@ export function useTeacherUpdateAttendance(classId: string) {
       scheduleId: string
       input: { userId: string; attendance?: string; evaluation?: string; evalLink?: string }
     }) => teacherApi.updateAttendance(classId, scheduleId, input),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: teacherKeys.schedules(classId) })
-      toast.success('Đã lưu thông tin buổi học')
+    onMutate: async ({ scheduleId, input }) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await qc.cancelQueries({ queryKey })
+
+      // Snapshot the previous value
+      const previousSchedules = qc.getQueryData<any[]>(queryKey)
+
+      // Optimistically update to the new value in the cache
+      if (previousSchedules) {
+        qc.setQueryData<any[]>(
+          queryKey,
+          previousSchedules.map((s) => {
+            if (s.id !== scheduleId) return s
+
+            const currentAttendanceData = s.attendanceData || {}
+            const existingUserRecord = currentAttendanceData[input.userId] || {}
+
+            return {
+              ...s,
+              attendanceData: {
+                ...currentAttendanceData,
+                [input.userId]: {
+                  ...existingUserRecord,
+                  attendance:
+                    input.attendance !== undefined
+                      ? input.attendance
+                      : existingUserRecord.attendance,
+                  evaluation:
+                    input.evaluation !== undefined
+                      ? input.evaluation
+                      : existingUserRecord.evaluation,
+                  evalLink:
+                    input.evalLink !== undefined ? input.evalLink : existingUserRecord.evalLink,
+                },
+              },
+            }
+          })
+        )
+      }
+
+      // Return context with snapshotted value
+      return { previousSchedules }
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error, variables, context) => {
+      // Rollback to the previous value if mutation fails
+      if (context?.previousSchedules) {
+        qc.setQueryData(queryKey, context.previousSchedules)
+      }
+      toast.error(getApiErrorMessage(error))
+    },
+    onSettled: () => {
+      // Invalidate the query in the background to ensure data is in sync
+      void qc.invalidateQueries({ queryKey })
+    },
   })
 }
 
