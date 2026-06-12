@@ -33,6 +33,7 @@ import { useHrOrgTree } from '@/features/hr-admin/useHrOrgTree'
 import { useMyDashboard } from '@/features/dashboard/hooks'
 import { STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import type { Role, StaffLevel } from '@/types/auth'
+import { isManagerLikeRole } from '@/lib/managerLikeRole'
 import { useKpiDashboardData } from './useKpiDashboardData'
 import {
   GradeDonut,
@@ -133,7 +134,7 @@ export function DashboardKpiOkrZone({
 }: DashboardKpiOkrZoneProps) {
   const user = useAuthStore((s) => s.user)
   const isLeader = role === 'LEADER'
-  const isManager = role === 'MANAGER'
+  const isManager = isManagerLikeRole(role)
   const isMember = role === 'MEMBER'
   const [localReportYear, setLocalReportYear] = useState(() => new Date().getFullYear())
   const [localRangeStartMonth, setLocalRangeStartMonth] = useState(() => new Date().getMonth() + 1)

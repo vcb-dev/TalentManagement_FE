@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
 import { performanceApi, type CatalogItem } from '@/features/kpi-okr/api'
 import { usePermission } from '@/hooks/usePermission'
+import { isManagerLikeRole } from '@/lib/managerLikeRole'
 import { useAuthStore } from '@/stores/auth.store'
 import { categoryLabel, categoryBadgeClass } from '@/features/kpi-okr/catalogHelpers'
 
@@ -366,7 +367,7 @@ export type SalesKpiCatalogScreenProps = {
 export function SalesKpiCatalogScreen({ embedded = false }: SalesKpiCatalogScreenProps) {
   const { canId } = usePermission()
   const role = useAuthStore((s) => s.user?.role)
-  const canEdit = role === 'MANAGER' || canId('kpi.catalog_edit')
+  const canEdit = isManagerLikeRole(role) || canId('kpi.catalog_edit')
   const currentPeriod = useMemo(() => getVietnamYearMonth(), [])
 
   const [activeTemplateCode, setActiveTemplateCode] = useState<ManagedTemplateCode>('SALES_NV')

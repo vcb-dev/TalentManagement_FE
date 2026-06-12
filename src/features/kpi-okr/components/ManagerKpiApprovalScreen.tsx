@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Clock, X, ChevronDown, ChevronUp, User } from 'lucide-react'
+import { CheckCircle2, Clock, X, ChevronDown, ChevronUp, User, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
@@ -12,6 +12,8 @@ import {
 } from '@/features/kpi-okr/api'
 import {
   EvalStatusBadge,
+  GoalReviewStatusBadge,
+  GoalReviewSummary,
   formatViNumber,
 } from '@/features/kpi-okr/components/kpiAssignmentTableShared'
 import {
@@ -37,6 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SECTION_FADE_UP, CARD_ENTRANCE } from '@/lib/cardMotion'
@@ -322,7 +325,258 @@ function TeamResultInline({
   )
 }
 
-function TeamKpiInline({ teamId, year, month }: { teamId: string; year: number; month: number }) {
+type ApprovalGoalEditDraft = {
+  priority: number
+  content: string
+  targetMetric: string
+}
+
+function ApprovalGoalActionCell({
+  requestId,
+  assignment,
+  onChanged,
+}: {
+  requestId: string
+  assignment: PerformanceAssignment
+  onChanged: () => void
+}) {
+  const [editOpen, setEditOpen] = useState(false)
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [approving, setApproving] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [rejecting, setRejecting] = useState(false)
+  const [draft, setDraft] = useState<ApprovalGoalEditDraft>({
+    priority: assignment.priority,
+    content: assignment.content,
+    targetMetric: assignment.targetMetric ?? '',
+  })
+  const reviewStatus = assignment.goalReview?.status ?? 'pending'
+  const isTerminal =
+    reviewStatus === 'approved' || reviewStatus === 'edit_confirmed' || reviewStatus === 'rejected'
+  const isWaitingMember = reviewStatus === 'edit_pending_member'
+  const busy = approving || saving || rejecting
+
+  useEffect(() => {
+    if (!editOpen) return
+    setDraft({
+      priority: assignment.priority,
+      content: assignment.content,
+      targetMetric: assignment.targetMetric ?? '',
+    })
+  }, [assignment, editOpen])
+
+  const handleApproveGoal = useCallback(async () => {
+    setApproving(true)
+    try {
+      await performanceApi.approveGoalReview(requestId, assignment.id)
+      toast.success('Đã duyệt KPI/OKR.')
+      onChanged()
+    } catch (err: unknown) {
+      toast.error('Duyệt thất bại: ' + getApiErrorMessage(err))
+    } finally {
+      setApproving(false)
+    }
+  }, [assignment.id, onChanged, requestId])
+
+  const handleSave = useCallback(async () => {
+    const content = draft.content.trim()
+    if (!content) {
+      toast.error('Nội dung KPI/OKR không được trống.')
+      return
+    }
+    if (content.length > 500) {
+      toast.error('Nội dung KPI/OKR tối đa 500 ký tự.')
+      return
+    }
+    if (!Number.isInteger(draft.priority) || draft.priority < 0 || draft.priority > 99) {
+      toast.error('Ưu tiên không hợp lệ.')
+      return
+    }
+
+    setSaving(true)
+    try {
+      await performanceApi.proposeGoalReviewEdit(requestId, assignment.id, {
+        priority: draft.priority,
+        content,
+        targetMetric: draft.targetMetric.trim() || null,
+      })
+      toast.success('Đã gửi nội dung sửa cho member xác nhận.')
+      setEditOpen(false)
+      onChanged()
+    } catch (err: unknown) {
+      toast.error('Sửa thất bại: ' + getApiErrorMessage(err))
+    } finally {
+      setSaving(false)
+    }
+  }, [assignment.id, draft, onChanged, requestId])
+
+  const handleRejectGoal = useCallback(async () => {
+    const reason = rejectReason.trim()
+    if (!reason) {
+      toast.error('Vui lòng nhập lý do từ chối.')
+      return
+    }
+    setRejecting(true)
+    try {
+      await performanceApi.rejectGoalReview(requestId, assignment.id, reason)
+      toast.success('Đã từ chối KPI/OKR.')
+      setRejectOpen(false)
+      setRejectReason('')
+      onChanged()
+    } catch (err: unknown) {
+      toast.error('Từ chối thất bại: ' + getApiErrorMessage(err))
+    } finally {
+      setRejecting(false)
+    }
+  }, [assignment.id, onChanged, rejectReason, requestId])
+
+  return (
+    <td className="sticky right-0 z-10 whitespace-nowrap bg-white px-2.5 py-2 text-right shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.18)] dark:bg-slate-950">
+      <div className="flex items-center justify-end gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400"
+          disabled={busy || isTerminal || isWaitingMember}
+          onClick={() => void handleApproveGoal()}
+          aria-label="Gửi duyệt KPI/OKR"
+        >
+          <CheckCircle2 className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-800"
+          disabled={busy || isTerminal}
+          onClick={() => setEditOpen(true)}
+          aria-label="Sửa mục tiêu"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+          disabled={busy || isTerminal}
+          onClick={() => setRejectOpen(true)}
+          aria-label="Từ chối KPI/OKR"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Sửa mục tiêu KPI/OKR</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Ưu tiên</Label>
+              <Select
+                value={String(draft.priority)}
+                onValueChange={(v) => setDraft((prev) => ({ ...prev, priority: Number(v) }))}
+                disabled={saving}
+              >
+                <SelectTrigger className="h-10 rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Không xếp (0)</SelectItem>
+                  <SelectItem value="1">Ưu tiên 1</SelectItem>
+                  <SelectItem value="2">Ưu tiên 2</SelectItem>
+                  <SelectItem value="3">Ưu tiên 3</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Chỉ tiêu</Label>
+              <Input
+                value={draft.targetMetric}
+                onChange={(e) => setDraft((prev) => ({ ...prev, targetMetric: e.target.value }))}
+                disabled={saving}
+                className="h-10 rounded-xl"
+                placeholder="VD: 60"
+              />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label className="text-xs font-semibold">Nội dung KPI/OKR</Label>
+              <Textarea
+                value={draft.content}
+                onChange={(e) => setDraft((prev) => ({ ...prev, content: e.target.value }))}
+                disabled={saving}
+                maxLength={500}
+                rows={4}
+                className="rounded-xl"
+                placeholder="Nhập nội dung KPI/OKR..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
+              Hủy
+            </Button>
+            <Button onClick={() => void handleSave()} disabled={saving}>
+              {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Từ chối KPI/OKR</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Lý do từ chối</Label>
+            <Textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={4}
+              maxLength={1000}
+              disabled={rejecting}
+              className="rounded-xl"
+              placeholder="Nhập lý do để member và leader nắm được..."
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={rejecting}>
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleRejectGoal()}
+              disabled={rejecting}
+            >
+              {rejecting ? 'Đang từ chối...' : 'Từ chối'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </td>
+  )
+}
+
+function TeamKpiInline({
+  requestId,
+  teamId,
+  year,
+  month,
+  requestStatus,
+  onChanged,
+}: {
+  requestId: string
+  teamId: string
+  year: number
+  month: number
+  requestStatus: ApprovalRequest['status']
+  onChanged: () => void
+}) {
   const assignmentsQ = useQuery({
     queryKey: ['kpi-assignments', teamId, year, month],
     queryFn: () => performanceApi.listAssignments(teamId, year, month),
@@ -360,6 +614,8 @@ function TeamKpiInline({ teamId, year, month }: { teamId: string; year: number; 
     }
   }
 
+  const showActionColumn = requestStatus === 'pending' && !isMockApiEnabled()
+
   return (
     <div className="px-3 pb-3 space-y-4">
       {grouped.map((g) => (
@@ -372,7 +628,7 @@ function TeamKpiInline({ teamId, year, month }: { teamId: string; year: number; 
           </div>
           {/* Table — same columns as /monthly-report: Ngày xét, Hạng mục, Ưu tiên, Nội dung, Chỉ tiêu */}
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full min-w-[980px] text-xs">
               <thead>
                 <tr className="border-b bg-slate-50 dark:bg-slate-800/50">
                   <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
@@ -388,6 +644,14 @@ function TeamKpiInline({ teamId, year, month }: { teamId: string; year: number; 
                   <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
                     Chỉ tiêu
                   </th>
+                  <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
+                    QL xét duyệt
+                  </th>
+                  {showActionColumn && (
+                    <th className="sticky right-0 z-10 whitespace-nowrap bg-slate-50 px-2.5 py-2 text-right font-semibold text-slate-500 shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.18)] dark:bg-slate-800/50">
+                      Thao tác
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -420,6 +684,17 @@ function TeamKpiInline({ teamId, year, month }: { teamId: string; year: number; 
                     <td className="whitespace-nowrap px-2.5 py-2 tabular-nums font-semibold text-slate-700 dark:text-slate-200">
                       {a.targetMetric?.trim() || '—'}
                     </td>
+                    <td className="min-w-[180px] px-2.5 py-2 align-top">
+                      <GoalReviewStatusBadge review={a.goalReview} />
+                      <GoalReviewSummary review={a.goalReview} />
+                    </td>
+                    {showActionColumn && (
+                      <ApprovalGoalActionCell
+                        requestId={requestId}
+                        assignment={a}
+                        onChanged={onChanged}
+                      />
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -549,6 +824,7 @@ export function ManagerKpiApprovalScreen() {
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ['kpi-approval-requests'] })
+    void qc.invalidateQueries({ queryKey: ['kpi-assignments'] })
     // Sau khi duyệt, finalEvalStatus được set → làm mới danh sách assignment inline để hiển thị
     // "Đánh giá Manager" (read-only) thay vì cache cũ còn trống.
     void qc.invalidateQueries({ queryKey: ['kpi-assignments-result'] })
@@ -808,11 +1084,18 @@ export function ManagerKpiApprovalScreen() {
                         }
                       />
                     ) : (
-                      <TeamKpiInline teamId={req.teamId} year={req.year} month={req.month} />
+                      <TeamKpiInline
+                        requestId={req.id}
+                        teamId={req.teamId}
+                        year={req.year}
+                        month={req.month}
+                        requestStatus={req.status}
+                        onChanged={refresh}
+                      />
                     )}
 
                     {/* Actions bar */}
-                    {req.status === 'pending' && (
+                    {req.status === 'pending' && req.type === 'result' && (
                       <>
                         <div className="border-t" />
                         <div className="flex items-center justify-end gap-2 px-4 py-2.5 bg-slate-50/80 dark:bg-slate-800/30">

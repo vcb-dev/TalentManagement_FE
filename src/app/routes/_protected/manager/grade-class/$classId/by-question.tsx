@@ -4,7 +4,7 @@ import { GraderClassByQuestionScreen } from '@/features/exam/components/GraderCl
 
 export const Route = createFileRoute('/_protected/manager/grade-class/$classId/by-question')({
   beforeLoad: () => {
-    requireRoleOrPermissionPrefixes(['TEACHER', 'MANAGER'], ['teacher.', 'manager.'])
+    requireRoleOrPermissionPrefixes(['TEACHER', 'MANAGER', 'BOD'], ['teacher.', 'manager.'])
   },
   component: GraderClassByQuestionPage,
 })

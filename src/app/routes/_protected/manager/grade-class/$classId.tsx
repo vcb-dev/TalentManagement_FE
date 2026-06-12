@@ -5,7 +5,7 @@ import { GraderClassByQuestionScreen } from '@/features/exam/components/GraderCl
 export const Route = createFileRoute('/_protected/manager/grade-class/$classId')({
   beforeLoad: () => {
     requireRoleOrPermissionPrefixes(
-      ['TEACHER', 'MANAGER', 'LEADER'],
+      ['TEACHER', 'MANAGER', 'BOD', 'LEADER'],
       ['teacher.', 'manager.', 'leader.']
     )
   },
