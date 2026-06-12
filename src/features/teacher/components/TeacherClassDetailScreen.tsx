@@ -13,7 +13,7 @@ import {
   XCircle,
   Clock,
 } from 'lucide-react'
-import { useForm, useWatch } from 'react-hook-form'
+import { useForm, useWatch, Controller } from 'react-hook-form'
 import { toast } from 'sonner'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Badge } from '@/components/ui/badge'
@@ -257,6 +257,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       location: '',
       roadmapItemIds: [] as string[],
       roadmapItemDeadlines: {} as Record<string, string>,
+      gradingType: 'direct',
     },
   })
   const {
@@ -282,6 +283,23 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     location: '',
     roadmapItemIds: [] as string[],
     roadmapItemDeadlines: {} as Record<string, string>,
+    gradingType: 'direct',
+  }
+
+  const hasExistingDeadlineForRoadmapItem = (itemId: string, excludeScheduleId?: string | null) => {
+    return schedules.some((s) => {
+      if (excludeScheduleId && s.id === excludeScheduleId) return false
+      if (!isDeadlineOnly(s)) return false
+      return s.roadmapItems?.some((item) => item.id === itemId)
+    })
+  }
+
+  const getAutoGradingType = (selectedIds: string[], excludeScheduleId?: string | null) => {
+    if (selectedIds.length === 0) return 'direct'
+    const hasAnyExisting = selectedIds.some((id) =>
+      hasExistingDeadlineForRoadmapItem(id, excludeScheduleId)
+    )
+    return hasAnyExisting ? 'direct' : 'rubric_reading'
   }
 
   const toggleRoadmapItem = (itemId: string, checked: boolean) => {
@@ -290,6 +308,11 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       ? Array.from(new Set([...current, itemId]))
       : current.filter((id) => id !== itemId)
     setScheduleValue('roadmapItemIds', next, { shouldDirty: true, shouldValidate: true })
+
+    if (!editingScheduleId) {
+      const autoType = getAutoGradingType(next, null)
+      setScheduleValue('gradingType', autoType, { shouldDirty: true, shouldValidate: true })
+    }
   }
 
   const onEditSchedule = (scheduleId: string) => {
@@ -321,6 +344,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       location: s.location ?? '',
       roadmapItemIds: s.roadmapItems?.map((item) => item.id) ?? [],
       roadmapItemDeadlines: deadlines,
+      gradingType: (s.examQuestions as any)?.gradingType || 'direct',
     })
   }
 
@@ -618,6 +642,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                       location: 'Nộp bài trực tuyến',
                       roadmapItemIds: [],
                       roadmapItemDeadlines: {},
+                      gradingType: 'direct',
                     })
                     setIsCreatingDeadlineOnly(true)
                     setScheduleModalOpen(true)
@@ -1263,6 +1288,11 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         location: vals.location.trim() || null,
                         roadmapItemIds: vals.roadmapItemIds,
                         roadmapItemDeadlines,
+                        examQuestions: {
+                          ...((schedules.find((x) => x.id === editingScheduleId)
+                            ?.examQuestions as any) || {}),
+                          gradingType: (vals as any).gradingType || 'direct',
+                        },
                       }
                       if (startTime >= endTime) {
                         toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
@@ -1315,6 +1345,42 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           placeholder="VD: Phòng họp A, Zoom..."
                           inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
                         />
+                      </div>
+
+                      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                        <div className="space-y-2 lg:col-span-2">
+                          <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                            Hình thức chấm điểm
+                          </label>
+                          <Controller
+                            control={scheduleForm.control}
+                            name="gradingType"
+                            render={({ field }) => (
+                              <Select
+                                value={field.value || 'direct'}
+                                onValueChange={field.onChange}
+                              >
+                                <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10 font-bold">
+                                  <SelectValue placeholder="Chọn hình thức chấm điểm" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-slate-200 p-1 shadow-2xl">
+                                  <SelectItem
+                                    value="direct"
+                                    className="rounded-lg py-2 font-bold text-slate-700"
+                                  >
+                                    Chấm điểm trực tiếp (0-100)
+                                  </SelectItem>
+                                  <SelectItem
+                                    value="rubric_reading"
+                                    className="rounded-lg py-2 font-bold text-slate-700"
+                                  >
+                                    Chấm theo rubric Đọc sách (Chưa đạt, Đạt, Tốt)
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                        </div>
                       </div>
 
                       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">

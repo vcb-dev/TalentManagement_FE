@@ -71,6 +71,7 @@ export function useTeacherCreateSchedule(classId: string) {
       topic: string
       location?: string | null
       roadmapItemIds: string[]
+      examQuestions?: any
     }) => teacherApi.createSchedule(classId, input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: teacherKeys.schedules(classId) })
@@ -95,6 +96,7 @@ export function useTeacherUpdateSchedule(classId: string) {
         topic?: string
         location?: string | null
         roadmapItemIds?: string[]
+        examQuestions?: any
       }
     }) => teacherApi.updateSchedule(classId, scheduleId, input),
     onSuccess: () => {
