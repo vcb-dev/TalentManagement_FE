@@ -413,6 +413,9 @@ export default function RoomBookingPage() {
   >([])
   const isUploadingDoc = uploadQueue.some((item) => item.status === 'uploading')
   const [docUploadError, setDocUploadError] = useState<string | null>(null)
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkLabel, setLinkLabel] = useState('')
+  const [linkError, setLinkError] = useState<string | null>(null)
 
   const [viewDate, setViewDate] = useState(() => getVnNow().date)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -624,6 +627,9 @@ export default function RoomBookingPage() {
     setUploadQueue([])
     setDocUploadError(null)
     setError('')
+    setLinkUrl('')
+    setLinkLabel('')
+    setLinkError(null)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -1341,6 +1347,69 @@ export default function RoomBookingPage() {
                             ⚠️ {docUploadError}
                           </p>
                         )}
+
+                        <div className="mt-4 border-t border-border/40 pt-4">
+                          <p className="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                            Hoặc liên kết slide Canva / Tài liệu online
+                          </p>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                placeholder="Đường dẫn (https://...)"
+                                value={linkUrl}
+                                onChange={(e) => {
+                                  setLinkUrl(e.target.value)
+                                  setLinkError(null)
+                                  if (e.target.value.includes('canva.com/design/') && !linkLabel) {
+                                    setLinkLabel('Slide Canva')
+                                  }
+                                }}
+                                className="flex-1 bg-white border border-border/80 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:border-primary transition-all"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Tên hiển thị (Tùy chọn)"
+                                value={linkLabel}
+                                onChange={(e) => setLinkLabel(e.target.value)}
+                                className="w-1/3 bg-white border border-border/80 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:border-primary transition-all"
+                              />
+                            </div>
+                            {linkError && (
+                              <p className="text-[11px] text-rose-500 font-semibold">{linkError}</p>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const urlTrimmed = linkUrl.trim()
+                                if (!urlTrimmed) {
+                                  setLinkError('Vui lòng nhập đường dẫn liên kết.')
+                                  return
+                                }
+                                if (!/^https?:\/\//i.test(urlTrimmed)) {
+                                  setLinkError('Đường dẫn phải bắt đầu bằng http:// hoặc https://')
+                                  return
+                                }
+                                let label = linkLabel.trim()
+                                if (!label) {
+                                  label = urlTrimmed.includes('canva.com/design/')
+                                    ? 'Slide Canva'
+                                    : 'Tài liệu online'
+                                }
+                                setUploadedDocuments((prev) => [
+                                  ...prev,
+                                  { name: label, url: urlTrimmed },
+                                ])
+                                setLinkUrl('')
+                                setLinkLabel('')
+                                setLinkError(null)
+                              }}
+                              className="w-full py-2 bg-secondary text-primary hover:bg-primary hover:text-white rounded-xl text-xs font-bold uppercase transition-all"
+                            >
+                              Thêm liên kết
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     {(user?.role === 'MANAGER' || user?.role === 'BOD') && (

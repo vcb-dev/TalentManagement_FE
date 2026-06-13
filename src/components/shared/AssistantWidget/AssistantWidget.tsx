@@ -1,14 +1,25 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouterState } from '@tanstack/react-router'
-import { Bot, Download, Loader2, Maximize2, Minimize2, Send, X } from 'lucide-react'
+import {
+  Bot,
+  Download,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Send,
+  X,
+  Upload,
+  FileText,
+} from 'lucide-react'
 import { AssistantRobotMascot } from './AssistantRobotMascot'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { getApiErrorMessage } from '@/lib/axios'
+import { apiClient, getApiErrorMessage } from '@/lib/axios'
 import { downloadAssistantReportDocx, postAssistantChat } from '@/features/assistant/api'
 import type {
   AssistantBookingDraft,
+  AssistantBookingStatus,
   AssistantChatMessage,
   AssistantReportTable,
   AssistantStructuredReport,
@@ -331,6 +342,11 @@ export function AssistantWidget() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [bookingDraft, setBookingDraft] = useState<AssistantBookingDraft | null>(null)
+  const [bookingStatus, setBookingStatus] = useState<AssistantBookingStatus>('idle')
+  const [showAiLinkInput, setShowAiLinkInput] = useState(false)
+  const [aiLinkUrl, setAiLinkUrl] = useState('')
+  const [aiLinkLabel, setAiLinkLabel] = useState('')
+  const [aiLinkError, setAiLinkError] = useState<string | null>(null)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const isCskhPage = pathname.startsWith('/cskh-quality')
 
@@ -390,6 +406,7 @@ export function AssistantWidget() {
           },
         })
         setBookingDraft(res.bookingDraft ?? null)
+        setBookingStatus(res.bookingStatus ?? 'idle')
         setMessages((prev) => {
           const next = [...prev]
           const pendingIdx = next.findIndex((m) => m.pending)
@@ -545,6 +562,185 @@ export function AssistantWidget() {
                   {s}
                 </button>
               ))}
+            </div>
+          )}
+
+          {bookingDraft && (bookingStatus === 'collecting' || bookingStatus === 'confirm') && (
+            <div
+              className={cn(
+                'border-t border-border bg-muted/40 px-4 py-3 space-y-2',
+                expanded ? 'sm:px-[max(24px,calc((100vw-980px)/2))]' : ''
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground">
+                  Tài liệu họp{' '}
+                  {bookingDraft.room === 'Tầng 6' ? '(Tầng 6 bắt buộc đính kèm)' : '(Tùy chọn)'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAiLinkInput((prev) => !prev)
+                      setAiLinkError(null)
+                    }}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition',
+                      showAiLinkInput
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-primary/10 text-primary hover:bg-primary/20'
+                    )}
+                  >
+                    <span>+ Link Canva/URL</span>
+                  </button>
+
+                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary hover:bg-primary/20 transition">
+                    <Upload className="h-3 w-3" />
+                    Đính kèm file
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        const formData = new FormData()
+                        formData.append('file', file)
+                        try {
+                          toast.loading('Đang tải tài liệu lên...', { id: 'upload-doc' })
+                          const uploadRes = await apiClient.post<{
+                            url: string
+                            originalName: string
+                          }>('/room-booking/upload-document', formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' },
+                          })
+                          const newDoc = {
+                            name: uploadRes.data.originalName,
+                            url: uploadRes.data.url,
+                          }
+                          setBookingDraft((prev) => {
+                            if (!prev) return null
+                            const docs = [...(prev.documents || []), newDoc]
+                            return { ...prev, documents: docs }
+                          })
+                          toast.success('Đã tải tài liệu lên thành công!', { id: 'upload-doc' })
+                        } catch (err) {
+                          toast.error(getApiErrorMessage(err), { id: 'upload-doc' })
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {showAiLinkInput && (
+                <div className="bg-background border border-border p-2.5 rounded-xl flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Đường dẫn (https://...)"
+                      value={aiLinkUrl}
+                      onChange={(e) => {
+                        setAiLinkUrl(e.target.value)
+                        setAiLinkError(null)
+                        if (e.target.value.includes('canva.com/design/') && !aiLinkLabel) {
+                          setAiLinkLabel('Slide Canva')
+                        }
+                      }}
+                      className="flex-1 bg-muted/40 border border-border/80 rounded-lg px-2.5 py-1.5 text-xs font-medium outline-none focus:border-primary focus:bg-background transition-all"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Tên hiển thị"
+                      value={aiLinkLabel}
+                      onChange={(e) => setAiLinkLabel(e.target.value)}
+                      className="w-1/3 bg-muted/40 border border-border/80 rounded-lg px-2.5 py-1.5 text-xs font-medium outline-none focus:border-primary focus:bg-background transition-all"
+                    />
+                  </div>
+                  {aiLinkError && (
+                    <p className="text-[10px] text-rose-500 font-semibold">{aiLinkError}</p>
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAiLinkUrl('')
+                        setAiLinkLabel('')
+                        setAiLinkError(null)
+                        setShowAiLinkInput(false)
+                      }}
+                      className="px-2.5 py-1 text-muted-foreground hover:text-foreground text-xs font-semibold"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const urlTrimmed = aiLinkUrl.trim()
+                        if (!urlTrimmed) {
+                          setAiLinkError('Vui lòng nhập đường dẫn.')
+                          return
+                        }
+                        if (!/^https?:\/\//i.test(urlTrimmed)) {
+                          setAiLinkError('Đường dẫn phải bắt đầu bằng http:// hoặc https://')
+                          return
+                        }
+                        let label = aiLinkLabel.trim()
+                        if (!label) {
+                          label = urlTrimmed.includes('canva.com/design/')
+                            ? 'Slide Canva'
+                            : 'Tài liệu online'
+                        }
+                        const newDoc = { name: label, url: urlTrimmed }
+                        setBookingDraft((prev) => {
+                          if (!prev) return null
+                          const docs = [...(prev.documents || []), newDoc]
+                          return { ...prev, documents: docs }
+                        })
+                        setAiLinkUrl('')
+                        setAiLinkLabel('')
+                        setAiLinkError(null)
+                        setShowAiLinkInput(false)
+                      }}
+                      className="bg-primary text-primary-foreground px-3 py-1 rounded-lg text-xs font-bold uppercase transition"
+                    >
+                      Xác nhận
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {(bookingDraft.documents || []).length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {(bookingDraft.documents || []).map((doc, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-1.5 rounded-lg border border-border/80 bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm"
+                    >
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="max-w-[140px] truncate" title={doc.name}>
+                        {doc.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBookingDraft((prev) => {
+                            if (!prev) return null
+                            const docs = (prev.documents || []).filter((_, i) => i !== idx)
+                            return { ...prev, documents: docs }
+                          })
+                        }}
+                        className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-destructive transition"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Chưa có tài liệu nào được đính kèm cho buổi họp.
+                </p>
+              )}
             </div>
           )}
 
