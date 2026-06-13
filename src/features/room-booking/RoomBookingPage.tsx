@@ -408,8 +408,10 @@ export default function RoomBookingPage() {
   const [isEmergency, setIsEmergency] = useState(false)
   const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([])
   const [uploadedDocuments, setUploadedDocuments] = useState<{ url: string; name: string }[]>([])
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [isUploadingDoc, setIsUploadingDoc] = useState(false)
+  const [uploadQueue, setUploadQueue] = useState<
+    { id: string; name: string; status: 'uploading' | 'success' | 'error'; error?: string }[]
+  >([])
+  const isUploadingDoc = uploadQueue.some((item) => item.status === 'uploading')
   const [docUploadError, setDocUploadError] = useState<string | null>(null)
 
   const [viewDate, setViewDate] = useState(() => getVnNow().date)
@@ -619,8 +621,7 @@ export default function RoomBookingPage() {
     setNote('')
     setIsEmergency(false)
     setUploadedDocuments([])
-    setSelectedFiles([])
-    setIsUploadingDoc(false)
+    setUploadQueue([])
     setDocUploadError(null)
     setError('')
   }
@@ -656,19 +657,12 @@ export default function RoomBookingPage() {
       return
     }
 
-    setIsUploadingDoc(true)
-    setDocUploadError(null)
-    try {
-      // 1. Upload files concurrently
-      const uploadResults = await Promise.all(
-        selectedFiles.map((file) => uploadMeetingDocument(file))
-      )
-      // 2. Combine with previously uploaded docs
-      const finalDocs = [
-        ...uploadedDocuments,
-        ...uploadResults.map((r) => ({ url: r.url, name: r.originalName })),
-      ]
+    if (isUploadingDoc) {
+      setError('Vui lòng đợi tệp tin đang được tải lên...')
+      return
+    }
 
+    try {
       const payload = {
         room,
         date,
@@ -677,7 +671,7 @@ export default function RoomBookingPage() {
         reason,
         note,
         isEmergency,
-        documents: finalDocs.length > 0 ? finalDocs : undefined,
+        documents: uploadedDocuments.length > 0 ? uploadedDocuments : undefined,
       }
 
       if (editingId) {
@@ -686,12 +680,9 @@ export default function RoomBookingPage() {
         await createMut.mutateAsync(payload)
       }
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message || err?.message || 'Lỗi tải lên file hoặc lưu lịch họp'
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi lưu lịch họp'
       setError(msg)
       speak(`Lỗi: ${msg}`)
-    } finally {
-      setIsUploadingDoc(false)
     }
   }
 
@@ -1199,7 +1190,7 @@ export default function RoomBookingPage() {
 
                       <div className="rounded-2xl border border-border bg-muted/20 p-4 transition-all">
                         {/* File list */}
-                        {(uploadedDocuments.length > 0 || selectedFiles.length > 0) && (
+                        {(uploadedDocuments.length > 0 || uploadQueue.length > 0) && (
                           <div className="space-y-2 mb-4">
                             {/* Previous uploaded files */}
                             {uploadedDocuments.map((doc, idx) => (
@@ -1213,7 +1204,7 @@ export default function RoomBookingPage() {
                                     {doc.name}
                                   </span>
                                   <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded-md shrink-0">
-                                    Đã lưu
+                                    Đã tải lên
                                   </span>
                                 </div>
                                 <button
@@ -1228,30 +1219,50 @@ export default function RoomBookingPage() {
                               </div>
                             ))}
 
-                            {/* Locally selected files */}
-                            {selectedFiles.map((file, idx) => (
+                            {/* Queue uploading/error files */}
+                            {uploadQueue.map((item) => (
                               <div
-                                key={`selected-${idx}`}
-                                className="flex items-center justify-between gap-3 bg-white p-2.5 rounded-xl border border-border/85"
+                                key={item.id}
+                                className={cn(
+                                  'flex items-center justify-between gap-3 p-2.5 rounded-xl border transition-all',
+                                  item.status === 'error'
+                                    ? 'bg-rose-50/50 border-rose-100'
+                                    : 'bg-white border-border/85'
+                                )}
                               >
                                 <div className="flex items-center gap-2 min-w-0">
-                                  <FileText className="h-4.5 w-4.5 text-primary shrink-0 animate-pulse" />
+                                  {item.status === 'uploading' ? (
+                                    <Loader2 className="h-4.5 w-4.5 text-primary shrink-0 animate-spin" />
+                                  ) : (
+                                    <FileText className="h-4.5 w-4.5 text-rose-500 shrink-0" />
+                                  )}
                                   <span className="text-xs font-semibold truncate text-slate-700">
-                                    {file.name}
+                                    {item.name}
                                   </span>
-                                  <span className="text-[10px] text-primary font-bold bg-primary/5 px-1.5 py-0.5 rounded-md shrink-0">
-                                    Chờ lưu
-                                  </span>
+                                  {item.status === 'uploading' ? (
+                                    <span className="text-[10px] text-primary font-bold bg-primary/5 px-1.5 py-0.5 rounded-md shrink-0">
+                                      Đang tải...
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="text-[10px] text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded-md shrink-0"
+                                      title={item.error}
+                                    >
+                                      Lỗi tải
+                                    </span>
+                                  )}
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedFiles((prev) => prev.filter((_, i) => i !== idx))
-                                  }}
-                                  className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-lg transition-colors text-xs font-bold shrink-0"
-                                >
-                                  Xoá
-                                </button>
+                                {item.status === 'error' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setUploadQueue((prev) => prev.filter((q) => q.id !== item.id))
+                                    }}
+                                    className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-lg transition-colors text-xs font-bold shrink-0"
+                                  >
+                                    Xoá
+                                  </button>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -1265,7 +1276,6 @@ export default function RoomBookingPage() {
                             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.rar"
                             className="hidden"
                             id="meeting-doc-upload"
-                            disabled={isUploadingDoc}
                             onChange={(e) => {
                               const files = Array.from(e.target.files || [])
                               e.target.value = ''
@@ -1280,21 +1290,47 @@ export default function RoomBookingPage() {
                                 }
                                 validFiles.push(file)
                               }
-
-                              setSelectedFiles((prev) => [...prev, ...validFiles])
                               setDocUploadError(null)
+
+                              // Trigger upload
+                              validFiles.forEach((file) => {
+                                const queueId = `${file.name}-${Date.now()}`
+                                setUploadQueue((prev) => [
+                                  ...prev,
+                                  { id: queueId, name: file.name, status: 'uploading' },
+                                ])
+
+                                uploadMeetingDocument(file)
+                                  .then((res) => {
+                                    setUploadQueue((prev) => prev.filter((q) => q.id !== queueId))
+                                    setUploadedDocuments((prev) => [
+                                      ...prev,
+                                      { url: res.url, name: res.originalName },
+                                    ])
+                                  })
+                                  .catch((err) => {
+                                    setUploadQueue((prev) =>
+                                      prev.map((q) =>
+                                        q.id === queueId
+                                          ? {
+                                              ...q,
+                                              status: 'error',
+                                              error: err.message || 'Lỗi tải lên',
+                                            }
+                                          : q
+                                      )
+                                    )
+                                  })
+                              })
                             }}
                           />
 
                           <label
                             htmlFor="meeting-doc-upload"
-                            className={cn(
-                              'cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-primary/10 border border-primary/20 px-4 py-2.5 text-xs font-black uppercase text-primary hover:bg-primary/20 transition-all active:scale-95',
-                              isUploadingDoc && 'pointer-events-none opacity-50'
-                            )}
+                            className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-primary/10 border border-primary/20 px-4 py-2.5 text-xs font-black uppercase text-primary hover:bg-primary/20 transition-all active:scale-95"
                           >
                             <Upload className="h-4 w-4" />
-                            {uploadedDocuments.length > 0 || selectedFiles.length > 0
+                            {uploadedDocuments.length > 0 || uploadQueue.length > 0
                               ? 'Chọn thêm tài liệu'
                               : 'Chọn tài liệu'}
                           </label>
