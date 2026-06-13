@@ -4,6 +4,7 @@ import { getBookingDisplayStatus } from './roomBookingStatus'
 import { formatDateLongVi, formatTimeRangeVi } from './roomBookingTimeUtils'
 import { requiresMeetingMinutes } from './roomBookingMinutes'
 import { RoomBookingMinutesCell } from './RoomBookingMinutesCell'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 
 type Props = {
   booking: MeetingBooking | null
