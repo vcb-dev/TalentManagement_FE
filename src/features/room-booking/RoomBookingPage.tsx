@@ -883,18 +883,22 @@ export default function RoomBookingPage() {
         </div>
       </div>
 
-      <RoomBookingDetailModal
-        booking={detailBooking}
-        vnTime={vnTime}
-        onClose={() => setDetailBooking(null)}
-        onEdit={handleEdit}
-        onDelete={(id) => {
-          setDetailBooking(null)
-          handleDelete(id)
-        }}
-        canManage={detailBooking ? canManageBooking(detailBooking) : false}
-        currentUserId={user?.id}
-      />
+      {detailBooking &&
+        createPortal(
+          <RoomBookingDetailModal
+            booking={detailBooking}
+            vnTime={vnTime}
+            onClose={() => setDetailBooking(null)}
+            onEdit={handleEdit}
+            onDelete={(id) => {
+              setDetailBooking(null)
+              handleDelete(id)
+            }}
+            canManage={detailBooking ? canManageBooking(detailBooking) : false}
+            currentUserId={user?.id}
+          />,
+          document.body
+        )}
 
       {/* Form Đặt phòng — portal + căn giữa viewport, cuộn khi form dài */}
       {showModal &&
