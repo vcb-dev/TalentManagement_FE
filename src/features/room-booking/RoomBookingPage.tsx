@@ -663,6 +663,13 @@ export default function RoomBookingPage() {
       return
     }
 
+    if (room === 'Tầng 6' && uploadedDocuments.length === 0) {
+      const m = 'Phòng họp Tầng 6 bắt buộc phải đính kèm tài liệu họp.'
+      setError(m)
+      speak(m)
+      return
+    }
+
     if (isUploadingDoc) {
       setError('Vui lòng đợi tệp tin đang được tải lên...')
       return
