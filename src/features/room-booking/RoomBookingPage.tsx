@@ -1193,7 +1193,7 @@ export default function RoomBookingPage() {
                       <label className="text-xs font-semibold uppercase ml-1 flex items-center justify-between">
                         <span>Tài liệu buổi họp</span>
                         <span className="text-[10px] text-muted-foreground font-normal normal-case">
-                          Chấp nhận PDF, Word, Excel, Slide, ZIP... (Tối đa 50MB/file)
+                          Chấp nhận PDF, Word, Excel, Slide, ZIP... (Tối đa 100MB/file)
                         </span>
                       </label>
 
@@ -1274,8 +1274,8 @@ export default function RoomBookingPage() {
                               // Validate files
                               const validFiles: File[] = []
                               for (const file of files) {
-                                if (file.size > 50 * 1024 * 1024) {
-                                  setDocUploadError(`File "${file.name}" vượt quá kích thước 50MB`)
+                                if (file.size > 100 * 1024 * 1024) {
+                                  setDocUploadError(`File "${file.name}" vượt quá kích thước 100MB`)
                                   return
                                 }
                                 validFiles.push(file)
