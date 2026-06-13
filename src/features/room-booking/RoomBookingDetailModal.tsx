@@ -75,20 +75,25 @@ export function RoomBookingDetailModal({
               <p className="mt-1 text-sm text-foreground">{booking.note}</p>
             </div>
           ) : null}
-          {booking.documentFileUrl ? (
+          {booking.documents && booking.documents.length > 0 ? (
             <div className="rounded-xl border border-border/60 bg-primary/5 p-3">
-              <p className="text-xs font-semibold uppercase text-primary">Tài liệu buổi họp</p>
-              <div className="mt-2">
-                <a
-                  href={resolvePublicAssetUrl(booking.documentFileUrl)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex max-w-full items-center gap-1.5 truncate text-xs font-bold text-primary hover:underline bg-primary/10 px-3 py-2 rounded-lg"
-                  title={booking.documentFileName ?? 'Tải tài liệu'}
-                >
-                  <FileText className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{booking.documentFileName ?? 'Tải tài liệu'}</span>
-                </a>
+              <p className="text-xs font-semibold uppercase text-primary mb-2">
+                Tài liệu buổi họp ({booking.documents.length})
+              </p>
+              <div className="flex flex-col gap-2">
+                {booking.documents.map((doc, idx) => (
+                  <a
+                    key={idx}
+                    href={resolvePublicAssetUrl(doc.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex max-w-full items-center gap-1.5 truncate text-xs font-bold text-primary hover:underline bg-primary/10 px-3 py-2 rounded-lg"
+                    title={doc.name}
+                  >
+                    <FileText className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{doc.name}</span>
+                  </a>
+                ))}
               </div>
             </div>
           ) : null}

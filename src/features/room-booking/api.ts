@@ -21,8 +21,7 @@ export interface MeetingBooking {
   minutesFileUrl?: string | null
   minutesFileName?: string | null
   minutesUploadedAt?: string | null
-  documentFileUrl?: string | null
-  documentFileName?: string | null
+  documents?: { url: string; name: string }[] | null
   user?: { email: string; fullNameLegal: string }
 }
 
@@ -49,8 +48,7 @@ export interface CreateBookingPayload {
   timeTo: string
   note?: string
   isEmergency?: boolean
-  documentFileUrl?: string
-  documentFileName?: string
+  documents?: { url: string; name: string }[]
 }
 
 export async function getBookings(): Promise<MeetingBooking[]> {
