@@ -1,10 +1,40 @@
-﻿import { useMemo } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { useSubmission } from '@/features/exam/hooks'
+
+const RUBRIC_CRITERIA = [
+  {
+    id: 'suy_ngam',
+    title: 'Suy ngẫm và nhận thức cá nhân (40đ)',
+    options: {
+      chua_dat: { score: 10, desc: 'Chủ yếu nhắc lại nội dung sách.' },
+      dat: { score: 25, desc: 'Nêu được bài học hoặc nhận thức riêng.' },
+      tot: { score: 40, desc: 'Thể hiện sự thay đổi trong tư duy hoặc cách nhìn nhận vấn đề.' },
+    },
+  },
+  {
+    id: 'ket_noi',
+    title: 'Kết nối với thực tế (30đ)',
+    options: {
+      chua_dat: { score: 10, desc: 'Ít hoặc chưa liên hệ với thực tế.' },
+      dat: { score: 20, desc: 'Có liên hệ với bản thân hoặc công việc.' },
+      tot: { score: 30, desc: 'Liên hệ cụ thể và thể hiện khả năng vận dụng.' },
+    },
+  },
+  {
+    id: 'phat_trien',
+    title: 'Phát triển ý tưởng (30đ)',
+    options: {
+      chua_dat: { score: 10, desc: 'Chưa có quan điểm riêng.' },
+      dat: { score: 20, desc: 'Có quan điểm hoặc câu hỏi riêng.' },
+      tot: { score: 30, desc: 'Có phản biện, mở rộng hoặc đề xuất cách áp dụng mới.' },
+    },
+  },
+]
 
 export interface MemberSubmissionResultScreenProps {
   submissionId: string
@@ -79,6 +109,10 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
     (submission.grades as Record<string, { criteria: string[]; score: number; note?: string }>) ||
     {}
 
+  const isFileSubmission = typeof answersObj === 'object' && 'fileUrl' in answersObj
+  const gradingType = (submission?.schedule?.examQuestions as any)?.gradingType || 'direct'
+  const rubricGradesObj = (submission?.grades as any)?.rubric_reading || {}
+
   const formattedDate = new Date(submission.createdAt).toLocaleString('vi-VN', {
     day: '2-digit',
     month: '2-digit',
@@ -136,11 +170,38 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
 
           {/* Left: Answers & Feedback */}
           <div className="flex flex-col gap-6 lg:col-span-8">
+            {/* 1. Student Submission */}
             <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
               <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-muted-foreground">
-                Bài làm của bạn ({answeredEntries.length} câu)
+                {isFileSubmission
+                  ? 'Bài làm của bạn (File đính kèm)'
+                  : `Bài làm của bạn (${answeredEntries.length} câu)`}
               </h2>
-              {answeredEntries.length === 0 ? (
+              {isFileSubmission ? (
+                <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0">
+                    <ArrowLeft className="-rotate-90 h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-slate-800 truncate">
+                      {answersObj.fileName || 'File bài thi'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Bạn đã tải lên file bài thi thành công
+                    </p>
+                  </div>
+                  {answersObj.fileUrl && (
+                    <a
+                      href={answersObj.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="h-9 rounded-xl px-4 flex items-center bg-primary text-white text-xs font-black uppercase tracking-widest shadow-sm hover:bg-primary/95 transition-all"
+                    >
+                      Tải về / Xem tệp
+                    </a>
+                  )}
+                </div>
+              ) : answeredEntries.length === 0 ? (
                 <p className="italic text-muted-foreground">
                   Không có câu trả lời nào được ghi nhận.
                 </p>
@@ -173,7 +234,7 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
                             : 'Thí sinh không trả lời câu này'}
                         </div>
 
-                        {submission.status === 'done' && (
+                        {submission.status === 'done' && gradingType !== 'rubric_reading' && (
                           <div className="rounded-lg border border-primary/10 bg-primary/5 p-4">
                             <div className="mb-3 flex items-center justify-between">
                               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -229,6 +290,93 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
               )}
             </div>
 
+            {/* 2. Rubric Assessment (if applicable) */}
+            {submission.status === 'done' && gradingType === 'rubric_reading' && (
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <h2 className="mb-4 text-base font-black text-slate-800 uppercase tracking-wide">
+                  Kết quả đánh giá theo Rubric Đọc sách
+                </h2>
+                <div className="overflow-x-auto rounded-xl border border-slate-100">
+                  <table className="w-full border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50">
+                        <th className="px-4 py-3 font-bold text-slate-700 w-1/3">Tiêu chí</th>
+                        <th className="px-4 py-3 font-bold text-orange-600 text-center w-2/9">
+                          Chưa đạt
+                        </th>
+                        <th className="px-4 py-3 font-bold text-emerald-600 text-center w-2/9">
+                          Đạt
+                        </th>
+                        <th className="px-4 py-3 font-bold text-indigo-600 text-center w-2/9">
+                          Tốt
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {RUBRIC_CRITERIA.map((criteria) => {
+                        const currentValue = rubricGradesObj[criteria.id] || null
+                        return (
+                          <tr key={criteria.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-4 py-4 font-bold text-slate-800 vertical-align-top">
+                              {criteria.title}
+                            </td>
+                            {Object.entries(criteria.options).map(([optKey, optVal]) => {
+                              const isChecked = currentValue === optKey
+                              const colorClass =
+                                optKey === 'chua_dat'
+                                  ? 'data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600'
+                                  : optKey === 'dat'
+                                    ? 'data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600'
+                                    : 'data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600'
+                              return (
+                                <td
+                                  key={optKey}
+                                  className={cn(
+                                    'px-4 py-4 text-center transition-all',
+                                    isChecked &&
+                                      (optKey === 'chua_dat'
+                                        ? 'bg-orange-50/30'
+                                        : optKey === 'dat'
+                                          ? 'bg-emerald-50/30'
+                                          : 'bg-indigo-50/30')
+                                  )}
+                                >
+                                  <div className="flex flex-col items-center gap-2">
+                                    <Checkbox
+                                      className={cn('h-5 w-5 rounded-full border-2', colorClass)}
+                                      checked={isChecked}
+                                      disabled
+                                    />
+                                    <span
+                                      className={cn(
+                                        'text-xs font-black uppercase',
+                                        isChecked
+                                          ? optKey === 'chua_dat'
+                                            ? 'text-orange-600'
+                                            : optKey === 'dat'
+                                              ? 'text-emerald-600'
+                                              : 'text-indigo-600'
+                                          : 'text-slate-400'
+                                      )}
+                                    >
+                                      {optVal.score}đ
+                                    </span>
+                                    <span className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-[150px] mx-auto block">
+                                      {optVal.desc}
+                                    </span>
+                                  </div>
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* Grader note */}
             {submission.status === 'done' && (
               <div className="rounded-xl border border-primary/20 bg-card p-5 shadow-sm">
@@ -270,14 +418,22 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
                   <span className="font-medium text-foreground">{formattedDate}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Số câu trả lời</span>
-                  <span className="font-bold text-foreground">{answeredEntries.length}</span>
+                  <span className="text-muted-foreground">
+                    {isFileSubmission ? 'Hình thức nộp' : 'Số câu trả lời'}
+                  </span>
+                  <span className="font-bold text-foreground font-semibold">
+                    {isFileSubmission ? 'File đính kèm' : `${answeredEntries.length} câu`}
+                  </span>
                 </div>
                 <div className="my-2 h-px w-full bg-border" />
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Tổng điểm trung bình</span>
                   <span className="text-lg font-bold text-primary">
-                    {submission.totalScore != null ? submission.totalScore + '%' : '—'}
+                    {submission.totalScore != null
+                      ? gradingType === 'rubric_reading'
+                        ? `${submission.totalScore}đ`
+                        : `${submission.totalScore}%`
+                      : '—'}
                   </span>
                 </div>
                 <div className="my-2 h-px w-full bg-border" />

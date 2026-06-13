@@ -24,7 +24,7 @@ import { BookOpen, Plus, Trash2, Pencil, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CustomSelect } from '@/components/shared/CustomSelect'
 
-const CATALOG_CODES = ['SALES_NV', 'LIVESTREAM_NV', 'VAN_DON_NV']
+const CATALOG_CODES = ['SALES_NV', 'VAN_DON_NV']
 
 const CATEGORY_OPTIONS = ['BASE', 'KPI_BONUS', 'PERFORMANCE_BONUS', 'BENEFIT']
 const TENURE_STAGE_OPTIONS = ['M1', 'M2', 'M3', 'OFFICIAL']

@@ -34,6 +34,8 @@ import { Route as ProtectedManagerTeamProgressRouteImport } from './routes/_prot
 import { Route as ProtectedManagerReviewSubmissionsRouteImport } from './routes/_protected/manager/review-submissions'
 import { Route as ProtectedManagerOrgRouteImport } from './routes/_protected/manager/org'
 import { Route as ProtectedManagerLearningSubmissionsRouteImport } from './routes/_protected/manager/learning-submissions'
+import { Route as ProtectedManagerKpiSalesConfigRouteImport } from './routes/_protected/manager/kpi-sales-config'
+import { Route as ProtectedManagerKpiOkrRouteImport } from './routes/_protected/manager/kpi-okr'
 import { Route as ProtectedManagerGradingRouteImport } from './routes/_protected/manager/grading'
 import { Route as ProtectedManagerExercisesRouteImport } from './routes/_protected/manager/exercises'
 import { Route as ProtectedManagerExamScheduleRouteImport } from './routes/_protected/manager/exam-schedule'
@@ -200,6 +202,17 @@ const ProtectedManagerLearningSubmissionsRoute =
     path: '/manager/learning-submissions',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
+const ProtectedManagerKpiSalesConfigRoute =
+  ProtectedManagerKpiSalesConfigRouteImport.update({
+    id: '/manager/kpi-sales-config',
+    path: '/manager/kpi-sales-config',
+    getParentRoute: () => ProtectedRouteRoute,
+  } as any)
+const ProtectedManagerKpiOkrRoute = ProtectedManagerKpiOkrRouteImport.update({
+  id: '/manager/kpi-okr',
+  path: '/manager/kpi-okr',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 const ProtectedManagerGradingRoute = ProtectedManagerGradingRouteImport.update({
   id: '/manager/grading',
   path: '/manager/grading',
@@ -429,6 +442,8 @@ export interface FileRoutesByFullPath {
   '/manager/exam-schedule': typeof ProtectedManagerExamScheduleRoute
   '/manager/exercises': typeof ProtectedManagerExercisesRoute
   '/manager/grading': typeof ProtectedManagerGradingRoute
+  '/manager/kpi-okr': typeof ProtectedManagerKpiOkrRoute
+  '/manager/kpi-sales-config': typeof ProtectedManagerKpiSalesConfigRoute
   '/manager/learning-submissions': typeof ProtectedManagerLearningSubmissionsRoute
   '/manager/org': typeof ProtectedManagerOrgRoute
   '/manager/review-submissions': typeof ProtectedManagerReviewSubmissionsRoute
@@ -488,6 +503,8 @@ export interface FileRoutesByTo {
   '/manager/exam-schedule': typeof ProtectedManagerExamScheduleRoute
   '/manager/exercises': typeof ProtectedManagerExercisesRoute
   '/manager/grading': typeof ProtectedManagerGradingRoute
+  '/manager/kpi-okr': typeof ProtectedManagerKpiOkrRoute
+  '/manager/kpi-sales-config': typeof ProtectedManagerKpiSalesConfigRoute
   '/manager/learning-submissions': typeof ProtectedManagerLearningSubmissionsRoute
   '/manager/org': typeof ProtectedManagerOrgRoute
   '/manager/review-submissions': typeof ProtectedManagerReviewSubmissionsRoute
@@ -550,6 +567,8 @@ export interface FileRoutesById {
   '/_protected/manager/exam-schedule': typeof ProtectedManagerExamScheduleRoute
   '/_protected/manager/exercises': typeof ProtectedManagerExercisesRoute
   '/_protected/manager/grading': typeof ProtectedManagerGradingRoute
+  '/_protected/manager/kpi-okr': typeof ProtectedManagerKpiOkrRoute
+  '/_protected/manager/kpi-sales-config': typeof ProtectedManagerKpiSalesConfigRoute
   '/_protected/manager/learning-submissions': typeof ProtectedManagerLearningSubmissionsRoute
   '/_protected/manager/org': typeof ProtectedManagerOrgRoute
   '/_protected/manager/review-submissions': typeof ProtectedManagerReviewSubmissionsRoute
@@ -611,6 +630,8 @@ export interface FileRouteTypes {
     | '/manager/exam-schedule'
     | '/manager/exercises'
     | '/manager/grading'
+    | '/manager/kpi-okr'
+    | '/manager/kpi-sales-config'
     | '/manager/learning-submissions'
     | '/manager/org'
     | '/manager/review-submissions'
@@ -670,6 +691,8 @@ export interface FileRouteTypes {
     | '/manager/exam-schedule'
     | '/manager/exercises'
     | '/manager/grading'
+    | '/manager/kpi-okr'
+    | '/manager/kpi-sales-config'
     | '/manager/learning-submissions'
     | '/manager/org'
     | '/manager/review-submissions'
@@ -731,6 +754,8 @@ export interface FileRouteTypes {
     | '/_protected/manager/exam-schedule'
     | '/_protected/manager/exercises'
     | '/_protected/manager/grading'
+    | '/_protected/manager/kpi-okr'
+    | '/_protected/manager/kpi-sales-config'
     | '/_protected/manager/learning-submissions'
     | '/_protected/manager/org'
     | '/_protected/manager/review-submissions'
@@ -943,6 +968,20 @@ declare module '@tanstack/react-router' {
       path: '/manager/learning-submissions'
       fullPath: '/manager/learning-submissions'
       preLoaderRoute: typeof ProtectedManagerLearningSubmissionsRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/manager/kpi-sales-config': {
+      id: '/_protected/manager/kpi-sales-config'
+      path: '/manager/kpi-sales-config'
+      fullPath: '/manager/kpi-sales-config'
+      preLoaderRoute: typeof ProtectedManagerKpiSalesConfigRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/manager/kpi-okr': {
+      id: '/_protected/manager/kpi-okr'
+      path: '/manager/kpi-okr'
+      fullPath: '/manager/kpi-okr'
+      preLoaderRoute: typeof ProtectedManagerKpiOkrRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/manager/grading': {
@@ -1240,6 +1279,8 @@ interface ProtectedRouteRouteChildren {
   ProtectedManagerExamScheduleRoute: typeof ProtectedManagerExamScheduleRoute
   ProtectedManagerExercisesRoute: typeof ProtectedManagerExercisesRoute
   ProtectedManagerGradingRoute: typeof ProtectedManagerGradingRoute
+  ProtectedManagerKpiOkrRoute: typeof ProtectedManagerKpiOkrRoute
+  ProtectedManagerKpiSalesConfigRoute: typeof ProtectedManagerKpiSalesConfigRoute
   ProtectedManagerLearningSubmissionsRoute: typeof ProtectedManagerLearningSubmissionsRoute
   ProtectedManagerOrgRoute: typeof ProtectedManagerOrgRoute
   ProtectedManagerReviewSubmissionsRoute: typeof ProtectedManagerReviewSubmissionsRoute
@@ -1294,6 +1335,8 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedManagerExamScheduleRoute: ProtectedManagerExamScheduleRoute,
   ProtectedManagerExercisesRoute: ProtectedManagerExercisesRoute,
   ProtectedManagerGradingRoute: ProtectedManagerGradingRoute,
+  ProtectedManagerKpiOkrRoute: ProtectedManagerKpiOkrRoute,
+  ProtectedManagerKpiSalesConfigRoute: ProtectedManagerKpiSalesConfigRoute,
   ProtectedManagerLearningSubmissionsRoute:
     ProtectedManagerLearningSubmissionsRoute,
   ProtectedManagerOrgRoute: ProtectedManagerOrgRoute,

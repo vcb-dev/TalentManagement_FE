@@ -40,8 +40,8 @@ describe('LeaderKpiGuidance — dữ liệu bảng hướng dẫn', () => {
     expect(TRAFFIC_TOTAL_ROWS).toBe(6)
   })
 
-  it('LIVESTREAM_NV và VAN_DON_NV không có metric bắt buộc', () => {
-    expect(MANDATORY_METRICS_BY_TEMPLATE['LIVESTREAM_NV']).toHaveLength(0)
+  it('VAN_DON_NV không có metric bắt buộc và LIVESTREAM_NV đã bị gỡ khỏi catalog seed', () => {
+    expect(MANDATORY_METRICS_BY_TEMPLATE['LIVESTREAM_NV']).toBeUndefined()
     expect(MANDATORY_METRICS_BY_TEMPLATE['VAN_DON_NV']).toHaveLength(0)
   })
 })

@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   isMandatoryMetric,
+  isCatalogSeedExcludedTeam,
   isLivestreamCatalogTeam,
   isTrafficTeam,
   requiresKpiApproval,
@@ -55,6 +56,12 @@ describe('resolveTemplateCodeForTeam', () => {
     expect(resolveTemplateCodeForTeam({ name: 'Kinh Doanh 2' })).toBe('SALES_NV')
     expect(resolveTemplateCodeForTeam({ name: 'Cửa Hàng' })).toBe('SALES_NV')
     expect(resolveTemplateCodeForTeam({ name: 'Livestream 3' })).toBe('SALES_NV')
+  })
+
+  it('team Cua Hang khong dung catalog auto-seed', () => {
+    expect(isCatalogSeedExcludedTeam({ name: 'Cửa Hàng' })).toBe(true)
+    expect(isCatalogSeedExcludedTeam({ name: 'Cua Hang Kim Hoan' })).toBe(true)
+    expect(isCatalogSeedExcludedTeam({ name: 'Kinh Doanh 1' })).toBe(false)
   })
 })
 

@@ -2,7 +2,17 @@ import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearch } from '@tanstack/react-router'
-import { Plus, Clock, CheckCircle2, AlertCircle, X, Volume2, Loader2 } from 'lucide-react'
+import {
+  Plus,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  Volume2,
+  Loader2,
+  Upload,
+  FileText,
+} from 'lucide-react'
 import { CustomSelect } from '@/components/shared/CustomSelect'
 import { DatePicker } from '@/components/ui/date-picker'
 import { useAuthStore } from '@/stores/auth.store'
@@ -15,9 +25,11 @@ import {
   approveBooking,
   rejectBooking,
   finishBooking,
+  uploadMeetingDocument,
   type MeetingBooking,
   type BookedSlot,
 } from './api'
+import { cn } from '@/lib/utils'
 import { useVnTime, getVnNow } from '@/hooks/useVnTime'
 import { RoomScheduleTimeline } from './RoomScheduleTimeline'
 import { RoomBookingDetailModal } from './RoomBookingDetailModal'
@@ -395,6 +407,15 @@ export default function RoomBookingPage() {
   const [note, setNote] = useState('')
   const [isEmergency, setIsEmergency] = useState(false)
   const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([])
+  const [uploadedDocuments, setUploadedDocuments] = useState<{ url: string; name: string }[]>([])
+  const [uploadQueue, setUploadQueue] = useState<
+    { id: string; name: string; status: 'uploading' | 'success' | 'error'; error?: string }[]
+  >([])
+  const isUploadingDoc = uploadQueue.some((item) => item.status === 'uploading')
+  const [docUploadError, setDocUploadError] = useState<string | null>(null)
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkLabel, setLinkLabel] = useState('')
+  const [linkError, setLinkError] = useState<string | null>(null)
 
   const [viewDate, setViewDate] = useState(() => getVnNow().date)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -602,7 +623,13 @@ export default function RoomBookingPage() {
     setReason('')
     setNote('')
     setIsEmergency(false)
+    setUploadedDocuments([])
+    setUploadQueue([])
+    setDocUploadError(null)
     setError('')
+    setLinkUrl('')
+    setLinkLabel('')
+    setLinkError(null)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -636,11 +663,39 @@ export default function RoomBookingPage() {
       return
     }
 
-    const payload = { room, date, timeFrom, timeTo, reason, note, isEmergency }
-    if (editingId) {
-      updateMut.mutate({ id: editingId, payload })
-    } else {
-      createMut.mutate(payload)
+    if (room === 'Tầng 6' && uploadedDocuments.length === 0) {
+      const m = 'Phòng họp Tầng 6 bắt buộc phải đính kèm tài liệu họp.'
+      setError(m)
+      speak(m)
+      return
+    }
+
+    if (isUploadingDoc) {
+      setError('Vui lòng đợi tệp tin đang được tải lên...')
+      return
+    }
+
+    try {
+      const payload = {
+        room,
+        date,
+        timeFrom,
+        timeTo,
+        reason,
+        note,
+        isEmergency,
+        documents: uploadedDocuments.length > 0 ? uploadedDocuments : undefined,
+      }
+
+      if (editingId) {
+        await updateMut.mutateAsync({ id: editingId, payload })
+      } else {
+        await createMut.mutateAsync(payload)
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Lỗi lưu lịch họp'
+      setError(msg)
+      speak(`Lỗi: ${msg}`)
     }
   }
 
@@ -686,6 +741,10 @@ export default function RoomBookingPage() {
     setReason(b.reason)
     setNote(b.note || '')
     setIsEmergency(b.isEmergency)
+    setUploadedDocuments(b.documents || [])
+    setSelectedFiles([])
+    setIsUploadingDoc(false)
+    setDocUploadError(null)
     setShowModal(true)
   }
 
@@ -849,18 +908,22 @@ export default function RoomBookingPage() {
         </div>
       </div>
 
-      <RoomBookingDetailModal
-        booking={detailBooking}
-        vnTime={vnTime}
-        onClose={() => setDetailBooking(null)}
-        onEdit={handleEdit}
-        onDelete={(id) => {
-          setDetailBooking(null)
-          handleDelete(id)
-        }}
-        canManage={detailBooking ? canManageBooking(detailBooking) : false}
-        currentUserId={user?.id}
-      />
+      {detailBooking &&
+        createPortal(
+          <RoomBookingDetailModal
+            booking={detailBooking}
+            vnTime={vnTime}
+            onClose={() => setDetailBooking(null)}
+            onEdit={handleEdit}
+            onDelete={(id) => {
+              setDetailBooking(null)
+              handleDelete(id)
+            }}
+            canManage={detailBooking ? canManageBooking(detailBooking) : false}
+            currentUserId={user?.id}
+          />,
+          document.body
+        )}
 
       {/* Form Đặt phòng — portal + căn giữa viewport, cuộn khi form dài */}
       {showModal &&
@@ -1128,6 +1191,233 @@ export default function RoomBookingPage() {
                         rows={2}
                         className="w-full p-4 bg-muted/40 rounded-2xl border border-border font-medium outline-none resize-none focus:border-primary transition-all"
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold uppercase ml-1 flex items-center justify-between">
+                        <span>Tài liệu buổi họp</span>
+                        <span className="text-[10px] text-muted-foreground font-normal normal-case">
+                          Chấp nhận PDF, Word, Excel, Slide, ZIP... (Tối đa 100MB/file)
+                        </span>
+                      </label>
+
+                      <div className="rounded-2xl border border-border bg-muted/20 p-4 transition-all">
+                        {/* File list */}
+                        {(uploadedDocuments.length > 0 || uploadQueue.length > 0) && (
+                          <div className="space-y-2 mb-4">
+                            {/* Previous uploaded files */}
+                            {uploadedDocuments.map((doc, idx) => (
+                              <div
+                                key={`uploaded-${idx}`}
+                                className="flex items-center justify-between gap-3 bg-white p-2.5 rounded-xl border border-border/80"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <FileText className="h-4.5 w-4.5 text-emerald-600 shrink-0" />
+                                  <span className="text-xs font-semibold truncate text-slate-700">
+                                    {doc.name}
+                                  </span>
+                                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded-md shrink-0">
+                                    Đã tải lên
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setUploadedDocuments((prev) => prev.filter((_, i) => i !== idx))
+                                  }}
+                                  className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-lg transition-colors text-xs font-bold shrink-0"
+                                >
+                                  Xoá
+                                </button>
+                              </div>
+                            ))}
+
+                            {/* Queue uploading/error files */}
+                            {uploadQueue.map((item) => (
+                              <div
+                                key={item.id}
+                                className={cn(
+                                  'flex items-center justify-between gap-3 p-2.5 rounded-xl border transition-all',
+                                  item.status === 'error'
+                                    ? 'bg-rose-50/50 border-rose-100'
+                                    : 'bg-white border-border/85'
+                                )}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {item.status === 'uploading' ? (
+                                    <Loader2 className="h-4.5 w-4.5 text-primary shrink-0 animate-spin" />
+                                  ) : (
+                                    <FileText className="h-4.5 w-4.5 text-rose-500 shrink-0" />
+                                  )}
+                                  <span className="text-xs font-semibold truncate text-slate-700">
+                                    {item.name}
+                                  </span>
+                                  {item.status === 'uploading' ? (
+                                    <span className="text-[10px] text-primary font-bold bg-primary/5 px-1.5 py-0.5 rounded-md shrink-0">
+                                      Đang tải...
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="text-[10px] text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded-md shrink-0"
+                                      title={item.error}
+                                    >
+                                      Lỗi tải
+                                    </span>
+                                  )}
+                                </div>
+                                {item.status === 'error' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setUploadQueue((prev) => prev.filter((q) => q.id !== item.id))
+                                    }}
+                                    className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-lg transition-colors text-xs font-bold shrink-0"
+                                  >
+                                    Xoá
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Add file button */}
+                        <div className="flex flex-col items-center justify-center py-2 text-center">
+                          <input
+                            type="file"
+                            multiple
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.rar"
+                            className="hidden"
+                            id="meeting-doc-upload"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || [])
+                              e.target.value = ''
+                              if (files.length === 0) return
+
+                              // Validate files
+                              const validFiles: File[] = []
+                              for (const file of files) {
+                                if (file.size > 100 * 1024 * 1024) {
+                                  setDocUploadError(`File "${file.name}" vượt quá kích thước 100MB`)
+                                  return
+                                }
+                                validFiles.push(file)
+                              }
+                              setDocUploadError(null)
+
+                              // Trigger upload
+                              validFiles.forEach((file) => {
+                                const queueId = `${file.name}-${Date.now()}`
+                                setUploadQueue((prev) => [
+                                  ...prev,
+                                  { id: queueId, name: file.name, status: 'uploading' },
+                                ])
+
+                                uploadMeetingDocument(file)
+                                  .then((res) => {
+                                    setUploadQueue((prev) => prev.filter((q) => q.id !== queueId))
+                                    setUploadedDocuments((prev) => [
+                                      ...prev,
+                                      { url: res.url, name: res.originalName },
+                                    ])
+                                  })
+                                  .catch((err) => {
+                                    setUploadQueue((prev) =>
+                                      prev.map((q) =>
+                                        q.id === queueId
+                                          ? {
+                                              ...q,
+                                              status: 'error',
+                                              error: err.message || 'Lỗi tải lên',
+                                            }
+                                          : q
+                                      )
+                                    )
+                                  })
+                              })
+                            }}
+                          />
+
+                          <label
+                            htmlFor="meeting-doc-upload"
+                            className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-primary/10 border border-primary/20 px-4 py-2.5 text-xs font-black uppercase text-primary hover:bg-primary/20 transition-all active:scale-95"
+                          >
+                            <Upload className="h-4 w-4" />
+                            {uploadedDocuments.length > 0 || uploadQueue.length > 0
+                              ? 'Chọn thêm tài liệu'
+                              : 'Chọn tài liệu'}
+                          </label>
+                        </div>
+
+                        {docUploadError && (
+                          <p className="text-xs text-rose-600 mt-2 font-bold text-center">
+                            ⚠️ {docUploadError}
+                          </p>
+                        )}
+
+                        <div className="mt-4 border-t border-border/40 pt-4">
+                          <p className="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                            Hoặc liên kết slide Canva / Tài liệu online
+                          </p>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                placeholder="Đường dẫn (https://...)"
+                                value={linkUrl}
+                                onChange={(e) => {
+                                  setLinkUrl(e.target.value)
+                                  setLinkError(null)
+                                  if (e.target.value.includes('canva.com/design/') && !linkLabel) {
+                                    setLinkLabel('Slide Canva')
+                                  }
+                                }}
+                                className="flex-1 bg-white border border-border/80 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:border-primary transition-all"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Tên hiển thị (Tùy chọn)"
+                                value={linkLabel}
+                                onChange={(e) => setLinkLabel(e.target.value)}
+                                className="w-1/3 bg-white border border-border/80 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:border-primary transition-all"
+                              />
+                            </div>
+                            {linkError && (
+                              <p className="text-[11px] text-rose-500 font-semibold">{linkError}</p>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const urlTrimmed = linkUrl.trim()
+                                if (!urlTrimmed) {
+                                  setLinkError('Vui lòng nhập đường dẫn liên kết.')
+                                  return
+                                }
+                                if (!/^https?:\/\//i.test(urlTrimmed)) {
+                                  setLinkError('Đường dẫn phải bắt đầu bằng http:// hoặc https://')
+                                  return
+                                }
+                                let label = linkLabel.trim()
+                                if (!label) {
+                                  label = urlTrimmed.includes('canva.com/design/')
+                                    ? 'Slide Canva'
+                                    : 'Tài liệu online'
+                                }
+                                setUploadedDocuments((prev) => [
+                                  ...prev,
+                                  { name: label, url: urlTrimmed },
+                                ])
+                                setLinkUrl('')
+                                setLinkLabel('')
+                                setLinkError(null)
+                              }}
+                              className="w-full py-2 bg-secondary text-primary hover:bg-primary hover:text-white rounded-xl text-xs font-bold uppercase transition-all"
+                            >
+                              Thêm liên kết
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     {(user?.role === 'MANAGER' || user?.role === 'BOD') && (
                       <label className="flex items-center gap-4 bg-amber-50 p-4 rounded-2xl cursor-pointer ring-1 ring-amber-100 hover:bg-amber-100 transition-all">

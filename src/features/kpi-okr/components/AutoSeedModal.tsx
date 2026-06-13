@@ -92,6 +92,7 @@ export function AutoSeedModal({
         templateCode,
         userIds: selectAll ? undefined : userIds,
         dryRun: true,
+        replaceExisting: true,
       })
       setPreview(result)
       setStep('preview')
@@ -116,10 +117,13 @@ export function AutoSeedModal({
         templateCode,
         userIds: selectAll ? undefined : userIds,
         dryRun: false,
+        replaceExisting: true,
       })
       setPreview(result)
       setStep('done')
-      toast.success(`Đã tạo ${result.totalCreated} mục tiêu từ catalog`)
+      toast.success(
+        `Đã đồng bộ catalog: xóa ${result.totalDeleted ?? 0}, tạo ${result.totalCreated} mục tiêu`
+      )
       queryClient.invalidateQueries({ queryKey: ['performance', 'assignments', teamId] })
       onSeeded()
     } catch (e: unknown) {
@@ -267,8 +271,10 @@ export function AutoSeedModal({
                 </span>
               </div>
               <div className="text-sm font-medium text-slate-700">
-                Dự kiến tạo:{' '}
-                <span className="text-indigo-600 font-bold">{preview.totalCreated}</span> mục tiêu
+                Dự kiến đồng bộ:{' '}
+                <span className="text-red-600 font-bold">{preview.totalDeleted ?? 0}</span> mục seed
+                cũ sẽ xóa, <span className="text-indigo-600 font-bold">{preview.totalCreated}</span>{' '}
+                mục tiêu
                 {preview.totalSkipped > 0 && (
                   <span className="text-slate-400">
                     {' '}
@@ -326,9 +332,13 @@ export function AutoSeedModal({
                 size="sm"
                 className="gap-2 bg-indigo-600 hover:bg-indigo-700"
                 onClick={handleConfirm}
-                disabled={loading || preview.totalCreated === 0 || !assignmentWindowOpen}
+                disabled={
+                  loading ||
+                  (preview.totalCreated === 0 && (preview.totalDeleted ?? 0) === 0) ||
+                  !assignmentWindowOpen
+                }
               >
-                {loading ? 'Đang tạo...' : `Xác nhận tạo ${preview.totalCreated} mục tiêu`}
+                {loading ? 'Đang đồng bộ...' : `Xác nhận đồng bộ ${preview.totalCreated} mục tiêu`}
               </Button>
             </div>
           </div>
@@ -352,9 +362,10 @@ export function AutoSeedModal({
               </svg>
             </div>
             <div>
-              <p className="font-bold text-slate-800">Đã seed catalog thành công!</p>
+              <p className="font-bold text-slate-800">Đã đồng bộ catalog thành công!</p>
               <p className="text-sm text-slate-500">
-                Đã tạo {preview.totalCreated} mục tiêu mới cho {preview.perUser.length} nhân sự.
+                Đã xóa {preview.totalDeleted ?? 0} mục seed cũ và tạo {preview.totalCreated} mục
+                tiêu cho {preview.perUser.length} nhân sự.
               </p>
             </div>
             <Button size="sm" onClick={close}>

@@ -55,6 +55,11 @@ export function isLivestreamCatalogTeam(team: { code?: string | null; name: stri
   return keys.some((key) => key === 'livestream 1' || key === 'livestream 2')
 }
 
+export function isCatalogSeedExcludedTeam(team: { code?: string | null; name: string }): boolean {
+  const keys = [team.code, team.name].map(normalizeTemplateKey)
+  return keys.some((key) => /^cua hang(?:\b|$)/.test(key))
+}
+
 export function resolveTemplateCodeForTeam(team: { code?: string | null; name: string }): string {
   const key = normalizeTemplateKey(team.code ?? team.name)
   if (/van[_\s.-]?don|bao[_\s]?hanh/.test(key)) return 'VAN_DON_NV'
@@ -113,7 +118,6 @@ export type SalesMandatoryMetric = (typeof SALES_MANDATORY_METRICS)[number]
 export const MANDATORY_METRICS_BY_TEMPLATE: Record<string, readonly string[]> = {
   SALES_NV: SALES_MANDATORY_METRICS,
   TRAFFIC_TEAM_NV: ['Traffic cá nhân tháng', 'Doanh thu cá nhân tháng'],
-  LIVESTREAM_NV: [],
   VAN_DON_NV: [],
 }
 

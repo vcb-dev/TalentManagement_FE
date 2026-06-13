@@ -61,6 +61,7 @@ export const teacherApi = {
       topic: string
       location?: string | null
       roadmapItemIds: string[]
+      examQuestions?: any
     }
   ) => {
     const res = await apiClient.post<unknown>(`/teacher/classes/${classId}/schedules`, input)
@@ -77,6 +78,7 @@ export const teacherApi = {
       topic?: string
       location?: string | null
       roadmapItemIds?: string[]
+      examQuestions?: any
     }
   ) => {
     const res = await apiClient.patch<unknown>(
