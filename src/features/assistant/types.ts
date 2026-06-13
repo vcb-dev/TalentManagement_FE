@@ -86,6 +86,8 @@ export type AssistantBookingDraft = {
   timeTo?: string
   reason?: string
   note?: string
+  timeAmbiguous?: boolean
+  documents?: Array<{ name: string; url: string }> | null
 }
 
 export type AssistantBookingStatus = 'idle' | 'collecting' | 'confirm' | 'done' | 'cancelled'
