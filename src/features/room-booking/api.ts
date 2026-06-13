@@ -21,6 +21,8 @@ export interface MeetingBooking {
   minutesFileUrl?: string | null
   minutesFileName?: string | null
   minutesUploadedAt?: string | null
+  documentFileUrl?: string | null
+  documentFileName?: string | null
   user?: { email: string; fullNameLegal: string }
 }
 
@@ -47,6 +49,8 @@ export interface CreateBookingPayload {
   timeTo: string
   note?: string
   isEmergency?: boolean
+  documentFileUrl?: string
+  documentFileName?: string
 }
 
 export async function getBookings(): Promise<MeetingBooking[]> {
@@ -100,4 +104,13 @@ export async function finishBooking(id: string): Promise<MeetingBooking> {
 
 export async function uploadMeetingMinutes(id: string, file: File): Promise<MeetingBooking> {
   return uploadFileToBE<MeetingBooking>(`/room-booking/${id}/minutes`, file)
+}
+
+export async function uploadMeetingDocument(
+  file: File
+): Promise<{ url: string; originalName: string }> {
+  return uploadFileToBE<{ url: string; originalName: string }>(
+    '/room-booking/upload-document',
+    file
+  )
 }

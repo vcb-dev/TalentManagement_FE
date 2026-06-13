@@ -2,7 +2,17 @@ import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearch } from '@tanstack/react-router'
-import { Plus, Clock, CheckCircle2, AlertCircle, X, Volume2, Loader2 } from 'lucide-react'
+import {
+  Plus,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  Volume2,
+  Loader2,
+  Upload,
+  FileText,
+} from 'lucide-react'
 import { CustomSelect } from '@/components/shared/CustomSelect'
 import { DatePicker } from '@/components/ui/date-picker'
 import { useAuthStore } from '@/stores/auth.store'
@@ -15,9 +25,11 @@ import {
   approveBooking,
   rejectBooking,
   finishBooking,
+  uploadMeetingDocument,
   type MeetingBooking,
   type BookedSlot,
 } from './api'
+import { cn } from '@/lib/utils'
 import { useVnTime, getVnNow } from '@/hooks/useVnTime'
 import { RoomScheduleTimeline } from './RoomScheduleTimeline'
 import { RoomBookingDetailModal } from './RoomBookingDetailModal'
@@ -395,6 +407,10 @@ export default function RoomBookingPage() {
   const [note, setNote] = useState('')
   const [isEmergency, setIsEmergency] = useState(false)
   const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([])
+  const [documentFileUrl, setDocumentFileUrl] = useState('')
+  const [documentFileName, setDocumentFileName] = useState('')
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false)
+  const [docUploadError, setDocUploadError] = useState<string | null>(null)
 
   const [viewDate, setViewDate] = useState(() => getVnNow().date)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -602,6 +618,10 @@ export default function RoomBookingPage() {
     setReason('')
     setNote('')
     setIsEmergency(false)
+    setDocumentFileUrl('')
+    setDocumentFileName('')
+    setIsUploadingDoc(false)
+    setDocUploadError(null)
     setError('')
   }
 
@@ -636,7 +656,17 @@ export default function RoomBookingPage() {
       return
     }
 
-    const payload = { room, date, timeFrom, timeTo, reason, note, isEmergency }
+    const payload = {
+      room,
+      date,
+      timeFrom,
+      timeTo,
+      reason,
+      note,
+      isEmergency,
+      documentFileUrl: documentFileUrl || undefined,
+      documentFileName: documentFileName || undefined,
+    }
     if (editingId) {
       updateMut.mutate({ id: editingId, payload })
     } else {
@@ -686,6 +716,10 @@ export default function RoomBookingPage() {
     setReason(b.reason)
     setNote(b.note || '')
     setIsEmergency(b.isEmergency)
+    setDocumentFileUrl(b.documentFileUrl || '')
+    setDocumentFileName(b.documentFileName || '')
+    setIsUploadingDoc(false)
+    setDocUploadError(null)
     setShowModal(true)
   }
 
@@ -1128,6 +1162,91 @@ export default function RoomBookingPage() {
                         rows={2}
                         className="w-full p-4 bg-muted/40 rounded-2xl border border-border font-medium outline-none resize-none focus:border-primary transition-all"
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold uppercase ml-1">
+                        Tài liệu buổi họp
+                      </label>
+                      <div className="rounded-2xl border-2 border-dashed border-border/80 bg-muted/20 p-4 transition-all hover:bg-muted/30">
+                        {documentFileUrl ? (
+                          <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-border">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="h-5 w-5 text-primary shrink-0" />
+                              <span className="text-sm font-semibold truncate text-slate-700">
+                                {documentFileName}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDocumentFileUrl('')
+                                setDocumentFileName('')
+                              }}
+                              className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition-colors text-xs font-bold shrink-0"
+                            >
+                              Xoá file
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-2 text-center">
+                            <Upload className="h-6 w-6 text-muted-foreground mb-2 animate-bounce" />
+                            <input
+                              type="file"
+                              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.rar"
+                              className="hidden"
+                              id="meeting-doc-upload"
+                              disabled={isUploadingDoc}
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0]
+                                e.target.value = ''
+                                if (!file) return
+
+                                if (file.size > 50 * 1024 * 1024) {
+                                  setDocUploadError('Kích thước file tối đa 50MB')
+                                  return
+                                }
+
+                                setIsUploadingDoc(true)
+                                setDocUploadError(null)
+                                try {
+                                  const res = await uploadMeetingDocument(file)
+                                  setDocumentFileUrl(res.url)
+                                  setDocumentFileName(res.originalName)
+                                } catch (err: any) {
+                                  setDocUploadError(err.message || 'Lỗi tải lên file')
+                                } finally {
+                                  setIsUploadingDoc(false)
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor="meeting-doc-upload"
+                              className={cn(
+                                'cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-black uppercase text-white shadow-md shadow-primary/20 hover:scale-105 transition-all active:scale-95',
+                                isUploadingDoc && 'pointer-events-none opacity-50'
+                              )}
+                            >
+                              {isUploadingDoc ? (
+                                <>
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Đang tải lên...
+                                </>
+                              ) : (
+                                <>Chọn tài liệu (Tối đa 50MB)</>
+                              )}
+                            </label>
+                            <p className="text-[10px] text-muted-foreground mt-2 font-medium">
+                              Chấp nhận: PDF, DOC/DOCX, XLS/XLSX, PPT/PPTX, ZIP, RAR, Ảnh...
+                            </p>
+                          </div>
+                        )}
+                        {docUploadError && (
+                          <p className="text-xs text-rose-600 mt-2 font-bold text-center">
+                            ⚠️ {docUploadError}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     {(user?.role === 'MANAGER' || user?.role === 'BOD') && (
                       <label className="flex items-center gap-4 bg-amber-50 p-4 rounded-2xl cursor-pointer ring-1 ring-amber-100 hover:bg-amber-100 transition-all">
