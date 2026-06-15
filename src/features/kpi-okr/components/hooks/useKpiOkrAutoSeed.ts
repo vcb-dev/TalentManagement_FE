@@ -17,7 +17,7 @@ export function useKpiOkrAutoSeed(_params: {
   isKinhDoanhTeam: boolean
   isTrafficTeamSelected: boolean
   canEditTeam: boolean
-  selectedTemplateCode: string
+  selectedTemplateCode: string | undefined
   assignKey: readonly [string, string | null, number, number]
   templateQ: {
     isLoading: boolean

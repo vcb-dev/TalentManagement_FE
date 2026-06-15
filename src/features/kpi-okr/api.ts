@@ -24,6 +24,34 @@ export type ApprovalRequest = {
 export type PerformanceKind = 'KPI' | 'OKR'
 export type PerformanceStatus = 'not_started' | 'in_progress' | 'done' | 'blocked'
 export type PerformanceGradeLetter = 'A' | 'B' | 'C'
+export type GoalReviewStatus =
+  | 'pending'
+  | 'approved'
+  | 'edit_pending_member'
+  | 'edit_confirmed'
+  | 'manager_created_pending_member'
+  | 'manager_created_confirmed'
+  | 'rejected'
+
+export type AssignmentGoalReview = {
+  id: string
+  requestId: string
+  assignmentId: string
+  status: GoalReviewStatus | string
+  originalContent: string
+  originalTargetMetric: string | null
+  originalPriority: number
+  proposedContent: string | null
+  proposedTargetMetric: string | null
+  proposedPriority: number | null
+  reason: string | null
+  reviewedByUserId: string | null
+  reviewedAt: string | null
+  confirmedByUserId: string | null
+  confirmedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
 
 export type CatalogDivisionAllowlistResponse = {
   envDivisionIds: string[]
@@ -71,6 +99,7 @@ export type PerformanceAssignment = {
   dailyTarget?: string | null
   templateItemId?: string | null
   periodTemplateItemId?: string | null
+  goalReview?: AssignmentGoalReview | null
 }
 
 export type PerformanceSummaryRow = {
@@ -409,6 +438,98 @@ export const performanceApi = {
   ) => {
     if (isMockApiEnabled()) throw new Error('Mock')
     const res = await apiClient.patch<PerformanceAssignment>(`/performance/assignments/${id}`, body)
+    return res.data
+  },
+
+  patchApprovalAssignment: async (
+    requestId: string,
+    assignmentId: string,
+    body: Pick<PerformanceAssignment, 'content' | 'priority'> & {
+      targetMetric?: string | null
+    }
+  ) => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.patch<PerformanceAssignment>(
+      `/performance/approval-requests/${requestId}/assignments/${assignmentId}`,
+      body
+    )
+    return res.data
+  },
+
+  createApprovalAssignment: async (
+    requestId: string,
+    body: {
+      assigneeUserId: string
+      year: number
+      month: number
+      kind: PerformanceKind
+      content: string
+      priority?: number
+      targetMetric?: string | null
+    }
+  ) => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.post<PerformanceAssignment>(
+      `/performance/approval-requests/${requestId}/assignments`,
+      body
+    )
+    return res.data
+  },
+
+  deleteApprovalAssignment: async (requestId: string, assignmentId: string) => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    await apiClient.delete(
+      `/performance/approval-requests/${requestId}/assignments/${assignmentId}`
+    )
+  },
+
+  approveGoalReview: async (
+    requestId: string,
+    assignmentId: string
+  ): Promise<AssignmentGoalReview> => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.patch<AssignmentGoalReview>(
+      `/performance/approval-requests/${requestId}/assignments/${assignmentId}/goal-review/approve`
+    )
+    return res.data
+  },
+
+  rejectGoalReview: async (
+    requestId: string,
+    assignmentId: string,
+    reason: string
+  ): Promise<AssignmentGoalReview> => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.patch<AssignmentGoalReview>(
+      `/performance/approval-requests/${requestId}/assignments/${assignmentId}/goal-review/reject`,
+      { reason }
+    )
+    return res.data
+  },
+
+  proposeGoalReviewEdit: async (
+    requestId: string,
+    assignmentId: string,
+    body: Pick<PerformanceAssignment, 'content' | 'priority'> & {
+      targetMetric?: string | null
+    }
+  ): Promise<AssignmentGoalReview> => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.patch<AssignmentGoalReview>(
+      `/performance/approval-requests/${requestId}/assignments/${assignmentId}/goal-review/edit`,
+      body
+    )
+    return res.data
+  },
+
+  confirmGoalReview: async (
+    requestId: string,
+    assignmentId: string
+  ): Promise<AssignmentGoalReview> => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.post<AssignmentGoalReview>(
+      `/performance/approval-requests/${requestId}/assignments/${assignmentId}/goal-review/confirm`
+    )
     return res.data
   },
 

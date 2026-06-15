@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
 import { CARD_ENTRANCE } from '@/lib/cardMotion'
 import { useAuthStore } from '@/stores/auth.store'
+import { isManagerLikeRole } from '@/lib/managerLikeRole'
 import { resolveEffectivePermissionSet } from '@/features/permissions/resolveEffective'
 import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
 import { useKpiOkrAutoSeed } from '@/features/kpi-okr/components/hooks/useKpiOkrAutoSeed'
@@ -61,6 +62,8 @@ import {
   EVAL_LEADER_CELL,
   EVAL_MANAGER_CELL,
   EvalStatusBadge,
+  GoalReviewStatusBadge,
+  GoalReviewSummary,
   KindBadge,
   PLANNING_ASSIGN_TABLE_HEAD,
   PriorityBadge,
@@ -85,6 +88,7 @@ import {
   filterKpiEligibleMembers,
   kpiEligibleUserIdSet,
   memberRequiresKpiOkr,
+  isCatalogSeedExcludedTeam,
 } from '@/features/kpi-okr/catalogHelpers'
 import {
   parseKpiOkrImportFile,
@@ -189,7 +193,7 @@ export function KpiOkrWorkspace({
   const user = useAuthStore((s) => s.user)
   const isMemberView = variant === 'member'
   const isManagerVariant = variant === 'manager'
-  const isManagerReadOnly = user?.role === 'MANAGER' && !isManagerVariant
+  const isManagerReadOnly = isManagerLikeRole(user?.role) && !isManagerVariant
   const qc = useQueryClient()
   const treeQ = useHrOrgTree()
   const { year: y0, month: m0 } = nowYm()
@@ -512,12 +516,11 @@ export function KpiOkrWorkspace({
   )
 
   const selectedTemplateCode = useMemo(() => {
-    if (catalogSeedEnabledSelected) {
-      if (selectedTeamForSeed) return resolveTemplateCodeForTeam(selectedTeamForSeed)
-      return 'SALES_NV'
-    }
     if (isTrafficTeamSelected) return 'TRAFFIC_TEAM_NV'
-    return undefined
+    if (!catalogSeedEnabledSelected) return undefined
+    if (selectedTeamForSeed && isCatalogSeedExcludedTeam(selectedTeamForSeed)) return undefined
+    if (selectedTeamForSeed) return resolveTemplateCodeForTeam(selectedTeamForSeed)
+    return 'SALES_NV'
   }, [catalogSeedEnabledSelected, isTrafficTeamSelected, selectedTeamForSeed])
 
   /** Phòng Kinh doanh: member/leader ẩn P3 + BENEFIT; manager xem đầy đủ để cấu hình. */
@@ -1798,18 +1801,73 @@ function MemberSelfAssignmentRow({
   )
 }
 
+function GoalReviewPlanningCell({
+  row,
+  allowConfirm,
+  onConfirmed,
+}: {
+  row: PerformanceAssignment
+  allowConfirm?: boolean
+  onConfirmed?: () => void
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const review = row.goalReview
+  const canConfirm =
+    Boolean(allowConfirm) &&
+    !isMockApiEnabled() &&
+    (review?.status === 'edit_pending_member' ||
+      review?.status === 'manager_created_pending_member') &&
+    Boolean(review.requestId)
+
+  const handleConfirm = useCallback(async () => {
+    if (!review?.requestId) return
+    setConfirming(true)
+    try {
+      await performanceApi.confirmGoalReview(review.requestId, row.id)
+      toast.success('Đã xác nhận và áp dụng nội dung KPI/OKR Manager sửa.')
+      onConfirmed?.()
+    } catch (err: unknown) {
+      toast.error('Xác nhận thất bại: ' + getApiErrorMessage(err))
+    } finally {
+      setConfirming(false)
+    }
+  }, [onConfirmed, review?.requestId, row.id])
+
+  return (
+    <>
+      <GoalReviewStatusBadge review={review} />
+      <GoalReviewSummary review={review} />
+      {canConfirm ? (
+        <Button
+          type="button"
+          size="sm"
+          className="mt-1 h-8 w-fit rounded-lg px-3 text-xs font-semibold"
+          disabled={confirming}
+          onClick={() => void handleConfirm()}
+        >
+          {confirming ? 'Đang xác nhận...' : 'Xác nhận'}
+        </Button>
+      ) : null}
+    </>
+  )
+}
+
 function ReadOnlyAssignmentRow({
   row,
   rowStripe,
   mode = 'results',
   hideManagerEvalColumn,
   showTrailingActionCell,
+  allowGoalReviewConfirm,
+  onGoalReviewConfirmed,
 }: {
   row: PerformanceAssignment
   rowStripe: boolean
   mode?: 'planning' | 'results'
   hideManagerEvalColumn?: boolean
   showTrailingActionCell?: boolean
+  allowGoalReviewConfirm?: boolean
+  onGoalReviewConfirmed?: () => void
 }) {
   const td = xlTd(rowStripe)
   return (
@@ -1855,14 +1913,24 @@ function ReadOnlyAssignmentRow({
       )}
       <TableCell className={cn(td, EVAL_LEADER_CELL)}>
         <div className="flex min-w-0 flex-col gap-1">
-          <EvalStatusBadge status={row.managerEvalStatus} type="leader" />
-          {row.managerReviewNote && (
-            <div
-              className="text-xs text-slate-500 italic max-w-[140px] truncate"
-              title={row.managerReviewNote}
-            >
-              {row.managerReviewNote}
-            </div>
+          {mode === 'planning' ? (
+            <GoalReviewPlanningCell
+              row={row}
+              allowConfirm={allowGoalReviewConfirm}
+              onConfirmed={onGoalReviewConfirmed}
+            />
+          ) : (
+            <>
+              <EvalStatusBadge status={row.managerEvalStatus} type="leader" />
+              {row.managerReviewNote && (
+                <div
+                  className="text-xs text-slate-500 italic max-w-[140px] truncate"
+                  title={row.managerReviewNote}
+                >
+                  {row.managerReviewNote}
+                </div>
+              )}
+            </>
           )}
         </div>
       </TableCell>
@@ -1887,10 +1955,14 @@ function ReadOnlyAssignmentMobileCard({
   row,
   rowStripe,
   mode = 'results',
+  allowGoalReviewConfirm,
+  onGoalReviewConfirmed,
 }: {
   row: PerformanceAssignment
   rowStripe: boolean
   mode?: 'planning' | 'results'
+  allowGoalReviewConfirm?: boolean
+  onGoalReviewConfirmed?: () => void
 }) {
   return (
     <div className={cn('space-y-3 p-4', rowStripe ? 'bg-slate-50/30 dark:bg-slate-900/20' : '')}>
@@ -1926,10 +1998,20 @@ function ReadOnlyAssignmentMobileCard({
       )}
       <div className="flex flex-col gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
         <span className="text-xs font-bold uppercase text-muted-foreground">Quản lý xét duyệt</span>
-        <EvalStatusBadge status={row.managerEvalStatus} type="leader" />
-        {row.managerReviewNote ? (
-          <p className="break-words text-xs italic text-slate-500">{row.managerReviewNote}</p>
-        ) : null}
+        {mode === 'planning' ? (
+          <GoalReviewPlanningCell
+            row={row}
+            allowConfirm={allowGoalReviewConfirm}
+            onConfirmed={onGoalReviewConfirmed}
+          />
+        ) : (
+          <>
+            <EvalStatusBadge status={row.managerEvalStatus} type="leader" />
+            {row.managerReviewNote ? (
+              <p className="break-words text-xs italic text-slate-500">{row.managerReviewNote}</p>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   )
@@ -2287,7 +2369,12 @@ function LeaderAssignmentRow({
           submitValidation?.leaderEval && 'bg-red-50 dark:bg-red-950/20'
         )}
       >
-        {canEditLeaderInline ? (
+        {mode === 'planning' ? (
+          <div className="flex min-w-0 flex-col gap-1">
+            <GoalReviewStatusBadge review={row.goalReview} />
+            <GoalReviewSummary review={row.goalReview} />
+          </div>
+        ) : canEditLeaderInline ? (
           <div className="min-w-0 w-full max-w-full space-y-1">
             <CustomSelect
               value={leaderEvalDraft.managerEvalStatus || '__none'}
@@ -2600,6 +2687,10 @@ function AssignmentTableSingleUser({
   }, [isPlanning, hideRowSave, hideManagerEvalColumn])
   const showTrailingActionCell = tableHeads.includes('Thao tác')
   const resultsTableMinWidth = resultsTableMinWidthClass(Boolean(hideManagerEvalColumn))
+  const allowGoalReviewConfirm =
+    isPlanning &&
+    !canEditTeam &&
+    Boolean(prioritizeUserId && members.some((m) => m.userId === prioritizeUserId))
 
   const tableHeader = (
     <TableHeader>
@@ -2640,6 +2731,8 @@ function AssignmentTableSingleUser({
                 mode="results"
                 hideManagerEvalColumn={hideManagerEvalColumn}
                 showTrailingActionCell={showTrailingActionCell}
+                allowGoalReviewConfirm={allowGoalReviewConfirm}
+                onGoalReviewConfirmed={onRefresh}
               />
             )
           }
@@ -2697,6 +2790,8 @@ function AssignmentTableSingleUser({
                   mode={leaderMode}
                   hideManagerEvalColumn={hideManagerEvalColumn}
                   showTrailingActionCell={showTrailingActionCell}
+                  allowGoalReviewConfirm={allowGoalReviewConfirm}
+                  onGoalReviewConfirmed={onRefresh}
                 />
               )
             }
@@ -2720,6 +2815,8 @@ function AssignmentTableSingleUser({
               mode={leaderMode}
               hideManagerEvalColumn={hideManagerEvalColumn}
               showTrailingActionCell={showTrailingActionCell}
+              allowGoalReviewConfirm={allowGoalReviewConfirm}
+              onGoalReviewConfirmed={onRefresh}
             />
           )
         })
@@ -2803,6 +2900,8 @@ function AssignmentTableSingleUser({
                     row={r}
                     rowStripe={idx % 2 === 1}
                     mode="results"
+                    allowGoalReviewConfirm={allowGoalReviewConfirm}
+                    onGoalReviewConfirmed={onRefresh}
                   />
                 )
               }
@@ -2831,6 +2930,8 @@ function AssignmentTableSingleUser({
                       row={r}
                       rowStripe={idx % 2 === 1}
                       mode={leaderMode}
+                      allowGoalReviewConfirm={allowGoalReviewConfirm}
+                      onGoalReviewConfirmed={onRefresh}
                     />
                   )
                 }
@@ -2849,6 +2950,8 @@ function AssignmentTableSingleUser({
                   row={r}
                   rowStripe={idx % 2 === 1}
                   mode={leaderMode}
+                  allowGoalReviewConfirm={allowGoalReviewConfirm}
+                  onGoalReviewConfirmed={onRefresh}
                 />
               )
             })

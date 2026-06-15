@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
+import { requireManagerLikeOrPermissionPrefixes } from '@/lib/routeGuards'
 import { GraderPhanLopScreen } from '@/features/exam/components/GraderPhanLopScreen'
 
 const classifySearchSchema = z.object({
@@ -12,7 +12,7 @@ const classifySearchSchema = z.object({
 export const Route = createFileRoute('/_protected/exam/$examId/classify')({
   validateSearch: (raw) => classifySearchSchema.parse(raw),
   /** Phân lớp sau thi — thuộc Manager (chia lớp). */
-  beforeLoad: () => requireRoleOrPermissionPrefixes(['MANAGER'], ['manager.']),
+  beforeLoad: () => requireManagerLikeOrPermissionPrefixes(['manager.']),
   component: ExamClassifyPage,
 })
 

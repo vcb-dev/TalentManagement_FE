@@ -106,7 +106,7 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     icon: BarChart3,
     match: 'prefix',
     permissionId: 'report.view',
-    hiddenForRoles: ['MANAGER'],
+    hiddenForRoles: ['MANAGER', 'BOD'],
   },
   {
     to: '/exam',
@@ -207,6 +207,7 @@ const BOD_ITEMS: AppNavItem[] = [
     icon: LineChart,
     match: 'prefix',
     permissionId: 'bod.dashboard.view',
+    hiddenForRoles: ['BOD'],
   },
   {
     to: '/bod/trainee-ranking',
@@ -214,6 +215,7 @@ const BOD_ITEMS: AppNavItem[] = [
     icon: BarChart3,
     match: 'prefix',
     permissionId: 'bod.ranking.view',
+    hiddenForRoles: ['BOD'],
   },
   {
     to: '/bod/team-comparison',
@@ -221,6 +223,7 @@ const BOD_ITEMS: AppNavItem[] = [
     icon: BarChart3,
     match: 'prefix',
     permissionId: 'bod.comparison.view',
+    hiddenForRoles: ['BOD'],
   },
   {
     to: '/permissions',
@@ -438,21 +441,21 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
     icon: Target,
     match: 'prefix',
     permissionIdsAny: ['kpi.team_view', 'kpi.team_edit'],
-    hiddenForRoles: ['MANAGER'],
+    hiddenForRoles: ['MANAGER', 'BOD'],
   },
   {
     to: '/leader/vinh-danh',
     label: 'Chi số vinh danh',
     icon: Award,
     match: 'prefix',
-    hiddenForRoles: ['LEADER', 'MEMBER', 'HR', 'TEACHER', 'BOD'],
+    hiddenForRoles: ['LEADER', 'MEMBER', 'HR', 'TEACHER'],
   },
   {
     to: '/leader/kpi-approval',
     label: 'Duyệt KPI theo team',
     icon: ClipboardCheck,
     match: 'prefix',
-    hiddenForRoles: ['LEADER', 'MEMBER', 'HR', 'TEACHER', 'BOD'],
+    hiddenForRoles: ['LEADER', 'MEMBER', 'HR', 'TEACHER'],
   },
   {
     to: '/monthly-report',
@@ -470,7 +473,7 @@ export const MANAGER_KPI_ITEMS: AppNavItem[] = [
     icon: Target,
     match: 'prefix',
     permissionIdsAny: ['kpi.team_view', 'kpi.team_edit'],
-    hiddenForRoles: ['LEADER', 'MEMBER', 'HR', 'TEACHER', 'BOD'],
+    hiddenForRoles: ['LEADER', 'MEMBER', 'HR', 'TEACHER'],
   },
 ]
 

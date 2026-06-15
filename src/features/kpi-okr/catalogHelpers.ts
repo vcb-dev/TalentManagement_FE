@@ -163,6 +163,12 @@ export const ALL_MANDATORY_METRICS_FE: readonly string[] = [
  * Đồng bộ KpiOkrWorkspace (member) và MonthlyReportScreen.
  */
 export function shouldShowAssignmentForMember(row: PerformanceAssignment): boolean {
+  if (
+    row.goalReview?.status === 'edit_pending_member' ||
+    row.goalReview?.status === 'manager_created_pending_member'
+  ) {
+    return true
+  }
   return row.priority !== 3 && row.category !== 'BENEFIT'
 }
 

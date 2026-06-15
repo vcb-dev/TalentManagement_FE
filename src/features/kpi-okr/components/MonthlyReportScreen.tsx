@@ -32,7 +32,12 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/axios'
 import { performanceApi, type PerformanceAssignment } from '@/features/kpi-okr/api'
+import {
+  GoalReviewStatusBadge,
+  GoalReviewSummary,
+} from '@/features/kpi-okr/components/kpiAssignmentTableShared'
 import {
   clampKpiPeriod,
   getMaxViewableYm,
@@ -44,6 +49,7 @@ import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
 import { organizationApi } from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { useAuthStore } from '@/stores/auth.store'
+import { isManagerLikeRole } from '@/lib/managerLikeRole'
 import { resolveEffectivePermissionSet } from '@/features/permissions/resolveEffective'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -131,6 +137,57 @@ function EvalBadge({
         {tooltipText}
       </TooltipContent>
     </Tooltip>
+  )
+}
+
+function MonthlyGoalReviewPanel({
+  item,
+  onConfirmed,
+  allowConfirm = false,
+}: {
+  item: PerformanceAssignment
+  onConfirmed?: () => void
+  allowConfirm?: boolean
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const review = item.goalReview
+  const canConfirm =
+    allowConfirm &&
+    !isMockApiEnabled() &&
+    (review?.status === 'edit_pending_member' ||
+      review?.status === 'manager_created_pending_member') &&
+    Boolean(review.requestId)
+
+  const handleConfirm = useCallback(async () => {
+    if (!review?.requestId) return
+    setConfirming(true)
+    try {
+      await performanceApi.confirmGoalReview(review.requestId, item.id)
+      toast.success('Đã xác nhận và áp dụng nội dung KPI/OKR Manager sửa.')
+      onConfirmed?.()
+    } catch (err: unknown) {
+      toast.error('Xác nhận thất bại: ' + getApiErrorMessage(err))
+    } finally {
+      setConfirming(false)
+    }
+  }, [item.id, onConfirmed, review?.requestId])
+
+  return (
+    <div className="flex min-w-[170px] flex-col items-start gap-1.5">
+      <GoalReviewStatusBadge review={review} />
+      <GoalReviewSummary review={review} />
+      {canConfirm ? (
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 rounded-lg px-3 text-xs font-semibold"
+          disabled={confirming}
+          onClick={() => void handleConfirm()}
+        >
+          {confirming ? 'Đang xác nhận...' : 'Xác nhận'}
+        </Button>
+      ) : null}
+    </div>
   )
 }
 
@@ -546,6 +603,9 @@ function MonthlyReportMemberEditDialog({
 function MonthlyReportReadOnlyDetailPanel({ item }: { item: PerformanceAssignment }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="lg:col-span-2">
+        <MonthlyGoalReviewPanel item={item} />
+      </div>
       <div className="space-y-3">
         {item.selfReviewNote?.trim() ? (
           <div>
@@ -625,6 +685,9 @@ function MonthlyReportMemberTableRow({
         <td className="whitespace-nowrap px-3 py-2.5 font-semibold tabular-nums text-primary">
           {item.targetMetric?.trim() || '—'}
         </td>
+        <td className="px-3 py-2.5 align-top">
+          <MonthlyGoalReviewPanel item={item} allowConfirm onConfirmed={onSaved} />
+        </td>
         <td className="whitespace-nowrap px-3 py-2.5 text-xs tabular-nums text-slate-600">
           {item.numericValue != null
             ? `${item.numericValue}${item.numericUnit ? ' ' + item.numericUnit : ''}`
@@ -692,6 +755,9 @@ function MonthlyReportReadOnlyTableRow({
         <td className="whitespace-nowrap px-3 py-2.5 font-semibold tabular-nums text-primary">
           {item.targetMetric?.trim() || '—'}
         </td>
+        <td className="px-3 py-2.5 align-top">
+          <MonthlyGoalReviewPanel item={item} />
+        </td>
         <td className="whitespace-nowrap px-3 py-2.5 text-xs tabular-nums text-slate-600">{num}</td>
         <td className="px-3 py-2.5">
           <EvalBadge status={item.selfEvalStatus} type="self" />
@@ -754,6 +820,7 @@ function MonthlyReportDetailReadOnlyCard({
       <p className="text-sm font-semibold tabular-nums text-primary">
         {item.targetMetric?.trim() || '—'}
       </p>
+      <MonthlyGoalReviewPanel item={item} />
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div>
           <span className="text-xs font-bold uppercase text-muted-foreground">Số liệu</span>
@@ -846,6 +913,7 @@ function MonthlyReportDetailEditableMobileCard({
       <p className="text-sm font-semibold tabular-nums text-primary">
         {item.targetMetric?.trim() || '—'}
       </p>
+      <MonthlyGoalReviewPanel item={item} allowConfirm onConfirmed={onSaved} />
       <div className="flex flex-wrap gap-3 text-xs text-slate-600">
         <span>
           Kết quả:{' '}
@@ -877,7 +945,7 @@ export function MonthlyReportScreen() {
   const user = useAuthStore((s) => s.user)
   const userId = user?.id
   const isLeader = role === 'LEADER'
-  const isManager = role === 'MANAGER'
+  const isManager = isManagerLikeRole(role)
   const canSeeTeamWide = isLeader || isManager
   const [year, setYear] = useState(() => nowYm().year)
   const [month, setMonth] = useState(() => nowYm().month)
@@ -1580,6 +1648,9 @@ export function MonthlyReportScreen() {
                                 </th>
                                 <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
                                   Chỉ tiêu
+                                </th>
+                                <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
+                                  QL duyệt mục tiêu
                                 </th>
                                 <th className="whitespace-nowrap px-3 py-3 text-left font-semibold text-slate-500">
                                   Kết quả

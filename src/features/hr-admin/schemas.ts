@@ -105,6 +105,7 @@ export const employeeApiSchema = z.object({
   birthDate: z.string().nullable().optional(),
   startDate: z.string().nullable().optional(),
   avatarUrl: z.string().nullable().optional(),
+  directManager: z.string().nullable().optional(),
 })
 
 export const employeeListApiSchema = z.object({

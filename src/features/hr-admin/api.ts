@@ -32,7 +32,7 @@ export const employeeApi = {
         page: filters.page,
         pageSize: filters.pageSize,
         ...(filters.roles?.trim()
-          ? { role: filters.roles.trim() }
+          ? { roles: filters.roles.trim() }
           : filters.role
             ? { role: filters.role }
             : {}),
