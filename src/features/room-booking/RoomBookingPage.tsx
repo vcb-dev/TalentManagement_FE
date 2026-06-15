@@ -593,6 +593,39 @@ export default function RoomBookingPage() {
     }
   }, [showModal])
 
+  // Real-time updates via SSE
+  useEffect(() => {
+    const token = useAuthStore.getState().accessToken
+    if (!token) return
+
+    const baseUrl = import.meta.env.VITE_API_URL || ''
+    const url = `${baseUrl.replace(/\/$/, '')}/room-booking/live?token=${token}`
+    let eventSource: EventSource | null = null
+
+    try {
+      eventSource = new EventSource(url)
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          if (data.event === 'changed') {
+            queryClient.invalidateQueries({ queryKey: ['room-bookings'] })
+          }
+        } catch (e) {
+          console.error('SSE parse error:', e)
+        }
+      }
+      eventSource.onerror = (e) => {
+        console.error('SSE error:', e)
+      }
+    } catch (err) {
+      console.error('Failed to init SSE on RoomBookingPage:', err)
+    }
+
+    return () => {
+      eventSource?.close()
+    }
+  }, [queryClient])
+
   const dayBookings = useMemo(() => {
     let result = bookings.filter((b) => b.date === viewDate && b.status !== 'rejected')
     if (statusFilter === 'ongoing') {

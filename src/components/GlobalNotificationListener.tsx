@@ -366,7 +366,37 @@ export default function GlobalNotificationListener() {
 
     check()
     const timer = setInterval(check, 10000)
-    return () => clearInterval(timer)
+
+    const token = useAuthStore.getState().accessToken
+    let eventSource: EventSource | null = null
+
+    if (token) {
+      const baseUrl = import.meta.env.VITE_API_URL || ''
+      const url = `${baseUrl.replace(/\/$/, '')}/room-booking/live?token=${token}`
+      try {
+        eventSource = new EventSource(url)
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            if (data.event === 'changed') {
+              check()
+            }
+          } catch (e) {
+            console.error('SSE parse error:', e)
+          }
+        }
+        eventSource.onerror = (e) => {
+          console.error('SSE error:', e)
+        }
+      } catch (err) {
+        console.error('Failed to init SSE in global listener:', err)
+      }
+    }
+
+    return () => {
+      clearInterval(timer)
+      eventSource?.close()
+    }
   }, [user, saveNotified])
 
   if (expiredRooms.length === 0) return null
