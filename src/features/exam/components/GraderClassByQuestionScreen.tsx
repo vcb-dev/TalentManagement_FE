@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, Fragment } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, CheckCircle2, Loader2, Save, User } from 'lucide-react'
 import { toast } from 'sonner'
@@ -8,6 +8,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { useGradeSubmission, useManagerSubmissions } from '@/features/exam/hooks'
 import { useManagerClasses } from '@/features/manager/hooks'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export interface GraderClassByQuestionScreenProps {
   classId: string
@@ -19,6 +26,54 @@ const CRITERIA_WEIGHTS: Record<string, number> = {
   thuc_te: 50,
   trinh_bay: 10,
 }
+
+const RUBRIC_CRITERIA_MAP = {
+  suy_ngam: {
+    chua_dat: 10,
+    dat: 25,
+    tot: 40,
+  },
+  ket_noi: {
+    chua_dat: 10,
+    dat: 20,
+    tot: 30,
+  },
+  phat_trien: {
+    chua_dat: 10,
+    dat: 20,
+    tot: 30,
+  },
+}
+
+const RUBRIC_CRITERIA = [
+  {
+    id: 'suy_ngam',
+    title: 'Suy ngẫm và nhận thức cá nhân (40đ)',
+    options: {
+      chua_dat: { score: 10, desc: 'Chủ yếu nhắc lại nội dung sách.' },
+      dat: { score: 25, desc: 'Nêu được bài học hoặc nhận thức riêng.' },
+      tot: { score: 40, desc: 'Thể hiện sự thay đổi trong tư duy hoặc cách nhìn nhận vấn đề.' },
+    },
+  },
+  {
+    id: 'ket_noi',
+    title: 'Kết nối với thực tế (30đ)',
+    options: {
+      chua_dat: { score: 10, desc: 'Ít hoặc chưa liên hệ với thực tế.' },
+      dat: { score: 20, desc: 'Có liên hệ với bản thân hoặc công việc.' },
+      tot: { score: 30, desc: 'Liên hệ cụ thể và thể hiện khả năng vận dụng.' },
+    },
+  },
+  {
+    id: 'phat_trien',
+    title: 'Phát triển ý tưởng (30đ)',
+    options: {
+      chua_dat: { score: 10, desc: 'Chưa có quan điểm riêng.' },
+      dat: { score: 20, desc: 'Có quan điểm hoặc câu hỏi riêng.' },
+      tot: { score: 30, desc: 'Có phản biện, mở rộng hoặc đề xuất cách áp dụng mới.' },
+    },
+  },
+]
 
 type LocalGrade = { criteria: string[]; score: number; note: string; isGraded?: boolean }
 
@@ -50,6 +105,9 @@ export function GraderClassByQuestionScreen({
   const [fileGrades, setFileGrades] = useState<Record<string, { score: string; comment: string }>>(
     {}
   )
+  const [rubricGrades, setRubricGrades] = useState<
+    Record<string, Record<string, 'chua_dat' | 'dat' | 'tot' | null>>
+  >({})
 
   useEffect(() => {
     console.log('[Grader] classId from params:', classId)
@@ -133,6 +191,60 @@ export function GraderClassByQuestionScreen({
     })
   }, [currentClass, scheduleId, classSubmissions])
 
+  const gradingType = (questionBank as any)?.gradingType || 'direct'
+
+  // Initialize rubric grades from existing submissions
+  useEffect(() => {
+    if (isFileExam && classSubmissions.length > 0 && Object.keys(rubricGrades).length === 0) {
+      const initRubric: Record<string, Record<string, 'chua_dat' | 'dat' | 'tot' | null>> = {}
+      classSubmissions.forEach((sub) => {
+        const subRubric = (sub.grades as any)?.rubric_reading || {}
+        initRubric[sub.id] = {
+          suy_ngam: subRubric.suy_ngam || null,
+          ket_noi: subRubric.ket_noi || null,
+          phat_trien: subRubric.phat_trien || null,
+        }
+      })
+      setRubricGrades(initRubric)
+    }
+  }, [isFileExam, classSubmissions, rubricGrades])
+
+  const handleRubricChange = (
+    subId: string,
+    criteriaId: string,
+    value: 'chua_dat' | 'dat' | 'tot' | null
+  ) => {
+    setRubricGrades((prev) => {
+      const nextStudent = {
+        ...(prev[subId] || { suy_ngam: null, ket_noi: null, phat_trien: null }),
+        [criteriaId]: value,
+      }
+
+      // Auto-calculate score and update fileGrades.score
+      let total = 0
+      let hasSelection = false
+      Object.entries(nextStudent).forEach(([cId, val]) => {
+        if (val) {
+          hasSelection = true
+          total += RUBRIC_CRITERIA_MAP[cId as 'suy_ngam' | 'ket_noi' | 'phat_trien']?.[val] || 0
+        }
+      })
+
+      setFileGrades((prevFile) => ({
+        ...prevFile,
+        [subId]: {
+          ...prevFile[subId],
+          score: hasSelection ? String(total) : '',
+        },
+      }))
+
+      return {
+        ...prev,
+        [subId]: nextStudent,
+      }
+    })
+  }
+
   // Initialize file grades from existing submissions
   useEffect(() => {
     if (isFileExam && classSubmissions.length > 0 && Object.keys(fileGrades).length === 0) {
@@ -161,10 +273,13 @@ export function GraderClassByQuestionScreen({
       const grade = fileGrades[sub.id]
       if (!grade) continue
       const score = grade.score ? parseInt(grade.score, 10) : 0
+      const gradesPayload =
+        gradingType === 'rubric_reading' ? { rubric_reading: rubricGrades[sub.id] || {} } : {}
+
       try {
         await gradeMutation.mutateAsync({
           submissionId: sub.id,
-          grades: {},
+          grades: gradesPayload,
           graderNote: grade.comment,
           status: 'grading',
           totalScore: score,
@@ -181,14 +296,26 @@ export function GraderClassByQuestionScreen({
   const handleFileExamComplete = async () => {
     for (const sub of classSubmissions) {
       const grade = fileGrades[sub.id]
-      if (!grade || !grade.score) {
-        toast.error(`Vui lòng nhập điểm cho ${sub.fullName}`)
-        return
-      }
-      const scoreNum = parseInt(grade.score, 10)
-      if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
-        toast.error(`Điểm của ${sub.fullName} phải từ 0 đến 100`)
-        return
+      if (gradingType === 'rubric_reading') {
+        const studentRubric = rubricGrades[sub.id] || {}
+        const incomplete =
+          !studentRubric.suy_ngam || !studentRubric.ket_noi || !studentRubric.phat_trien
+        if (incomplete) {
+          toast.error(
+            `Vui lòng đánh giá đủ tất cả các tiêu chí trong bảng Rubric cho học viên ${sub.fullName}`
+          )
+          return
+        }
+      } else {
+        if (!grade || !grade.score) {
+          toast.error(`Vui lòng nhập điểm cho ${sub.fullName}`)
+          return
+        }
+        const scoreNum = parseInt(grade.score, 10)
+        if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+          toast.error(`Điểm của ${sub.fullName} phải từ 0 đến 100`)
+          return
+        }
       }
     }
 
@@ -196,13 +323,16 @@ export function GraderClassByQuestionScreen({
     let failCount = 0
     for (const sub of classSubmissions) {
       const grade = fileGrades[sub.id]
-      const score = parseInt(grade.score, 10)
+      const score = grade?.score ? parseInt(grade.score, 10) : 0
       const outcome = score >= 80 ? 'DAT' : 'CHO_HOC_LAI'
+      const gradesPayload =
+        gradingType === 'rubric_reading' ? { rubric_reading: rubricGrades[sub.id] || {} } : {}
+
       try {
         await gradeMutation.mutateAsync({
           submissionId: sub.id,
-          grades: {},
-          graderNote: grade.comment,
+          grades: gradesPayload,
+          graderNote: grade?.comment || '',
           status: 'done',
           totalScore: score,
           outcome,
@@ -515,10 +645,10 @@ export function GraderClassByQuestionScreen({
                         <th className="px-4 py-4 font-bold text-slate-600 text-center">
                           Trạng thái
                         </th>
-                        <th className="px-4 py-4 font-bold text-slate-600 text-center w-[120px]">
-                          Điểm (0-100)
+                        <th className="px-4 py-4 font-bold text-slate-600 text-center w-[150px]">
+                          {gradingType === 'rubric_reading' ? 'Điểm' : 'Điểm (0-100)'}
                         </th>
-                        <th className="px-4 py-4 font-bold text-slate-600 w-[280px]">Nhận xét</th>
+                        <th className="px-4 py-4 font-bold text-slate-600 w-[240px]">Nhận xét</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -530,69 +660,197 @@ export function GraderClassByQuestionScreen({
                           : rawFileUrl
                         const fileName = answers?.fileName || 'Tài liệu'
                         const grade = fileGrades[sub.id] || { score: '', comment: '' }
+                        const studentRubric = rubricGrades[sub.id] || {
+                          suy_ngam: null,
+                          ket_noi: null,
+                          phat_trien: null,
+                        }
 
                         return (
-                          <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="px-4 py-4 font-bold text-slate-800 whitespace-nowrap">
-                              {sub.fullName}
-                            </td>
-                            <td className="px-4 py-4">
-                              {fileUrl ? (
-                                <a
-                                  href={fileUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-primary hover:underline font-bold text-xs bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors"
-                                >
-                                  📄 {fileName}
-                                </a>
-                              ) : (
-                                <span className="text-slate-400 italic">Chưa nộp file</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-4 text-center">
-                              <span
-                                className={cn(
-                                  'inline-flex rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap',
-                                  sub.status === 'done'
-                                    ? 'bg-emerald-100 text-emerald-700'
-                                    : sub.status === 'grading'
-                                      ? 'bg-amber-100 text-amber-700'
-                                      : 'bg-rose-100 text-rose-700'
+                          <Fragment key={sub.id}>
+                            <tr className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-4 py-4 font-bold text-slate-800 whitespace-nowrap">
+                                {sub.fullName}
+                              </td>
+                              <td className="px-4 py-4">
+                                {fileUrl ? (
+                                  <a
+                                    href={fileUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 text-primary hover:underline font-bold text-xs bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors"
+                                  >
+                                    📄 {fileName}
+                                  </a>
+                                ) : (
+                                  <span className="text-slate-400 italic">Chưa nộp file</span>
                                 )}
-                              >
-                                {sub.status === 'done'
-                                  ? 'Đã chấm'
-                                  : sub.status === 'grading'
-                                    ? 'Đang chấm'
-                                    : 'Chờ chấm'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-center">
-                              <input
-                                type="number"
-                                min={0}
-                                max={100}
-                                placeholder="—"
-                                value={grade.score}
-                                onChange={(e) =>
-                                  handleFileGradeChange(sub.id, 'score', e.target.value)
-                                }
-                                className="w-20 mx-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-sm font-bold text-slate-800 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
-                            </td>
-                            <td className="px-4 py-4">
-                              <textarea
-                                placeholder="Nhập nhận xét..."
-                                value={grade.comment}
-                                onChange={(e) =>
-                                  handleFileGradeChange(sub.id, 'comment', e.target.value)
-                                }
-                                rows={2}
-                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm resize-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all"
-                              />
-                            </td>
-                          </tr>
+                              </td>
+                              <td className="px-4 py-4 text-center">
+                                <span
+                                  className={cn(
+                                    'inline-flex rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap',
+                                    sub.status === 'done'
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : sub.status === 'grading'
+                                        ? 'bg-amber-100 text-amber-700'
+                                        : 'bg-rose-100 text-rose-700'
+                                  )}
+                                >
+                                  {sub.status === 'done'
+                                    ? 'Đã chấm'
+                                    : sub.status === 'grading'
+                                      ? 'Đang chấm'
+                                      : 'Chờ chấm'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4 text-center">
+                                {gradingType === 'rubric_reading' ? (
+                                  <div
+                                    className={cn(
+                                      'inline-flex items-center justify-center h-9 w-20 rounded-xl text-sm font-black border transition-all',
+                                      grade.score
+                                        ? 'bg-primary/5 border-primary/20 text-primary'
+                                        : 'bg-slate-50 border-slate-200 text-slate-400'
+                                    )}
+                                  >
+                                    {grade.score ? `${grade.score}đ` : '—'}
+                                  </div>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    placeholder="—"
+                                    value={grade.score}
+                                    onChange={(e) =>
+                                      handleFileGradeChange(sub.id, 'score', e.target.value)
+                                    }
+                                    className="w-20 mx-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-sm font-bold text-slate-800 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  />
+                                )}
+                              </td>
+                              <td className="px-4 py-4">
+                                <textarea
+                                  placeholder="Nhập nhận xét..."
+                                  value={grade.comment}
+                                  onChange={(e) =>
+                                    handleFileGradeChange(sub.id, 'comment', e.target.value)
+                                  }
+                                  rows={2}
+                                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm resize-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all"
+                                />
+                              </td>
+                            </tr>
+                            {gradingType === 'rubric_reading' && (
+                              <tr className="bg-slate-50/30">
+                                <td
+                                  colSpan={5}
+                                  className="px-4 pb-6 pt-2 border-b border-slate-200"
+                                >
+                                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                    {RUBRIC_CRITERIA.map((criteria) => {
+                                      const currentValue = studentRubric[criteria.id] || null
+                                      return (
+                                        <div
+                                          key={criteria.id}
+                                          className="flex flex-col bg-white rounded-xl border border-slate-100 p-3 shadow-sm"
+                                        >
+                                          <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-3 ml-1">
+                                            {criteria.title}
+                                          </h4>
+                                          <div className="space-y-2">
+                                            {Object.entries(criteria.options).map(
+                                              ([optKey, optVal]) => {
+                                                const isChecked = currentValue === optKey
+                                                const statusLabel =
+                                                  optKey === 'chua_dat'
+                                                    ? 'Chưa đạt'
+                                                    : optKey === 'dat'
+                                                      ? 'Đạt'
+                                                      : 'Tốt'
+
+                                                return (
+                                                  <div
+                                                    key={optKey}
+                                                    onClick={() => {
+                                                      if (
+                                                        sub.status === 'done' &&
+                                                        !gradeMutation.isPending
+                                                      )
+                                                        return
+                                                      handleRubricChange(
+                                                        sub.id,
+                                                        criteria.id,
+                                                        optKey as any
+                                                      )
+                                                    }}
+                                                    className={cn(
+                                                      'flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all duration-200 select-none',
+                                                      isChecked
+                                                        ? optKey === 'chua_dat'
+                                                          ? 'bg-orange-50/40 border-orange-200 text-orange-950'
+                                                          : optKey === 'dat'
+                                                            ? 'bg-emerald-50/40 border-emerald-200 text-emerald-950'
+                                                            : 'bg-indigo-50/40 border-indigo-200 text-indigo-950'
+                                                        : 'bg-white border-slate-100 text-slate-700 hover:border-slate-300 hover:bg-slate-50/30'
+                                                    )}
+                                                  >
+                                                    <div className="mt-0.5">
+                                                      <div
+                                                        className={cn(
+                                                          'h-4 w-4 rounded-full border flex items-center justify-center transition-all',
+                                                          isChecked
+                                                            ? optKey === 'chua_dat'
+                                                              ? 'border-orange-500 bg-orange-500 text-white'
+                                                              : optKey === 'dat'
+                                                                ? 'border-emerald-500 bg-emerald-500 text-white'
+                                                                : 'border-indigo-500 bg-indigo-500 text-white'
+                                                            : 'border-slate-300 bg-white'
+                                                        )}
+                                                      >
+                                                        {isChecked && (
+                                                          <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                    <div className="flex flex-col min-w-0">
+                                                      <div className="flex items-center gap-1.5">
+                                                        <span
+                                                          className={cn(
+                                                            'text-xs font-extrabold',
+                                                            isChecked
+                                                              ? optKey === 'chua_dat'
+                                                                ? 'text-orange-700'
+                                                                : optKey === 'dat'
+                                                                  ? 'text-emerald-700'
+                                                                  : 'text-indigo-700'
+                                                              : 'text-slate-800'
+                                                          )}
+                                                        >
+                                                          {statusLabel}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                                                          {optVal.score}đ
+                                                        </span>
+                                                      </div>
+                                                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                                                        {optVal.desc}
+                                                      </p>
+                                                    </div>
+                                                  </div>
+                                                )
+                                              }
+                                            )}
+                                          </div>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
                         )
                       })}
                     </tbody>

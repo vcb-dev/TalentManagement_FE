@@ -13,6 +13,7 @@ import {
 } from './mock/mockEmployeesData'
 import { employeeApiSchema, employeeListApiSchema } from './schemas'
 import type { EmployeeFilters } from './types'
+import type { IHrEmployeeProfileState } from './components/HrEmployeeProfile/HrEmployeeProfile'
 
 export type { CreateEmployeeMeta }
 
@@ -92,6 +93,18 @@ export const employeeApi = {
     }
     const res = await apiClient.patch<unknown>(`/employees/${id}`, patch)
     return safeParse(employeeApiSchema, res.data, `PATCH /employees/${id}`)
+  },
+
+  // get employee by id
+  getEmployeeById: async (id: string) => {
+    const res = await apiClient.get<IHrEmployeeProfileState>(`/employees/hr/${id}`)
+    return res.data
+  },
+
+  // update employee by id
+  updateEmployeeById: async (id: string, patch: IHrEmployeeProfileState) => {
+    const res = await apiClient.patch<unknown>(`/employees/hr/${id}`, patch)
+    return res.data
   },
 }
 

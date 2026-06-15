@@ -28,6 +28,7 @@ type GradeFormValues = {
   graderNote: string
   grades: Record<string, { criteria: string[]; score: number; isGraded?: boolean }>
   totalScore?: number
+  rubricGrades?: Record<string, string | null>
 }
 
 const CRITERIA_WEIGHTS: Record<string, number> = {
@@ -35,6 +36,36 @@ const CRITERIA_WEIGHTS: Record<string, number> = {
   thuc_te: 50,
   trinh_bay: 10,
 }
+
+const RUBRIC_CRITERIA = [
+  {
+    id: 'suy_ngam',
+    title: 'Suy ngẫm và nhận thức cá nhân (40đ)',
+    options: {
+      chua_dat: { score: 10, desc: 'Chủ yếu nhắc lại nội dung sách.' },
+      dat: { score: 25, desc: 'Nêu được bài học hoặc nhận thức riêng.' },
+      tot: { score: 40, desc: 'Thể hiện sự thay đổi trong tư duy hoặc cách nhìn nhận vấn đề.' },
+    },
+  },
+  {
+    id: 'ket_noi',
+    title: 'Kết nối với thực tế (30đ)',
+    options: {
+      chua_dat: { score: 10, desc: 'Ít hoặc chưa liên hệ với thực tế.' },
+      dat: { score: 20, desc: 'Có liên hệ với bản thân hoặc công việc.' },
+      tot: { score: 30, desc: 'Liên hệ cụ thể và thể hiện khả năng vận dụng.' },
+    },
+  },
+  {
+    id: 'phat_trien',
+    title: 'Phát triển ý tưởng (30đ)',
+    options: {
+      chua_dat: { score: 10, desc: 'Chưa có quan điểm riêng.' },
+      dat: { score: 20, desc: 'Có quan điểm hoặc câu hỏi riêng.' },
+      tot: { score: 30, desc: 'Có phản biện, mở rộng hoặc đề xuất cách áp dụng mới.' },
+    },
+  },
+]
 
 function GraderQuestionItem({
   qId,
@@ -227,7 +258,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
   }, [])
 
   const gradeForm = useForm<GradeFormValues>({
-    defaultValues: { graderNote: '', grades: {}, totalScore: 0 },
+    defaultValues: { graderNote: '', grades: {}, totalScore: 0, rubricGrades: {} },
   })
 
   useEffect(() => {
@@ -240,12 +271,42 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
       mappedGrades[qId] = { ...g, isGraded: true }
     })
 
+    const rubricGrades = (submission.grades as any)?.rubric_reading || {
+      suy_ngam: null,
+      ket_noi: null,
+      phat_trien: null,
+    }
+
     gradeForm.reset({
       graderNote: submission.graderNote ?? '',
       grades: mappedGrades,
+      rubricGrades,
       totalScore: submission.totalScore ?? 0,
     })
   }, [submission, gradeForm])
+
+  const gradingType = (submission?.schedule as any)?.examQuestions?.gradingType || 'direct'
+  const rubricGrades = gradeForm.getValues('rubricGrades') ?? {}
+  const rubricWatch = useWatch({ control: gradeForm.control, name: 'rubricGrades' }) ?? {}
+
+  const handleRubricChange = (criteriaId: string, value: string) => {
+    const current = gradeForm.getValues('rubricGrades') ?? {}
+    const next = {
+      ...current,
+      [criteriaId]: current[criteriaId] === value ? null : value,
+    }
+    gradeForm.setValue('rubricGrades', next, { shouldValidate: true })
+
+    // Calculate new total score
+    let score = 0
+    RUBRIC_CRITERIA.forEach((criteria) => {
+      const selectedOpt = next[criteria.id]
+      if (selectedOpt) {
+        score += criteria.options[selectedOpt as 'chua_dat' | 'dat' | 'tot']?.score || 0
+      }
+    })
+    gradeForm.setValue('totalScore', score, { shouldValidate: true })
+  }
 
   const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
 
@@ -280,8 +341,17 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
 
     const currentGrades = gradeForm.getValues('grades') ?? {}
 
+    // Validation for rubric done status
+    if (status === 'done' && gradingType === 'rubric_reading') {
+      const incomplete = RUBRIC_CRITERIA.some((criteria) => !rubricGrades[criteria.id])
+      if (incomplete) {
+        toast.error('Vui lòng đánh giá đủ tất cả các tiêu chí trong bảng Rubric')
+        return
+      }
+    }
+
     // Validation for 'done' status
-    if (status === 'done' && !isFileSubmission) {
+    if (status === 'done' && gradingType !== 'rubric_reading' && !isFileSubmission) {
       let index = 0
       for (const [qId] of answeredEntries) {
         const g = currentGrades[qId] as any
@@ -301,20 +371,33 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
       }
     }
 
-    const totalScore = isFileSubmission
-      ? Number(gradeForm.getValues('totalScore') || 0)
-      : totalQuestionsInExam > 0
-        ? Math.round(
-            Object.values(currentGrades).reduce((acc, g) => acc + (g as any).score, 0) /
-              totalQuestionsInExam
-          )
-        : 0
+    let totalScore = 0
+    if (gradingType === 'rubric_reading') {
+      totalScore = Number(gradeForm.getValues('totalScore') || 0)
+    } else {
+      totalScore = isFileSubmission
+        ? Number(gradeForm.getValues('totalScore') || 0)
+        : totalQuestionsInExam > 0
+          ? Math.round(
+              Object.values(currentGrades).reduce((acc, g) => acc + (g as any).score, 0) /
+                totalQuestionsInExam
+            )
+          : 0
+    }
+
+    const gradesPayload =
+      gradingType === 'rubric_reading'
+        ? { rubric_reading: rubricGrades }
+        : isFileSubmission
+          ? undefined
+          : currentGrades
+
     gradeMutation.mutate(
       {
         submissionId: examId,
         graderNote,
         status,
-        grades: isFileSubmission ? undefined : currentGrades,
+        grades: gradesPayload,
         totalScore,
       },
       {
@@ -514,6 +597,103 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                 </div>
               )}
 
+              {/* Rubric Grading Table */}
+              {gradingType === 'rubric_reading' && (
+                <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                  <h2 className="mb-4 text-base font-black text-slate-800 uppercase tracking-wide">
+                    Bảng đánh giá theo Rubric Đọc sách
+                  </h2>
+                  <div className="overflow-x-auto rounded-xl border border-slate-100">
+                    <table className="w-full border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 bg-slate-50">
+                          <th className="px-4 py-3 font-bold text-slate-700 w-1/3">Tiêu chí</th>
+                          <th className="px-4 py-3 font-bold text-orange-600 text-center w-2/9">
+                            Chưa đạt
+                          </th>
+                          <th className="px-4 py-3 font-bold text-emerald-600 text-center w-2/9">
+                            Đạt
+                          </th>
+                          <th className="px-4 py-3 font-bold text-indigo-600 text-center w-2/9">
+                            Tốt
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {RUBRIC_CRITERIA.map((criteria) => {
+                          const currentValue = rubricWatch[criteria.id] || null
+                          return (
+                            <tr
+                              key={criteria.id}
+                              className="hover:bg-slate-50/50 transition-colors"
+                            >
+                              <td className="px-4 py-4 font-bold text-slate-800 vertical-align-top">
+                                {criteria.title}
+                              </td>
+                              {Object.entries(criteria.options).map(([optKey, optVal]) => {
+                                const isChecked = currentValue === optKey
+                                const colorClass =
+                                  optKey === 'chua_dat'
+                                    ? 'data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600'
+                                    : optKey === 'dat'
+                                      ? 'data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600'
+                                      : 'data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600'
+                                return (
+                                  <td
+                                    key={optKey}
+                                    className={cn(
+                                      'px-4 py-4 text-center cursor-pointer transition-all',
+                                      isChecked &&
+                                        (optKey === 'chua_dat'
+                                          ? 'bg-orange-50/30'
+                                          : optKey === 'dat'
+                                            ? 'bg-emerald-50/30'
+                                            : 'bg-indigo-50/30')
+                                    )}
+                                    onClick={() => {
+                                      if (submission.status === 'done' && !gradeMutation.isPending)
+                                        return
+                                      handleRubricChange(criteria.id, optKey)
+                                    }}
+                                  >
+                                    <div className="flex flex-col items-center gap-2">
+                                      <Checkbox
+                                        className={cn('h-5 w-5 rounded-full border-2', colorClass)}
+                                        checked={isChecked}
+                                        disabled={
+                                          submission.status === 'done' && !gradeMutation.isPending
+                                        }
+                                      />
+                                      <span
+                                        className={cn(
+                                          'text-xs font-black uppercase',
+                                          isChecked
+                                            ? optKey === 'chua_dat'
+                                              ? 'text-orange-600'
+                                              : optKey === 'dat'
+                                                ? 'text-emerald-600'
+                                                : 'text-indigo-600'
+                                            : 'text-slate-400'
+                                        )}
+                                      >
+                                        {optVal.score}đ
+                                      </span>
+                                      <span className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-[150px] mx-auto block">
+                                        {optVal.desc}
+                                      </span>
+                                    </div>
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {/* Grader note */}
               <div className="rounded-xl border border-primary/20 bg-card p-5 shadow-sm">
                 <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-primary">
@@ -559,7 +739,14 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                     </span>
                   </div>
                   <div className="my-2 h-px w-full bg-border" />
-                  {isFileSubmission ? (
+                  {gradingType === 'rubric_reading' ? (
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-foreground">Tổng điểm Rubric</span>
+                      <span className="text-lg font-black text-primary">
+                        {gradeForm.watch('totalScore') ?? 0}đ
+                      </span>
+                    </div>
+                  ) : isFileSubmission ? (
                     <div className="flex flex-col gap-2">
                       <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                         Điểm bài thi (0 - 100) <span className="text-rose-500">*</span>

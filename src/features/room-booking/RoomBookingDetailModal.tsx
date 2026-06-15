@@ -1,9 +1,10 @@
-import { Calendar, Clock, MapPin, User, X } from 'lucide-react'
+import { Calendar, Clock, FileText, MapPin, User, X } from 'lucide-react'
 import type { MeetingBooking } from './api'
 import { getBookingDisplayStatus } from './roomBookingStatus'
 import { formatDateLongVi, formatTimeRangeVi } from './roomBookingTimeUtils'
 import { requiresMeetingMinutes } from './roomBookingMinutes'
 import { RoomBookingMinutesCell } from './RoomBookingMinutesCell'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 
 type Props = {
   booking: MeetingBooking | null
@@ -73,6 +74,28 @@ export function RoomBookingDetailModal({
             <div className="rounded-xl bg-muted/30 p-3">
               <p className="text-xs font-semibold uppercase text-muted-foreground">Ghi chú</p>
               <p className="mt-1 text-sm text-foreground">{booking.note}</p>
+            </div>
+          ) : null}
+          {booking.documents && booking.documents.length > 0 ? (
+            <div className="rounded-xl border border-border/60 bg-primary/5 p-3">
+              <p className="text-xs font-semibold uppercase text-primary mb-2">
+                Tài liệu buổi họp ({booking.documents.length})
+              </p>
+              <div className="flex flex-col gap-2">
+                {booking.documents.map((doc, idx) => (
+                  <a
+                    key={idx}
+                    href={resolvePublicAssetUrl(doc.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex max-w-full items-center gap-1.5 truncate text-xs font-bold text-primary hover:underline bg-primary/10 px-3 py-2 rounded-lg"
+                    title={doc.name}
+                  >
+                    <FileText className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{doc.name}</span>
+                  </a>
+                ))}
+              </div>
             </div>
           ) : null}
           {requiresMeetingMinutes(booking, vnTime) ? (

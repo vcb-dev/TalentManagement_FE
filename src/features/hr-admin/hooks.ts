@@ -5,6 +5,7 @@ import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
 import { employeeApi, type CreateEmployeeMeta } from './api'
 import { employeeKeys } from './queryKeys'
 import type { EmployeeFilters } from './types'
+import type { IHrEmployeeProfileState } from './components/HrEmployeeProfile/HrEmployeeProfile'
 
 type EmployeeListData = Awaited<ReturnType<typeof employeeApi.getAll>>
 
@@ -92,6 +93,33 @@ export function useDeactivateEmployee() {
       void qc.invalidateQueries({ queryKey: employeeKeys.detail(id) })
       void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
       toast.success('Đã vô hiệu hóa tài khoản')
+    },
+  })
+}
+
+export function useEmployeeById(id: string) {
+  return useQuery({
+    queryKey: employeeKeys.detailEmployeeByID(id),
+    queryFn: () => employeeApi.getEmployeeById(id),
+    enabled: id.length > 0,
+  })
+}
+
+export function useUpdateEmployeeById() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { id: string; patch: IHrEmployeeProfileState }) => {
+      console.log({ args })
+
+      return employeeApi.updateEmployeeById(args.id, args.patch)
+    },
+    onSuccess: (_data, { id }) => {
+      void qc.invalidateQueries({ queryKey: employeeKeys.detailEmployeeByID(id) })
+      void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
+      toast.success('Đã cập nhật nhân viên')
+    },
+    onError: (e) => {
+      toast.error(getApiErrorMessage(e) || 'Không thể cập nhật nhân viên')
     },
   })
 }
