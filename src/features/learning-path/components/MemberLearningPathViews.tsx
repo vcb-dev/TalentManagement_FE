@@ -302,7 +302,9 @@ export function MemberClassesPanel() {
 
         const isDeadlineSlot = s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
 
-        if (isReflection || isExam || isDeadlineSlot) {
+        const isReflectionTask = isReflection && (isDeadlineSlot || ri.deadline)
+
+        if (isReflectionTask || isExam || isDeadlineSlot) {
           tasks.push({
             ...ri,
             scheduleId: s.id,

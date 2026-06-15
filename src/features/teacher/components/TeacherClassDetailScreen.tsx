@@ -320,6 +320,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     if (!s) return
     setScheduleModalOpen(true)
     setEditingScheduleId(scheduleId)
+    setIsCreatingDeadlineOnly(isDeadlineOnly(s))
     const [sh, sm] = splitTimeToParts(s.startTime)
     const [eh, em] = splitTimeToParts(s.endTime)
     const todayMin = getTodayIsoLocal()
@@ -1272,7 +1273,9 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     onSubmit={scheduleForm.handleSubmit((vals) => {
                       const startTime = joinTimeHm(vals.startHour, vals.startMinute)
                       const endTime = joinTimeHm(vals.endHour, vals.endMinute)
-                      const localDeadlines = vals.roadmapItemDeadlines || {}
+                      const localDeadlines = isCreatingDeadlineOnly
+                        ? vals.roadmapItemDeadlines || {}
+                        : {}
                       const roadmapItemDeadlines: Record<string, string> = {}
                       for (const itemId of vals.roadmapItemIds) {
                         const dl = localDeadlines[itemId]
@@ -1493,7 +1496,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                                           </span>
                                         </span>
                                       </label>
-                                      {checked && requiresReflection && (
+                                      {checked && requiresReflection && isCreatingDeadlineOnly && (
                                         <div className="flex flex-col gap-1 shrink-0 w-full md:w-auto min-w-[180px]">
                                           <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
                                             Hạn nộp phản tư
