@@ -6,7 +6,7 @@ export const MEETING_ROOMS = [
 
 /** Khung giờ hiển thị trên lưới (khớp mockup 08:00–18:00). */
 export const TIMELINE_START_HOUR = 8
-export const TIMELINE_END_HOUR = 22
+export const TIMELINE_END_HOUR = 24
 
 export const TIMELINE_HOURS = Array.from(
   { length: TIMELINE_END_HOUR - TIMELINE_START_HOUR + 1 },
