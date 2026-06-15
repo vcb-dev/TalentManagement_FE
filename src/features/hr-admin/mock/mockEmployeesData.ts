@@ -213,6 +213,7 @@ export function mockPatchEmployee(
   if (patch.status !== undefined) next.status = patch.status
   if (patch.phone !== undefined) next.phone = patch.phone.trim() || null
   if (patch.birthDate !== undefined) next.birthDate = patch.birthDate.trim() || null
+  if (patch.directManager !== undefined) next.directManager = patch.directManager?.trim() || null
   if (patch.startDate !== undefined) next.startDate = patch.startDate.trim() || null
   if (patch.currentLevel !== undefined) next.currentLevel = patch.currentLevel
   rows[i] = next

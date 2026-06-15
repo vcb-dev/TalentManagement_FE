@@ -22,7 +22,18 @@ import {
   Users,
 } from '@/components/icons'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
-import { useDeactivateEmployee, useUpdateEmployee } from '@/features/hr-admin/hooks'
+import {
+  useDeactivateEmployee,
+  useDirectManagerOptions,
+  useUpdateEmployee,
+} from '@/features/hr-admin/hooks'
+import {
+  buildDirectManagerSelectOptions,
+  directManagerIdToStoredName,
+  filterDirectManagerCandidates,
+  resolveDirectManagerFormValue,
+} from '@/features/hr-admin/directManagerOptions'
+import { DirectManagerSearchField } from '@/features/hr-admin/components/DirectManagerSearchField'
 import { DEFAULT_TEAM_ID } from '@/features/hr-admin/hrOrgOptions'
 import {
   EmployeeExtraTeamsField,
@@ -158,6 +169,7 @@ type EmployeeEditFormValues = {
   teamId: string
   phone: string
   birthDate: string
+  directManager: string
   startDate: string
   extraTeamIds: string[]
   currentLevel: EmployeeEntity['currentLevel']
@@ -170,6 +182,11 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
   const updateEmployee = useUpdateEmployee()
   const deactivateEmployee = useDeactivateEmployee()
   const isSaving = updateEmployee.isPending || deactivateEmployee.isPending
+  const { data: directManagersData } = useDirectManagerOptions()
+  const directManagers = useMemo(
+    () => filterDirectManagerCandidates(directManagersData?.data ?? [], employee.id),
+    [directManagersData?.data, employee.id]
+  )
 
   const maxTab = 4
   const [tab, setTab] = useState(() => Math.min(maxTab, Math.max(0, initialTab)))
@@ -188,6 +205,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
       teamId: employee.teamIds[0] ?? DEFAULT_TEAM_ID,
       phone: employee.phone?.trim() ?? '',
       birthDate: employee.birthDate?.trim() ?? '',
+      directManager: resolveDirectManagerFormValue(employee.directManager, []),
       startDate: employee.startDate?.trim() ?? '',
       extraTeamIds: employee.teamIds.slice(1),
       currentLevel: employee.currentLevel,
@@ -205,6 +223,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
       teamId: employee.teamIds[0] ?? DEFAULT_TEAM_ID,
       phone: employee.phone?.trim() ?? '',
       birthDate: employee.birthDate?.trim() ?? '',
+      directManager: resolveDirectManagerFormValue(employee.directManager, directManagers),
       startDate: employee.startDate?.trim() ?? '',
       extraTeamIds: employee.teamIds.slice(1),
       currentLevel: employee.currentLevel,
@@ -219,8 +238,10 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
     employee.teamIds,
     employee.phone,
     employee.birthDate,
+    employee.directManager,
     employee.startDate,
     employee.currentLevel,
+    directManagers,
     resetEditForm,
   ])
 
@@ -238,6 +259,11 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
     if (values.phone.trim() !== origPhone) patch.phone = values.phone.trim()
     const origBirth = employee.birthDate?.trim() ?? ''
     if (values.birthDate.trim() !== origBirth) patch.birthDate = values.birthDate.trim()
+    const origDirectManager = employee.directManager?.trim() ?? ''
+    const nextDirectManager = directManagerIdToStoredName(values.directManager, directManagers)
+    if ((nextDirectManager ?? '') !== (origDirectManager || '')) {
+      patch.directManager = nextDirectManager
+    }
     const origStart = employee.startDate?.trim() ?? ''
     if (values.startDate.trim() !== origStart) patch.startDate = values.startDate.trim()
     const origExtras = employee.teamIds.slice(1)
@@ -531,6 +557,7 @@ export function HrEmployeeProfile({ employee, initialTab = 0 }: HrEmployeeProfil
                     <EditTab
                       employee={employee}
                       control={editControl}
+                      directManagers={directManagers}
                       empCode={empCode}
                       canEdit={canEdit}
                       canDeactivate={canDeactivate}
@@ -964,6 +991,7 @@ function WorkHistoryTab() {
 function EditTab({
   employee,
   control,
+  directManagers,
   empCode,
   canEdit,
   canDeactivate,
@@ -974,6 +1002,7 @@ function EditTab({
 }: {
   employee: EmployeeEntity
   control: Control<EmployeeEditFormValues>
+  directManagers: EmployeeEntity[]
   empCode: string
   canEdit: boolean
   canDeactivate: boolean
@@ -1020,6 +1049,11 @@ function EditTab({
   const levelSelectOptions = useMemo(
     () => LEVELS.map((lv) => ({ value: lv, label: LEVEL_LABELS[lv] })),
     []
+  )
+
+  const directManagerOptions = useMemo(
+    () => buildDirectManagerSelectOptions(directManagers, employee.id, employee.directManager),
+    [directManagers, employee.directManager, employee.id]
   )
 
   return (
@@ -1146,6 +1180,13 @@ function EditTab({
             name="birthDate"
             label="Ngày sinh"
             disabled={orgDisabled}
+          />
+          <DirectManagerSearchField
+            control={control}
+            name="directManager"
+            options={directManagerOptions}
+            disabled={orgDisabled}
+            inputClassName={PROFILE_EDIT_FIELD}
           />
           <div className="sm:col-span-2">
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">

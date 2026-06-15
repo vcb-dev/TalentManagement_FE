@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
+import { requireManagerLikeOrPermissionPrefixes } from '@/lib/routeGuards'
 import { PageSkeleton } from '@/components/ui/skeleton'
 
 const ManagerKpiOkrScreen = lazy(() =>
@@ -11,7 +11,7 @@ const ManagerKpiOkrScreen = lazy(() =>
 
 export const Route = createFileRoute('/_protected/leader/vinh-danh')({
   beforeLoad: () => {
-    requireRoleOrPermissionPrefixes(['MANAGER'], [])
+    requireManagerLikeOrPermissionPrefixes([])
   },
   component: VinhDanhPage,
 })

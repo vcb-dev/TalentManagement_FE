@@ -1,5 +1,6 @@
 import { redirect } from '@tanstack/react-router'
 import { resolveEffectivePermissionSet } from '@/features/permissions/resolveEffective'
+import { MANAGER_LIKE_ROLES } from '@/lib/managerLikeRole'
 import { useAuthStore } from '@/stores/auth.store'
 import type { Role, UserSession } from '@/types/auth'
 
@@ -69,4 +70,9 @@ export function requireRoleOrPermissionPrefixes(
     permissionIdPrefixes.some((prefix) => id === prefix || id.startsWith(prefix))
   )
   if (!ok) throw redirect({ to: defaultEntryPathFromSession(user) })
+}
+
+/** Route dành cho Quản lý / BOD — cùng giao diện manager. */
+export function requireManagerLikeOrPermissionPrefixes(permissionIdPrefixes: string[]) {
+  requireRoleOrPermissionPrefixes([...MANAGER_LIKE_ROLES], permissionIdPrefixes)
 }

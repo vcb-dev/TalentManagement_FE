@@ -52,14 +52,6 @@ export function AppShell({ children, title }: AppShellProps) {
 
   const toolbar = (
     <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-      <a
-        href="/about-us"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="hidden items-center gap-1.5 rounded-md border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90 transition-colors hover:bg-white/20 hover:text-white sm:flex"
-      >
-        Giới thiệu
-      </a>
       <Popover>
         <PopoverTrigger asChild>
           <Button

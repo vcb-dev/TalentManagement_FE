@@ -27,11 +27,12 @@ import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { Button } from '@/components/ui/button'
 import { PromotionCelebrationModal } from '@/components/shared/PromotionCelebrationModal'
 import { useAuthStore } from '@/stores/auth.store'
+import { isManagerLikeRole } from '@/lib/managerLikeRole'
 import type { Role, StaffLevel } from '@/types/auth'
 
 function kpiOkrPaths(role: Role | undefined): { kpiOkr: string } {
   if (role === 'LEADER') return { kpiOkr: '/leader/kpi-okr' }
-  if (role === 'MANAGER') return { kpiOkr: '/monthly-report' }
+  if (isManagerLikeRole(role)) return { kpiOkr: '/monthly-report' }
   return { kpiOkr: '/kpi-okr' }
 }
 
@@ -109,8 +110,8 @@ const achievementCardStyles = [
 export function EmployeeLearningDashboard() {
   const user = useAuthStore((s) => s.user)
   const role = user?.role
-  const showKpiZone = role === 'MEMBER' || role === 'LEADER' || role === 'MANAGER'
-  const isManagerLearningDash = role === 'MANAGER'
+  const showKpiZone = role === 'MEMBER' || role === 'LEADER' || isManagerLikeRole(role)
+  const isManagerLearningDash = isManagerLikeRole(role)
   const paths = kpiOkrPaths(role)
   const [tab, setTab] = useState<DashboardTab>('learning')
   const [isPending, startTransition] = useTransition()
