@@ -394,6 +394,32 @@ export default function RoomBookingPage() {
   const user = useAuthStore((s) => s.user)
   const isPrivileged = user?.role === 'HR' || user?.role === 'MANAGER' || user?.role === 'BOD'
 
+  const isRoomAccount = useMemo(() => {
+    if (!user) return false
+    const emailLower = (user.email || '').trim().toLowerCase()
+    const parts = emailLower.split('@')
+    if (parts.length === 2 && parts[1] === 'gmail.com') {
+      parts[0] = parts[0].replace(/\./g, '')
+    }
+    const emailClean = parts.join('@')
+    return emailClean === 'vienchibaodev@gmail.com' || emailClean === 'vienibaodev@gmail.com'
+  }, [user])
+
+  const [monitoredRoom, setMonitoredRoom] = useState(() => {
+    const saved = localStorage.getItem('vcb_selected_room')
+    if (saved) return saved
+    if (user) {
+      const emailLower = (user.email || '').trim().toLowerCase()
+      const parts = emailLower.split('@')
+      if (parts.length === 2 && parts[1] === 'gmail.com') {
+        parts[0] = parts[0].replace(/\./g, '')
+      }
+      const emailClean = parts.join('@')
+      if (emailClean === 'vienchibaodev@gmail.com') return 'Tầng 6'
+    }
+    return 'Tầng 5'
+  })
+
   const [showModal, setShowModal] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
@@ -788,6 +814,24 @@ export default function RoomBookingPage() {
               <div className="flex items-center gap-2 rounded-xl bg-primary/5 px-4 py-2 text-primary">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="text-xs font-bold uppercase tracking-wider">Đang cập nhật...</span>
+              </div>
+            )}
+            {isRoomAccount && (
+              <div className="flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5 border border-border">
+                <span className="text-xs font-black uppercase text-muted-foreground whitespace-nowrap">
+                  Giám sát:
+                </span>
+                <CustomSelect
+                  value={monitoredRoom}
+                  onValueChange={(val) => {
+                    setMonitoredRoom(val)
+                    localStorage.setItem('vcb_selected_room', val)
+                  }}
+                  options={MEETING_ROOMS.map((r) => ({
+                    label: r.label,
+                    value: r.id,
+                  }))}
+                />
               </div>
             )}
             <button

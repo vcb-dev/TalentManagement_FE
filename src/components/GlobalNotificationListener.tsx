@@ -67,6 +67,9 @@ export default function GlobalNotificationListener() {
         console.error('Failed to load notified ids', e)
       }
     }
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
   }, [])
 
   const saveNotified = useCallback(() => {
@@ -150,7 +153,16 @@ export default function GlobalNotificationListener() {
           localStorage.setItem('vcb_selected_room', roomParam)
           return roomParam
         }
-        return localStorage.getItem('vcb_selected_room') || 'Tầng 5'
+        const saved = localStorage.getItem('vcb_selected_room')
+        if (saved) return saved
+
+        if (emailClean === 'vienchibaodev@gmail.com') {
+          return 'Tầng 6'
+        }
+        if (emailClean === 'vienibaodev@gmail.com') {
+          return 'Tầng 5'
+        }
+        return 'Tầng 5'
       }
       const targetRoom = getTargetRoom()
 
