@@ -24,9 +24,17 @@ function getVnNow() {
   }
 }
 
+function timeToMinutes(t: string): number {
+  const parts = t.split(':')
+  const h = parseInt(parts[0], 10) || 0
+  const m = parseInt(parts[1], 10) || 0
+  return h * 60 + m
+}
+
 // Chị Google nói
 function speak(text: string) {
   if (!window.speechSynthesis) return
+  window.speechSynthesis.cancel() // Stop any ongoing speech before speaking
   const msg = new SpeechSynthesisUtterance(text)
   const voices = window.speechSynthesis.getVoices()
   const vnVoice = voices.find((v) => v.lang.includes('vi') || v.lang.includes('VN'))
@@ -119,24 +127,32 @@ export default function GlobalNotificationListener() {
         console.error('Global check failed:', err)
       }
 
-      const now = new Date()
-      const nowTs = now.getTime()
-      const td = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+      const vnNow = getVnNow()
+      const td = vnNow.date
+      const currentMins = timeToMinutes(vnNow.time)
 
       const emailLower = (user.email || '').trim().toLowerCase()
+      const emailClean = emailLower.replace(/\./g, '')
       const isRoomAccount =
-        emailLower === 'vienchibao.dev@gmail.com' ||
-        emailLower === 'vienibaodev@gmail.com' ||
-        emailLower === 'vienchibaodev@gmail.com'
+        emailClean === 'vienchibaodev@gmail.com' || emailClean === 'vienibaodev@gmail.com'
       const isAdmin = ['MANAGER', 'HR', 'BOD'].includes(user.role || '')
       if (isAdmin && !isRoomAccount) return
       const urlParams = new URLSearchParams(window.location.search)
       const roomParam = urlParams.get('room') // Ví dụ: "Tầng 5" hoặc "Tầng 6"
 
+      // Lấy phòng họp được cấu hình cho thiết bị (ưu tiên từ URL query, sau đó đến localStorage)
+      const getTargetRoom = () => {
+        if (roomParam) {
+          localStorage.setItem('vcb_selected_room', roomParam)
+          return roomParam
+        }
+        return localStorage.getItem('vcb_selected_room') || 'Tầng 5'
+      }
+      const targetRoom = getTargetRoom()
+
       // Hàm helper kiểm tra xem phòng họp có thuộc phạm vi cảnh báo của tài khoản này không
       const isTargetBooking = (b: MeetingBooking) => {
         if (isRoomAccount) {
-          const targetRoom = roomParam || 'Tầng 6'
           return b.room.toLowerCase() === targetRoom.toLowerCase()
         }
         return b.userId === user.id
@@ -168,8 +184,8 @@ export default function GlobalNotificationListener() {
         const isRelevant = b.status === 'approved' || isMyPending
         if (!isRelevant || b.date !== td || notifiedRef.current.has(b.id + '_ended')) return false
 
-        const endTs = new Date(`${b.date}T${b.timeTo}:00+07:00`).getTime()
-        return nowTs >= endTs && nowTs < endTs + 300000
+        const endMins = timeToMinutes(b.timeTo)
+        return currentMins >= endMins && currentMins < endMins + 5
       })
 
       if (newlyExpired.length > 0) {
@@ -210,14 +226,14 @@ export default function GlobalNotificationListener() {
         ])
       }
 
-      // 3. Kiểm tra ca họp của NGƯỜI KHÁC bắt đầu
+      // 3. Kiểm tra ca họp của NGƯỜIS KHÁC bắt đầu
       const othersStarting = bookingsRef.current.filter((other) => {
         if (other.status !== 'approved' || other.date !== td) return false
         if (notifiedRef.current.has(other.id + '_remind_me')) return false
 
         // Nếu là tài khoản phòng họp, hoặc người dùng thông thường có ca họp kết thúc trước đó
         const isRelevantForUser = isRoomAccount
-          ? (roomParam || 'Tầng 6').toLowerCase() === other.room.toLowerCase()
+          ? targetRoom.toLowerCase() === other.room.toLowerCase()
           : bookingsRef.current.some(
               (myOld) =>
                 myOld.userId === user.id &&
@@ -228,8 +244,8 @@ export default function GlobalNotificationListener() {
 
         if (!isRelevantForUser) return false
 
-        const startTs = new Date(`${other.date}T${other.timeFrom}:00+07:00`).getTime()
-        return nowTs >= startTs && nowTs < startTs + 60000
+        const startMins = timeToMinutes(other.timeFrom)
+        return currentMins >= startMins && currentMins < startMins + 1
       })
 
       othersStarting.forEach((nextBooking) => {
@@ -249,9 +265,9 @@ export default function GlobalNotificationListener() {
         if (!isRelevant || b.date !== td || notifiedRef.current.has(b.id + '_warning_5m'))
           return false
 
-        const endTs = new Date(`${b.date}T${b.timeTo}:00+07:00`).getTime()
-        const warnStartTs = endTs - 5 * 60 * 1000 // trước 5 phút
-        return nowTs >= warnStartTs && nowTs < warnStartTs + 60000
+        const endMins = timeToMinutes(b.timeTo)
+        const warnStartMins = endMins - 5
+        return currentMins >= warnStartMins && currentMins < warnStartMins + 1
       })
 
       if (newlyWarning.length > 0) {
@@ -312,9 +328,9 @@ export default function GlobalNotificationListener() {
         )
         if (hasPredecessor) return false
 
-        const startTs = new Date(`${b.date}T${b.timeFrom}:00+07:00`).getTime()
-        const warnStartTs = startTs - 1 * 60 * 1000 // trước 1 phút
-        return nowTs >= warnStartTs && nowTs < warnStartTs + 60000
+        const startMins = timeToMinutes(b.timeFrom)
+        const warnStartMins = startMins - 1
+        return currentMins >= warnStartMins && currentMins < warnStartMins + 1
       })
 
       if (upcomingWarning.length > 0) {
