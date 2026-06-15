@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
+import { isManagerLikeRole } from '@/lib/managerLikeRole'
 import {
   performanceApi,
   workReportApi,
@@ -929,7 +930,7 @@ export function WorkReportTab({
   canSeeTeamWide: boolean
 }) {
   const user = useAuthStore((s) => s.user)
-  const isLeader = user?.role === 'LEADER' || user?.role === 'MANAGER'
+  const isLeader = user?.role === 'LEADER' || isManagerLikeRole(user?.role)
   const [activeView, setActiveView] = useState<'mine' | 'team'>(
     canSeeTeamWide && isLeader ? 'team' : 'mine'
   )

@@ -24,6 +24,15 @@ export function useEmployee(id: string) {
   })
 }
 
+/** Danh sách Quản lý / BOD cho select "Quản lý trực tiếp". */
+export function useDirectManagerOptions() {
+  return useQuery({
+    queryKey: employeeKeys.list({ page: 1, pageSize: 500, roles: 'MANAGER,BOD' }),
+    queryFn: () => employeeApi.getAll({ page: 1, pageSize: 500, roles: 'MANAGER,BOD' }),
+    staleTime: 5 * 60_000,
+  })
+}
+
 export function useCreateEmployee() {
   const qc = useQueryClient()
   return useMutation({

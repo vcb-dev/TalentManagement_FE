@@ -5,7 +5,7 @@ import { TableCell } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { PerformanceAssignment } from '@/features/kpi-okr/api'
+import type { AssignmentGoalReview, PerformanceAssignment } from '@/features/kpi-okr/api'
 import {
   EvidenceImagePreviews,
   evidenceImageUrlsFromText,
@@ -214,6 +214,130 @@ export function EvalStatusBadge({
         {tooltipText}
       </TooltipContent>
     </Tooltip>
+  )
+}
+
+export function GoalReviewStatusBadge({
+  review,
+}: {
+  review: AssignmentGoalReview | null | undefined
+}) {
+  if (!review) return <span className="text-slate-400">—</span>
+  const status = review.status
+  if (status === 'manager_created_pending_member' || status === 'manager_created_confirmed') {
+    const confirmed = status === 'manager_created_confirmed'
+    return (
+      <Badge
+        variant="outline"
+        className={cn(
+          'h-6 max-w-full whitespace-nowrap rounded-full px-2 text-[11px] font-bold shadow-none',
+          confirmed
+            ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300'
+            : 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-300'
+        )}
+      >
+        {confirmed ? 'Đã xác nhận tạo mới' : 'Manager tạo mới'}
+      </Badge>
+    )
+  }
+  const config =
+    status === 'approved'
+      ? {
+          label: 'Manager đã duyệt',
+          className:
+            'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300',
+        }
+      : status === 'edit_pending_member'
+        ? {
+            label: 'Manager đã sửa',
+            className:
+              'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300',
+          }
+        : status === 'edit_confirmed'
+          ? {
+              label: 'Member đã xác nhận sửa',
+              className:
+                'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300',
+            }
+          : status === 'rejected'
+            ? {
+                label: 'Manager từ chối',
+                className:
+                  'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300',
+              }
+            : {
+                label: 'Chờ duyệt',
+                className:
+                  'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+              }
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn('h-6 rounded-full px-2 text-xs font-bold shadow-none', config.className)}
+    >
+      {config.label}
+    </Badge>
+  )
+}
+
+export function GoalReviewSummary({
+  review,
+  className,
+}: {
+  review: AssignmentGoalReview | null | undefined
+  className?: string
+}) {
+  if (!review) return null
+
+  if (review.status === 'rejected' && review.reason?.trim()) {
+    return (
+      <p className={cn('mt-1 max-w-sm whitespace-pre-wrap text-xs text-rose-600', className)}>
+        Lý do: {review.reason.trim()}
+      </p>
+    )
+  }
+
+  if (review.status === 'manager_created_pending_member') {
+    return (
+      <p className={cn('mt-1 max-w-full text-[11px] leading-snug text-violet-700', className)}>
+        Chờ bạn xác nhận.
+      </p>
+    )
+  }
+
+  if (review.status === 'edit_confirmed') return null
+
+  if (review.status !== 'edit_pending_member') return null
+
+  return (
+    <div
+      className={cn(
+        'mt-2 grid max-w-xl gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-2 text-xs dark:border-amber-900/50 dark:bg-amber-950/20',
+        className
+      )}
+    >
+      <div>
+        <div className="font-semibold text-amber-800 dark:text-amber-300">Trước khi sửa</div>
+        <div className="whitespace-pre-wrap text-slate-600 dark:text-slate-300">
+          {review.originalContent}
+        </div>
+        <div className="mt-0.5 text-slate-500">
+          Chỉ tiêu: {review.originalTargetMetric?.trim() || '—'} · Ưu tiên:{' '}
+          {review.originalPriority}
+        </div>
+      </div>
+      <div>
+        <div className="font-semibold text-amber-800 dark:text-amber-300">Manager đề xuất</div>
+        <div className="whitespace-pre-wrap text-slate-900 dark:text-slate-100">
+          {review.proposedContent?.trim() || '—'}
+        </div>
+        <div className="mt-0.5 text-slate-600 dark:text-slate-300">
+          Chỉ tiêu: {review.proposedTargetMetric?.trim() || '—'} · Ưu tiên:{' '}
+          {review.proposedPriority ?? '—'}
+        </div>
+      </div>
+    </div>
   )
 }
 

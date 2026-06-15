@@ -58,9 +58,7 @@ export function AutoSeedModal({
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<'select' | 'preview' | 'done'>('select')
   const [templateCode, setTemplateCode] = useState(() =>
-    isTrafficTeam
-      ? 'TRAFFIC_TEAM_NV'
-      : resolveTemplateCodeForTeam({ name: teamName, code: teamCode })
+    resolveTemplateCodeForTeam({ name: teamName, code: teamCode })
   )
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
   const [selectAll, setSelectAll] = useState(false)
@@ -186,18 +184,10 @@ export function AutoSeedModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {isTrafficTeam ? (
-                    <SelectItem value="TRAFFIC_TEAM_NV">
-                      TRAFFIC_TEAM_NV — NV Traffic Team (2 KPI cá nhân)
-                    </SelectItem>
-                  ) : (
-                    <>
-                      <SelectItem value="SALES_NV">SALES_NV — NV Kinh doanh (4 stage)</SelectItem>
-                      <SelectItem value="VAN_DON_NV">
-                        VAN_DON_NV — NV Xử lý đơn & bảo hành (1 stage)
-                      </SelectItem>
-                    </>
-                  )}
+                  <SelectItem value="SALES_NV">SALES_NV — NV Kinh doanh (4 stage)</SelectItem>
+                  <SelectItem value="VAN_DON_NV">
+                    VAN_DON_NV — NV Xử lý đơn & bảo hành (1 stage)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

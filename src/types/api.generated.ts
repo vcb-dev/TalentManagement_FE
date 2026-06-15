@@ -233,6 +233,7 @@ export interface components {
             teamId?: string;
             phone?: string;
             birthDate?: string;
+            directManager?: string | null;
             /** @description Ngày bắt đầu làm việc */
             startDate?: string;
             /** @description UUID team phụ trên FE; gửi chuỗi rỗng để xóa */

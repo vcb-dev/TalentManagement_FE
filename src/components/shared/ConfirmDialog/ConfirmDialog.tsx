@@ -45,7 +45,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             className={cn(
               destructive &&
-                'bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/35'
+                'border border-danger/40 bg-danger text-white shadow-[0_2px_8px_rgb(220_38_38/0.24)] hover:bg-danger/90 focus-visible:ring-danger/30'
             )}
           >
             {confirmLabel}

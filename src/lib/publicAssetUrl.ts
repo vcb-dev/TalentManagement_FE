@@ -2,7 +2,7 @@
 export function resolvePublicAssetUrl(ref: string | null | undefined): string | undefined {
   const t = ref?.trim()
   if (!t) return undefined
-  if (/^https?:\/\//i.test(t)) return t
+  if (/^(https?|data):/i.test(t)) return t
   const path = t.startsWith('/') ? t : `/${t}`
   const base = import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? ''
   if (path.startsWith('/uploads/')) {
