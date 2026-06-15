@@ -73,7 +73,11 @@ import {
   type OrgAdminTeamRow,
   type TeamMemberRow,
 } from '@/features/organization/api'
-import { isKinhDoanhDepartment } from '@/features/kpi-okr/catalogHelpers'
+import {
+  isKinhDoanhDepartment,
+  isCatalogSeedExcludedTeam,
+  isLivestreamCatalogTeam,
+} from '@/features/kpi-okr/catalogHelpers'
 import { employeeKeys } from '@/features/hr-admin/queryKeys'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { usePermission } from '@/hooks/usePermission'
@@ -362,6 +366,7 @@ export function HrOrgStructure() {
   const [crudName, setCrudName] = useState('')
   const [approvalFlag, setApprovalFlag] = useState(false)
   const [catalogSeedFlag, setCatalogSeedFlag] = useState(false)
+  const [initialCatalogSeedFlag, setInitialCatalogSeedFlag] = useState(false)
   const emptyDivisionForm = useMemo<DivisionFormValues>(
     () => ({ name: '', code: '', description: '', isActive: true }),
     []
@@ -442,6 +447,7 @@ export function HrOrgStructure() {
       setCrudName('')
       setApprovalFlag(false)
       setCatalogSeedFlag(false)
+      setInitialCatalogSeedFlag(false)
       invalidateOrgStructure()
     },
     onError: (e) => toast.error(readApiErrorMessage(e)),
@@ -465,6 +471,7 @@ export function HrOrgStructure() {
       setCrudName('')
       setApprovalFlag(false)
       setCatalogSeedFlag(false)
+      setInitialCatalogSeedFlag(false)
       invalidateOrgStructure()
     },
     onError: (e) => toast.error(readApiErrorMessage(e)),
@@ -508,6 +515,7 @@ export function HrOrgStructure() {
     setCrudName('')
     setApprovalFlag(false)
     setCatalogSeedFlag(false)
+    setInitialCatalogSeedFlag(false)
     setCrudModal({ kind: 'team-create', dept })
   }, [])
 
@@ -551,15 +559,28 @@ export function HrOrgStructure() {
     enabled: !isMockApiEnabled(),
   })
 
-  const showCatalogSeedCheckbox = useMemo(() => {
+  const teamExcludedFromCatalogAutoSeed = useMemo(() => {
     if (!crudModal) return false
+    if (crudModal.kind === 'team-edit') {
+      return isCatalogSeedExcludedTeam(crudModal.team) || isLivestreamCatalogTeam(crudModal.team)
+    }
+    if (crudModal.kind === 'team-create') {
+      const draft = { name: crudName.trim() }
+      if (!draft.name) return false
+      return isCatalogSeedExcludedTeam(draft) || isLivestreamCatalogTeam(draft)
+    }
+    return false
+  }, [crudModal, crudName])
+
+  const showCatalogSeedCheckbox = useMemo(() => {
+    if (!crudModal || teamExcludedFromCatalogAutoSeed) return false
     if (crudModal.kind === 'team-create') return isKinhDoanhDepartment(crudModal.dept)
     if (crudModal.kind === 'team-edit') {
       const dept = structureQ.data?.find((d) => d.id === crudModal.team.departmentId)
       return isKinhDoanhDepartment(dept)
     }
     return false
-  }, [crudModal, structureQ.data])
+  }, [crudModal, structureQ.data, teamExcludedFromCatalogAutoSeed])
 
   const submitNameModal = useCallback(() => {
     const name = crudName.trim()
@@ -568,7 +589,16 @@ export function HrOrgStructure() {
       return
     }
     if (!crudModal) return
-    const catalogSeedEnabled = showCatalogSeedCheckbox ? catalogSeedFlag : undefined
+    const catalogSeedTouched =
+      crudModal.kind === 'team-edit' && catalogSeedFlag !== initialCatalogSeedFlag
+    const catalogSeedEnabled =
+      crudModal.kind === 'team-create'
+        ? showCatalogSeedCheckbox
+          ? catalogSeedFlag
+          : undefined
+        : catalogSeedTouched
+          ? catalogSeedFlag
+          : undefined
     if (crudModal.kind === 'team-create')
       createTeamM.mutate({
         name,
@@ -586,6 +616,7 @@ export function HrOrgStructure() {
   }, [
     approvalFlag,
     catalogSeedFlag,
+    initialCatalogSeedFlag,
     crudModal,
     crudName,
     createTeamM,
@@ -1068,6 +1099,7 @@ export function HrOrgStructure() {
                                 setCrudName(team.name)
                                 setApprovalFlag(team.requiresKpiApproval ?? false)
                                 setCatalogSeedFlag(team.catalogSeedEnabled ?? false)
+                                setInitialCatalogSeedFlag(team.catalogSeedEnabled ?? false)
                                 setCrudModal({ kind: 'team-edit', team })
                               }}
                               onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
@@ -1111,6 +1143,7 @@ export function HrOrgStructure() {
                                 setCrudName(team.name)
                                 setApprovalFlag(team.requiresKpiApproval ?? false)
                                 setCatalogSeedFlag(team.catalogSeedEnabled ?? false)
+                                setInitialCatalogSeedFlag(team.catalogSeedEnabled ?? false)
                                 setCrudModal({ kind: 'team-edit', team })
                               }}
                               onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
@@ -1213,6 +1246,7 @@ export function HrOrgStructure() {
           setCrudName('')
           setApprovalFlag(false)
           setCatalogSeedFlag(false)
+          setInitialCatalogSeedFlag(false)
         }}
         onSubmit={submitNameModal}
       >
@@ -1241,6 +1275,10 @@ export function HrOrgStructure() {
                 Áp dụng seed KPI từ cấu hình Kinh doanh
               </Label>
             </div>
+          ) : teamExcludedFromCatalogAutoSeed ? (
+            <p className="text-xs text-muted-foreground">
+              Team này dùng KPI nhập tay — không áp dụng auto-seed catalog.
+            </p>
           ) : null}
         </div>
       </OrgCrudNameDialog>
