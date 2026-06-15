@@ -132,7 +132,11 @@ export default function GlobalNotificationListener() {
       const currentMins = timeToMinutes(vnNow.time)
 
       const emailLower = (user.email || '').trim().toLowerCase()
-      const emailClean = emailLower.replace(/\./g, '')
+      const parts = emailLower.split('@')
+      if (parts.length === 2 && parts[1] === 'gmail.com') {
+        parts[0] = parts[0].replace(/\./g, '')
+      }
+      const emailClean = parts.join('@')
       const isRoomAccount =
         emailClean === 'vienchibaodev@gmail.com' || emailClean === 'vienibaodev@gmail.com'
       const isAdmin = ['MANAGER', 'HR', 'BOD'].includes(user.role || '')
