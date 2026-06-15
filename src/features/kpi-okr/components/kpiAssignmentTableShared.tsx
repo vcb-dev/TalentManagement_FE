@@ -224,6 +224,22 @@ export function GoalReviewStatusBadge({
 }) {
   if (!review) return <span className="text-slate-400">—</span>
   const status = review.status
+  if (status === 'manager_created_pending_member' || status === 'manager_created_confirmed') {
+    const confirmed = status === 'manager_created_confirmed'
+    return (
+      <Badge
+        variant="outline"
+        className={cn(
+          'h-6 max-w-full whitespace-nowrap rounded-full px-2 text-[11px] font-bold shadow-none',
+          confirmed
+            ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300'
+            : 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-300'
+        )}
+      >
+        {confirmed ? 'Đã xác nhận tạo mới' : 'Manager tạo mới'}
+      </Badge>
+    )
+  }
   const config =
     status === 'approved'
       ? {
@@ -278,6 +294,14 @@ export function GoalReviewSummary({
     return (
       <p className={cn('mt-1 max-w-sm whitespace-pre-wrap text-xs text-rose-600', className)}>
         Lý do: {review.reason.trim()}
+      </p>
+    )
+  }
+
+  if (review.status === 'manager_created_pending_member') {
+    return (
+      <p className={cn('mt-1 max-w-full text-[11px] leading-snug text-violet-700', className)}>
+        Chờ bạn xác nhận.
       </p>
     )
   }

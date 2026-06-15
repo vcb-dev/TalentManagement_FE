@@ -29,6 +29,8 @@ export type GoalReviewStatus =
   | 'approved'
   | 'edit_pending_member'
   | 'edit_confirmed'
+  | 'manager_created_pending_member'
+  | 'manager_created_confirmed'
   | 'rejected'
 
 export type AssignmentGoalReview = {
@@ -448,6 +450,26 @@ export const performanceApi = {
     if (isMockApiEnabled()) throw new Error('Mock')
     const res = await apiClient.patch<PerformanceAssignment>(
       `/performance/approval-requests/${requestId}/assignments/${assignmentId}`,
+      body
+    )
+    return res.data
+  },
+
+  createApprovalAssignment: async (
+    requestId: string,
+    body: {
+      assigneeUserId: string
+      year: number
+      month: number
+      kind: PerformanceKind
+      content: string
+      priority?: number
+      targetMetric?: string | null
+    }
+  ) => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.post<PerformanceAssignment>(
+      `/performance/approval-requests/${requestId}/assignments`,
       body
     )
     return res.data

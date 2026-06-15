@@ -1802,7 +1802,8 @@ function GoalReviewPlanningCell({
   const canConfirm =
     Boolean(allowConfirm) &&
     !isMockApiEnabled() &&
-    review?.status === 'edit_pending_member' &&
+    (review?.status === 'edit_pending_member' ||
+      review?.status === 'manager_created_pending_member') &&
     Boolean(review.requestId)
 
   const handleConfirm = useCallback(async () => {
