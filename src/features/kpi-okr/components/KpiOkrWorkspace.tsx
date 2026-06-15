@@ -75,8 +75,8 @@ import {
   xlTd,
 } from '@/features/kpi-okr/components/kpiAssignmentTableShared'
 import {
+  catalogSeedEnabledForTeam,
   isCatalogEnabledDepartment,
-  isCatalogSeedExcludedTeam,
   shouldShowAssignmentForMember,
   isMandatoryMetric,
   isTrafficTeam,
@@ -386,7 +386,13 @@ export function KpiOkrWorkspace({
     if (!selectedTeamId) return null
     for (const d of departments) {
       const t = d.teams.find((x) => x.id === selectedTeamId)
-      if (t) return { id: t.id, name: t.name, requiresKpiApproval: t.requiresKpiApproval }
+      if (t)
+        return {
+          id: t.id,
+          name: t.name,
+          requiresKpiApproval: t.requiresKpiApproval,
+          catalogSeedEnabled: t.catalogSeedEnabled,
+        }
     }
     return null
   }, [departments, selectedTeamId])
@@ -400,6 +406,11 @@ export function KpiOkrWorkspace({
     selectedTeamId,
     catalogAllowlistQ.data?.kpiApprovalTeamIds ?? null,
     selectedTeamForSeed?.requiresKpiApproval ?? null
+  )
+  const catalogSeedEnabledSelected = catalogSeedEnabledForTeam(
+    selectedTeamId,
+    catalogAllowlistQ.data?.catalogSeedTeamIds ?? null,
+    selectedTeamForSeed?.catalogSeedEnabled ?? null
   )
 
   const kpiEligibleMembers = useMemo(
@@ -501,11 +512,13 @@ export function KpiOkrWorkspace({
   )
 
   const selectedTemplateCode = useMemo(() => {
+    if (catalogSeedEnabledSelected) {
+      if (selectedTeamForSeed) return resolveTemplateCodeForTeam(selectedTeamForSeed)
+      return 'SALES_NV'
+    }
     if (isTrafficTeamSelected) return 'TRAFFIC_TEAM_NV'
-    if (selectedTeamForSeed && isCatalogSeedExcludedTeam(selectedTeamForSeed)) return undefined
-    if (selectedTeamForSeed) return resolveTemplateCodeForTeam(selectedTeamForSeed)
-    return 'SALES_NV'
-  }, [isTrafficTeamSelected, selectedTeamForSeed])
+    return undefined
+  }, [catalogSeedEnabledSelected, isTrafficTeamSelected, selectedTeamForSeed])
 
   /** Phòng Kinh doanh: member/leader ẩn P3 + BENEFIT; manager xem đầy đủ để cấu hình. */
   const visibleAssignmentsThisMonth = useMemo(() => {
@@ -3234,31 +3247,6 @@ function PlanningSection({
   templateCode?: string
   isManagerCascade?: boolean
 }) {
-  const [syncingCatalog, setSyncingCatalog] = useState(false)
-
-  const handleSyncCatalogSeed = useCallback(async () => {
-    if (!selectedTeamId || !templateCode) return
-    const ok = window.confirm(
-      `Đồng bộ lại KPI theo cấu hình ${templateCode} cho team đang chọn trong T${month}/${year}?\n\nHệ thống sẽ xóa KPI seed cũ thuộc catalog và tạo lại đúng các chỉ số đang hiển thị trong cấu hình KPI Kinh doanh.`
-    )
-    if (!ok) return
-    setSyncingCatalog(true)
-    try {
-      const result = await performanceApi.autoSeedTeam(selectedTeamId, year, month, {
-        templateCode,
-        replaceExisting: true,
-      })
-      toast.success(
-        `Đã đồng bộ KPI theo cấu hình: xóa ${result.totalDeleted ?? 0}, tạo ${result.totalCreated} mục tiêu.`
-      )
-      onRefresh()
-    } catch (err) {
-      toast.error(getApiErrorMessage(err) || 'Không đồng bộ được KPI theo cấu hình.')
-    } finally {
-      setSyncingCatalog(false)
-    }
-  }, [month, onRefresh, selectedTeamId, templateCode, year])
-
   return (
     <section id="planning-section" className="scroll-mt-24">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -3294,26 +3282,12 @@ function PlanningSection({
             !isMockApiEnabled() &&
             assignmentWindowOpen &&
             (isManagerCascade ? (
-              <div className="flex flex-wrap justify-end gap-2">
-                {templateCode ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="gap-2 rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                    onClick={() => void handleSyncCatalogSeed()}
-                    disabled={syncingCatalog}
-                  >
-                    <RefreshCw className={cn('h-4 w-4', syncingCatalog && 'animate-spin')} />
-                    {syncingCatalog ? 'Đang đồng bộ...' : 'Đồng bộ KPI theo cấu hình'}
-                  </Button>
-                ) : null}
-                <ManagerCascadeAddForm
-                  teamId={selectedTeamId}
-                  year={year}
-                  month={month}
-                  onCreated={onRefresh}
-                />
-              </div>
+              <ManagerCascadeAddForm
+                teamId={selectedTeamId}
+                year={year}
+                month={month}
+                onCreated={onRefresh}
+              />
             ) : (
               <MiniCreateForm
                 teamId={selectedTeamId}

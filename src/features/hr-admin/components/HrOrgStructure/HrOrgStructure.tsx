@@ -73,6 +73,7 @@ import {
   type OrgAdminTeamRow,
   type TeamMemberRow,
 } from '@/features/organization/api'
+import { isKinhDoanhDepartment } from '@/features/kpi-okr/catalogHelpers'
 import { employeeKeys } from '@/features/hr-admin/queryKeys'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { usePermission } from '@/hooks/usePermission'
@@ -360,6 +361,7 @@ export function HrOrgStructure() {
   const [crudModal, setCrudModal] = useState<OrgCrudModal>(null)
   const [crudName, setCrudName] = useState('')
   const [approvalFlag, setApprovalFlag] = useState(false)
+  const [catalogSeedFlag, setCatalogSeedFlag] = useState(false)
   const emptyDivisionForm = useMemo<DivisionFormValues>(
     () => ({ name: '', code: '', description: '', isActive: true }),
     []
@@ -423,16 +425,23 @@ export function HrOrgStructure() {
       name,
       divisionId,
       requiresKpiApproval,
+      catalogSeedEnabled,
     }: {
       name: string
       divisionId: string
       requiresKpiApproval: boolean
-    }) => orgCrudApi.createTeam(name, divisionId, requiresKpiApproval),
+      catalogSeedEnabled?: boolean
+    }) =>
+      orgCrudApi.createTeam(name, divisionId, {
+        requiresKpiApproval,
+        catalogSeedEnabled,
+      }),
     onSuccess: () => {
       toast.success('Đã tạo nhóm')
       setCrudModal(null)
       setCrudName('')
       setApprovalFlag(false)
+      setCatalogSeedFlag(false)
       invalidateOrgStructure()
     },
     onError: (e) => toast.error(readApiErrorMessage(e)),
@@ -443,16 +452,19 @@ export function HrOrgStructure() {
       id,
       name,
       requiresKpiApproval,
+      catalogSeedEnabled,
     }: {
       id: string
       name: string
       requiresKpiApproval: boolean
-    }) => orgCrudApi.updateTeam(id, { name, requiresKpiApproval }),
+      catalogSeedEnabled?: boolean
+    }) => orgCrudApi.updateTeam(id, { name, requiresKpiApproval, catalogSeedEnabled }),
     onSuccess: () => {
       toast.success('Đã cập nhật nhóm')
       setCrudModal(null)
       setCrudName('')
       setApprovalFlag(false)
+      setCatalogSeedFlag(false)
       invalidateOrgStructure()
     },
     onError: (e) => toast.error(readApiErrorMessage(e)),
@@ -495,6 +507,7 @@ export function HrOrgStructure() {
   const openCreateTeamForDept = useCallback((dept: OrgAdminDivisionRow) => {
     setCrudName('')
     setApprovalFlag(false)
+    setCatalogSeedFlag(false)
     setCrudModal({ kind: 'team-create', dept })
   }, [])
 
@@ -526,19 +539,6 @@ export function HrOrgStructure() {
     }
   }, [crudModal, divisionForm, createDeptM, updateDeptM])
 
-  const submitNameModal = useCallback(() => {
-    const name = crudName.trim()
-    if (!name) {
-      toast.error('Vui lòng nhập tên')
-      return
-    }
-    if (!crudModal) return
-    if (crudModal.kind === 'team-create')
-      createTeamM.mutate({ name, divisionId: crudModal.dept.id, requiresKpiApproval: approvalFlag })
-    else if (crudModal.kind === 'team-edit')
-      updateTeamM.mutate({ id: crudModal.team.id, name, requiresKpiApproval: approvalFlag })
-  }, [crudModal, crudName, createTeamM, updateTeamM])
-
   const submitDeleteModal = useCallback(() => {
     if (!crudModal) return
     if (crudModal.kind === 'dept-delete') deleteDeptM.mutate(crudModal.dept.id)
@@ -550,6 +550,48 @@ export function HrOrgStructure() {
     queryFn: () => organizationApi.listDivisionsWithTeams(),
     enabled: !isMockApiEnabled(),
   })
+
+  const showCatalogSeedCheckbox = useMemo(() => {
+    if (!crudModal) return false
+    if (crudModal.kind === 'team-create') return isKinhDoanhDepartment(crudModal.dept)
+    if (crudModal.kind === 'team-edit') {
+      const dept = structureQ.data?.find((d) => d.id === crudModal.team.departmentId)
+      return isKinhDoanhDepartment(dept)
+    }
+    return false
+  }, [crudModal, structureQ.data])
+
+  const submitNameModal = useCallback(() => {
+    const name = crudName.trim()
+    if (!name) {
+      toast.error('Vui lòng nhập tên')
+      return
+    }
+    if (!crudModal) return
+    const catalogSeedEnabled = showCatalogSeedCheckbox ? catalogSeedFlag : undefined
+    if (crudModal.kind === 'team-create')
+      createTeamM.mutate({
+        name,
+        divisionId: crudModal.dept.id,
+        requiresKpiApproval: approvalFlag,
+        catalogSeedEnabled,
+      })
+    else if (crudModal.kind === 'team-edit')
+      updateTeamM.mutate({
+        id: crudModal.team.id,
+        name,
+        requiresKpiApproval: approvalFlag,
+        catalogSeedEnabled,
+      })
+  }, [
+    approvalFlag,
+    catalogSeedFlag,
+    crudModal,
+    crudName,
+    createTeamM,
+    showCatalogSeedCheckbox,
+    updateTeamM,
+  ])
 
   useEffect(() => {
     const list = structureQ.data
@@ -1025,6 +1067,7 @@ export function HrOrgStructure() {
                               onEditTeam={() => {
                                 setCrudName(team.name)
                                 setApprovalFlag(team.requiresKpiApproval ?? false)
+                                setCatalogSeedFlag(team.catalogSeedEnabled ?? false)
                                 setCrudModal({ kind: 'team-edit', team })
                               }}
                               onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
@@ -1067,6 +1110,7 @@ export function HrOrgStructure() {
                               onEditTeam={() => {
                                 setCrudName(team.name)
                                 setApprovalFlag(team.requiresKpiApproval ?? false)
+                                setCatalogSeedFlag(team.catalogSeedEnabled ?? false)
                                 setCrudModal({ kind: 'team-edit', team })
                               }}
                               onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
@@ -1168,18 +1212,36 @@ export function HrOrgStructure() {
           setCrudModal(null)
           setCrudName('')
           setApprovalFlag(false)
+          setCatalogSeedFlag(false)
         }}
         onSubmit={submitNameModal}
       >
-        <div className="flex items-center gap-2 pt-1">
-          <Checkbox
-            id="team-kpi-approval-flag"
-            checked={approvalFlag}
-            onCheckedChange={(v) => setApprovalFlag(Boolean(v))}
-          />
-          <Label htmlFor="team-kpi-approval-flag" className="cursor-pointer text-sm font-normal">
-            Áp dụng luồng Manager duyệt KPI/OKR
-          </Label>
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="team-kpi-approval-flag"
+              checked={approvalFlag}
+              onCheckedChange={(v) => setApprovalFlag(Boolean(v))}
+            />
+            <Label htmlFor="team-kpi-approval-flag" className="cursor-pointer text-sm font-normal">
+              Áp dụng luồng Manager duyệt KPI/OKR
+            </Label>
+          </div>
+          {showCatalogSeedCheckbox ? (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="team-catalog-seed-flag"
+                checked={catalogSeedFlag}
+                onCheckedChange={(v) => setCatalogSeedFlag(Boolean(v))}
+              />
+              <Label
+                htmlFor="team-catalog-seed-flag"
+                className="cursor-pointer text-sm font-normal"
+              >
+                Áp dụng seed KPI từ cấu hình Kinh doanh
+              </Label>
+            </div>
+          ) : null}
         </div>
       </OrgCrudNameDialog>
 
@@ -1236,6 +1298,14 @@ function TeamCardMobile({
               className="border-sky-200 bg-sky-50 text-xs font-bold text-sky-600 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400"
             >
               Duyệt KPI/OKR
+            </Badge>
+          )}
+          {team.catalogSeedEnabled && (
+            <Badge
+              variant="outline"
+              className="border-indigo-200 bg-indigo-50 text-xs font-bold text-indigo-600 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400"
+            >
+              Seed KPI
             </Badge>
           )}
         </div>
@@ -1325,6 +1395,14 @@ function FragmentTeamRow({
               className="border-sky-200 bg-sky-50 text-xs font-bold text-sky-600 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400"
             >
               Duyệt KPI/OKR
+            </Badge>
+          )}
+          {team.catalogSeedEnabled && (
+            <Badge
+              variant="outline"
+              className="border-indigo-200 bg-indigo-50 text-xs font-bold text-indigo-600 dark:border-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400"
+            >
+              Seed KPI
             </Badge>
           )}
         </div>

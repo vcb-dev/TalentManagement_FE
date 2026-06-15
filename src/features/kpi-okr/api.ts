@@ -31,6 +31,7 @@ export type CatalogDivisionAllowlistResponse = {
   mergedDivisionIds: string[]
   trafficTeamIds: string[]
   kpiApprovalTeamIds: string[]
+  catalogSeedTeamIds: string[]
 }
 
 export type PerformanceAssignment = {
@@ -551,6 +552,7 @@ export const performanceApi = {
         mergedDivisionIds: [],
         trafficTeamIds: [],
         kpiApprovalTeamIds: [],
+        catalogSeedTeamIds: [],
       }
     }
     const res = await apiClient.get<CatalogDivisionAllowlistResponse>(

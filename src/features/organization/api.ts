@@ -65,13 +65,14 @@ export const orgCrudApi = {
   createTeam: async (
     name: string,
     divisionId: string,
-    requiresKpiApproval?: boolean
+    options?: { requiresKpiApproval?: boolean; catalogSeedEnabled?: boolean }
   ): Promise<OrgMasterEntity> => {
     assertOrgCrudNotMock('tạo team')
     const res = await apiClient.post<OrgMasterEntity>('/org/teams', {
       name,
       divisionId,
-      requiresKpiApproval,
+      requiresKpiApproval: options?.requiresKpiApproval,
+      catalogSeedEnabled: options?.catalogSeedEnabled,
     })
     return res.data
   },
@@ -82,6 +83,7 @@ export const orgCrudApi = {
       divisionId?: string
       isTrafficTeam?: boolean
       requiresKpiApproval?: boolean
+      catalogSeedEnabled?: boolean
     }
   ): Promise<OrgMasterEntity> => {
     assertOrgCrudNotMock('sửa team')
@@ -100,6 +102,7 @@ export type OrgTreeTeam = {
   name: string
   departmentId: string
   requiresKpiApproval?: boolean
+  catalogSeedEnabled?: boolean
 }
 
 export type OrgTreeDepartment = {
@@ -121,6 +124,7 @@ export type OrgAdminTeamRow = {
   departmentId: string
   isTrafficTeam: boolean
   requiresKpiApproval: boolean
+  catalogSeedEnabled: boolean
   _count: { users: number }
 }
 
@@ -256,6 +260,7 @@ export const organizationApi = {
           departmentId: t.departmentId,
           isTrafficTeam: false,
           requiresKpiApproval: false,
+          catalogSeedEnabled: false,
           _count: { users: 0 },
         })),
       }))

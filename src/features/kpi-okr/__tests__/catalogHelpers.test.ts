@@ -9,6 +9,8 @@ import {
   isLivestreamCatalogTeam,
   isTrafficTeam,
   requiresKpiApproval,
+  catalogSeedEnabledForTeam,
+  isKinhDoanhDepartment,
   MANDATORY_METRICS_BY_TEMPLATE,
   resolveTemplateCodeForTeam,
   TRAFFIC_TEAM_IDS_FALLBACK,
@@ -134,6 +136,26 @@ describe('isTrafficTeam', () => {
 
   it('TRAFFIC_TEAM_IDS_FALLBACK có đúng 8 team', () => {
     expect(TRAFFIC_TEAM_IDS_FALLBACK).toHaveLength(8)
+  })
+})
+
+describe('isKinhDoanhDepartment', () => {
+  it('nhận diện phòng ban Kinh doanh theo tên/code', () => {
+    expect(isKinhDoanhDepartment({ name: 'Kinh Doanh Viên Chi Bảo' })).toBe(true)
+    expect(isKinhDoanhDepartment({ code: 'KINH_DOANH' })).toBe(true)
+    expect(isKinhDoanhDepartment({ name: 'Logistics' })).toBe(false)
+    expect(isKinhDoanhDepartment({ name: 'Vận đơn' })).toBe(false)
+  })
+})
+
+describe('catalogSeedEnabledForTeam', () => {
+  it('trả true khi team nằm trong catalogSeedTeamIds từ API', () => {
+    expect(catalogSeedEnabledForTeam('seed-team-id', ['seed-team-id'])).toBe(true)
+    expect(catalogSeedEnabledForTeam('other-team', ['seed-team-id'])).toBe(false)
+  })
+
+  it('ưu tiên flag catalogSeedEnabled từ org tree', () => {
+    expect(catalogSeedEnabledForTeam('regular-team-id', [], true)).toBe(true)
   })
 })
 

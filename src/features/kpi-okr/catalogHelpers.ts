@@ -101,6 +101,30 @@ export function isCatalogEnabledDepartment(
   return CATALOG_DIVISION_PATTERNS.some((p) => p.test(label))
 }
 
+/** Chỉ phòng ban Kinh doanh — dùng hiển thị checkbox seed KPI trên HR org. */
+export function isKinhDoanhDepartment(
+  division?: {
+    id?: string
+    name?: string | null
+    code?: string | null
+  } | null
+): boolean {
+  if (!division) return false
+  const label = division.code ?? division.name ?? ''
+  return /kinh[_\s]?doanh/i.test(label)
+}
+
+/** Team được HR opt-in để nhận seed KPI từ cấu hình SALES_NV. */
+export function catalogSeedEnabledForTeam(
+  teamId: string | null | undefined,
+  catalogSeedTeamIdsFromApi?: readonly string[] | null,
+  orgTreeFlag?: boolean | null
+): boolean {
+  if (orgTreeFlag) return true
+  if (!teamId) return false
+  return (catalogSeedTeamIdsFromApi ?? []).includes(teamId)
+}
+
 /** Danh sách category theo thứ tự hiển thị. */
 export const CATEGORY_ORDER = ['BASE', 'KPI_BONUS', 'PERFORMANCE_BONUS', 'BENEFIT'] as const
 
