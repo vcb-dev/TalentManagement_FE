@@ -55,6 +55,7 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
       { key: 'phonePrimary', label: 'Điện thoại chính' },
       { key: 'portraitRef', label: 'Ảnh đại diện', kind: 'portrait' },
       { key: 'facebookUrl', label: 'Facebook' },
+      { key: 'email', label: 'Email' },
     ],
   },
   {
