@@ -157,7 +157,7 @@ function MemberScheduleTableSkeleton() {
   )
 }
 
-function AvailableClassesSection({ currentClassId }: { currentClassId?: string | null }) {
+function AvailableClassesSection({ currentClassIds = [] }: { currentClassIds?: string[] }) {
   const { data: classes = [], isLoading } = useAvailableLearningClasses()
   const registerClass = useRegisterLearningClass()
 
@@ -165,7 +165,7 @@ function AvailableClassesSection({ currentClassId }: { currentClassId?: string |
     return <Skeleton className="h-48 w-full rounded-[2rem]" />
   }
 
-  const rows = classes.filter((c) => c.id !== currentClassId)
+  const rows = classes.filter((c) => !currentClassIds.includes(c.id))
   if (!rows.length) return null
 
   return (
@@ -1195,7 +1195,7 @@ export function MemberClassesPanel() {
         </Modal>
       )}
 
-      <AvailableClassesSection currentClassId={cls.id} />
+      <AvailableClassesSection currentClassIds={enrolledClasses.map((c) => c.id)} />
     </div>
   )
 }
