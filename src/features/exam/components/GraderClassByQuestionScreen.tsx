@@ -8,13 +8,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { useGradeSubmission, useManagerSubmissions } from '@/features/exam/hooks'
 import { useManagerClasses } from '@/features/manager/hooks'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
 
 export interface GraderClassByQuestionScreenProps {
   classId: string
@@ -45,7 +40,42 @@ const RUBRIC_CRITERIA_MAP = {
   },
 }
 
+const MAX_EXAM_SCORE = 100
+const BONUS_SCORE_OPTIONS = [5, 10] as const
+
+type BonusScore = (typeof BONUS_SCORE_OPTIONS)[number]
+
+function clampExamScore(value: number): number {
+  return Math.min(MAX_EXAM_SCORE, Math.max(0, value))
+}
+
+type RubricLevel = 'chua_dat' | 'dat' | 'tot' | null
+type StudentRubric = Record<string, RubricLevel>
+
+function getRubricTotalForStudent(studentRubric: StudentRubric): number {
+  let total = 0
+  Object.entries(studentRubric).forEach(([cId, val]) => {
+    if (val) {
+      total += RUBRIC_CRITERIA_MAP[cId as keyof typeof RUBRIC_CRITERIA_MAP]?.[val] || 0
+    }
+  })
+  return total
+}
+
+function hasRubricSelection(studentRubric: StudentRubric): boolean {
+  return Object.values(studentRubric).some((val) => val != null)
+}
+
 const RUBRIC_CRITERIA = [
+  {
+    id: 'tieu_chi',
+    title: 'Tiêu chí',
+    options: {
+      chua_dat: { score: 10, desc: 'Chọn rõ kỹ năng/kiến thức để thử nghiệm (30đ)' },
+      dat: { score: 25, desc: 'Mô tả cách áp dụng cụ thể, có bối cảnh (30đ)' },
+      tot: { score: 40, desc: 'Đánh giá kết quả, cảm nhận và bài học rút ra (40đ)' },
+    },
+  },
   {
     id: 'suy_ngam',
     title: 'Suy ngẫm và nhận thức cá nhân (40đ)',
@@ -108,6 +138,7 @@ export function GraderClassByQuestionScreen({
   const [rubricGrades, setRubricGrades] = useState<
     Record<string, Record<string, 'chua_dat' | 'dat' | 'tot' | null>>
   >({})
+  const [bonusGrades, setBonusGrades] = useState<Record<string, BonusScore | null>>({})
 
   useEffect(() => {
     console.log('[Grader] classId from params:', classId)
@@ -214,35 +245,25 @@ export function GraderClassByQuestionScreen({
     criteriaId: string,
     value: 'chua_dat' | 'dat' | 'tot' | null
   ) => {
-    setRubricGrades((prev) => {
-      const nextStudent = {
-        ...(prev[subId] || { suy_ngam: null, ket_noi: null, phat_trien: null }),
-        [criteriaId]: value,
-      }
+    const nextStudent: StudentRubric = {
+      ...(rubricGrades[subId] || { suy_ngam: null, ket_noi: null, phat_trien: null }),
+      [criteriaId]: value,
+    }
+    const rubricTotal = getRubricTotalForStudent(nextStudent)
+    const bonus = bonusGrades[subId] ?? 0
 
-      // Auto-calculate score and update fileGrades.score
-      let total = 0
-      let hasSelection = false
-      Object.entries(nextStudent).forEach(([cId, val]) => {
-        if (val) {
-          hasSelection = true
-          total += RUBRIC_CRITERIA_MAP[cId as 'suy_ngam' | 'ket_noi' | 'phat_trien']?.[val] || 0
-        }
-      })
+    setRubricGrades((prev) => ({
+      ...prev,
+      [subId]: nextStudent,
+    }))
 
-      setFileGrades((prevFile) => ({
-        ...prevFile,
-        [subId]: {
-          ...prevFile[subId],
-          score: hasSelection ? String(total) : '',
-        },
-      }))
-
-      return {
-        ...prev,
-        [subId]: nextStudent,
-      }
-    })
+    setFileGrades((prevFile) => ({
+      ...prevFile,
+      [subId]: {
+        score: hasRubricSelection(nextStudent) ? String(clampExamScore(rubricTotal + bonus)) : '',
+        comment: prevFile[subId]?.comment ?? '',
+      },
+    }))
   }
 
   // Initialize file grades from existing submissions
@@ -262,8 +283,52 @@ export function GraderClassByQuestionScreen({
   const handleFileGradeChange = (subId: string, field: 'score' | 'comment', value: string) => {
     setFileGrades((prev) => ({
       ...prev,
-      [subId]: { ...prev[subId], [field]: value },
+      [subId]: {
+        score: field === 'score' ? value : (prev[subId]?.score ?? ''),
+        comment: field === 'comment' ? value : (prev[subId]?.comment ?? ''),
+      },
     }))
+  }
+
+  const handleBonusChange = (subId: string, bonusValue: BonusScore, checked: boolean) => {
+    const nextBonus = checked ? bonusValue : null
+    const previousBonus = bonusGrades[subId] ?? 0
+    const studentRubric = rubricGrades[subId] || {
+      suy_ngam: null,
+      ket_noi: null,
+      phat_trien: null,
+    }
+
+    setBonusGrades((prev) => ({
+      ...prev,
+      [subId]: nextBonus,
+    }))
+
+    setFileGrades((prevFile) => {
+      if (gradingType === 'rubric_reading') {
+        const rubricTotal = getRubricTotalForStudent(studentRubric)
+        const newScore = clampExamScore(rubricTotal + (nextBonus ?? 0))
+        return {
+          ...prevFile,
+          [subId]: {
+            score: hasRubricSelection(studentRubric) || nextBonus != null ? String(newScore) : '',
+            comment: prevFile[subId]?.comment ?? '',
+          },
+        }
+      }
+
+      const currentScore = parseInt(prevFile[subId]?.score || '0', 10) || 0
+      const baseScore = currentScore - previousBonus
+      const newScore = clampExamScore(baseScore + (nextBonus ?? 0))
+
+      return {
+        ...prevFile,
+        [subId]: {
+          score: newScore > 0 || nextBonus != null ? String(newScore) : '',
+          comment: prevFile[subId]?.comment ?? '',
+        },
+      }
+    })
   }
 
   const handleFileExamSaveDraft = async () => {
@@ -648,7 +713,6 @@ export function GraderClassByQuestionScreen({
                         <th className="px-4 py-4 font-bold text-slate-600 text-center w-[150px]">
                           {gradingType === 'rubric_reading' ? 'Điểm' : 'Điểm (0-100)'}
                         </th>
-                        <th className="px-4 py-4 font-bold text-slate-600 w-[240px]">Nhận xét</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -730,27 +794,52 @@ export function GraderClassByQuestionScreen({
                                   />
                                 )}
                               </td>
-                              <td className="px-4 py-4">
-                                <textarea
-                                  placeholder="Nhập nhận xét..."
-                                  value={grade.comment}
-                                  onChange={(e) =>
-                                    handleFileGradeChange(sub.id, 'comment', e.target.value)
-                                  }
-                                  rows={2}
-                                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm resize-none focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all"
-                                />
-                              </td>
                             </tr>
-                            {gradingType === 'rubric_reading' && (
+                            {
                               <tr className="bg-slate-50/30">
                                 <td
                                   colSpan={5}
                                   className="px-4 pb-6 pt-2 border-b border-slate-200"
                                 >
-                                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 bg-white p-4 rounded-2xl">
                                     {RUBRIC_CRITERIA.map((criteria) => {
                                       const currentValue = studentRubric[criteria.id] || null
+                                      if (criteria.id === 'tieu_chi') {
+                                        return (
+                                          <div
+                                            key={criteria.id}
+                                            className="flex flex-col bg-white rounded-xl border border-slate-100 p-3 shadow-sm"
+                                          >
+                                            <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-3 ml-1">
+                                              {criteria.title}
+                                            </h4>
+                                            <div className="space-y-2">
+                                              {Object.entries(criteria.options).map(
+                                                ([optKey, optVal]) => {
+                                                  return (
+                                                    <div
+                                                      key={optKey}
+                                                      className={cn(
+                                                        'flex items-start p-4 rounded-xl border mt-4'
+                                                      )}
+                                                    >
+                                                      <div className="flex flex-col min-w-0">
+                                                        <div className="flex items-center gap-1.5">
+                                                          <span
+                                                            className={cn('text-xs font-extrabold')}
+                                                          >
+                                                            {optVal.desc}
+                                                          </span>
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                  )
+                                                }
+                                              )}
+                                            </div>
+                                          </div>
+                                        )
+                                      }
                                       return (
                                         <div
                                           key={criteria.id}
@@ -847,9 +936,51 @@ export function GraderClassByQuestionScreen({
                                       )
                                     })}
                                   </div>
+                                  <div className="flex gap-10 p-4">
+                                    <div className="text-sm font-bold text-slate-700">
+                                      Điểm cộng:
+                                    </div>
+                                    <fieldset>
+                                      <div className="flex gap-3">
+                                        {BONUS_SCORE_OPTIONS.map((bonusValue) => (
+                                          <div key={bonusValue} className="flex items-center gap-2">
+                                            <Checkbox
+                                              checked={bonusGrades[sub.id] === bonusValue}
+                                              onCheckedChange={(checked) =>
+                                                handleBonusChange(
+                                                  sub.id,
+                                                  bonusValue,
+                                                  checked === true
+                                                )
+                                              }
+                                            />
+                                            <label>{bonusValue}</label>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </fieldset>
+                                  </div>
+                                  <div className="flex flex-col gap-2 p-4">
+                                    <label
+                                      htmlFor="comment"
+                                      className="text-sm font-bold text-slate-700"
+                                    >
+                                      Nhận xét:
+                                    </label>
+                                    <textarea
+                                      placeholder="Nhập nhận xét..."
+                                      value={grade.comment}
+                                      onChange={(e) =>
+                                        handleFileGradeChange(sub.id, 'comment', e.target.value)
+                                      }
+                                      rows={2}
+                                      id="comment"
+                                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all"
+                                    />
+                                  </div>
                                 </td>
                               </tr>
-                            )}
+                            }
                           </Fragment>
                         )
                       })}
