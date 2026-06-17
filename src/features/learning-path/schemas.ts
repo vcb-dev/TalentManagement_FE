@@ -130,6 +130,7 @@ const enrolledClassSchema = z.object({
 /** GET /me/learning-class */
 export const meEnrolledClassResponseSchema = z.object({
   enrolledClass: enrolledClassSchema.nullable(),
+  enrolledClasses: z.array(enrolledClassSchema).optional(),
 })
 
 export type MeEnrolledClass = z.infer<typeof enrolledClassSchema>

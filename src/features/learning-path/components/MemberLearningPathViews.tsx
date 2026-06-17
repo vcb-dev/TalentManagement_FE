@@ -258,7 +258,20 @@ export function MemberClassesPanel() {
 
   const closeMembers = useCallback(() => setMembersOpen(false), [])
 
-  const cls = data?.enrolledClass ?? null
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
+  const enrolledClasses = data?.enrolledClasses ?? []
+
+  useEffect(() => {
+    if (enrolledClasses.length > 0 && !selectedClassId) {
+      setSelectedClassId(enrolledClasses[0].id)
+    }
+  }, [enrolledClasses, selectedClassId])
+
+  const cls = useMemo(() => {
+    if (!selectedClassId) return data?.enrolledClass ?? null
+    return enrolledClasses.find((c: any) => c.id === selectedClassId) || data?.enrolledClass || null
+  }, [selectedClassId, enrolledClasses, data?.enrolledClass])
+
   const isDeadlineOnly = useCallback((s: any) => {
     return s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
   }, [])
@@ -801,7 +814,21 @@ export function MemberClassesPanel() {
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/60">
                   Đang tham gia
                 </p>
-                <p className="text-lg font-black text-slate-900">{cls.name}</p>
+                {enrolledClasses.length > 1 ? (
+                  <select
+                    value={selectedClassId || cls.id}
+                    onChange={(e) => setSelectedClassId(e.target.value)}
+                    className="mt-1 block w-full rounded-xl border-slate-200 bg-white py-1 px-3 text-lg font-black text-slate-950 shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                  >
+                    {enrolledClasses.map((c: any) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-lg font-black text-slate-900">{cls.name}</p>
+                )}
               </div>
             </div>
 
