@@ -49,6 +49,18 @@ function clampExamScore(value: number): number {
   return Math.min(MAX_EXAM_SCORE, Math.max(0, value))
 }
 
+function getFileExamTotalScore(baseScore: string, bonus = 0): number {
+  const base = baseScore.trim() ? parseInt(baseScore, 10) : 0
+  const safeBase = isNaN(base) ? 0 : base
+  return clampExamScore(safeBase + bonus)
+}
+
+function getFileExamDisplayScore(baseScore: string, bonus = 0): string {
+  if (!baseScore.trim() && bonus === 0) return ''
+  const total = getFileExamTotalScore(baseScore, bonus)
+  return total > 0 ? String(total) : ''
+}
+
 type RubricLevel = 'chua_dat' | 'dat' | 'tot' | null
 type StudentRubric = Record<string, RubricLevel>
 
@@ -66,16 +78,19 @@ function hasRubricSelection(studentRubric: StudentRubric): boolean {
   return Object.values(studentRubric).some((val) => val != null)
 }
 
-function isMissingFileExamScore(grade: { score: string; comment: string } | undefined): boolean {
-  if (!grade?.score?.trim()) return true
-  const scoreNum = parseInt(grade.score, 10)
-  return isNaN(scoreNum) || scoreNum <= 0
+function isMissingFileExamScore(
+  grade: { score: string; comment: string } | undefined,
+  bonus = 0
+): boolean {
+  return getFileExamTotalScore(grade?.score ?? '', bonus) <= 0
 }
 
-function isInvalidFileExamScore(grade: { score: string; comment: string } | undefined): boolean {
-  if (isMissingFileExamScore(grade)) return true
-  const scoreNum = parseInt(grade?.score ?? '', 10)
-  return scoreNum > MAX_EXAM_SCORE
+function isInvalidFileExamScore(
+  grade: { score: string; comment: string } | undefined,
+  bonus = 0
+): boolean {
+  if (isMissingFileExamScore(grade, bonus)) return true
+  return getFileExamTotalScore(grade?.score ?? '', bonus) > MAX_EXAM_SCORE
 }
 
 const RUBRIC_CRITERIA = [
@@ -262,7 +277,6 @@ export function GraderClassByQuestionScreen({
       [criteriaId]: value,
     }
     const rubricTotal = getRubricTotalForStudent(nextStudent)
-    const bonus = bonusGrades[subId] ?? 0
 
     setRubricGrades((prev) => ({
       ...prev,
@@ -272,7 +286,7 @@ export function GraderClassByQuestionScreen({
     setFileGrades((prevFile) => ({
       ...prevFile,
       [subId]: {
-        score: hasRubricSelection(nextStudent) ? String(clampExamScore(rubricTotal + bonus)) : '',
+        score: hasRubricSelection(nextStudent) ? String(rubricTotal) : '',
         comment: prevFile[subId]?.comment ?? '',
       },
     }))
@@ -293,54 +307,48 @@ export function GraderClassByQuestionScreen({
   }, [isFileExam, classSubmissions])
 
   const handleFileGradeChange = (subId: string, field: 'score' | 'comment', value: string) => {
-    setFileGrades((prev) => ({
-      ...prev,
-      [subId]: {
-        score: field === 'score' ? value : (prev[subId]?.score ?? ''),
-        comment: field === 'comment' ? value : (prev[subId]?.comment ?? ''),
-      },
-    }))
-  }
-
-  const handleBonusChange = (subId: string, bonusValue: BonusScore, checked: boolean) => {
-    const nextBonus = checked ? bonusValue : null
-    const previousBonus = bonusGrades[subId] ?? 0
-    const studentRubric = rubricGrades[subId] || {
-      suy_ngam: null,
-      ket_noi: null,
-      phat_trien: null,
-    }
-
-    setBonusGrades((prev) => ({
-      ...prev,
-      [subId]: nextBonus,
-    }))
-
-    setFileGrades((prevFile) => {
-      if (gradingType === 'rubric_reading') {
-        const rubricTotal = getRubricTotalForStudent(studentRubric)
-        const newScore = clampExamScore(rubricTotal + (nextBonus ?? 0))
+    setFileGrades((prev) => {
+      if (field === 'comment') {
         return {
-          ...prevFile,
+          ...prev,
           [subId]: {
-            score: hasRubricSelection(studentRubric) || nextBonus != null ? String(newScore) : '',
-            comment: prevFile[subId]?.comment ?? '',
+            score: prev[subId]?.score ?? '',
+            comment: value,
           },
         }
       }
 
-      const currentScore = parseInt(prevFile[subId]?.score || '0', 10) || 0
-      const baseScore = currentScore - previousBonus
-      const newScore = clampExamScore(baseScore + (nextBonus ?? 0))
+      if (!value.trim()) {
+        return {
+          ...prev,
+          [subId]: { score: '', comment: prev[subId]?.comment ?? '' },
+        }
+      }
+
+      const bonus = bonusGrades[subId] ?? 0
+      const total = parseInt(value, 10)
+      if (isNaN(total)) {
+        return {
+          ...prev,
+          [subId]: { score: value, comment: prev[subId]?.comment ?? '' },
+        }
+      }
 
       return {
-        ...prevFile,
+        ...prev,
         [subId]: {
-          score: newScore > 0 || nextBonus != null ? String(newScore) : '',
-          comment: prevFile[subId]?.comment ?? '',
+          score: String(clampExamScore(total - bonus)),
+          comment: prev[subId]?.comment ?? '',
         },
       }
     })
+  }
+
+  const handleBonusChange = (subId: string, bonusValue: BonusScore, checked: boolean) => {
+    setBonusGrades((prev) => ({
+      ...prev,
+      [subId]: checked ? bonusValue : null,
+    }))
   }
 
   const handleFileExamSaveDraft = async () => {
@@ -349,7 +357,7 @@ export function GraderClassByQuestionScreen({
     for (const sub of classSubmissions) {
       const grade = fileGrades[sub.id]
       if (!grade) continue
-      const score = grade.score ? parseInt(grade.score, 10) : 0
+      const score = getFileExamTotalScore(grade.score, bonusGrades[sub.id] ?? 0)
       const gradesPayload =
         gradingType === 'rubric_reading' ? { rubric_reading: rubricGrades[sub.id] || {} } : {}
 
@@ -384,6 +392,7 @@ export function GraderClassByQuestionScreen({
   const handleFileExamComplete = async () => {
     for (const sub of classSubmissions) {
       const grade = fileGrades[sub.id]
+      const bonus = bonusGrades[sub.id] ?? 0
 
       if (gradingType === 'rubric_reading') {
         const studentRubric = rubricGrades[sub.id] || {}
@@ -398,13 +407,13 @@ export function GraderClassByQuestionScreen({
         }
       }
 
-      if (isMissingFileExamScore(grade)) {
+      if (isMissingFileExamScore(grade, bonus)) {
         toast.error(`Vui lòng nhập điểm cho ${sub.fullName}`)
         scrollToFileExamStudent(sub.id)
         return
       }
 
-      if (isInvalidFileExamScore(grade)) {
+      if (isInvalidFileExamScore(grade, bonus)) {
         toast.error(`Điểm của ${sub.fullName} phải từ 1 đến 100`)
         scrollToFileExamStudent(sub.id)
         return
@@ -415,7 +424,7 @@ export function GraderClassByQuestionScreen({
     let failCount = 0
     for (const sub of classSubmissions) {
       const grade = fileGrades[sub.id]
-      const score = grade?.score ? parseInt(grade.score, 10) : 0
+      const score = getFileExamTotalScore(grade?.score ?? '', bonusGrades[sub.id] ?? 0)
       const outcome = score >= 80 ? 'DAT' : 'CHO_HOC_LAI'
       const gradesPayload =
         gradingType === 'rubric_reading' ? { rubric_reading: rubricGrades[sub.id] || {} } : {}
@@ -751,6 +760,8 @@ export function GraderClassByQuestionScreen({
                           : rawFileUrl
                         const fileName = answers?.fileName || 'Tài liệu'
                         const grade = fileGrades[sub.id] || { score: '', comment: '' }
+                        const bonus = bonusGrades[sub.id] ?? 0
+                        const displayScore = getFileExamDisplayScore(grade.score, bonus)
                         const studentRubric = rubricGrades[sub.id] || {
                           suy_ngam: null,
                           ket_noi: null,
@@ -803,12 +814,12 @@ export function GraderClassByQuestionScreen({
                                   <div
                                     className={cn(
                                       'inline-flex items-center justify-center h-9 w-20 rounded-xl text-sm font-black border transition-all',
-                                      grade.score
+                                      displayScore
                                         ? 'bg-primary/5 border-primary/20 text-primary'
                                         : 'bg-slate-50 border-slate-200 text-slate-400'
                                     )}
                                   >
-                                    {grade.score ? `${grade.score}đ` : '—'}
+                                    {displayScore ? `${displayScore}đ` : '—'}
                                   </div>
                                 ) : (
                                   <input
@@ -816,7 +827,7 @@ export function GraderClassByQuestionScreen({
                                     min={0}
                                     max={100}
                                     placeholder="—"
-                                    value={grade.score}
+                                    value={displayScore}
                                     onChange={(e) =>
                                       handleFileGradeChange(sub.id, 'score', e.target.value)
                                     }
