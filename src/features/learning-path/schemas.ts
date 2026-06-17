@@ -57,6 +57,7 @@ const scheduleSlotSchema = z.object({
         objective: z.string(),
         rowOrder: z.number().int().optional(),
         assessment: z.string().nullable().optional(),
+        materialRef: z.string().nullable().optional(),
         deadline: z.string().datetime().nullable().optional(),
         submission: submissionApiSchema.nullable().optional(),
       })

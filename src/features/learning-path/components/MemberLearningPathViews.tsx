@@ -267,6 +267,12 @@ export function MemberClassesPanel() {
     return cls.schedules.filter((s: any) => !isDeadlineOnly(s))
   }, [cls?.schedules, isDeadlineOnly])
 
+  const hasAnyMaterials = useMemo(() => {
+    return regularSchedules.some((s: any) =>
+      s.roadmapItems?.some((ri: any) => ri.materialRef && ri.materialRef.trim() !== '')
+    )
+  }, [regularSchedules])
+
   const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({})
   const submitEvidence = useSubmitEvidence()
   const submitExam = useSubmitExam()
@@ -855,6 +861,38 @@ export function MemberClassesPanel() {
                     <span className="font-semibold text-slate-400">Địa điểm: </span>
                     {s.location?.trim() || '—'}
                   </p>
+                  {s.roadmapItems?.some(
+                    (ri: any) => ri.materialRef && ri.materialRef.trim() !== ''
+                  ) && (
+                    <div className="text-xs font-bold text-slate-700">
+                      <span className="font-semibold text-slate-400">Tài liệu: </span>
+                      {s.roadmapItems
+                        ?.filter((ri: any) => ri.materialRef && ri.materialRef.trim() !== '')
+                        .map((ri: any) => {
+                          const isLink =
+                            ri.materialRef.startsWith('http://') ||
+                            ri.materialRef.startsWith('https://')
+                          return isLink ? (
+                            <a
+                              key={ri.id}
+                              href={ri.materialRef}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline break-all mr-2 inline-block"
+                            >
+                              {ri.materialRef.split('/').pop() || 'Tài liệu'}
+                            </a>
+                          ) : (
+                            <span
+                              key={ri.id}
+                              className="text-xs font-bold text-slate-500 mr-2 inline-block"
+                            >
+                              {ri.materialRef}
+                            </span>
+                          )
+                        })}
+                    </div>
+                  )}
                   <Badge
                     className={cn(
                       'h-7 rounded-lg px-3 text-xs font-semibold uppercase tracking-tight border-0 shadow-sm',
@@ -926,6 +964,11 @@ export function MemberClassesPanel() {
                   <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Nội dung
                   </th>
+                  {hasAnyMaterials && (
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Tài liệu
+                    </th>
+                  )}
                   <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Địa điểm
                   </th>
@@ -940,7 +983,7 @@ export function MemberClassesPanel() {
               <tbody className="divide-y divide-slate-50">
                 {regularSchedules.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-8 py-20 text-center">
+                    <td colSpan={hasAnyMaterials ? 7 : 6} className="px-8 py-20 text-center">
                       <p className="text-sm font-bold text-slate-400">
                         Không tìm thấy lịch học nào
                       </p>
@@ -967,6 +1010,35 @@ export function MemberClassesPanel() {
                           {s.topic}
                         </p>
                       </td>
+                      {hasAnyMaterials && (
+                        <td className="px-6 py-5">
+                          <div className="flex flex-col gap-1">
+                            {s.roadmapItems
+                              ?.filter((ri: any) => ri.materialRef && ri.materialRef.trim() !== '')
+                              .map((ri: any) => {
+                                const isLink =
+                                  ri.materialRef.startsWith('http://') ||
+                                  ri.materialRef.startsWith('https://')
+                                return isLink ? (
+                                  <a
+                                    key={ri.id}
+                                    href={ri.materialRef}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline break-all max-w-[150px] truncate block"
+                                    title={ri.materialRef}
+                                  >
+                                    {ri.materialRef.split('/').pop() || 'Tài liệu'}
+                                  </a>
+                                ) : (
+                                  <span key={ri.id} className="text-xs font-bold text-slate-500">
+                                    {ri.materialRef}
+                                  </span>
+                                )
+                              })}
+                          </div>
+                        </td>
+                      )}
                       <td className="px-6 py-5">
                         <p className="text-xs font-bold text-slate-500">
                           {s.location?.trim() || '—'}
