@@ -19,13 +19,6 @@ interface SessionEvaluationModalProps {
   userName: string
 }
 
-const QUESTIONS = [
-  {
-    id: 'q1',
-    text: '1. Bạn đánh giá thế nào về cách dẫn dắt và chia sẻ của Host trong buổi đào tạo ngày hôm nay?',
-  },
-]
-
 export function SessionEvaluationModal({
   open,
   onOpenChange,
@@ -37,13 +30,11 @@ export function SessionEvaluationModal({
   const qc = useQueryClient()
   const { register, handleSubmit, setValue, watch, reset, control } = useForm({
     defaultValues: {
-      q1: 5,
+      feedbackFree: '',
       feedbackLacking: '',
       feedbackImprove: '',
     },
   })
-
-  const formValues = useWatch({ control })
 
   // Fetch existing evaluation
   const { data: existing, isLoading } = useQuery({
@@ -61,14 +52,14 @@ export function SessionEvaluationModal({
   useEffect(() => {
     if (existing) {
       reset({
-        q1: existing.q1 ?? 5,
+        feedbackFree: existing.feedbackFree || '',
         feedbackLacking: existing.feedbackLacking || '',
         feedbackImprove: existing.feedbackImprove || '',
       })
     } else {
       // Nếu là đánh giá mới hoàn toàn (không có dữ liệu cũ trên server)
       reset({
-        q1: 5,
+        feedbackFree: '',
         feedbackLacking: '',
         feedbackImprove: '',
       })
@@ -93,57 +84,6 @@ export function SessionEvaluationModal({
       toast.error(getApiErrorMessage(err) || 'Lỗi khi lưu đánh giá')
     },
   })
-
-  const renderLikert = (name: string) => {
-    const value = (formValues as any)[name] || 0
-    const options = [
-      {
-        v: 1,
-        label: '1: Rất không đồng ý',
-        color: 'bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-100',
-      },
-      {
-        v: 2,
-        label: '2: Không đồng ý',
-        color: 'bg-sky-50 text-sky-700 border-sky-100 hover:bg-sky-100',
-      },
-      {
-        v: 3,
-        label: '3: Trung lập',
-        color: 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100',
-      },
-      {
-        v: 4,
-        label: '4: Đồng ý',
-        color: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100',
-      },
-      {
-        v: 5,
-        label: '5: Hoàn toàn đồng ý',
-        color: 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100',
-      },
-    ]
-
-    return (
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt) => (
-          <button
-            key={opt.v}
-            type="button"
-            onClick={() => setValue(name as any, opt.v)}
-            className={cn(
-              'h-9 rounded-full border px-4 text-xs font-black uppercase tracking-tight transition-all',
-              value === opt.v
-                ? `${opt.color} border-current ring-2 ring-offset-1 ring-primary/10 scale-105 shadow-sm`
-                : 'border-slate-200 bg-white text-slate-400 hover:bg-slate-50'
-            )}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-    )
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -179,18 +119,19 @@ export function SessionEvaluationModal({
           className="space-y-10 p-8 pt-2"
         >
           <div className="grid gap-4">
-            {/* Numbered Questions 1-11 */}
-            {QUESTIONS.map((q) => (
-              <div
-                key={q.id}
-                className="flex flex-col gap-4 rounded-[24px] border border-slate-100 bg-slate-50/20 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/30"
-              >
-                <Label className="text-sm font-bold leading-relaxed text-slate-700">{q.text}</Label>
-                {renderLikert(q.id)}
-              </div>
-            ))}
+            {/* Vùng nhập văn bản đánh giá cho 3 câu hỏi */}
+            <div className="flex flex-col gap-4 rounded-[24px] border border-slate-100 bg-slate-50/20 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/30">
+              <Label className="text-sm font-bold leading-relaxed text-slate-700">
+                1. Bạn đánh giá thế nào về cách dẫn dắt và chia sẻ của Host trong buổi đào tạo ngày
+                hôm nay?
+              </Label>
+              <Textarea
+                {...register('feedbackFree')}
+                placeholder="Nhập câu trả lời của bạn..."
+                className="min-h-[120px] rounded-2xl border-slate-200 bg-white/50 focus:bg-white focus:ring-4 focus:ring-primary/10"
+              />
+            </div>
 
-            {/* Numbered Free Text Questions 2-3 */}
             <div className="flex flex-col gap-4 rounded-[24px] border border-slate-100 bg-slate-50/20 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/30">
               <Label className="text-sm font-bold leading-relaxed text-slate-700">
                 2. Nội dung của buổi đào tạo hôm nay có thể giúp ích gì cho bạn trong công việc và
