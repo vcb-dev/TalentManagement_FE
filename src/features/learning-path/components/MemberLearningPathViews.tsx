@@ -1006,9 +1006,7 @@ export function MemberClassesPanel() {
                         <p className="text-xs font-bold text-slate-700">{cls.teacherName}</p>
                       </td>
                       <td className="px-6 py-5">
-                        <p className="max-w-[200px] truncate text-xs font-bold text-slate-600">
-                          {s.topic}
-                        </p>
+                        <p className="text-xs font-bold text-slate-600">{s.topic}</p>
                       </td>
                       {hasAnyMaterials && (
                         <td className="px-6 py-5">
@@ -1025,7 +1023,7 @@ export function MemberClassesPanel() {
                                     href={ri.materialRef}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline break-all max-w-[150px] truncate block"
+                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline break-all block"
                                     title={ri.materialRef}
                                   >
                                     {ri.materialRef.split('/').pop() || 'Tài liệu'}

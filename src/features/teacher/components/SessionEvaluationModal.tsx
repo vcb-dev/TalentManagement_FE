@@ -20,20 +20,10 @@ interface SessionEvaluationModalProps {
 }
 
 const QUESTIONS = [
-  { id: 'q1', text: '1. Buổi học này mang lại giá trị thực tế cho công việc của tôi.' },
-  { id: 'q2', text: '2. Nội dung buổi học dễ hiểu và áp dụng ngay vào thực tế.' },
-  { id: 'q3', text: '3. Thời gian buổi học là hợp lý cho việc tiếp thu kiến thức.' },
-  { id: 'q4', text: '4. Giảng viên truyền đạt kiến thức một cách rõ ràng và dễ hiểu.' },
   {
-    id: 'q5',
-    text: '5. Giảng viên tạo ra môi trường học tập tích cực và khuyến khích sự tham gia.',
+    id: 'q1',
+    text: '1. Bạn đánh giá thế nào về cách dẫn dắt và chia sẻ của Host trong buổi đào tạo ngày hôm nay?',
   },
-  { id: 'q6', text: '6. Giảng viên có khả năng trả lời câu hỏi và giải đáp thắc mắc thấu đáo.' },
-  { id: 'q7', text: '7. Nội dung buổi học liên quan mật thiết đến nhu cầu công việc của tôi.' },
-  { id: 'q8', text: '8. Các ví dụ và tình huống thực tế dễ hiểu và ứng dụng được ngay.' },
-  { id: 'q9', text: '9. Các phương pháp giảng dạy giúp tôi nắm bắt kiến thức hiệu quả.' },
-  { id: 'q10', text: '10. Buổi học khuyến khích sự tương tác và thảo luận giữa các học viên.' },
-  { id: 'q11', text: '11. Tổng thể, tôi hài lòng với chất lượng buổi học này.' },
 ]
 
 export function SessionEvaluationModal({
@@ -48,19 +38,8 @@ export function SessionEvaluationModal({
   const { register, handleSubmit, setValue, watch, reset, control } = useForm({
     defaultValues: {
       q1: 5,
-      q2: 5,
-      q3: 5,
-      q4: 5,
-      q5: 5,
-      q6: 5,
-      q7: 5,
-      q8: 5,
-      q9: 5,
-      q10: 5,
-      q11: 5,
       feedbackLacking: '',
       feedbackImprove: '',
-      feedbackFree: '',
     },
   })
 
@@ -83,37 +62,15 @@ export function SessionEvaluationModal({
     if (existing) {
       reset({
         q1: existing.q1 ?? 5,
-        q2: existing.q2 ?? 5,
-        q3: existing.q3 ?? 5,
-        q4: existing.q4 ?? 5,
-        q5: existing.q5 ?? 5,
-        q6: existing.q6 ?? 5,
-        q7: existing.q7 ?? 5,
-        q8: existing.q8 ?? 5,
-        q9: existing.q9 ?? 5,
-        q10: existing.q10 ?? 5,
-        q11: existing.q11 ?? 5,
         feedbackLacking: existing.feedbackLacking || '',
         feedbackImprove: existing.feedbackImprove || '',
-        feedbackFree: existing.feedbackFree || '',
       })
     } else {
       // Nếu là đánh giá mới hoàn toàn (không có dữ liệu cũ trên server)
       reset({
         q1: 5,
-        q2: 5,
-        q3: 5,
-        q4: 5,
-        q5: 5,
-        q6: 5,
-        q7: 5,
-        q8: 5,
-        q9: 5,
-        q10: 5,
-        q11: 5,
         feedbackLacking: '',
         feedbackImprove: '',
-        feedbackFree: '',
       })
     }
   }, [existing, reset, scheduleId])
@@ -233,11 +190,11 @@ export function SessionEvaluationModal({
               </div>
             ))}
 
-            {/* Numbered Free Text Questions 12-14 */}
+            {/* Numbered Free Text Questions 2-3 */}
             <div className="flex flex-col gap-4 rounded-[24px] border border-slate-100 bg-slate-50/20 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/30">
               <Label className="text-sm font-bold leading-relaxed text-slate-700">
-                12. Sau khi tiếp thu những kiến thức hôm nay, bạn nhận thấy mình còn thiếu sót điều
-                gì nhất? Và bạn sẽ ứng dụng những kiến thức đó vào công việc của mình như thế nào?
+                2. Nội dung của buổi đào tạo hôm nay có thể giúp ích gì cho bạn trong công việc và
+                cuộc sống?
               </Label>
               <Textarea
                 {...register('feedbackLacking')}
@@ -248,22 +205,10 @@ export function SessionEvaluationModal({
 
             <div className="flex flex-col gap-4 rounded-[24px] border border-slate-100 bg-slate-50/20 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/30">
               <Label className="text-sm font-bold leading-relaxed text-slate-700">
-                13. Buổi học cần cải thiện điều gì để tốt hơn trong tương lai?
+                3. Bạn có góp ý gì để buổi đào tạo tiếp theo hiệu quả hơn?
               </Label>
               <Textarea
                 {...register('feedbackImprove')}
-                placeholder="Nhập câu trả lời của bạn..."
-                className="min-h-[100px] rounded-2xl border-slate-200 bg-white/50 focus:bg-white focus:ring-4 focus:ring-primary/10"
-              />
-            </div>
-
-            <div className="flex flex-col gap-4 rounded-[24px] border border-slate-100 bg-slate-50/20 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/30">
-              <Label className="text-sm font-bold leading-relaxed text-slate-700">
-                14. Phản hồi tự do: Điều gì bạn thích nhất trong buổi học này? Bạn nghĩ gì về các
-                chủ đề được giảng dạy? Có gì bạn muốn được đào tạo thêm?
-              </Label>
-              <Textarea
-                {...register('feedbackFree')}
                 placeholder="Nhập câu trả lời của bạn..."
                 className="min-h-[100px] rounded-2xl border-slate-200 bg-white/50 focus:bg-white focus:ring-4 focus:ring-primary/10"
               />

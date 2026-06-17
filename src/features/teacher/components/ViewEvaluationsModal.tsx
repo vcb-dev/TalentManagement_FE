@@ -24,19 +24,7 @@ interface ViewEvaluationsModalProps {
   sessionTitle: string
 }
 
-const QUESTIONS = [
-  { id: 'q1', text: 'Giá trị thực tế' },
-  { id: 'q2', text: 'Dễ hiểu/Áp dụng' },
-  { id: 'q3', text: 'Thời gian hợp lý' },
-  { id: 'q4', text: 'Giảng viên rõ ràng' },
-  { id: 'q5', text: 'Môi trường tích cực' },
-  { id: 'q6', text: 'Giải đáp thấu đáo' },
-  { id: 'q7', text: 'Liên quan công việc' },
-  { id: 'q8', text: 'Ví dụ thực tế' },
-  { id: 'q9', text: 'Phương pháp hiệu quả' },
-  { id: 'q10', text: 'Tương tác thảo luận' },
-  { id: 'q11', text: 'Hài lòng chung' },
-]
+const QUESTIONS = [{ id: 'q1', text: 'Dẫn dắt & chia sẻ của Host' }]
 
 const getScoreLabel = (score: number) => {
   if (score >= 4.5) return 'Hoàn toàn đồng ý'
@@ -106,9 +94,7 @@ export function ViewEvaluationsModal({
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex flex-col items-end mr-4">
-              <span className="text-xs font-black uppercase text-slate-400">
-                Số lượng phản hồi
-              </span>
+              <span className="text-xs font-black uppercase text-slate-400">Số lượng phản hồi</span>
               <span className="text-lg font-black text-blue-600">{evals?.length || 0}</span>
             </div>
             <button
@@ -281,9 +267,7 @@ function StudentFeedbackCard({ evaluation: e }: { evaluation: any }) {
                   <p className="text-xs font-bold text-slate-400 truncate uppercase tracking-tight">
                     {q.text}
                   </p>
-                  <p
-                    className={cn('text-xs font-black mt-1', getScoreColor(val).split(' ')[0])}
-                  >
+                  <p className={cn('text-xs font-black mt-1', getScoreColor(val).split(' ')[0])}>
                     {getScoreLabel(val)}
                   </p>
                 </div>
@@ -295,7 +279,7 @@ function StudentFeedbackCard({ evaluation: e }: { evaluation: any }) {
             {e.feedbackLacking && (
               <div className="pt-2">
                 <p className="text-xs font-black uppercase text-slate-400 mb-2 tracking-wider">
-                  Thiếu sót & Ứng dụng
+                  Nội dung & cuộc sống
                 </p>
                 <div className="rounded-2xl bg-white p-4 border border-slate-100/50 italic text-sm text-slate-600 leading-relaxed">
                   "{e.feedbackLacking}"
@@ -305,7 +289,7 @@ function StudentFeedbackCard({ evaluation: e }: { evaluation: any }) {
             {e.feedbackImprove && (
               <div className="pt-5">
                 <p className="text-xs font-black uppercase text-slate-400 mb-2 tracking-wider">
-                  Cần cải thiện
+                  Góp ý cho buổi tiếp theo
                 </p>
                 <div className="rounded-2xl bg-white p-4 border border-slate-100/50 italic text-sm text-slate-600 leading-relaxed">
                   "{e.feedbackImprove}"
