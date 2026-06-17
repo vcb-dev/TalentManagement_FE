@@ -347,6 +347,7 @@ export function useCreateClassSchedule() {
       void qc.invalidateQueries({ queryKey: managerKeys.classSchedules(vars.classId) })
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
+      void qc.invalidateQueries({ queryKey: ['learning'] })
       toast.success('Đã thêm lịch học')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -378,6 +379,7 @@ export function useUpdateClassSchedule() {
       void qc.invalidateQueries({ queryKey: managerKeys.classSchedules(vars.classId) })
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
+      void qc.invalidateQueries({ queryKey: ['learning'] })
       toast.success('Đã cập nhật lịch học')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -393,6 +395,7 @@ export function useDeleteClassSchedule() {
       void qc.invalidateQueries({ queryKey: managerKeys.classSchedules(vars.classId) })
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
+      void qc.invalidateQueries({ queryKey: ['learning'] })
       toast.success('Đã xóa lịch học')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
