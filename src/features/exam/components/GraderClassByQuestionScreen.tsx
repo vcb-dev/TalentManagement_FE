@@ -66,6 +66,18 @@ function hasRubricSelection(studentRubric: StudentRubric): boolean {
   return Object.values(studentRubric).some((val) => val != null)
 }
 
+function isMissingFileExamScore(grade: { score: string; comment: string } | undefined): boolean {
+  if (!grade?.score?.trim()) return true
+  const scoreNum = parseInt(grade.score, 10)
+  return isNaN(scoreNum) || scoreNum <= 0
+}
+
+function isInvalidFileExamScore(grade: { score: string; comment: string } | undefined): boolean {
+  if (isMissingFileExamScore(grade)) return true
+  const scoreNum = parseInt(grade?.score ?? '', 10)
+  return scoreNum > MAX_EXAM_SCORE
+}
+
 const RUBRIC_CRITERIA = [
   {
     id: 'tieu_chi',
@@ -358,9 +370,21 @@ export function GraderClassByQuestionScreen({
     if (failCount > 0) toast.error(`Lỗi khi lưu cho ${failCount} học viên`)
   }
 
+  const scrollToFileExamStudent = (subId: string) => {
+    const element = document.getElementById(`file-sub-${subId}`)
+    if (!element) return
+
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    element.classList.add('ring-4', 'ring-red-500', 'ring-offset-2')
+    setTimeout(() => {
+      element.classList.remove('ring-4', 'ring-red-500', 'ring-offset-2')
+    }, 3000)
+  }
+
   const handleFileExamComplete = async () => {
     for (const sub of classSubmissions) {
       const grade = fileGrades[sub.id]
+
       if (gradingType === 'rubric_reading') {
         const studentRubric = rubricGrades[sub.id] || {}
         const incomplete =
@@ -369,18 +393,21 @@ export function GraderClassByQuestionScreen({
           toast.error(
             `Vui lòng đánh giá đủ tất cả các tiêu chí trong bảng Rubric cho học viên ${sub.fullName}`
           )
+          scrollToFileExamStudent(sub.id)
           return
         }
-      } else {
-        if (!grade || !grade.score) {
-          toast.error(`Vui lòng nhập điểm cho ${sub.fullName}`)
-          return
-        }
-        const scoreNum = parseInt(grade.score, 10)
-        if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
-          toast.error(`Điểm của ${sub.fullName} phải từ 0 đến 100`)
-          return
-        }
+      }
+
+      if (isMissingFileExamScore(grade)) {
+        toast.error(`Vui lòng nhập điểm cho ${sub.fullName}`)
+        scrollToFileExamStudent(sub.id)
+        return
+      }
+
+      if (isInvalidFileExamScore(grade)) {
+        toast.error(`Điểm của ${sub.fullName} phải từ 1 đến 100`)
+        scrollToFileExamStudent(sub.id)
+        return
       }
     }
 
@@ -732,7 +759,10 @@ export function GraderClassByQuestionScreen({
 
                         return (
                           <Fragment key={sub.id}>
-                            <tr className="hover:bg-slate-50/50 transition-colors">
+                            <tr
+                              id={`file-sub-${sub.id}`}
+                              className="hover:bg-slate-50/50 transition-colors scroll-mt-24"
+                            >
                               <td className="px-4 py-4 font-bold text-slate-800 whitespace-nowrap">
                                 {sub.fullName}
                               </td>
