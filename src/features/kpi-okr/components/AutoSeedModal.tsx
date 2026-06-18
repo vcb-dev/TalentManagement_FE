@@ -1,5 +1,6 @@
 ﻿import { useState, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { kpiQueryKeys } from '../kpiQueryKeys'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -122,7 +123,7 @@ export function AutoSeedModal({
       toast.success(
         `Đã đồng bộ catalog: xóa ${result.totalDeleted ?? 0}, tạo ${result.totalCreated} mục tiêu`
       )
-      queryClient.invalidateQueries({ queryKey: ['performance', 'assignments', teamId] })
+      queryClient.invalidateQueries({ queryKey: kpiQueryKeys.assignments(teamId, year, month) })
       onSeeded()
     } catch (e: unknown) {
       toast.error(getApiErrorMessage(e) || 'Seed thất bại')

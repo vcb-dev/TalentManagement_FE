@@ -58,6 +58,21 @@ type QuestionBankPayload = {
   updatedAt: string
 }
 
+function coerceQuestionBank(value: unknown): QuestionBankPayload | null {
+  if (!value || typeof value !== 'object') return null
+  const raw = value as Partial<QuestionBankPayload>
+  return {
+    title: typeof raw.title === 'string' ? raw.title : '',
+    duration: typeof raw.duration === 'number' ? raw.duration : 60,
+    questions: Array.isArray(raw.questions) ? raw.questions : [],
+    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : '',
+  }
+}
+
+function questionBankQuestionCount(bank: QuestionBankPayload | null | undefined): number {
+  return bank?.questions?.length ?? 0
+}
+
 function managerClassStatusUi(status: ManagerClassRow['status']): {
   label: string
   badgeClass: string
@@ -199,7 +214,8 @@ function ClassSchedulesList({
       <div className="flex flex-col gap-1.5 w-full">
         {examSchedules.map((s) => {
           const bank = questionBank[s.id]
-          const hasQuestions = !!bank
+          const questionCount = questionBankQuestionCount(bank)
+          const hasQuestions = questionCount > 0
           return (
             <div
               key={s.id}
@@ -218,7 +234,7 @@ function ClassSchedulesList({
                     hasQuestions ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                   )}
                 >
-                  {hasQuestions ? `${bank.questions.length} câu` : 'Chưa có đề'}
+                  {hasQuestions ? `${questionCount} câu` : 'Chưa có đề'}
                 </span>
                 <Button
                   size="sm"
@@ -284,8 +300,9 @@ export function ManagerClassExamsScreen() {
         rawClasses.forEach((c: any) => {
           // Sync class template questions
           if (c.examQuestions) {
-            if (JSON.stringify(next[c.id]) !== JSON.stringify(c.examQuestions)) {
-              next[c.id] = c.examQuestions as QuestionBankPayload
+            const normalized = coerceQuestionBank(c.examQuestions)
+            if (normalized && JSON.stringify(next[c.id]) !== JSON.stringify(normalized)) {
+              next[c.id] = normalized
               changed = true
             }
           } else if (next[c.id]) {
@@ -297,8 +314,9 @@ export function ManagerClassExamsScreen() {
           const schedules = (c.schedules ?? []).filter((s: any) => s.isExam)
           schedules.forEach((s: any) => {
             if (s.examQuestions) {
-              if (JSON.stringify(next[s.id]) !== JSON.stringify(s.examQuestions)) {
-                next[s.id] = s.examQuestions as QuestionBankPayload
+              const normalized = coerceQuestionBank(s.examQuestions)
+              if (normalized && JSON.stringify(next[s.id]) !== JSON.stringify(normalized)) {
+                next[s.id] = normalized
                 changed = true
               }
             } else if (next[s.id]) {
@@ -318,8 +336,13 @@ export function ManagerClassExamsScreen() {
     try {
       const raw = localStorage.getItem('manager_exam_question_bank_v1')
       if (raw) {
-        const parsed = JSON.parse(raw)
-        setQuestionBankByClass((prev) => ({ ...parsed, ...prev }))
+        const parsed = JSON.parse(raw) as Record<string, unknown>
+        const normalized: Record<string, QuestionBankPayload> = {}
+        for (const [key, value] of Object.entries(parsed)) {
+          const bank = coerceQuestionBank(value)
+          if (bank) normalized[key] = bank
+        }
+        setQuestionBankByClass((prev) => ({ ...normalized, ...prev }))
       }
     } catch {}
   }, [])
@@ -539,7 +562,8 @@ export function ManagerClassExamsScreen() {
                 const teacherName = item.classTeacher?.name || '—'
                 const sessionBank = questionBankByClass[item.id]
                 const classBank = questionBankByClass[item.classId]
-                const hasSessionBank = Boolean(sessionBank)
+                const sessionQuestionCount = questionBankQuestionCount(sessionBank)
+                const hasSessionBank = sessionQuestionCount > 0
                 return (
                   <div
                     key={item.id}
@@ -576,7 +600,7 @@ export function ManagerClassExamsScreen() {
                       {hasSessionBank ? (
                         <div>
                           <p className="font-semibold text-emerald-600">
-                            {sessionBank?.questions.length ?? 0} câu hỏi
+                            {sessionQuestionCount} câu hỏi
                           </p>
                           <p className="text-xs font-medium text-muted-foreground">
                             Thời gian: {examDurationLabelMinutes(sessionBank)} phút
@@ -681,7 +705,8 @@ export function ManagerClassExamsScreen() {
 
                     const sessionBank = questionBankByClass[item.id]
                     const classBank = questionBankByClass[item.classId]
-                    const hasSessionBank = Boolean(sessionBank)
+                    const sessionQuestionCount = questionBankQuestionCount(sessionBank)
+                    const hasSessionBank = sessionQuestionCount > 0
 
                     return (
                       <tr
@@ -719,7 +744,7 @@ export function ManagerClassExamsScreen() {
                           {hasSessionBank ? (
                             <div className="flex flex-col gap-0.5">
                               <span className="text-emerald-600 font-semibold">
-                                {sessionBank?.questions.length ?? 0} câu hỏi
+                                {sessionQuestionCount} câu hỏi
                               </span>
                               <span className="text-xs text-muted-foreground font-medium">
                                 Thời gian: {examDurationLabelMinutes(sessionBank)} phút

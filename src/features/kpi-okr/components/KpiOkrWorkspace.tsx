@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm, useFieldArray, useWatch, Controller } from 'react-hook-form'
 import {
@@ -29,6 +29,7 @@ import { isManagerLikeRole } from '@/lib/managerLikeRole'
 import { resolveEffectivePermissionSet } from '@/features/permissions/resolveEffective'
 import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
 import { useKpiOkrAutoSeed } from '@/features/kpi-okr/components/hooks/useKpiOkrAutoSeed'
+import { useKpiOkrStream } from '@/features/kpi-okr/useKpiOkrStream'
 import {
   performanceApi,
   type ApprovalRequest,
@@ -75,8 +76,23 @@ import {
   formatKpiSetAt,
   formatViNumber,
   periodLabel,
+  resolveParentKpiDisplay,
   xlTd,
 } from '@/features/kpi-okr/components/kpiAssignmentTableShared'
+import { KpiProgressBar } from '@/features/kpi-okr/components/KpiProgressBar'
+import {
+  AssignmentSubItemsInline,
+  SubItemsEditSection,
+  SubItemsEditorPanel,
+  mapSubItemsToPayload,
+  subItemsFromAssignment,
+} from '@/features/kpi-okr/components/kpiSubItemsShared'
+import {
+  SubItemsSelfEditInline,
+  isSubItemResultComplete,
+} from '@/features/kpi-okr/components/SubItemsSelfEdit'
+import type { SubItemDraft } from '@/features/kpi-okr/utils/kpiProgressUtils'
+import { emptySubItemLine } from '@/features/kpi-okr/utils/kpiProgressUtils'
 import {
   catalogSeedEnabledForTeam,
   isCatalogEnabledDepartment,
@@ -321,6 +337,12 @@ export function KpiOkrWorkspace({
     [selectedTeamId]
   )
 
+  const { connected: sseConnected } = useKpiOkrStream({
+    teamId: selectedTeamId || undefined,
+    year,
+    month,
+  })
+
   const membersForTeamQ = useQuery({
     queryKey: membersKpiKey,
     queryFn: () => organizationApi.getTeamMembers(selectedTeamId!),
@@ -440,13 +462,17 @@ export function KpiOkrWorkspace({
     queryKey: goalApprovalKey,
     queryFn: () => performanceApi.getApprovalRequest(selectedTeamId!, year, month, 'goal'),
     enabled: Boolean(selectedTeamId) && requiresKpiApprovalSelected && !isMockApiEnabled(),
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: sseConnected ? false : 15_000,
   })
   const resultApprovalQ = useQuery({
     queryKey: resultApprovalKey,
     queryFn: () => performanceApi.getApprovalRequest(selectedTeamId!, year, month, 'result'),
     enabled: Boolean(selectedTeamId) && requiresKpiApprovalSelected && !isMockApiEnabled(),
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: sseConnected ? false : 15_000,
   })
   const goalApprovalRequest = goalApprovalQ.data ?? null
   const resultApprovalRequest = resultApprovalQ.data ?? null
@@ -1183,8 +1209,9 @@ function computeRowSubmitValidationHighlights(
     opts.currentUserId && assignment.assigneeUserId === opts.currentUserId
   )
   const normalized = draft ? normalizeDraftForLeaderSelf(draft, isLeaderSelfRow) : undefined
+  const hasSubItems = (assignment.subItems?.length ?? 0) > 0
 
-  if (normalized) {
+  if (normalized && !hasSubItems) {
     const leaderEvalOnly = Boolean(opts.canEditResults && !isLeaderSelfRow)
     if (draftToPatchBody(normalized, { leaderEvalOnly }) === 'invalid') {
       highlight.numeric = true
@@ -1202,12 +1229,23 @@ function computeRowSubmitValidationHighlights(
   })
 
   if (isLeaderSelfRow && opts.currentUserId) {
-    if (!numericRaw.trim()) highlight.numeric = true
-    if (!(normalized?.numericUnit ?? assignment.numericUnit ?? '').trim()) {
-      highlight.numericUnit = true
+    if (hasSubItems) {
+      for (const sub of assignment.subItems ?? []) {
+        if (isSubItemResultComplete(sub)) continue
+        if (!isManagerEvalComplete(sub.selfEvalStatus ?? '')) {
+          highlight.selfEval = true
+        } else {
+          highlight.numeric = true
+        }
+      }
+    } else {
+      if (!numericRaw.trim()) highlight.numeric = true
+      if (!(normalized?.numericUnit ?? assignment.numericUnit ?? '').trim()) {
+        highlight.numericUnit = true
+      }
+      if (!isManagerEvalComplete(selfEval)) highlight.selfEval = true
     }
     if (!evidence) highlight.evidence = true
-    if (!isManagerEvalComplete(selfEval)) highlight.selfEval = true
   } else if (opts.canEditResults && !isLeaderSelfRow) {
     if (!isManagerEvalComplete(managerStatus)) highlight.leaderEval = true
   }
@@ -1610,6 +1648,7 @@ function MemberSelfAssignmentRow({
   hideManagerEvalColumn?: boolean
 }) {
   const isMandatory = isMandatoryMetric(row.content)
+  const hasSubItems = (row.subItems?.length ?? 0) > 0
   const {
     evidence,
     setEvidence,
@@ -1638,6 +1677,8 @@ function MemberSelfAssignmentRow({
     canEditLeaderEval,
   })
 
+  const parentDisplay = resolveParentKpiDisplay(row)
+  const showParentAggregates = hasSubItems && inputsDisabled
   const td = xlTd(rowStripe)
 
   return (
@@ -1665,45 +1706,87 @@ function MemberSelfAssignmentRow({
             ) : undefined
           }
         />
+        {hasSubItems ? (
+          <SubItemsSelfEditInline
+            assignmentId={row.id}
+            subItems={row.subItems ?? []}
+            disabled={inputsDisabled || saving}
+            onSaved={onSaved}
+            submitValidation={
+              submitValidation
+                ? { numeric: submitValidation.numeric, selfEval: submitValidation.selfEval }
+                : undefined
+            }
+          />
+        ) : null}
       </TableCell>
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
-        {formatViNumber(row.targetMetric) || '—'}
+        {row.targetMetric?.trim() ? formatViNumber(row.targetMetric) : parentDisplay.targetMetric}
       </TableCell>
       <TableCell className={cn(td, CELL_NUMERIC)}>
-        <div className="relative min-w-0">
-          <Input
-            value={numericDisplayValue}
-            onChange={(e) => handleNumericChange(e.target.value)}
-            onFocus={() => setNumericFocused(true)}
-            onBlur={() => setNumericFocused(false)}
-            inputMode="numeric"
+        {hasSubItems && !showParentAggregates ? (
+          <span
             className={cn(
-              XL_INPUT,
-              (submitValidation?.numeric || (isMandatory && !numericRaw.trim())) &&
-                INVALID_FIELD_RING
+              'text-xs italic',
+              submitValidation?.selfEval || submitValidation?.numeric
+                ? 'font-medium text-red-600 dark:text-red-400'
+                : 'text-slate-400'
             )}
-            placeholder={isMandatory ? 'Bắt buộc nhập' : '—'}
-            aria-required={isMandatory}
-            disabled={inputsDisabled || saving}
-          />
-          {isMandatory && (
-            <span
-              className="pointer-events-none absolute -right-1 -top-1 text-xs font-bold text-destructive"
-              title="Chỉ số bắt buộc nhập"
-            >
-              *
-            </span>
-          )}
-        </div>
+            title="Nhập số liệu tại từng mục con"
+          >
+            {submitValidation?.selfEval || submitValidation?.numeric
+              ? 'Hoàn thiện mục con ↓'
+              : 'Xem mục con ↑'}
+          </span>
+        ) : hasSubItems && showParentAggregates ? (
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-sm tabular-nums font-semibold">{parentDisplay.numericLabel}</span>
+            {parentDisplay.progress != null ? (
+              <KpiProgressBar value={parentDisplay.progress} barClassName="h-1.5" />
+            ) : null}
+          </div>
+        ) : (
+          <div className="relative min-w-0">
+            <Input
+              value={numericDisplayValue}
+              onChange={(e) => handleNumericChange(e.target.value)}
+              onFocus={() => setNumericFocused(true)}
+              onBlur={() => setNumericFocused(false)}
+              inputMode="numeric"
+              className={cn(
+                XL_INPUT,
+                (submitValidation?.numeric || (isMandatory && !numericRaw.trim())) &&
+                  INVALID_FIELD_RING
+              )}
+              placeholder={isMandatory ? 'Bắt buộc nhập' : '—'}
+              aria-required={isMandatory}
+              disabled={inputsDisabled || saving}
+            />
+            {isMandatory && (
+              <span
+                className="pointer-events-none absolute -right-1 -top-1 text-xs font-bold text-destructive"
+                title="Chỉ số bắt buộc nhập"
+              >
+                *
+              </span>
+            )}
+          </div>
+        )}
       </TableCell>
       <TableCell className={cn(td, CELL_UNIT)}>
-        <Input
-          value={numericUnit}
-          onChange={(e) => setNumericUnit(e.target.value)}
-          className={cn(XL_INPUT, submitValidation?.numericUnit && INVALID_FIELD_RING)}
-          placeholder="VND"
-          disabled={inputsDisabled || saving}
-        />
+        {hasSubItems && !showParentAggregates ? (
+          <span className="text-xs text-slate-400">—</span>
+        ) : hasSubItems && showParentAggregates ? (
+          <span className="text-xs uppercase">{parentDisplay.numericUnit}</span>
+        ) : (
+          <Input
+            value={numericUnit}
+            onChange={(e) => setNumericUnit(e.target.value)}
+            className={cn(XL_INPUT, submitValidation?.numericUnit && INVALID_FIELD_RING)}
+            placeholder="VND"
+            disabled={inputsDisabled || saving}
+          />
+        )}
       </TableCell>
       <TableCell className={cn(td, CELL_EVIDENCE)}>
         <div className="min-w-0 max-w-full">
@@ -1720,36 +1803,49 @@ function MemberSelfAssignmentRow({
         </div>
       </TableCell>
       <TableCell className={cn(td, CELL_SELF_EVAL)}>
-        <div className="min-w-0 max-w-full space-y-1">
-          <CustomSelect
-            value={selfEvalStatus || '__none'}
-            onValueChange={(v) => {
-              const next = v === '__none' ? '' : v
-              setSelfEvalStatus(next)
-              // Phương án 2: Leader tự chấm dòng của mình → đồng bộ luôn sang Đánh giá Leader
-              if (canEditLeaderEval) setManagerEvalStatus(next)
-            }}
-            disabled={inputsDisabled || saving}
-            className="!space-y-0 min-w-0 w-full"
-            triggerClassName={cn(
-              TABLE_INLINE_SELECT_TRIGGER,
-              submitValidation?.selfEval && INVALID_FIELD_RING
+        {hasSubItems ? (
+          <span
+            className={cn(
+              'text-xs italic',
+              submitValidation?.selfEval
+                ? 'font-medium text-red-600 dark:text-red-400'
+                : 'text-slate-400'
             )}
-            options={[
-              { label: '—', value: '__none' },
-              { label: 'OK', value: 'OK' },
-              { label: 'NOT', value: 'NOT' },
-            ]}
-          />
-          <textarea
-            value={selfReviewNote}
-            onChange={(e) => setSelfReviewNote(e.target.value)}
-            rows={2}
-            className={TABLE_TEXTAREA}
-            placeholder="Nhận xét"
-            disabled={inputsDisabled || saving}
-          />
-        </div>
+          >
+            {submitValidation?.selfEval ? 'Chọn OK/NOT tại mục con ↓' : 'Đánh giá tại mục con'}
+          </span>
+        ) : (
+          <div className="min-w-0 max-w-full space-y-1">
+            <CustomSelect
+              value={selfEvalStatus || '__none'}
+              onValueChange={(v) => {
+                const next = v === '__none' ? '' : v
+                setSelfEvalStatus(next)
+                // Phương án 2: Leader tự chấm dòng của mình → đồng bộ luôn sang Đánh giá Leader
+                if (canEditLeaderEval) setManagerEvalStatus(next)
+              }}
+              disabled={inputsDisabled || saving}
+              className="!space-y-0 min-w-0 w-full"
+              triggerClassName={cn(
+                TABLE_INLINE_SELECT_TRIGGER,
+                submitValidation?.selfEval && INVALID_FIELD_RING
+              )}
+              options={[
+                { label: '—', value: '__none' },
+                { label: 'OK', value: 'OK' },
+                { label: 'NOT', value: 'NOT' },
+              ]}
+            />
+            <textarea
+              value={selfReviewNote}
+              onChange={(e) => setSelfReviewNote(e.target.value)}
+              rows={2}
+              className={TABLE_TEXTAREA}
+              placeholder="Nhận xét"
+              disabled={inputsDisabled || saving}
+            />
+          </div>
+        )}
       </TableCell>
       <TableCell className={cn(td, EVAL_LEADER_CELL)}>
         {canEditLeaderEval ? (
@@ -1869,6 +1965,8 @@ function ReadOnlyAssignmentRow({
   allowGoalReviewConfirm?: boolean
   onGoalReviewConfirmed?: () => void
 }) {
+  const [subItemsExpanded, setSubItemsExpanded] = useState(false)
+  const parentDisplay = resolveParentKpiDisplay(row)
   const td = xlTd(rowStripe)
   return (
     <TableRow className="group transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
@@ -1895,17 +1993,34 @@ function ReadOnlyAssignmentRow({
             ) : undefined
           }
         />
+        {(row.subItems?.length ?? 0) > 0 ? (
+          <AssignmentSubItemsInline
+            subItems={row.subItems ?? []}
+            expanded={subItemsExpanded}
+            onToggle={() => setSubItemsExpanded((v) => !v)}
+            showProgress={mode === 'results'}
+          />
+        ) : null}
       </TableCell>
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
-        {formatViNumber(row.targetMetric) || '—'}
+        {row.targetMetric?.trim() ? formatViNumber(row.targetMetric) : parentDisplay.targetMetric}
       </TableCell>
       {mode === 'planning' ? (
         <>
           <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-sm')}>
-            {formatViNumber(row.numericValue)}
+            {parentDisplay.hasSubItems ? (
+              <div className="flex min-w-0 flex-col gap-1">
+                <span>{parentDisplay.numericLabel}</span>
+                {parentDisplay.progress != null ? (
+                  <KpiProgressBar value={parentDisplay.progress} barClassName="h-1.5" />
+                ) : null}
+              </div>
+            ) : (
+              formatViNumber(row.numericValue)
+            )}
           </TableCell>
           <TableCell className={cn(td, 'text-xs uppercase')}>
-            <div className="w-[64px] truncate">{row.numericUnit ?? '—'}</div>
+            <div className="w-[64px] truncate">{parentDisplay.numericUnit}</div>
           </TableCell>
         </>
       ) : (
@@ -2172,6 +2287,7 @@ type LeaderEditFormValues = {
   priority: number
   content: string
   targetMetric: string
+  subItems: SubItemDraft[]
 }
 
 function LeaderAssignmentRow({
@@ -2207,12 +2323,15 @@ function LeaderAssignmentRow({
   const [open, setOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [subItemsExpanded, setSubItemsExpanded] = useState(false)
+  const parentDisplay = resolveParentKpiDisplay(row)
 
   const form = useForm<LeaderEditFormValues>({
     defaultValues: {
       priority: row.priority,
       content: row.content,
       targetMetric: row.targetMetric ?? '',
+      subItems: subItemsFromAssignment(row.subItems),
     },
     mode: 'onChange',
   })
@@ -2230,6 +2349,7 @@ function LeaderAssignmentRow({
       priority: row.priority,
       content: row.content,
       targetMetric: row.targetMetric ?? '',
+      subItems: subItemsFromAssignment(row.subItems),
     })
   }, [open, reset, row])
 
@@ -2263,6 +2383,7 @@ function LeaderAssignmentRow({
       content: values.content.trim(),
       priority: values.priority,
       targetMetric: values.targetMetric.trim() || null,
+      subItems: mapSubItemsToPayload(values.subItems),
     }
 
     try {
@@ -2346,17 +2467,34 @@ function LeaderAssignmentRow({
             ) : undefined
           }
         />
+        {(row.subItems?.length ?? 0) > 0 && (
+          <AssignmentSubItemsInline
+            subItems={row.subItems ?? []}
+            expanded={subItemsExpanded}
+            onToggle={() => setSubItemsExpanded((v) => !v)}
+            showProgress={mode === 'results'}
+          />
+        )}
       </TableCell>
       <TableCell className={cn(td, 'tabular-nums font-semibold text-primary')}>
-        {formatViNumber(row.targetMetric) || '—'}
+        {row.targetMetric?.trim() ? formatViNumber(row.targetMetric) : parentDisplay.targetMetric}
       </TableCell>
       {mode === 'planning' ? (
         <>
           <TableCell className={cn(td, 'whitespace-nowrap tabular-nums text-sm')}>
-            {formatViNumber(row.numericValue)}
+            {parentDisplay.hasSubItems ? (
+              <div className="flex min-w-0 flex-col gap-1">
+                <span>{parentDisplay.numericLabel}</span>
+                {parentDisplay.progress != null ? (
+                  <KpiProgressBar value={parentDisplay.progress} barClassName="h-1.5" />
+                ) : null}
+              </div>
+            ) : (
+              formatViNumber(row.numericValue)
+            )}
           </TableCell>
           <TableCell className={cn(td, 'text-xs uppercase')}>
-            <div className="w-[64px] truncate">{row.numericUnit ?? '—'}</div>
+            <div className="w-[64px] truncate">{parentDisplay.numericUnit}</div>
           </TableCell>
         </>
       ) : (
@@ -2490,6 +2628,9 @@ function LeaderAssignmentRow({
                         placeholder="Mô tả chỉ tiêu…"
                       />
                     </label>
+                    <div className="md:col-span-2">
+                      <SubItemsEditSection control={control} />
+                    </div>
                     <div className="flex items-end justify-end gap-2 md:col-span-2 pt-2">
                       <Button
                         type="button"
@@ -2976,7 +3117,6 @@ function ResultsBatchActionBar({
   canEditResults,
   memberSelfEditableResults,
   resultsReadOnly,
-  isTrafficTeam,
   isKinhDoanhTeam,
   kinhDoanhResultsCloseOpen,
   kinhDoanhResultsCloseBounds,
@@ -2993,7 +3133,6 @@ function ResultsBatchActionBar({
   canEditResults: boolean
   memberSelfEditableResults: boolean
   resultsReadOnly?: boolean
-  isTrafficTeam?: boolean
   isKinhDoanhTeam?: boolean
   kinhDoanhResultsCloseOpen?: boolean
   kinhDoanhResultsCloseBounds?: { startDay: number; endDay: number }
@@ -3008,7 +3147,7 @@ function ResultsBatchActionBar({
   const saveDraftSavingLabel = isKinhDoanhTeam ? 'Đang chốt…' : 'Đang lưu…'
   const kinhDoanhCloseBlocked = Boolean(isKinhDoanhTeam && !kinhDoanhResultsCloseOpen)
   const showSave = !isMockApiEnabled() && (memberSelfEditableResults || canEditResults)
-  const showSubmit = Boolean(isTrafficTeam && canSubmitResultApproval && onSubmitResultApproval)
+  const showSubmit = Boolean(canSubmitResultApproval && onSubmitResultApproval)
 
   if (!showSave && !showSubmit) return null
 
@@ -3657,6 +3796,8 @@ function ResultsSection({
     let hasSelfFieldGap = false
     let unevaluatedCount = 0
 
+    let hasSubItemSelfGap = false
+
     for (const assignment of allAssignments) {
       const rowHighlight = computeRowSubmitValidationHighlights(assignment, drafts[assignment.id], {
         currentUserId,
@@ -3667,7 +3808,11 @@ function ResultsSection({
       highlights[assignment.id] = rowHighlight
       if (rowHighlight.numeric) hasInvalidNumeric = true
       if (rowHighlight.numericUnit) hasUnitGap = true
-      if (rowHighlight.evidence || rowHighlight.selfEval) hasSelfFieldGap = true
+      if (rowHighlight.evidence) hasSelfFieldGap = true
+      if (rowHighlight.selfEval) {
+        hasSelfFieldGap = true
+        if ((assignment.subItems?.length ?? 0) > 0) hasSubItemSelfGap = true
+      }
       if (rowHighlight.leaderEval) unevaluatedCount += 1
     }
 
@@ -3679,12 +3824,20 @@ function ResultsSection({
     }
 
     if (hasInvalidNumeric) {
-      toast.error('Số liệu không hợp lệ hoặc chưa nhập — kiểm tra các ô được đánh dấu đỏ.')
+      toast.error(
+        hasSubItemSelfGap
+          ? 'Số liệu mục con không hợp lệ — kiểm tra các ô đỏ trong khối mục con.'
+          : 'Số liệu không hợp lệ hoặc chưa nhập — kiểm tra các ô được đánh dấu đỏ.'
+      )
     } else if (hasUnitGap) {
       toast.error('Vui lòng nhập đơn vị — kiểm tra các ô được đánh dấu đỏ.')
     } else if (unevaluatedCount > 0) {
       toast.error(
         `Cần đánh giá OK hoặc NOT cho tất cả KPI/OKR của các thành viên (còn ${unevaluatedCount} mục).`
+      )
+    } else if (hasSubItemSelfGap) {
+      toast.error(
+        'Vui lòng chọn OK hoặc NOT cho từng mục con — kiểm tra các ô đỏ bên dưới nội dung KPI.'
       )
     } else if (hasSelfFieldGap) {
       toast.error('Vui lòng điền đầy đủ minh chứng và tự đánh giá trước khi gửi duyệt.')
@@ -3725,7 +3878,7 @@ function ResultsSection({
         </div>
       </div>
 
-      {isTrafficTeam && resultApprovalRequest?.status === 'pending' && (
+      {resultApprovalRequest?.status === 'pending' && (
         <div className="mb-4 flex items-center gap-3 rounded-xl border border-yellow-400/50 bg-yellow-50 px-4 py-3 dark:border-yellow-700/40 dark:bg-yellow-950/30">
           <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-yellow-400" />
           <div className="flex-1 text-sm font-medium text-yellow-800 dark:text-yellow-200">
@@ -3733,7 +3886,7 @@ function ResultsSection({
           </div>
         </div>
       )}
-      {isTrafficTeam && resultApprovalRequest?.status === 'approved' && (
+      {resultApprovalRequest?.status === 'approved' && (
         <div className="mb-4 flex items-center gap-3 rounded-xl border border-green-400/50 bg-green-50 px-4 py-3 dark:border-green-700/40 dark:bg-green-950/30">
           <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
           <div className="flex-1 text-sm font-medium text-green-800 dark:text-green-200">
@@ -3741,7 +3894,7 @@ function ResultsSection({
           </div>
         </div>
       )}
-      {isTrafficTeam && resultApprovalRequest?.status === 'rejected' && (
+      {resultApprovalRequest?.status === 'rejected' && (
         <div className="mb-4 rounded-xl border border-red-400/50 bg-red-50 px-4 py-3 dark:border-red-700/40 dark:bg-red-950/30">
           <div className="flex items-center gap-3">
             <X className="h-4 w-4 text-red-600 dark:text-red-400" />
@@ -3800,7 +3953,6 @@ function ResultsSection({
             resultsReadOnly={
               isResultApprovalLocked || Boolean(isKinhDoanhTeam && !kinhDoanhResultsCloseOpen)
             }
-            isTrafficTeam={isTrafficTeam}
             isKinhDoanhTeam={isKinhDoanhTeam}
             kinhDoanhResultsCloseOpen={kinhDoanhResultsCloseOpen}
             kinhDoanhResultsCloseBounds={kinhDoanhResultsCloseBounds}
@@ -3994,8 +4146,9 @@ function miniCreateEmptyLine(): {
   priority: number
   content: string
   targetMetric: string
+  subItems: SubItemDraft[]
 } {
-  return { kind: 'KPI', priority: 1, content: '', targetMetric: '' }
+  return { kind: 'KPI', priority: 1, content: '', targetMetric: '', subItems: [] }
 }
 
 /** Dialog đơn giản cho manager thêm chỉ số cho toàn team (cascade). */
@@ -4164,8 +4317,10 @@ function MiniCreateForm({
       priority: number
       content: string
       targetMetric: string
+      subItems: SubItemDraft[]
     }>
   }
+  const [expandedLineIndexes, setExpandedLineIndexes] = useState<Record<number, boolean>>({})
   const fallbackAssigneeId = useMemo(() => {
     if (defaultAssigneeId && members.some((m) => m.userId === defaultAssigneeId))
       return defaultAssigneeId
@@ -4278,6 +4433,7 @@ function MiniCreateForm({
       priority: Number(line.priority),
       content: line.content.trim(),
       targetMetric: line.targetMetric.trim() ? line.targetMetric.trim() : null,
+      subItems: mapSubItemsToPayload(line.subItems),
     }))
 
     try {
@@ -4505,80 +4661,100 @@ function MiniCreateForm({
                     </thead>
                     <tbody>
                       {fields.map((fieldRow, index) => (
-                        <tr
-                          key={fieldRow.id}
-                          className="border-b last:border-0 transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
-                        >
-                          <td className="px-3 py-2 text-xs font-medium text-slate-400 tabular-nums">
-                            {index + 1}
-                          </td>
-                          <td className="px-2 py-2">
-                            <SelectController
-                              control={control}
-                              name={`lines.${index}.kind`}
-                              label=""
-                              required
-                              rules={{ required: true }}
-                            >
-                              <SelectItem value="KPI">KPI</SelectItem>
-                              <SelectItem value="OKR">OKR</SelectItem>
-                            </SelectController>
-                          </td>
-                          <td className="px-2 py-2">
-                            <SelectController
-                              control={control}
-                              name={`lines.${index}.priority`}
-                              label=""
-                              required
-                              rules={{ required: true, min: 0, max: 99 }}
-                            >
-                              <SelectItem value="1">P1 - Cao</SelectItem>
-                              <SelectItem value="2">P2 - TB</SelectItem>
-                              <SelectItem value="3">P3 - Thấp</SelectItem>
-                            </SelectController>
-                          </td>
-                          <td className="px-2 py-2">
-                            <InputController
-                              control={control}
-                              name={`lines.${index}.targetMetric`}
-                              label=""
-                              inputClassName="h-9 w-[80px] rounded-lg border-slate-200 text-sm tabular-nums dark:border-slate-700"
-                              placeholder="60"
-                            />
-                          </td>
-                          <td className="px-2 py-2 min-w-[220px]">
-                            <TextareaController
-                              control={control}
-                              name={`lines.${index}.content`}
-                              label=""
-                              required
-                              rules={{ required: true, maxLength: 500 }}
-                              maxLength={500}
-                              textareaClassName="min-h-[36px] resize-none rounded-lg border-slate-200 p-2 text-sm dark:border-slate-700 w-full"
-                              placeholder="Mô tả mục tiêu..."
-                            />
-                          </td>
-                          <td className="px-1 py-2">
-                            {fields.length > 1 && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 rounded-lg text-slate-400 hover:text-destructive"
-                                    onClick={() => remove(index)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="text-xs">
-                                  Xóa dòng này
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </td>
-                        </tr>
+                        <Fragment key={fieldRow.id}>
+                          <tr
+                            key={fieldRow.id}
+                            className="border-b last:border-0 transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
+                          >
+                            <td className="px-3 py-2 text-xs font-medium text-slate-400 tabular-nums">
+                              {index + 1}
+                            </td>
+                            <td className="px-2 py-2">
+                              <SelectController
+                                control={control}
+                                name={`lines.${index}.kind`}
+                                label=""
+                                required
+                                rules={{ required: true }}
+                              >
+                                <SelectItem value="KPI">KPI</SelectItem>
+                                <SelectItem value="OKR">OKR</SelectItem>
+                              </SelectController>
+                            </td>
+                            <td className="px-2 py-2">
+                              <SelectController
+                                control={control}
+                                name={`lines.${index}.priority`}
+                                label=""
+                                required
+                                rules={{ required: true, min: 0, max: 99 }}
+                              >
+                                <SelectItem value="1">P1 - Cao</SelectItem>
+                                <SelectItem value="2">P2 - TB</SelectItem>
+                                <SelectItem value="3">P3 - Thấp</SelectItem>
+                              </SelectController>
+                            </td>
+                            <td className="px-2 py-2">
+                              <InputController
+                                control={control}
+                                name={`lines.${index}.targetMetric`}
+                                label=""
+                                inputClassName="h-9 w-[80px] rounded-lg border-slate-200 text-sm tabular-nums dark:border-slate-700"
+                                placeholder="60"
+                              />
+                            </td>
+                            <td className="px-2 py-2 min-w-[220px]">
+                              <TextareaController
+                                control={control}
+                                name={`lines.${index}.content`}
+                                label=""
+                                required
+                                rules={{ required: true, maxLength: 500 }}
+                                maxLength={500}
+                                textareaClassName="min-h-[36px] resize-none rounded-lg border-slate-200 p-2 text-sm dark:border-slate-700 w-full"
+                                placeholder="Mô tả mục tiêu..."
+                              />
+                            </td>
+                            <td className="px-1 py-2">
+                              {fields.length > 1 && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 rounded-lg text-slate-400 hover:text-destructive"
+                                      onClick={() => remove(index)}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs">
+                                    Xóa dòng này
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </td>
+                          </tr>
+                          <tr
+                            key={`${fieldRow.id}-sub`}
+                            className="border-b bg-slate-50/30 dark:bg-slate-900/20"
+                          >
+                            <td colSpan={6} className="px-3 py-2">
+                              <SubItemsEditorPanel
+                                control={control}
+                                namePrefix={`lines.${index}.subItems`}
+                                expanded={Boolean(expandedLineIndexes[index])}
+                                onToggle={() =>
+                                  setExpandedLineIndexes((prev) => ({
+                                    ...prev,
+                                    [index]: !prev[index],
+                                  }))
+                                }
+                              />
+                            </td>
+                          </tr>
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>

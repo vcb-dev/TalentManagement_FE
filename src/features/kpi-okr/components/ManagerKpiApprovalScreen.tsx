@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useKpiOkrStream } from '@/features/kpi-okr/useKpiOkrStream'
 import {
   CheckCircle2,
   Clock,
@@ -20,13 +21,29 @@ import {
   type ApprovalRequestType,
   type PerformanceAssignment,
   type PerformanceKind,
+  type PerformanceSummaryRow,
 } from '@/features/kpi-okr/api'
 import {
   EvalStatusBadge,
   GoalReviewStatusBadge,
   GoalReviewSummary,
   formatViNumber,
+  resolveParentKpiDisplay,
 } from '@/features/kpi-okr/components/kpiAssignmentTableShared'
+import { MemberEvaluationSummaryCard } from '@/features/kpi-okr/components/MemberEvaluationSummaryCard'
+import { MemberKpiDetailDrawer } from '@/features/kpi-okr/components/MemberKpiDetailDrawer'
+import { EvalToggleGroup, KpiProgressBar } from '@/features/kpi-okr/components/KpiProgressBar'
+import {
+  computeRowProgress,
+  computeSubItemProgress,
+} from '@/features/kpi-okr/utils/kpiProgressUtils'
+import {
+  AssignmentSubItemsInline,
+  mapSubItemsToPayload,
+  subItemsFromAssignment,
+  SubItemsDraftEditor,
+} from '@/features/kpi-okr/components/kpiSubItemsShared'
+import type { SubItemDraft } from '@/features/kpi-okr/utils/kpiProgressUtils'
 import {
   EvidenceImagePreviews,
   evidenceImageUrlsFromText,
@@ -108,15 +125,21 @@ function TeamResultInline({
   month,
   requestStatus,
   onEvaluationsChange,
+  onOpenDetail,
 }: {
   teamId: string
   year: number
   month: number
   requestStatus: ApprovalRequest['status']
   onEvaluationsChange?: (
-    evals: { assignmentId: string; status: 'OK' | 'NOT' }[],
+    evals: {
+      assignmentId: string
+      status: 'OK' | 'NOT'
+      managerReviewNote?: string | null
+    }[],
     allEvaluated: boolean
   ) => void
+  onOpenDetail?: (member: { userId: string; name: string; items: PerformanceAssignment[] }) => void
 }) {
   const assignmentsQ = useQuery({
     queryKey: ['kpi-assignments-result', teamId, year, month],
@@ -124,19 +147,37 @@ function TeamResultInline({
     enabled: !isMockApiEnabled(),
   })
 
+  const summariesQ = useQuery({
+    queryKey: ['kpi-summaries-result', teamId, year, month],
+    queryFn: () => performanceApi.listSummaries(teamId, year, month),
+    enabled: !isMockApiEnabled(),
+  })
+
   const [evalMap, setEvalMap] = useState<Record<string, 'OK' | 'NOT'>>({})
+  const [noteMap, setNoteMap] = useState<Record<string, string>>({})
+  const [expandedSubItems, setExpandedSubItems] = useState<Record<string, boolean>>({})
 
   const assignments = assignmentsQ.data ?? []
+  const summaries = summariesQ.data ?? []
+  const summaryByUser = useMemo(
+    () => new Map<string, PerformanceSummaryRow>(summaries.map((s) => [s.assigneeUserId, s])),
+    [summaries]
+  )
 
   useEffect(() => {
     if (assignments.length > 0) {
       const initialMap: Record<string, 'OK' | 'NOT'> = {}
+      const initialNotes: Record<string, string> = {}
       for (const a of assignments) {
         if (a.finalEvalStatus === 'OK' || a.finalEvalStatus === 'NOT') {
           initialMap[a.id] = a.finalEvalStatus as 'OK' | 'NOT'
         }
+        if (a.managerReviewNote?.trim()) {
+          initialNotes[a.id] = a.managerReviewNote.trim()
+        }
       }
       setEvalMap(initialMap)
+      setNoteMap(initialNotes)
     }
   }, [assignments])
 
@@ -147,23 +188,33 @@ function TeamResultInline({
         .map((a) => ({
           assignmentId: a.id,
           status: evalMap[a.id] as 'OK' | 'NOT',
+          managerReviewNote: noteMap[a.id]?.trim() || null,
         }))
       const allEvaluated = assignments.every(
         (a) => evalMap[a.id] === 'OK' || evalMap[a.id] === 'NOT'
       )
       onEvaluationsChange(evals, allEvaluated)
     }
-  }, [assignments, evalMap, onEvaluationsChange])
+  }, [assignments, evalMap, noteMap, onEvaluationsChange])
 
-  const handleStatusChange = (assignmentId: string, status: string) => {
-    const nextMap = { ...evalMap }
-    if (status === '__none' || !status) {
-      delete nextMap[assignmentId]
-    } else {
-      nextMap[assignmentId] = status as 'OK' | 'NOT'
-    }
-    setEvalMap(nextMap)
+  const handleStatusChange = (assignmentId: string, status: 'OK' | 'NOT' | undefined) => {
+    setEvalMap((prev) => {
+      const next = { ...prev }
+      if (!status) delete next[assignmentId]
+      else next[assignmentId] = status
+      return next
+    })
   }
+
+  const setAllEvaluations = (status: 'OK' | 'NOT') => {
+    const next: Record<string, 'OK' | 'NOT'> = {}
+    for (const a of assignments) next[a.id] = status
+    setEvalMap(next)
+  }
+
+  const evaluatedCount = assignments.filter(
+    (a) => evalMap[a.id] === 'OK' || evalMap[a.id] === 'NOT'
+  ).length
 
   if (assignmentsQ.isLoading) {
     return (
@@ -199,25 +250,205 @@ function TeamResultInline({
     'Nội dung',
     'Chỉ tiêu',
     'Số liệu',
+    'Tiến độ',
     'Đơn vị',
     'Minh chứng',
     'Tự đánh giá',
     'Nhận xét NV',
     'Đánh giá Leader',
+    'Ghi chú QL',
     'Đánh giá Manager',
   ] as const
 
+  const renderAssignmentRow = (a: PerformanceAssignment, isSub = false, subLabel?: string) => {
+    const displayEv = evidenceTextWithoutUploadPaths(a.evidence)
+    const hasImagePreviews = evidenceImageUrlsFromText(a.evidence).length > 0
+    const parentDisplay = !isSub ? resolveParentKpiDisplay(a) : null
+    const progress = isSub
+      ? (computeRowProgress(a.numericValue ?? null, a.targetMetric, a.progressPercent) ?? null)
+      : (parentDisplay?.progress ?? null)
+    const missingEvidence = !a.evidence?.trim() && !hasImagePreviews
+    const evalStatus = evalMap[a.id]
+    const rowBorder =
+      requestStatus === 'pending' && evalStatus === 'OK'
+        ? 'border-l-4 border-l-emerald-500'
+        : requestStatus === 'pending' && evalStatus === 'NOT'
+          ? 'border-l-4 border-l-rose-500'
+          : missingEvidence
+            ? 'border-l-4 border-l-amber-400'
+            : ''
+
+    return (
+      <tr
+        key={isSub ? `${a.id}-sub-${subLabel}` : a.id}
+        className={cn(
+          'border-b last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30',
+          rowBorder,
+          isSub && 'bg-slate-50/40 dark:bg-slate-900/20'
+        )}
+      >
+        <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-slate-500">
+          {isSub ? '' : formatKpiSetAt(a.kpiSetAt)}
+        </td>
+        <td className="px-2.5 py-2">
+          {!isSub && (
+            <span
+              className={cn(
+                'inline-block rounded px-1.5 py-0.5 text-[10px] font-bold',
+                a.kind === 'KPI'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                  : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
+              )}
+            >
+              {a.kind}
+            </span>
+          )}
+        </td>
+        <td className="whitespace-nowrap px-2.5 py-2">
+          {!isSub && <PriorityText priority={a.priority} />}
+        </td>
+        <td
+          className={cn(
+            'px-2.5 py-2 max-w-[280px] whitespace-pre-wrap text-slate-700 dark:text-slate-200',
+            isSub && 'pl-6 text-[11px] text-slate-500'
+          )}
+        >
+          {isSub ? `↳ ${subLabel}` : a.content}
+        </td>
+        <td className="whitespace-nowrap px-2.5 py-2 tabular-nums font-semibold text-slate-700 dark:text-slate-200">
+          {isSub
+            ? (a.targetMetric ?? '—')
+            : a.targetMetric?.trim()
+              ? a.targetMetric.trim()
+              : (parentDisplay?.targetMetric ?? '—')}
+        </td>
+        <td className="whitespace-nowrap px-2.5 py-2 tabular-nums font-semibold text-slate-800 dark:text-slate-100">
+          {isSub ? formatViNumber(a.numericValue) : (parentDisplay?.numericLabel ?? '—')}
+        </td>
+        <td className="min-w-[100px] px-2.5 py-2">
+          {progress != null ? (
+            <KpiProgressBar value={progress} barClassName="h-1.5" />
+          ) : (
+            <span className="text-slate-400">—</span>
+          )}
+        </td>
+        <td className="whitespace-nowrap px-2.5 py-2 text-xs uppercase text-slate-600">
+          {isSub ? a.numericUnit?.trim() || '—' : (parentDisplay?.numericUnit ?? '—')}
+        </td>
+        <td className="max-w-[160px] min-w-[120px] px-2.5 py-2">
+          {!isSub && (
+            <>
+              {displayEv ? (
+                <span className="line-clamp-3 whitespace-pre-wrap break-all text-slate-600">
+                  {displayEv}
+                </span>
+              ) : hasImagePreviews ? null : (
+                <span className="text-slate-400">—</span>
+              )}
+              <EvidenceImagePreviews evidence={a.evidence} maxHeightClass="h-12 max-w-[72px]" />
+            </>
+          )}
+        </td>
+        <td className="whitespace-nowrap px-2.5 py-2">
+          {!isSub && <EvalStatusBadge status={a.selfEvalStatus ?? null} type="self" />}
+        </td>
+        <td className="max-w-[200px] px-2.5 py-2 text-slate-600 dark:text-slate-300">
+          {!isSub &&
+            (a.selfReviewNote?.trim() ? (
+              <span className="line-clamp-3 whitespace-pre-wrap">{a.selfReviewNote}</span>
+            ) : (
+              <span className="text-slate-400">—</span>
+            ))}
+        </td>
+        <td className="whitespace-nowrap px-2.5 py-2">
+          {!isSub && (
+            <div className="flex flex-col gap-1">
+              <EvalStatusBadge status={a.managerEvalStatus ?? null} type="leader" />
+              {a.managerReviewNote?.trim() && (
+                <span
+                  className="text-[10px] text-slate-400 block max-w-[120px] truncate"
+                  title={a.managerReviewNote}
+                >
+                  {a.managerReviewNote}
+                </span>
+              )}
+            </div>
+          )}
+        </td>
+        <td className="max-w-[140px] px-2.5 py-2">
+          {!isSub &&
+            (requestStatus === 'pending' ? (
+              <Textarea
+                value={noteMap[a.id] ?? ''}
+                onChange={(e) => setNoteMap((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                rows={1}
+                className="min-h-[32px] resize-y text-[11px] rounded-md"
+                placeholder="Ghi chú..."
+              />
+            ) : (
+              <span className="text-[11px] text-slate-500 line-clamp-2">
+                {a.managerReviewNote?.trim() || '—'}
+              </span>
+            ))}
+        </td>
+        <td className="whitespace-nowrap px-2.5 py-2">
+          {!isSub &&
+            (requestStatus === 'pending' ? (
+              <EvalToggleGroup
+                value={evalMap[a.id]}
+                onChange={(v) => handleStatusChange(a.id, v)}
+              />
+            ) : (
+              <EvalStatusBadge status={a.finalEvalStatus ?? null} type="manager" />
+            ))}
+        </td>
+      </tr>
+    )
+  }
+
   return (
     <div className="px-3 pb-3 space-y-4">
+      {requestStatus === 'pending' && assignments.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-slate-50 px-3 py-2 text-xs dark:bg-slate-900/40">
+          <span className="text-slate-600 dark:text-slate-300">
+            Đã đánh giá{' '}
+            <strong>
+              {evaluatedCount}/{assignments.length}
+            </strong>{' '}
+            mục
+          </span>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={() => setAllEvaluations('OK')}
+            >
+              Tất cả OK
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs text-rose-600"
+              onClick={() => setAllEvaluations('NOT')}
+            >
+              Tất cả NOT
+            </Button>
+          </div>
+        </div>
+      )}
       {grouped.map((g) => (
         <div key={g.userId} className="rounded-lg border overflow-hidden">
-          <div className="bg-slate-100 dark:bg-slate-700 px-3 py-1.5 flex items-center gap-2">
-            <User className="h-3.5 w-3.5 text-slate-500" />
-            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{g.name}</span>
-            <span className="text-xs text-slate-400">({g.items.length} kết quả)</span>
-          </div>
+          <MemberEvaluationSummaryCard
+            memberName={g.name}
+            summary={summaryByUser.get(g.userId) ?? null}
+            assignments={g.items}
+            onViewDetail={() => onOpenDetail?.({ userId: g.userId, name: g.name, items: g.items })}
+          />
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px] text-xs">
+            <table className="w-full min-w-[1100px] text-xs">
               <thead>
                 <tr className="border-b bg-slate-50 dark:bg-slate-800/50">
                   {resultTableHead.map((h) => (
@@ -231,107 +462,50 @@ function TeamResultInline({
                 </tr>
               </thead>
               <tbody>
-                {g.items.map((a) => {
-                  const displayEv = evidenceTextWithoutUploadPaths(a.evidence)
-                  const hasImagePreviews = evidenceImageUrlsFromText(a.evidence).length > 0
-                  return (
-                    <tr
-                      key={a.id}
-                      className="border-b last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
-                    >
-                      <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-slate-500">
-                        {formatKpiSetAt(a.kpiSetAt)}
-                      </td>
-                      <td className="px-2.5 py-2">
-                        <span
-                          className={cn(
-                            'inline-block rounded px-1.5 py-0.5 text-[10px] font-bold',
-                            a.kind === 'KPI'
-                              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                              : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
-                          )}
-                        >
-                          {a.kind}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-2.5 py-2">
-                        <PriorityText priority={a.priority} />
-                      </td>
-                      <td className="px-2.5 py-2 max-w-[280px] whitespace-pre-wrap text-slate-700 dark:text-slate-200">
-                        {a.content}
-                      </td>
-                      <td className="whitespace-nowrap px-2.5 py-2 tabular-nums font-semibold text-slate-700 dark:text-slate-200">
-                        {a.targetMetric?.trim() || '—'}
-                      </td>
-                      <td className="whitespace-nowrap px-2.5 py-2 tabular-nums font-semibold text-slate-800 dark:text-slate-100">
-                        {formatViNumber(a.numericValue)}
-                      </td>
-                      <td className="whitespace-nowrap px-2.5 py-2 text-xs uppercase text-slate-600">
-                        {a.numericUnit?.trim() || '—'}
-                      </td>
-                      <td className="max-w-[160px] min-w-[120px] px-2.5 py-2">
-                        {displayEv ? (
-                          <span className="line-clamp-3 whitespace-pre-wrap break-all text-slate-600">
-                            {displayEv}
-                          </span>
-                        ) : hasImagePreviews ? null : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                        <EvidenceImagePreviews
-                          evidence={a.evidence}
-                          maxHeightClass="h-12 max-w-[72px]"
-                        />
-                      </td>
-                      <td className="whitespace-nowrap px-2.5 py-2">
-                        <EvalStatusBadge status={a.selfEvalStatus ?? null} type="self" />
-                      </td>
-                      <td className="max-w-[200px] px-2.5 py-2 text-slate-600 dark:text-slate-300">
-                        {a.selfReviewNote?.trim() ? (
-                          <span className="line-clamp-3 whitespace-pre-wrap">
-                            {a.selfReviewNote}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-2.5 py-2">
-                        <div className="flex flex-col gap-1">
-                          <EvalStatusBadge status={a.managerEvalStatus ?? null} type="leader" />
-                          {a.managerReviewNote?.trim() && (
-                            <span
-                              className="text-[10px] text-slate-400 block max-w-[120px] truncate"
-                              title={a.managerReviewNote}
-                            >
-                              {a.managerReviewNote}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-2.5 py-2">
-                        {requestStatus === 'pending' ? (
-                          <Select
-                            value={evalMap[a.id] || '__none'}
-                            onValueChange={(v) => handleStatusChange(a.id, v)}
-                          >
-                            <SelectTrigger className="h-8 w-20 rounded-md border-slate-200">
-                              <SelectValue placeholder="—" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none">—</SelectItem>
-                              <SelectItem value="OK">OK</SelectItem>
-                              <SelectItem value="NOT">NOT</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <EvalStatusBadge status={a.finalEvalStatus ?? null} type="manager" />
-                        )}
-                      </td>
-                    </tr>
-                  )
+                {g.items.flatMap((a) => {
+                  const rows = [renderAssignmentRow(a)]
+                  if ((a.subItems?.length ?? 0) > 0 && expandedSubItems[a.id]) {
+                    for (const sub of a.subItems ?? []) {
+                      rows.push(
+                        renderAssignmentRow(
+                          {
+                            ...a,
+                            id: `${a.id}-sub-${sub.id}`,
+                            targetMetric: sub.targetMetric,
+                            numericValue: sub.numericValue,
+                            numericUnit: sub.numericUnit,
+                            progressPercent: computeSubItemProgress(sub),
+                          },
+                          true,
+                          sub.label
+                        )
+                      )
+                    }
+                  }
+                  return rows
                 })}
               </tbody>
             </table>
           </div>
+          {g.items.some((a) => (a.subItems?.length ?? 0) > 0) && (
+            <div className="border-t px-3 py-1.5">
+              {g.items
+                .filter((a) => (a.subItems?.length ?? 0) > 0)
+                .map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className="mr-3 text-[10px] font-semibold text-indigo-600"
+                    onClick={() =>
+                      setExpandedSubItems((prev) => ({ ...prev, [a.id]: !prev[a.id] }))
+                    }
+                  >
+                    {(expandedSubItems[a.id] ? '▲' : '▼') + ' '}
+                    {a.content.slice(0, 30)} ({a.subItems?.length} mục con)
+                  </button>
+                ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -342,6 +516,20 @@ type ApprovalGoalEditDraft = {
   priority: number
   content: string
   targetMetric: string
+  subItems: SubItemDraft[]
+}
+
+function buildApprovalGoalEditDraft(assignment: PerformanceAssignment): ApprovalGoalEditDraft {
+  const review = assignment.goalReview
+  const useProposed = review?.status === 'edit_pending_member'
+  return {
+    priority: useProposed ? (review.proposedPriority ?? assignment.priority) : assignment.priority,
+    content: useProposed ? (review.proposedContent ?? assignment.content) : assignment.content,
+    targetMetric: useProposed
+      ? (review.proposedTargetMetric ?? assignment.targetMetric ?? '')
+      : (assignment.targetMetric ?? ''),
+    subItems: subItemsFromAssignment(assignment.subItems),
+  }
 }
 
 function ActionTooltip({ label, children }: { label: string; children: ReactNode }) {
@@ -368,17 +556,12 @@ function ApprovalGoalActionCell({
 }) {
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [rejectOpen, setRejectOpen] = useState(false)
-  const [rejectReason, setRejectReason] = useState('')
   const [approving, setApproving] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [rejecting, setRejecting] = useState(false)
-  const [draft, setDraft] = useState<ApprovalGoalEditDraft>({
-    priority: assignment.priority,
-    content: assignment.content,
-    targetMetric: assignment.targetMetric ?? '',
-  })
+  const [draft, setDraft] = useState<ApprovalGoalEditDraft>(() =>
+    buildApprovalGoalEditDraft(assignment)
+  )
   const reviewStatus = assignment.goalReview?.status ?? 'pending'
   const isTerminal =
     reviewStatus === 'approved' ||
@@ -405,11 +588,7 @@ function ApprovalGoalActionCell({
 
   useEffect(() => {
     if (!editOpen) return
-    setDraft({
-      priority: assignment.priority,
-      content: assignment.content,
-      targetMetric: assignment.targetMetric ?? '',
-    })
+    setDraft(buildApprovalGoalEditDraft(assignment))
   }, [assignment, editOpen])
 
   const handleApproveGoal = useCallback(async () => {
@@ -446,6 +625,7 @@ function ApprovalGoalActionCell({
         priority: draft.priority,
         content,
         targetMetric: draft.targetMetric.trim() || null,
+        subItems: mapSubItemsToPayload(draft.subItems),
       })
       toast.success('Đã gửi nội dung sửa cho member xác nhận.')
       setEditOpen(false)
@@ -470,26 +650,6 @@ function ApprovalGoalActionCell({
       setDeleting(false)
     }
   }, [assignment.id, onChanged, requestId])
-
-  const handleRejectGoal = useCallback(async () => {
-    const reason = rejectReason.trim()
-    if (!reason) {
-      toast.error('Vui lòng nhập lý do từ chối.')
-      return
-    }
-    setRejecting(true)
-    try {
-      await performanceApi.rejectGoalReview(requestId, assignment.id, reason)
-      toast.success('Đã từ chối KPI/OKR.')
-      setRejectOpen(false)
-      setRejectReason('')
-      onChanged()
-    } catch (err: unknown) {
-      toast.error('Từ chối thất bại: ' + getApiErrorMessage(err))
-    } finally {
-      setRejecting(false)
-    }
-  }, [assignment.id, onChanged, rejectReason, requestId])
 
   return (
     <td className="sticky right-0 z-10 whitespace-nowrap bg-white px-2.5 py-2 text-right shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.18)] dark:bg-slate-950">
@@ -554,10 +714,16 @@ function ApprovalGoalActionCell({
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Sửa mục tiêu KPI/OKR</DialogTitle>
+            <p className="text-xs text-slate-500">
+              Thay đổi sẽ gửi cho member xác nhận trước khi áp dụng chính thức.
+            </p>
           </DialogHeader>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Ưu tiên</Label>
+              <p className="text-[10px] text-slate-400">
+                Mức quan trọng: 1 = cao nhất, 0 = không xếp hạng.
+              </p>
               <Select
                 value={String(draft.priority)}
                 onValueChange={(v) => setDraft((prev) => ({ ...prev, priority: Number(v) }))}
@@ -575,17 +741,25 @@ function ApprovalGoalActionCell({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Chỉ tiêu</Label>
+              <Label className="text-xs font-semibold">Chỉ tiêu (KPI/OKR cha)</Label>
+              <p className="text-[10px] text-slate-400">
+                Số hoặc mức tổng cần đạt của mục tiêu chính — VD: 60, 100%.
+              </p>
               <Input
                 value={draft.targetMetric}
                 onChange={(e) => setDraft((prev) => ({ ...prev, targetMetric: e.target.value }))}
                 disabled={saving}
                 className="h-10 rounded-xl"
-                placeholder="VD: 60"
+                placeholder="VD: 60 hoặc 100%"
               />
             </div>
             <div className="space-y-1.5 md:col-span-2">
-              <Label className="text-xs font-semibold">Nội dung KPI/OKR</Label>
+              <Label className="text-xs font-semibold">
+                Nội dung KPI/OKR <span className="text-rose-500">*</span>
+              </Label>
+              <p className="text-[10px] text-slate-400">
+                Mô tả mục tiêu công việc cần hoàn thành trong tháng (tối đa 500 ký tự).
+              </p>
               <Textarea
                 value={draft.content}
                 onChange={(e) => setDraft((prev) => ({ ...prev, content: e.target.value }))}
@@ -593,9 +767,14 @@ function ApprovalGoalActionCell({
                 maxLength={500}
                 rows={4}
                 className="rounded-xl"
-                placeholder="Nhập nội dung KPI/OKR..."
+                placeholder="VD: Hoàn thiện module HRM phục vụ team..."
               />
             </div>
+            <SubItemsDraftEditor
+              value={draft.subItems}
+              onChange={(subItems) => setDraft((prev) => ({ ...prev, subItems }))}
+              disabled={saving}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
@@ -603,38 +782,6 @@ function ApprovalGoalActionCell({
             </Button>
             <Button onClick={() => void handleSave()} disabled={saving}>
               {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Từ chối KPI/OKR</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Lý do từ chối</Label>
-            <Textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              rows={4}
-              maxLength={1000}
-              disabled={rejecting}
-              className="rounded-xl"
-              placeholder="Nhập lý do để member và leader nắm được..."
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={rejecting}>
-              Hủy
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void handleRejectGoal()}
-              disabled={rejecting}
-            >
-              {rejecting ? 'Đang từ chối...' : 'Từ chối'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -648,11 +795,23 @@ type ApprovalGoalCreateDraft = {
   priority: number
   content: string
   targetMetric: string
+  numericUnit: string
+  subItems: SubItemDraft[]
+}
+
+const EMPTY_CREATE_DRAFT: ApprovalGoalCreateDraft = {
+  kind: 'KPI',
+  priority: 1,
+  content: '',
+  targetMetric: '',
+  numericUnit: '',
+  subItems: [],
 }
 
 function AddApprovalGoalDialog({
   requestId,
   userId,
+  memberName,
   year,
   month,
   disabled,
@@ -660,6 +819,7 @@ function AddApprovalGoalDialog({
 }: {
   requestId: string
   userId: string
+  memberName: string
   year: number
   month: number
   disabled: boolean
@@ -667,15 +827,10 @@ function AddApprovalGoalDialog({
 }) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [draft, setDraft] = useState<ApprovalGoalCreateDraft>({
-    kind: 'KPI',
-    priority: 1,
-    content: '',
-    targetMetric: '',
-  })
+  const [draft, setDraft] = useState<ApprovalGoalCreateDraft>(EMPTY_CREATE_DRAFT)
 
   const reset = useCallback(() => {
-    setDraft({ kind: 'KPI', priority: 1, content: '', targetMetric: '' })
+    setDraft(EMPTY_CREATE_DRAFT)
   }, [])
 
   const handleCreate = useCallback(async () => {
@@ -703,6 +858,8 @@ function AddApprovalGoalDialog({
         priority: draft.priority,
         content,
         targetMetric: draft.targetMetric.trim() || null,
+        numericUnit: draft.numericUnit.trim().toUpperCase() || null,
+        subItems: mapSubItemsToPayload(draft.subItems),
       })
       toast.success('Đã thêm KPI/OKR vào yêu cầu duyệt.')
       setOpen(false)
@@ -746,6 +903,11 @@ function AddApprovalGoalDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Thêm KPI/OKR cho nhân sự</DialogTitle>
+          <p className="text-sm text-slate-500">
+            Nhân sự:{' '}
+            <span className="font-semibold text-slate-800 dark:text-slate-200">{memberName}</span> ·
+            Kỳ T{month}/{year}
+          </p>
         </DialogHeader>
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
@@ -782,8 +944,9 @@ function AddApprovalGoalDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5 md:col-span-2">
+          <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Chỉ tiêu</Label>
+            <p className="text-[10px] text-slate-400">Số hoặc mức cần đạt — VD: 60, 100%.</p>
             <Input
               value={draft.targetMetric}
               onChange={(e) => setDraft((prev) => ({ ...prev, targetMetric: e.target.value }))}
@@ -792,17 +955,39 @@ function AddApprovalGoalDialog({
               className="h-10 rounded-xl"
             />
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Đơn vị (ĐVT)</Label>
+            <p className="text-[10px] text-slate-400">Đơn vị đo lường — VD: %, đơn, buổi.</p>
+            <Input
+              value={draft.numericUnit}
+              onChange={(e) => setDraft((prev) => ({ ...prev, numericUnit: e.target.value }))}
+              disabled={saving}
+              placeholder="VD: %"
+              className="h-10 rounded-xl"
+            />
+          </div>
           <div className="space-y-1.5 md:col-span-2">
-            <Label className="text-xs font-semibold">Nội dung KPI/OKR</Label>
+            <Label className="text-xs font-semibold">
+              Nội dung KPI/OKR <span className="text-rose-500">*</span>
+            </Label>
+            <p className="text-[10px] text-slate-400">
+              Mô tả mục tiêu công việc cần hoàn thành trong tháng (tối đa 500 ký tự).
+            </p>
             <Textarea
               value={draft.content}
               onChange={(e) => setDraft((prev) => ({ ...prev, content: e.target.value }))}
               disabled={saving}
               maxLength={500}
+              rows={4}
               placeholder="Nhập nội dung KPI/OKR cần bổ sung..."
-              className="min-h-[110px] rounded-xl"
+              className="rounded-xl"
             />
           </div>
+          <SubItemsDraftEditor
+            value={draft.subItems}
+            onChange={(subItems) => setDraft((prev) => ({ ...prev, subItems }))}
+            disabled={saving}
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
@@ -832,6 +1017,7 @@ function TeamKpiInline({
   requestStatus: ApprovalRequest['status']
   onChanged: () => void
 }) {
+  const [expandedSubItems, setExpandedSubItems] = useState<Record<string, boolean>>({})
   const assignmentsQ = useQuery({
     queryKey: ['kpi-assignments', teamId, year, month],
     queryFn: () => performanceApi.listAssignments(teamId, year, month),
@@ -871,106 +1057,145 @@ function TeamKpiInline({
 
   const showActionColumn = requestStatus === 'pending' && !isMockApiEnabled()
 
+  // Đếm tổng số item còn pending để hiển thị cảnh báo
+  const totalPending =
+    requestStatus === 'pending'
+      ? assignments.filter((a) => !a.goalReview || a.goalReview.status === 'pending').length
+      : 0
+
   return (
     <div className="px-3 pb-3 space-y-4">
-      {grouped.map((g) => (
-        <div key={g.userId} className="rounded-lg border overflow-hidden">
-          {/* Member header */}
-          <div className="bg-slate-100 dark:bg-slate-700 px-3 py-1.5 flex items-center gap-2">
-            <User className="h-3.5 w-3.5 text-slate-500" />
-            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{g.name}</span>
-            <span className="text-xs text-slate-400">({g.items.length} mục tiêu)</span>
-          </div>
-          {/* Table — same columns as /monthly-report: Ngày xét, Hạng mục, Ưu tiên, Nội dung, Chỉ tiêu */}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] text-xs">
-              <thead>
-                <tr className="border-b bg-slate-50 dark:bg-slate-800/50">
-                  <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
-                    Ngày xét
-                  </th>
-                  <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
-                    Hạng mục
-                  </th>
-                  <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
-                    Ưu tiên
-                  </th>
-                  <th className="px-2.5 py-2 text-left font-semibold text-slate-500">Nội dung</th>
-                  <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
-                    Chỉ tiêu
-                  </th>
-                  <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
-                    QL xét duyệt
-                  </th>
-                  {showActionColumn && (
-                    <th className="sticky right-0 z-10 whitespace-nowrap bg-slate-50 px-2.5 py-2 text-right font-semibold text-slate-500 shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.18)] dark:bg-slate-800/50">
-                      Thao tác
+      {requestStatus === 'pending' && totalPending > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+          <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+          <span>
+            Còn <strong>{totalPending}</strong> mục tiêu chưa được xét duyệt — cần duyệt hết để hoàn
+            tất.
+          </span>
+        </div>
+      )}
+      {grouped.map((g) => {
+        const pendingInGroup = g.items.filter(
+          (a) => !a.goalReview || a.goalReview.status === 'pending'
+        ).length
+        return (
+          <div key={g.userId} className="rounded-lg border overflow-hidden">
+            {/* Member header */}
+            <div className="bg-slate-100 dark:bg-slate-700 px-3 py-1.5 flex items-center gap-2">
+              <User className="h-3.5 w-3.5 text-slate-500" />
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{g.name}</span>
+              <span className="text-xs text-slate-400">({g.items.length} mục tiêu)</span>
+              {requestStatus === 'pending' && pendingInGroup > 0 && (
+                <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                  {pendingInGroup} chờ duyệt
+                </span>
+              )}
+            </div>
+            {/* Table — same columns as /monthly-report: Ngày xét, Hạng mục, Ưu tiên, Nội dung, Chỉ tiêu */}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] text-xs">
+                <thead>
+                  <tr className="border-b bg-slate-50 dark:bg-slate-800/50">
+                    <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
+                      Ngày xét
                     </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {!isMockApiEnabled() ? (
-                  <tr className="border-b bg-white/70 dark:bg-slate-900/40">
-                    <td colSpan={showActionColumn ? 7 : 6} className="px-2.5 py-2 text-right">
-                      <AddApprovalGoalDialog
-                        requestId={requestId}
-                        userId={g.userId}
-                        year={year}
-                        month={month}
-                        disabled={requestStatus !== 'pending'}
-                        onChanged={onChanged}
-                      />
-                    </td>
-                  </tr>
-                ) : null}
-                {g.items.map((a) => (
-                  <tr
-                    key={a.id}
-                    className="border-b last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
-                  >
-                    <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-slate-500">
-                      {formatKpiSetAt(a.kpiSetAt)}
-                    </td>
-                    <td className="px-2.5 py-2">
-                      <span
-                        className={cn(
-                          'inline-block rounded px-1.5 py-0.5 text-[10px] font-bold',
-                          a.kind === 'KPI'
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                            : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
-                        )}
-                      >
-                        {a.kind}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-2.5 py-2">
-                      <PriorityText priority={a.priority} />
-                    </td>
-                    <td className="px-2.5 py-2 max-w-[400px] whitespace-pre-wrap text-slate-700 dark:text-slate-200">
-                      {a.content}
-                    </td>
-                    <td className="whitespace-nowrap px-2.5 py-2 tabular-nums font-semibold text-slate-700 dark:text-slate-200">
-                      {a.targetMetric?.trim() || '—'}
-                    </td>
-                    <td className="min-w-[180px] px-2.5 py-2 align-top">
-                      <GoalReviewStatusBadge review={a.goalReview} />
-                      <GoalReviewSummary review={a.goalReview} />
-                    </td>
+                    <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
+                      Hạng mục
+                    </th>
+                    <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
+                      Ưu tiên
+                    </th>
+                    <th className="px-2.5 py-2 text-left font-semibold text-slate-500">Nội dung</th>
+                    <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
+                      Chỉ tiêu
+                    </th>
+                    <th className="whitespace-nowrap px-2.5 py-2 text-left font-semibold text-slate-500">
+                      QL xét duyệt
+                    </th>
                     {showActionColumn && (
-                      <ApprovalGoalActionCell
-                        requestId={requestId}
-                        assignment={a}
-                        onChanged={onChanged}
-                      />
+                      <th className="sticky right-0 z-10 whitespace-nowrap bg-slate-50 px-2.5 py-2 text-right font-semibold text-slate-500 shadow-[-4px_0_8px_-6px_rgba(0,0,0,0.18)] dark:bg-slate-800/50">
+                        Thao tác
+                      </th>
                     )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {!isMockApiEnabled() ? (
+                    <tr className="border-b bg-white/70 dark:bg-slate-900/40">
+                      <td colSpan={showActionColumn ? 7 : 6} className="px-2.5 py-2 text-right">
+                        <AddApprovalGoalDialog
+                          requestId={requestId}
+                          userId={g.userId}
+                          memberName={g.name}
+                          year={year}
+                          month={month}
+                          disabled={requestStatus !== 'pending'}
+                          onChanged={onChanged}
+                        />
+                      </td>
+                    </tr>
+                  ) : null}
+                  {g.items.map((a) => (
+                    <tr
+                      key={a.id}
+                      className="border-b last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
+                    >
+                      <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-slate-500">
+                        {formatKpiSetAt(a.kpiSetAt)}
+                      </td>
+                      <td className="px-2.5 py-2">
+                        <span
+                          className={cn(
+                            'inline-block rounded px-1.5 py-0.5 text-[10px] font-bold',
+                            a.kind === 'KPI'
+                              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                              : 'bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white'
+                          )}
+                        >
+                          {a.kind}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        <PriorityText priority={a.priority} />
+                      </td>
+                      <td className="px-2.5 py-2 max-w-[400px] whitespace-pre-wrap text-slate-700 dark:text-slate-200">
+                        {a.content}
+                        {(a.subItems?.length ?? 0) > 0 && (
+                          <AssignmentSubItemsInline
+                            subItems={a.subItems ?? []}
+                            expanded={expandedSubItems[a.id] ?? true}
+                            showProgress={false}
+                            onToggle={() =>
+                              setExpandedSubItems((prev) => ({
+                                ...prev,
+                                [a.id]: !(prev[a.id] ?? true),
+                              }))
+                            }
+                          />
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2 tabular-nums font-semibold text-slate-700 dark:text-slate-200">
+                        {a.targetMetric?.trim() || '—'}
+                      </td>
+                      <td className="min-w-[180px] px-2.5 py-2 align-top">
+                        <GoalReviewStatusBadge review={a.goalReview} />
+                        <GoalReviewSummary review={a.goalReview} />
+                      </td>
+                      {showActionColumn && (
+                        <ApprovalGoalActionCell
+                          requestId={requestId}
+                          assignment={a}
+                          onChanged={onChanged}
+                        />
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -1044,16 +1269,31 @@ export function ManagerKpiApprovalScreen() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [rejectRequest, setRejectRequest] = useState<ApprovalRequest | null>(null)
   const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [detailMember, setDetailMember] = useState<{
+    userId: string
+    name: string
+    items: PerformanceAssignment[]
+    teamId: string
+    year: number
+    month: number
+  } | null>(null)
 
   const [evaluationsByReqId, setEvaluationsByReqId] = useState<
-    Record<string, { assignmentId: string; status: 'OK' | 'NOT' }[]>
+    Record<
+      string,
+      { assignmentId: string; status: 'OK' | 'NOT'; managerReviewNote?: string | null }[]
+    >
   >({})
   const [allEvaluatedByReqId, setAllEvaluatedByReqId] = useState<Record<string, boolean>>({})
 
   const handleEvaluationsChange = useCallback(
     (
       reqId: string,
-      evals: { assignmentId: string; status: 'OK' | 'NOT' }[],
+      evals: {
+        assignmentId: string
+        status: 'OK' | 'NOT'
+        managerReviewNote?: string | null
+      }[],
       allEvaluated: boolean
     ) => {
       setEvaluationsByReqId((prev) => {
@@ -1077,6 +1317,8 @@ export function ManagerKpiApprovalScreen() {
     })
   }, [])
 
+  const { connected: sseConnected } = useKpiOkrStream({ year, month })
+
   const approvalKey = ['kpi-approval-requests', statusFilter, year, month, approvalType] as const
   const requestsQ = useQuery({
     queryKey: approvalKey,
@@ -1088,15 +1330,17 @@ export function ManagerKpiApprovalScreen() {
         type: approvalType,
       }),
     enabled: !isMockApiEnabled(),
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: sseConnected ? false : 15_000,
   })
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ['kpi-approval-requests'] })
     void qc.invalidateQueries({ queryKey: ['kpi-assignments'] })
-    // Sau khi duyệt, finalEvalStatus được set → làm mới danh sách assignment inline để hiển thị
-    // "Đánh giá Manager" (read-only) thay vì cache cũ còn trống.
     void qc.invalidateQueries({ queryKey: ['kpi-assignments-result'] })
+    void qc.invalidateQueries({ queryKey: ['kpi-summaries-result'] })
+    void qc.invalidateQueries({ queryKey: ['kpi-summaries'] })
   }, [qc])
 
   const handleApprove = useCallback(
@@ -1351,6 +1595,14 @@ export function ManagerKpiApprovalScreen() {
                         onEvaluationsChange={(evals, allEvaluated) =>
                           handleEvaluationsChange(req.id, evals, allEvaluated)
                         }
+                        onOpenDetail={(member) =>
+                          setDetailMember({
+                            ...member,
+                            teamId: req.teamId,
+                            year: req.year,
+                            month: req.month,
+                          })
+                        }
                       />
                     ) : (
                       <TeamKpiInline
@@ -1435,6 +1687,19 @@ export function ManagerKpiApprovalScreen() {
           />
         )}
       </Dialog>
+
+      {detailMember && (
+        <MemberKpiDetailDrawer
+          open
+          onClose={() => setDetailMember(null)}
+          memberName={detailMember.name}
+          teamId={detailMember.teamId}
+          year={detailMember.year}
+          month={detailMember.month}
+          assigneeUserId={detailMember.userId}
+          assignments={detailMember.items}
+        />
+      )}
     </div>
   )
 }

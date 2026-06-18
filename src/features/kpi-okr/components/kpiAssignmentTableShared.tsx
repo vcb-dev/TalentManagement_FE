@@ -5,12 +5,73 @@ import { TableCell } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { AssignmentGoalReview, PerformanceAssignment } from '@/features/kpi-okr/api'
+import type {
+  AssignmentGoalReview,
+  GoalReviewSubItemSnapshot,
+  PerformanceAssignment,
+} from '@/features/kpi-okr/api'
 import {
   EvidenceImagePreviews,
   evidenceImageUrlsFromText,
   evidenceTextWithoutUploadPaths,
 } from '@/features/kpi-okr/components/KpiEvidenceInput'
+import { KpiProgressBar } from '@/features/kpi-okr/components/KpiProgressBar'
+import {
+  computeRowProgress,
+  computeWeightedProgressFromSubItems,
+} from '@/features/kpi-okr/utils/kpiProgressUtils'
+
+export type ParentKpiDisplay = {
+  targetMetric: string
+  numericLabel: string
+  numericUnit: string
+  progress: number | null
+  hasSubItems: boolean
+}
+
+/** Giá trị hiển thị cột Chỉ tiêu / Số liệu / Tiến độ cho KPI cha có mục con. */
+export function resolveParentKpiDisplay(row: PerformanceAssignment): ParentKpiDisplay {
+  const subs = row.subItems ?? []
+  const hasSubItems = subs.length > 0
+  const parentTarget = row.targetMetric?.trim() ?? ''
+
+  if (!hasSubItems) {
+    return {
+      hasSubItems: false,
+      targetMetric: parentTarget || '—',
+      numericLabel: formatViNumber(row.numericValue),
+      numericUnit: row.numericUnit?.trim() || '—',
+      progress: computeRowProgress(row.numericValue ?? null, row.targetMetric, row.progressPercent),
+    }
+  }
+
+  const subTargetParts = subs
+    .map((s) => {
+      const t = s.targetMetric?.trim()
+      if (!t) return null
+      return s.weight > 0 ? `${t} (${s.weight}%)` : t
+    })
+    .filter(Boolean) as string[]
+
+  const targetMetric =
+    parentTarget || (subTargetParts.length > 0 ? subTargetParts.join(' · ') : '—')
+
+  const progress =
+    computeRowProgress(row.numericValue ?? null, row.targetMetric, row.progressPercent) ??
+    computeWeightedProgressFromSubItems(subs)
+
+  let numericLabel = '—'
+  if (row.numericValue != null) {
+    numericLabel = formatViNumber(row.numericValue)
+  } else if (progress != null) {
+    numericLabel = `${progress}%`
+  }
+
+  const units = [...new Set(subs.map((s) => (s.numericUnit ?? '').trim()).filter(Boolean))]
+  const numericUnit = row.numericUnit?.trim() || units.join(' / ') || '—'
+
+  return { hasSubItems: true, targetMetric, numericLabel, numericUnit, progress }
+}
 
 /** Format số với dấu chấm ngàn theo chuẩn vi-VN. Chuỗi không phải số trả về nguyên gốc. */
 export function formatViNumber(value: number | string | null | undefined): string {
@@ -281,6 +342,91 @@ export function GoalReviewStatusBadge({
   )
 }
 
+function normalizeMetric(value: string | null | undefined): string {
+  return (value ?? '').trim()
+}
+
+function formatSubItemSnapshot(item: GoalReviewSubItemSnapshot): string {
+  const parts = [
+    item.label,
+    `CT: ${item.targetMetric?.trim() || '—'}`,
+    item.numericUnit?.trim() ? `ĐVT: ${item.numericUnit.trim()}` : null,
+    `${item.weight}%`,
+  ].filter(Boolean)
+  return parts.join(' · ')
+}
+
+function subItemsSnapshotsEqual(
+  a: GoalReviewSubItemSnapshot[] | null | undefined,
+  b: GoalReviewSubItemSnapshot[] | null | undefined
+): boolean {
+  const norm = (items: GoalReviewSubItemSnapshot[]) =>
+    items.map((item) => ({
+      label: item.label.trim(),
+      targetMetric: normalizeMetric(item.targetMetric),
+      numericUnit: (item.numericUnit ?? '').trim().toUpperCase(),
+      weight: Number(item.weight) || 0,
+    }))
+  return JSON.stringify(norm(a ?? [])) === JSON.stringify(norm(b ?? []))
+}
+
+function GoalReviewSubItemsBlock({
+  title,
+  items,
+  tone,
+}: {
+  title: string
+  items: GoalReviewSubItemSnapshot[]
+  tone: 'before' | 'after'
+}) {
+  if (!items.length) {
+    return (
+      <div>
+        <div
+          className={cn(
+            'font-semibold',
+            tone === 'before'
+              ? 'text-amber-800 dark:text-amber-300'
+              : 'text-emerald-800 dark:text-emerald-300'
+          )}
+        >
+          {title}
+        </div>
+        <p className="mt-0.5 text-slate-400">Không có chỉ số con</p>
+      </div>
+    )
+  }
+  return (
+    <div>
+      <div
+        className={cn(
+          'font-semibold',
+          tone === 'before'
+            ? 'text-amber-800 dark:text-amber-300'
+            : 'text-emerald-800 dark:text-emerald-300'
+        )}
+      >
+        {title}
+      </div>
+      <ul className="mt-1 space-y-1">
+        {items.map((item, idx) => (
+          <li
+            key={`${item.label}-${idx}`}
+            className={cn(
+              'rounded-md px-2 py-1 text-[11px] leading-snug',
+              tone === 'before'
+                ? 'bg-white/70 text-slate-600 dark:bg-slate-900/40 dark:text-slate-300'
+                : 'bg-emerald-50/80 text-slate-800 dark:bg-emerald-950/30 dark:text-slate-100'
+            )}
+          >
+            {formatSubItemSnapshot(item)}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export function GoalReviewSummary({
   review,
   className,
@@ -299,10 +445,28 @@ export function GoalReviewSummary({
   }
 
   if (review.status === 'manager_created_pending_member') {
+    const proposedSubs = review.proposedSubItems ?? review.originalSubItems ?? []
     return (
-      <p className={cn('mt-1 max-w-full text-[11px] leading-snug text-violet-700', className)}>
-        Chờ bạn xác nhận.
-      </p>
+      <div
+        className={cn(
+          'mt-2 max-w-xl space-y-2 rounded-lg border border-violet-200 bg-violet-50/70 p-2 text-xs dark:border-violet-900/50 dark:bg-violet-950/20',
+          className
+        )}
+      >
+        <p className="font-semibold text-violet-800 dark:text-violet-200">
+          Manager đã thêm KPI/OKR mới — vui lòng xem và xác nhận:
+        </p>
+        <div className="whitespace-pre-wrap font-medium text-slate-900 dark:text-slate-100">
+          {review.originalContent}
+        </div>
+        <p className="text-slate-600 dark:text-slate-300">
+          Chỉ tiêu: {review.originalTargetMetric?.trim() || '—'} · Ưu tiên:{' '}
+          {review.originalPriority}
+        </p>
+        {proposedSubs.length > 0 && (
+          <GoalReviewSubItemsBlock title="Chỉ số con" items={proposedSubs} tone="after" />
+        )}
+      </div>
     )
   }
 
@@ -310,33 +474,114 @@ export function GoalReviewSummary({
 
   if (review.status !== 'edit_pending_member') return null
 
+  const proposedContent = review.proposedContent?.trim() ?? ''
+  const contentChanged = review.originalContent.trim() !== proposedContent
+  const targetChanged =
+    normalizeMetric(review.originalTargetMetric) !== normalizeMetric(review.proposedTargetMetric)
+  const priorityChanged = review.originalPriority !== review.proposedPriority
+  const originalSubs = review.originalSubItems ?? []
+  const proposedSubs = review.proposedSubItems ?? []
+  const subItemsChanged = !subItemsSnapshotsEqual(originalSubs, proposedSubs)
+  const parentChanged = contentChanged || targetChanged || priorityChanged
+
   return (
     <div
       className={cn(
-        'mt-2 grid max-w-xl gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-2 text-xs dark:border-amber-900/50 dark:bg-amber-950/20',
+        'mt-2 max-w-xl space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-2 text-xs dark:border-amber-900/50 dark:bg-amber-950/20',
         className
       )}
     >
-      <div>
-        <div className="font-semibold text-amber-800 dark:text-amber-300">Trước khi sửa</div>
-        <div className="whitespace-pre-wrap text-slate-600 dark:text-slate-300">
-          {review.originalContent}
+      <p className="font-semibold text-amber-900 dark:text-amber-100">
+        Manager đề xuất thay đổi — vui lòng xem chi tiết và xác nhận:
+      </p>
+
+      {parentChanged ? (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div>
+            <div className="font-semibold text-amber-800 dark:text-amber-300">Trước khi sửa</div>
+            <div
+              className={cn(
+                'mt-0.5 whitespace-pre-wrap',
+                contentChanged
+                  ? 'text-slate-500 line-through decoration-amber-400/70'
+                  : 'text-slate-600 dark:text-slate-300'
+              )}
+            >
+              {review.originalContent}
+            </div>
+            <div className="mt-0.5 text-slate-500">
+              Chỉ tiêu:{' '}
+              <span className={targetChanged ? 'line-through decoration-amber-400/70' : undefined}>
+                {review.originalTargetMetric?.trim() || '—'}
+              </span>
+              {' · '}
+              Ưu tiên:{' '}
+              <span
+                className={priorityChanged ? 'line-through decoration-amber-400/70' : undefined}
+              >
+                {review.originalPriority}
+              </span>
+            </div>
+          </div>
+          <div>
+            <div className="font-semibold text-emerald-800 dark:text-emerald-300">
+              Manager đề xuất
+            </div>
+            <div
+              className={cn(
+                'mt-0.5 whitespace-pre-wrap font-medium',
+                contentChanged
+                  ? 'text-emerald-900 dark:text-emerald-100'
+                  : 'text-slate-900 dark:text-slate-100'
+              )}
+            >
+              {proposedContent || '—'}
+            </div>
+            <div className="mt-0.5 text-slate-600 dark:text-slate-300">
+              Chỉ tiêu:{' '}
+              <span
+                className={
+                  targetChanged ? 'font-semibold text-emerald-700 dark:text-emerald-300' : undefined
+                }
+              >
+                {review.proposedTargetMetric?.trim() || '—'}
+              </span>
+              {' · '}
+              Ưu tiên:{' '}
+              <span
+                className={
+                  priorityChanged
+                    ? 'font-semibold text-emerald-700 dark:text-emerald-300'
+                    : undefined
+                }
+              >
+                {review.proposedPriority ?? '—'}
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="mt-0.5 text-slate-500">
-          Chỉ tiêu: {review.originalTargetMetric?.trim() || '—'} · Ưu tiên:{' '}
-          {review.originalPriority}
+      ) : (
+        <p className="text-slate-600 dark:text-slate-300">
+          Nội dung, chỉ tiêu và ưu tiên KPI/OKR <strong>giữ nguyên</strong>.
+        </p>
+      )}
+
+      {subItemsChanged ? (
+        <div className="grid gap-2 border-t border-amber-200/80 pt-2 dark:border-amber-900/40 sm:grid-cols-2">
+          <GoalReviewSubItemsBlock title="Chỉ số con trước" items={originalSubs} tone="before" />
+          <GoalReviewSubItemsBlock
+            title="Chỉ số con Manager đề xuất"
+            items={proposedSubs}
+            tone="after"
+          />
         </div>
-      </div>
-      <div>
-        <div className="font-semibold text-amber-800 dark:text-amber-300">Manager đề xuất</div>
-        <div className="whitespace-pre-wrap text-slate-900 dark:text-slate-100">
-          {review.proposedContent?.trim() || '—'}
-        </div>
-        <div className="mt-0.5 text-slate-600 dark:text-slate-300">
-          Chỉ tiêu: {review.proposedTargetMetric?.trim() || '—'} · Ưu tiên:{' '}
-          {review.proposedPriority ?? '—'}
-        </div>
-      </div>
+      ) : null}
+
+      {!parentChanged && !subItemsChanged ? (
+        <p className="text-amber-700 dark:text-amber-300">
+          Không thấy khác biệt so với bản hiện tại — liên hệ Manager nếu cần làm rõ.
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -398,7 +643,7 @@ export function PriorityBadge({ priority }: { priority: number }) {
 /** Evidence / số liệu / tự đánh giá — read-only (leader / viewer / quản lý xem trưởng nhóm). */
 /** Stack layout (mobile) — cùng nội dung với AssignmentEpic4ReadCells */
 export function AssignmentEpic4ReadStack({ row }: { row: PerformanceAssignment }) {
-  const num = formatViNumber(row.numericValue)
+  const display = resolveParentKpiDisplay(row)
   const displayEv = evidenceTextWithoutUploadPaths(row.evidence)
   const imageUrls = evidenceImageUrlsFromText(row.evidence)
   const hasImagePreviews = imageUrls.length > 0
@@ -407,12 +652,15 @@ export function AssignmentEpic4ReadStack({ row }: { row: PerformanceAssignment }
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         <span>
           <span className="font-semibold text-muted-foreground">Số liệu: </span>
-          {num}
+          {display.numericLabel}
         </span>
         <span className="text-xs uppercase text-muted-foreground">
-          Đơn vị: {row.numericUnit ?? '—'}
+          Đơn vị: {display.numericUnit}
         </span>
       </div>
+      {display.hasSubItems && display.progress != null ? (
+        <KpiProgressBar value={display.progress} className="max-w-xs" barClassName="h-1.5" />
+      ) : null}
       {displayEv ? (
         <p className="break-words text-xs text-foreground">{displayEv}</p>
       ) : !hasImagePreviews ? (
@@ -431,17 +679,22 @@ export function AssignmentEpic4ReadStack({ row }: { row: PerformanceAssignment }
 }
 
 export function AssignmentEpic4ReadCells({ row, td }: { row: PerformanceAssignment; td: string }) {
-  const num = formatViNumber(row.numericValue)
+  const display = resolveParentKpiDisplay(row)
   const displayEv = evidenceTextWithoutUploadPaths(row.evidence)
   const imageUrls = evidenceImageUrlsFromText(row.evidence)
   const hasImagePreviews = imageUrls.length > 0
   return (
     <>
       <TableCell className={cn(td, CELL_NUMERIC, 'whitespace-nowrap tabular-nums text-sm')}>
-        {num}
+        <div className="flex min-w-0 flex-col gap-1">
+          <span>{display.numericLabel}</span>
+          {display.hasSubItems && display.progress != null ? (
+            <KpiProgressBar value={display.progress} barClassName="h-1.5" />
+          ) : null}
+        </div>
       </TableCell>
       <TableCell className={cn(td, CELL_UNIT, 'text-xs uppercase')}>
-        <div className="truncate">{row.numericUnit ?? '—'}</div>
+        <div className="truncate">{display.numericUnit}</div>
       </TableCell>
       <TableCell className={cn(td, CELL_EVIDENCE, 'text-xs')} title={displayEv || undefined}>
         {displayEv ? (

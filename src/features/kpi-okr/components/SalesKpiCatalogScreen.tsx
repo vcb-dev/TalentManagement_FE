@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { kpiQueryKeys } from '../kpiQueryKeys'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, AlertTriangle, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -434,8 +435,8 @@ export function SalesKpiCatalogScreen({ embedded = false }: SalesKpiCatalogScree
     void qc.invalidateQueries({
       queryKey: ['performance', 'catalog', activeTemplateCode, selectedYear, selectedMonth],
     })
-    void qc.invalidateQueries({ queryKey: ['performance', 'assignments'] })
-    void qc.invalidateQueries({ queryKey: ['performance'] })
+    void qc.invalidateQueries({ queryKey: kpiQueryKeys.allAssignments() })
+    void qc.invalidateQueries({ queryKey: kpiQueryKeys.allSummaries() })
   }
 
   const openAdd = () => {

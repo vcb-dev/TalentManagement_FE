@@ -31,7 +31,7 @@ const LEVEL_PIE_COLORS: Record<LevelCode, string> = {
 const LEVELS_HINT = 'Số người theo cấp bậc nghề nghiệp hiện lưu trên hồ sơ (snapshot).'
 
 const FAIL_TABLE_HINT =
-  'Trong kỳ đã chọn: từ 2 lượt trượt trở lên cho cùng một cặp cấp (ví dụ Tập sự → Biết việc). Tính theo lớp thi / mô tả kỳ thi (Chờ học lại / Chia tay).'
+  'Trong kỳ đã chọn: học viên có kết quả thi Chờ học lại hoặc Chia tay. Mỗi buổi/kỳ thi chỉ tính một lần (không cộng trùng khi chấm lại). Hàng có ≥ 2 lần trượt cùng cặp cấp được tô nổi bật.'
 
 /* ──────────── Bar chart ──────────── */
 
@@ -233,23 +233,25 @@ export function ManagerLearningOpsZone({
         )}
       </div>
 
-      {/* TODO: bỏ hidden khi muốn hiển thị lại */}
       <section
         className={cn(
-          'hidden overflow-hidden rounded-2xl border border-amber-500/20 bg-card/95 p-4 shadow-[var(--shadow-card)] sm:p-5',
+          'overflow-hidden rounded-2xl border border-amber-500/20 bg-card/95 p-4 shadow-[var(--shadow-card)] sm:p-5',
+          quartOut,
+          CARD_ENTRANCE_HOVER,
+          'transition-all duration-300 hover:border-amber-500/30',
           'motion-safe:animate-[dash-fade-up_0.5s_ease-out_both] motion-reduce:animate-none'
         )}
         style={{ animationDelay: '100ms' }}
-        aria-label="Nhân sự trượt thi từ hai lần trở lên"
+        aria-label="Học viên trượt thi trong kỳ"
       >
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-400">
             <AlertTriangle className="h-4 w-4" strokeWidth={2} aria-hidden />
           </div>
           <h3 className="min-w-0 flex-1 text-sm font-bold tracking-tight text-foreground">
-            Trượt từ 2 lần (cùng cặp cấp)
+            Học viên trượt thi trong kỳ
           </h3>
-          <InfoHint text={FAIL_TABLE_HINT} label="Cách tính trượt 2 lần cùng cặp cấp" />
+          <InfoHint text={FAIL_TABLE_HINT} label="Cách tính danh sách trượt thi" />
         </div>
 
         {isLoading && !data ? (
@@ -272,7 +274,10 @@ export function ManagerLearningOpsZone({
                 return (
                   <div
                     key={`${row.userId}-${row.levelFrom}-${row.levelTo}`}
-                    className="space-y-2 p-4 odd:bg-background/40"
+                    className={cn(
+                      'space-y-2 p-4 odd:bg-background/40',
+                      row.failCount >= 2 && 'bg-amber-500/5'
+                    )}
                   >
                     <p className="break-words font-semibold text-foreground">
                       {row.fullName?.trim() || '—'}
@@ -314,7 +319,10 @@ export function ManagerLearningOpsZone({
                     return (
                       <tr
                         key={`${row.userId}-${row.levelFrom}-${row.levelTo}`}
-                        className="border-b border-border/50 last:border-0 odd:bg-background/40 transition-colors hover:bg-muted/20"
+                        className={cn(
+                          'border-b border-border/50 last:border-0 odd:bg-background/40 transition-colors hover:bg-muted/20',
+                          row.failCount >= 2 && 'bg-amber-500/5'
+                        )}
                       >
                         <td className="px-3 py-2.5 font-semibold text-foreground sm:px-4">
                           {row.fullName?.trim() || '—'}

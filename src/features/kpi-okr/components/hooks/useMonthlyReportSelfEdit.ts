@@ -34,10 +34,11 @@ export function useMonthlyReportSelfEdit(item: PerformanceAssignment, onSaved: (
     item.selfReviewNote,
   ])
 
-  const save = async (): Promise<boolean> => {
+  const save = async (opts?: { skipNumericFields?: boolean }): Promise<boolean> => {
+    const skipNumeric = opts?.skipNumericFields
     const nTrim = numericRaw.trim()
     let numericValue: number | null = null
-    if (nTrim.length > 0) {
+    if (!skipNumeric && nTrim.length > 0) {
       const n = Number(nTrim.replace(/\./g, '').replace(',', '.'))
       if (!Number.isFinite(n)) {
         toast.error('Số liệu không hợp lệ.')
@@ -49,9 +50,13 @@ export function useMonthlyReportSelfEdit(item: PerformanceAssignment, onSaved: (
     try {
       await performanceApi.patchAssignmentSelf(item.id, {
         evidence: evidence.trim() ? evidence.trim() : null,
-        numericValue,
-        numericUnit: numericUnit.trim() ? numericUnit.trim().toUpperCase() : null,
-        selfEvalStatus: selfEvalStatus.trim() ? selfEvalStatus.trim() : null,
+        ...(skipNumeric
+          ? {}
+          : {
+              numericValue,
+              numericUnit: numericUnit.trim() ? numericUnit.trim().toUpperCase() : null,
+              selfEvalStatus: selfEvalStatus.trim() ? selfEvalStatus.trim() : null,
+            }),
         selfReviewNote: selfReviewNote.trim() ? selfReviewNote.trim() : null,
       })
       toast.success('Đã gửi báo cáo.')

@@ -33,6 +33,13 @@ export type GoalReviewStatus =
   | 'manager_created_confirmed'
   | 'rejected'
 
+export type GoalReviewSubItemSnapshot = {
+  label: string
+  targetMetric: string | null
+  numericUnit: string | null
+  weight: number
+}
+
 export type AssignmentGoalReview = {
   id: string
   requestId: string
@@ -44,6 +51,8 @@ export type AssignmentGoalReview = {
   proposedContent: string | null
   proposedTargetMetric: string | null
   proposedPriority: number | null
+  originalSubItems?: GoalReviewSubItemSnapshot[] | null
+  proposedSubItems?: GoalReviewSubItemSnapshot[] | null
   reason: string | null
   reviewedByUserId: string | null
   reviewedAt: string | null
@@ -100,6 +109,31 @@ export type PerformanceAssignment = {
   templateItemId?: string | null
   periodTemplateItemId?: string | null
   goalReview?: AssignmentGoalReview | null
+  subItems?: PerformanceAssignmentSubItem[]
+}
+
+export type PerformanceAssignmentSubItem = {
+  id: string
+  sortOrder: number
+  label: string
+  targetMetric: string | null
+  numericUnit: string | null
+  weight: number
+  numericValue: number | null
+  selfEvalStatus: string | null
+  selfReviewNote: string | null
+  selfEvaluatedAt?: string | null
+}
+
+export type SubItemInputPayload = {
+  id?: string
+  label: string
+  targetMetric?: string | null
+  numericUnit?: string | null
+  weight?: number
+  numericValue?: number | null
+  selfEvalStatus?: string | null
+  selfReviewNote?: string | null
 }
 
 export type PerformanceSummaryRow = {
@@ -398,6 +432,7 @@ export const performanceApi = {
         priority?: number
         targetMetric?: string | null
         kpiSetAt?: string | null
+        subItems?: SubItemInputPayload[]
       }>
     }
   ) => {
@@ -434,7 +469,7 @@ export const performanceApi = {
         | 'dailyTarget'
         | 'templateItemId'
       >
-    >
+    > & { subItems?: SubItemInputPayload[] }
   ) => {
     if (isMockApiEnabled()) throw new Error('Mock')
     const res = await apiClient.patch<PerformanceAssignment>(`/performance/assignments/${id}`, body)
@@ -466,6 +501,13 @@ export const performanceApi = {
       content: string
       priority?: number
       targetMetric?: string | null
+      numericUnit?: string | null
+      subItems?: {
+        label: string
+        weight: number
+        targetMetric?: string | null
+        numericUnit?: string | null
+      }[]
     }
   ) => {
     if (isMockApiEnabled()) throw new Error('Mock')
@@ -494,24 +536,12 @@ export const performanceApi = {
     return res.data
   },
 
-  rejectGoalReview: async (
-    requestId: string,
-    assignmentId: string,
-    reason: string
-  ): Promise<AssignmentGoalReview> => {
-    if (isMockApiEnabled()) throw new Error('Mock')
-    const res = await apiClient.patch<AssignmentGoalReview>(
-      `/performance/approval-requests/${requestId}/assignments/${assignmentId}/goal-review/reject`,
-      { reason }
-    )
-    return res.data
-  },
-
   proposeGoalReviewEdit: async (
     requestId: string,
     assignmentId: string,
     body: Pick<PerformanceAssignment, 'content' | 'priority'> & {
       targetMetric?: string | null
+      subItems?: SubItemInputPayload[]
     }
   ): Promise<AssignmentGoalReview> => {
     if (isMockApiEnabled()) throw new Error('Mock')
@@ -1017,7 +1047,11 @@ export const performanceApi = {
 
   approveRequest: async (
     id: string,
-    evaluations?: { assignmentId: string; status: 'OK' | 'NOT' }[]
+    evaluations?: {
+      assignmentId: string
+      status: 'OK' | 'NOT'
+      managerReviewNote?: string | null
+    }[]
   ): Promise<ApprovalRequest> => {
     if (isMockApiEnabled()) throw new Error('Mock')
     const res = await apiClient.patch<ApprovalRequest>(
@@ -1032,6 +1066,23 @@ export const performanceApi = {
     const res = await apiClient.patch<ApprovalRequest>(
       `/performance/approval-requests/${id}/reject`,
       { note }
+    )
+    return res.data
+  },
+
+  patchSubItemSelf: async (
+    assignmentId: string,
+    subItemId: string,
+    body: {
+      numericValue?: number | null
+      selfEvalStatus?: string | null
+      selfReviewNote?: string | null
+    }
+  ) => {
+    if (isMockApiEnabled()) throw new Error('Mock')
+    const res = await apiClient.patch<PerformanceAssignment>(
+      `/performance/assignments/${assignmentId}/sub-items/${subItemId}/me`,
+      body
     )
     return res.data
   },

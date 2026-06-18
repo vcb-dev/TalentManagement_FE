@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useKpiOkrStream } from '@/features/kpi-okr/useKpiOkrStream'
 import {
   Calendar,
   ChevronDown,
@@ -45,6 +46,12 @@ import {
 } from '@/features/kpi-okr/kpiPeriodLimits'
 import { FormPanel } from '@/features/kpi-okr/components/KpiOkrWorkspace'
 import { useMonthlyReportSelfEdit } from '@/features/kpi-okr/components/hooks/useMonthlyReportSelfEdit'
+import {
+  SubItemsReadOnlyList,
+  SubItemsSelfEditPanel,
+  useSubItemsSelfEdit,
+  validateSubItemsSelfDrafts,
+} from '@/features/kpi-okr/components/SubItemsSelfEdit'
 import { useHrOrgTree, ORG_TREE_KEY } from '@/features/hr-admin/useHrOrgTree'
 import { organizationApi } from '@/features/organization/api'
 import { isMockApiEnabled } from '@/lib/mockEnv'
@@ -215,24 +222,30 @@ function isSelfEvalComplete(status: string): boolean {
   return s === 'OK' || s === 'NOT'
 }
 
-function validateMemberReportForm(values: {
-  numericRaw: string
-  numericUnit: string
-  selfEvalStatus: string
-  evidence: string
-}): { valid: boolean; errors: MemberReportFieldErrors; message?: string } {
+function validateMemberReportForm(
+  values: {
+    numericRaw: string
+    numericUnit: string
+    selfEvalStatus: string
+    evidence: string
+  },
+  opts?: { skipNumericFields?: boolean }
+): { valid: boolean; errors: MemberReportFieldErrors; message?: string } {
   const errors: MemberReportFieldErrors = {}
   const nTrim = values.numericRaw.trim()
+  const skipNumeric = opts?.skipNumericFields
 
-  if (!nTrim) {
-    errors.numeric = true
-  } else {
-    const n = Number(nTrim.replace(/\./g, '').replace(',', '.'))
-    if (!Number.isFinite(n)) errors.numeric = true
+  if (!skipNumeric) {
+    if (!nTrim) {
+      errors.numeric = true
+    } else {
+      const n = Number(nTrim.replace(/\./g, '').replace(',', '.'))
+      if (!Number.isFinite(n)) errors.numeric = true
+    }
+    if (!values.numericUnit.trim()) errors.numericUnit = true
+    if (!isSelfEvalComplete(values.selfEvalStatus)) errors.selfEval = true
   }
 
-  if (!values.numericUnit.trim()) errors.numericUnit = true
-  if (!isSelfEvalComplete(values.selfEvalStatus)) errors.selfEval = true
   if (!values.evidence.trim()) errors.evidence = true
 
   const valid = !Object.values(errors).some(Boolean)
@@ -291,6 +304,7 @@ function MonthlyReportFormSection({
 
 function MonthlyReportKpiContextCard({ item }: { item: PerformanceAssignment }) {
   const isKpi = item.kind === 'KPI'
+  const hasSubItems = (item.subItems?.length ?? 0) > 0
   return (
     <div
       className={cn(
@@ -327,6 +341,14 @@ function MonthlyReportKpiContextCard({ item }: { item: PerformanceAssignment }) 
           {item.targetMetric?.trim() || '—'}
         </span>
       </div>
+      {hasSubItems ? (
+        <div className="mt-3">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            Chỉ số con
+          </p>
+          <SubItemsReadOnlyList subItems={item.subItems ?? []} showProgress />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -378,7 +400,9 @@ function MonthlyReportMemberEditPanel({
   onSaved: () => void
   onClose: () => void
 }) {
+  const hasSubItems = (item.subItems?.length ?? 0) > 0
   const [fieldErrors, setFieldErrors] = useState<MemberReportFieldErrors>({})
+  const subEdit = useSubItemsSelfEdit(item.id, item.subItems ?? [], onSaved)
   const {
     evidence,
     setEvidence,
@@ -404,93 +428,127 @@ function MonthlyReportMemberEditPanel({
   }
 
   const handleSubmit = async () => {
-    const { valid, errors, message } = validateMemberReportForm({
-      numericRaw,
-      numericUnit,
-      selfEvalStatus,
-      evidence,
-    })
+    if (hasSubItems) {
+      const subCheck = validateSubItemsSelfDrafts(item.subItems ?? [], subEdit.drafts)
+      if (!subCheck.valid) {
+        toast.error(subCheck.message ?? 'Vui lòng hoàn thiện các mục con.')
+        return
+      }
+      const subsSaved = await subEdit.saveAll()
+      if (!subsSaved) return
+    }
+
+    const { valid, errors, message } = validateMemberReportForm(
+      {
+        numericRaw,
+        numericUnit,
+        selfEvalStatus,
+        evidence,
+      },
+      { skipNumericFields: hasSubItems }
+    )
     setFieldErrors(errors)
     if (!valid) {
       toast.error(message ?? 'Vui lòng hoàn thiện các ô được đánh dấu đỏ.')
       return
     }
-    const ok = await save()
+    const ok = await save({ skipNumericFields: hasSubItems })
     if (ok) onClose()
   }
 
   return (
     <div className="space-y-5">
+      {hasSubItems ? (
+        <SubItemsSelfEditPanel
+          subItems={item.subItems ?? []}
+          disabled={saving || subEdit.savingId != null}
+          editState={subEdit}
+        />
+      ) : null}
+
       <MonthlyReportFormSection
         title="Kết quả thực hiện"
-        hint="Nhập số liệu đạt được, đơn vị và tự đánh giá theo chỉ tiêu phía trên."
+        hint={
+          hasSubItems
+            ? 'Minh chứng và nhận xét chung cho KPI cha; số liệu nhập tại từng mục con phía trên.'
+            : 'Nhập số liệu đạt được, đơn vị và tự đánh giá theo chỉ tiêu phía trên.'
+        }
       >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-12">
-          <div className="space-y-1.5 sm:col-span-5">
-            <label
-              htmlFor={`numeric-${item.id}`}
-              className="text-sm font-medium text-slate-700 dark:text-slate-300"
-            >
-              Số liệu
-            </label>
-            <Input
-              id={`numeric-${item.id}`}
-              value={numericRaw}
-              onChange={(e) => {
-                setNumericRaw(e.target.value)
-                clearFieldError('numeric')
-              }}
-              className={cn(memberEditInputCls, fieldErrors.numeric && memberReportInvalidRing)}
-              placeholder="VD: 1500000"
-              disabled={saving}
-              inputMode="decimal"
-              aria-invalid={fieldErrors.numeric || undefined}
-            />
+        {!hasSubItems ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-12">
+            <div className="space-y-1.5 sm:col-span-5">
+              <label
+                htmlFor={`numeric-${item.id}`}
+                className="text-sm font-medium text-slate-700 dark:text-slate-300"
+              >
+                Số liệu
+              </label>
+              <Input
+                id={`numeric-${item.id}`}
+                value={numericRaw}
+                onChange={(e) => {
+                  setNumericRaw(e.target.value)
+                  clearFieldError('numeric')
+                }}
+                className={cn(memberEditInputCls, fieldErrors.numeric && memberReportInvalidRing)}
+                placeholder="VD: 1500000"
+                disabled={saving}
+                inputMode="decimal"
+                aria-invalid={fieldErrors.numeric || undefined}
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-3">
+              <label
+                htmlFor={`unit-${item.id}`}
+                className="text-sm font-medium text-slate-700 dark:text-slate-300"
+              >
+                Đơn vị
+              </label>
+              <Input
+                id={`unit-${item.id}`}
+                value={numericUnit}
+                onChange={(e) => {
+                  setNumericUnit(e.target.value)
+                  clearFieldError('numericUnit')
+                }}
+                className={cn(
+                  memberEditInputCls,
+                  fieldErrors.numericUnit && memberReportInvalidRing
+                )}
+                placeholder="VND, %, đơn..."
+                disabled={saving}
+                aria-invalid={fieldErrors.numericUnit || undefined}
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-4">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Tự đánh giá
+              </label>
+              <CustomSelect
+                value={selfEvalStatus || '__none'}
+                onValueChange={(v) => {
+                  setSelfEvalStatus(v === '__none' ? '' : v)
+                  clearFieldError('selfEval')
+                }}
+                options={[
+                  { label: 'Chưa chọn', value: '__none' },
+                  { label: 'OK — đạt', value: 'OK' },
+                  { label: 'NOT — chưa đạt', value: 'NOT' },
+                ]}
+                disabled={saving}
+                className="min-w-0 w-full"
+                triggerClassName={cn(
+                  memberReportSelectCls,
+                  fieldErrors.selfEval && memberReportInvalidRing
+                )}
+              />
+            </div>
           </div>
-          <div className="space-y-1.5 sm:col-span-3">
-            <label
-              htmlFor={`unit-${item.id}`}
-              className="text-sm font-medium text-slate-700 dark:text-slate-300"
-            >
-              Đơn vị
-            </label>
-            <Input
-              id={`unit-${item.id}`}
-              value={numericUnit}
-              onChange={(e) => {
-                setNumericUnit(e.target.value)
-                clearFieldError('numericUnit')
-              }}
-              className={cn(memberEditInputCls, fieldErrors.numericUnit && memberReportInvalidRing)}
-              placeholder="VND, %, đơn..."
-              disabled={saving}
-              aria-invalid={fieldErrors.numericUnit || undefined}
-            />
-          </div>
-          <div className="space-y-1.5 sm:col-span-4">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Tự đánh giá
-            </label>
-            <CustomSelect
-              value={selfEvalStatus || '__none'}
-              onValueChange={(v) => {
-                setSelfEvalStatus(v === '__none' ? '' : v)
-                clearFieldError('selfEval')
-              }}
-              options={[
-                { label: 'Chưa chọn', value: '__none' },
-                { label: 'OK — đạt', value: 'OK' },
-                { label: 'NOT — chưa đạt', value: 'NOT' },
-              ]}
-              disabled={saving}
-              className="min-w-0 w-full"
-              triggerClassName={cn(
-                memberReportSelectCls,
-                fieldErrors.selfEval && memberReportInvalidRing
-              )}
-            />
-          </div>
-        </div>
+        ) : (
+          <p className="text-xs text-slate-500">
+            Số liệu và tự đánh giá được nhập riêng cho từng chỉ số con ở khối phía trên.
+          </p>
+        )}
       </MonthlyReportFormSection>
 
       <MonthlyReportFormSection
@@ -606,6 +664,14 @@ function MonthlyReportReadOnlyDetailPanel({ item }: { item: PerformanceAssignmen
       <div className="lg:col-span-2">
         <MonthlyGoalReviewPanel item={item} />
       </div>
+      {(item.subItems?.length ?? 0) > 0 ? (
+        <div className="lg:col-span-2">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Chỉ số con
+          </p>
+          <SubItemsReadOnlyList subItems={item.subItems ?? []} showProgress />
+        </div>
+      ) : null}
       <div className="space-y-3">
         {item.selfReviewNote?.trim() ? (
           <div>
@@ -681,7 +747,12 @@ function MonthlyReportMemberTableRow({
         <td className="whitespace-nowrap px-3 py-2.5">
           <PriorityText priority={item.priority} />
         </td>
-        <td className="max-w-[280px] whitespace-pre-wrap px-3 py-2.5 text-sm">{item.content}</td>
+        <td className="max-w-[280px] whitespace-pre-wrap px-3 py-2.5 text-sm">
+          {item.content}
+          {(item.subItems?.length ?? 0) > 0 ? (
+            <SubItemsReadOnlyList subItems={item.subItems ?? []} showProgress />
+          ) : null}
+        </td>
         <td className="whitespace-nowrap px-3 py-2.5 font-semibold tabular-nums text-primary">
           {item.targetMetric?.trim() || '—'}
         </td>
@@ -751,7 +822,12 @@ function MonthlyReportReadOnlyTableRow({
         <td className="whitespace-nowrap px-3 py-2.5">
           <PriorityText priority={item.priority} />
         </td>
-        <td className="max-w-[280px] whitespace-pre-wrap px-3 py-2.5 text-sm">{item.content}</td>
+        <td className="max-w-[280px] whitespace-pre-wrap px-3 py-2.5 text-sm">
+          {item.content}
+          {(item.subItems?.length ?? 0) > 0 ? (
+            <SubItemsReadOnlyList subItems={item.subItems ?? []} showProgress />
+          ) : null}
+        </td>
         <td className="whitespace-nowrap px-3 py-2.5 font-semibold tabular-nums text-primary">
           {item.targetMetric?.trim() || '—'}
         </td>
@@ -817,6 +893,9 @@ function MonthlyReportDetailReadOnlyCard({
         <PriorityText priority={item.priority} />
       </div>
       <p className="whitespace-pre-wrap break-words text-sm">{item.content}</p>
+      {(item.subItems?.length ?? 0) > 0 ? (
+        <SubItemsReadOnlyList subItems={item.subItems ?? []} showProgress />
+      ) : null}
       <p className="text-sm font-semibold tabular-nums text-primary">
         {item.targetMetric?.trim() || '—'}
       </p>
@@ -910,6 +989,9 @@ function MonthlyReportDetailEditableMobileCard({
         <PriorityText priority={item.priority} />
       </div>
       <p className="whitespace-pre-wrap break-words text-sm">{item.content}</p>
+      {(item.subItems?.length ?? 0) > 0 ? (
+        <SubItemsReadOnlyList subItems={item.subItems ?? []} showProgress />
+      ) : null}
       <p className="text-sm font-semibold tabular-nums text-primary">
         {item.targetMetric?.trim() || '—'}
       </p>
@@ -1007,6 +1089,12 @@ export function MonthlyReportScreen() {
     if (!memberMultiTeam || !selectedTeamId || !user?.id) return
     localStorage.setItem(`monthly-report-team-${user.id}`, selectedTeamId)
   }, [memberMultiTeam, selectedTeamId, user?.id])
+
+  useKpiOkrStream({
+    teamId: selectedTeamId || undefined,
+    year,
+    month,
+  })
 
   const membersQ = useQuery({
     queryKey: ['monthly-report-members', selectedTeamId],
