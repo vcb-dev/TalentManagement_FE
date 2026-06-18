@@ -63,7 +63,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   const { canId } = usePermission()
   const canCreate = canId('hr.employees.create')
   const canEdit = canId('hr.employees.edit')
-  const canDeactivate = canId('hr.employees.deactivate')
+  const canDeactivate = canId('hr.employees.deactivate') || canId('hr.employees.edit')
   const navigate = hrAdminListRoute.useNavigate()
   const isHrDirectoryMobileGrid = useHrDirectoryMobileLayout()
   const targetPageSize = isHrDirectoryMobileGrid
@@ -414,8 +414,14 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
 
       <ConfirmDialog
         open={confirmPending !== null}
-        onOpenChange={(open) => { if (!open) onCancelPending() }}
-        title={confirmPending?.type === 'deactivate' ? 'Vô hiệu hóa tài khoản?' : 'Kích hoạt lại tài khoản?'}
+        onOpenChange={(open) => {
+          if (!open) onCancelPending()
+        }}
+        title={
+          confirmPending?.type === 'deactivate'
+            ? 'Vô hiệu hóa tài khoản?'
+            : 'Kích hoạt lại tài khoản?'
+        }
         description={
           confirmPending?.type === 'deactivate'
             ? 'Nhân viên sẽ không thể đăng nhập sau khi bị vô hiệu hóa.'

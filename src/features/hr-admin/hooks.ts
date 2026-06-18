@@ -55,6 +55,7 @@ export function useUpdateEmployee() {
       employeeApi.update(args.id, args.patch),
     onSuccess: (_data, { id }) => {
       void qc.invalidateQueries({ queryKey: employeeKeys.detail(id) })
+      void qc.invalidateQueries({ queryKey: employeeKeys.detailEmployeeByID(id) })
       void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
       toast.success('Đã cập nhật nhân viên')
     },
@@ -91,6 +92,7 @@ export function useDeactivateEmployee() {
     },
     onSuccess: (_data, id) => {
       void qc.invalidateQueries({ queryKey: employeeKeys.detail(id) })
+      void qc.invalidateQueries({ queryKey: employeeKeys.detailEmployeeByID(id) })
       void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
       toast.success('Đã vô hiệu hóa tài khoản')
     },

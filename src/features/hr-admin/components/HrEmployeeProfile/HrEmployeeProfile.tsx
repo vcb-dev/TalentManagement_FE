@@ -17,7 +17,7 @@ import {
   formatUserDateForReadonlyDisplay,
   parseStoredDateToInputValue,
 } from '@/features/profile/profileDateUtils'
-import { useId, useMemo } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { profileApi } from '@/features/profile/api'
 import { toast } from 'sonner'
 import type { MyProfilePage } from '@/features/profile/types'
@@ -40,7 +40,14 @@ import { SelectItem } from '@/components/ui/select'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Link } from '@tanstack/react-router'
-import { useUpdateEmployeeById } from '../../hooks'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
+import { usePermission } from '@/hooks/usePermission'
+import {
+  useDeactivateEmployee,
+  useEmployee,
+  useUpdateEmployee,
+  useUpdateEmployeeById,
+} from '../../hooks'
 import { EMPLOYEE_PATCH_KEYS, type EditEmployeeBody, type EmployeePatchKey } from '../../types'
 export interface HrEmployeeProfileProps {
   employee: EmployeeEntity
@@ -76,6 +83,99 @@ function emptyEditRecord(): EditRecord {
     >),
     extraTeamIds: [],
   }
+}
+
+function isEmploymentInactive(employmentStatus: string | null | undefined): boolean {
+  const raw = (employmentStatus ?? '').trim()
+  if (!raw) return false
+  const upper = raw.toUpperCase()
+  if (upper === 'INACTIVE' || upper === 'TERMINATED') return true
+  const folded = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
+  return /thoi viec|nghi viec|da nghi|inactive|ngung hoat dong|sa thai/.test(folded)
+}
+
+function ProfileActionButtons({
+  isInactive,
+  canDeactivate,
+  canReactivate,
+  isSaving,
+  patchPending,
+  onDeactivate,
+  onReactivate,
+  onSave,
+  layout = 'footer',
+}: {
+  isInactive: boolean
+  canDeactivate: boolean
+  canReactivate: boolean
+  isSaving: boolean
+  patchPending: boolean
+  onDeactivate: () => void
+  onReactivate: () => void
+  onSave: () => void
+  layout?: 'header' | 'footer'
+}) {
+  const compact = layout === 'header'
+  const actionClass = compact
+    ? 'h-10 rounded-xl px-4 text-xs font-bold sm:min-w-[140px]'
+    : 'h-12 rounded-2xl px-6 text-sm font-bold sm:min-w-[180px]'
+  const saveClass = compact
+    ? 'h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 text-xs font-bold text-white shadow-md sm:min-w-[160px]'
+    : 'h-12 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 font-bold text-white shadow-lg shadow-indigo-500/25 sm:min-w-[220px] sm:px-8'
+
+  return (
+    <div
+      className={cn(
+        'flex flex-wrap items-center gap-2',
+        layout === 'footer' ? 'w-full flex-col sm:flex-row sm:justify-end' : 'justify-end'
+      )}
+    >
+      {isInactive && canReactivate ? (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isSaving}
+          onClick={onReactivate}
+          className={cn(
+            actionClass,
+            'w-full border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 sm:w-auto'
+          )}
+        >
+          Kích hoạt lại
+        </Button>
+      ) : null}
+      {!isInactive && canDeactivate ? (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isSaving}
+          onClick={onDeactivate}
+          className={cn(
+            actionClass,
+            'w-full border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/15 sm:w-auto'
+          )}
+        >
+          Hủy hoạt động
+        </Button>
+      ) : null}
+      <Button
+        type="button"
+        disabled={isSaving}
+        onClick={onSave}
+        className={cn(
+          saveClass,
+          'w-full transition-all hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] disabled:opacity-60 sm:w-auto'
+        )}
+      >
+        {patchPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
+        {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
+      </Button>
+    </div>
+  )
 }
 
 const Form = FormProvider
@@ -507,7 +607,14 @@ export function HrEmployeeProfile({
   page: MyProfilePage
 }) {
   const user = useAuthStore((s) => s.user)
+  const { canId } = usePermission()
+  const canDeactivate = canId('hr.employees.deactivate') || canId('hr.employees.edit')
+  const canReactivate = canId('hr.employees.edit')
   const { mutate: patchUser, isPending: patchPending } = useUpdateEmployeeById()
+  const { data: employeeSummary } = useEmployee(employee.id)
+  const deactivate = useDeactivateEmployee()
+  const updateEmployee = useUpdateEmployee()
+  const [confirmPending, setConfirmPending] = useState<'deactivate' | 'reactivate' | null>(null)
   const { mutate: uploadPortrait, isPending: portraitUploading } = useUploadMePortrait()
   const { data: divisionsList = [] } = useQuery({
     queryKey: ['organization', 'divisions-list'],
@@ -587,6 +694,32 @@ export function HrEmployeeProfile({
     })
   )
 
+  const isInactive = employeeSummary
+    ? employeeSummary.status === 'INACTIVE'
+    : isEmploymentInactive(employee.employmentStatus)
+  const isSaving = patchPending || deactivate.isPending || updateEmployee.isPending
+
+  const handleConfirmPending = () => {
+    if (!confirmPending) return
+    if (confirmPending === 'deactivate') {
+      deactivate.mutate(employee.id)
+    } else {
+      updateEmployee.mutate({ id: employee.id, patch: { status: 'ACTIVE' } })
+    }
+    setConfirmPending(null)
+  }
+
+  const accountActions = {
+    isInactive,
+    canDeactivate,
+    canReactivate,
+    isSaving,
+    patchPending,
+    onDeactivate: () => setConfirmPending('deactivate'),
+    onReactivate: () => setConfirmPending('reactivate'),
+    onSave: onSaveProfile,
+  }
+
   const fieldCtx = {
     employee,
     control,
@@ -610,8 +743,8 @@ export function HrEmployeeProfile({
         </div>
 
         <div className="mx-auto w-full max-w-[1400px] px-4 md:px-6">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:mb-4 lg:block">
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               <Link
                 to="/hr-admin"
                 search={{ page: 1, pageSize: 15 }}
@@ -622,7 +755,7 @@ export function HrEmployeeProfile({
               <span className="text-muted-foreground/50">/</span>
               <span className="font-semibold text-foreground">{employee.fullNameLegal}</span>
             </div>
-            <div className="flex flex-wrap items-center gap-1.5 lg:hidden"></div>
+            <ProfileActionButtons {...accountActions} layout="header" />
           </div>
 
           <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
@@ -722,24 +855,34 @@ export function HrEmployeeProfile({
               <div
                 className="pointer-events-auto border-t border-slate-200/90 bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_-12px_rgba(15,23,42,0.12)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95"
                 role="region"
-                aria-label="Lưu hồ sơ"
+                aria-label="Thao tác hồ sơ"
               >
-                <div className="mx-auto flex w-full max-w-[1400px] justify-stretch sm:justify-end">
-                  <Button
-                    type="button"
-                    disabled={patchPending}
-                    onClick={onSaveProfile}
-                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 font-bold text-white shadow-lg shadow-indigo-500/25 transition-all hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] disabled:opacity-60 sm:w-auto sm:min-w-[220px] sm:px-8"
-                  >
-                    {patchPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
-                  </Button>
+                <div className="mx-auto flex w-full max-w-[1400px]">
+                  <ProfileActionButtons {...accountActions} layout="footer" />
                 </div>
               </div>
             </div>,
             document.body
           )
         : null}
+
+      <ConfirmDialog
+        open={confirmPending !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmPending(null)
+        }}
+        title={
+          confirmPending === 'deactivate' ? 'Vô hiệu hóa tài khoản?' : 'Kích hoạt lại tài khoản?'
+        }
+        description={
+          confirmPending === 'deactivate'
+            ? 'Nhân viên sẽ không thể đăng nhập sau khi bị vô hiệu hóa.'
+            : 'Nhân viên sẽ được khôi phục quyền đăng nhập.'
+        }
+        confirmLabel={confirmPending === 'deactivate' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+        destructive={confirmPending === 'deactivate'}
+        onConfirm={handleConfirmPending}
+      />
     </Form>
   )
 }
