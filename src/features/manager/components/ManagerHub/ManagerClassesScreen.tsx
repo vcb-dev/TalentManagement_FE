@@ -1,19 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useForm, useWatch } from 'react-hook-form'
-import {
-  Calendar,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  Pencil,
-  PlusCircle,
-  Search,
-  Trash2,
-  UserPlus2,
-  Users,
-  X,
-} from 'lucide-react'
+import { useForm, useWatch, Controller } from 'react-hook-form'
+import { Calendar, Loader2, PlusCircle, Search, UserPlus2, Users, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   PAGE_HEADER_DESCRIPTION,
@@ -23,18 +11,17 @@ import {
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { InputController, SelectController } from '@/components/ui/form-controllers'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import {
-  useAddClassMember,
   useClassMemberOptions,
   useCreateManagerClass,
   useDeleteManagerClass,
   useManagerClasses,
-  useRemoveClassMember,
   useTeacherOptions,
   useUpdateManagerClass,
 } from '@/features/manager/hooks'
@@ -109,8 +96,8 @@ export function ManagerClassesScreen() {
     email: string
   } | null>(null)
 
-  const createForm = useForm<{ name: string; levelFrom: CreateLevel }>({
-    defaultValues: { name: '', levelFrom: 'tap_su' },
+  const createForm = useForm<{ name: string; levelFrom: CreateLevel; isKnowledgeWork: boolean }>({
+    defaultValues: { name: '', levelFrom: 'tap_su', isKnowledgeWork: true },
   })
   const {
     control: createControl,
@@ -119,8 +106,8 @@ export function ManagerClassesScreen() {
   } = createForm
   const createLevelFrom = useWatch({ control: createControl, name: 'levelFrom' }) ?? 'tap_su'
 
-  const editForm = useForm<{ name: string }>({
-    defaultValues: { name: '' },
+  const editForm = useForm<{ name: string; isKnowledgeWork: boolean }>({
+    defaultValues: { name: '', isKnowledgeWork: true },
   })
   const { control: editControl, handleSubmit: handleEditSubmit, reset: resetEditForm } = editForm
 
@@ -177,13 +164,14 @@ export function ManagerClassesScreen() {
         status: 'open',
         memberUserIds: [],
         teacherUserId: selectedCreateTeacher?.userId ?? null,
+        isKnowledgeWork: values.isKnowledgeWork,
       },
       {
         onSuccess: () => {
           setIsCreateOpen(false)
           setCreateMemberQuery('')
           setSelectedCreateMembers([])
-          resetCreateForm({ name: '', levelFrom: 'tap_su' })
+          resetCreateForm({ name: '', levelFrom: 'tap_su', isKnowledgeWork: true })
           setCreateTeacherQuery('')
           setSelectedCreateTeacher(null)
         },
@@ -200,7 +188,7 @@ export function ManagerClassesScreen() {
 
   const openEditClassModal = (row: (typeof rows)[number]) => {
     setEditClassId(row.id)
-    resetEditForm({ name: row.name })
+    resetEditForm({ name: row.name, isKnowledgeWork: row.isKnowledgeWork ?? true })
     setSelectedTeacher(row.teacher ?? null)
     setEditModalTeacherQuery('')
   }
@@ -213,7 +201,14 @@ export function ManagerClassesScreen() {
       return
     }
     updateClass.mutate(
-      { classId: editClassId, input: { name: n, teacherUserId: selectedTeacher?.userId ?? null } },
+      {
+        classId: editClassId,
+        input: {
+          name: n,
+          teacherUserId: selectedTeacher?.userId ?? null,
+          isKnowledgeWork: values.isKnowledgeWork,
+        },
+      },
       {
         onSuccess: () => {
           closeEditClassModal()
@@ -387,6 +382,25 @@ export function ManagerClassesScreen() {
                           {LEVEL_LABELS[createLevelFrom]} →{' '}
                           {LEVEL_LABELS[NEXT_LEVEL_BY_FROM[createLevelFrom]]}
                         </div>
+                      </div>
+                      <div className="flex items-center gap-2 py-2 md:col-span-2">
+                        <Controller
+                          control={createControl}
+                          name="isKnowledgeWork"
+                          render={({ field }) => (
+                            <Checkbox
+                              id="isKnowledgeWork"
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          )}
+                        />
+                        <label
+                          htmlFor="isKnowledgeWork"
+                          className="text-sm font-semibold text-foreground cursor-pointer select-none"
+                        >
+                          Lớp Lao động tri thức
+                        </label>
                       </div>
                       <div className="search-dropdown-container relative md:col-span-2">
                         <label className="mb-1 block text-xs font-semibold text-muted-foreground">
@@ -674,6 +688,25 @@ export function ManagerClassesScreen() {
                             )}
                           </div>
                         )}
+                      </div>
+                      <div className="flex items-center gap-2 py-2">
+                        <Controller
+                          control={editControl}
+                          name="isKnowledgeWork"
+                          render={({ field }) => (
+                            <Checkbox
+                              id="editIsKnowledgeWork"
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          )}
+                        />
+                        <label
+                          htmlFor="editIsKnowledgeWork"
+                          className="text-sm font-semibold text-foreground cursor-pointer select-none"
+                        >
+                          Lớp Lao động tri thức
+                        </label>
                       </div>
                       <div className="mt-5 flex justify-end gap-2">
                         <Button

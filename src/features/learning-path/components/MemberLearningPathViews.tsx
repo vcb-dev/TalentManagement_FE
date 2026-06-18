@@ -157,7 +157,13 @@ function MemberScheduleTableSkeleton() {
   )
 }
 
-function AvailableClassesSection({ currentClassIds = [] }: { currentClassIds?: string[] }) {
+function AvailableClassesSection({
+  currentClassIds = [],
+  isOther = false,
+}: {
+  currentClassIds?: string[]
+  isOther?: boolean
+}) {
   const { data: classes = [], isLoading } = useAvailableLearningClasses()
   const registerClass = useRegisterLearningClass()
 
@@ -165,7 +171,11 @@ function AvailableClassesSection({ currentClassIds = [] }: { currentClassIds?: s
     return <Skeleton className="h-48 w-full rounded-[2rem]" />
   }
 
-  const rows = classes.filter((c) => !currentClassIds.includes(c.id))
+  const rows = classes.filter(
+    (c) =>
+      !currentClassIds.includes(c.id) &&
+      (isOther ? c.isKnowledgeWork === false : c.isKnowledgeWork !== false)
+  )
   if (!rows.length) return null
 
   return (
@@ -228,7 +238,7 @@ function AvailableClassesSection({ currentClassIds = [] }: { currentClassIds?: s
   )
 }
 
-export function MemberClassesPanel() {
+export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
   const user = useAuthStore((s) => s.user)
   const queryClient = useQueryClient()
   const filterForm = useForm<{ startDate: string; endDate: string }>({
@@ -256,7 +266,9 @@ export function MemberClassesPanel() {
     topic: string
   } | null>(null)
 
-  const enrolledClasses = data?.enrolledClasses ?? []
+  const enrolledClasses = (data?.enrolledClasses ?? []).filter((c) =>
+    isOther ? c.isKnowledgeWork === false : c.isKnowledgeWork !== false
+  )
 
   const isDeadlineOnly = useCallback((s: any) => {
     return s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
@@ -436,7 +448,7 @@ export function MemberClassesPanel() {
             Khi quản lý gán lớp, thông tin sẽ hiển thị tại đây.
           </p>
         </div>
-        <AvailableClassesSection />
+        <AvailableClassesSection isOther={isOther} />
       </div>
     )
   }
@@ -513,9 +525,11 @@ export function MemberClassesPanel() {
       {enrolledClasses.map((classItem) => {
         const classReflectionTasks = getReflectionTasks(classItem)
         const classRegularSchedules = classItem.schedules.filter((s: any) => !isDeadlineOnly(s))
-        const classHasAnyMaterials = classRegularSchedules.some((s: any) =>
-          s.roadmapItems?.some((ri: any) => ri.materialRef && ri.materialRef.trim() !== '')
-        )
+        const classHasAnyMaterials = isOther
+          ? classRegularSchedules.some((s: any) => s.materialRef && s.materialRef.trim() !== '')
+          : classRegularSchedules.some((s: any) =>
+              s.roadmapItems?.some((ri: any) => ri.materialRef && ri.materialRef.trim() !== '')
+            )
 
         return (
           <div
@@ -906,34 +920,57 @@ export function MemberClassesPanel() {
                           {classHasAnyMaterials && (
                             <td className="px-6 py-5">
                               <div className="flex flex-col gap-1">
-                                {s.roadmapItems
-                                  ?.filter(
-                                    (ri: any) => ri.materialRef && ri.materialRef.trim() !== ''
-                                  )
-                                  .map((ri: any) => {
-                                    const isLink =
-                                      ri.materialRef.startsWith('http://') ||
-                                      ri.materialRef.startsWith('https://')
-                                    return isLink ? (
-                                      <a
-                                        key={ri.id}
-                                        href={ri.materialRef}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline break-all block"
-                                        title={ri.materialRef}
-                                      >
-                                        {ri.materialRef.split('/').pop() || 'Tài liệu'}
-                                      </a>
-                                    ) : (
-                                      <span
-                                        key={ri.id}
-                                        className="text-xs font-bold text-slate-500"
-                                      >
-                                        {ri.materialRef}
-                                      </span>
-                                    )
-                                  })}
+                                {isOther
+                                  ? s.materialRef && s.materialRef.trim() !== ''
+                                    ? (() => {
+                                        const isLink =
+                                          s.materialRef.startsWith('http://') ||
+                                          s.materialRef.startsWith('https://')
+                                        return isLink ? (
+                                          <a
+                                            href={s.materialRef}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline break-all block"
+                                            title={s.materialRef}
+                                          >
+                                            {s.materialRef.split('/').pop() || 'Tài liệu'}
+                                          </a>
+                                        ) : (
+                                          <span className="text-xs font-bold text-slate-500">
+                                            {s.materialRef}
+                                          </span>
+                                        )
+                                      })()
+                                    : null
+                                  : s.roadmapItems
+                                      ?.filter(
+                                        (ri: any) => ri.materialRef && ri.materialRef.trim() !== ''
+                                      )
+                                      .map((ri: any) => {
+                                        const isLink =
+                                          ri.materialRef.startsWith('http://') ||
+                                          ri.materialRef.startsWith('https://')
+                                        return isLink ? (
+                                          <a
+                                            key={ri.id}
+                                            href={ri.materialRef}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline break-all block"
+                                            title={ri.materialRef}
+                                          >
+                                            {ri.materialRef.split('/').pop() || 'Tài liệu'}
+                                          </a>
+                                        ) : (
+                                          <span
+                                            key={ri.id}
+                                            className="text-xs font-bold text-slate-500"
+                                          >
+                                            {ri.materialRef}
+                                          </span>
+                                        )
+                                      })}
                               </div>
                             </td>
                           )}
@@ -1034,36 +1071,60 @@ export function MemberClassesPanel() {
                         <span className="font-semibold text-slate-400">Địa điểm: </span>
                         {s.location?.trim() || '—'}
                       </p>
-                      {s.roadmapItems?.some(
-                        (ri: any) => ri.materialRef && ri.materialRef.trim() !== ''
-                      ) && (
+                      {((isOther && s.materialRef && s.materialRef.trim() !== '') ||
+                        (!isOther &&
+                          s.roadmapItems?.some(
+                            (ri: any) => ri.materialRef && ri.materialRef.trim() !== ''
+                          ))) && (
                         <div className="text-xs font-bold text-slate-700">
                           <span className="font-semibold text-slate-400">Tài liệu: </span>
-                          {s.roadmapItems
-                            ?.filter((ri: any) => ri.materialRef && ri.materialRef.trim() !== '')
-                            .map((ri: any) => {
-                              const isLink =
-                                ri.materialRef.startsWith('http://') ||
-                                ri.materialRef.startsWith('https://')
-                              return isLink ? (
-                                <a
-                                  key={ri.id}
-                                  href={ri.materialRef}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline break-all mr-2 inline-block"
-                                >
-                                  {ri.materialRef.split('/').pop() || 'Tài liệu'}
-                                </a>
-                              ) : (
-                                <span
-                                  key={ri.id}
-                                  className="text-xs font-bold text-slate-500 mr-2 inline-block"
-                                >
-                                  {ri.materialRef}
-                                </span>
-                              )
-                            })}
+                          {isOther
+                            ? (() => {
+                                const isLink =
+                                  s.materialRef.startsWith('http://') ||
+                                  s.materialRef.startsWith('https://')
+                                return isLink ? (
+                                  <a
+                                    href={s.materialRef}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline break-all inline-block"
+                                  >
+                                    {s.materialRef.split('/').pop() || 'Tài liệu'}
+                                  </a>
+                                ) : (
+                                  <span className="text-xs font-bold text-slate-500 inline-block">
+                                    {s.materialRef}
+                                  </span>
+                                )
+                              })()
+                            : s.roadmapItems
+                                ?.filter(
+                                  (ri: any) => ri.materialRef && ri.materialRef.trim() !== ''
+                                )
+                                .map((ri: any) => {
+                                  const isLink =
+                                    ri.materialRef.startsWith('http://') ||
+                                    ri.materialRef.startsWith('https://')
+                                  return isLink ? (
+                                    <a
+                                      key={ri.id}
+                                      href={ri.materialRef}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline break-all mr-2 inline-block"
+                                    >
+                                      {ri.materialRef.split('/').pop() || 'Tài liệu'}
+                                    </a>
+                                  ) : (
+                                    <span
+                                      key={ri.id}
+                                      className="text-xs font-bold text-slate-500 mr-2 inline-block"
+                                    >
+                                      {ri.materialRef}
+                                    </span>
+                                  )
+                                })}
                         </div>
                       )}
                       <Badge
@@ -1195,7 +1256,10 @@ export function MemberClassesPanel() {
         </Modal>
       )}
 
-      <AvailableClassesSection currentClassIds={enrolledClasses.map((c) => c.id)} />
+      <AvailableClassesSection
+        currentClassIds={enrolledClasses.map((c) => c.id)}
+        isOther={isOther}
+      />
     </div>
   )
 }

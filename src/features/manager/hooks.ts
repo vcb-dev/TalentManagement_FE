@@ -179,6 +179,7 @@ export function useUpdateManagerClass() {
         capacity?: number | null
         examDate?: string | null
         teacherUserId?: string | null
+        isKnowledgeWork?: boolean
       }
     }) => managerApi.updateClass(classId, input),
     onSuccess: () => {

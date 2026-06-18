@@ -123,6 +123,13 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     permissionId: 'learning.view',
   },
   {
+    to: '/other-classes',
+    label: 'Lớp học khác',
+    icon: School,
+    match: 'prefix',
+    permissionId: 'learning.view',
+  },
+  {
     to: '/rewards',
     label: 'Khen thưởng/Phạt',
     icon: Award,
@@ -582,6 +589,7 @@ export function groupedSidebarNavItems(
       items: take([
         ...find(MEMBER_SELF_ITEMS, '/learning-path'),
         ...find(MEMBER_SELF_ITEMS, '/learning-classes'),
+        ...find(MEMBER_SELF_ITEMS, '/other-classes'),
         ...find(MEMBER_SELF_ITEMS, '/exam'),
       ]),
     },

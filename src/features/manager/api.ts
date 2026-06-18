@@ -152,6 +152,7 @@ export const managerApi = {
     examDate?: string | null
     memberUserIds?: string[]
     teacherUserId?: string | null
+    isKnowledgeWork?: boolean
   }) => {
     const res = await apiClient.post<unknown>('/manager/classes', input)
     return safeParse(managerClassCreateResponseSchema, res.data, 'POST /manager/classes')
@@ -165,6 +166,7 @@ export const managerApi = {
       capacity?: number | null
       examDate?: string | null
       teacherUserId?: string | null
+      isKnowledgeWork?: boolean
     }
   ) => {
     const res = await apiClient.patch<unknown>(`/manager/classes/${classId}`, input)

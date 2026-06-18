@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProtectedRoomBookingRouteImport } from './routes/_protected/room-booking'
 import { Route as ProtectedRewardsRouteImport } from './routes/_protected/rewards'
 import { Route as ProtectedProfileRouteImport } from './routes/_protected/profile'
+import { Route as ProtectedOtherClassesRouteImport } from './routes/_protected/other-classes'
 import { Route as ProtectedMonthlyReportRouteImport } from './routes/_protected/monthly-report'
 import { Route as ProtectedLearningScheduleRouteImport } from './routes/_protected/learning-schedule'
 import { Route as ProtectedLearningClassesRouteImport } from './routes/_protected/learning-classes'
@@ -112,6 +113,11 @@ const ProtectedRewardsRoute = ProtectedRewardsRouteImport.update({
 const ProtectedProfileRoute = ProtectedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedOtherClassesRoute = ProtectedOtherClassesRouteImport.update({
+  id: '/other-classes',
+  path: '/other-classes',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
 const ProtectedMonthlyReportRoute = ProtectedMonthlyReportRouteImport.update({
@@ -422,6 +428,7 @@ export interface FileRoutesByFullPath {
   '/learning-classes': typeof ProtectedLearningClassesRoute
   '/learning-schedule': typeof ProtectedLearningScheduleRoute
   '/monthly-report': typeof ProtectedMonthlyReportRoute
+  '/other-classes': typeof ProtectedOtherClassesRoute
   '/profile': typeof ProtectedProfileRoute
   '/rewards': typeof ProtectedRewardsRoute
   '/room-booking': typeof ProtectedRoomBookingRoute
@@ -483,6 +490,7 @@ export interface FileRoutesByTo {
   '/learning-classes': typeof ProtectedLearningClassesRoute
   '/learning-schedule': typeof ProtectedLearningScheduleRoute
   '/monthly-report': typeof ProtectedMonthlyReportRoute
+  '/other-classes': typeof ProtectedOtherClassesRoute
   '/profile': typeof ProtectedProfileRoute
   '/rewards': typeof ProtectedRewardsRoute
   '/room-booking': typeof ProtectedRoomBookingRoute
@@ -547,6 +555,7 @@ export interface FileRoutesById {
   '/_protected/learning-classes': typeof ProtectedLearningClassesRoute
   '/_protected/learning-schedule': typeof ProtectedLearningScheduleRoute
   '/_protected/monthly-report': typeof ProtectedMonthlyReportRoute
+  '/_protected/other-classes': typeof ProtectedOtherClassesRoute
   '/_protected/profile': typeof ProtectedProfileRoute
   '/_protected/rewards': typeof ProtectedRewardsRoute
   '/_protected/room-booking': typeof ProtectedRoomBookingRoute
@@ -610,6 +619,7 @@ export interface FileRouteTypes {
     | '/learning-classes'
     | '/learning-schedule'
     | '/monthly-report'
+    | '/other-classes'
     | '/profile'
     | '/rewards'
     | '/room-booking'
@@ -671,6 +681,7 @@ export interface FileRouteTypes {
     | '/learning-classes'
     | '/learning-schedule'
     | '/monthly-report'
+    | '/other-classes'
     | '/profile'
     | '/rewards'
     | '/room-booking'
@@ -734,6 +745,7 @@ export interface FileRouteTypes {
     | '/_protected/learning-classes'
     | '/_protected/learning-schedule'
     | '/_protected/monthly-report'
+    | '/_protected/other-classes'
     | '/_protected/profile'
     | '/_protected/rewards'
     | '/_protected/room-booking'
@@ -856,6 +868,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProtectedProfileRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/other-classes': {
+      id: '/_protected/other-classes'
+      path: '/other-classes'
+      fullPath: '/other-classes'
+      preLoaderRoute: typeof ProtectedOtherClassesRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/monthly-report': {
@@ -1259,6 +1278,7 @@ interface ProtectedRouteRouteChildren {
   ProtectedLearningClassesRoute: typeof ProtectedLearningClassesRoute
   ProtectedLearningScheduleRoute: typeof ProtectedLearningScheduleRoute
   ProtectedMonthlyReportRoute: typeof ProtectedMonthlyReportRoute
+  ProtectedOtherClassesRoute: typeof ProtectedOtherClassesRoute
   ProtectedProfileRoute: typeof ProtectedProfileRoute
   ProtectedRewardsRoute: typeof ProtectedRewardsRoute
   ProtectedRoomBookingRoute: typeof ProtectedRoomBookingRoute
@@ -1315,6 +1335,7 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedLearningClassesRoute: ProtectedLearningClassesRoute,
   ProtectedLearningScheduleRoute: ProtectedLearningScheduleRoute,
   ProtectedMonthlyReportRoute: ProtectedMonthlyReportRoute,
+  ProtectedOtherClassesRoute: ProtectedOtherClassesRoute,
   ProtectedProfileRoute: ProtectedProfileRoute,
   ProtectedRewardsRoute: ProtectedRewardsRoute,
   ProtectedRoomBookingRoute: ProtectedRoomBookingRoute,

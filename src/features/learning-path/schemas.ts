@@ -48,6 +48,7 @@ const scheduleSlotSchema = z.object({
   endTime: z.string(),
   topic: z.string(),
   location: z.string().nullable(),
+  materialRef: z.string().nullable().optional(),
   roadmapItems: z
     .array(
       z.object({
@@ -80,6 +81,7 @@ const enrolledMemberSchema = z.object({
 const enrolledClassSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  isKnowledgeWork: z.boolean().optional(),
   levelFrom: z.string(),
   levelTo: z.string(),
   status: z.enum(['open', 'full', 'closed']),
