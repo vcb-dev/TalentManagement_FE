@@ -166,6 +166,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     () => schedules.filter((s) => isDeadlineOnly(s)),
     [schedules, isDeadlineOnly]
   )
+
   const { data: roadmapItems = [] } = useTeacherRoadmapItems(classId)
   const { data: registrations = [] } = useTeacherClassRegistrations(classId)
   const createSchedule = useTeacherCreateSchedule(classId)
@@ -286,13 +287,44 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     gradingType: 'direct',
   }
 
-  const hasExistingDeadlineForRoadmapItem = (itemId: string, excludeScheduleId?: string | null) => {
-    return schedules.some((s) => {
+  const countRoadmapItemDeadlineSelections = (
+    itemId: string,
+    excludeScheduleId?: string | null
+  ) => {
+    return deadlineSchedules.filter((s) => {
       if (excludeScheduleId && s.id === excludeScheduleId) return false
-      if (!isDeadlineOnly(s)) return false
       return s.roadmapItems?.some((item) => item.id === itemId)
-    })
+    }).length
   }
+
+  const hasExistingDeadlineForRoadmapItem = (itemId: string, excludeScheduleId?: string | null) => {
+    return countRoadmapItemDeadlineSelections(itemId, excludeScheduleId) > 0
+  }
+
+  const selectedRoadmapDuplicateCounts = useMemo(() => {
+    if (!isCreatingDeadlineOnly) return []
+    return selectedRoadmapItemIds.flatMap((itemId) => {
+      const existingCount = deadlineSchedules.filter((s) => {
+        if (editingScheduleId && s.id === editingScheduleId) return false
+        return s.roadmapItems?.some((item) => item.id === itemId)
+      }).length
+      if (existingCount === 0) return []
+      const item = roadmapItems.find((roadmapItem) => roadmapItem.id === itemId)
+      return [
+        {
+          itemId,
+          objective: item?.objective ?? 'Học phần',
+          selectionNumber: existingCount + 1,
+        },
+      ]
+    })
+  }, [
+    isCreatingDeadlineOnly,
+    selectedRoadmapItemIds,
+    roadmapItems,
+    deadlineSchedules,
+    editingScheduleId,
+  ])
 
   const getAutoGradingType = (selectedIds: string[], excludeScheduleId?: string | null) => {
     if (selectedIds.length === 0) return 'direct'
@@ -320,6 +352,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     if (!s) return
     setScheduleModalOpen(true)
     setEditingScheduleId(scheduleId)
+    setIsCreatingDeadlineOnly(isDeadlineOnly(s))
     const [sh, sm] = splitTimeToParts(s.startTime)
     const [eh, em] = splitTimeToParts(s.endTime)
     const todayMin = getTodayIsoLocal()
@@ -1412,9 +1445,11 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                            {isCreatingDeadlineOnly ? 'Khung giờ đóng nộp' : 'Thời gian kết thúc'}
-                          </label>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                              {isCreatingDeadlineOnly ? 'Khung giờ đóng nộp' : 'Thời gian kết thúc'}
+                            </label>
+                          </div>
                           <div className="flex items-center gap-2">
                             <InputController
                               control={scheduleForm.control}
@@ -1437,6 +1472,18 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                             />
                           </div>
                         </div>
+                        {isCreatingDeadlineOnly && selectedRoadmapDuplicateCounts.length > 0
+                          ? selectedRoadmapDuplicateCounts.map((entry) => (
+                              <Badge
+                                key={entry.itemId}
+                                variant="outline"
+                                className="rounded-lg border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"
+                                title={entry.objective}
+                              >
+                                {entry.objective}: Lần {entry.selectionNumber}
+                              </Badge>
+                            ))
+                          : null}
                       </div>
                     </div>
 
