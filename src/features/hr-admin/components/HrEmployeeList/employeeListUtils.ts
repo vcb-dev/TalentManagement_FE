@@ -114,7 +114,7 @@ export function statusLabelVi(status: EmployeeEntity['status']): string {
     case 'ACTIVE':
       return 'Hoạt động'
     case 'INACTIVE':
-      return 'Ngừng HĐ'
+      return 'Đã nghỉ'
     case 'PROBATION':
       return 'Thử việc'
     case 'RESERVED':

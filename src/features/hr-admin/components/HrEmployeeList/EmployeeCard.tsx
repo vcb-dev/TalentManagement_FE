@@ -249,6 +249,11 @@ export function EmployeeCard({
           <span className="inline-flex rounded-full bg-primary/[0.08] px-2 py-0.5 font-semibold text-primary-700">
             {teamLine}
           </span>
+          {inactive ? (
+            <span className="inline-flex rounded-full border border-slate-300/80 bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              Đã nghỉ
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -260,35 +265,22 @@ export function EmployeeCard({
 
       <div className="mt-auto flex gap-2">
         {inactive ? (
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              className={cn(
-                'flex h-auto min-h-9 flex-1 items-center justify-center rounded-lg py-2 text-xs font-bold',
-                selected
-                  ? 'bg-primary/15 text-primary hover:bg-primary/20'
-                  : 'bg-muted/80 text-foreground hover:bg-muted'
-              )}
-              onClick={(e) => {
-                e.stopPropagation()
-                onView(e)
-              }}
-            >
-              Xem lịch sử
-            </Button>
-            {variant === 'hr' ? (
-              <Button
-                type="button"
-                className="h-auto min-h-9 min-w-0 flex-1 rounded-lg border-[1.5px] border-button bg-button py-2 text-xs font-semibold text-button-foreground"
-                onClick={(e) => {
-                  e.stopPropagation()
-                }}
-              >
-                Khôi phục
-              </Button>
-            ) : null}
-          </>
+          <Button
+            type="button"
+            variant="ghost"
+            className={cn(
+              'flex h-auto min-h-9 w-full items-center justify-center rounded-lg py-2 text-xs font-bold',
+              selected
+                ? 'bg-primary/15 text-primary hover:bg-primary/20'
+                : 'bg-muted/80 text-foreground hover:bg-muted'
+            )}
+            onClick={(e) => {
+              e.stopPropagation()
+              onView(e)
+            }}
+          >
+            Xem lịch sử
+          </Button>
         ) : (
           <>
             <Button
