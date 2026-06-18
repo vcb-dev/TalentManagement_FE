@@ -19,7 +19,6 @@ export function isDateFormField(key: MeUserDisplayKey): boolean {
 
 /** Công việc & tổ chức — chỉ xem, không PATCH / chỉnh trên form. */
 export const USER_WORK_ORG_READONLY_KEYS = [
-  'employmentStatus',
   'startDateWork',
   'employeeCodePrimary',
   'hrOfficerName',
@@ -38,7 +37,6 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
       { key: 'teamId', label: 'Nhóm (theo phòng ban)', kind: 'team-select' },
       { key: 'jobTitle', label: 'Vị trí chuyên môn', kind: 'job-title-select' },
       { key: 'startDateWork', label: 'Ngày bắt đầu làm việc' },
-      { key: 'employmentStatus', label: 'Tình trạng làm việc' },
       { key: 'employeeCodePrimary', label: 'Mã nhân viên' },
       { key: 'teamPosition', label: 'Loại hợp đồng / vị trí' },
       { key: 'directManager', label: 'Quản lý trực tiếp' },
