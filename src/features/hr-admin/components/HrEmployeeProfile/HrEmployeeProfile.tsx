@@ -107,7 +107,6 @@ function ProfileActionButtons({
   onDeactivate,
   onReactivate,
   onSave,
-  layout = 'footer',
 }: {
   isInactive: boolean
   canDeactivate: boolean
@@ -117,33 +116,16 @@ function ProfileActionButtons({
   onDeactivate: () => void
   onReactivate: () => void
   onSave: () => void
-  layout?: 'header' | 'footer'
 }) {
-  const compact = layout === 'header'
-  const actionClass = compact
-    ? 'h-10 rounded-xl px-4 text-xs font-bold sm:min-w-[140px]'
-    : 'h-12 rounded-2xl px-6 text-sm font-bold sm:min-w-[180px]'
-  const saveClass = compact
-    ? 'h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 text-xs font-bold text-white shadow-md sm:min-w-[160px]'
-    : 'h-12 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 font-bold text-white shadow-lg shadow-indigo-500/25 sm:min-w-[220px] sm:px-8'
-
   return (
-    <div
-      className={cn(
-        'flex flex-wrap items-center gap-2',
-        layout === 'footer' ? 'w-full flex-col sm:flex-row sm:justify-end' : 'justify-end'
-      )}
-    >
+    <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
       {isInactive && canReactivate ? (
         <Button
           type="button"
           variant="outline"
           disabled={isSaving}
           onClick={onReactivate}
-          className={cn(
-            actionClass,
-            'w-full border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 sm:w-auto'
-          )}
+          className="h-12 w-full rounded-2xl border-primary/30 bg-primary/10 px-6 text-sm font-bold text-primary hover:bg-primary/15 sm:w-auto sm:min-w-[180px]"
         >
           Kích hoạt lại
         </Button>
@@ -154,10 +136,7 @@ function ProfileActionButtons({
           variant="outline"
           disabled={isSaving}
           onClick={onDeactivate}
-          className={cn(
-            actionClass,
-            'w-full border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/15 sm:w-auto'
-          )}
+          className="h-12 w-full rounded-2xl border-destructive/40 bg-destructive/10 px-6 text-sm font-bold text-destructive hover:bg-destructive/15 sm:w-auto sm:min-w-[180px]"
         >
           Hủy hoạt động
         </Button>
@@ -166,10 +145,7 @@ function ProfileActionButtons({
         type="button"
         disabled={isSaving}
         onClick={onSave}
-        className={cn(
-          saveClass,
-          'w-full transition-all hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] disabled:opacity-60 sm:w-auto'
-        )}
+        className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 font-bold text-white shadow-lg shadow-indigo-500/25 transition-all hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] disabled:opacity-60 sm:w-auto sm:min-w-[220px] sm:px-8"
       >
         {patchPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
         {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
@@ -743,19 +719,16 @@ export function HrEmployeeProfile({
         </div>
 
         <div className="mx-auto w-full max-w-[1400px] px-4 md:px-6">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-              <Link
-                to="/hr-admin"
-                search={{ page: 1, pageSize: 15 }}
-                className="font-semibold text-primary hover:underline"
-              >
-                ← Danh sách nhân sự
-              </Link>
-              <span className="text-muted-foreground/50">/</span>
-              <span className="font-semibold text-foreground">{employee.fullNameLegal}</span>
-            </div>
-            <ProfileActionButtons {...accountActions} layout="header" />
+          <div className="mb-4 flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <Link
+              to="/hr-admin"
+              search={{ page: 1, pageSize: 15 }}
+              className="font-semibold text-primary hover:underline"
+            >
+              ← Danh sách nhân sự
+            </Link>
+            <span className="text-muted-foreground/50">/</span>
+            <span className="font-semibold text-foreground">{employee.fullNameLegal}</span>
           </div>
 
           <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
@@ -858,7 +831,7 @@ export function HrEmployeeProfile({
                 aria-label="Thao tác hồ sơ"
               >
                 <div className="mx-auto flex w-full max-w-[1400px]">
-                  <ProfileActionButtons {...accountActions} layout="footer" />
+                  <ProfileActionButtons {...accountActions} />
                 </div>
               </div>
             </div>,
