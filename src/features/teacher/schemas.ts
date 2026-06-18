@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const teacherClassApiSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  isKnowledgeWork: z.boolean().optional(),
   levelFrom: z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong']),
   levelTo: z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong']),
   examDate: z.string().datetime().nullable(),
@@ -30,6 +31,7 @@ export const teacherClassMemberApiSchema = z.object({
 export const teacherClassDetailApiSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  isKnowledgeWork: z.boolean().optional(),
   levelFrom: z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong']),
   levelTo: z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong']),
   examDate: z.string().datetime().nullable(),
@@ -60,9 +62,11 @@ export const teacherClassScheduleApiSchema = z.object({
   endTime: z.string(),
   topic: z.string(),
   location: z.string().nullable(),
+  materialRef: z.string().nullable().optional(),
   roadmapItems: z.array(teacherRoadmapItemApiSchema).optional().default([]),
   attendanceData: z.record(z.string(), z.any()).nullable().optional(),
   evaluatedUserIds: z.array(z.string()).optional(),
+  examQuestions: z.any().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 })

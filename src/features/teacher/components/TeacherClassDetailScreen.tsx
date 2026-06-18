@@ -259,6 +259,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       roadmapItemIds: [] as string[],
       roadmapItemDeadlines: {} as Record<string, string>,
       gradingType: 'direct',
+      materialRef: '',
     },
   })
   const {
@@ -285,6 +286,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     roadmapItemIds: [] as string[],
     roadmapItemDeadlines: {} as Record<string, string>,
     gradingType: 'direct',
+    materialRef: '',
   }
 
   const countRoadmapItemDeadlineSelections = (
@@ -378,6 +380,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       roadmapItemIds: s.roadmapItems?.map((item) => item.id) ?? [],
       roadmapItemDeadlines: deadlines,
       gradingType: (s.examQuestions as any)?.gradingType || 'direct',
+      materialRef: (s as any).materialRef ?? '',
     })
   }
 
@@ -736,6 +739,19 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                       {selectedSchedule.roadmapItems?.length ? (
                         <p className="mt-1 line-clamp-2 text-xs font-semibold text-slate-400">
                           {selectedSchedule.roadmapItems.map((item) => item.objective).join(', ')}
+                        </p>
+                      ) : null}
+                      {(selectedSchedule as any).materialRef ? (
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          Tài liệu:{' '}
+                          <a
+                            href={(selectedSchedule as any).materialRef}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-bold text-indigo-600 hover:underline"
+                          >
+                            {(selectedSchedule as any).materialRef}
+                          </a>
                         </p>
                       ) : null}
                     </div>
@@ -1315,14 +1331,16 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           roadmapItemDeadlines[itemId] = new Date(dl).toISOString()
                         }
                       }
+                      const isKnowledgeWork = data?.isKnowledgeWork !== false
                       const payload = {
                         dateIso: vals.dateIso,
                         startTime,
                         endTime,
                         topic: vals.topic.trim(),
                         location: vals.location.trim() || null,
-                        roadmapItemIds: vals.roadmapItemIds,
-                        roadmapItemDeadlines,
+                        roadmapItemIds: isKnowledgeWork ? vals.roadmapItemIds : [],
+                        roadmapItemDeadlines: isKnowledgeWork ? roadmapItemDeadlines : {},
+                        materialRef: isKnowledgeWork ? null : vals.materialRef?.trim() || null,
                         examQuestions: {
                           ...((schedules.find((x) => x.id === editingScheduleId)
                             ?.examQuestions as any) || {}),
@@ -1333,8 +1351,12 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
                         return
                       }
-                      if (!vals.roadmapItemIds.length) {
+                      if (isKnowledgeWork && !vals.roadmapItemIds.length) {
                         toast.error('Vui lòng chọn ít nhất một học phần trong lộ trình.')
+                        return
+                      }
+                      if (!isKnowledgeWork && !vals.topic.trim()) {
+                        toast.error('Vui lòng nhập bài học ngày hôm đó.')
                         return
                       }
                       const overlap = findOverlappingSchedule(schedules, payload, editingScheduleId)
@@ -1380,6 +1402,25 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           placeholder="VD: Phòng họp A, Zoom..."
                           inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
                         />
+                        {!(data?.isKnowledgeWork !== false) && (
+                          <>
+                            <InputController
+                              control={scheduleForm.control}
+                              name="topic"
+                              label="Bài học ngày hôm đó / Chủ đề"
+                              required
+                              placeholder="VD: Học phần 1: Giới thiệu..."
+                              inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
+                            />
+                            <InputController
+                              control={scheduleForm.control}
+                              name="materialRef"
+                              label="Tài liệu học tập"
+                              placeholder="Link tài liệu hoặc tên sách..."
+                              inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
+                            />
+                          </>
+                        )}
                       </div>
 
                       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -1489,94 +1530,97 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                      <div className="flex flex-wrap items-end justify-between gap-2">
-                        <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                          Học phần trong lộ trình
-                        </label>
-                        <span className="text-xs font-bold text-primary">
-                          Đã chọn {selectedRoadmapItemIds.length} học phần
-                        </span>
-                      </div>
-                      <div className="mt-3 max-h-64 space-y-4 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        {roadmapItemsByTopic.length === 0 ? (
-                          <p className="text-sm font-semibold text-slate-400">
-                            Chưa có học phần phù hợp với cấp của lớp này.
-                          </p>
-                        ) : (
-                          roadmapItemsByTopic.map(([topic, items]) => (
-                            <div key={topic} className="space-y-2">
-                              <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-                                {topic}
-                              </p>
-                              <div className="space-y-2">
-                                {items.map((item) => {
-                                  const checked = selectedRoadmapItemIds.includes(item.id)
-                                  const requiresReflection = allowsReflectionSubmission(
-                                    item.assessment
-                                  )
-                                  return (
-                                    <div
-                                      key={item.id}
-                                      className={cn(
-                                        'flex flex-col gap-3 rounded-xl border bg-white p-3 text-sm transition-colors md:flex-row md:items-center md:justify-between',
-                                        checked
-                                          ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/10'
-                                          : 'border-slate-100 hover:border-primary/20'
-                                      )}
-                                    >
-                                      <label className="flex cursor-pointer items-start gap-3 flex-1 min-w-0">
-                                        <Checkbox
-                                          checked={checked}
-                                          onCheckedChange={(value) =>
-                                            toggleRoadmapItem(item.id, value === true)
-                                          }
-                                          className="mt-0.5"
-                                        />
-                                        <span className="min-w-0">
-                                          <span className="block font-bold text-slate-900">
-                                            {item.objective}
-                                          </span>
-                                          <span className="mt-1 block text-xs font-semibold text-slate-400">
-                                            {item.assessment || 'Chưa có hình thức đánh giá'}
-                                          </span>
-                                        </span>
-                                      </label>
-                                      {checked && requiresReflection && isCreatingDeadlineOnly && (
-                                        <div className="flex flex-col gap-1 shrink-0 w-full md:w-auto min-w-[180px]">
-                                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-                                            Hạn nộp phản tư
-                                          </span>
-                                          <input
-                                            type="datetime-local"
-                                            value={
-                                              (
-                                                getScheduleValues('roadmapItemDeadlines') as Record<
-                                                  string,
-                                                  string
-                                                >
-                                              )?.[item.id] || ''
+                    {data?.isKnowledgeWork !== false && (
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div className="flex flex-wrap items-end justify-between gap-2">
+                          <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                            Học phần trong lộ trình
+                          </label>
+                          <span className="text-xs font-bold text-primary">
+                            Đã chọn {selectedRoadmapItemIds.length} học phần
+                          </span>
+                        </div>
+                        <div className="mt-3 max-h-64 space-y-4 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          {roadmapItemsByTopic.length === 0 ? (
+                            <p className="text-sm font-semibold text-slate-400">
+                              Chưa có học phần phù hợp với cấp của lớp này.
+                            </p>
+                          ) : (
+                            roadmapItemsByTopic.map(([topic, items]) => (
+                              <div key={topic} className="space-y-2">
+                                <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                  {topic}
+                                </p>
+                                <div className="space-y-2">
+                                  {items.map((item) => {
+                                    const checked = selectedRoadmapItemIds.includes(item.id)
+                                    const requiresReflection = allowsReflectionSubmission(
+                                      item.assessment
+                                    )
+                                    return (
+                                      <div
+                                        key={item.id}
+                                        className={cn(
+                                          'flex flex-col gap-3 rounded-xl border bg-white p-3 text-sm transition-colors md:flex-row md:items-center md:justify-between',
+                                          checked
+                                            ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/10'
+                                            : 'border-slate-100 hover:border-primary/20'
+                                        )}
+                                      >
+                                        <label className="flex cursor-pointer items-start gap-3 flex-1 min-w-0">
+                                          <Checkbox
+                                            checked={checked}
+                                            onCheckedChange={(value) =>
+                                              toggleRoadmapItem(item.id, value === true)
                                             }
-                                            onChange={(e) =>
-                                              setScheduleValue(
-                                                `roadmapItemDeadlines.${item.id}`,
-                                                e.target.value,
-                                                { shouldDirty: true, shouldValidate: true }
-                                              )
-                                            }
-                                            className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 focus:border-primary focus:outline-none"
+                                            className="mt-0.5"
                                           />
-                                        </div>
-                                      )}
-                                    </div>
-                                  )
-                                })}
+                                          <span className="min-w-0">
+                                            <span className="block font-bold text-slate-900">
+                                              {item.objective}
+                                            </span>
+                                            <span className="mt-1 block text-xs font-semibold text-slate-400">
+                                              {item.assessment || 'Chưa có hình thức đánh giá'}
+                                            </span>
+                                          </span>
+                                        </label>
+                                        {checked &&
+                                          requiresReflection &&
+                                          isCreatingDeadlineOnly && (
+                                            <div className="flex flex-col gap-1 shrink-0 w-full md:w-auto min-w-[180px]">
+                                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                                Hạn nộp phản tư
+                                              </span>
+                                              <input
+                                                type="datetime-local"
+                                                value={
+                                                  (
+                                                    getScheduleValues(
+                                                      'roadmapItemDeadlines'
+                                                    ) as Record<string, string>
+                                                  )?.[item.id] || ''
+                                                }
+                                                onChange={(e) =>
+                                                  setScheduleValue(
+                                                    `roadmapItemDeadlines.${item.id}`,
+                                                    e.target.value,
+                                                    { shouldDirty: true, shouldValidate: true }
+                                                  )
+                                                }
+                                                className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 focus:border-primary focus:outline-none"
+                                              />
+                                            </div>
+                                          )}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
                               </div>
-                            </div>
-                          ))
-                        )}
+                            ))
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="sticky bottom-0 -mx-6 -mb-5 flex justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
                       <Button
