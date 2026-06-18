@@ -17,7 +17,7 @@ import {
   formatUserDateForReadonlyDisplay,
   parseStoredDateToInputValue,
 } from '@/features/profile/profileDateUtils'
-import { useId, useMemo, useState } from 'react'
+import { useId, useEffect, useMemo, useState } from 'react'
 import { profileApi } from '@/features/profile/api'
 import { toast } from 'sonner'
 import type { MyProfilePage } from '@/features/profile/types'
@@ -55,7 +55,18 @@ export interface HrEmployeeProfileProps {
   initialTab?: number
 }
 export type IHrEmployeeProfileState = MeUserSelf
-type EditRecord = Record<EmployeePatchKey, string> & { extraTeamIds: string[] }
+
+type EmploymentStatusUi = 'working' | 'resigned'
+
+const EMPLOYMENT_STATUS_OPTIONS: { value: EmploymentStatusUi; label: string }[] = [
+  { value: 'working', label: 'Đang làm việc' },
+  { value: 'resigned', label: 'Đã nghỉ' },
+]
+
+type EditRecord = Record<EmployeePatchKey, string> & {
+  extraTeamIds: string[]
+  employmentStatusUi: EmploymentStatusUi
+}
 
 const fieldStackGap = 'gap-1'
 const fieldBoxClass = ''
@@ -82,7 +93,22 @@ function emptyEditRecord(): EditRecord {
       string
     >),
     extraTeamIds: [],
+    employmentStatusUi: 'working',
   }
+}
+
+function resolveEmploymentStatusUi(
+  employee: IHrEmployeeProfileState,
+  summaryStatus?: EmployeeEntity['status']
+): EmploymentStatusUi {
+  const inactive = summaryStatus
+    ? summaryStatus === 'INACTIVE'
+    : isEmploymentInactive(employee.employmentStatus)
+  return inactive ? 'resigned' : 'working'
+}
+
+function canManageEmploymentStatusRole(role: string | null | undefined): boolean {
+  return role === 'MANAGER' || role === 'HR'
 }
 
 function isEmploymentInactive(employmentStatus: string | null | undefined): boolean {
@@ -98,10 +124,39 @@ function isEmploymentInactive(employmentStatus: string | null | undefined): bool
   return /thoi viec|nghi viec|da nghi|inactive|ngung hoat dong|sa thai/.test(folded)
 }
 
+function EmploymentStatusField({ control }: { control: Control<EditRecord> }) {
+  return (
+    <div
+      className={cn(
+        'flex flex-col rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/30',
+        fieldStackGap
+      )}
+    >
+      <SelectController
+        control={control}
+        name="employmentStatusUi"
+        label="Tình trạng làm việc"
+        placeholder="Chọn tình trạng"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>Tình trạng làm việc</FieldLabel>}
+      >
+        {EMPLOYMENT_STATUS_OPTIONS.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectController>
+    </div>
+  )
+}
+
 function ProfileActionButtons({
   isInactive,
   canDeactivate,
   canReactivate,
+  showEmploymentStatusActions,
   isSaving,
   patchPending,
   onDeactivate,
@@ -111,6 +166,7 @@ function ProfileActionButtons({
   isInactive: boolean
   canDeactivate: boolean
   canReactivate: boolean
+  showEmploymentStatusActions: boolean
   isSaving: boolean
   patchPending: boolean
   onDeactivate: () => void
@@ -119,7 +175,7 @@ function ProfileActionButtons({
 }) {
   return (
     <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-      {isInactive && canReactivate ? (
+      {!showEmploymentStatusActions && isInactive && canReactivate ? (
         <Button
           type="button"
           variant="outline"
@@ -130,7 +186,7 @@ function ProfileActionButtons({
           Kích hoạt lại
         </Button>
       ) : null}
-      {!isInactive && canDeactivate ? (
+      {!showEmploymentStatusActions && !isInactive && canDeactivate ? (
         <Button
           type="button"
           variant="outline"
@@ -169,6 +225,7 @@ function userToEdit(u: IHrEmployeeProfileState): EditRecord {
     r.displayName = u.fullNameLegal
   }
   r.extraTeamIds = u.extraTeamIds ?? u.teamIds?.slice(1) ?? []
+  r.employmentStatusUi = resolveEmploymentStatusUi(u)
   return r
 }
 
@@ -605,8 +662,15 @@ export function HrEmployeeProfile({
   const form = useForm<EditRecord>({
     defaultValues: userToEdit(employee),
   })
-  const { control, handleSubmit } = form
+  const { control, handleSubmit, reset } = form
   const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
+
+  useEffect(() => {
+    reset({
+      ...userToEdit(employee),
+      employmentStatusUi: resolveEmploymentStatusUi(employee, employeeSummary?.status),
+    })
+  }, [employee, employeeSummary?.status, reset])
 
   const divisions = useMemo(
     () => divisionsList.map((d) => ({ id: d.id, name: d.name })),
@@ -630,6 +694,7 @@ export function HrEmployeeProfile({
   const jobTitles = useMemo(() => jobTitlesData ?? [], [jobTitlesData])
 
   const role = user?.role ?? 'MEMBER'
+  const canManageEmploymentStatus = canManageEmploymentStatusRole(role)
   const currentLevelId = mapCurrentTitleToLevelId(page.currentLevel.title)
   const onPortraitFile = (file: File) => {
     uploadPortrait(file, {
@@ -663,12 +728,23 @@ export function HrEmployeeProfile({
     'primary',
     'indigo',
   ]
-  const onSaveProfile = handleSubmit((values) =>
-    patchUser({
-      id: employee.id,
-      patch: toPatch(values, employee) as unknown as IHrEmployeeProfileState,
-    })
-  )
+  const initialEmploymentStatusUi = resolveEmploymentStatusUi(employee, employeeSummary?.status)
+  const onSaveProfile = handleSubmit((values) => {
+    const profilePatch = toPatch(values, employee) as unknown as IHrEmployeeProfileState
+    const statusChanged =
+      canManageEmploymentStatus && values.employmentStatusUi !== initialEmploymentStatusUi
+
+    const applyStatusChange = () => {
+      if (!statusChanged) return
+      if (values.employmentStatusUi === 'resigned') {
+        deactivate.mutate(employee.id)
+        return
+      }
+      updateEmployee.mutate({ id: employee.id, patch: { status: 'ACTIVE' } })
+    }
+
+    patchUser({ id: employee.id, patch: profilePatch }, { onSuccess: applyStatusChange })
+  })
 
   const isInactive = employeeSummary
     ? employeeSummary.status === 'INACTIVE'
@@ -689,6 +765,7 @@ export function HrEmployeeProfile({
     isInactive,
     canDeactivate,
     canReactivate,
+    showEmploymentStatusActions: canManageEmploymentStatus,
     isSaving,
     patchPending,
     onDeactivate: () => setConfirmPending('deactivate'),
@@ -769,6 +846,9 @@ export function HrEmployeeProfile({
                         </p>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
+                          {canManageEmploymentStatus ? (
+                            <EmploymentStatusField control={control} />
+                          ) : null}
                         </div>
                       </div>
                     ) : null}
@@ -839,23 +919,25 @@ export function HrEmployeeProfile({
           )
         : null}
 
-      <ConfirmDialog
-        open={confirmPending !== null}
-        onOpenChange={(open) => {
-          if (!open) setConfirmPending(null)
-        }}
-        title={
-          confirmPending === 'deactivate' ? 'Vô hiệu hóa tài khoản?' : 'Kích hoạt lại tài khoản?'
-        }
-        description={
-          confirmPending === 'deactivate'
-            ? 'Nhân viên sẽ không thể đăng nhập sau khi bị vô hiệu hóa.'
-            : 'Nhân viên sẽ được khôi phục quyền đăng nhập.'
-        }
-        confirmLabel={confirmPending === 'deactivate' ? 'Vô hiệu hóa' : 'Kích hoạt'}
-        destructive={confirmPending === 'deactivate'}
-        onConfirm={handleConfirmPending}
-      />
+      {!canManageEmploymentStatus ? (
+        <ConfirmDialog
+          open={confirmPending !== null}
+          onOpenChange={(open) => {
+            if (!open) setConfirmPending(null)
+          }}
+          title={
+            confirmPending === 'deactivate' ? 'Vô hiệu hóa tài khoản?' : 'Kích hoạt lại tài khoản?'
+          }
+          description={
+            confirmPending === 'deactivate'
+              ? 'Nhân viên sẽ không thể đăng nhập sau khi bị vô hiệu hóa.'
+              : 'Nhân viên sẽ được khôi phục quyền đăng nhập.'
+          }
+          confirmLabel={confirmPending === 'deactivate' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+          destructive={confirmPending === 'deactivate'}
+          onConfirm={handleConfirmPending}
+        />
+      ) : null}
     </Form>
   )
 }
