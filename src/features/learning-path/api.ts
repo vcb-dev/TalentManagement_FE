@@ -70,4 +70,14 @@ export const learningApi = {
       'GET /learning/classes/available'
     )
   },
+  sendFeedback: async (input: { submissionId: string; content: string }) => {
+    const res = await apiClient.post<unknown>(`/exams/submissions/${input.submissionId}/feedback`, {
+      content: input.content,
+    })
+    return safeParse(
+      z.object({ success: z.boolean() }),
+      res.data,
+      'POST /exams/submissions/:submissionId/feedback'
+    )
+  },
 }

@@ -43,15 +43,18 @@ import {
   useMyEnrolledClass,
   useRegisterLearningClass,
   useRegisterMakeupSchedule,
+  useSendFeedback,
   useSubmitEvidence,
 } from '@/features/learning-path/hooks'
-import type { MeEnrolledClass } from '@/features/learning-path/schemas'
+import type { MeEnrolledClass, MeEnrolledClassSchedule } from '@/features/learning-path/schemas'
 import { cn } from '@/lib/utils'
 import { SessionEvaluationModal } from '@/features/teacher/components/SessionEvaluationModal'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSubmitExam } from '@/features/exam/hooks'
-import { apiClient } from '@/lib/axios'
+import { apiClient, getApiErrorMessage } from '@/lib/axios'
 import { useQueryClient } from '@tanstack/react-query'
+import { Input } from '@/components/ui/input'
+import { DialogCustom } from '@/components/shared/DialogCustom/DialogCustom'
 
 function Modal({
   open,
@@ -272,6 +275,38 @@ export function MemberClassesPanel() {
   const submitExam = useSubmitExam()
   const [uploadingTaskId, setUploadingTaskId] = useState<string | null>(null)
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false)
+  const sendFeedbackMutation = useSendFeedback()
+  const submissionId = useRef<string | null>(null)
+  const [feedbackText, setFeedbackText] = useState<string>('')
+
+  useEffect(() => {
+    if (data?.enrolledClass) {
+      data.enrolledClass.schedules.forEach((s: MeEnrolledClassSchedule) => {
+        s.roadmapItems.forEach((ri: any) => {
+          if (ri.submission) {
+            submissionId.current = ri.submission.id
+          }
+        })
+      })
+    }
+  }, [data?.enrolledClass])
+
+  const sendFeedback = useCallback(() => {
+    try {
+      if (!submissionId.current) return
+      sendFeedbackMutation.mutate({
+        submissionId: submissionId.current!,
+        content: feedbackText,
+      })
+    } catch (error: unknown) {
+      const msg = getApiErrorMessage(error)
+      toast.error(`Gửi phản hồi thất bại: ${msg}`)
+    } finally {
+      setFeedbackModalOpen(false)
+      setFeedbackText('')
+    }
+  }, [sendFeedbackMutation, submissionId, feedbackText])
 
   const reflectionTasks = useMemo(() => {
     if (!cls?.schedules) return []
@@ -701,28 +736,42 @@ export function MemberClassesPanel() {
                     </div>
 
                     {hasSubmission && (
-                      <div className="rounded-2xl bg-white p-3 border border-slate-100/50 space-y-2 text-xs">
-                        <div className="flex items-center justify-between gap-2 min-w-0">
-                          <span className="font-bold text-slate-700 truncate">
-                            File: {task.submission.fileName}
-                          </span>
-                          {task.submission.fileRef && (
-                            <a
-                              href={task.submission.fileRef}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="shrink-0 text-primary hover:underline font-bold text-xs"
-                            >
-                              Tải về
-                            </a>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="rounded-2xl bg-white p-3 border border-slate-100/50 space-y-2 text-xs">
+                          <div className="flex items-center justify-between gap-2 min-w-0">
+                            <span className="font-bold text-slate-700 truncate">
+                              File: {task.submission.fileName}
+                            </span>
+                            {task.submission.fileRef && (
+                              <a
+                                href={task.submission.fileRef}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="shrink-0 text-primary hover:underline font-bold text-xs"
+                              >
+                                Tải về
+                              </a>
+                            )}
+                          </div>
+                          {task.submission.managerComment && (
+                            <p className="text-slate-500 font-medium border-t border-slate-50 pt-2">
+                              <span className="font-extrabold text-slate-700">GV nhận xét:</span>{' '}
+                              {task.submission.managerComment}
+                            </p>
                           )}
                         </div>
-                        {task.submission.managerComment && (
-                          <p className="text-slate-500 font-medium border-t border-slate-50 pt-2">
-                            <span className="font-extrabold text-slate-700">GV nhận xét:</span>{' '}
-                            {task.submission.managerComment}
-                          </p>
-                        )}
+                        <div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="rounded-xl text-xs font-bold cursor-pointer"
+                            onClick={() => {
+                              setFeedbackModalOpen(true)
+                            }}
+                          >
+                            Phản hồi
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1102,6 +1151,29 @@ export function MemberClassesPanel() {
       </Modal>
 
       <AvailableClassesSection currentClassId={cls.id} />
+      <DialogCustom
+        open={feedbackModalOpen}
+        onOpenChange={setFeedbackModalOpen}
+        title="Phản hồi"
+        description="Phản hồi cho bài tập"
+      >
+        <div className="space-y-2">
+          <Input
+            type="text"
+            placeholder="Nhập phản hồi"
+            value={feedbackText}
+            onChange={(e) => setFeedbackText(e.target.value)}
+          />
+          <Button
+            variant="destructive"
+            size="sm"
+            className="rounded-xl text-xs font-bold cursor-pointer"
+            onClick={() => sendFeedback()}
+          >
+            <Send className="h-4 w-4" /> Gửi
+          </Button>
+        </div>
+      </DialogCustom>
     </div>
   )
 }
