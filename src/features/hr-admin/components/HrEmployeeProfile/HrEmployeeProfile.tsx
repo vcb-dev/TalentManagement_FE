@@ -127,18 +127,24 @@ function workOrgReadonlyValue(employee: IHrEmployeeProfileState, key: MeUserDisp
   return v == null ? '—' : String(v)
 }
 
+const teamPositionOptions = [
+  { value: 'Part-time', label: 'Part-time' },
+  { value: 'Full-time thử việc', label: 'Full-time thử việc' },
+  { value: 'Full-time chính thức', label: 'Full-time chính thức' },
+  { value: 'Thực tập sinh', label: 'Thực tập sinh' },
+  { value: 'Trưởng nhóm', label: 'Trưởng nhóm' },
+]
+
 function ProfileReadonlyInfo({
   name,
   label,
   value,
   control,
-  jobTitles,
 }: {
   name: EmployeePatchKey
   label: string
   value: string
   control: ReturnType<typeof useForm<EditRecord>>['control']
-  jobTitles?: Array<{ value: string; label: string }>
 }) {
   return (
     <div
@@ -153,13 +159,13 @@ function ProfileReadonlyInfo({
           control={control}
           name={name}
           label={label}
-          placeholder="Chọn vị trí chuyên môn"
+          placeholder="Chọn loại hợp đồng / vị trí"
           className={cn('space-y-1.5', fieldBoxClass)}
           labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
           triggerClassName={cn(fieldControlClass, inputEditable)}
           customLabel={<FieldLabel>{label}</FieldLabel>}
         >
-          {jobTitles?.map((j) => (
+          {teamPositionOptions?.map((j) => (
             <SelectItem key={j.value} value={j.value}>
               {j.label}
             </SelectItem>
@@ -195,6 +201,7 @@ function renderField(
   }
 ) {
   const { employee, control, divisions, teams, positions, jobTitles } = ctx
+
   const forceReadonly = field.key === 'directManager'
 
   if (field.kind === 'portrait') {
@@ -209,7 +216,6 @@ function renderField(
         label={field.label}
         value={workOrgReadonlyValue(employee, field.key)}
         control={control}
-        jobTitles={jobTitles}
       />
     )
   }
@@ -339,7 +345,6 @@ function renderField(
       />
     )
   }
-
   return (
     <InputController
       key={field.key}

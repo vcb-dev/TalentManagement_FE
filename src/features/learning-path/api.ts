@@ -13,6 +13,7 @@ import {
   meLearningPathSchema,
   submissionApiSchema,
   availableLearningClassSchema,
+  feedbackApiSchema,
 } from './schemas'
 
 export const learningApi = {
@@ -69,5 +70,20 @@ export const learningApi = {
       res.data,
       'GET /learning/classes/available'
     )
+  },
+  sendFeedback: async (input: { submissionId: string; content: string }) => {
+    const res = await apiClient.post<unknown>(`/exams/submissions/${input.submissionId}/feedback`, {
+      content: input.content,
+    })
+    return safeParse(
+      z.object({ success: z.boolean() }),
+      res.data,
+      'POST /exams/submissions/:submissionId/feedback'
+    )
+  },
+  getFeedback: async (params: { classId: string; scheduleId?: string }) => {
+    const res = await apiClient.get<unknown>(`/exams/feedbacks`, { params })
+    const feedbacks = safeParse(z.array(feedbackApiSchema), res.data, 'GET /exams/feedbacks')
+    return { feedbacks }
   },
 }

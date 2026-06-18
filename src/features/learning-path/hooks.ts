@@ -5,6 +5,7 @@ import { safeParse } from '@/lib/utils'
 import { learningApi } from './api'
 import { evidenceSubmitResponseSchema } from './schemas'
 import { learningKeys } from './queryKeys'
+import z from 'zod'
 
 export function useLearningLevels() {
   return useQuery({
@@ -118,5 +119,36 @@ export function useSubmitEvidence() {
       const msg = getApiErrorMessage(err)
       toast.error(`Gửi minh chứng thất bại: ${msg}`)
     },
+  })
+}
+
+export function useSendFeedback() {
+  return useMutation({
+    mutationFn: async (input: { submissionId: string; content: string }) => {
+      const res = await learningApi.sendFeedback(input)
+      return safeParse(
+        z.object({ success: z.boolean() }),
+        res,
+        'POST /exams/submissions/:submissionId/feedback'
+      )
+    },
+    onSuccess: () => {
+      toast.success('Đã gửi phản hồi')
+    },
+    onError: (err) => {
+      toast.error(getApiErrorMessage(err))
+    },
+  })
+}
+
+export function useGetFeedback(classId: string, scheduleId?: string, enabled = true) {
+  return useQuery({
+    queryKey: learningKeys.getFeedback(classId, scheduleId ?? ''),
+    queryFn: () =>
+      learningApi.getFeedback({
+        classId,
+        ...(scheduleId?.length ? { scheduleId } : {}),
+      }),
+    enabled: enabled && !!classId?.length,
   })
 }

@@ -183,7 +183,8 @@ function renderField(
     teams?: Array<{ id: string; name: string }>
     positions?: Array<{ value: string; label: string }>
     jobTitles?: Array<{ value: string; label: string }>
-  }
+  },
+  role?: string | null
 ) {
   const { u, control, divisions, teams, positions, jobTitles } = ctx
   const forceReadonly = field.key === 'directManager'
@@ -328,7 +329,7 @@ function renderField(
     )
   }
 
-  return (
+  return role === 'HR' || role === 'MANAGER' ? (
     <InputController
       key={field.key}
       control={control}
@@ -340,6 +341,12 @@ function renderField(
       labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
       inputClassName={cn(fieldControlClass, inputEditable)}
       customLabel={<FieldLabel>{field.label}</FieldLabel>}
+    />
+  ) : (
+    <ProfileReadonlyInfo
+      key={field.key}
+      label={field.label}
+      value={workOrgReadonlyValue(u, field.key)}
     />
   )
 }
@@ -660,7 +667,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                         {section.title}
                       </SectionTitle>
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        {section.fields.map((f) => renderField(f, fieldCtx))}
+                        {section.fields.map((f) => renderField(f, fieldCtx, user?.role))}
                       </div>
                     </div>
                   ))}

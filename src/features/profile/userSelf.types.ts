@@ -1,5 +1,6 @@
 /** Khớp JSON `GET /me/user` (bảng `users`, không có raw_data). */
 export interface MeUserSelf {
+  role: string | null
   id: string
   larkRecordId: string
   email: string | null
@@ -61,6 +62,8 @@ export interface MeUserSelf {
 
 /** Khớp `USER_SELF_PATCH_KEYS` trên BE. */
 export const ME_USER_PATCH_KEYS = [
+  'email',
+  'role',
   'fullNameLegal',
   'displayName',
   'contractType',
@@ -104,5 +107,5 @@ export type MeUserPatchKey = (typeof ME_USER_PATCH_KEYS)[number]
 
 export type MeUserDisplayKey = Exclude<
   keyof MeUserSelf,
-  'id' | 'larkRecordId' | 'email' | 'createdAt' | 'updatedAt' | 'lastSyncedAt'
+  'id' | 'larkRecordId' | 'createdAt' | 'updatedAt' | 'lastSyncedAt'
 >
