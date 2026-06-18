@@ -11,6 +11,8 @@ export interface DialogCustomProps {
   title: string
   description?: string
   children: React.ReactNode
+  className?: string
+  descriptionClassName?: string
 }
 
 export function DialogCustom({
@@ -19,14 +21,16 @@ export function DialogCustom({
   title,
   description,
   children,
+  className,
+  descriptionClassName,
 }: DialogCustomProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className={className}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <DialogDescription>{description}</DialogDescription>
+        <DialogDescription className={descriptionClassName}>{description}</DialogDescription>
         {children}
       </DialogContent>
     </Dialog>

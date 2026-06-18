@@ -220,3 +220,40 @@ export const meLearningPathSchema = z.object({
     })
   ),
 })
+
+export const feedbackApiSchema = z.object({
+  id: z.string().uuid(),
+  submissionId: z.string().uuid(),
+  userId: z.string().uuid(),
+  classId: z.string().uuid().nullable(),
+  scheduleId: z.string().uuid().nullable(),
+  content: z.string(),
+  createdAt: z.string().datetime({ offset: true }),
+  updatedAt: z.string().datetime({ offset: true }),
+  user: z.object({
+    fullNameLegal: z.string(),
+    email: z.string(),
+    employeeCodePrimary: z.string(),
+  }),
+  submission: z.object({
+    fullName: z.string(),
+    totalScore: z.number().nullable(),
+    outcome: z.enum(['DAT', 'BAO_LUU', 'CHO_HOC_LAI', 'CHIA_TAY']).nullable(),
+    gradedAt: z.string().datetime({ offset: true }).nullable(),
+    graderNote: z.string().nullable(),
+  }),
+  class: z
+    .object({
+      name: z.string(),
+      levelFrom: levelCodeSchema,
+      levelTo: levelCodeSchema,
+    })
+    .nullable(),
+  schedule: z
+    .object({
+      topic: z.string(),
+      dateIso: z.string(),
+      startTime: z.string(),
+    })
+    .nullable(),
+})

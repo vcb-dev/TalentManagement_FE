@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
   PAGE_HEADER_DESCRIPTION,
@@ -14,6 +14,9 @@ import { ManagerScreenLayout } from './ManagerScreenLayout'
 import { managerClassApiSchema } from '@/features/manager/schemas'
 import { z } from 'zod'
 import { CustomSelect } from '@/components/shared/CustomSelect'
+import { DialogCustom } from '@/components/shared/DialogCustom/DialogCustom'
+import { useGetFeedback } from '@/features/learning-path/hooks'
+import { Loader2 } from 'lucide-react'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
 
@@ -82,6 +85,18 @@ export function ManagerGradingScreen() {
   const [page, setPage] = useState(1)
   const [filterClass, setFilterClass] = useState<string>('all')
   const [filterGrading, setFilterGrading] = useState<string>('all')
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null)
+  const {
+    data: feedback,
+    isLoading: isLoadingFeedback,
+    isError,
+  } = useGetFeedback(
+    selectedClassId || '',
+    selectedScheduleId || undefined,
+    !!selectedClassId?.length
+  )
 
   // Total pending across all submissions
   const totalPending = submissions.filter((s) => s.status === 'pending').length
@@ -421,6 +436,7 @@ export function ManagerGradingScreen() {
                     Trạng thái thi
                   </th>
                   <th className="px-3 py-3 font-semibold">Bài thi đã nộp</th>
+                  <th className="px-3 py-3 font-semibold">Feedback</th>
                   <th className="px-3 py-3 text-right font-semibold">Thao tác</th>
                 </tr>
               </thead>
@@ -507,6 +523,21 @@ export function ManagerGradingScreen() {
                           ) : (
                             <span className="text-muted-foreground">Chưa có bài nộp</span>
                           )}
+                        </td>
+                        <td className="px-3 py-4">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="font-bold whitespace-nowrap"
+                            onClick={() => {
+                              setSelectedClassId(row.classId)
+                              setSelectedScheduleId(row.scheduleId || null)
+                              setShowFeedbackModal(true)
+                            }}
+                          >
+                            Xem feedback
+                          </Button>
                         </td>
                         <td className="px-3 py-4 text-right">
                           <Button
@@ -617,6 +648,81 @@ export function ManagerGradingScreen() {
           })()}
         </div>
       </div>
+      {showFeedbackModal && (
+        <DialogCustom
+          open={showFeedbackModal}
+          onOpenChange={setShowFeedbackModal}
+          title="Feedback của học viên"
+          className="max-h-[90vh] overflow-y-auto sm:max-w-3xl"
+          children={
+            <div className="space-y-4 p-1">
+              {isLoadingFeedback ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                </div>
+              ) : isError ? (
+                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+                  <p className="text-sm text-destructive">Không tải được danh sách feedback.</p>
+                </div>
+              ) : feedback?.feedbacks?.length ? (
+                feedback.feedbacks.map((f) => (
+                  <div
+                    key={f.id}
+                    className="rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-md"
+                  >
+                    <div className="mb-3 flex flex-col gap-2">
+                      <h3 className="text-base font-bold uppercase text-foreground">
+                        {f.class?.name ?? '—'}
+                      </h3>
+
+                      <div className="flex flex-wrap gap-2">
+                        <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                          {f.schedule?.topic ?? 'Không có chủ đề'}
+                        </span>
+
+                        <span className="rounded-full bg-muted px-3 py-1 text-xs">
+                          {f.schedule?.dateIso ?? '—'}
+                        </span>
+
+                        <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs text-blue-600">
+                          {f.submission.fullName}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mb-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+                      <div className="rounded-lg bg-muted/50 p-3">
+                        <div className="text-xs text-muted-foreground">Điểm số</div>
+                        <div className="font-semibold">{f.submission.totalScore ?? '—'}</div>
+                      </div>
+
+                      <div className="rounded-lg bg-muted/50 p-3">
+                        <div className="text-xs text-muted-foreground">Kết quả</div>
+                        <div className="font-semibold">{f.submission.outcome ?? '—'}</div>
+                      </div>
+
+                      <div className="rounded-lg bg-muted/50 p-3">
+                        <div className="text-xs text-muted-foreground">Nhận xét GV</div>
+                        <div className="font-semibold">{f.submission.graderNote ?? '—'}</div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border-l-4 border-primary bg-muted/30 p-4">
+                      <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">
+                        {f.content}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10">
+                  <p className="text-sm text-muted-foreground">Chưa có feedback nào.</p>
+                </div>
+              )}
+            </div>
+          }
+        />
+      )}
     </ManagerScreenLayout>
   )
 }

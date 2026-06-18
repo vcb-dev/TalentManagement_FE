@@ -140,3 +140,15 @@ export function useSendFeedback() {
     },
   })
 }
+
+export function useGetFeedback(classId: string, scheduleId?: string, enabled = true) {
+  return useQuery({
+    queryKey: learningKeys.getFeedback(classId, scheduleId ?? ''),
+    queryFn: () =>
+      learningApi.getFeedback({
+        classId,
+        ...(scheduleId?.length ? { scheduleId } : {}),
+      }),
+    enabled: enabled && !!classId?.length,
+  })
+}

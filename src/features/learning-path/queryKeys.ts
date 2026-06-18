@@ -15,4 +15,6 @@ export const learningKeys = {
   submissions: (starId: string) => [...learningKeys.all, 'submissions', starId] as const,
   sendFeedback: (submissionId: string) =>
     [...learningKeys.all, 'send-feedback', submissionId] as const,
+  getFeedback: (classId: string, scheduleId: string) =>
+    [...learningKeys.all, 'get-feedback', classId, scheduleId] as const,
 }

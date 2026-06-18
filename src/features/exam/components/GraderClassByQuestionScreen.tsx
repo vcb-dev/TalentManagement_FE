@@ -98,9 +98,9 @@ const RUBRIC_CRITERIA = [
     id: 'tieu_chi',
     title: 'Tiêu chí',
     options: {
-      chua_dat: { score: 10, desc: 'Chọn rõ kỹ năng/kiến thức để thử nghiệm (30đ)' },
-      dat: { score: 25, desc: 'Mô tả cách áp dụng cụ thể, có bối cảnh (30đ)' },
-      tot: { score: 40, desc: 'Đánh giá kết quả, cảm nhận và bài học rút ra (40đ)' },
+      chua_dat: { score: 10, desc: 'Suy ngẫm và nhận thức cá nhân (40đ)' },
+      dat: { score: 25, desc: 'Kết nối với thực tế (30đ)' },
+      tot: { score: 40, desc: 'Phát triển ý tưởng (30đ)' },
     },
   },
   {
