@@ -65,6 +65,7 @@ export const teacherApi = {
       isExam?: boolean
       examQuestions?: any
       materialRef?: string | null
+      note?: string | null
     }
   ) => {
     const res = await apiClient.post<unknown>(`/teacher/classes/${classId}/schedules`, input)
@@ -85,6 +86,7 @@ export const teacherApi = {
       isExam?: boolean
       examQuestions?: any
       materialRef?: string | null
+      note?: string | null
     }
   ) => {
     const res = await apiClient.patch<unknown>(
