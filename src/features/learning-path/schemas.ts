@@ -67,6 +67,7 @@ const scheduleSlotSchema = z.object({
     .default([]),
   isExam: z.boolean().optional(),
   submission: submissionApiSchema.nullable().optional(),
+  note: z.string().nullable().optional(),
   attendance: z.string().optional(),
   makeupStatus: z.string().nullable().optional(),
   isEvaluated: z.boolean().optional(),

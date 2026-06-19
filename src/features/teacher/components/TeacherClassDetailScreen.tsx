@@ -32,6 +32,7 @@ import {
   DateController,
   InputController,
   InputFieldController,
+  TextareaController,
 } from '@/components/ui/form-controllers'
 
 import {
@@ -151,6 +152,11 @@ function MemberRemoveButton({
   )
 }
 
+const NOTE_TEMPLATE = `- Có nội dung nào khiến bạn thay đổi tư duy so với trước đây?
+- Có nội dung nào khiến bạn đặc biệt ấn tượng?
+- Có nội dung nào bạn chưa đồng ý/ muốn thảo luận thêm/ chưa rõ?
+- Bạn sẽ thử nghiệm kiến thức nào vào công việc và cuộc sống?`
+
 export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const routeHash = useRouterState({ select: (s) => s.location.hash })
   const { data } = useTeacherClassDetail(classId)
@@ -260,6 +266,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       roadmapItemDeadlines: {} as Record<string, string>,
       gradingType: 'direct',
       materialRef: '',
+      note: '',
     },
   })
   const {
@@ -287,6 +294,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     roadmapItemDeadlines: {} as Record<string, string>,
     gradingType: 'direct',
     materialRef: '',
+    note: '',
   }
 
   const countRoadmapItemDeadlineSelections = (
@@ -381,6 +389,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       roadmapItemDeadlines: deadlines,
       gradingType: (s.examQuestions as any)?.gradingType || 'direct',
       materialRef: (s as any).materialRef ?? '',
+      note: (s as any).note ?? '',
     })
   }
 
@@ -679,6 +688,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                       roadmapItemIds: [],
                       roadmapItemDeadlines: {},
                       gradingType: 'direct',
+                      note: NOTE_TEMPLATE,
                     })
                     setIsCreatingDeadlineOnly(true)
                     setScheduleModalOpen(true)
@@ -1339,6 +1349,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         roadmapItemIds: isKnowledgeWork ? vals.roadmapItemIds : [],
                         roadmapItemDeadlines: isKnowledgeWork ? roadmapItemDeadlines : {},
                         materialRef: isKnowledgeWork ? null : vals.materialRef?.trim() || null,
+                        note: (vals as any).note?.trim() || null,
                         examQuestions: {
                           ...((schedules.find((x) => x.id === editingScheduleId)
                             ?.examQuestions as any) || {}),
@@ -1444,6 +1455,17 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                             )}
                           />
                         </div>
+                      </div>
+
+                      <div className="mt-5 space-y-2">
+                        <TextareaController
+                          control={scheduleForm.control}
+                          name="note"
+                          label="Ghi chú"
+                          placeholder="Nhập ghi chú cho hạn nộp..."
+                          rows={6}
+                          textareaClassName="rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10 font-medium"
+                        />
                       </div>
 
                       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">

@@ -323,6 +323,7 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
               scheduleId: s.id,
               scheduleTopic: s.topic,
               scheduleDateIso: s.dateIso,
+              scheduleNote: s.note,
               isExam,
               deadline:
                 ri.deadline ||
@@ -339,6 +340,7 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
             scheduleId: s.id,
             scheduleTopic: s.topic,
             scheduleDateIso: s.dateIso,
+            scheduleNote: s.note,
             isExam: true, // Treat as exam task so it uses submitExam
             deadline: s.endTime
               ? `${s.dateIso}T${s.endTime}:00+07:00`
@@ -785,6 +787,14 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                               <p className="text-xs font-semibold text-slate-500 mt-1 truncate">
                                 Buổi: {task.scheduleTopic} ({task.scheduleDateIso})
                               </p>
+                              {task.scheduleNote && (
+                                <div className="mt-3 rounded-2xl bg-slate-100/80 p-3 text-xs font-medium text-slate-600 whitespace-pre-wrap leading-relaxed border border-slate-200/40 text-left">
+                                  <p className="font-extrabold text-slate-700 mb-1">
+                                    Ghi chú / Câu hỏi gợi ý:
+                                  </p>
+                                  {task.scheduleNote}
+                                </div>
+                              )}
                             </div>
                           </div>
 
