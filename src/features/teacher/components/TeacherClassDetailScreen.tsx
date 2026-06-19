@@ -764,6 +764,12 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           </a>
                         </p>
                       ) : null}
+                      {(selectedSchedule as any).note ? (
+                        <div className="mt-2.5 rounded-lg border border-slate-100 bg-slate-50/50 p-3 text-xs font-semibold text-slate-600 whitespace-pre-wrap max-w-2xl">
+                          <p className="font-bold text-slate-800 mb-1">Ghi chú / Câu hỏi gợi ý:</p>
+                          {(selectedSchedule as any).note}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="flex shrink-0 flex-wrap gap-2">
                       <Button
@@ -838,6 +844,12 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                               {item.objective}
                             </Badge>
                           ))}
+                        </div>
+                      ) : null}
+                      {(s as any).note ? (
+                        <div className="mt-2.5 rounded-lg border border-slate-100 bg-slate-50/50 p-3 text-xs font-semibold text-slate-600 whitespace-pre-wrap max-w-2xl">
+                          <p className="font-bold text-slate-800 mb-1">Ghi chú / Câu hỏi gợi ý:</p>
+                          {(s as any).note}
                         </div>
                       ) : null}
                     </div>
@@ -1302,7 +1314,9 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                 <div className="min-w-0">
                   <h2 className="text-xl font-black tracking-tight text-slate-950">
                     {isCreatingDeadlineOnly
-                      ? 'TẠO HẠN NỘP BÀI PHẢN TƯ'
+                      ? editingScheduleId
+                        ? 'CẬP NHẬT HẠN NỘP BÀI PHẢN TƯ'
+                        : 'TẠO HẠN NỘP BÀI PHẢN TƯ'
                       : editingScheduleId
                         ? 'CẬP NHẬT BUỔI HỌC'
                         : 'THÊM BUỔI HỌC MỚI'}
