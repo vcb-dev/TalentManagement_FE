@@ -1321,14 +1321,12 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     onSubmit={scheduleForm.handleSubmit((vals) => {
                       const startTime = joinTimeHm(vals.startHour, vals.startMinute)
                       const endTime = joinTimeHm(vals.endHour, vals.endMinute)
-                      const localDeadlines = isCreatingDeadlineOnly
-                        ? vals.roadmapItemDeadlines || {}
-                        : {}
                       const roadmapItemDeadlines: Record<string, string> = {}
-                      for (const itemId of vals.roadmapItemIds) {
-                        const dl = localDeadlines[itemId]
-                        if (dl) {
-                          roadmapItemDeadlines[itemId] = new Date(dl).toISOString()
+                      if (isCreatingDeadlineOnly) {
+                        const defaultDl = `${vals.dateIso}T${endTime}:00`
+                        const dlIso = new Date(defaultDl).toISOString()
+                        for (const itemId of vals.roadmapItemIds) {
+                          roadmapItemDeadlines[itemId] = dlIso
                         }
                       }
                       const isKnowledgeWork = data?.isKnowledgeWork !== false
@@ -1573,33 +1571,6 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                                             </span>
                                           </span>
                                         </label>
-                                        {checked &&
-                                          requiresReflection &&
-                                          isCreatingDeadlineOnly && (
-                                            <div className="flex flex-col gap-1 shrink-0 w-full md:w-auto min-w-[180px]">
-                                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-                                                Hạn nộp phản tư
-                                              </span>
-                                              <input
-                                                type="datetime-local"
-                                                value={
-                                                  (
-                                                    getScheduleValues(
-                                                      'roadmapItemDeadlines'
-                                                    ) as Record<string, string>
-                                                  )?.[item.id] || ''
-                                                }
-                                                onChange={(e) =>
-                                                  setScheduleValue(
-                                                    `roadmapItemDeadlines.${item.id}`,
-                                                    e.target.value,
-                                                    { shouldDirty: true, shouldValidate: true }
-                                                  )
-                                                }
-                                                className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 focus:border-primary focus:outline-none"
-                                              />
-                                            </div>
-                                          )}
                                       </div>
                                     )
                                   })}
