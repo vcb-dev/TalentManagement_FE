@@ -1351,12 +1351,8 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
                         return
                       }
-                      if (isKnowledgeWork && !vals.roadmapItemIds.length) {
-                        toast.error('Vui lòng chọn ít nhất một học phần trong lộ trình.')
-                        return
-                      }
-                      if (!isKnowledgeWork && !vals.topic.trim()) {
-                        toast.error('Vui lòng nhập bài học ngày hôm đó.')
+                      if (!vals.roadmapItemIds.length && !vals.topic.trim()) {
+                        toast.error('Vui lòng chọn học phần hoặc nhập bài học / chủ đề.')
                         return
                       }
                       const overlap = findOverlappingSchedule(schedules, payload, editingScheduleId)
@@ -1402,24 +1398,17 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           placeholder="VD: Phòng họp A, Zoom..."
                           inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
                         />
-                        {!(data?.isKnowledgeWork !== false) && (
-                          <>
-                            <InputController
-                              control={scheduleForm.control}
-                              name="topic"
-                              label="Bài học ngày hôm đó / Chủ đề"
-                              required
-                              placeholder="VD: Học phần 1: Giới thiệu..."
-                              inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
-                            />
-                            <InputController
-                              control={scheduleForm.control}
-                              name="materialRef"
-                              label="Tài liệu học tập"
-                              placeholder="Link tài liệu hoặc tên sách..."
-                              inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
-                            />
-                          </>
+                        {(!(data?.isKnowledgeWork !== false) ||
+                          isCreatingDeadlineOnly ||
+                          selectedRoadmapItemIds.length === 0) && (
+                          <InputController
+                            control={scheduleForm.control}
+                            name="topic"
+                            label="Bài học ngày hôm đó / Chủ đề"
+                            required
+                            placeholder="VD: Hạn nộp bài phản tư..."
+                            inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
+                          />
                         )}
                       </div>
 

@@ -175,11 +175,20 @@ function AvailableClassesSection({
     return <Skeleton className="h-48 w-full rounded-[2rem]" />
   }
 
-  const rows = classes.filter(
-    (c) =>
+  const rows = classes.filter((c) => {
+    const isCaboNguon = (c.name || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .includes('can bo nguon')
+    return (
       !currentClassIds.includes(c.id) &&
-      (isOther ? c.isKnowledgeWork === false : c.isKnowledgeWork !== false)
-  )
+      (isOther
+        ? c.isKnowledgeWork === false || isCaboNguon
+        : c.isKnowledgeWork !== false && !isCaboNguon)
+    )
+  })
   if (!rows.length) return null
   console.log({ rows })
   return (
@@ -269,9 +278,17 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
     topic: string
   } | null>(null)
 
-  const enrolledClasses = (data?.enrolledClasses ?? []).filter((c) =>
-    isOther ? c.isKnowledgeWork === false : c.isKnowledgeWork !== false
-  )
+  const enrolledClasses = (data?.enrolledClasses ?? []).filter((c) => {
+    const isCaboNguon = (c.name || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .includes('can bo nguon')
+    return isOther
+      ? c.isKnowledgeWork === false || isCaboNguon
+      : c.isKnowledgeWork !== false && !isCaboNguon
+  })
 
   const isDeadlineOnly = useCallback((s: any) => {
     return s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
