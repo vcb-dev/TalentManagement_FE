@@ -60,7 +60,7 @@ export const teacherApi = {
       endTime: string
       topic: string
       location?: string | null
-      roadmapItemIds: string[]
+      roadmapItemIds?: string[]
       roadmapItemDeadlines?: Record<string, string>
       isExam?: boolean
       examQuestions?: any
