@@ -774,18 +774,28 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                             <div className="min-w-0 flex-1">
                               <p
                                 className="font-extrabold text-slate-950 text-base leading-snug truncate"
-                                title={task.objective}
+                                title={task.scheduleTopic}
                               >
-                                {task.objective}
+                                {task.scheduleTopic}
                               </p>
-                              <p
-                                className="text-xs font-bold text-slate-400 mt-0.5 truncate"
-                                title={task.topic}
-                              >
-                                Chủ đề: {task.topic}
-                              </p>
+                              {task.id !== task.scheduleId && task.objective && (
+                                <p
+                                  className="text-xs font-bold text-slate-700 mt-1 truncate"
+                                  title={task.objective}
+                                >
+                                  {task.objective}
+                                </p>
+                              )}
+                              {task.topic && (
+                                <p
+                                  className="text-xs font-semibold text-slate-400 mt-0.5 truncate"
+                                  title={task.topic}
+                                >
+                                  Chủ đề: {task.topic}
+                                </p>
+                              )}
                               <p className="text-xs font-semibold text-slate-500 mt-1 truncate">
-                                Buổi: {task.scheduleTopic} ({task.scheduleDateIso})
+                                Ngày học: {task.scheduleDateIso}
                               </p>
                               {task.scheduleNote && (
                                 <div className="mt-3 rounded-2xl bg-slate-100/80 p-3 text-xs font-medium text-slate-600 whitespace-pre-wrap leading-relaxed border border-slate-200/40 text-left">
