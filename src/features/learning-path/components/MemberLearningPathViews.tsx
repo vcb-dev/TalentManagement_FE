@@ -297,46 +297,56 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
     if (!classItem?.schedules) return []
     const tasks: any[] = []
     classItem.schedules.forEach((s: any) => {
-      ;(s.roadmapItems || []).forEach((ri: any) => {
-        const normalizedAssessment = (ri.assessment || '')
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/đ/g, 'd')
-          .replace(/Đ/g, 'D')
-          .trim()
+      const isExam = s.isExam || s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
+      const isDeadlineSlot = s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
 
-        const isReflection =
-          normalizedAssessment.includes('phan tu') ||
-          normalizedAssessment.includes('tu luan') ||
-          normalizedAssessment.includes('review')
+      if ((s.roadmapItems || []).length > 0) {
+        s.roadmapItems.forEach((ri: any) => {
+          const normalizedAssessment = (ri.assessment || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/đ/g, 'd')
+            .replace(/Đ/g, 'D')
+            .trim()
 
-        const isExam =
-          normalizedAssessment.includes('thi') ||
-          normalizedAssessment.includes('test') ||
-          normalizedAssessment.includes('kiem tra') ||
-          normalizedAssessment.includes('assessment') ||
-          s.isExam ||
-          s.location === 'Nộp bài trực tuyến' ||
-          s.topic?.includes('Hạn nộp')
+          const isReflection =
+            normalizedAssessment.includes('phan tu') ||
+            normalizedAssessment.includes('tu luan') ||
+            normalizedAssessment.includes('review')
 
-        const isDeadlineSlot = s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
+          const isReflectionTask = isReflection && (isDeadlineSlot || ri.deadline)
 
-        const isReflectionTask = isReflection && (isDeadlineSlot || ri.deadline)
-
-        if (isReflectionTask || isExam || isDeadlineSlot) {
+          if (isReflectionTask || isExam || isDeadlineSlot) {
+            tasks.push({
+              ...ri,
+              scheduleId: s.id,
+              scheduleTopic: s.topic,
+              scheduleDateIso: s.dateIso,
+              isExam,
+              deadline:
+                ri.deadline ||
+                (s.endTime ? `${s.dateIso}T${s.endTime}:00+07:00` : `${s.dateIso}T23:59:00+07:00`),
+            })
+          }
+        })
+      } else {
+        if (isExam || isDeadlineSlot) {
           tasks.push({
-            ...ri,
+            id: s.id, // Virtual id: use scheduleId
+            objective: s.topic,
+            topic: s.topic,
             scheduleId: s.id,
             scheduleTopic: s.topic,
             scheduleDateIso: s.dateIso,
-            isExam,
-            deadline:
-              ri.deadline ||
-              (s.endTime ? `${s.dateIso}T${s.endTime}:00+07:00` : `${s.dateIso}T23:59:00+07:00`),
+            isExam: true, // Treat as exam task so it uses submitExam
+            deadline: s.endTime
+              ? `${s.dateIso}T${s.endTime}:00+07:00`
+              : `${s.dateIso}T23:59:00+07:00`,
+            submission: s.submission || null,
           })
         }
-      })
+      }
     })
 
     const seen = new Set()
