@@ -326,6 +326,7 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
               scheduleDateIso: s.dateIso,
               scheduleNote: s.note,
               isExam,
+              location: s.location,
               deadline:
                 ri.deadline ||
                 (s.endTime ? `${s.dateIso}T${s.endTime}:00+07:00` : `${s.dateIso}T23:59:00+07:00`),
@@ -831,7 +832,9 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                                 </p>
                               )}
                               <p className="text-xs font-semibold text-slate-500 mt-1 truncate">
-                                Ngày học: {task.scheduleDateIso}
+                                {task.isExam || task.location === 'Nộp bài trực tuyến'
+                                  ? `Thời gian mở nộp: ${task.scheduleDateIso}`
+                                  : `Ngày học: ${task.scheduleDateIso}`}
                               </p>
                               {task.scheduleNote && (
                                 <div className="mt-3 rounded-2xl bg-slate-100/80 p-3 text-xs font-medium text-slate-600 whitespace-pre-wrap leading-relaxed border border-slate-200/40 text-left">

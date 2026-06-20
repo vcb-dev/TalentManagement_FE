@@ -256,6 +256,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const scheduleForm = useForm({
     defaultValues: {
       dateIso: '',
+      endDateIso: '',
       startHour: '08',
       startMinute: '00',
       endHour: '10',
@@ -368,6 +369,14 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     const todayMin = getTodayIsoLocal()
     const dateIso = s.dateIso >= todayMin ? s.dateIso : todayMin
 
+    let endDateIso = dateIso
+    const firstItem = s.roadmapItems?.[0]
+    if (firstItem && firstItem.deadline) {
+      const d = new Date(firstItem.deadline)
+      const offsetDate = new Date(d.getTime() - d.getTimezoneOffset() * 60 * 1000)
+      endDateIso = offsetDate.toISOString().slice(0, 10) // YYYY-MM-DD
+    }
+
     const deadlines: Record<string, string> = {}
     s.roadmapItems?.forEach((item) => {
       if (item.deadline) {
@@ -379,6 +388,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
     resetScheduleValues({
       dateIso,
+      endDateIso,
       startHour: sh,
       startMinute: sm,
       endHour: eh,
@@ -827,12 +837,26 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         </Badge>
                         <p className="text-base font-black text-slate-950">{s.topic}</p>
                       </div>
-                      <p className="text-xs font-semibold text-slate-500">
-                        Hạn nộp:{' '}
-                        <span className="font-bold text-slate-700">
-                          {s.dateIso} · {s.startTime} - {s.endTime}
-                        </span>
-                      </p>
+                      {(() => {
+                        const firstItem = s.roadmapItems?.[0]
+                        let deadlineStr = `${s.dateIso} · ${s.startTime} - ${s.endTime}`
+                        if (firstItem && firstItem.deadline) {
+                          const dlDate = new Date(firstItem.deadline)
+                          const offsetDate = new Date(
+                            dlDate.getTime() - dlDate.getTimezoneOffset() * 60 * 1000
+                          )
+                          const endD = offsetDate.toISOString().slice(0, 10)
+                          if (endD !== s.dateIso) {
+                            const timePart = offsetDate.toISOString().slice(11, 16)
+                            deadlineStr = `${s.dateIso} (${s.startTime}) đến ${endD} (${timePart})`
+                          }
+                        }
+                        return (
+                          <p className="text-xs font-semibold text-slate-500">
+                            Hạn nộp: <span className="font-bold text-slate-700">{deadlineStr}</span>
+                          </p>
+                        )
+                      })()}
                       {s.roadmapItems?.length ? (
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           {s.roadmapItems.map((item) => (
@@ -1347,7 +1371,12 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                       const endTime = joinTimeHm(vals.endHour, vals.endMinute)
                       const roadmapItemDeadlines: Record<string, string> = {}
                       if (isCreatingDeadlineOnly) {
-                        const defaultDl = `${vals.dateIso}T${endTime}:00`
+                        if (vals.endDateIso && vals.endDateIso < vals.dateIso) {
+                          toast.error('Ngày kết thúc không được trước ngày bắt đầu.')
+                          return
+                        }
+                        const deadlineDateStr = vals.endDateIso || vals.dateIso
+                        const defaultDl = `${deadlineDateStr}T${endTime}:00`
                         const dlIso = new Date(defaultDl).toISOString()
                         for (const itemId of vals.roadmapItemIds) {
                           roadmapItemDeadlines[itemId] = dlIso
@@ -1410,10 +1439,19 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         <DateController
                           control={scheduleForm.control}
                           name="dateIso"
-                          label={isCreatingDeadlineOnly ? 'Ngày nộp bài' : 'Ngày học'}
+                          label={isCreatingDeadlineOnly ? 'Từ ngày' : 'Ngày học'}
                           required
                           datePickerClassName="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10"
                         />
+                        {isCreatingDeadlineOnly && (
+                          <DateController
+                            control={scheduleForm.control}
+                            name="endDateIso"
+                            label="Đến ngày"
+                            required
+                            datePickerClassName="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10"
+                          />
+                        )}
                         <InputController
                           control={scheduleForm.control}
                           name="location"
