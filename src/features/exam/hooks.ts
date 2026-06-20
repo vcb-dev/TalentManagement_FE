@@ -97,6 +97,18 @@ export function useSubmitExam() {
   })
 }
 
+export function useWithdrawExam() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { classId?: string; scheduleId?: string }) => examApi.withdraw(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['learning'] })
+      void qc.invalidateQueries({ queryKey: examKeys.lists() })
+      void qc.invalidateQueries({ queryKey: ['my_exam_submissions'] })
+    },
+  })
+}
+
 export function useManagerSubmissions() {
   return useQuery({
     queryKey: ['exam_submissions'],

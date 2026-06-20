@@ -152,3 +152,17 @@ export function useGetFeedback(classId: string, scheduleId?: string, enabled = t
     enabled: enabled && !!classId?.length,
   })
 }
+
+export function useWithdrawEvidence() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { itemId: string }) => learningApi.withdraw(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['learning'] })
+      toast.success('Đã hủy nộp bài thành công!')
+    },
+    onError: (err) => {
+      toast.error(getApiErrorMessage(err))
+    },
+  })
+}

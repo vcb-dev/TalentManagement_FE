@@ -88,6 +88,14 @@ export const examApi = {
     return safeParse(examSubmissionApiSchema, res.data, 'POST /exams/submit')
   },
 
+  withdraw: async (body: { classId?: string; scheduleId?: string }) => {
+    if (isMockApiEnabled()) {
+      return { success: true }
+    }
+    const res = await apiClient.post<unknown>('/exams/withdraw', body)
+    return res.data as { success: boolean }
+  },
+
   getSubmissions: async () => {
     if (isMockApiEnabled()) {
       return []

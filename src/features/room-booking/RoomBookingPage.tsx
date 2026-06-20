@@ -402,7 +402,10 @@ export default function RoomBookingPage() {
     const emailLower = (user.email || '').trim().toLowerCase()
     const parts = emailLower.split('@')
     if (parts.length === 2 && parts[1] === 'gmail.com') {
-      parts[0] = parts[0].replace(/\./g, '')
+      const p0 = parts[0]
+      if (p0) {
+        parts[0] = p0.replace(/\./g, '')
+      }
     }
     const emailClean = parts.join('@')
     return emailClean === 'vienchibaodev@gmail.com' || emailClean === 'vienibaodev@gmail.com'
@@ -415,7 +418,10 @@ export default function RoomBookingPage() {
       const emailLower = (user.email || '').trim().toLowerCase()
       const parts = emailLower.split('@')
       if (parts.length === 2 && parts[1] === 'gmail.com') {
-        parts[0] = parts[0].replace(/\./g, '')
+        const p0 = parts[0]
+        if (p0) {
+          parts[0] = p0.replace(/\./g, '')
+        }
       }
       const emailClean = parts.join('@')
       if (emailClean === 'vienchibaodev@gmail.com') return 'Tầng 6'
@@ -797,8 +803,7 @@ export default function RoomBookingPage() {
     setNote(b.note || '')
     setIsEmergency(b.isEmergency)
     setUploadedDocuments(b.documents || [])
-    setSelectedFiles([])
-    setIsUploadingDoc(false)
+    setUploadQueue([])
     setDocUploadError(null)
     setTimeout(() => {
       setShowModal(true)

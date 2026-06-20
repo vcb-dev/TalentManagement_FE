@@ -45,12 +45,13 @@ import {
   useRegisterMakeupSchedule,
   useSendFeedback,
   useSubmitEvidence,
+  useWithdrawEvidence,
 } from '@/features/learning-path/hooks'
 import type { MeEnrolledClass, MeEnrolledClassSchedule } from '@/features/learning-path/schemas'
 import { cn } from '@/lib/utils'
 import { SessionEvaluationModal } from '@/features/teacher/components/SessionEvaluationModal'
 import { useAuthStore } from '@/stores/auth.store'
-import { useSubmitExam } from '@/features/exam/hooks'
+import { useSubmitExam, useWithdrawExam } from '@/features/exam/hooks'
 import { apiClient, getApiErrorMessage } from '@/lib/axios'
 import { useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
@@ -361,12 +362,47 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
   }
   const submitEvidence = useSubmitEvidence()
   const submitExam = useSubmitExam()
+  const withdrawExam = useWithdrawExam()
+  const withdrawEvidence = useWithdrawEvidence()
   const [uploadingTaskId, setUploadingTaskId] = useState<string | null>(null)
+  const [withdrawingTaskId, setWithdrawingTaskId] = useState<string | null>(null)
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false)
   const sendFeedbackMutation = useSendFeedback()
   const submissionId = useRef<string | null>(null)
   const [feedbackText, setFeedbackText] = useState<string>('')
+
+  const handleWithdraw = useCallback(
+    (task: any, classId: string) => {
+      const taskUniqueId = `${task.id}_${task.scheduleId}`
+      setWithdrawingTaskId(taskUniqueId)
+      if (task.isExam) {
+        withdrawExam.mutate(
+          {
+            classId,
+            scheduleId: task.scheduleId,
+          },
+          {
+            onSettled: () => {
+              setWithdrawingTaskId(null)
+            },
+          }
+        )
+      } else {
+        withdrawEvidence.mutate(
+          {
+            itemId: task.id,
+          },
+          {
+            onSettled: () => {
+              setWithdrawingTaskId(null)
+            },
+          }
+        )
+      }
+    },
+    [withdrawExam, withdrawEvidence]
+  )
 
   useEffect(() => {
     if (data?.enrolledClass) {
@@ -887,7 +923,7 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                                   </p>
                                 )}
                               </div>
-                              <div>
+                              <div className="flex flex-col gap-1.5 shrink-0">
                                 <Button
                                   variant="destructive"
                                   size="sm"
@@ -898,6 +934,17 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                                 >
                                   Phản hồi
                                 </Button>
+                                {isPending && !isOverdue && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-xl text-xs font-bold border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 cursor-pointer"
+                                    onClick={() => handleWithdraw(task, classItem.id)}
+                                    disabled={withdrawingTaskId === taskUniqueId}
+                                  >
+                                    {withdrawingTaskId === taskUniqueId ? 'Đang huỷ...' : 'Huỷ nộp'}
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           )}
