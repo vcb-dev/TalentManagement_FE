@@ -119,7 +119,10 @@ export function RoomBookingDetailModal({
             <>
               <button
                 type="button"
-                onClick={() => onEdit(booking)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit(booking)
+                }}
                 className="flex-1 rounded-xl bg-primary/10 py-3 text-sm font-bold uppercase tracking-wide text-primary transition hover:bg-primary hover:text-primary-foreground"
               >
                 Sửa lịch họp

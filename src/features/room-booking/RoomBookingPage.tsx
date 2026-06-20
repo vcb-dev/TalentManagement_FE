@@ -214,7 +214,10 @@ function BookingRowActions({
         <div className={mobile ? 'flex w-full flex-col gap-2' : 'flex gap-2'}>
           <button
             type="button"
-            onClick={() => handleEdit(b)}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleEdit(b)
+            }}
             disabled={!!processingId}
             className={`flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary transition-all hover:bg-primary hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
           >
@@ -797,7 +800,9 @@ export default function RoomBookingPage() {
     setSelectedFiles([])
     setIsUploadingDoc(false)
     setDocUploadError(null)
-    setShowModal(true)
+    setTimeout(() => {
+      setShowModal(true)
+    }, 0)
   }
 
   function canManageBooking(b: MeetingBooking): boolean {
