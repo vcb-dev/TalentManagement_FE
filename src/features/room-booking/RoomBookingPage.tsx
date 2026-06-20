@@ -218,7 +218,7 @@ function BookingRowActions({
             disabled={!!processingId}
             className={`flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary transition-all hover:bg-primary hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
           >
-            <span>ĐỔI LỊCH</span>
+            <span>SỬA LỊCH HỌP</span>
           </button>
           <button
             type="button"
@@ -1025,7 +1025,7 @@ export default function RoomBookingPage() {
                       id="room-booking-form-title"
                       className="text-2xl font-black uppercase sm:text-3xl"
                     >
-                      {editingId ? 'Đổi lịch họp' : 'Đặt phòng họp'}
+                      {editingId ? 'Sửa lịch họp' : 'Đặt phòng họp'}
                     </h2>
                     <button
                       onClick={() => {
@@ -1093,7 +1093,11 @@ export default function RoomBookingPage() {
                           }
 
                           // Tạo danh sách các khoảng trống
-                          const sorted = [...bookedSlots]
+                          const filteredSlots = editingId
+                            ? bookedSlots.filter((s: any) => s.id !== editingId)
+                            : bookedSlots
+
+                          const sorted = [...filteredSlots]
                             .map((s) => ({
                               ...s,
                               timeFrom: padTime(s.timeFrom),
