@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
-import { cn } from '@/lib/utils'
+import { cn, getFileViewerUrl } from '@/lib/utils'
 import { useGradeSubmission, useManagerSubmissions } from '@/features/exam/hooks'
 import { useManagerClasses } from '@/features/manager/hooks'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -780,7 +780,7 @@ export function GraderClassByQuestionScreen({
                               <td className="px-4 py-4">
                                 {fileUrl ? (
                                   <a
-                                    href={fileUrl}
+                                    href={getFileViewerUrl(fileUrl)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="inline-flex items-center gap-1.5 text-primary hover:underline font-bold text-xs bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors"

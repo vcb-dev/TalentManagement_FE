@@ -24,7 +24,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
-import { cn } from '@/lib/utils'
+import { cn, getFileViewerUrl } from '@/lib/utils'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { useManagerSubmissions, useUpdateSubmissionStatus } from '@/features/manager/hooks'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
@@ -60,7 +60,7 @@ export const ManagerLearningSubmissionsScreen = () => {
       toast.error('File không còn trên máy chủ')
       return
     }
-    window.open(fullUrl, '_blank')
+    window.open(getFileViewerUrl(fullUrl), '_blank')
   }
 
   return (

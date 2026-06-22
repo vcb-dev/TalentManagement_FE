@@ -48,7 +48,7 @@ import {
   useWithdrawEvidence,
 } from '@/features/learning-path/hooks'
 import type { MeEnrolledClass, MeEnrolledClassSchedule } from '@/features/learning-path/schemas'
-import { cn } from '@/lib/utils'
+import { cn, getFileViewerUrl } from '@/lib/utils'
 import { SessionEvaluationModal } from '@/features/teacher/components/SessionEvaluationModal'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSubmitExam, useWithdrawExam } from '@/features/exam/hooks'
@@ -908,12 +908,12 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                                   </span>
                                   {task.submission.fileRef && (
                                     <a
-                                      href={task.submission.fileRef}
+                                      href={getFileViewerUrl(task.submission.fileRef)}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="shrink-0 text-primary hover:underline font-bold text-xs"
                                     >
-                                      Tải về
+                                      Xem bài
                                     </a>
                                   )}
                                 </div>
