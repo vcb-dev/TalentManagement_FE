@@ -23,6 +23,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
@@ -576,37 +577,33 @@ export function ManagerKpiOkrScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="w-full space-y-8 py-8">
       {/* Header */}
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <Trophy className="h-6 w-6 text-amber-500" />
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              Chỉ số vinh danh và xếp hạng
-            </h1>
+      <PageHeader
+        title="Chỉ số vinh danh và xếp hạng"
+        description="Quản lý các chỉ số dùng để xếp hạng và vinh danh hàng tháng. Áp dụng cho cả trưởng nhóm và thành viên. Thay đổi đồng bộ ngay lập tức."
+        eyebrow={<Trophy className="h-6 w-6 text-amber-500" />}
+        gradientTitle
+        variant="flat"
+        className="mb-8 border-0 pb-0"
+        actions={
+          <div className="flex shrink-0 gap-2">
+            <Button asChild variant="outline" className="gap-2">
+              <Link to="/manager/kpi-okr">
+                <Settings2 className="h-4 w-4" />
+                Cấu hình KPI Kinh doanh
+              </Link>
+            </Button>
+            <Button
+              onClick={() => setAddOpen(true)}
+              className="gap-2 bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              <Plus className="h-4 w-4" />
+              Thêm chỉ số vinh danh
+            </Button>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Quản lý các chỉ số dùng để xếp hạng và vinh danh hàng tháng. Áp dụng cho cả trưởng nhóm
-            và thành viên. Thay đổi đồng bộ ngay lập tức.
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <Button asChild variant="outline" className="gap-2">
-            <Link to="/manager/kpi-okr">
-              <Settings2 className="h-4 w-4" />
-              Cấu hình KPI Kinh doanh
-            </Link>
-          </Button>
-          <Button
-            onClick={() => setAddOpen(true)}
-            className="gap-2 bg-amber-500 hover:bg-amber-600 text-white"
-          >
-            <Plus className="h-4 w-4" />
-            Thêm chỉ số vinh danh
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Filter bar */}
       <div className="mb-5 flex flex-wrap items-center gap-3">

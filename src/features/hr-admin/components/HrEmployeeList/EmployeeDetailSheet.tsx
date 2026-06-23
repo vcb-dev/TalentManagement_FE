@@ -2,10 +2,10 @@ import { Link } from '@tanstack/react-router'
 import { MoreHorizontal, X } from 'lucide-react'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { toast } from 'sonner'
-import { CARD_ENTRANCE } from '@/lib/cardMotion'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { CardContent, CardHeader } from '@/components/ui/card'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import {
   avatarClassForRole,
@@ -102,12 +102,11 @@ export function EmployeeDetailSheet({
   return (
     <aside
       className={cn(
-        'fixed bottom-0 right-0 top-16 z-40 flex w-[min(100vw,380px)] min-w-[280px] max-w-[420px] flex-shrink-0 flex-col overflow-hidden border-l border-primary/20 bg-gradient-to-b from-indigo-50/50 via-card to-cyan-50/40 shadow-[var(--shadow-card)]',
-        CARD_ENTRANCE
+        'fixed bottom-0 right-0 top-16 z-40 flex w-[min(100vw,380px)] min-w-[280px] max-w-[420px] flex-shrink-0 flex-col overflow-hidden border-l border-border bg-card shadow-[var(--shadow-md)]'
       )}
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-primary/15 bg-gradient-to-r from-white via-indigo-50/60 to-cyan-50/50 px-6 pb-4 pt-6">
-        <h2 className="text-lg font-bold tracking-tight text-foreground">Chi tiết nhân sự</h2>
+      <CardHeader className="flex shrink-0 flex-row items-center justify-between border-b border-border px-6 py-4">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">Chi tiết nhân sự</h2>
         <div className="flex items-center gap-0.5">
           <Button
             type="button"
@@ -117,7 +116,8 @@ export function EmployeeDetailSheet({
             aria-label="Thao tác khác"
             onClick={() => toast.info('Menu thao tác sẽ được bổ sung.')}
           >
-            <MoreHorizontal className="size-5" strokeWidth={2} />
+            {' '}
+            <MoreHorizontal className="size-5" strokeWidth={2} />{' '}
           </Button>
           <Button
             type="button"
@@ -127,12 +127,13 @@ export function EmployeeDetailSheet({
             onClick={onClose}
             aria-label="Đóng"
           >
-            <X className="size-5" strokeWidth={2} />
+            {' '}
+            <X className="size-5" strokeWidth={2} />{' '}
           </Button>
         </div>
-      </div>
+      </CardHeader>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+      <CardContent className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="relative mb-4">
             <div
@@ -266,7 +267,7 @@ export function EmployeeDetailSheet({
             </div>
           </div>
         </div>
-      </div>
+      </CardContent>
 
       <div className="flex shrink-0 flex-col gap-2 border-t border-border px-6 py-4">
         <Link

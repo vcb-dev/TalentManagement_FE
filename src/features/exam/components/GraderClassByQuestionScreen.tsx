@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState, Fragment } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, CheckCircle2, Loader2, Save, User } from 'lucide-react'
+import { CheckCircle2, Loader2, Save, User } from 'lucide-react'
+import { SkeletonProfileForm } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -656,9 +660,8 @@ export function GraderClassByQuestionScreen({
 
   if (isLoadingSubs || isLoadingClasses) {
     return (
-      <div className="flex min-h-[400px] flex-col items-center justify-center gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground font-medium">Đang tải dữ liệu chấm thi...</p>
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <SkeletonProfileForm />
       </div>
     )
   }
@@ -669,58 +672,44 @@ export function GraderClassByQuestionScreen({
     return (
       <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-slate-50/50 text-sm text-foreground overflow-hidden">
         {/* Top Header Bar */}
-        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white/90 px-8 py-4 shadow-sm z-20 backdrop-blur-md">
-          <div className="flex items-center gap-4 min-w-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-full hover:bg-slate-100 transition-colors"
-              onClick={() => void navigate({ to: '/manager/grading' })}
-            >
-              <ArrowLeft className="h-5 w-5 text-slate-600" />
-            </Button>
-            <div className="min-w-0">
-              <h1 className="text-lg font-extrabold text-slate-900 truncate tracking-tight">
-                {currentClass?.name || 'Lớp học'} - Bài thi tự luận/Nộp file
-              </h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
-                  Chế độ: Chấm bài thi nộp file
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={gradeMutation.isPending}
-              className="rounded-xl px-5 font-bold border-primary text-primary hover:bg-primary/5 transition-all active:scale-95"
-              onClick={() => void handleFileExamSaveDraft()}
-            >
-              {gradeMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              Lưu bản nháp
-            </Button>
-            <Button
-              size="sm"
-              disabled={gradeMutation.isPending}
-              className="rounded-xl px-5 font-bold shadow-md shadow-primary/20 bg-primary hover:bg-primary/90 transition-all active:scale-95"
-              onClick={() => void handleFileExamComplete()}
-            >
-              {gradeMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-              )}
-              Hoàn thành
-            </Button>
-          </div>
-        </div>
+        <PageHeader
+          onBack={() => void navigate({ to: '/manager/grading' })}
+          title={`${currentClass?.name || 'Lớp học'} — Bài thi tự luận/Nộp file`}
+          description="Chế độ: Chấm bài thi nộp file"
+          variant="flat"
+          className="z-20 shrink-0 border-b border-slate-200 bg-white/90 px-8 py-4 shadow-sm backdrop-blur-md"
+          actions={
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={gradeMutation.isPending}
+                className="rounded-xl border-primary px-5 font-bold text-primary transition-all hover:bg-primary/5 active:scale-95"
+                onClick={() => void handleFileExamSaveDraft()}
+              >
+                {gradeMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                Lưu bản nháp
+              </Button>
+              <Button
+                size="sm"
+                disabled={gradeMutation.isPending}
+                className="rounded-xl bg-primary px-5 font-bold shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
+                onClick={() => void handleFileExamComplete()}
+              >
+                {gradeMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                )}
+                Hoàn thành
+              </Button>
+            </>
+          }
+        />
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-8">
@@ -731,11 +720,12 @@ export function GraderClassByQuestionScreen({
               </h2>
 
               {classSubmissions.length === 0 ? (
-                <div className="text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100">
-                  <p className="text-slate-400 font-semibold text-sm">
-                    Chưa có học viên nào nộp bài thi.
-                  </p>
-                </div>
+                <EmptyState
+                  icon={<User className="h-8 w-8" />}
+                  title="Chưa có học viên nào nộp bài thi"
+                  compact
+                  className="rounded-2xl border-2 border-dashed border-slate-100 bg-slate-50"
+                />
               ) : (
                 <div className="overflow-hidden rounded-2xl border border-slate-100">
                   <table className="w-full border-collapse text-left text-sm">
@@ -1050,44 +1040,28 @@ export function GraderClassByQuestionScreen({
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-slate-50/50 text-sm text-foreground overflow-hidden">
       {/* Top Header Bar - Fixed & Refined */}
-      <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white/90 px-8 py-4 shadow-sm z-20 backdrop-blur-md">
-        <div className="flex items-center gap-4 min-w-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 rounded-full hover:bg-slate-100 transition-colors"
-            onClick={() => void navigate({ to: '/manager/grading' })}
-          >
-            <ArrowLeft className="h-5 w-5 text-slate-600" />
-          </Button>
-          <div className="min-w-0">
-            <h1 className="text-lg font-extrabold text-slate-900 truncate tracking-tight">
-              {currentClass?.name || 'Chấm thi theo lớp'}
-            </h1>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-xs text-slate-500 uppercase font-bold tracking-widest">
-                Chế độ: Chấm theo câu hỏi
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
+      <PageHeader
+        onBack={() => void navigate({ to: '/manager/grading' })}
+        title={currentClass?.name || 'Chấm thi theo lớp'}
+        description="Chế độ: Chấm theo câu hỏi"
+        variant="flat"
+        className="z-20 shrink-0 border-b border-slate-200 bg-white/90 px-8 py-4 shadow-sm backdrop-blur-md"
+        actions={
           <Button
             size="sm"
             disabled={gradeMutation.isPending}
-            className="rounded-xl px-5 font-bold shadow-md shadow-primary/20 bg-primary hover:bg-primary/90 transition-all active:scale-95"
+            className="rounded-xl bg-primary px-5 font-bold shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
             onClick={handleSaveDraft}
           >
             {gradeMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Save className="h-4 w-4 mr-2" />
+              <Save className="mr-2 h-4 w-4" />
             )}
             Lưu bản nháp
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto scroll-smooth">
@@ -1121,11 +1095,12 @@ export function GraderClassByQuestionScreen({
 
                 <div className="grid grid-cols-1 gap-6 ml-0 md:ml-12">
                   {classSubmissions.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/50">
-                      <p className="text-sm font-medium text-slate-400">
-                        Chưa có học viên nào nộp bài.
-                      </p>
-                    </div>
+                    <EmptyState
+                      icon={<User className="h-8 w-8" />}
+                      title="Chưa có học viên nào nộp bài"
+                      compact
+                      className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50/50"
+                    />
                   ) : (
                     classSubmissions.map((sub) => {
                       const answer = (sub.answers as any)?.[q.id] || ''

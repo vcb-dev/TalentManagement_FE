@@ -37,6 +37,9 @@ function ExamIndexPage() {
     data: managedClasses = [],
     isLoading: isManagedLoading,
     isError: isManagedError,
+    error: managedError,
+    refetch: refetchManaged,
+    isFetching: isManagedFetching,
   } = useTeacherClasses(viewMode === 'managed')
 
   useEffect(() => {
@@ -101,7 +104,14 @@ function ExamIndexPage() {
       </div>
       {viewMode === 'managed' ? (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <ManagedClassesExamTable classes={managedClasses} isLoading={isManagedLoading} />
+          <ManagedClassesExamTable
+            classes={managedClasses}
+            isLoading={isManagedLoading}
+            isError={isManagedError}
+            error={managedError}
+            onRetry={() => void refetchManaged()}
+            retrying={isManagedFetching}
+          />
         </div>
       ) : (
         <ExamResultsSchedule

@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, MessageCircle } from 'lucide-react'
+import { MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { fetchInboxConversations, type CskhInboxConversation } from './api'
 import { cskhMediaProxySrc } from './messageMedia'
+import { CskhEmptyState, CskhLoading } from './cskhUi'
 
 type ChatListPanelProps = {
   selectedConversationId?: string
@@ -41,20 +42,16 @@ export function ChatListPanel({
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-      </div>
-    )
+    return <CskhLoading label="Đang tải hội thoại…" />
   }
 
   if (!conversations || conversations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-500 p-4">
-        <MessageCircle className="w-12 h-12 mb-2 opacity-50" />
-        <p className="text-sm text-center">Không có hội thoại nào</p>
-        <p className="text-xs text-gray-400 mt-1">Hội thoại từ Facebook sẽ xuất hiện ở đây</p>
-      </div>
+      <CskhEmptyState
+        icon={<MessageCircle className="h-8 w-8 text-indigo-600" />}
+        title="Không có hội thoại nào"
+        description="Hội thoại từ Facebook sẽ xuất hiện ở đây"
+      />
     )
   }
 

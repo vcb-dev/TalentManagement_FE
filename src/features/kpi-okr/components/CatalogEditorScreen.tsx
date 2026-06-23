@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
@@ -70,17 +72,13 @@ export function CatalogEditorScreen() {
 
   return (
     <div className="min-w-0 space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 md:p-6">
-      {/* Header */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-xl">
-            Danh mục KPI/OKR
-          </h1>
-          <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-            Quản lý mẫu KPI/OKR theo vị trí và giai đoạn thâm niên.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Danh mục KPI/OKR"
+        description="Quản lý mẫu KPI/OKR theo vị trí và giai đoạn thâm niên."
+        gradientTitle
+        variant="flat"
+        className="border-0 pb-0"
+      />
 
       {/* Banner */}
       <div className="flex items-start gap-2 rounded-lg border border-indigo-200 bg-indigo-50/50 p-3 sm:gap-3 sm:p-4 dark:border-indigo-900 dark:bg-indigo-950/30">
@@ -143,11 +141,11 @@ export function CatalogEditorScreen() {
             <Skeleton className="h-64 w-full" />
           </div>
         ) : !catalog ? (
-          <Card className="border-dashed">
-            <CardContent className="pt-6 text-center text-sm text-slate-400">
-              Không tìm thấy catalog.
-            </CardContent>
-          </Card>
+          <EmptyState
+            title="Không tìm thấy catalog"
+            compact
+            className="rounded-2xl border border-dashed"
+          />
         ) : (
           <div className="min-w-0 space-y-4">
             {/* Metadata */}

@@ -11,11 +11,9 @@ import {
   Trophy,
   Users,
 } from 'lucide-react'
-import {
-  PAGE_HEADER_GRADIENT,
-  PAGE_HEADER_SURFACE,
-  PAGE_HEADER_TITLE,
-} from '@/components/shared/PageHeader'
+import { PageHeader } from '@/components/shared/PageHeader'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { DashboardSection } from '@/components/shared/DashboardSection'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -66,11 +64,23 @@ type SummaryCardProps = {
   color: string
   icon: ReactNode
   footer: ReactNode
+  deltaLabel?: string
+  deltaTone?: 'positive' | 'negative' | 'neutral'
   delay: number
   loading?: boolean
 }
 
-function SummaryCard({ title, percent, color, icon, footer, delay, loading }: SummaryCardProps) {
+function SummaryCard({
+  title,
+  percent,
+  color,
+  icon,
+  footer,
+  deltaLabel,
+  deltaTone = 'neutral',
+  delay,
+  loading,
+}: SummaryCardProps) {
   return (
     <div
       className={cn(
@@ -96,6 +106,18 @@ function SummaryCard({ title, percent, color, icon, footer, delay, loading }: Su
           <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
             {title}
           </h3>
+          {!loading && deltaLabel ? (
+            <div
+              className={cn(
+                'mb-2 inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold',
+                deltaTone === 'positive' && 'bg-emerald-50 text-emerald-700',
+                deltaTone === 'negative' && 'bg-rose-50 text-rose-700',
+                deltaTone === 'neutral' && 'bg-muted text-muted-foreground'
+              )}
+            >
+              {deltaLabel}
+            </div>
+          ) : null}
           {loading ? (
             <Skeleton className="h-4 w-3/4" />
           ) : (
@@ -120,6 +142,8 @@ export type ManagerReportPeriodBridge = {
 export interface DashboardKpiOkrZoneProps {
   role: Extract<Role, 'LEADER' | 'MANAGER' | 'MEMBER'>
   paths: KpiOkrPaths
+  /** Ẩn tiêu đề khi nhúng trong tab dashboard. */
+  embedded?: boolean
   /** Manager: kỳ dùng chung với tab Học tập (bộ lọc ở ngoài). */
   managerReportPeriodFromParent?: ManagerReportPeriodBridge | null
 }
@@ -130,6 +154,7 @@ type TeamOption = { id: string; name: string; deptName?: string }
 export function DashboardKpiOkrZone({
   role,
   paths,
+  embedded = false,
   managerReportPeriodFromParent = null,
 }: DashboardKpiOkrZoneProps) {
   const user = useAuthStore((s) => s.user)
@@ -279,42 +304,39 @@ export function DashboardKpiOkrZone({
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-8 text-sm text-foreground">
-      {/* 1. Tiêu đề — chỉ nhận diện màn, không chen filter */}
-      <section
-        className={cn(
-          PAGE_HEADER_SURFACE,
-          'motion-safe:animate-[dash-fade-up_0.45s_ease-out_both] motion-reduce:animate-none'
-        )}
-      >
-        <h1 className={PAGE_HEADER_TITLE}>
-          <span className={PAGE_HEADER_GRADIENT}>KPI · OKR · Báo cáo</span>
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          {isMember
-            ? 'Tổng quan cá nhân: chỉ tiêu được giao, đánh giá quản lý và khảo sát theo kỳ (năm + từ tháng đến tháng) — cùng cách lọc với trưởng nhóm / quản lý.'
-            : isLeader
-              ? 'Theo dõi tiến độ nhóm: chỉ tiêu đã giao, đánh giá quản lý và mức độ tham gia khảo sát theo kỳ bạn chọn.'
-              : 'Tổng quan nhiều nhóm: so sánh KPI/OKR và khảo sát trên cùng một kỳ thời gian.'}
-        </p>
-      </section>
+      {!embedded ? (
+        <PageHeader
+          title="KPI · OKR · Báo cáo"
+          description={
+            isMember
+              ? 'Tổng quan cá nhân: chỉ tiêu được giao, đánh giá quản lý và khảo sát theo kỳ (năm + từ tháng đến tháng) — cùng cách lọc với trưởng nhóm / quản lý.'
+              : isLeader
+                ? 'Theo dõi tiến độ nhóm: chỉ tiêu đã giao, đánh giá quản lý và mức độ tham gia khảo sát theo kỳ bạn chọn.'
+                : 'Tổng quan nhiều nhóm: so sánh KPI/OKR và khảo sát trên cùng một kỳ thời gian.'
+          }
+          gradientTitle
+          surface
+          variant="flat"
+          className={cn(
+            'motion-safe:animate-[dash-fade-up_0.45s_ease-out_both] motion-reduce:animate-none border-0 pb-0'
+          )}
+        />
+      ) : null}
 
       {/* 2. Thanh ngữ cảnh: Phạm vi (team) → Kỳ — đúng thứ tự “xem gì, trong lúc nào” */}
-      <section
-        className={cn(
-          'rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm backdrop-blur-sm sm:p-5',
-          'motion-safe:animate-[dash-fade-up_0.4s_ease-out_both] motion-reduce:animate-none'
-        )}
-        style={{ animationDelay: '40ms' }}
-      >
-        <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            {kpiFilterFromParent ? 'Phạm vi' : 'Phạm vi và kỳ'}
-          </span>
+      <DashboardSection
+        title={kpiFilterFromParent ? 'Phạm vi' : 'Phạm vi và kỳ'}
+        hint={
           <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground">
             {periodSummary}
           </span>
-        </div>
-
+        }
+        className={cn(
+          'bg-card/90 backdrop-blur-sm',
+          'motion-safe:animate-[dash-fade-up_0.4s_ease-out_both] motion-reduce:animate-none'
+        )}
+        contentClassName="pt-0"
+      >
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-8">
           {/* Team — đặt trước: người dùng chọn “đối tượng” trước khi lọc thời gian */}
           <div
@@ -355,7 +377,7 @@ export function DashboardKpiOkrZone({
                 ) : null}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Chưa có nhóm khả dụng.</p>
+              <EmptyState compact tone="subtle" title="Chưa có nhóm khả dụng" className="py-2" />
             )}
           </div>
 
@@ -433,14 +455,19 @@ export function DashboardKpiOkrZone({
             </>
           ) : null}
         </div>
-      </section>
+      </DashboardSection>
 
       {!selectedTeamId ? (
-        <div className="rounded-3xl border border-dashed border-border bg-muted/40 p-8 text-center text-sm text-muted-foreground">
-          {isManager
-            ? 'Chọn nhóm ở phía trên để tải báo cáo KPI/OKR.'
-            : 'Bạn chưa được gán vào nhóm nào. Vui lòng liên hệ nhân sự hoặc quản trị.'}
-        </div>
+        <EmptyState
+          icon={<Users className="h-8 w-8" />}
+          title={isManager ? 'Chưa chọn nhóm' : 'Chưa được gán nhóm'}
+          description={
+            isManager
+              ? 'Chọn nhóm ở phía trên để tải báo cáo KPI/OKR.'
+              : 'Bạn chưa được gán vào nhóm nào. Vui lòng liên hệ nhân sự hoặc quản trị.'
+          }
+          className="rounded-3xl border border-dashed border-border bg-muted/40"
+        />
       ) : (
         <>
           {/* 3. Tóm tắt nhanh — đọc ngay sau khi đã chọn team & kỳ */}
@@ -529,55 +556,44 @@ export function DashboardKpiOkrZone({
           {/* 5. Một cột chính: xu hướng → chi tiết chỉ tiêu → phân tích theo người */}
           <div className="space-y-6">
             {/* Xu hướng theo thời gian — đặt trước bảng chi tiết để có bối cảnh */}
-            <div
-              className={cn(
-                'rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8',
-                CARD_ENTRANCE_HOVER
-              )}
-              style={staggerStyle(3)}
+            <DashboardSection
+              title={
+                monthSpan > 1
+                  ? `Xu hướng theo tháng (${monthSpan} tháng)`
+                  : 'Xu hướng trong kỳ đã chọn'
+              }
+              description={
+                isMember
+                  ? monthSpan > 1
+                    ? '% KPI / OKR của bạn theo từng tháng trong kỳ.'
+                    : '% KPI / OKR của bạn trong tháng đã chọn.'
+                  : monthSpan > 1
+                    ? '% đạt KPI / OKR trung bình từng tháng trong kỳ.'
+                    : 'Một điểm cho tháng hiện tại; mở rộng kỳ để so sánh nhiều tháng liên tiếp.'
+              }
+              className={cn('rounded-3xl', CARD_ENTRANCE_HOVER)}
+              contentClassName="pt-0"
             >
-              <div className="mb-4 border-b border-border/70 pb-4">
-                <h3 className="text-lg font-bold text-foreground md:text-xl">
-                  {monthSpan > 1
-                    ? `Xu hướng theo tháng (${monthSpan} tháng)`
-                    : 'Xu hướng trong kỳ đã chọn'}
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground md:text-sm">
-                  {isMember
-                    ? monthSpan > 1
-                      ? '% KPI / OKR của bạn theo từng tháng trong kỳ.'
-                      : '% KPI / OKR của bạn trong tháng đã chọn.'
-                    : monthSpan > 1
-                      ? '% đạt KPI / OKR trung bình từng tháng trong kỳ.'
-                      : 'Một điểm cho tháng hiện tại; mở rộng kỳ để so sánh nhiều tháng liên tiếp.'}
-                </p>
-              </div>
               {isLoading ? (
                 <Skeleton className="h-[220px] w-full rounded-xl" />
               ) : (
                 <TrendLine points={trend} />
               )}
-            </div>
+            </DashboardSection>
 
-            {/* Chỉ tiêu được giao + trạng thái */}
-            <div
-              className={cn('rounded-3xl bg-muted/40 p-6 md:p-8', CARD_ENTRANCE_HOVER)}
-              style={staggerStyle(4)}
+            <DashboardSection
+              title={isMember ? 'Chi tiết chỉ tiêu của bạn' : 'Chi tiết chỉ tiêu đã giao'}
+              description={
+                monthSpan > 1
+                  ? `Gộp ${monthSpan} tháng (${monthRangeLabel(data.year, data.startMonth, data.endMonth)})${isMember ? ' — chỉ chỉ tiêu của bạn.' : ' — cùng nguồn với màn KPI & OKR.'}`
+                  : isMember
+                    ? 'Mục tiêu và đánh giá quản lý của bạn trong kỳ.'
+                    : 'Danh sách mục tiêu và đánh giá quản lý trong kỳ.'
+              }
+              className={cn('rounded-3xl bg-muted/40 border-0 shadow-none', CARD_ENTRANCE_HOVER)}
+              contentClassName="pt-0"
             >
-              <div className="mb-6 border-b border-border/60 pb-4">
-                <h2 className="text-xl font-bold text-foreground">
-                  {isMember ? 'Chi tiết chỉ tiêu của bạn' : 'Chi tiết chỉ tiêu đã giao'}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {monthSpan > 1
-                    ? `Gộp ${monthSpan} tháng (${monthRangeLabel(data.year, data.startMonth, data.endMonth)})${isMember ? ' — chỉ chỉ tiêu của bạn.' : ' — cùng nguồn với màn KPI & OKR.'}`
-                    : isMember
-                      ? 'Mục tiêu và đánh giá quản lý của bạn trong kỳ.'
-                      : 'Danh sách mục tiêu và đánh giá quản lý trong kỳ.'}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-8 xl:grid-cols-5">
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
                 <div className="xl:col-span-3">
                   <div className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Thành viên trong team
@@ -637,27 +653,19 @@ export function DashboardKpiOkrZone({
                   </div>
                 </div>
               </div>
-            </div>
+            </DashboardSection>
 
-            {/* So sánh theo nhân sự + xếp loại — ẩn với role MEMBER */}
             {!isMember && (
-              <div
-                className={cn(
-                  'rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8',
-                  CARD_ENTRANCE_HOVER
-                )}
-                style={staggerStyle(5)}
+              <DashboardSection
+                title="So sánh theo nhân sự"
+                description={
+                  monthSpan > 1
+                    ? 'Cộng dồn đạt / chưa đạt qua các tháng trong kỳ.'
+                    : 'Đạt và chưa đạt theo từng thành viên.'
+                }
+                className={cn('rounded-3xl', CARD_ENTRANCE_HOVER)}
+                contentClassName="pt-0"
               >
-                <div className="mb-4 border-b border-border/70 pb-4">
-                  <h3 className="text-lg font-bold text-foreground md:text-xl">
-                    So sánh theo nhân sự
-                  </h3>
-                  <p className="mt-1 text-xs text-muted-foreground md:text-sm">
-                    {monthSpan > 1
-                      ? 'Cộng dồn đạt / chưa đạt qua các tháng trong kỳ.'
-                      : 'Đạt và chưa đạt theo từng thành viên.'}
-                  </p>
-                </div>
                 {isLoading ? (
                   <Skeleton className="h-[300px] w-full rounded-xl" />
                 ) : (
@@ -667,7 +675,7 @@ export function DashboardKpiOkrZone({
                   <GradeDonut dist={kpiGradeDist} title="Xếp loại KPI" />
                   <GradeDonut dist={okrGradeDist} title="Xếp loại OKR" />
                 </div>
-              </div>
+              </DashboardSection>
             )}
           </div>
         </>

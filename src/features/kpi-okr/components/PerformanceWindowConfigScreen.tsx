@@ -2,6 +2,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { CalendarRange, Info, Pencil } from 'lucide-react'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -164,17 +166,18 @@ export function PerformanceWindowConfigScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 px-4 py-8">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <CalendarRange className="h-5 w-5" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1 space-y-1">
-          <h1 className="text-xl font-bold tracking-tight text-foreground">
-            Cửa sổ giao KPI/OKR & khảo sát
-          </h1>
-        </div>
-      </div>
+    <div className="w-full space-y-8">
+      <PageHeader
+        title="Cửa sổ giao KPI/OKR & khảo sát"
+        gradientTitle
+        variant="flat"
+        className="border-0 pb-0"
+        eyebrow={
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <CalendarRange className="h-5 w-5" aria-hidden />
+          </div>
+        }
+      />
 
       {mock ? (
         <Card className="border-dashed border-amber-500/40 bg-amber-500/5">
@@ -432,9 +435,12 @@ export function PerformanceWindowConfigScreen() {
             </>
           )}
           {(listQ.data ?? []).length === 0 && !listQ.isLoading ? (
-            <p className={cn('mt-3 text-center text-sm text-muted-foreground')}>
-              Chưa có bản ghi — đang dùng mặc định (giao 1–2, khảo sát 1–5).
-            </p>
+            <EmptyState
+              title="Chưa có bản ghi"
+              description="Đang dùng mặc định (giao 1–2, khảo sát 1–5)."
+              compact
+              className="mt-3 border-0 bg-transparent py-4"
+            />
           ) : null}
         </CardContent>
       </Card>

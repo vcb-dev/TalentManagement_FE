@@ -52,7 +52,14 @@ import {
 } from './api'
 import { AuditMessengerView } from './AuditMessengerView'
 import { ChatMessengerPane } from './ChatMessengerPane'
-import { CskhGlassPanel, CskhPageShell, CskhPageAvatar } from './cskhUi'
+import {
+  CskhGlassPanel,
+  CskhPageShell,
+  CskhPageAvatar,
+  CskhLoading,
+  CskhEmptyState,
+} from './cskhUi'
+import { ErrorState } from '@/components/shared/ErrorState'
 import { toast } from 'sonner'
 
 const cskhQualityRoute = getRouteApi('/_protected/cskh-quality')
@@ -1858,11 +1865,7 @@ function ConfigTab() {
   const pages = data?.pages ?? []
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-slate-500">
-        <Loader2 className="mr-2 h-6 w-6 animate-spin text-indigo-500" /> Đang tải cấu hình…
-      </div>
-    )
+    return <CskhLoading label="Đang tải cấu hình…" />
   }
 
   return (
@@ -1947,9 +1950,11 @@ function ConfigTab() {
         </div>
 
         {!pages.length ? (
-          <p className="p-8 text-center text-sm text-slate-500">
-            Chưa có Page — kết nối Facebook ở trên.
-          </p>
+          <CskhEmptyState
+            icon={<Facebook className="h-8 w-8 text-indigo-600" />}
+            title="Chưa có Page"
+            description="Kết nối Facebook ở trên để thêm Page."
+          />
         ) : (
           <ul className="divide-y divide-slate-100">
             {pages.map((p) => (
@@ -2120,9 +2125,8 @@ function FbPageTab() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full min-h-[240px] items-center justify-center bg-[#f4f7fc] p-6 font-sans text-slate-500">
-        <Loader2 className="mr-2 h-6 w-6 animate-spin text-indigo-500" />
-        Đang tải danh sách Page…
+      <div className="flex h-full min-h-[240px] items-center justify-center bg-[#f4f7fc] p-6 font-sans">
+        <CskhLoading label="Đang tải danh sách Page…" />
       </div>
     )
   }
@@ -2178,12 +2182,12 @@ function FbPageTab() {
       </div>
 
       {isError ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          Không tải được danh sách Page.{' '}
-          <button type="button" onClick={() => refetch()} className="font-semibold underline">
-            Thử lại
-          </button>
-        </div>
+        <ErrorState
+          variant="inline"
+          title="Không tải được danh sách Page."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
       ) : null}
 
       {!data?.oauthConnected ? (
@@ -2290,16 +2294,20 @@ function FbPageTab() {
             </div>
 
             {!connectedPages.length ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-slate-500">
-                <p>Chưa có Page nào được kết nối.</p>
-                <Link
-                  to="/cskh-quality"
-                  search={{ tab: 'config' }}
-                  className="font-semibold text-indigo-600 underline"
-                >
-                  Thêm kênh tại Cài đặt Kênh
-                </Link>
-              </div>
+              <CskhEmptyState
+                icon={<Facebook className="h-8 w-8 text-indigo-600" />}
+                title="Chưa có Page nào được kết nối"
+                description="Thêm kênh tại Cài đặt Kênh để xem báo cáo."
+                action={
+                  <Link
+                    to="/cskh-quality"
+                    search={{ tab: 'config' }}
+                    className="text-sm font-semibold text-indigo-600 underline"
+                  >
+                    Thêm kênh tại Cài đặt Kênh
+                  </Link>
+                }
+              />
             ) : (
               <>
                 <div className="min-h-0 overflow-x-auto [scrollbar-width:thin]">

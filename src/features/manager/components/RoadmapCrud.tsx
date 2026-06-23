@@ -30,6 +30,10 @@ import { cn } from '@/lib/utils'
 const cnLocal = (...classes: any[]) => classes.filter(Boolean).join(' ')
 const safeCn = typeof cn !== 'undefined' ? cn : cnLocal
 import { PageHeader } from '@/components/shared/PageHeader'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { SkeletonSubmissionCardList } from '@/components/ui/skeleton'
+import { getApiErrorMessage } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -117,7 +121,7 @@ function isReflectionAllowed(value?: string | null) {
 }
 
 export function RoadmapCrud() {
-  const { data: items, isLoading } = useManagerRoadmapItems()
+  const { data: items, isLoading, isError, error, refetch, isFetching } = useManagerRoadmapItems()
   const createItem = useCreateManagerRoadmapItem()
   const updateItem = useUpdateManagerRoadmapItem()
   const deleteItem = useDeleteManagerRoadmapItem()
@@ -457,7 +461,7 @@ export function RoadmapCrud() {
   return (
     <>
       <PageHeader
-        title="Quản lý lộ trình học (CRUD)"
+        title="Quản lý lộ trình học"
         description="Thêm, sửa, xoá các đầu mục lộ trình tự động hóa cho nhân sự"
       />
 
@@ -969,169 +973,184 @@ export function RoadmapCrud() {
         </Dialog>
 
         {/* Grouped Card Display Layout */}
-        <div className="mx-auto mt-6 max-w-7xl space-y-8 px-2 pb-16 sm:px-4">
-          {!isLoading && uniqueLevels.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 rounded-[3rem] border border-dashed border-gray-200 bg-white shadow-sm">
-              <div className="h-20 w-20 rounded-3xl bg-gray-50 flex items-center justify-center text-gray-300 font-black text-3xl mb-4">
-                ?
-              </div>
-              <h3 className="text-xl font-bold text-gray-900">Chưa có dữ liệu lộ trình</h3>
-              <p className="text-gray-500 mt-2 text-center max-w-xs text-sm">
-                Nhấn 'Thêm đầu mục mới' để bắt đầu
-              </p>
-            </div>
-          )}
-
-          {(() => {
-            const levelGroups = new Map<string, { label: string; items: any[] }>()
-
-            filteredItems?.forEach((item) => {
-              const normalized = (item.levelLabel || '').trim().toLowerCase()
-              if (!normalized) return
-
-              const group = levelGroups.get(normalized)
-              if (group) {
-                group.items.push(item)
-              } else {
-                levelGroups.set(normalized, { label: item.levelLabel, items: [item] })
+        <div className="mx-auto mt-6 w-full max-w-[1400px] space-y-8 pb-16">
+          {isError ? (
+            <ErrorState
+              title="Không tải được lộ trình học"
+              description={getApiErrorMessage(error)}
+              onRetry={() => void refetch()}
+              retrying={isFetching}
+            />
+          ) : isLoading ? (
+            <SkeletonSubmissionCardList count={4} />
+          ) : uniqueLevels.length === 0 ? (
+            <EmptyState
+              icon={<Book className="h-8 w-8" />}
+              title="Chưa có dữ liệu lộ trình"
+              description="Nhấn 'Thêm đầu mục mới' để bắt đầu."
+              action={
+                <Button onClick={() => setIsFormVisible(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Thêm đầu mục mới
+                </Button>
               }
-            })
+            />
+          ) : null}
 
-            return Array.from(levelGroups.values()).map((group) => {
-              const uniqueTopics = Array.from(
-                new Set(group.items.map((i) => (i.topic || '').trim().toLowerCase()))
-              )
+          {!isLoading && !isError
+            ? (() => {
+                const levelGroups = new Map<string, { label: string; items: any[] }>()
 
-              return (
-                <div
-                  key={group.label}
-                  className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
-                >
-                  {/* Level Header - MORE COMPACT */}
-                  <div className="flex items-center gap-4 p-3 rounded-2xl bg-white border border-gray-100 shadow-sm">
-                    <div className="bg-primary h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/10">
-                      <ArrowUpRight className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">
-                          {group.label}
-                        </h2>
-                        <span className="px-2 py-0.5 rounded-full bg-primary/10 text-xs font-black text-primary uppercase tracking-widest mt-0.5">
-                          Lộ trình
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                filteredItems?.forEach((item) => {
+                  const normalized = (item.levelLabel || '').trim().toLowerCase()
+                  if (!normalized) return
 
-                  <div className="ml-2 grid grid-cols-1 gap-4 border-l border-gray-200 pl-3 sm:ml-4 sm:gap-6 sm:pl-5 md:ml-5 md:pl-6">
-                    {uniqueTopics.map((topicKey) => {
-                      const topicItems = group.items.filter(
-                        (i) => (i.topic || '').trim().toLowerCase() === topicKey
-                      )
-                      const displayTopic = topicItems[0]?.topic || topicKey
+                  const group = levelGroups.get(normalized)
+                  if (group) {
+                    group.items.push(item)
+                  } else {
+                    levelGroups.set(normalized, { label: item.levelLabel, items: [item] })
+                  }
+                })
 
-                      return (
-                        <div
-                          key={topicKey}
-                          className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300"
-                        >
-                          {/* Topic Header - COMPACT */}
-                          <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 px-3 py-3 sm:px-6">
-                            <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center">
-                                <BookOpen className="h-4 w-4" />
-                              </div>
-                              <h3 className="text-md font-bold text-gray-800">{displayTopic}</h3>
-                            </div>
-                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                              {topicItems.length} đầu mục
+                return Array.from(levelGroups.values()).map((group) => {
+                  const uniqueTopics = Array.from(
+                    new Set(group.items.map((i) => (i.topic || '').trim().toLowerCase()))
+                  )
+
+                  return (
+                    <div
+                      key={group.label}
+                      className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
+                    >
+                      {/* Level Header - MORE COMPACT */}
+                      <div className="flex items-center gap-4 p-3 rounded-2xl bg-white border border-gray-100 shadow-sm">
+                        <div className="bg-primary h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/10">
+                          <ArrowUpRight className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">
+                              {group.label}
+                            </h2>
+                            <span className="px-2 py-0.5 rounded-full bg-primary/10 text-xs font-black text-primary uppercase tracking-widest mt-0.5">
+                              Lộ trình
                             </span>
                           </div>
-
-                          <div className="p-1 space-y-1">
-                            {topicItems.map((item, idx) => (
-                              <div
-                                key={item.id}
-                                className={safeCn(
-                                  'flex flex-col justify-between gap-4 rounded-xl px-3 py-3 transition-all hover:bg-primary/[0.02] sm:px-5 lg:flex-row lg:items-center',
-                                  idx % 2 === 0 ? 'bg-gray-50/30' : 'bg-white'
-                                )}
-                              >
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[2fr_1.2fr_1fr_0.8fr] gap-4 flex-1">
-                                  {/* Objective */}
-                                  <div className="space-y-1">
-                                    <label className="text-xs uppercase font-black text-primary/40 tracking-wider flex items-center gap-1.5">
-                                      <Target className="h-3 w-3" /> Mục tiêu
-                                    </label>
-                                    <p className="text-sm font-semibold text-gray-900 leading-snug">
-                                      {item.objective}
-                                    </p>
-                                  </div>
-                                  {/* Materials */}
-                                  <div className="space-y-1">
-                                    <label className="text-xs uppercase font-black text-gray-400 tracking-wider flex items-center gap-1.5">
-                                      <Files className="h-3 w-3" /> Tài liệu
-                                    </label>
-                                    <div className="text-xs">
-                                      {parseAndRenderMaterial(item.materialRef)}
-                                    </div>
-                                  </div>
-                                  {/* Trainer */}
-                                  <div className="space-y-1">
-                                    <label className="text-xs uppercase font-black text-gray-400 tracking-wider flex items-center gap-1.5">
-                                      <GraduationCap className="h-3 w-3" /> Phụ trách
-                                    </label>
-                                    <div className="flex items-center gap-2">
-                                      <div className="h-5 w-5 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center text-xs font-bold">
-                                        {item.trainer?.[0] || '?'}
-                                      </div>
-                                      <p className="text-xs font-medium text-gray-700">
-                                        {item.trainer || '-'}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  {/* Assessment */}
-                                  <div className="space-y-1">
-                                    <label className="text-xs uppercase font-black text-gray-400 tracking-wider flex items-center gap-1.5">
-                                      <ClipboardCheck className="h-3 w-3" /> Đánh giá
-                                    </label>
-                                    <p className="text-xs font-medium text-gray-700">
-                                      {item.assessment || '-'}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {/* Actions - COMPACT */}
-                                <div className="flex items-center lg:flex-row gap-1 border-t lg:border-t-0 pt-2 lg:pt-0">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 rounded-lg text-blue-500 hover:bg-blue-50"
-                                    onClick={() => handleEdit(item)}
-                                  >
-                                    <Edit className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 rounded-lg text-red-500 hover:bg-red-50"
-                                    onClick={() => handleDelete(item.id)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
                         </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })
-          })()}
+                      </div>
+
+                      <div className="ml-2 grid grid-cols-1 gap-4 border-l border-gray-200 pl-3 sm:ml-4 sm:gap-6 sm:pl-5 md:ml-5 md:pl-6">
+                        {uniqueTopics.map((topicKey) => {
+                          const topicItems = group.items.filter(
+                            (i) => (i.topic || '').trim().toLowerCase() === topicKey
+                          )
+                          const displayTopic = topicItems[0]?.topic || topicKey
+
+                          return (
+                            <div
+                              key={topicKey}
+                              className="bg-white rounded-[1.5rem] border border-gray-100 shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300"
+                            >
+                              {/* Topic Header - COMPACT */}
+                              <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 px-3 py-3 sm:px-6">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-8 w-8 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center">
+                                    <BookOpen className="h-4 w-4" />
+                                  </div>
+                                  <h3 className="text-md font-bold text-gray-800">
+                                    {displayTopic}
+                                  </h3>
+                                </div>
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                  {topicItems.length} đầu mục
+                                </span>
+                              </div>
+
+                              <div className="p-1 space-y-1">
+                                {topicItems.map((item, idx) => (
+                                  <div
+                                    key={item.id}
+                                    className={safeCn(
+                                      'flex flex-col justify-between gap-4 rounded-xl px-3 py-3 transition-all hover:bg-primary/[0.02] sm:px-5 lg:flex-row lg:items-center',
+                                      idx % 2 === 0 ? 'bg-gray-50/30' : 'bg-white'
+                                    )}
+                                  >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[2fr_1.2fr_1fr_0.8fr] gap-4 flex-1">
+                                      {/* Objective */}
+                                      <div className="space-y-1">
+                                        <label className="text-xs uppercase font-black text-primary/40 tracking-wider flex items-center gap-1.5">
+                                          <Target className="h-3 w-3" /> Mục tiêu
+                                        </label>
+                                        <p className="text-sm font-semibold text-gray-900 leading-snug">
+                                          {item.objective}
+                                        </p>
+                                      </div>
+                                      {/* Materials */}
+                                      <div className="space-y-1">
+                                        <label className="text-xs uppercase font-black text-gray-400 tracking-wider flex items-center gap-1.5">
+                                          <Files className="h-3 w-3" /> Tài liệu
+                                        </label>
+                                        <div className="text-xs">
+                                          {parseAndRenderMaterial(item.materialRef)}
+                                        </div>
+                                      </div>
+                                      {/* Trainer */}
+                                      <div className="space-y-1">
+                                        <label className="text-xs uppercase font-black text-gray-400 tracking-wider flex items-center gap-1.5">
+                                          <GraduationCap className="h-3 w-3" /> Phụ trách
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                          <div className="h-5 w-5 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center text-xs font-bold">
+                                            {item.trainer?.[0] || '?'}
+                                          </div>
+                                          <p className="text-xs font-medium text-gray-700">
+                                            {item.trainer || '-'}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      {/* Assessment */}
+                                      <div className="space-y-1">
+                                        <label className="text-xs uppercase font-black text-gray-400 tracking-wider flex items-center gap-1.5">
+                                          <ClipboardCheck className="h-3 w-3" /> Đánh giá
+                                        </label>
+                                        <p className="text-xs font-medium text-gray-700">
+                                          {item.assessment || '-'}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* Actions - COMPACT */}
+                                    <div className="flex items-center lg:flex-row gap-1 border-t lg:border-t-0 pt-2 lg:pt-0">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-lg text-blue-500 hover:bg-blue-50"
+                                        onClick={() => handleEdit(item)}
+                                      >
+                                        <Edit className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-lg text-red-500 hover:bg-red-50"
+                                        onClick={() => handleDelete(item.id)}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })
+              })()
+            : null}
         </div>
       </div>
     </>

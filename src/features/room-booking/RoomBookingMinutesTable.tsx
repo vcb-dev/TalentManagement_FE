@@ -4,6 +4,7 @@ import type { MeetingBooking } from './api'
 import { BBH_REQUIRED_FROM_DATE } from './roomBookingConstants'
 import { formatDateVi, formatTimeRangeVi } from './roomBookingTimeUtils'
 import { requiresMeetingMinutes } from './roomBookingMinutes'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { RoomBookingMinutesCell } from './RoomBookingMinutesCell'
 
 type Props = {
@@ -48,9 +49,12 @@ export function RoomBookingMinutesTable({ items, vnTime, currentUserId, showAllU
       </div>
 
       {rows.length === 0 ? (
-        <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-          Chưa có buổi họp nào cần nộp biên bản.
-        </p>
+        <EmptyState
+          icon={<FileText className="h-7 w-7" />}
+          title="Chưa có buổi họp nào cần nộp biên bản"
+          compact
+          className="px-4 py-6"
+        />
       ) : (
         <>
           <div className="overflow-x-auto">

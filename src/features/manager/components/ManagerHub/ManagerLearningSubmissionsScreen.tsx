@@ -15,12 +15,7 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  PAGE_HEADER_DESCRIPTION,
-  PAGE_HEADER_GRADIENT,
-  PAGE_HEADER_SURFACE,
-  PAGE_HEADER_TITLE,
-} from '@/components/shared/PageHeader'
+import { ManagerHubPageHeader } from './ManagerHubPageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
@@ -29,10 +24,20 @@ import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { useManagerSubmissions, useUpdateSubmissionStatus } from '@/features/manager/hooks'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 import { formatViDate } from '@/lib/date'
-import { Skeleton } from '@/components/ui/skeleton'
+import { SkeletonSubmissionCardList } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { getApiErrorMessage } from '@/lib/axios'
 
 export const ManagerLearningSubmissionsScreen = () => {
-  const { data: submissions, isLoading } = useManagerSubmissions()
+  const {
+    data: submissions,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useManagerSubmissions()
   const [searchTerm, setSearchTerm] = useState('')
 
   const filtered = useMemo(() => {
@@ -67,25 +72,21 @@ export const ManagerLearningSubmissionsScreen = () => {
     <ManagerScreenLayout hideHubNav hideToolbar>
       <div className="mb-8 flex flex-col gap-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
-            <div className="flex items-center gap-3 mb-2">
-              <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/20">
+          <ManagerHubPageHeader
+            title="Phản tư lớp Biết việc 1"
+            description="Quản lý và tổng hợp kết quả phản tư của nhân sự trong kỳ thi lớp Biết việc 1."
+            eyebrow={
+              <span className="inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
                 Kỳ thi hiện tại
               </span>
-            </div>
-            <h1 className={PAGE_HEADER_TITLE}>
-              <span className={PAGE_HEADER_GRADIENT}>Phản tư lớp Biết việc 1</span>
-            </h1>
-            <p className={PAGE_HEADER_DESCRIPTION}>
-              Quản lý và tổng hợp kết quả phản tư của nhân sự trong kỳ thi lớp Biết việc 1.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-card px-4 py-2.5 text-sm font-bold text-foreground shadow-sm ring-1 ring-primary/10">
-              <Users className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.5} />
-              {Object.keys(grouped).length} Nhân sự tham gia
-            </span>
-          </div>
+            }
+            actions={
+              <span className="inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-card px-4 py-2.5 text-sm font-bold text-foreground shadow-sm ring-1 ring-primary/10">
+                <Users className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.5} />
+                {Object.keys(grouped).length} Nhân sự tham gia
+              </span>
+            }
+          />
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
@@ -101,17 +102,21 @@ export const ManagerLearningSubmissionsScreen = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-6">
-          {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-40 w-full rounded-[24px]" />
-            ))
+          {isError ? (
+            <ErrorState
+              title="Không tải được danh sách bài nộp"
+              description={getApiErrorMessage(error)}
+              onRetry={() => void refetch()}
+              retrying={isFetching}
+            />
+          ) : isLoading ? (
+            <SkeletonSubmissionCardList count={4} />
           ) : Object.keys(grouped).length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-[32px] border-2 border-dashed border-border bg-card/50 py-20 text-center">
-              <div className="mb-4 rounded-full bg-muted p-4">
-                <Users className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-bold text-foreground">Không tìm thấy dữ liệu nào</h3>
-            </div>
+            <EmptyState
+              icon={<Users className="h-8 w-8" />}
+              title="Không tìm thấy dữ liệu nào"
+              description="Thử đổi từ khóa tìm kiếm hoặc quay lại sau khi học viên nộp bài."
+            />
           ) : (
             Object.entries(grouped).map(([userKey, userSubmissions], idx) => (
               <UserGroupCard

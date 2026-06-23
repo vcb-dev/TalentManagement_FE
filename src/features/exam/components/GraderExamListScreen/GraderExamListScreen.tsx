@@ -1,15 +1,16 @@
+import { ClipboardList } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import {
-  PAGE_HEADER_DESCRIPTION,
-  PAGE_HEADER_GRADIENT,
-  PAGE_HEADER_SURFACE,
-  PAGE_HEADER_TITLE,
-} from '@/components/shared/PageHeader'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { CARD_ENTRANCE_HOVER, SECTION_FADE_UP, staggerStyle } from '@/lib/cardMotion'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { SkeletonSubmissionCardList } from '@/components/ui/skeleton'
+import { getApiErrorMessage } from '@/lib/axios'
 import { useManagerSubmissions } from '@/features/exam/hooks'
+import { type examSubmissionApiSchema } from '@/features/exam/schemas'
 import { z } from 'zod'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -88,7 +89,14 @@ export function GraderExamListScreen({ classId }: GraderExamListScreenProps) {
   const [onlyPending, setOnlyPending] = useState(false)
   const [selectedSubForRubric, setSelectedSubForRubric] = useState<SubmissionRow | null>(null)
 
-  const { data: submissions = [], isLoading } = useManagerSubmissions()
+  const {
+    data: submissions = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useManagerSubmissions()
   const { data: classes = [] } = useManagerClasses()
 
   const currentClass = useMemo(
@@ -124,71 +132,68 @@ export function GraderExamListScreen({ classId }: GraderExamListScreenProps) {
         <div className="page-shell">
           <div className="mb-8 flex flex-col gap-8">
             {/* Header */}
-            <div
-              className={cn(
-                'flex flex-col gap-4 md:flex-row md:items-end md:justify-between',
-                SECTION_FADE_UP
-              )}
-            >
-              <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
-                <h1 className={PAGE_HEADER_TITLE}>
-                  <span className={PAGE_HEADER_GRADIENT}>
-                    {currentClass
-                      ? `Bài thi lớp: ${currentClass.name}`
-                      : 'Danh sách bài thi đã nộp'}
-                  </span>
-                </h1>
-                <p className={PAGE_HEADER_DESCRIPTION}>
+            <PageHeader
+              title={
+                currentClass ? `Bài thi lớp: ${currentClass.name}` : 'Danh sách bài thi đã nộp'
+              }
+              description={
+                <>
                   <span className="font-semibold text-foreground">{pendingTotal} bài chờ chấm</span>
                   {' · '}
-                  Tổng cộng {rows.length} bài đã nộp. Bấm "Chấm thi" để xem chi tiết và nhập nhận
-                  xét.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                {currentClass && (
+                  Tổng cộng {rows.length} bài đã nộp. Bấm &quot;Chấm thi&quot; để xem chi tiết và
+                  nhập nhận xét.
+                </>
+              }
+              gradientTitle
+              surface
+              variant="flat"
+              className={cn(SECTION_FADE_UP, 'border-0 pb-0')}
+              actions={
+                <>
+                  {currentClass ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-lg border-primary/30 bg-primary/5 px-5 py-2.5 text-sm font-bold text-primary hover:bg-primary/10"
+                      onClick={() =>
+                        void navigate({
+                          to: '/manager/grade-class/$classId/by-question',
+                          params: { classId: currentClass.id },
+                        })
+                      }
+                    >
+                      Chấm theo câu hỏi
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant={onlyPending ? 'default' : 'outline'}
+                    size="sm"
+                    className={cn(
+                      'rounded-lg border px-5 py-2.5 text-sm font-semibold shadow-sm',
+                      !onlyPending && 'border-border bg-card hover:bg-muted'
+                    )}
+                    onClick={() => setOnlyPending((v) => !v)}
+                  >
+                    {onlyPending ? 'Hiện tất cả' : 'Chỉ chờ chấm'}
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="rounded-lg border-primary/30 bg-primary/5 px-5 py-2.5 text-sm font-bold text-primary hover:bg-primary/10"
+                    className="rounded-lg border-border px-5 py-2.5 text-sm font-semibold"
                     onClick={() =>
                       void navigate({
-                        to: '/manager/grade-class/$classId/by-question',
-                        params: { classId: currentClass.id },
+                        to: currentClass ? '/exam/grader' : '/dashboard',
                       })
                     }
                   >
-                    Chấm theo câu hỏi
+                    ← Quay lại
                   </Button>
-                )}
-                <Button
-                  type="button"
-                  variant={onlyPending ? 'default' : 'outline'}
-                  size="sm"
-                  className={cn(
-                    'rounded-lg border px-5 py-2.5 text-sm font-semibold shadow-sm',
-                    !onlyPending && 'border-border bg-card hover:bg-muted'
-                  )}
-                  onClick={() => setOnlyPending((v) => !v)}
-                >
-                  {onlyPending ? 'Hiện tất cả' : 'Chỉ chờ chấm'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-lg border-border px-5 py-2.5 text-sm font-semibold"
-                  onClick={() =>
-                    void navigate({
-                      to: currentClass ? '/exam/grader' : '/dashboard',
-                    })
-                  }
-                >
-                  ← Quay lại
-                </Button>
-              </div>
-            </div>
+                </>
+              }
+            />
 
             {/* Table (md+) + thẻ (mobile) */}
             <div
@@ -198,16 +203,31 @@ export function GraderExamListScreen({ classId }: GraderExamListScreenProps) {
               )}
             >
               <div className="space-y-3 p-3 md:hidden">
-                {isLoading ? (
-                  <div className="py-10 text-center text-sm font-bold text-muted-foreground">
-                    Đang tải danh sách bài thi...
-                  </div>
+                {isError ? (
+                  <ErrorState
+                    title="Không tải được danh sách bài thi"
+                    description={getApiErrorMessage(error)}
+                    onRetry={() => void refetch()}
+                    retrying={isFetching}
+                    compact
+                  />
+                ) : isLoading ? (
+                  <SkeletonSubmissionCardList count={4} />
                 ) : rows.length === 0 ? (
-                  <div className="py-12 text-center text-sm text-muted-foreground">
-                    {onlyPending
-                      ? 'Không có bài nào đang chờ chấm 🎉'
-                      : 'Chưa có bài thi nào được nộp.'}
-                  </div>
+                  <EmptyState
+                    icon={<ClipboardList className="h-8 w-8" />}
+                    title={
+                      onlyPending
+                        ? 'Không có bài nào đang chờ chấm'
+                        : 'Chưa có bài thi nào được nộp'
+                    }
+                    description={
+                      onlyPending
+                        ? 'Tất cả bài nộp đã được xử lý.'
+                        : 'Danh sách sẽ cập nhật khi học viên nộp bài.'
+                    }
+                    compact
+                  />
                 ) : (
                   rows.map((row, rowIdx) => {
                     const dateObj = new Date(row.createdAt)
@@ -333,24 +353,46 @@ export function GraderExamListScreen({ classId }: GraderExamListScreenProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {isLoading ? (
+                    {isError ? (
                       <tr>
-                        <td
-                          colSpan={6}
-                          className="px-6 py-10 text-center text-sm text-muted-foreground font-bold"
-                        >
-                          Đang tải danh sách bài thi...
+                        <td colSpan={6} className="p-0">
+                          <ErrorState
+                            title="Không tải được danh sách bài thi"
+                            description={getApiErrorMessage(error)}
+                            onRetry={() => void refetch()}
+                            retrying={isFetching}
+                            compact
+                            className="border-0 bg-transparent"
+                          />
                         </td>
                       </tr>
+                    ) : isLoading ? (
+                      Array.from({ length: 5 }, (_, i) => (
+                        <tr key={i}>
+                          {Array.from({ length: 6 }, (_, j) => (
+                            <td key={j} className="px-6 py-4">
+                              <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                            </td>
+                          ))}
+                        </tr>
+                      ))
                     ) : rows.length === 0 ? (
                       <tr>
-                        <td
-                          colSpan={6}
-                          className="px-6 py-12 text-center text-sm text-muted-foreground"
-                        >
-                          {onlyPending
-                            ? 'Không có bài nào đang chờ chấm 🎉'
-                            : 'Chưa có bài thi nào được nộp.'}
+                        <td colSpan={6} className="p-0">
+                          <EmptyState
+                            icon={<ClipboardList className="h-8 w-8" />}
+                            title={
+                              onlyPending
+                                ? 'Không có bài nào đang chờ chấm'
+                                : 'Chưa có bài thi nào được nộp'
+                            }
+                            description={
+                              onlyPending
+                                ? 'Tất cả bài nộp đã được xử lý.'
+                                : 'Danh sách sẽ cập nhật khi học viên nộp bài.'
+                            }
+                            compact
+                          />
                         </td>
                       </tr>
                     ) : (

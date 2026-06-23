@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SkeletonProfileForm } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { useSubmission } from '@/features/exam/hooks'
@@ -75,25 +77,23 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center text-muted-foreground">
-        Đang tải kết quả bài thi...
+      <div className="mx-auto max-w-3xl px-4 py-8">
+        <SkeletonProfileForm />
       </div>
     )
   }
 
   if (!submission) {
     return (
-      <div className="flex min-h-[300px] flex-col items-center justify-center gap-4">
-        <p className="text-muted-foreground">Không tìm thấy bài nộp này.</p>
-        <Button
-          type="button"
-          variant="ghost"
-          className="h-auto p-0 text-sm font-normal normal-case tracking-normal text-primary underline hover:bg-transparent"
-          onClick={() => void navigate({ to: '/exam' })}
-        >
-          ← Quay lại danh sách
-        </Button>
-      </div>
+      <EmptyState
+        title="Không tìm thấy bài nộp này"
+        description="Bài nộp có thể đã bị xóa hoặc bạn không có quyền xem."
+        action={
+          <Button type="button" variant="outline" onClick={() => void navigate({ to: '/exam' })}>
+            ← Quay lại danh sách
+          </Button>
+        }
+      />
     )
   }
 

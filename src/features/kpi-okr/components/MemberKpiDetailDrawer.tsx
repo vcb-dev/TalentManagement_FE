@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import { KpiProgressBar } from '@/features/kpi-okr/components/KpiProgressBar'
 import type { PerformanceAssignment } from '@/features/kpi-okr/api'
@@ -352,9 +353,11 @@ export function MemberKpiDetailDrawer({
                               })}
                             </div>
                           ) : (
-                            <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-5 text-center text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-900/40">
-                              Không có mục con
-                            </div>
+                            <EmptyState
+                              title="Không có mục con"
+                              compact
+                              className="rounded-2xl border border-dashed border-slate-300 bg-white/60 dark:border-slate-700 dark:bg-slate-900/40"
+                            />
                           )}
                         </div>
                       </div>

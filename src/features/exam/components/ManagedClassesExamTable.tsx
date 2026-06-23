@@ -1,6 +1,10 @@
 import { useQueries } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { AlertCircle, Calendar, CheckCircle2, Loader2, Users } from 'lucide-react'
+import { AlertCircle, Calendar, CheckCircle2, Users } from 'lucide-react'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { SkeletonClassCardGrid, Skeleton } from '@/components/ui/skeleton'
+import { getApiErrorMessage } from '@/lib/axios'
 import { Fragment, useMemo, useState } from 'react'
 import type { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -28,6 +32,10 @@ interface ManagedClassesExamTableProps {
     [key: string]: any
   }>
   isLoading: boolean
+  isError?: boolean
+  error?: unknown
+  onRetry?: () => void
+  retrying?: boolean
 }
 
 function formatExamViShort(iso: string | null | undefined): string {
@@ -90,7 +98,14 @@ function renderExamStatus(examDate: string | null | undefined) {
   )
 }
 
-export function ManagedClassesExamTable({ classes, isLoading }: ManagedClassesExamTableProps) {
+export function ManagedClassesExamTable({
+  classes,
+  isLoading,
+  isError = false,
+  error,
+  onRetry,
+  retrying = false,
+}: ManagedClassesExamTableProps) {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
   const scheduleQueries = useQueries({
     queries: classes.map((c) => ({
@@ -102,24 +117,32 @@ export function ManagedClassesExamTable({ classes, isLoading }: ManagedClassesEx
 
   const anyScheduleFetching = scheduleQueries.some((q) => q.isFetching)
 
-  if (isLoading) {
+  if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border border-border/50">
-        <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
-        <p className="mt-4 text-sm font-medium text-muted-foreground">
-          Đang tải danh sách lớp phụ trách...
-        </p>
-      </div>
+      <ErrorState
+        title="Không tải được danh sách lớp phụ trách"
+        description={getApiErrorMessage(error)}
+        onRetry={onRetry}
+        retrying={retrying}
+      />
     )
+  }
+
+  if (isLoading) {
+    return <SkeletonClassCardGrid count={4} />
   }
 
   return (
     <>
       <div className="space-y-3 md:hidden">
         {classes.length === 0 ? (
-          <div className="rounded-2xl border border-border/80 bg-card px-4 py-12 text-center text-muted-foreground shadow-[var(--shadow-card)]">
-            Chưa có lớp nào được phân công phụ trách.
-          </div>
+          <EmptyState
+            icon={<Users className="h-8 w-8" />}
+            title="Chưa có lớp nào được phân công phụ trách"
+            description="Liên hệ quản lý để được gán lớp chấm thi."
+            compact
+            className="rounded-2xl border border-border/80 bg-card shadow-[var(--shadow-card)]"
+          />
         ) : (
           classes.map((c) => {
             const idxInOriginal = classes.findIndex((oc) => oc.id === c.id)
@@ -145,9 +168,9 @@ export function ManagedClassesExamTable({ classes, isLoading }: ManagedClassesEx
                   <p className="font-semibold text-foreground">{c.name}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{teacherName}</p>
                   <div className="mt-3">{renderExamStatus(c.examDate)}</div>
-                  <div className="mt-4 inline-flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Đang tải lịch học buổi…
+                  <div className="mt-4 space-y-2">
+                    <Skeleton className="h-10 w-full rounded-lg" />
+                    <Skeleton className="h-10 w-full rounded-lg" />
                   </div>
                 </div>
               )
@@ -166,9 +189,11 @@ export function ManagedClassesExamTable({ classes, isLoading }: ManagedClassesEx
                     </div>
                     {renderExamStatus(c.examDate)}
                   </div>
-                  <p className="text-center text-sm text-muted-foreground">
-                    Chưa có buổi học nào được xếp lịch.
-                  </p>
+                  <EmptyState
+                    title="Chưa có buổi học nào được xếp lịch"
+                    compact
+                    className="border-0 bg-transparent py-2"
+                  />
                   <div className="border-t border-border/50 pt-3">{examBlock}</div>
                   <Button
                     type="button"
@@ -276,8 +301,14 @@ export function ManagedClassesExamTable({ classes, isLoading }: ManagedClassesEx
           <tbody>
             {classes.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
-                  Chưa có lớp nào được phân công phụ trách.
+                <td colSpan={9} className="p-0">
+                  <EmptyState
+                    icon={<Users className="h-8 w-8" />}
+                    title="Chưa có lớp nào được phân công phụ trách"
+                    description="Liên hệ quản lý để được gán lớp chấm thi."
+                    compact
+                    className="py-12"
+                  />
                 </td>
               </tr>
             ) : (
@@ -305,11 +336,8 @@ export function ManagedClassesExamTable({ classes, isLoading }: ManagedClassesEx
                       <td className="px-5 py-4 font-semibold text-foreground">{c.name}</td>
                       <td className="px-5 py-4 text-foreground">{teacherName}</td>
                       <td className="px-5 py-4">{renderExamStatus(c.examDate)}</td>
-                      <td colSpan={4} className="px-5 py-4 text-center text-muted-foreground">
-                        <span className="inline-flex items-center gap-2 text-sm">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Đang tải lịch học buổi…
-                        </span>
+                      <td colSpan={4} className="px-5 py-4">
+                        <Skeleton className="h-10 w-full rounded-lg" />
                       </td>
                       <td className="px-5 py-4 align-top">{examCell}</td>
                       <td className="px-5 py-4 text-right align-top">—</td>
@@ -325,8 +353,12 @@ export function ManagedClassesExamTable({ classes, isLoading }: ManagedClassesEx
                       </td>
                       <td className="px-5 py-4 align-top text-foreground">{teacherName}</td>
                       <td className="px-5 py-4 align-top">{renderExamStatus(c.examDate)}</td>
-                      <td colSpan={4} className="px-5 py-8 text-center text-muted-foreground">
-                        Chưa có buổi học nào được xếp lịch.
+                      <td colSpan={4} className="px-5 py-4">
+                        <EmptyState
+                          title="Chưa có buổi học nào được xếp lịch"
+                          compact
+                          className="border-0 bg-transparent py-4"
+                        />
                       </td>
                       <td className="px-5 py-4 align-top">{examCell}</td>
                       <td className="px-5 py-4 align-top text-right">—</td>

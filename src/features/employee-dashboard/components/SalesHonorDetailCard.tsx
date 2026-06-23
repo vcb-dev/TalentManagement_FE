@@ -8,7 +8,10 @@ import {
 } from '@/features/kpi-okr/api'
 import { cn } from '@/lib/utils'
 
+import { EmptyState } from '@/components/shared/EmptyState'
+import { DashboardSection } from '@/components/shared/DashboardSection'
 import { CustomSelect } from '@/components/shared/CustomSelect'
+import { SkeletonStatTile } from '@/components/ui/skeleton'
 
 function formatNumber(value: number, unit: string): string {
   const isVnd = unit.toUpperCase() === 'VND'
@@ -66,17 +69,10 @@ export function SalesHonorDetailCard({ className }: Props) {
   }, [ym.year, ym.month])
 
   return (
-    <section
-      className={cn('rounded-2xl border border-border bg-card p-4 shadow-sm md:p-5', className)}
-      aria-labelledby="sales-honor-detail-title"
-    >
-      <header className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-amber-600" aria-hidden />
-          <h3 id="sales-honor-detail-title" className="text-base font-bold">
-            Vinh danh Phòng Kinh doanh
-          </h3>
-        </div>
+    <DashboardSection
+      title="Vinh danh Phòng Kinh doanh"
+      icon={<Trophy className="h-5 w-5 text-amber-600" aria-hidden />}
+      action={
         <div className="w-[170px]">
           <CustomSelect
             value={`${ym.year}-${ym.month}`}
@@ -92,10 +88,12 @@ export function SalesHonorDetailCard({ className }: Props) {
             }))}
           />
         </div>
-      </header>
-
+      }
+      className={className}
+      contentClassName="pt-0"
+    >
       {loading && !data ? (
-        <p className="text-sm text-muted-foreground">Đang tải…</p>
+        <SkeletonStatTile className="min-h-[120px]" />
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <WinnerCell
@@ -120,7 +118,7 @@ export function SalesHonorDetailCard({ className }: Props) {
           />
         </div>
       )}
-    </section>
+    </DashboardSection>
   )
 }
 
@@ -141,7 +139,11 @@ function WinnerCell(props: WinnerCellProps) {
         {props.metricLabel}
       </div>
       {empty ? (
-        <p className="text-sm text-muted-foreground">Chưa có</p>
+        <EmptyState
+          title="Chưa có"
+          compact
+          className="items-start border-0 bg-transparent py-1 text-left [&>div]:text-left"
+        />
       ) : isTeam && props.team ? (
         <div>
           <p className="truncate text-base font-semibold">{props.team.team.name}</p>

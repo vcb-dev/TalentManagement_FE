@@ -11,6 +11,10 @@ function foldSearchText(value: string): string {
   return value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
 }
 
+const DROPDOWN_BASE =
+  'absolute z-popover mt-1 max-h-52 w-full overflow-auto rounded-lg border border-border bg-popover p-1 shadow-[var(--shadow-md)]'
+const ITEM_BASE =
+  'flex h-10 w-full items-center justify-between gap-2 rounded-md px-3 text-left text-sm font-medium hover:bg-muted'
 type DirectManagerSearchFieldProps<
   TFieldValues extends FieldValues,
   TName extends FieldPath<TFieldValues>,
@@ -101,11 +105,11 @@ export function DirectManagerSearchField<
               />
             </FormControl>
             {showDropdown ? (
-              <div className="absolute z-50 mt-1 max-h-52 w-full overflow-auto rounded-lg border border-border bg-popover p-1 shadow-lg">
+              <div className={DROPDOWN_BASE}>
                 <Button
                   type="button"
                   variant="ghost"
-                  className="flex h-10 w-full items-center justify-between rounded-md px-3 text-left text-sm font-medium hover:bg-muted"
+                  className={cn(ITEM_BASE, 'justify-between')}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     field.onChange('__none')
@@ -114,9 +118,9 @@ export function DirectManagerSearchField<
                   }}
                 >
                   <span className="text-muted-foreground">Chưa chọn</span>
-                  {(field.value === '__none' || !field.value) && (
+                  {field.value === '__none' || !field.value ? (
                     <Check className="h-4 w-4 shrink-0 text-primary" />
-                  )}
+                  ) : null}
                 </Button>
                 {filteredOptions.length > 0 ? (
                   filteredOptions.map((o) => (
@@ -124,7 +128,7 @@ export function DirectManagerSearchField<
                       key={o.value}
                       type="button"
                       variant="ghost"
-                      className="flex h-10 w-full items-center justify-between gap-2 rounded-md px-3 text-left text-sm font-medium hover:bg-muted"
+                      className={cn(ITEM_BASE, 'justify-between')}
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
                         field.onChange(o.value)
@@ -133,9 +137,9 @@ export function DirectManagerSearchField<
                       }}
                     >
                       <span className="min-w-0 truncate">{o.label}</span>
-                      {field.value === o.value && (
+                      {field.value === o.value ? (
                         <Check className="h-4 w-4 shrink-0 text-primary" />
-                      )}
+                      ) : null}
                     </Button>
                   ))
                 ) : (

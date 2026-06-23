@@ -1,4 +1,5 @@
 import { CheckCircle2, Clock, Loader2 } from 'lucide-react'
+import { EmptyState } from '@/components/shared/EmptyState'
 import type { MeetingBooking } from './api'
 import { formatDateVi, formatTimeRangeVi, padTime } from './roomBookingTimeUtils'
 
@@ -19,7 +20,7 @@ export function RoomBookingPendingPanel({
     return (
       <div className="rounded-2xl border border-border/60 bg-card p-4">
         <h3 className="text-sm font-bold text-foreground">Yêu cầu chờ duyệt</h3>
-        <p className="mt-2 text-xs text-muted-foreground">Không có yêu cầu nào.</p>
+        <EmptyState compact tone="subtle" title="Không có yêu cầu nào" className="mt-2 py-4" />
       </div>
     )
   }
@@ -75,7 +76,7 @@ export function RoomBookingRecentPanel({ items, onItemClick }: RecentProps) {
     <div className="rounded-2xl border border-border/60 bg-card p-4">
       <h3 className="mb-3 text-sm font-bold text-foreground">Gần đây</h3>
       {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Chưa có hoạt động.</p>
+        <EmptyState compact tone="subtle" title="Chưa có hoạt động" className="py-4" />
       ) : (
         <div className="space-y-1">
           {items.map((b) => (
