@@ -1,4 +1,11 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
@@ -159,7 +166,21 @@ const NOTE_TEMPLATE = `- Có nội dung nào khiến bạn thay đổi tư duy s
 - Có nội dung nào bạn chưa đồng ý/ muốn thảo luận thêm/ chưa rõ?
 - Bạn sẽ thử nghiệm kiến thức nào vào công việc và cuộc sống?`
 
+/** True khi màn hình dưới breakpoint `md` (768px) — để chỉ render 1 biến thể bảng/thẻ. */
+function useIsBelowMd() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia('(max-width: 767px)')
+      mq.addEventListener('change', onChange)
+      return () => mq.removeEventListener('change', onChange)
+    },
+    () => window.matchMedia('(max-width: 767px)').matches,
+    () => false
+  )
+}
+
 export function TeacherClassDetailScreen({ classId }: { classId: string }) {
+  const isMobileLayout = useIsBelowMd()
   const routeHash = useRouterState({ select: (s) => s.location.hash })
   const {
     data,
@@ -271,6 +292,10 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     }
   }, [regularSchedules, activeScheduleId])
 
+  const activeSchedule = useMemo(
+    () => schedules.find((s) => s.id === activeScheduleId),
+    [schedules, activeScheduleId]
+  )
   const selectedSchedule = useMemo(
     () => regularSchedules.find((s) => s.id === activeScheduleId),
     [regularSchedules, activeScheduleId]
@@ -975,8 +1000,8 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
           ) : viewMode === 'table' ? (
             <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl shadow-slate-200/50 ring-1 ring-slate-200/60">
               <div className="divide-y divide-border md:hidden">
-                {filtered.map((m) => {
-                  const currentSchedule = schedules.find((s) => s.id === activeScheduleId)
+                {(isMobileLayout ? filtered : []).map((m) => {
+                  const currentSchedule = activeSchedule
                   const rawAttendance =
                     currentSchedule?.attendanceData?.[m.id]?.attendance || 'NONE'
 
@@ -1156,8 +1181,8 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    {filtered.map((m) => {
-                      const currentSchedule = schedules.find((s) => s.id === activeScheduleId)
+                    {(isMobileLayout ? [] : filtered).map((m) => {
+                      const currentSchedule = activeSchedule
                       const rawAttendance =
                         currentSchedule?.attendanceData?.[m.id]?.attendance || 'NONE'
 
