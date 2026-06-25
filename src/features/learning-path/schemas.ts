@@ -147,6 +147,7 @@ export const availableLearningClassSchema = z.object({
   levelFrom: z.string(),
   levelTo: z.string(),
   status: z.enum(['open', 'full', 'closed']),
+  isKnowledgeWork: z.boolean().optional(),
   capacity: z.number().int(),
   memberCount: z.number().int().nonnegative(),
   seatsLeft: z.number().int().nonnegative(),

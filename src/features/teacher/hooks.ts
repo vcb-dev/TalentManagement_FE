@@ -61,6 +61,24 @@ export function useTeacherRoadmapItems(classId: string) {
   })
 }
 
+export function useCreateTeacherRoadmapItem(classId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      topic: string
+      objective: string
+      materialRef?: string
+      assessment?: string
+      trainer?: string
+    }) => teacherApi.createRoadmapItem(classId, input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: teacherKeys.roadmapItems(classId) })
+      toast.success('Đã thêm lộ trình')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
 export function useTeacherCreateSchedule(classId: string) {
   const qc = useQueryClient()
   return useMutation({

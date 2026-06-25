@@ -61,6 +61,7 @@ import {
   useRemoveTeacherClassMember,
   useTeacherClassRegistrations,
   useTeacherRoadmapItems,
+  useCreateTeacherRoadmapItem,
 } from '@/features/teacher/hooks'
 import { TeacherClassMemberCard } from './TeacherClassMemberCard'
 import type { ClassMemberRow } from './teacherClassMemberTypes'
@@ -178,6 +179,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const createSchedule = useTeacherCreateSchedule(classId)
   const updateSchedule = useTeacherUpdateSchedule(classId)
   const deleteSchedule = useTeacherDeleteSchedule(classId)
+  const createRoadmapItem = useCreateTeacherRoadmapItem(classId)
   const approveRegistration = useApproveClassRegistration(classId)
   const rejectRegistration = useRejectClassRegistration(classId)
   const removeClassMember = useRemoveTeacherClassMember(classId)
@@ -216,6 +218,23 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
   const [isCreatingDeadlineOnly, setIsCreatingDeadlineOnly] = useState(false)
+  const [roadmapModalOpen, setRoadmapModalOpen] = useState(false)
+
+  const roadmapForm = useForm<{
+    topic: string
+    objective: string
+    materialRef?: string
+    assessment?: string
+    trainer?: string
+  }>({
+    defaultValues: {
+      topic: '',
+      objective: '',
+      materialRef: '',
+      assessment: '',
+      trainer: '',
+    },
+  })
 
   // Evaluation modal state
   const [evalModalOpen, setEvalModalOpen] = useState(false)
@@ -681,6 +700,22 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                 >
                   <CalendarDays className="mr-2 h-5 w-5" />
                   THÊM BUỔI MỚI
+                </Button>
+                <Button
+                  className="h-14 rounded-2xl bg-indigo-600 px-8 text-base font-black text-white shadow-xl shadow-indigo-600/20 transition-all hover:bg-indigo-700 hover:scale-105 active:scale-95"
+                  onClick={() => {
+                    roadmapForm.reset({
+                      topic: '',
+                      objective: '',
+                      materialRef: '',
+                      assessment: '',
+                      trainer: '',
+                    })
+                    setRoadmapModalOpen(true)
+                  }}
+                >
+                  <Star className="mr-2 h-5 w-5" />
+                  THÊM LỘ TRÌNH
                 </Button>
                 <Button
                   variant="outline"
@@ -1778,6 +1813,86 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
               Xác nhận xóa
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Roadmap Modal */}
+      <Dialog open={roadmapModalOpen} onOpenChange={setRoadmapModalOpen}>
+        <DialogContent className="max-w-2xl border-0 p-0 sm:rounded-[32px] overflow-hidden">
+          <Form {...roadmapForm}>
+            <form
+              onSubmit={roadmapForm.handleSubmit((values) => {
+                createRoadmapItem.mutate(values, {
+                  onSuccess: () => {
+                    setRoadmapModalOpen(false)
+                    roadmapForm.reset()
+                  },
+                })
+              })}
+            >
+              <div className="bg-primary px-8 py-6 text-white">
+                <DialogTitle className="text-2xl font-black tracking-tight">
+                  Thêm Lộ Trình Riêng
+                </DialogTitle>
+                <DialogDescription className="text-primary-foreground/80 mt-2 font-medium">
+                  Tạo lộ trình học tập và tài liệu dành riêng cho lớp này
+                </DialogDescription>
+              </div>
+
+              <div className="max-h-[60vh] overflow-y-auto p-8">
+                <div className="space-y-6">
+                  <InputFieldController
+                    control={roadmapForm.control}
+                    name="topic"
+                    label="Chủ đề (Bắt buộc)"
+                    placeholder="VD: Sao 1, Sao 2, Kỹ năng mềm..."
+                  />
+                  <InputFieldController
+                    control={roadmapForm.control}
+                    name="objective"
+                    label="Mục tiêu / Học phần (Bắt buộc)"
+                    placeholder="VD: Phản tư sách, Đào tạo hội nhập..."
+                  />
+                  <InputFieldController
+                    control={roadmapForm.control}
+                    name="materialRef"
+                    label="Tài liệu đính kèm (Link)"
+                    placeholder="VD: https://docs.google.com/..."
+                  />
+                  <InputFieldController
+                    control={roadmapForm.control}
+                    name="assessment"
+                    label="Hình thức đánh giá"
+                    placeholder="VD: Trắc nghiệm, Phản tư, Thực hành..."
+                  />
+                  <InputFieldController
+                    control={roadmapForm.control}
+                    name="trainer"
+                    label="Người phụ trách"
+                    placeholder="VD: Nguyễn Văn A..."
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="bg-slate-50 px-8 py-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRoadmapModalOpen(false)}
+                  className="h-12 rounded-xl px-8 font-bold"
+                  disabled={createRoadmapItem.isPending}
+                >
+                  HỦY BỎ
+                </Button>
+                <Button
+                  type="submit"
+                  className="h-12 rounded-xl bg-primary px-8 font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90"
+                  disabled={createRoadmapItem.isPending}
+                >
+                  {createRoadmapItem.isPending ? 'ĐANG LƯU...' : 'LƯU LỘ TRÌNH'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>
