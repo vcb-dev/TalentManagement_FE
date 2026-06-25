@@ -20,7 +20,7 @@ export function ChatListPanel({
   const { data: conversations, isLoading } = useQuery({
     queryKey: ['cskh', 'inbox', 'conversations', pageId],
     queryFn: () => fetchInboxConversations(pageId),
-    refetchInterval: 10000, // Refetch every 10s
+    refetchInterval: () => (document.visibilityState === 'visible' ? 10000 : false),
   })
 
   const formatTime = (isoString: string | null): string => {

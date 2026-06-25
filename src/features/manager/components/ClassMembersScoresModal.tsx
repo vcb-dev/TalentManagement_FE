@@ -20,7 +20,10 @@ export function ClassMembersScoresModal({
   classId,
   className,
 }: ClassMembersScoresModalProps) {
-  const { data: allSubmissions = [], isLoading } = useManagerSubmissions()
+  const { data: allSubmissions = [], isLoading } = useManagerSubmissions(
+    { classId },
+    { enabled: isOpen }
+  )
   const [searchTerm, setSearchTerm] = useState('')
 
   const classSubmissions = useMemo(

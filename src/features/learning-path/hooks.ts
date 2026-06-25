@@ -11,6 +11,7 @@ export function useLearningLevels() {
   return useQuery({
     queryKey: learningKeys.levels(),
     queryFn: () => learningApi.levels(),
+    staleTime: 5 * 60_000,
   })
 }
 
@@ -18,6 +19,7 @@ export function useMyLearningPath() {
   return useQuery({
     queryKey: learningKeys.myPath(),
     queryFn: () => learningApi.myLearningPath(),
+    staleTime: 60_000,
   })
 }
 
@@ -38,6 +40,7 @@ export function useAvailableLearningClasses() {
   return useQuery({
     queryKey: [...learningKeys.all, 'available-classes'],
     queryFn: () => learningApi.availableClasses(),
+    staleTime: 30_000,
   })
 }
 

@@ -25,6 +25,7 @@ export function useTeacherClassDetail(classId: string, enabled = true) {
     queryKey: teacherKeys.classDetail(classId),
     queryFn: () => teacherApi.classDetail(classId),
     enabled: enabled && classId.length > 0,
+    staleTime: 30_000,
   })
 }
 
@@ -50,14 +51,16 @@ export function useTeacherSchedules(classId: string) {
     queryKey: teacherKeys.schedules(classId),
     queryFn: () => teacherApi.schedules(classId),
     enabled: classId.length > 0,
+    staleTime: 30_000,
   })
 }
 
-export function useTeacherRoadmapItems(classId: string) {
+export function useTeacherRoadmapItems(classId: string, enabled = true) {
   return useQuery({
     queryKey: teacherKeys.roadmapItems(classId),
     queryFn: () => teacherApi.roadmapItems(classId),
-    enabled: classId.length > 0,
+    enabled: enabled && classId.length > 0,
+    staleTime: 5 * 60_000,
   })
 }
 
@@ -211,6 +214,7 @@ export function useTeacherClassRegistrations(classId: string) {
     queryKey: teacherKeys.registrations(classId),
     queryFn: () => teacherApi.registrations(classId),
     enabled: classId.length > 0,
+    staleTime: 30_000,
   })
 }
 

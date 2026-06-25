@@ -109,10 +109,16 @@ export function useWithdrawExam() {
   })
 }
 
-export function useManagerSubmissions() {
+export function useManagerSubmissions(
+  filter?: { classId?: string; scheduleId?: string },
+  options?: { enabled?: boolean }
+) {
+  const classId = filter?.classId || ''
+  const scheduleId = filter?.scheduleId || ''
   return useQuery({
-    queryKey: ['exam_submissions'],
-    queryFn: () => examApi.getSubmissions(),
+    queryKey: ['exam_submissions', classId, scheduleId],
+    queryFn: () => examApi.getSubmissions({ classId, scheduleId }),
+    enabled: options?.enabled ?? true,
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }

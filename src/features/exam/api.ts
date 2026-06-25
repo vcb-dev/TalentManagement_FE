@@ -96,11 +96,14 @@ export const examApi = {
     return res.data as { success: boolean }
   },
 
-  getSubmissions: async () => {
+  getSubmissions: async (params?: { classId?: string; scheduleId?: string }) => {
     if (isMockApiEnabled()) {
       return []
     }
-    const res = await apiClient.get<unknown>('/exams/submissions')
+    const query: Record<string, string> = {}
+    if (params?.classId) query.classId = params.classId
+    if (params?.scheduleId) query.scheduleId = params.scheduleId
+    const res = await apiClient.get<unknown>('/exams/submissions', { params: query })
     return safeParse(z.array(examSubmissionApiSchema), res.data, 'GET /exams/submissions')
   },
 

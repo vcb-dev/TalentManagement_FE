@@ -174,7 +174,6 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     [schedules, isDeadlineOnly]
   )
 
-  const { data: roadmapItems = [] } = useTeacherRoadmapItems(classId)
   const { data: registrations = [] } = useTeacherClassRegistrations(classId)
   const createSchedule = useTeacherCreateSchedule(classId)
   const updateSchedule = useTeacherUpdateSchedule(classId)
@@ -219,6 +218,13 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
   const [isCreatingDeadlineOnly, setIsCreatingDeadlineOnly] = useState(false)
   const [roadmapModalOpen, setRoadmapModalOpen] = useState(false)
+
+  // Roadmap catalog is only needed when creating/editing a schedule or adding a
+  // roadmap item, so we lazy-load it to keep the initial class-detail render fast.
+  const { data: roadmapItems = [] } = useTeacherRoadmapItems(
+    classId,
+    scheduleModalOpen || roadmapModalOpen
+  )
 
   const roadmapForm = useForm<{
     topic: string
