@@ -3551,36 +3551,36 @@ export function CskhQualityPage() {
                 : 'min-h-0 overflow-x-hidden overflow-y-auto'
         }
       >
-        <div className={tab === 'overview' ? 'h-full min-h-0 flex flex-col' : 'hidden'}>
-          <OverviewTab />
-        </div>
-        <div className={tab === 'fb-page' ? '' : 'hidden'}>
-          <FbPageTab />
-        </div>
-        <div className={tab === 'products' ? 'h-full min-h-0 flex flex-col' : 'hidden'}>
-          <ProductsTab />
-        </div>
-        <div className={tab === 'config' ? 'min-h-0' : 'hidden'}>
-          <ConfigTab />
-        </div>
-        <div
-          className={
-            tab === 'audit'
-              ? 'flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
-              : 'hidden'
-          }
-        >
-          <AuditMessengerView onAuditJobActiveChange={setAuditJobBusy} />
-        </div>
-        <div
-          className={
-            tab === 'chat'
-              ? 'flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
-              : 'hidden'
-          }
-        >
-          <ChatMessengerPane />
-        </div>
+        {tab === 'overview' ? (
+          <div className="h-full min-h-0 flex flex-col">
+            <OverviewTab />
+          </div>
+        ) : null}
+        {tab === 'fb-page' ? (
+          <div>
+            <FbPageTab />
+          </div>
+        ) : null}
+        {tab === 'products' ? (
+          <div className="h-full min-h-0 flex flex-col">
+            <ProductsTab />
+          </div>
+        ) : null}
+        {tab === 'config' ? (
+          <div className="min-h-0">
+            <ConfigTab />
+          </div>
+        ) : null}
+        {tab === 'audit' ? (
+          <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <AuditMessengerView onAuditJobActiveChange={setAuditJobBusy} />
+          </div>
+        ) : null}
+        {tab === 'chat' ? (
+          <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <ChatMessengerPane />
+          </div>
+        ) : null}
       </CskhGlassPanel>
     </CskhPageShell>
   )

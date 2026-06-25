@@ -468,7 +468,8 @@ export default function RoomBookingPage() {
   const { data: bookings = [], isLoading: isFetching } = useQuery({
     queryKey: ['room-bookings'],
     queryFn: getBookings,
-    refetchInterval: 10000,
+    staleTime: 30_000,
+    refetchInterval: () => (document.visibilityState === 'visible' ? 30_000 : false),
     meta: {
       onSuccess: (data: MeetingBooking[]) => {
         if (data.length > prevBookingsCount.current && prevBookingsCount.current > 0) {

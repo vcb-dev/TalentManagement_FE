@@ -21,10 +21,15 @@ export function useMyLearningPath() {
   })
 }
 
-export function useMyEnrolledClass(range?: { startDate?: string; endDate?: string }) {
+export function useMyEnrolledClass(
+  range?: { startDate?: string; endDate?: string },
+  enabled = true
+) {
   return useQuery({
     queryKey: learningKeys.myEnrolledClass(range),
     queryFn: () => learningApi.myEnrolledClass(range),
+    enabled,
+    staleTime: 30_000,
     placeholderData: (previousData) => previousData,
   })
 }

@@ -117,10 +117,11 @@ export function useManagerSubmissions() {
   })
 }
 
-export function useMySubmissions() {
+export function useMySubmissions(enabled = true) {
   return useQuery({
     queryKey: ['my_exam_submissions'],
     queryFn: () => examApi.getMySubmissions(),
+    enabled,
     staleTime: 60 * 1000, // 1 minute
   })
 }

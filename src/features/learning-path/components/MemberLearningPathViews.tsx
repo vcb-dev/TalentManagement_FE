@@ -170,7 +170,6 @@ function AvailableClassesSection({
 }) {
   const { data: classes = [], isLoading } = useAvailableLearningClasses()
   const registerClass = useRegisterLearningClass()
-  console.log({ classes })
 
   if (isLoading) {
     return <Skeleton className="h-48 w-full rounded-[2rem]" />
@@ -191,7 +190,6 @@ function AvailableClassesSection({
     )
   })
   if (!rows.length) return null
-  console.log({ rows })
   return (
     <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.04)]">
       <div className="border-b border-slate-50 px-8 py-5">
