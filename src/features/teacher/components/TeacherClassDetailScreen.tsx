@@ -1899,31 +1899,31 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
               <div className="max-h-[60vh] overflow-y-auto p-8">
                 <div className="space-y-6">
-                  <InputFieldController
+                  <InputController
                     control={roadmapForm.control}
                     name="topic"
                     label="Chủ đề (Bắt buộc)"
                     placeholder="VD: Sao 1, Sao 2, Kỹ năng mềm..."
                   />
-                  <InputFieldController
+                  <InputController
                     control={roadmapForm.control}
                     name="objective"
                     label="Mục tiêu / Học phần (Bắt buộc)"
                     placeholder="VD: Phản tư sách, Đào tạo hội nhập..."
                   />
-                  <InputFieldController
+                  <InputController
                     control={roadmapForm.control}
                     name="materialRef"
                     label="Tài liệu đính kèm (Link)"
                     placeholder="VD: https://docs.google.com/..."
                   />
-                  <InputFieldController
+                  <InputController
                     control={roadmapForm.control}
                     name="assessment"
                     label="Hình thức đánh giá"
                     placeholder="VD: Trắc nghiệm, Phản tư, Thực hành..."
                   />
-                  <InputFieldController
+                  <InputController
                     control={roadmapForm.control}
                     name="trainer"
                     label="Người phụ trách"
