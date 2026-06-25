@@ -385,7 +385,12 @@ export function ManagerExamScheduleScreen() {
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           {/* Mobile: thẻ — đủ nội dung, nút full width */}
           <div className="divide-y divide-border md:hidden">
-            {filteredExams.length === 0 ? (
+            {loadingExams ? (
+              <div className="flex items-center justify-center px-4 py-16 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2 text-sm font-semibold">Đang tải lịch thi…</span>
+              </div>
+            ) : filteredExams.length === 0 ? (
               <div className="flex flex-col items-center justify-center px-4 py-16 text-muted-foreground">
                 <Calendar className="mb-4 h-10 w-10 opacity-20" />
                 <p className="font-bold">Không tìm thấy kỳ thi nào</p>
@@ -493,7 +498,16 @@ export function ManagerExamScheduleScreen() {
                 </tr>
               </thead>
               <tbody>
-                {filteredExams.length === 0 ? (
+                {loadingExams ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-20 text-center">
+                      <div className="flex items-center justify-center text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                        <span className="ml-2 text-sm font-semibold">Đang tải lịch thi…</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredExams.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-5 py-20 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">

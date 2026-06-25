@@ -305,7 +305,8 @@ export function RoadmapCrud() {
     return () => clearTimeout(timer)
   }, [trainerSearch])
 
-  const { data: teacherOptions = [] } = useTeacherOptions(debouncedTrainerSearch)
+  const { data: teacherOptions = [], isFetching: isFetchingTeachers } =
+    useTeacherOptions(debouncedTrainerSearch)
 
   const addMaterial = () => {
     setMaterials([...materials, { id: crypto.randomUUID(), name: '', link: '' }])
@@ -892,7 +893,15 @@ export function RoadmapCrud() {
                                       </Button>
 
                                       {/* API results */}
-                                      {teacherOptions.length > 0 ? (
+                                      {isFetchingTeachers && teacherOptions.length === 0 ? (
+                                        <div className="flex items-center justify-center gap-2 px-3 py-4 text-center text-xs text-muted-foreground">
+                                          <Loader2
+                                            className="h-3.5 w-3.5 animate-spin"
+                                            aria-hidden
+                                          />
+                                          Đang tìm giáo viên…
+                                        </div>
+                                      ) : teacherOptions.length > 0 ? (
                                         teacherOptions.map(
                                           (t: { userId: string; name: string }) => (
                                             <Button

@@ -11,6 +11,7 @@ import {
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { Form } from '@/components/ui/form'
 import { InputFieldController } from '@/components/ui/form-controllers'
@@ -61,7 +62,7 @@ export function TeacherClassesScreen() {
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const { data: teacherClassesRaw = [] } = useTeacherClasses()
+  const { data: teacherClassesRaw = [], isLoading, isError } = useTeacherClasses()
   const rows: TeacherClassRow[] = useMemo(
     () =>
       teacherClassesRaw.map((r) => ({
@@ -201,7 +202,39 @@ export function TeacherClassesScreen() {
             </Form>
           </div>
 
-          {viewMode === 'table' ? (
+          {isLoading ? (
+            <div
+              className="grid gap-8 gap-y-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+              role="status"
+              aria-busy
+              aria-label="Đang tải danh sách lớp"
+            >
+              <span className="sr-only">Đang tải lớp phụ trách…</span>
+              {Array.from({ length: 10 }, (_, i) => (
+                <div
+                  key={i}
+                  className="flex min-h-[230px] flex-col rounded-2xl border border-border/90 bg-card p-5 shadow-sm"
+                >
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <Skeleton className="h-12 w-12 rounded-xl" />
+                    <Skeleton className="h-6 w-24 rounded-full" />
+                  </div>
+                  <Skeleton className="mb-2 h-5 w-3/4 rounded" />
+                  <Skeleton className="mb-4 h-3.5 w-1/2 rounded" />
+                  <Skeleton className="mb-2 h-3.5 w-2/3 rounded" />
+                  <div className="mb-4 mt-auto flex items-center gap-2">
+                    <Skeleton className="h-1.5 flex-1 rounded-full" />
+                    <Skeleton className="h-4 w-8 shrink-0 rounded" />
+                  </div>
+                  <Skeleton className="h-9 w-full rounded-lg" />
+                </div>
+              ))}
+            </div>
+          ) : isError ? (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 py-10 text-center text-sm text-destructive">
+              Không tải được danh sách lớp. Vui lòng thử lại.
+            </div>
+          ) : viewMode === 'table' ? (
             <div className="overflow-hidden rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10">
               <div className="divide-y divide-border md:hidden">
                 {filtered.map((c) => (

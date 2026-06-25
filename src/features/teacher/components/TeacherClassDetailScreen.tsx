@@ -44,6 +44,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
+import { Skeleton } from '@/components/ui/skeleton'
 
 import { joinTimeHm, splitTimeToParts } from '@/lib/time24h'
 import { cn } from '@/lib/utils'
@@ -160,7 +161,11 @@ const NOTE_TEMPLATE = `- Có nội dung nào khiến bạn thay đổi tư duy s
 
 export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const routeHash = useRouterState({ select: (s) => s.location.hash })
-  const { data } = useTeacherClassDetail(classId)
+  const {
+    data,
+    isLoading: isLoadingDetail,
+    isError: isErrorDetail,
+  } = useTeacherClassDetail(classId)
   const { data: schedules = [] } = useTeacherSchedules(classId)
   const isDeadlineOnly = useCallback((s: { topic: string; location?: string | null }) => {
     return s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
@@ -944,7 +949,30 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
             </div>
           )}
 
-          {viewMode === 'table' ? (
+          {isLoadingDetail ? (
+            <div
+              className="space-y-3 rounded-[32px] border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-200/50 ring-1 ring-slate-200/60"
+              role="status"
+              aria-busy
+              aria-label="Đang tải danh sách thành viên"
+            >
+              <span className="sr-only">Đang tải thành viên…</span>
+              {Array.from({ length: 8 }, (_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/3 rounded" />
+                    <Skeleton className="h-3 w-1/2 rounded" />
+                  </div>
+                  <Skeleton className="h-7 w-24 shrink-0 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          ) : isErrorDetail ? (
+            <div className="rounded-[32px] border border-destructive/30 bg-destructive/5 py-10 text-center text-sm text-destructive">
+              Không tải được thông tin lớp. Vui lòng thử lại.
+            </div>
+          ) : viewMode === 'table' ? (
             <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl shadow-slate-200/50 ring-1 ring-slate-200/60">
               <div className="divide-y divide-border md:hidden">
                 {filtered.map((m) => {

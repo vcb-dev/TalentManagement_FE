@@ -493,7 +493,14 @@ export function EmployeeLearningDashboard() {
               </h2>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {highlightAchievements.length === 0 ? (
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-24 rounded-2xl" />
+                  <Skeleton className="h-24 rounded-2xl" />
+                  <Skeleton className="h-24 rounded-2xl" />
+                  <Skeleton className="h-24 rounded-2xl" />
+                </>
+              ) : highlightAchievements.length === 0 ? (
                 <div className="rounded-2xl border border-border/80 bg-card px-4 py-4 text-sm text-muted-foreground sm:col-span-2 xl:col-span-4">
                   Chưa có thành tựu.
                 </div>

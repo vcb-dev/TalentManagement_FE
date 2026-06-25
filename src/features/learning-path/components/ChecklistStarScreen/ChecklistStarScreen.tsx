@@ -193,7 +193,7 @@ export function ChecklistStarScreen({
   }, [data?.items])
   const completed = data?.completedIds ?? []
   const checklist = useChecklistItem(sortedItems, completed)
-  const { data: submissions } = useStarSubmissions(starId)
+  const { data: submissions, isLoading: isLoadingSubmissions } = useStarSubmissions(starId)
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null)
   const lastSubmissionRef = useRef<any>(null)
   if (selectedSubmission) {
@@ -887,7 +887,12 @@ export function ChecklistStarScreen({
                         </div>
                       )}
 
-                      {(submissions ?? []).length > 0 ? (
+                      {isLoadingSubmissions && (submissions ?? []).length === 0 ? (
+                        <div className="flex items-center justify-center gap-2 py-6 text-sm font-medium text-gray-500">
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                          Đang tải bài nộp…
+                        </div>
+                      ) : (submissions ?? []).length > 0 ? (
                         <>
                           <ul className="divide-y divide-primary-100/60 text-left text-sm">
                             {(submissions ?? []).slice(0, 5).map((s) => (

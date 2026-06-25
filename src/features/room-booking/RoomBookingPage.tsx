@@ -973,6 +973,7 @@ export default function RoomBookingPage() {
               vnTime={vnTime}
               currentUserId={user?.id}
               showAllUsers={isPrivileged}
+              isLoading={isFetching && bookings.length === 0}
             />
           </div>
           <aside className="space-y-4 min-w-0 xl:sticky xl:top-4 xl:self-start">
@@ -982,9 +983,14 @@ export default function RoomBookingPage() {
                 processingId={processingId}
                 onApprove={handleApprove}
                 onReject={setRejectId}
+                isLoading={isFetching && bookings.length === 0}
               />
             )}
-            <RoomBookingRecentPanel items={recentItems} onItemClick={setDetailBooking} />
+            <RoomBookingRecentPanel
+              items={recentItems}
+              onItemClick={setDetailBooking}
+              isLoading={isFetching && bookings.length === 0}
+            />
           </aside>
         </div>
       </div>

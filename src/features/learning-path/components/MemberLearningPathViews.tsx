@@ -260,7 +260,8 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
   const hasDateFilter = Boolean(scheduleRange.startDate || scheduleRange.endDate)
 
   const { data, isLoading, isError } = useMyEnrolledClass(scheduleRange)
-  const { data: availableClasses = [] } = useAvailableLearningClasses()
+  const { data: availableClasses = [], isLoading: isLoadingAvailable } =
+    useAvailableLearningClasses()
   const registerMakeup = useRegisterMakeupSchedule()
   const [evalModalOpen, setEvalModalOpen] = useState(false)
   const [evalTarget, setEvalTarget] = useState<{
@@ -719,6 +720,11 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                                     </Button>
                                   )
                                 })
+                              ) : isLoadingAvailable ? (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Đang tải lớp học bù…
+                                </span>
                               ) : (
                                 <span className="text-xs font-semibold text-slate-400">
                                   Chưa có lớp khác còn chỗ bao phủ đủ học phần cần học bù.
