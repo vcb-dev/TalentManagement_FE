@@ -59,61 +59,61 @@ export const MOCK_PASSWORD = 'Demo@123'
  * Gợi ý email theo role để dễ nhớ.
  */
 export const MOCK_ACCOUNT_LIST: {
-  email: string
+  username: string
   role: Role
   name: string
   description: string
 }[] = [
   {
-    email: 'hr.admin@vcb.com',
+    username: 'hr.admin@vcb.com',
     role: 'HR',
     name: 'Phòng HR Demo',
     description: 'HR Admin — danh sách nhân sự',
   },
   {
-    email: 'nhanvien@vcb.com',
+    username: 'nhanvien@vcb.com',
     role: 'MEMBER',
     name: 'Nguyễn Nhân Viên',
     description: 'Nhân viên — lộ trình, checklist',
   },
   {
-    email: 'leader@vcb.com',
+    username: 'leader@vcb.com',
     role: 'LEADER',
     name: 'Trần Trưởng Nhóm',
     description: 'Leader — nhân sự team, KPI/OKR, báo cáo tháng',
   },
   {
-    email: 'manager@vcb.com',
+    username: 'manager@vcb.com',
     role: 'MANAGER',
     name: 'Lê Quản Lý',
     description: 'Manager — team, KPI',
   },
   {
-    email: 'teacher@vcb.com',
+    username: 'teacher@vcb.com',
     role: 'TEACHER',
     name: 'Phạm Người Chấm',
     description: 'Người chấm thi (Manager chỉ định theo kỳ)',
   },
   {
-    email: 'bod@vcb.com',
+    username: 'bod@vcb.com',
     role: 'BOD',
     name: 'Vũ BOD',
     description: 'BOD — dashboard tổng quan',
   },
 ]
 
-const byEmail = new Map<string, UserSession>(
+const byUsername = new Map<string, UserSession>(
   MOCK_ACCOUNT_LIST.map((a, i) => {
     const id = `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`
     return [
-      a.email.toLowerCase(),
-      session(id, a.name, a.email, a.role, inferMockStaffLevel(a.role)),
+      a.username.toLowerCase(),
+      session(id, a.name, a.username, a.role, inferMockStaffLevel(a.role)),
     ] as const
   })
 )
 
-export function findMockUser(email: string): UserSession | undefined {
-  return byEmail.get(email.trim().toLowerCase())
+export function findMockUser(username: string): UserSession | undefined {
+  return byUsername.get(username.trim().toLowerCase())
 }
 
 export function encodeMockToken(email: string): string {

@@ -48,6 +48,7 @@ import {
   useUpdateEmployee,
   useUpdateEmployeeById,
 } from '../../hooks'
+import { EmployeeLoginCredentialCard } from './EmployeeLoginCredentialCard'
 import { EMPLOYEE_PATCH_KEYS, type EditEmployeeBody, type EmployeePatchKey } from '../../types'
 export interface HrEmployeeProfileProps {
   employee: EmployeeEntity
@@ -643,6 +644,7 @@ export function HrEmployeeProfile({
   const { canId } = usePermission()
   const canDeactivate = canId('hr.employees.deactivate') || canId('hr.employees.edit')
   const canReactivate = canId('hr.employees.edit')
+  const canEditLoginCredential = canId('hr.employees.edit')
   const { mutate: patchUser, isPending: patchPending } = useUpdateEmployeeById()
   const { data: employeeSummary } = useEmployee(employee.id)
   const deactivate = useDeactivateEmployee()
@@ -827,6 +829,11 @@ export function HrEmployeeProfile({
                   />
                 </div>
               </section>
+
+              <EmployeeLoginCredentialCard
+                employeeId={employee.id}
+                canEdit={canEditLoginCredential}
+              />
 
               <section className="rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
                 <div className="mb-8 flex items-center gap-3">

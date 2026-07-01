@@ -48,7 +48,7 @@ export const meResponseSchema = z.object({
 })
 
 export const loginRequestSchema = z.object({
-  email: z.string().email(),
+  username: z.string().min(1).max(128),
   password: z.string().min(1),
 })
 
