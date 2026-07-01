@@ -25,6 +25,7 @@ export function useTeacherClassDetail(classId: string, enabled = true) {
     queryKey: teacherKeys.classDetail(classId),
     queryFn: () => teacherApi.classDetail(classId),
     enabled: enabled && classId.length > 0,
+    staleTime: 30_000,
   })
 }
 
@@ -50,14 +51,34 @@ export function useTeacherSchedules(classId: string) {
     queryKey: teacherKeys.schedules(classId),
     queryFn: () => teacherApi.schedules(classId),
     enabled: classId.length > 0,
+    staleTime: 30_000,
   })
 }
 
-export function useTeacherRoadmapItems(classId: string) {
+export function useTeacherRoadmapItems(classId: string, enabled = true) {
   return useQuery({
     queryKey: teacherKeys.roadmapItems(classId),
     queryFn: () => teacherApi.roadmapItems(classId),
-    enabled: classId.length > 0,
+    enabled: enabled && classId.length > 0,
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function useCreateTeacherRoadmapItem(classId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      topic: string
+      objective: string
+      materialRef?: string
+      assessment?: string
+      trainer?: string
+    }) => teacherApi.createRoadmapItem(classId, input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: teacherKeys.roadmapItems(classId) })
+      toast.success('Đã thêm lộ trình')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
   })
 }
 
@@ -193,6 +214,7 @@ export function useTeacherClassRegistrations(classId: string) {
     queryKey: teacherKeys.registrations(classId),
     queryFn: () => teacherApi.registrations(classId),
     enabled: classId.length > 0,
+    staleTime: 30_000,
   })
 }
 

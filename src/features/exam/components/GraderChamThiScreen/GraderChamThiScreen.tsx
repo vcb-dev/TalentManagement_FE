@@ -14,7 +14,7 @@ import { SkeletonProfileForm } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Checkbox } from '@/components/ui/checkbox'
-import { cn } from '@/lib/utils'
+import { cn, getFileViewerUrl } from '@/lib/utils'
 import { Form } from '@/components/ui/form'
 import { TextareaController } from '@/components/ui/form-controllers'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
@@ -557,7 +557,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                     </div>
                     {answersObj.fileUrl && (
                       <a
-                        href={answersObj.fileUrl}
+                        href={getFileViewerUrl(answersObj.fileUrl)}
                         target="_blank"
                         rel="noreferrer"
                         className="h-9 rounded-xl px-4 flex items-center bg-primary text-white text-xs font-black uppercase tracking-widest shadow-sm hover:bg-primary/95 transition-all"

@@ -111,7 +111,6 @@ export const managerApi = {
       return safeParse(approvalsPageApiSchema, MOCK_APPROVALS_PAGE, 'GET approvals (mock)')
     }
     const res = await apiClient.get<unknown>('/manager/approvals')
-    console.log('[FE API] Approvals Response:', res.data)
 
     if (res.data && typeof res.data === 'object' && 'promotions' in res.data) {
       return safeParse(approvalsPageApiSchema, res.data, 'GET approvals wrapper')

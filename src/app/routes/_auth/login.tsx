@@ -2,7 +2,7 @@
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Award, Eye, EyeOff, KeyRound, Loader2, Lock, Mail, Trophy } from 'lucide-react'
+import { Award, Eye, EyeOff, KeyRound, Loader2, Lock, Trophy, User } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -59,12 +59,14 @@ function LoginPage() {
   const [isRedirecting, setIsRedirecting] = useState(search.oauth === 'success')
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginRequestSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { username: '', password: '' },
   })
   const mockApi = isMockApiEnabled()
+
   const apiBase = import.meta.env.VITE_API_URL ?? ''
   const googleOAuthHref = apiBase ? `${apiBase.replace(/\/$/, '')}/auth/google` : ''
   const useRealGoogleOAuth = !mockApi && Boolean(googleOAuthHref)
+  const showPasswordForm = mockApi || useRealGoogleOAuth
 
   const appName = import.meta.env.VITE_APP_NAME ?? 'VCB HRM'
 
@@ -206,7 +208,18 @@ function LoginPage() {
             </p>
           ) : null}
 
-          {mockApi ? (
+          {useRealGoogleOAuth && showPasswordForm ? (
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">hoặc</span>
+              </div>
+            </div>
+          ) : null}
+
+          {showPasswordForm ? (
             <Form {...form}>
               <form
                 className="space-y-0"
@@ -219,18 +232,18 @@ function LoginPage() {
                 <div className="mb-4">
                   <InputController
                     control={form.control}
-                    name="email"
-                    label="Địa chỉ email"
+                    name="username"
+                    label="Username"
                     labelClassName="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                    type="email"
+                    type="text"
                     autoComplete="username"
-                    placeholder="name@vcb.com.vn"
+                    placeholder="Username"
                     inputClassName={cn(
                       'h-12 rounded-lg border border-border bg-background py-3 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground',
                       'focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/25'
                     )}
                     startSlot={
-                      <Mail
+                      <User
                         className="h-[18px] w-[18px] text-muted-foreground"
                         strokeWidth={2}
                         aria-hidden
@@ -244,13 +257,13 @@ function LoginPage() {
                     <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Mật khẩu
                     </span>
-                    <a
+                    {/* <a
                       href="#"
                       className="text-xs font-medium text-primary hover:opacity-90"
                       onClick={(e) => e.preventDefault()}
                     >
                       Chính sách bảo mật
-                    </a>
+                    </a> */}
                   </div>
                   <InputController
                     control={form.control}
@@ -316,14 +329,14 @@ function LoginPage() {
                 <code className="rounded-md bg-primary/5 px-1.5 py-0.5 font-mono text-xs text-primary ring-1 ring-primary/15">
                   {MOCK_PASSWORD}
                 </code>
-                . Chọn một dòng để điền email và mật khẩu.
+                . Chọn một dòng để điền username và mật khẩu.
               </p>
               <ul
                 className="mt-3 max-h-52 space-y-2 overflow-y-auto pr-0.5 [-webkit-overflow-scrolling:touch]"
                 aria-label="Danh sách tài khoản thử"
               >
                 {MOCK_ACCOUNT_LIST.map((acc) => (
-                  <li key={acc.email}>
+                  <li key={acc.username}>
                     <Button
                       type="button"
                       variant="outline"
@@ -332,12 +345,12 @@ function LoginPage() {
                         'hover:border-primary/35 hover:bg-primary/[0.06]'
                       )}
                       onClick={() => {
-                        form.setValue('email', acc.email, { shouldValidate: true })
+                        form.setValue('username', acc.username, { shouldValidate: true })
                         form.setValue('password', MOCK_PASSWORD, { shouldValidate: true })
                       }}
                     >
                       <span className="font-mono text-xs font-semibold text-foreground sm:text-xs">
-                        {acc.email}
+                        {acc.username}
                       </span>
                       <span className="mt-0.5 block text-xs text-muted-foreground sm:text-xs">
                         <span className="font-medium text-primary/90">

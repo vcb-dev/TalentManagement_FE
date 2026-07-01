@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
-import { cn } from '@/lib/utils'
+import { cn, getFileViewerUrl } from '@/lib/utils'
 import { useGradeSubmission, useManagerSubmissions } from '@/features/exam/hooks'
 import { useManagerClasses } from '@/features/manager/hooks'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -143,7 +143,10 @@ export function GraderClassByQuestionScreen({
   scheduleId,
 }: GraderClassByQuestionScreenProps) {
   const navigate = useNavigate()
-  const { data: allSubmissions = [], isLoading: isLoadingSubs } = useManagerSubmissions()
+  const { data: allSubmissions = [], isLoading: isLoadingSubs } = useManagerSubmissions({
+    classId,
+    scheduleId,
+  })
   const { data: allClasses = [], isLoading: isLoadingClasses } = useManagerClasses()
   const gradeMutation = useGradeSubmission()
 
@@ -171,27 +174,14 @@ export function GraderClassByQuestionScreen({
   >({})
   const [bonusGrades, setBonusGrades] = useState<Record<string, BonusScore | null>>({})
 
-  useEffect(() => {
-    console.log('[Grader] classId from params:', classId)
-    console.log('[Grader] allSubmissions count:', allSubmissions.length)
-    console.log('[Grader] classSubmissions content:', JSON.stringify(classSubmissions))
-    if (allSubmissions.length > 0) {
-      console.log('[Grader] First submission classId:', allSubmissions[0]?.classId)
-    }
-  }, [classId, allSubmissions])
-
   // Question bank for this class
   const questionBank = useMemo(() => {
-    console.log('[Grader] Finding question bank for class:', classId, 'schedule:', scheduleId)
-    console.log('[Grader] Total submissions for this filter:', classSubmissions.length)
-
     // Priority 1: If we have a scheduleId, try to find questions from a submission that has that scheduleId
     if (scheduleId) {
       const subWithScheduleQuestions = classSubmissions.find(
         (s) => s.scheduleId?.toLowerCase() === scheduleId.toLowerCase() && s.schedule?.examQuestions
       )
       if (subWithScheduleQuestions?.schedule?.examQuestions) {
-        console.log('[Grader] Found questions in the specific schedule data')
         return subWithScheduleQuestions.schedule.examQuestions as any
       }
     }
@@ -202,13 +192,11 @@ export function GraderClassByQuestionScreen({
         (s) => s.id.toLowerCase() === scheduleId.toLowerCase()
       )
       if (schedule?.examQuestions) {
-        console.log('[Grader] Found questions in the current class schedule list')
         return schedule.examQuestions
       }
     }
 
     if (currentClass?.examQuestions) {
-      console.log('[Grader] Found in backend class data')
       return currentClass.examQuestions as any
     }
 
@@ -217,31 +205,22 @@ export function GraderClassByQuestionScreen({
       (s) => s.schedule?.examQuestions || s.learningClass?.examQuestions
     )
     if (firstSubWithQuestions) {
-      console.log(
-        '[Grader] Found in any submission data. Schedule questions:',
-        !!firstSubWithQuestions.schedule?.examQuestions
-      )
       return (
         firstSubWithQuestions.schedule?.examQuestions ||
         firstSubWithQuestions.learningClass?.examQuestions
       )
     }
 
-    console.log('[Grader] No questions found in class or submissions')
-    // Priority 3: Fallback to localStorage (legacy/transition)
+    // Fallback to localStorage (legacy/transition)
     try {
       const raw = localStorage.getItem('manager_exam_question_bank_v1')
-      console.log('[Grader] localStorage content:', raw ? 'exists' : 'empty')
       if (!raw) return null
       const parsed = JSON.parse(raw)
-      const found = parsed[classId] || null
-      console.log('[Grader] Found in localStorage:', found ? 'yes' : 'no')
-      return found
-    } catch (err) {
-      console.error('[Grader] Error reading localStorage:', err)
+      return parsed[classId] || null
+    } catch {
       return null
     }
-  }, [currentClass, classId, classSubmissions])
+  }, [currentClass, classId, classSubmissions, scheduleId])
 
   const isFileExam = useMemo(() => {
     const schedule = currentClass?.schedules?.find((s: any) => s.id === scheduleId)
@@ -770,7 +749,7 @@ export function GraderClassByQuestionScreen({
                               <td className="px-4 py-4">
                                 {fileUrl ? (
                                   <a
-                                    href={fileUrl}
+                                    href={getFileViewerUrl(fileUrl)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="inline-flex items-center gap-1.5 text-primary hover:underline font-bold text-xs bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors"

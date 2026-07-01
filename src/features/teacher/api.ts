@@ -52,6 +52,20 @@ export const teacherApi = {
     )
   },
 
+  createRoadmapItem: async (
+    classId: string,
+    input: {
+      topic: string
+      objective: string
+      materialRef?: string
+      assessment?: string
+      trainer?: string
+    }
+  ) => {
+    const res = await apiClient.post<unknown>(`/teacher/classes/${classId}/roadmap`, input)
+    return safeParse(z.object({ id: z.string() }), res.data, 'POST /teacher/classes/:id/roadmap')
+  },
+
   createSchedule: async (
     classId: string,
     input: {
@@ -65,6 +79,7 @@ export const teacherApi = {
       isExam?: boolean
       examQuestions?: any
       materialRef?: string | null
+      note?: string | null
     }
   ) => {
     const res = await apiClient.post<unknown>(`/teacher/classes/${classId}/schedules`, input)
@@ -85,6 +100,7 @@ export const teacherApi = {
       isExam?: boolean
       examQuestions?: any
       materialRef?: string | null
+      note?: string | null
     }
   ) => {
     const res = await apiClient.patch<unknown>(

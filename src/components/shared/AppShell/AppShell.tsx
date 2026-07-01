@@ -1,8 +1,7 @@
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { Bell, BellOff, ChevronDown, LogOut, UserCircle } from 'lucide-react'
 import { useLogout } from '@/features/auth/hooks'
-import { AssistantWidget } from '@/components/shared/AssistantWidget'
 import { MemberLeaderHeaderNav } from '@/components/shared/AppNav/MemberLeaderHeaderNav'
 import { MobileHeaderNav } from '@/components/shared/AppNav/MobileHeaderNav'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
@@ -23,6 +22,10 @@ import { formatRoleLabelsVi } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
 import { PAGE_MAX_WIDTH_CLASS } from '@/lib/pageLayout'
 import { useAuthStore } from '@/stores/auth.store'
+
+const AssistantWidget = lazy(() =>
+  import('@/components/shared/AssistantWidget').then((m) => ({ default: m.AssistantWidget }))
+)
 
 export interface AppShellProps {
   children: ReactNode
@@ -216,7 +219,9 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         </main>
       </div>
-      <AssistantWidget />
+      <Suspense fallback={null}>
+        <AssistantWidget />
+      </Suspense>
     </div>
   )
 }

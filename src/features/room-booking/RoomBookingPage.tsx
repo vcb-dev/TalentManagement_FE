@@ -217,11 +217,14 @@ function BookingRowActions({
         <div className={mobile ? 'flex w-full flex-col gap-2' : 'flex gap-2'}>
           <button
             type="button"
-            onClick={() => handleEdit(b)}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleEdit(b)
+            }}
             disabled={!!processingId}
             className={`flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary transition-all hover:bg-primary hover:text-white active:scale-95 disabled:opacity-50 ${btnWrap}`}
           >
-            <span>ĐỔI LỊCH</span>
+            <span>SỬA LỊCH HỌP</span>
           </button>
           <button
             type="button"
@@ -402,7 +405,10 @@ export default function RoomBookingPage() {
     const emailLower = (user.email || '').trim().toLowerCase()
     const parts = emailLower.split('@')
     if (parts.length === 2 && parts[1] === 'gmail.com') {
-      parts[0] = parts[0].replace(/\./g, '')
+      const p0 = parts[0]
+      if (p0) {
+        parts[0] = p0.replace(/\./g, '')
+      }
     }
     const emailClean = parts.join('@')
     return emailClean === 'vienchibaodev@gmail.com' || emailClean === 'vienibaodev@gmail.com'
@@ -415,7 +421,10 @@ export default function RoomBookingPage() {
       const emailLower = (user.email || '').trim().toLowerCase()
       const parts = emailLower.split('@')
       if (parts.length === 2 && parts[1] === 'gmail.com') {
-        parts[0] = parts[0].replace(/\./g, '')
+        const p0 = parts[0]
+        if (p0) {
+          parts[0] = p0.replace(/\./g, '')
+        }
       }
       const emailClean = parts.join('@')
       if (emailClean === 'vienchibaodev@gmail.com') return 'Tầng 6'
@@ -468,7 +477,8 @@ export default function RoomBookingPage() {
   } = useQuery({
     queryKey: ['room-bookings'],
     queryFn: getBookings,
-    refetchInterval: 10000,
+    staleTime: 30_000,
+    refetchInterval: () => (document.visibilityState === 'visible' ? 30_000 : false),
     meta: {
       onSuccess: (data: MeetingBooking[]) => {
         if (data.length > prevBookingsCount.current && prevBookingsCount.current > 0) {
@@ -731,13 +741,6 @@ export default function RoomBookingPage() {
       return
     }
 
-    if (room === 'Tầng 6' && uploadedDocuments.length === 0) {
-      const m = 'Phòng họp Tầng 6 bắt buộc phải đính kèm tài liệu họp.'
-      setError(m)
-      speak(m)
-      return
-    }
-
     if (isUploadingDoc) {
       setError('Vui lòng đợi tệp tin đang được tải lên...')
       return
@@ -810,10 +813,11 @@ export default function RoomBookingPage() {
     setNote(b.note || '')
     setIsEmergency(b.isEmergency)
     setUploadedDocuments(b.documents || [])
-    setSelectedFiles([])
-    setIsUploadingDoc(false)
+    setUploadQueue([])
     setDocUploadError(null)
-    setShowModal(true)
+    setTimeout(() => {
+      setShowModal(true)
+    }, 0)
   }
 
   function canManageBooking(b: MeetingBooking): boolean {
@@ -985,6 +989,7 @@ export default function RoomBookingPage() {
               vnTime={vnTime}
               currentUserId={user?.id}
               showAllUsers={isPrivileged}
+              isLoading={isFetching && bookings.length === 0}
             />
           </div>
           <aside className="space-y-4 min-w-0 xl:sticky xl:top-4 xl:self-start">
@@ -994,9 +999,14 @@ export default function RoomBookingPage() {
                 processingId={processingId}
                 onApprove={handleApprove}
                 onReject={setRejectId}
+                isLoading={isFetching && bookings.length === 0}
               />
             )}
-            <RoomBookingRecentPanel items={recentItems} onItemClick={setDetailBooking} />
+            <RoomBookingRecentPanel
+              items={recentItems}
+              onItemClick={setDetailBooking}
+              isLoading={isFetching && bookings.length === 0}
+            />
           </aside>
         </div>
       </div>
@@ -1048,7 +1058,7 @@ export default function RoomBookingPage() {
                       id="room-booking-form-title"
                       className="text-2xl font-black uppercase sm:text-3xl"
                     >
-                      {editingId ? 'Đổi lịch họp' : 'Đặt phòng họp'}
+                      {editingId ? 'Sửa lịch họp' : 'Đặt phòng họp'}
                     </h2>
                     <button
                       onClick={() => {
@@ -1116,7 +1126,11 @@ export default function RoomBookingPage() {
                           }
 
                           // Tạo danh sách các khoảng trống
-                          const sorted = [...bookedSlots]
+                          const filteredSlots = editingId
+                            ? bookedSlots.filter((s: any) => s.id !== editingId)
+                            : bookedSlots
+
+                          const sorted = [...filteredSlots]
                             .map((s) => ({
                               ...s,
                               timeFrom: padTime(s.timeFrom),

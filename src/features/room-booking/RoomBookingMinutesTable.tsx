@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileText, Download, ChevronLeft, ChevronRight } from 'lucide-react'
+import { FileText, Download, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import type { MeetingBooking } from './api'
 import { BBH_REQUIRED_FROM_DATE } from './roomBookingConstants'
 import { formatDateVi, formatTimeRangeVi } from './roomBookingTimeUtils'
@@ -12,11 +12,18 @@ type Props = {
   vnTime: { date: string; time: string }
   currentUserId?: string
   showAllUsers?: boolean
+  isLoading?: boolean
 }
 
 const PAGE_SIZE = 5
 
-export function RoomBookingMinutesTable({ items, vnTime, currentUserId, showAllUsers }: Props) {
+export function RoomBookingMinutesTable({
+  items,
+  vnTime,
+  currentUserId,
+  showAllUsers,
+  isLoading,
+}: Props) {
   const [currentPage, setCurrentPage] = useState(1)
 
   const rows = items
@@ -48,7 +55,12 @@ export function RoomBookingMinutesTable({ items, vnTime, currentUserId, showAllU
         </a>
       </div>
 
-      {rows.length === 0 ? (
+      {isLoading && items.length === 0 ? (
+        <p className="flex items-center justify-center gap-2 px-4 py-6 text-center text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          Đang tải biên bản…
+        </p>
+      ) : rows.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-7 w-7" />}
           title="Chưa có buổi họp nào cần nộp biên bản"

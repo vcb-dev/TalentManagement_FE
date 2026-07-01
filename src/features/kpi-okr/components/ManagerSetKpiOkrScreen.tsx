@@ -87,28 +87,30 @@ export function ManagerSetKpiOkrScreen() {
         </div>
       </div>
 
-      <section
-        id="manager-kpi-panel-workspace"
-        role="tabpanel"
-        aria-labelledby="manager-kpi-tab-workspace"
-        hidden={activeTab !== 'workspace'}
-      >
-        <KpiOkrWorkspace
-          variant="manager"
-          title="Set KPI/OKR cho team kinh doanh"
-          description="Manager cấu hình và theo dõi toàn bộ KPI/OKR theo từng team kinh doanh, theo tháng đã chọn."
-          teamScope="business"
-        />
-      </section>
+      {activeTab === 'workspace' && (
+        <section
+          id="manager-kpi-panel-workspace"
+          role="tabpanel"
+          aria-labelledby="manager-kpi-tab-workspace"
+        >
+          <KpiOkrWorkspace
+            variant="manager"
+            title="Set KPI/OKR cho team kinh doanh"
+            description="Manager cấu hình và theo dõi toàn bộ KPI/OKR theo từng team kinh doanh, theo tháng đã chọn."
+            teamScope="business"
+          />
+        </section>
+      )}
 
-      <section
-        id="manager-kpi-panel-sales-config"
-        role="tabpanel"
-        aria-labelledby="manager-kpi-tab-sales-config"
-        hidden={activeTab !== 'sales-config'}
-      >
-        <SalesKpiCatalogScreen embedded />
-      </section>
+      {activeTab === 'sales-config' && (
+        <section
+          id="manager-kpi-panel-sales-config"
+          role="tabpanel"
+          aria-labelledby="manager-kpi-tab-sales-config"
+        >
+          <SalesKpiCatalogScreen embedded />
+        </section>
+      )}
     </div>
   )
 }

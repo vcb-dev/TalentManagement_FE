@@ -54,15 +54,15 @@ describe('findMockUser', () => {
 
   it('mỗi mock user có id UUID-like', () => {
     MOCK_ACCOUNT_LIST.forEach((a) => {
-      const user = findMockUser(a.email)
+      const user = findMockUser(a.username)
       expect(user?.id).toMatch(/^[0-9a-f-]{36}$/i)
     })
   })
 
   it('mỗi mock user có permissionIds không rỗng', () => {
     MOCK_ACCOUNT_LIST.forEach((a) => {
-      const user = findMockUser(a.email)
-      expect(user?.permissionIds.length).toBeGreaterThan(0)
+      const user = findMockUser(a.username)
+      expect(user?.permissionIds?.length).toBeGreaterThan(0)
     })
   })
 })
@@ -102,10 +102,10 @@ describe('MOCK_ACCOUNT_LIST', () => {
     expect(MOCK_ACCOUNT_LIST.length).toBeGreaterThanOrEqual(5)
   })
 
-  it('không có email trùng nhau', () => {
-    const emails = MOCK_ACCOUNT_LIST.map((a) => a.email.toLowerCase())
-    const unique = new Set(emails)
-    expect(unique.size).toBe(emails.length)
+  it('không có username trùng nhau', () => {
+    const usernames = MOCK_ACCOUNT_LIST.map((a) => a.username.toLowerCase())
+    const unique = new Set(usernames)
+    expect(unique.size).toBe(usernames.length)
   })
 
   it('bao gồm các role cần thiết', () => {

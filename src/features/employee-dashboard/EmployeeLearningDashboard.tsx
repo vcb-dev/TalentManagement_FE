@@ -502,7 +502,14 @@ export function EmployeeLearningDashboard() {
             contentClassName="pt-0"
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {highlightAchievements.length === 0 ? (
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-24 rounded-2xl" />
+                  <Skeleton className="h-24 rounded-2xl" />
+                  <Skeleton className="h-24 rounded-2xl" />
+                  <Skeleton className="h-24 rounded-2xl" />
+                </>
+              ) : highlightAchievements.length === 0 ? (
                 <EmptyState
                   icon={<Medal className="h-7 w-7 text-amber-500" />}
                   title="Chưa có thành tựu"

@@ -31,8 +31,8 @@ function ExamIndexPage() {
   const [managedClassId, setManagedClassId] = useState('')
   const pageSize = 20
   const { data, isLoading } = useExams({ page, pageSize }, viewMode === 'mine')
-  const { data: mySubmissions } = useMySubmissions()
-  const { data: myClassData } = useMyEnrolledClass()
+  const { data: mySubmissions } = useMySubmissions(viewMode === 'mine')
+  const { data: myClassData } = useMyEnrolledClass(undefined, viewMode === 'mine')
   const {
     data: managedClasses = [],
     isLoading: isManagedLoading,

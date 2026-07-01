@@ -111,8 +111,6 @@ export function useUpdateEmployeeById() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (args: { id: string; patch: IHrEmployeeProfileState }) => {
-      console.log({ args })
-
       return employeeApi.updateEmployeeById(args.id, args.patch)
     },
     onSuccess: (_data, { id }) => {

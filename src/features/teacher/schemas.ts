@@ -63,6 +63,7 @@ export const teacherClassScheduleApiSchema = z.object({
   topic: z.string(),
   location: z.string().nullable(),
   materialRef: z.string().nullable().optional(),
+  note: z.string().nullable().optional(),
   roadmapItems: z.array(teacherRoadmapItemApiSchema).optional().default([]),
   attendanceData: z.record(z.string(), z.any()).nullable().optional(),
   evaluatedUserIds: z.array(z.string()).optional(),

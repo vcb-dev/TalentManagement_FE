@@ -46,12 +46,13 @@ import {
   useRegisterMakeupSchedule,
   useSendFeedback,
   useSubmitEvidence,
+  useWithdrawEvidence,
 } from '@/features/learning-path/hooks'
 import type { MeEnrolledClass, MeEnrolledClassSchedule } from '@/features/learning-path/schemas'
-import { cn } from '@/lib/utils'
+import { cn, getFileViewerUrl } from '@/lib/utils'
 import { SessionEvaluationModal } from '@/features/teacher/components/SessionEvaluationModal'
 import { useAuthStore } from '@/stores/auth.store'
-import { useSubmitExam } from '@/features/exam/hooks'
+import { useSubmitExam, useWithdrawExam } from '@/features/exam/hooks'
 import { apiClient, getApiErrorMessage } from '@/lib/axios'
 import { useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
@@ -172,19 +173,18 @@ function AvailableClassesSection({
 }) {
   const { data: classes = [], isLoading } = useAvailableLearningClasses()
   const registerClass = useRegisterLearningClass()
-  console.log({ classes })
 
   if (isLoading) {
     return <Skeleton className="h-48 w-full rounded-[2rem]" />
   }
 
-  const rows = classes.filter(
-    (c) =>
+  const rows = classes.filter((c) => {
+    return (
       !currentClassIds.includes(c.id) &&
       (isOther ? c.isKnowledgeWork === false : c.isKnowledgeWork !== false)
-  )
+    )
+  })
   if (!rows.length) return null
-  console.log({ rows })
   return (
     <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.04)]">
       <div className="border-b border-slate-50 px-8 py-5">
@@ -263,7 +263,8 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
   const hasDateFilter = Boolean(scheduleRange.startDate || scheduleRange.endDate)
 
   const { data, isLoading, isError, refetch, isFetching } = useMyEnrolledClass(scheduleRange)
-  const { data: availableClasses = [] } = useAvailableLearningClasses()
+  const { data: availableClasses = [], isLoading: isLoadingAvailable } =
+    useAvailableLearningClasses()
   const registerMakeup = useRegisterMakeupSchedule()
   const [evalModalOpen, setEvalModalOpen] = useState(false)
   const [evalTarget, setEvalTarget] = useState<{
@@ -283,46 +284,59 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
     if (!classItem?.schedules) return []
     const tasks: any[] = []
     classItem.schedules.forEach((s: any) => {
-      ;(s.roadmapItems || []).forEach((ri: any) => {
-        const normalizedAssessment = (ri.assessment || '')
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/đ/g, 'd')
-          .replace(/Đ/g, 'D')
-          .trim()
+      const isExam = s.isExam || s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
+      const isDeadlineSlot = s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
 
-        const isReflection =
-          normalizedAssessment.includes('phan tu') ||
-          normalizedAssessment.includes('tu luan') ||
-          normalizedAssessment.includes('review')
+      if ((s.roadmapItems || []).length > 0) {
+        s.roadmapItems.forEach((ri: any) => {
+          const normalizedAssessment = (ri.assessment || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/đ/g, 'd')
+            .replace(/Đ/g, 'D')
+            .trim()
 
-        const isExam =
-          normalizedAssessment.includes('thi') ||
-          normalizedAssessment.includes('test') ||
-          normalizedAssessment.includes('kiem tra') ||
-          normalizedAssessment.includes('assessment') ||
-          s.isExam ||
-          s.location === 'Nộp bài trực tuyến' ||
-          s.topic?.includes('Hạn nộp')
+          const isReflection =
+            normalizedAssessment.includes('phan tu') ||
+            normalizedAssessment.includes('tu luan') ||
+            normalizedAssessment.includes('review')
 
-        const isDeadlineSlot = s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
+          const isReflectionTask = isReflection && (isDeadlineSlot || ri.deadline)
 
-        const isReflectionTask = isReflection && (isDeadlineSlot || ri.deadline)
-
-        if (isReflectionTask || isExam || isDeadlineSlot) {
+          if (isReflectionTask || isExam || isDeadlineSlot) {
+            tasks.push({
+              ...ri,
+              scheduleId: s.id,
+              scheduleTopic: s.topic,
+              scheduleDateIso: s.dateIso,
+              scheduleNote: s.note,
+              isExam,
+              location: s.location,
+              deadline:
+                ri.deadline ||
+                (s.endTime ? `${s.dateIso}T${s.endTime}:00+07:00` : `${s.dateIso}T23:59:00+07:00`),
+            })
+          }
+        })
+      } else {
+        if (isExam || isDeadlineSlot) {
           tasks.push({
-            ...ri,
+            id: s.id, // Virtual id: use scheduleId
+            objective: s.topic,
+            topic: s.topic,
             scheduleId: s.id,
             scheduleTopic: s.topic,
             scheduleDateIso: s.dateIso,
-            isExam,
-            deadline:
-              ri.deadline ||
-              (s.endTime ? `${s.dateIso}T${s.endTime}:00+07:00` : `${s.dateIso}T23:59:00+07:00`),
+            scheduleNote: s.note,
+            isExam: true, // Treat as exam task so it uses submitExam
+            deadline: s.endTime
+              ? `${s.dateIso}T${s.endTime}:00+07:00`
+              : `${s.dateIso}T23:59:00+07:00`,
+            submission: s.submission || null,
           })
         }
-      })
+      }
     })
 
     const seen = new Set()
@@ -335,12 +349,47 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
   }
   const submitEvidence = useSubmitEvidence()
   const submitExam = useSubmitExam()
+  const withdrawExam = useWithdrawExam()
+  const withdrawEvidence = useWithdrawEvidence()
   const [uploadingTaskId, setUploadingTaskId] = useState<string | null>(null)
+  const [withdrawingTaskId, setWithdrawingTaskId] = useState<string | null>(null)
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false)
   const sendFeedbackMutation = useSendFeedback()
   const submissionId = useRef<string | null>(null)
   const [feedbackText, setFeedbackText] = useState<string>('')
+
+  const handleWithdraw = useCallback(
+    (task: any, classId: string) => {
+      const taskUniqueId = `${task.id}_${task.scheduleId}`
+      setWithdrawingTaskId(taskUniqueId)
+      if (task.isExam) {
+        withdrawExam.mutate(
+          {
+            classId,
+            scheduleId: task.scheduleId,
+          },
+          {
+            onSettled: () => {
+              setWithdrawingTaskId(null)
+            },
+          }
+        )
+      } else {
+        withdrawEvidence.mutate(
+          {
+            itemId: task.id,
+          },
+          {
+            onSettled: () => {
+              setWithdrawingTaskId(null)
+            },
+          }
+        )
+      }
+    },
+    [withdrawExam, withdrawEvidence]
+  )
 
   useEffect(() => {
     if (data?.enrolledClass) {
@@ -660,6 +709,11 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                                     </Button>
                                   )
                                 })
+                              ) : isLoadingAvailable ? (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Đang tải lớp học bù…
+                                </span>
                               ) : (
                                 <span className="text-xs font-semibold text-slate-400">
                                   Chưa có lớp khác còn chỗ bao phủ đủ học phần cần học bù.
@@ -734,19 +788,39 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                             <div className="min-w-0 flex-1">
                               <p
                                 className="font-extrabold text-slate-950 text-base leading-snug truncate"
-                                title={task.objective}
+                                title={task.scheduleTopic}
                               >
-                                {task.objective}
+                                {task.scheduleTopic}
                               </p>
-                              <p
-                                className="text-xs font-bold text-slate-400 mt-0.5 truncate"
-                                title={task.topic}
-                              >
-                                Chủ đề: {task.topic}
-                              </p>
+                              {task.id !== task.scheduleId && task.objective && (
+                                <p
+                                  className="text-xs font-bold text-slate-700 mt-1 truncate"
+                                  title={task.objective}
+                                >
+                                  {task.objective}
+                                </p>
+                              )}
+                              {task.topic && (
+                                <p
+                                  className="text-xs font-semibold text-slate-400 mt-0.5 truncate"
+                                  title={task.topic}
+                                >
+                                  Chủ đề: {task.topic}
+                                </p>
+                              )}
                               <p className="text-xs font-semibold text-slate-500 mt-1 truncate">
-                                Buổi: {task.scheduleTopic} ({task.scheduleDateIso})
+                                {task.isExam || task.location === 'Nộp bài trực tuyến'
+                                  ? `Thời gian mở nộp: ${task.scheduleDateIso}`
+                                  : `Ngày học: ${task.scheduleDateIso}`}
                               </p>
+                              {task.scheduleNote && (
+                                <div className="mt-3 rounded-2xl bg-slate-100/80 p-3 text-xs font-medium text-slate-600 whitespace-pre-wrap leading-relaxed border border-slate-200/40 text-left">
+                                  <p className="font-extrabold text-slate-700 mb-1">
+                                    Ghi chú / Câu hỏi gợi ý:
+                                  </p>
+                                  {task.scheduleNote}
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -811,12 +885,12 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                                   </span>
                                   {task.submission.fileRef && (
                                     <a
-                                      href={task.submission.fileRef}
+                                      href={getFileViewerUrl(task.submission.fileRef)}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="shrink-0 text-primary hover:underline font-bold text-xs"
                                     >
-                                      Tải về
+                                      Xem bài
                                     </a>
                                   )}
                                 </div>
@@ -829,7 +903,7 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                                   </p>
                                 )}
                               </div>
-                              <div>
+                              <div className="flex flex-col gap-1.5 shrink-0">
                                 <Button
                                   variant="destructive"
                                   size="sm"
@@ -840,6 +914,17 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                                 >
                                   Phản hồi
                                 </Button>
+                                {isPending && !isOverdue && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-xl text-xs font-bold border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 cursor-pointer"
+                                    onClick={() => handleWithdraw(task, classItem.id)}
+                                    disabled={withdrawingTaskId === taskUniqueId}
+                                  >
+                                    {withdrawingTaskId === taskUniqueId ? 'Đang huỷ...' : 'Huỷ nộp'}
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           )}

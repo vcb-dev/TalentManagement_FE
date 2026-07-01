@@ -7,7 +7,8 @@ export function useMyDashboard(options?: { enabled?: boolean }) {
     queryKey: dashboardKeys.me(),
     queryFn: () => dashboardApi.me(),
     enabled: options?.enabled ?? true,
-    refetchInterval: 30000, // Tự động cập nhật mỗi 30 giây để bắt kịp thăng cấp realtime
+    staleTime: 60_000,
+    refetchInterval: () => (document.visibilityState === 'visible' ? 120_000 : false),
   })
 }
 

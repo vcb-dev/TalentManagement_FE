@@ -33,7 +33,7 @@ export function ChatPanel({ conversation, isCustomerTyping, onClose }: ChatPanel
   const { data: messagesData, isLoading } = useQuery({
     queryKey: ['cskh', 'inbox', 'messages', conversation.id],
     queryFn: () => fetchInboxMessages(conversation.id),
-    refetchInterval: 30000, // Refetch every 30s as fallback
+    refetchInterval: () => (document.visibilityState === 'visible' ? 30000 : false),
   })
 
   const messages = messagesData?.messages ?? []

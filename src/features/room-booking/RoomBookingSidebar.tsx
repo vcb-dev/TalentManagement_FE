@@ -8,6 +8,7 @@ type PendingProps = {
   processingId: string | null
   onApprove: (id: string) => void
   onReject: (id: string) => void
+  isLoading?: boolean
 }
 
 export function RoomBookingPendingPanel({
@@ -15,12 +16,20 @@ export function RoomBookingPendingPanel({
   processingId,
   onApprove,
   onReject,
+  isLoading,
 }: PendingProps) {
   if (items.length === 0) {
     return (
       <div className="rounded-2xl border border-border/60 bg-card p-4">
         <h3 className="text-sm font-bold text-foreground">Yêu cầu chờ duyệt</h3>
-        <EmptyState compact tone="subtle" title="Không có yêu cầu nào" className="mt-2 py-4" />
+        {isLoading ? (
+          <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            Đang tải…
+          </p>
+        ) : (
+          <EmptyState compact tone="subtle" title="Không có yêu cầu nào" className="mt-2 py-4" />
+        )}
       </div>
     )
   }
@@ -69,14 +78,22 @@ export function RoomBookingPendingPanel({
 type RecentProps = {
   items: MeetingBooking[]
   onItemClick: (booking: MeetingBooking) => void
+  isLoading?: boolean
 }
 
-export function RoomBookingRecentPanel({ items, onItemClick }: RecentProps) {
+export function RoomBookingRecentPanel({ items, onItemClick, isLoading }: RecentProps) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4">
       <h3 className="mb-3 text-sm font-bold text-foreground">Gần đây</h3>
       {items.length === 0 ? (
-        <EmptyState compact tone="subtle" title="Chưa có hoạt động" className="py-4" />
+        isLoading ? (
+          <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            Đang tải…
+          </p>
+        ) : (
+          <EmptyState compact tone="subtle" title="Chưa có hoạt động" className="py-4" />
+        )
       ) : (
         <div className="space-y-1">
           {items.map((b) => (

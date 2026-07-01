@@ -13,9 +13,9 @@ import {
 import { meResponseSchema, type LoginRequest } from './schemas'
 
 function mockLogin(body: LoginRequest) {
-  const raw = findMockUser(body.email)
+  const raw = findMockUser(body.username)
   if (!raw || body.password !== MOCK_PASSWORD) {
-    const err = new Error('Sai email hoặc mật khẩu') as Error & { status?: number }
+    const err = new Error('Sai tên đăng nhập hoặc mật khẩu') as Error & { status?: number }
     err.status = 401
     throw err
   }

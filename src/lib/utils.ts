@@ -21,3 +21,20 @@ export function safeParse<T>(
   }
   return result.data
 }
+
+export function getFileViewerUrl(url: string | null | undefined): string {
+  if (!url) return ''
+  const cleanUrl = url.trim()
+  const lowerUrl = cleanUrl.toLowerCase()
+  if (
+    lowerUrl.endsWith('.docx') ||
+    lowerUrl.endsWith('.doc') ||
+    lowerUrl.endsWith('.xlsx') ||
+    lowerUrl.endsWith('.xls') ||
+    lowerUrl.endsWith('.pptx') ||
+    lowerUrl.endsWith('.ppt')
+  ) {
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(cleanUrl)}`
+  }
+  return cleanUrl
+}

@@ -1,4 +1,11 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
@@ -34,6 +41,7 @@ import {
   DateController,
   InputController,
   InputFieldController,
+  TextareaController,
 } from '@/components/ui/form-controllers'
 
 import {
@@ -45,6 +53,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
+import { Skeleton } from '@/components/ui/skeleton'
 
 import { joinTimeHm, splitTimeToParts } from '@/lib/time24h'
 import { cn } from '@/lib/utils'
@@ -62,6 +71,7 @@ import {
   useRemoveTeacherClassMember,
   useTeacherClassRegistrations,
   useTeacherRoadmapItems,
+  useCreateTeacherRoadmapItem,
 } from '@/features/teacher/hooks'
 import { TeacherClassMemberCard } from './TeacherClassMemberCard'
 import type { ClassMemberRow } from './teacherClassMemberTypes'
@@ -153,9 +163,32 @@ function MemberRemoveButton({
   )
 }
 
+const NOTE_TEMPLATE = `- Có nội dung nào khiến bạn thay đổi tư duy so với trước đây?
+- Có nội dung nào khiến bạn đặc biệt ấn tượng?
+- Có nội dung nào bạn chưa đồng ý/ muốn thảo luận thêm/ chưa rõ?
+- Bạn sẽ thử nghiệm kiến thức nào vào công việc và cuộc sống?`
+
+/** True khi màn hình dưới breakpoint `md` (768px) — để chỉ render 1 biến thể bảng/thẻ. */
+function useIsBelowMd() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia('(max-width: 767px)')
+      mq.addEventListener('change', onChange)
+      return () => mq.removeEventListener('change', onChange)
+    },
+    () => window.matchMedia('(max-width: 767px)').matches,
+    () => false
+  )
+}
+
 export function TeacherClassDetailScreen({ classId }: { classId: string }) {
+  const isMobileLayout = useIsBelowMd()
   const routeHash = useRouterState({ select: (s) => s.location.hash })
-  const { data } = useTeacherClassDetail(classId)
+  const {
+    data,
+    isLoading: isLoadingDetail,
+    isError: isErrorDetail,
+  } = useTeacherClassDetail(classId)
   const { data: schedules = [] } = useTeacherSchedules(classId)
   const isDeadlineOnly = useCallback((s: { topic: string; location?: string | null }) => {
     return s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
@@ -169,11 +202,11 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     [schedules, isDeadlineOnly]
   )
 
-  const { data: roadmapItems = [] } = useTeacherRoadmapItems(classId)
   const { data: registrations = [] } = useTeacherClassRegistrations(classId)
   const createSchedule = useTeacherCreateSchedule(classId)
   const updateSchedule = useTeacherUpdateSchedule(classId)
   const deleteSchedule = useTeacherDeleteSchedule(classId)
+  const createRoadmapItem = useCreateTeacherRoadmapItem(classId)
   const approveRegistration = useApproveClassRegistration(classId)
   const rejectRegistration = useRejectClassRegistration(classId)
   const removeClassMember = useRemoveTeacherClassMember(classId)
@@ -212,6 +245,30 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
   const [isCreatingDeadlineOnly, setIsCreatingDeadlineOnly] = useState(false)
+  const [roadmapModalOpen, setRoadmapModalOpen] = useState(false)
+
+  // Roadmap catalog is only needed when creating/editing a schedule or adding a
+  // roadmap item, so we lazy-load it to keep the initial class-detail render fast.
+  const { data: roadmapItems = [] } = useTeacherRoadmapItems(
+    classId,
+    scheduleModalOpen || roadmapModalOpen
+  )
+
+  const roadmapForm = useForm<{
+    topic: string
+    objective: string
+    materialRef?: string
+    assessment?: string
+    trainer?: string
+  }>({
+    defaultValues: {
+      topic: '',
+      objective: '',
+      materialRef: '',
+      assessment: '',
+      trainer: '',
+    },
+  })
 
   // Evaluation modal state
   const [evalModalOpen, setEvalModalOpen] = useState(false)
@@ -237,6 +294,10 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     }
   }, [regularSchedules, activeScheduleId])
 
+  const activeSchedule = useMemo(
+    () => schedules.find((s) => s.id === activeScheduleId),
+    [schedules, activeScheduleId]
+  )
   const selectedSchedule = useMemo(
     () => regularSchedules.find((s) => s.id === activeScheduleId),
     [regularSchedules, activeScheduleId]
@@ -252,6 +313,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const scheduleForm = useForm({
     defaultValues: {
       dateIso: '',
+      endDateIso: '',
       startHour: '08',
       startMinute: '00',
       endHour: '10',
@@ -262,6 +324,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       roadmapItemDeadlines: {} as Record<string, string>,
       gradingType: 'direct',
       materialRef: '',
+      note: '',
     },
   })
   const {
@@ -289,6 +352,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     roadmapItemDeadlines: {} as Record<string, string>,
     gradingType: 'direct',
     materialRef: '',
+    note: '',
   }
 
   const countRoadmapItemDeadlineSelections = (
@@ -362,6 +426,14 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     const todayMin = getTodayIsoLocal()
     const dateIso = s.dateIso >= todayMin ? s.dateIso : todayMin
 
+    let endDateIso = dateIso
+    const firstItem = s.roadmapItems?.[0]
+    if (firstItem && firstItem.deadline) {
+      const d = new Date(firstItem.deadline)
+      const offsetDate = new Date(d.getTime() - d.getTimezoneOffset() * 60 * 1000)
+      endDateIso = offsetDate.toISOString().slice(0, 10) // YYYY-MM-DD
+    }
+
     const deadlines: Record<string, string> = {}
     s.roadmapItems?.forEach((item) => {
       if (item.deadline) {
@@ -373,6 +445,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
     resetScheduleValues({
       dateIso,
+      endDateIso,
       startHour: sh,
       startMinute: sm,
       endHour: eh,
@@ -383,6 +456,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       roadmapItemDeadlines: deadlines,
       gradingType: (s.examQuestions as any)?.gradingType || 'direct',
       materialRef: (s as any).materialRef ?? '',
+      note: (s as any).note ?? '',
     })
   }
 
@@ -669,6 +743,22 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                   THÊM BUỔI MỚI
                 </Button>
                 <Button
+                  className="h-14 rounded-2xl bg-indigo-600 px-8 text-base font-black text-white shadow-xl shadow-indigo-600/20 transition-all hover:bg-indigo-700 hover:scale-105 active:scale-95"
+                  onClick={() => {
+                    roadmapForm.reset({
+                      topic: '',
+                      objective: '',
+                      materialRef: '',
+                      assessment: '',
+                      trainer: '',
+                    })
+                    setRoadmapModalOpen(true)
+                  }}
+                >
+                  <Star className="mr-2 h-5 w-5" />
+                  THÊM LỘ TRÌNH
+                </Button>
+                <Button
                   variant="outline"
                   className="h-14 rounded-2xl border-primary text-primary hover:bg-primary/5 px-8 text-base font-black shadow-lg transition-all hover:scale-105 active:scale-95"
                   onClick={() => {
@@ -684,6 +774,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                       roadmapItemIds: [],
                       roadmapItemDeadlines: {},
                       gradingType: 'direct',
+                      note: NOTE_TEMPLATE,
                     })
                     setIsCreatingDeadlineOnly(true)
                     setScheduleModalOpen(true)
@@ -759,6 +850,12 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           </a>
                         </p>
                       ) : null}
+                      {(selectedSchedule as any).note ? (
+                        <div className="mt-2.5 rounded-lg border border-slate-100 bg-slate-50/50 p-3 text-xs font-semibold text-slate-600 whitespace-pre-wrap max-w-2xl">
+                          <p className="font-bold text-slate-800 mb-1">Ghi chú / Câu hỏi gợi ý:</p>
+                          {(selectedSchedule as any).note}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="flex shrink-0 flex-wrap gap-2">
                       <Button
@@ -816,12 +913,26 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         </Badge>
                         <p className="text-base font-black text-slate-950">{s.topic}</p>
                       </div>
-                      <p className="text-xs font-semibold text-slate-500">
-                        Hạn nộp:{' '}
-                        <span className="font-bold text-slate-700">
-                          {s.dateIso} · {s.startTime} - {s.endTime}
-                        </span>
-                      </p>
+                      {(() => {
+                        const firstItem = s.roadmapItems?.[0]
+                        let deadlineStr = `${s.dateIso} · ${s.startTime} - ${s.endTime}`
+                        if (firstItem && firstItem.deadline) {
+                          const dlDate = new Date(firstItem.deadline)
+                          const offsetDate = new Date(
+                            dlDate.getTime() - dlDate.getTimezoneOffset() * 60 * 1000
+                          )
+                          const endD = offsetDate.toISOString().slice(0, 10)
+                          if (endD !== s.dateIso) {
+                            const timePart = offsetDate.toISOString().slice(11, 16)
+                            deadlineStr = `${s.dateIso} (${s.startTime}) đến ${endD} (${timePart})`
+                          }
+                        }
+                        return (
+                          <p className="text-xs font-semibold text-slate-500">
+                            Hạn nộp: <span className="font-bold text-slate-700">{deadlineStr}</span>
+                          </p>
+                        )
+                      })()}
                       {s.roadmapItems?.length ? (
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           {s.roadmapItems.map((item) => (
@@ -833,6 +944,12 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                               {item.objective}
                             </Badge>
                           ))}
+                        </div>
+                      ) : null}
+                      {(s as any).note ? (
+                        <div className="mt-2.5 rounded-lg border border-slate-100 bg-slate-50/50 p-3 text-xs font-semibold text-slate-600 whitespace-pre-wrap max-w-2xl">
+                          <p className="font-bold text-slate-800 mb-1">Ghi chú / Câu hỏi gợi ý:</p>
+                          {(s as any).note}
                         </div>
                       ) : null}
                     </div>
@@ -862,11 +979,34 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
             </div>
           )}
 
-          {viewMode === 'table' ? (
+          {isLoadingDetail ? (
+            <div
+              className="space-y-3 rounded-[32px] border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-200/50 ring-1 ring-slate-200/60"
+              role="status"
+              aria-busy
+              aria-label="Đang tải danh sách thành viên"
+            >
+              <span className="sr-only">Đang tải thành viên…</span>
+              {Array.from({ length: 8 }, (_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/3 rounded" />
+                    <Skeleton className="h-3 w-1/2 rounded" />
+                  </div>
+                  <Skeleton className="h-7 w-24 shrink-0 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          ) : isErrorDetail ? (
+            <div className="rounded-[32px] border border-destructive/30 bg-destructive/5 py-10 text-center text-sm text-destructive">
+              Không tải được thông tin lớp. Vui lòng thử lại.
+            </div>
+          ) : viewMode === 'table' ? (
             <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl shadow-slate-200/50 ring-1 ring-slate-200/60">
               <div className="divide-y divide-border md:hidden">
-                {filtered.map((m) => {
-                  const currentSchedule = schedules.find((s) => s.id === activeScheduleId)
+                {(isMobileLayout ? filtered : []).map((m) => {
+                  const currentSchedule = activeSchedule
                   const rawAttendance =
                     currentSchedule?.attendanceData?.[m.id]?.attendance || 'NONE'
 
@@ -1046,8 +1186,8 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    {filtered.map((m) => {
-                      const currentSchedule = schedules.find((s) => s.id === activeScheduleId)
+                    {(isMobileLayout ? [] : filtered).map((m) => {
+                      const currentSchedule = activeSchedule
                       const rawAttendance =
                         currentSchedule?.attendanceData?.[m.id]?.attendance || 'NONE'
 
@@ -1295,7 +1435,9 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                 <div className="min-w-0">
                   <h2 className="text-xl font-black tracking-tight text-slate-950">
                     {isCreatingDeadlineOnly
-                      ? 'TẠO HẠN NỘP BÀI PHẢN TƯ'
+                      ? editingScheduleId
+                        ? 'CẬP NHẬT HẠN NỘP BÀI PHẢN TƯ'
+                        : 'TẠO HẠN NỘP BÀI PHẢN TƯ'
                       : editingScheduleId
                         ? 'CẬP NHẬT BUỔI HỌC'
                         : 'THÊM BUỔI HỌC MỚI'}
@@ -1324,14 +1466,17 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     onSubmit={scheduleForm.handleSubmit((vals) => {
                       const startTime = joinTimeHm(vals.startHour, vals.startMinute)
                       const endTime = joinTimeHm(vals.endHour, vals.endMinute)
-                      const localDeadlines = isCreatingDeadlineOnly
-                        ? vals.roadmapItemDeadlines || {}
-                        : {}
                       const roadmapItemDeadlines: Record<string, string> = {}
-                      for (const itemId of vals.roadmapItemIds) {
-                        const dl = localDeadlines[itemId]
-                        if (dl) {
-                          roadmapItemDeadlines[itemId] = new Date(dl).toISOString()
+                      if (isCreatingDeadlineOnly) {
+                        if (vals.endDateIso && vals.endDateIso < vals.dateIso) {
+                          toast.error('Ngày kết thúc không được trước ngày bắt đầu.')
+                          return
+                        }
+                        const deadlineDateStr = vals.endDateIso || vals.dateIso
+                        const defaultDl = `${deadlineDateStr}T${endTime}:00`
+                        const dlIso = new Date(defaultDl).toISOString()
+                        for (const itemId of vals.roadmapItemIds) {
+                          roadmapItemDeadlines[itemId] = dlIso
                         }
                       }
                       const isKnowledgeWork = data?.isKnowledgeWork !== false
@@ -1344,6 +1489,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         roadmapItemIds: isKnowledgeWork ? vals.roadmapItemIds : [],
                         roadmapItemDeadlines: isKnowledgeWork ? roadmapItemDeadlines : {},
                         materialRef: isKnowledgeWork ? null : vals.materialRef?.trim() || null,
+                        note: (vals as any).note?.trim() || null,
                         examQuestions: {
                           ...((schedules.find((x) => x.id === editingScheduleId)
                             ?.examQuestions as any) || {}),
@@ -1397,10 +1543,19 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         <DateController
                           control={scheduleForm.control}
                           name="dateIso"
-                          label={isCreatingDeadlineOnly ? 'Ngày nộp bài' : 'Ngày học'}
+                          label={isCreatingDeadlineOnly ? 'Từ ngày' : 'Ngày học'}
                           required
                           datePickerClassName="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10"
                         />
+                        {isCreatingDeadlineOnly && (
+                          <DateController
+                            control={scheduleForm.control}
+                            name="endDateIso"
+                            label="Đến ngày"
+                            required
+                            datePickerClassName="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10"
+                          />
+                        )}
                         <InputController
                           control={scheduleForm.control}
                           name="location"
@@ -1408,24 +1563,17 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           placeholder="VD: Phòng họp A, Zoom..."
                           inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
                         />
-                        {!(data?.isKnowledgeWork !== false) && (
-                          <>
-                            <InputController
-                              control={scheduleForm.control}
-                              name="topic"
-                              label="Bài học ngày hôm đó / Chủ đề"
-                              required
-                              placeholder="VD: Học phần 1: Giới thiệu..."
-                              inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
-                            />
-                            <InputController
-                              control={scheduleForm.control}
-                              name="materialRef"
-                              label="Tài liệu học tập"
-                              placeholder="Link tài liệu hoặc tên sách..."
-                              inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
-                            />
-                          </>
+                        {(!(data?.isKnowledgeWork !== false) ||
+                          isCreatingDeadlineOnly ||
+                          selectedRoadmapItemIds.length === 0) && (
+                          <InputController
+                            control={scheduleForm.control}
+                            name="topic"
+                            label="Bài học ngày hôm đó / Chủ đề"
+                            required
+                            placeholder="VD: Hạn nộp bài phản tư..."
+                            inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
+                          />
                         )}
                       </div>
 
@@ -1463,6 +1611,17 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                             )}
                           />
                         </div>
+                      </div>
+
+                      <div className="mt-5 space-y-2">
+                        <TextareaController
+                          control={scheduleForm.control}
+                          name="note"
+                          label="Ghi chú"
+                          placeholder="Nhập ghi chú cho hạn nộp..."
+                          rows={6}
+                          textareaClassName="rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10 font-medium"
+                        />
                       </div>
 
                       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -1590,33 +1749,6 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                                             </span>
                                           </span>
                                         </label>
-                                        {checked &&
-                                          requiresReflection &&
-                                          isCreatingDeadlineOnly && (
-                                            <div className="flex flex-col gap-1 shrink-0 w-full md:w-auto min-w-[180px]">
-                                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-                                                Hạn nộp phản tư
-                                              </span>
-                                              <input
-                                                type="datetime-local"
-                                                value={
-                                                  (
-                                                    getScheduleValues(
-                                                      'roadmapItemDeadlines'
-                                                    ) as Record<string, string>
-                                                  )?.[item.id] || ''
-                                                }
-                                                onChange={(e) =>
-                                                  setScheduleValue(
-                                                    `roadmapItemDeadlines.${item.id}`,
-                                                    e.target.value,
-                                                    { shouldDirty: true, shouldValidate: true }
-                                                  )
-                                                }
-                                                className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 focus:border-primary focus:outline-none"
-                                              />
-                                            </div>
-                                          )}
                                       </div>
                                     )
                                   })}
@@ -1750,6 +1882,86 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
               Xác nhận xóa
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Roadmap Modal */}
+      <Dialog open={roadmapModalOpen} onOpenChange={setRoadmapModalOpen}>
+        <DialogContent className="max-w-2xl border-0 p-0 sm:rounded-[32px] overflow-hidden">
+          <Form {...roadmapForm}>
+            <form
+              onSubmit={roadmapForm.handleSubmit((values) => {
+                createRoadmapItem.mutate(values, {
+                  onSuccess: () => {
+                    setRoadmapModalOpen(false)
+                    roadmapForm.reset()
+                  },
+                })
+              })}
+            >
+              <div className="bg-primary px-8 py-6 text-white">
+                <DialogTitle className="text-2xl font-black tracking-tight">
+                  Thêm Lộ Trình Riêng
+                </DialogTitle>
+                <DialogDescription className="text-primary-foreground/80 mt-2 font-medium">
+                  Tạo lộ trình học tập và tài liệu dành riêng cho lớp này
+                </DialogDescription>
+              </div>
+
+              <div className="max-h-[60vh] overflow-y-auto p-8">
+                <div className="space-y-6">
+                  <InputController
+                    control={roadmapForm.control}
+                    name="topic"
+                    label="Chủ đề (Bắt buộc)"
+                    placeholder="VD: Sao 1, Sao 2, Kỹ năng mềm..."
+                  />
+                  <InputController
+                    control={roadmapForm.control}
+                    name="objective"
+                    label="Mục tiêu / Học phần (Bắt buộc)"
+                    placeholder="VD: Phản tư sách, Đào tạo hội nhập..."
+                  />
+                  <InputController
+                    control={roadmapForm.control}
+                    name="materialRef"
+                    label="Tài liệu đính kèm (Link)"
+                    placeholder="VD: https://docs.google.com/..."
+                  />
+                  <InputController
+                    control={roadmapForm.control}
+                    name="assessment"
+                    label="Hình thức đánh giá"
+                    placeholder="VD: Trắc nghiệm, Phản tư, Thực hành..."
+                  />
+                  <InputController
+                    control={roadmapForm.control}
+                    name="trainer"
+                    label="Người phụ trách"
+                    placeholder="VD: Nguyễn Văn A..."
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="bg-slate-50 px-8 py-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRoadmapModalOpen(false)}
+                  className="h-12 rounded-xl px-8 font-bold"
+                  disabled={createRoadmapItem.isPending}
+                >
+                  HỦY BỎ
+                </Button>
+                <Button
+                  type="submit"
+                  className="h-12 rounded-xl bg-primary px-8 font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/90"
+                  disabled={createRoadmapItem.isPending}
+                >
+                  {createRoadmapItem.isPending ? 'ĐANG LƯU...' : 'LƯU LỘ TRÌNH'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>

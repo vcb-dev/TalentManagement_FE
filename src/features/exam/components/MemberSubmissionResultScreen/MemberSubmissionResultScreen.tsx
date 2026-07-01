@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { SkeletonProfileForm } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Checkbox } from '@/components/ui/checkbox'
-import { cn } from '@/lib/utils'
+import { cn, getFileViewerUrl } from '@/lib/utils'
 import { useSubmission } from '@/features/exam/hooks'
 
 const RUBRIC_CRITERIA = [
@@ -192,7 +192,7 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
                   </div>
                   {answersObj.fileUrl && (
                     <a
-                      href={answersObj.fileUrl}
+                      href={getFileViewerUrl(answersObj.fileUrl)}
                       target="_blank"
                       rel="noreferrer"
                       className="h-9 rounded-xl px-4 flex items-center bg-primary text-white text-xs font-black uppercase tracking-widest shadow-sm hover:bg-primary/95 transition-all"

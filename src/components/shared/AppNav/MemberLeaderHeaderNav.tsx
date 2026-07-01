@@ -26,7 +26,7 @@ type HeaderNavGroup = {
 function routeGroup(item: AppNavItem): string {
   if (item.to === '/about-us') return 'company'
   if (item.to.startsWith('/room-booking')) return 'room-booking'
-  if (item.to.startsWith('/manager')) return 'manager'
+  // if (item.to.startsWith('/manager')) return 'manager'
   if (item.to.startsWith('/hr-admin') || item.to.startsWith('/permissions')) return 'hr'
   if (item.to.startsWith('/teacher') || item.to.startsWith('/exam/grader')) return 'teacher'
   if (item.to.startsWith('/bod')) return 'bod'
@@ -57,7 +57,7 @@ function buildHeaderGroups(items: AppNavItem[], labels: Record<string, string>):
     'room-booking',
     'rewards',
     'kpi',
-    'manager',
+    // 'manager',
     'hr',
     'teacher',
     'bod',
@@ -136,7 +136,7 @@ export function MemberLeaderHeaderNav() {
       learning: 'Học tập',
       'room-booking': isPrivileged ? 'Duyệt lịch phòng họp' : 'Đặt phòng họp',
       kpi: 'KPI / Báo cáo',
-      manager: 'Quản lý lớp',
+      // manager: 'Quản lý lớp',
       hr: 'Nhân sự',
       rewards: 'Khen thưởng/Phạt',
       teacher: 'Giảng viên',
