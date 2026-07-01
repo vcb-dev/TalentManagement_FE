@@ -257,13 +257,13 @@ function LoginPage() {
                     <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Mật khẩu
                     </span>
-                    <a
+                    {/* <a
                       href="#"
                       className="text-xs font-medium text-primary hover:opacity-90"
                       onClick={(e) => e.preventDefault()}
                     >
                       Chính sách bảo mật
-                    </a>
+                    </a> */}
                   </div>
                   <InputController
                     control={form.control}

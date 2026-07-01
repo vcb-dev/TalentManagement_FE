@@ -625,7 +625,7 @@ export function groupedSidebarNavItems(
         ),
         ...find(MANAGER_OPS_ITEMS, '/permissions'),
         ...find(BOD_ITEMS, '/permissions'),
-        CSKH_QUALITY_ITEM,
+        // CSKH_QUALITY_ITEM,
       ]),
     },
     {
@@ -665,7 +665,7 @@ export function mergeCompactHeaderNavItems(
   push(MANAGER_KPI_ITEMS)
   push(MANAGER_OPS_ITEMS)
   push(TEACHER_HEADER_ITEMS)
-  push([CSKH_QUALITY_ITEM])
+  // push([CSKH_QUALITY_ITEM])
   return out
 }
 
