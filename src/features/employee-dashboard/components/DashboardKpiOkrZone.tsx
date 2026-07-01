@@ -29,6 +29,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { useAuthStore } from '@/stores/auth.store'
+import { useDebounce } from '@/hooks/useDebounce'
 import { useHrOrgTree } from '@/features/hr-admin/useHrOrgTree'
 import { useMyDashboard } from '@/features/dashboard/hooks'
 import { STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
@@ -140,21 +141,26 @@ export function DashboardKpiOkrZone({
   const [localRangeStartMonth, setLocalRangeStartMonth] = useState(() => new Date().getMonth() + 1)
   const [localRangeEndMonth, setLocalRangeEndMonth] = useState(() => new Date().getMonth() + 1)
 
-  const reportYear = managerReportPeriodFromParent?.reportYear ?? localReportYear
-  const rangeStartMonth = managerReportPeriodFromParent?.rangeStartMonth ?? localRangeStartMonth
-  const rangeEndMonth = managerReportPeriodFromParent?.rangeEndMonth ?? localRangeEndMonth
+  const debouncedYear = useDebounce(localReportYear, 500)
+  const debouncedStartMonth = useDebounce(localRangeStartMonth, 500)
+  const debouncedEndMonth = useDebounce(localRangeEndMonth, 500)
+
+  const reportYear = managerReportPeriodFromParent?.reportYear ?? debouncedYear
+  const rangeStartMonth = managerReportPeriodFromParent?.rangeStartMonth ?? debouncedStartMonth
+  const rangeEndMonth = managerReportPeriodFromParent?.rangeEndMonth ?? debouncedEndMonth
   const kpiFilterFromParent = Boolean(isManager && managerReportPeriodFromParent)
 
   const treeQ = useHrOrgTree()
+  const teamIdsStr = user?.teamIds?.join(',')
   const teamOptions: TeamOption[] = useMemo(() => {
     const all = (treeQ.data?.departments ?? []).flatMap((d) =>
       d.teams.map((t) => ({ id: t.id, name: t.name, deptName: d.name }))
     )
     if (isManager) return all
-    const myIds = new Set((user?.teamIds ?? []).filter(Boolean))
+    const myIds = new Set((teamIdsStr ?? '').split(',').filter(Boolean))
     if (!myIds.size) return []
     return all.filter((t) => myIds.has(t.id))
-  }, [treeQ.data, isManager, user?.teamIds])
+  }, [treeQ.data, isManager, teamIdsStr])
 
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   useEffect(() => {
@@ -164,13 +170,16 @@ export function DashboardKpiOkrZone({
   }, [teamOptions, selectedTeamId])
 
   const selectedTeam = teamOptions.find((t) => t.id === selectedTeamId)
+  const isSelectedTeamValid = teamOptions.some((t) => t.id === selectedTeamId)
 
   const data = useKpiDashboardData({
     teamId: selectedTeamId,
     year: reportYear,
     startMonth: rangeStartMonth,
     endMonth: rangeEndMonth,
-    enabled: Boolean(selectedTeamId && (!isMember || Boolean(user?.id))),
+    enabled: Boolean(
+      selectedTeamId && isSelectedTeamValid && !treeQ.isLoading && (!isMember || Boolean(user?.id))
+    ),
     onlyAssigneeUserId: isMember ? user?.id : undefined,
   })
 
