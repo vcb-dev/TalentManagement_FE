@@ -10,6 +10,9 @@ export const teacherClassApiSchema = z.object({
   status: z.enum(['open', 'full', 'closed']),
   memberCount: z.number().int().nonnegative(),
   pendingRegistrationCount: z.number().int().nonnegative().optional(),
+  /** false = lớp không phải mình chủ nhiệm, chỉ được phân công chấm chéo bài thi. */
+  isOwnClass: z.boolean().optional(),
+  crossGradingScheduleId: z.string().uuid().nullable().optional(),
 })
 
 export const teacherClassMemberApiSchema = z.object({

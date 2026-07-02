@@ -1,10 +1,12 @@
 import { useDeferredValue, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Filter, Search, School } from 'lucide-react'
+import { Filter, Search, School, ClipboardCheck } from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
 import { SkeletonClassCardGrid } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -70,18 +72,26 @@ export function TeacherClassesScreen() {
   } = useTeacherClasses()
   const rows: TeacherClassRow[] = useMemo(
     () =>
-      teacherClassesRaw.map((r) => ({
-        id: r.id,
-        title: r.name,
-        periodBadge: r.examDate
-          ? `Thi: ${new Date(r.examDate).toLocaleDateString('vi-VN')}`
-          : 'Chưa có lịch thi',
-        examLine: `${LEVEL_LABEL[r.levelFrom] || r.levelFrom} -> ${LEVEL_LABEL[r.levelTo] || r.levelTo}`,
-        memberCount: r.memberCount,
-        metaIcon: ICON_MAP[r.levelFrom] || 'school',
-        accent: ACCENT_MAP[r.levelFrom] || 'primary',
-        track: r.levelFrom as TeacherClassTrack,
-      })),
+      teacherClassesRaw
+        .filter((r) => r.isOwnClass !== false)
+        .map((r) => ({
+          id: r.id,
+          title: r.name,
+          periodBadge: r.examDate
+            ? `Thi: ${new Date(r.examDate).toLocaleDateString('vi-VN')}`
+            : 'Chưa có lịch thi',
+          examLine: `${LEVEL_LABEL[r.levelFrom] || r.levelFrom} -> ${LEVEL_LABEL[r.levelTo] || r.levelTo}`,
+          memberCount: r.memberCount,
+          metaIcon: ICON_MAP[r.levelFrom] || 'school',
+          accent: ACCENT_MAP[r.levelFrom] || 'primary',
+          track: r.levelFrom as TeacherClassTrack,
+        })),
+    [teacherClassesRaw]
+  )
+
+  // Lớp không phải mình chủ nhiệm nhưng được phân công chấm chéo bài thi (lớp Editor).
+  const crossGradingRows = useMemo(
+    () => teacherClassesRaw.filter((r) => r.isOwnClass === false && r.crossGradingScheduleId),
     [teacherClassesRaw]
   )
 
@@ -164,6 +174,36 @@ export function TeacherClassesScreen() {
               </div>
             </div>
           </div>
+
+          {crossGradingRows.length > 0 ? (
+            <div className="mb-6">
+              <h2 className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground">
+                <ClipboardCheck className="h-4 w-4 text-primary" />
+                Lớp tôi chấm chéo
+              </h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {crossGradingRows.map((r) => (
+                  <Card key={`${r.id}-${r.crossGradingScheduleId}`} className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{r.name}</p>
+                        <p className="text-xs text-muted-foreground">{r.memberCount} thành viên</p>
+                      </div>
+                      <Badge variant="outline">Chấm chéo</Badge>
+                    </div>
+                    <Button type="button" size="sm" className="mt-2 w-full" asChild>
+                      <Link
+                        to="/manager/grade-editor-exam/$scheduleId"
+                        params={{ scheduleId: r.crossGradingScheduleId ?? '' }}
+                      >
+                        Chấm bài thi
+                      </Link>
+                    </Button>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div
             id="teacher-class-filters"

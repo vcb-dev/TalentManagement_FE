@@ -16,9 +16,13 @@ import {
   useMySubmissions,
   useScheduleDetail,
   useStartExam,
+  useMyExamPaper,
+  useSubmissionFeedback,
+  useSubmitExamFeedback,
 } from '@/features/exam/hooks'
 import { useMyEnrolledClass } from '@/features/learning-path/hooks'
 import { useAuthStore } from '@/stores/auth.store'
+import { inferDurationMinutesFromStartEnd } from '@/lib/examScheduleTime'
 
 const DEFAULT_DURATION_SECONDS = 60 * 60 // 1 tiếng mặc định
 
@@ -119,6 +123,51 @@ const ExamQuestionCard = memo(function ExamQuestionCard({
   )
 })
 
+const ExamFeedbackCard = memo(function ExamFeedbackCard({
+  submissionId,
+}: {
+  submissionId: string
+}) {
+  const { data: feedback, isLoading } = useSubmissionFeedback(submissionId)
+  const submitFeedback = useSubmitExamFeedback()
+  const [content, setContent] = useState('')
+
+  if (isLoading) return null
+
+  if (feedback) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <p className="text-sm font-semibold text-foreground">Feedback của bạn</p>
+        <p className="mt-1 text-sm text-muted-foreground">{feedback.content}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <p className="text-sm font-semibold text-foreground">Gửi feedback về kỳ thi</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Chia sẻ cảm nhận về đề thi, cách chấm, hoặc góp ý cho giáo viên chấm bài.
+      </p>
+      <Textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder="Nhập feedback của bạn..."
+        className="mt-3 min-h-[80px] text-sm"
+      />
+      <Button
+        type="button"
+        size="sm"
+        className="mt-2"
+        disabled={!content.trim() || submitFeedback.isPending}
+        onClick={() => submitFeedback.mutate({ submissionId, content: content.trim() })}
+      >
+        {submitFeedback.isPending ? 'Đang gửi...' : 'Gửi feedback'}
+      </Button>
+    </div>
+  )
+})
+
 function ExamResultPage() {
   const { scheduleId } = Route.useSearch()
   const { examId } = Route.useParams()
@@ -130,7 +179,29 @@ function ExamResultPage() {
   const { data: mySubmissions, isLoading: isSubsLoading } = useMySubmissions()
   const { data: myClassData, isLoading: isClassLoading } = useMyEnrolledClass()
   const { data: scheduleDetail, isLoading: isScheduleLoading } = useScheduleDetail(scheduleId || '')
-  const allLoading = isLoading || isSubsLoading || isClassLoading || isScheduleLoading
+  const { data: myPaperData, isLoading: isPaperLoading } = useMyExamPaper(scheduleId || '')
+  const allLoading =
+    isLoading || isSubsLoading || isClassLoading || isScheduleLoading || isPaperLoading
+
+  // Đề thi được gán ngẫu nhiên qua lịch thi (lớp Editor) — ưu tiên trước bank JSON cũ.
+  // options: [] cho câu tự luận → tái dùng nguyên UI Textarea đã có bên dưới.
+  const paperBank = useMemo(() => {
+    const paper = myPaperData?.paper
+    if (!paper) return null
+    const duration =
+      scheduleDetail?.startTime && scheduleDetail?.endTime
+        ? (inferDurationMinutesFromStartEnd(scheduleDetail.startTime, scheduleDetail.endTime) ?? 60)
+        : 60
+    return {
+      title: paper.title,
+      duration,
+      questions: paper.questions.map((q) => ({
+        id: q.id,
+        stem: q.stem,
+        options: q.type === 'essay' ? [] : (q.options ?? []),
+      })),
+    }
+  }, [myPaperData, scheduleDetail])
   const { mutateAsync: submitExamApi, isPending: isSubmitting } = useSubmitExam()
   const { mutate: startExamApi } = useStartExam()
   const employeeId = '00000000-0000-4000-8000-000000000001'
@@ -187,8 +258,8 @@ function ExamResultPage() {
         }
 
         // Load bank robustly
-        let foundBank = null
-        if (sub) {
+        let foundBank = paperBank
+        if (!foundBank && sub) {
           // Priority 1: From submission data
           foundBank = sub.schedule?.examQuestions || sub.learningClass?.examQuestions
         }
@@ -210,10 +281,10 @@ function ExamResultPage() {
       }
 
       // If not submitted, proceed with timer initialization
-      let bank = null
-      if (scheduleId && scheduleDetail?.examQuestions) {
+      let bank = paperBank
+      if (!bank && scheduleId && scheduleDetail?.examQuestions) {
         bank = scheduleDetail.examQuestions
-      } else if (!scheduleId && myClassData?.enrolledClass?.id === examId) {
+      } else if (!bank && !scheduleId && myClassData?.enrolledClass?.id === examId) {
         bank = myClassData.enrolledClass.examQuestions
       }
 
@@ -274,6 +345,7 @@ function ExamResultPage() {
     scheduleDetail,
     activeSubmission,
     startExamApi,
+    paperBank,
   ])
 
   // Luôn giữ answersRef đồng bộ với state mới nhất
@@ -540,6 +612,9 @@ function ExamResultPage() {
               </div>
             </div>
           )}
+          {activeSubmission?.status === 'done' && activeSubmission.id ? (
+            <ExamFeedbackCard submissionId={activeSubmission.id} />
+          ) : null}
           {questionBank.questions.map((q, idx) => (
             <ExamQuestionCard
               key={q.id}

@@ -133,6 +133,42 @@ export const examApi = {
     return res.data
   },
 
+  /** Học viên gửi feedback cho bài thi đã chấm xong. */
+  submitFeedback: async (submissionId: string, content: string) => {
+    const res = await apiClient.post<unknown>(`/exams/submissions/${submissionId}/feedback`, {
+      content,
+    })
+    return res.data
+  },
+
+  /** Feedback của 1 bài nộp — null nếu học viên chưa gửi. */
+  getSubmissionFeedback: async (submissionId: string) => {
+    const res = await apiClient.get<unknown>(`/exams/submissions/${submissionId}/feedback`)
+    return res.data as { id: string; content: string; createdAt: string } | null
+  },
+
+  /** Đề thi đã gán ngẫu nhiên cho member trong lịch thi (lớp Editor) — null nếu lịch không dùng đề thi. */
+  getMyPaper: async (scheduleId: string) => {
+    const res = await apiClient.get<unknown>('/exams/my-paper', { params: { scheduleId } })
+    return res.data as {
+      paper: {
+        id: string
+        code: string
+        title: string
+        description: string | null
+        questions: Array<{
+          id: string
+          type: 'mcq' | 'essay'
+          stem: string
+          options: string[] | null
+          points: number
+          sortOrder: number
+        }>
+      } | null
+      submissionStatus?: string
+    }
+  },
+
   gradeSubmission: async (body: GradeSubmissionInput) => {
     if (isMockApiEnabled()) {
       return { id: body.submissionId, status: body.status || 'done' } as any
