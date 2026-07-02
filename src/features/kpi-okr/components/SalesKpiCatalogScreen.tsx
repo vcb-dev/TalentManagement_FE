@@ -39,7 +39,8 @@ const MANAGED_TEMPLATES = [
   {
     code: 'SALES_NV',
     label: 'NV Kinh doanh',
-    description: 'Tự động gán cho Sales thường theo giai đoạn thâm niên M1 → M2 → M3 → Chính thức.',
+    description:
+      'Tự động gán cho Sales thường theo giai đoạn thâm niên M1 → M2 → M3 → Chính thức. Riêng Leader nhận KPI theo tab "Set KPI cho leader".',
   },
 ] as const
 
@@ -50,6 +51,7 @@ const SALES_STAGES = [
   { value: 'M2', label: 'Tháng 2 (M2)' },
   { value: 'M3', label: 'Tháng 3 (M3)' },
   { value: 'OFFICIAL', label: 'Chính thức' },
+  { value: 'LEADER', label: 'Set KPI cho leader' },
 ] as const
 
 const SALES_CATEGORY_OPTIONS = [
