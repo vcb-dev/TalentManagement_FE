@@ -42,7 +42,6 @@ import { Route as ProtectedManagerGradingRouteImport } from './routes/_protected
 import { Route as ProtectedManagerExercisesRouteImport } from './routes/_protected/manager/exercises'
 import { Route as ProtectedManagerExamScheduleRouteImport } from './routes/_protected/manager/exam-schedule'
 import { Route as ProtectedManagerExamPapersRouteImport } from './routes/_protected/manager/exam-papers'
-import { Route as ProtectedManagerEditorClassesRouteImport } from './routes/_protected/manager/editor-classes'
 import { Route as ProtectedManagerClassesRouteImport } from './routes/_protected/manager/classes'
 import { Route as ProtectedManagerClassExamsRouteImport } from './routes/_protected/manager/class-exams'
 import { Route as ProtectedManagerApprovalsRouteImport } from './routes/_protected/manager/approvals'
@@ -250,12 +249,6 @@ const ProtectedManagerExamPapersRoute =
   ProtectedManagerExamPapersRouteImport.update({
     id: '/manager/exam-papers',
     path: '/manager/exam-papers',
-    getParentRoute: () => ProtectedRouteRoute,
-  } as any)
-const ProtectedManagerEditorClassesRoute =
-  ProtectedManagerEditorClassesRouteImport.update({
-    id: '/manager/editor-classes',
-    path: '/manager/editor-classes',
     getParentRoute: () => ProtectedRouteRoute,
   } as any)
 const ProtectedManagerClassesRoute = ProtectedManagerClassesRouteImport.update({
@@ -474,7 +467,6 @@ export interface FileRoutesByFullPath {
   '/manager/approvals': typeof ProtectedManagerApprovalsRoute
   '/manager/class-exams': typeof ProtectedManagerClassExamsRoute
   '/manager/classes': typeof ProtectedManagerClassesRoute
-  '/manager/editor-classes': typeof ProtectedManagerEditorClassesRoute
   '/manager/exam-papers': typeof ProtectedManagerExamPapersRoute
   '/manager/exam-schedule': typeof ProtectedManagerExamScheduleRoute
   '/manager/exercises': typeof ProtectedManagerExercisesRoute
@@ -540,7 +532,6 @@ export interface FileRoutesByTo {
   '/manager/approvals': typeof ProtectedManagerApprovalsRoute
   '/manager/class-exams': typeof ProtectedManagerClassExamsRoute
   '/manager/classes': typeof ProtectedManagerClassesRoute
-  '/manager/editor-classes': typeof ProtectedManagerEditorClassesRoute
   '/manager/exam-papers': typeof ProtectedManagerExamPapersRoute
   '/manager/exam-schedule': typeof ProtectedManagerExamScheduleRoute
   '/manager/exercises': typeof ProtectedManagerExercisesRoute
@@ -609,7 +600,6 @@ export interface FileRoutesById {
   '/_protected/manager/approvals': typeof ProtectedManagerApprovalsRoute
   '/_protected/manager/class-exams': typeof ProtectedManagerClassExamsRoute
   '/_protected/manager/classes': typeof ProtectedManagerClassesRoute
-  '/_protected/manager/editor-classes': typeof ProtectedManagerEditorClassesRoute
   '/_protected/manager/exam-papers': typeof ProtectedManagerExamPapersRoute
   '/_protected/manager/exam-schedule': typeof ProtectedManagerExamScheduleRoute
   '/_protected/manager/exercises': typeof ProtectedManagerExercisesRoute
@@ -677,7 +667,6 @@ export interface FileRouteTypes {
     | '/manager/approvals'
     | '/manager/class-exams'
     | '/manager/classes'
-    | '/manager/editor-classes'
     | '/manager/exam-papers'
     | '/manager/exam-schedule'
     | '/manager/exercises'
@@ -743,7 +732,6 @@ export interface FileRouteTypes {
     | '/manager/approvals'
     | '/manager/class-exams'
     | '/manager/classes'
-    | '/manager/editor-classes'
     | '/manager/exam-papers'
     | '/manager/exam-schedule'
     | '/manager/exercises'
@@ -811,7 +799,6 @@ export interface FileRouteTypes {
     | '/_protected/manager/approvals'
     | '/_protected/manager/class-exams'
     | '/_protected/manager/classes'
-    | '/_protected/manager/editor-classes'
     | '/_protected/manager/exam-papers'
     | '/_protected/manager/exam-schedule'
     | '/_protected/manager/exercises'
@@ -1088,13 +1075,6 @@ declare module '@tanstack/react-router' {
       path: '/manager/exam-papers'
       fullPath: '/manager/exam-papers'
       preLoaderRoute: typeof ProtectedManagerExamPapersRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/manager/editor-classes': {
-      id: '/_protected/manager/editor-classes'
-      path: '/manager/editor-classes'
-      fullPath: '/manager/editor-classes'
-      preLoaderRoute: typeof ProtectedManagerEditorClassesRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_protected/manager/classes': {
@@ -1376,7 +1356,6 @@ interface ProtectedRouteRouteChildren {
   ProtectedManagerApprovalsRoute: typeof ProtectedManagerApprovalsRoute
   ProtectedManagerClassExamsRoute: typeof ProtectedManagerClassExamsRoute
   ProtectedManagerClassesRoute: typeof ProtectedManagerClassesRoute
-  ProtectedManagerEditorClassesRoute: typeof ProtectedManagerEditorClassesRoute
   ProtectedManagerExamPapersRoute: typeof ProtectedManagerExamPapersRoute
   ProtectedManagerExamScheduleRoute: typeof ProtectedManagerExamScheduleRoute
   ProtectedManagerExercisesRoute: typeof ProtectedManagerExercisesRoute
@@ -1437,7 +1416,6 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedManagerApprovalsRoute: ProtectedManagerApprovalsRoute,
   ProtectedManagerClassExamsRoute: ProtectedManagerClassExamsRoute,
   ProtectedManagerClassesRoute: ProtectedManagerClassesRoute,
-  ProtectedManagerEditorClassesRoute: ProtectedManagerEditorClassesRoute,
   ProtectedManagerExamPapersRoute: ProtectedManagerExamPapersRoute,
   ProtectedManagerExamScheduleRoute: ProtectedManagerExamScheduleRoute,
   ProtectedManagerExercisesRoute: ProtectedManagerExercisesRoute,

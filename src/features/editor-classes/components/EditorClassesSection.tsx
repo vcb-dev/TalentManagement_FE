@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import { CalendarPlus, RefreshCw, School } from 'lucide-react'
-import { ManagerHubPageHeader } from '@/features/manager/components/ManagerHub/ManagerHubPageHeader'
-import { ManagerScreenLayout } from '@/features/manager/components/ManagerHub/ManagerScreenLayout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -176,50 +174,56 @@ function BulkResultCard({ result }: { result: BulkResult }) {
   )
 }
 
-export function EditorClassesScreen() {
+export function EditorClassesSection() {
   const { data: classes = [], isLoading, isError, error, refetch, isFetching } = useEditorClasses()
   const sync = useSyncEditorClasses()
   const [syncReport, setSyncReport] = useState<SyncReport | null>(null)
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null)
 
   return (
-    <ManagerScreenLayout hideHubNav hideToolbar>
-      <div className="mb-8 flex flex-col gap-6">
-        <ManagerHubPageHeader
-          title="Lớp Editor"
-          description="Mỗi team có editor sẽ có 1 lớp riêng — leader team làm giáo viên. Đồng bộ để tự động tạo lớp, thêm editor đủ 1 tháng, và tạo lịch thi hàng loạt với chấm chéo."
-          actions={
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="gap-2"
-                disabled={sync.isPending}
-                onClick={() => sync.mutate(true, { onSuccess: setSyncReport })}
-              >
-                <RefreshCw className="h-4 w-4" />
-                Xem trước
-              </Button>
-              <Button
-                type="button"
-                className="gap-2"
-                disabled={sync.isPending}
-                onClick={() =>
-                  sync.mutate(false, {
-                    onSuccess: (r) => {
-                      setSyncReport(r)
-                      void refetch()
-                    },
-                  })
-                }
-              >
-                <RefreshCw className="h-4 w-4" />
-                {sync.isPending ? 'Đang đồng bộ...' : 'Đồng bộ lớp Editor'}
-              </Button>
-            </div>
-          }
-        />
+    <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.04)]">
+      <div className="flex flex-col gap-4 border-b border-slate-50 px-8 py-5 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary/60">
+            Quản lý
+          </p>
+          <h3 className="text-lg font-black text-slate-900">Lớp Editor</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Mỗi team có editor sẽ có 1 lớp riêng — leader team làm giáo viên. Đồng bộ để tự động tạo
+            lớp, thêm editor đủ 1 tháng, và tạo lịch thi hàng loạt với chấm chéo.
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            disabled={sync.isPending}
+            onClick={() => sync.mutate(true, { onSuccess: setSyncReport })}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Xem trước
+          </Button>
+          <Button
+            type="button"
+            className="gap-2"
+            disabled={sync.isPending}
+            onClick={() =>
+              sync.mutate(false, {
+                onSuccess: (r) => {
+                  setSyncReport(r)
+                  void refetch()
+                },
+              })
+            }
+          >
+            <RefreshCw className="h-4 w-4" />
+            {sync.isPending ? 'Đang đồng bộ...' : 'Đồng bộ lớp Editor'}
+          </Button>
+        </div>
+      </div>
 
+      <div className="space-y-4 p-5">
         {syncReport ? <SyncPreviewCard report={syncReport} /> : null}
 
         {isError ? (
@@ -268,6 +272,6 @@ export function EditorClassesScreen() {
         <BulkScheduleForm onResult={setBulkResult} />
         {bulkResult ? <BulkResultCard result={bulkResult} /> : null}
       </div>
-    </ManagerScreenLayout>
+    </div>
   )
 }
