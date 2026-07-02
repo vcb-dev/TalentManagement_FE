@@ -4,8 +4,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useManagerSubmissions } from '@/features/exam/hooks'
-import { Loader2, User, Trophy, Calendar, Search, X } from 'lucide-react'
+import { User, Trophy, Calendar, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { SkeletonSubmissionCardList } from '@/components/ui/skeleton'
 
 interface ClassMembersScoresModalProps {
   isOpen: boolean
@@ -20,7 +22,10 @@ export function ClassMembersScoresModal({
   classId,
   className,
 }: ClassMembersScoresModalProps) {
-  const { data: allSubmissions = [], isLoading } = useManagerSubmissions()
+  const { data: allSubmissions = [], isLoading } = useManagerSubmissions(
+    { classId },
+    { enabled: isOpen }
+  )
   const [searchTerm, setSearchTerm] = useState('')
 
   const classSubmissions = useMemo(
@@ -79,20 +84,15 @@ export function ClassMembersScoresModal({
         <div className="p-2">
           <div className="h-[400px] overflow-y-auto px-6 py-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
             {isLoading ? (
-              <div className="flex h-full items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
+              <SkeletonSubmissionCardList count={4} />
             ) : filteredSubmissions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="h-16 w-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
-                  <User className="h-8 w-8 text-slate-200" />
-                </div>
-                <p className="text-slate-400 font-medium">
-                  {searchTerm
-                    ? 'Không tìm thấy học viên phù hợp.'
-                    : 'Lớp này chưa có dữ liệu bài nộp.'}
-                </p>
-              </div>
+              <EmptyState
+                icon={<User className="h-8 w-8" />}
+                title={
+                  searchTerm ? 'Không tìm thấy học viên phù hợp' : 'Lớp này chưa có dữ liệu bài nộp'
+                }
+                compact
+              />
             ) : (
               <div className="grid grid-cols-1 gap-3">
                 {filteredSubmissions.map((sub) => (

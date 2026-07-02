@@ -3,20 +3,20 @@ import { createPortal } from 'react-dom'
 import { useForm, useWatch, Controller } from 'react-hook-form'
 import { Calendar, Loader2, PlusCircle, Search, UserPlus2, Users, X } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  PAGE_HEADER_DESCRIPTION,
-  PAGE_HEADER_GRADIENT,
-  PAGE_HEADER_SURFACE,
-  PAGE_HEADER_TITLE,
-} from '@/components/shared/PageHeader'
+import { ManagerHubPageHeader } from './ManagerHubPageHeader'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Form } from '@/components/ui/form'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { InputController, SelectController } from '@/components/ui/form-controllers'
-import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { SelectItem } from '@/components/ui/select'
+import { SkeletonClassCardGrid } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { getApiErrorMessage } from '@/lib/axios'
 import { cn } from '@/lib/utils'
+import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import {
   useClassMemberOptions,
   useCreateManagerClass,
@@ -113,7 +113,14 @@ export function ManagerClassesScreen() {
 
   const [deleteClassId, setDeleteClassId] = useState<string | null>(null)
 
-  const { data: rows = [], isLoading, isError, error } = useManagerClasses({ search })
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useManagerClasses({ search })
   const createClass = useCreateManagerClass()
   const deleteClass = useDeleteManagerClass()
   const updateClass = useUpdateManagerClass()
@@ -226,72 +233,58 @@ export function ManagerClassesScreen() {
       <ManagerScreenLayout hideHubNav hideToolbar>
         <div className="mb-8 flex flex-col gap-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
-              <h1 className={PAGE_HEADER_TITLE}>
-                <span className={PAGE_HEADER_GRADIENT}>Chia lớp học</span>
-              </h1>
-              <p className={PAGE_HEADER_DESCRIPTION}>
-                Quản lý và điều phối nhân sự vào các lớp đào tạo. Dữ liệu lấy trực tiếp từ API
-                manager/classes.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-card px-3 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-primary/10">
-                <Calendar className="h-4 w-4 shrink-0 text-primary" strokeWidth={2} />
-                Học kỳ Q2 / 2026
-              </span>
-            </div>
+            <ManagerHubPageHeader
+              title="Chia lớp học"
+              description="Quản lý và điều phối nhân sự vào các lớp đào tạo. Dữ liệu lấy trực tiếp từ API manager/classes."
+              actions={
+                <span className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-card px-3 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-primary/10">
+                  <Calendar className="h-4 w-4 shrink-0 text-primary" strokeWidth={2} />
+                  Học kỳ Q2 / 2026
+                </span>
+              }
+            />
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div
-              className={cn(
-                'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
-                CARD_ENTRANCE_HOVER
-              )}
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary">
-                <Users className="h-6 w-6" strokeWidth={2} />
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  Lớp đang mở
-                </div>
-                <div className="text-2xl font-bold text-foreground">{openCount}</div>
-              </div>
-            </div>
-            <div
-              className={cn(
-                'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
-                CARD_ENTRANCE_HOVER
-              )}
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <UserPlus2 className="h-6 w-6" strokeWidth={2} />
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  Tổng học viên
-                </div>
-                <div className="text-2xl font-bold text-foreground">{totalMembers}</div>
-              </div>
-            </div>
-            <div
-              className={cn(
-                'flex items-center gap-4 rounded-xl border border-border/80 bg-card p-5 shadow-[var(--shadow-card)]',
-                CARD_ENTRANCE_HOVER
-              )}
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-                <Calendar className="h-6 w-6" strokeWidth={2} />
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                  Lớp trong kỳ
-                </div>
-                <div className="text-2xl font-bold text-foreground">{rows.length}</div>
-              </div>
-            </div>
+            {[
+              { label: 'Lớp đang mở', value: openCount, icon: Users, tone: 'primary' },
+              { label: 'Tổng học viên', value: totalMembers, icon: UserPlus2, tone: 'success' },
+              { label: 'Lớp trong kỳ', value: rows.length, icon: Calendar, tone: 'warning' },
+            ].map((item) => {
+              const Icon = item.icon
+              const toneClass =
+                item.tone === 'primary'
+                  ? 'bg-primary/10 text-primary'
+                  : item.tone === 'success'
+                    ? 'bg-success/10 text-success-600 dark:bg-success-500/15 dark:text-success-100'
+                    : 'bg-warning/10 text-warning-600 dark:bg-warning-500/15 dark:text-warning-100'
+              return (
+                <Card
+                  key={item.label}
+                  className={cn(
+                    'border-border bg-card shadow-[var(--shadow-card)]',
+                    CARD_ENTRANCE_HOVER
+                  )}
+                >
+                  <CardContent className="flex items-center gap-4 p-5">
+                    <div
+                      className={cn(
+                        'flex h-12 w-12 shrink-0 items-center justify-center rounded-full',
+                        toneClass
+                      )}
+                    >
+                      <Icon className="h-6 w-6" strokeWidth={2} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        {item.label}
+                      </div>
+                      <div className="text-2xl font-bold text-foreground">{item.value}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         </div>
 
@@ -572,44 +565,44 @@ export function ManagerClassesScreen() {
             document.body
           )}
 
-        {isError && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
-            <p className="font-semibold">Không thể tải danh sách lớp</p>
-            <p className="mt-1 text-xs opacity-80">
-              {error instanceof Error
-                ? error.message
-                : 'Lỗi không xác định. Kiểm tra quyền truy cập hoặc kết nối mạng.'}
-            </p>
-          </div>
-        )}
+        {isError ? (
+          <ErrorState
+            className="mb-6"
+            title="Không thể tải danh sách lớp"
+            description={getApiErrorMessage(error) || 'Kiểm tra quyền truy cập hoặc kết nối mạng.'}
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
+        ) : null}
 
-        {isLoading && !isError && (
-          <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Đang tải danh sách lớp...</span>
-          </div>
-        )}
+        {isLoading && !isError ? <SkeletonClassCardGrid count={6} /> : null}
 
-        {!isLoading && !isError && rows.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
-            <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
-            <p className="text-sm font-semibold text-muted-foreground">Chưa có lớp học nào</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">
-              Nhấn "Tạo lớp" để tạo lớp học đầu tiên.
-            </p>
-          </div>
-        )}
+        {!isLoading && !isError && rows.length === 0 ? (
+          <EmptyState
+            icon={<Users className="h-8 w-8" />}
+            title="Chưa có lớp học nào"
+            description='Nhấn "Tạo lớp" để tạo lớp học đầu tiên.'
+            action={
+              <Button type="button" className="gap-2" onClick={() => setIsCreateOpen(true)}>
+                <PlusCircle className="h-4 w-4" />
+                Tạo lớp
+              </Button>
+            }
+          />
+        ) : null}
 
-        <div className="grid grid-cols-1 gap-6 items-start md:grid-cols-2 xl:grid-cols-3">
-          {rows.map((row) => (
-            <ClassCard
-              key={row.id}
-              row={row}
-              onEdit={openEditClassModal}
-              onDelete={handleDeleteClass}
-            />
-          ))}
-        </div>
+        {!isLoading && !isError && rows.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6 items-start md:grid-cols-2 xl:grid-cols-3">
+            {rows.map((row) => (
+              <ClassCard
+                key={row.id}
+                row={row}
+                onEdit={openEditClassModal}
+                onDelete={handleDeleteClass}
+              />
+            ))}
+          </div>
+        ) : null}
 
         {editClassId &&
           createPortal(

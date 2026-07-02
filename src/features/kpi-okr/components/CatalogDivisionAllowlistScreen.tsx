@@ -9,6 +9,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { performanceApi } from '@/features/kpi-okr/api'
 import { useHrOrgTree } from '@/features/hr-admin/useHrOrgTree'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { CARD_ENTRANCE } from '@/lib/cardMotion'
 
@@ -86,15 +89,13 @@ export function CatalogDivisionAllowlistScreen() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-          Phòng ban áp dụng danh mục KPI/OKR
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Chọn phòng ban được bật tự khởi tạo mục tiêu và luồng danh mục KPI/OKR trên hệ thống (gom
-          cấu hình môi trường và danh sách do HR lưu).
-        </p>
-      </div>
+      <PageHeader
+        title="Phòng ban áp dụng danh mục KPI/OKR"
+        description="Chọn phòng ban được bật tự khởi tạo mục tiêu và luồng danh mục KPI/OKR trên hệ thống (gom cấu hình môi trường và danh sách do HR lưu)."
+        gradientTitle
+        variant="flat"
+        className="border-0 pb-0"
+      />
 
       <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900 dark:bg-blue-950/30">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
@@ -124,9 +125,18 @@ export function CatalogDivisionAllowlistScreen() {
               <Skeleton className="h-10 w-full" />
             </div>
           ) : listQ.isError ? (
-            <p className="text-sm text-destructive">Không tải được danh sách — thử lại sau.</p>
+            <ErrorState
+              variant="inline"
+              title="Không tải được danh sách."
+              onRetry={() => void listQ.refetch()}
+              retrying={listQ.isFetching}
+            />
           ) : divisions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Chưa có dữ liệu cây phòng ban.</p>
+            <EmptyState
+              title="Chưa có dữ liệu cây phòng ban"
+              compact
+              className="border-0 bg-transparent py-4"
+            />
           ) : (
             <>
               <div className="flex flex-wrap gap-2">

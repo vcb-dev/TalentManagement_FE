@@ -51,6 +51,29 @@ function showNotification(title: string, body: string) {
   }
 }
 
+function normalizeUserEmail(email?: string | null) {
+  const emailLower = (email || '').trim().toLowerCase()
+  const parts = emailLower.split('@')
+  if (parts.length === 2 && parts[1] === 'gmail.com') {
+    parts[0] = parts[0].replace(/\./g, '')
+  }
+  return parts.join('@')
+}
+
+function shouldRunRoomNotifications(user: { email?: string | null; role?: string | null }) {
+  const emailClean = normalizeUserEmail(user.email)
+  const isRoomAccount =
+    emailClean === 'vienchibaodev@gmail.com' || emailClean === 'vienibaodev@gmail.com'
+  const isAdmin = ['MANAGER', 'HR', 'BOD'].includes(user.role || '')
+  if (isAdmin && !isRoomAccount) return false
+  return true
+}
+
+function isRoomKioskAccount(email?: string | null) {
+  const emailClean = normalizeUserEmail(email)
+  return emailClean === 'vienchibaodev@gmail.com' || emailClean === 'vienibaodev@gmail.com'
+}
+
 export default function GlobalNotificationListener() {
   const user = useAuthStore((s) => s.user)
   const [expiredRooms, setExpiredRooms] = useState<any[]>([])
@@ -90,7 +113,10 @@ export default function GlobalNotificationListener() {
   }
 
   useEffect(() => {
-    if (!user) return
+    if (!user || !shouldRunRoomNotifications(user)) return
+
+    let sseConnected = false
+    const pollMs = isRoomKioskAccount(user.email) ? 30_000 : 60_000
 
     const check = async () => {
       // 0. Đồng bộ từ localStorage trước để tránh lệch tab/thiết bị
@@ -134,16 +160,8 @@ export default function GlobalNotificationListener() {
       const td = vnNow.date
       const currentMins = timeToMinutes(vnNow.time)
 
-      const emailLower = (user.email || '').trim().toLowerCase()
-      const parts = emailLower.split('@')
-      if (parts.length === 2 && parts[1] === 'gmail.com') {
-        parts[0] = parts[0].replace(/\./g, '')
-      }
-      const emailClean = parts.join('@')
-      const isRoomAccount =
-        emailClean === 'vienchibaodev@gmail.com' || emailClean === 'vienibaodev@gmail.com'
-      const isAdmin = ['MANAGER', 'HR', 'BOD'].includes(user.role || '')
-      if (isAdmin && !isRoomAccount) return
+      const emailClean = normalizeUserEmail(user.email)
+      const isRoomAccount = isRoomKioskAccount(user.email)
       const urlParams = new URLSearchParams(window.location.search)
       const roomParam = urlParams.get('room') // Ví dụ: "Tầng 5" hoặc "Tầng 6"
 
@@ -365,7 +383,9 @@ export default function GlobalNotificationListener() {
     }
 
     check()
-    const timer = setInterval(check, 10000)
+    const timer = setInterval(() => {
+      if (!sseConnected) void check()
+    }, pollMs)
 
     const token = useAuthStore.getState().accessToken
     let eventSource: EventSource | null = null
@@ -375,18 +395,21 @@ export default function GlobalNotificationListener() {
       const url = `${baseUrl.replace(/\/$/, '')}/room-booking/live?token=${token}`
       try {
         eventSource = new EventSource(url)
+        eventSource.onopen = () => {
+          sseConnected = true
+        }
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data)
             if (data.event === 'changed') {
-              check()
+              void check()
             }
           } catch (e) {
             console.error('SSE parse error:', e)
           }
         }
-        eventSource.onerror = (e) => {
-          console.error('SSE error:', e)
+        eventSource.onerror = () => {
+          sseConnected = false
         }
       } catch (err) {
         console.error('Failed to init SSE in global listener:', err)

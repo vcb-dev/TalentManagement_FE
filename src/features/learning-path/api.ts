@@ -86,4 +86,12 @@ export const learningApi = {
     const feedbacks = safeParse(z.array(feedbackApiSchema), res.data, 'GET /exams/feedbacks')
     return { feedbacks }
   },
+
+  withdraw: async (body: { itemId: string }) => {
+    if (isMockApiEnabled()) {
+      return { success: true }
+    }
+    const res = await apiClient.post<unknown>('/learning/withdraw', body)
+    return res.data as { success: boolean }
+  },
 }

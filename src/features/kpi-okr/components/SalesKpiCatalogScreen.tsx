@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { kpiQueryKeys } from '../kpiQueryKeys'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, AlertTriangle, CalendarDays } from 'lucide-react'
+import { Plus, Pencil, Trash2, AlertTriangle, CalendarDays, ClipboardList } from 'lucide-react'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Skeleton } from '@/components/ui/skeleton'
+import { SkeletonKpiTableSection } from '@/components/ui/skeleton'
 import {
   Select,
   SelectContent,
@@ -23,6 +25,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { PAGE_CONTAINER_CLASS } from '@/lib/pageLayout'
 import { getApiErrorMessage } from '@/lib/axios'
 import { performanceApi, type CatalogItem } from '@/features/kpi-okr/api'
 import { usePermission } from '@/hooks/usePermission'
@@ -36,7 +39,8 @@ const MANAGED_TEMPLATES = [
   {
     code: 'SALES_NV',
     label: 'NV Kinh doanh',
-    description: 'Tự động gán cho Sales thường theo giai đoạn thâm niên M1 → M2 → M3 → Chính thức.',
+    description:
+      'Tự động gán cho Sales thường theo giai đoạn thâm niên M1 → M2 → M3 → Chính thức. Riêng Leader nhận KPI theo tab "Set KPI cho leader".',
   },
 ] as const
 
@@ -47,6 +51,7 @@ const SALES_STAGES = [
   { value: 'M2', label: 'Tháng 2 (M2)' },
   { value: 'M3', label: 'Tháng 3 (M3)' },
   { value: 'OFFICIAL', label: 'Chính thức' },
+  { value: 'LEADER', label: 'Set KPI cho leader' },
 ] as const
 
 const SALES_CATEGORY_OPTIONS = [
@@ -290,9 +295,13 @@ function ItemsTable({
 }) {
   if (items.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed py-6 text-center text-sm text-slate-400">
-        Chưa có chỉ số nào. {canEdit && 'Nhấn "Thêm chỉ số" để bắt đầu.'}
-      </p>
+      <EmptyState
+        icon={<ClipboardList className="h-7 w-7" />}
+        title="Chưa có chỉ số nào"
+        description={canEdit ? 'Nhấn "Thêm chỉ số" để bắt đầu.' : undefined}
+        compact
+        className="rounded-lg border border-dashed"
+      />
     )
   }
   return (
@@ -465,69 +474,58 @@ export function SalesKpiCatalogScreen({ embedded = false }: SalesKpiCatalogScree
   }
 
   return (
-    <div
-      className={cn(
-        embedded ? 'mx-auto max-w-[1400px] px-3 pb-8 md:px-4' : 'mx-auto max-w-5xl px-4 py-8'
-      )}
-    >
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1
-            className={cn(
-              'font-bold tracking-tight text-slate-900 dark:text-slate-100',
-              embedded ? 'text-xl' : 'text-2xl'
-            )}
-          >
-            Cấu hình KPI Kinh doanh
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Quản lý chỉ tiêu KPI theo giai đoạn thâm niên cho nhân viên Kinh doanh. Thay đổi sẽ được
-            áp dụng khi auto-seed kỳ tiếp theo.
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap justify-end gap-2">
-          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <CalendarDays className="h-4 w-4 text-indigo-500" />
-            <Select
-              value={String(selectedMonth)}
-              onValueChange={(value) => setSelectedMonth(Number(value))}
-            >
-              <SelectTrigger className="h-8 w-[112px] border-0 bg-transparent px-2 shadow-none focus:ring-0">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {monthOptions.map((month) => (
-                  <SelectItem key={month} value={String(month)}>
-                    Thang {month}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={String(selectedYear)}
-              onValueChange={(value) => setSelectedYear(Number(value))}
-            >
-              <SelectTrigger className="h-8 w-[92px] border-0 bg-transparent px-2 shadow-none focus:ring-0">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {yearOptions.map((year) => (
-                  <SelectItem key={year} value={String(year)}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+    <div className={cn(embedded ? `${PAGE_CONTAINER_CLASS} pb-8` : `${PAGE_CONTAINER_CLASS} py-8`)}>
+      <PageHeader
+        title="Cấu hình KPI Kinh doanh"
+        description="Quản lý chỉ tiêu KPI theo giai đoạn thâm niên cho nhân viên Kinh doanh. Thay đổi sẽ được áp dụng khi auto-seed kỳ tiếp theo."
+        eyebrow={<ClipboardList className="h-5 w-5 text-indigo-600" aria-hidden />}
+        gradientTitle={!embedded}
+        variant="flat"
+        className="mb-6 border-0 pb-0"
+        actions={
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900">
+              <CalendarDays className="h-4 w-4 text-indigo-500" />
+              <Select
+                value={String(selectedMonth)}
+                onValueChange={(value) => setSelectedMonth(Number(value))}
+              >
+                <SelectTrigger className="h-8 w-[112px] border-0 bg-transparent px-2 shadow-none focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map((month) => (
+                    <SelectItem key={month} value={String(month)}>
+                      Thang {month}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={String(selectedYear)}
+                onValueChange={(value) => setSelectedYear(Number(value))}
+              >
+                <SelectTrigger className="h-8 w-[92px] border-0 bg-transparent px-2 shadow-none focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {canEditPeriod ? (
+              <Button onClick={openAdd} className="shrink-0 gap-2">
+                <Plus className="h-4 w-4" />
+                Thêm chỉ số
+              </Button>
+            ) : null}
           </div>
-          {canEditPeriod && (
-            <Button onClick={openAdd} className="shrink-0 gap-2">
-              <Plus className="h-4 w-4" />
-              Thêm chỉ số
-            </Button>
-          )}
-        </div>
-      </div>
+        }
+      />
 
       {MANAGED_TEMPLATES.length > 1 && (
         <div className="mb-5 flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
@@ -594,12 +592,7 @@ export function SalesKpiCatalogScreen({ embedded = false }: SalesKpiCatalogScree
 
       {/* Content */}
       {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-32 w-full" />
-        </div>
+        <SkeletonKpiTableSection label="Đang tải danh mục KPI Kinh doanh" />
       ) : (
         <div className="space-y-8">
           {visibleCategories.map((cat) => (

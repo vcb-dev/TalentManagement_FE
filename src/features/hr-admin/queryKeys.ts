@@ -8,4 +8,5 @@ export const employeeKeys = {
   detail: (id: string) => [...employeeKeys.details(), id] as const,
   detailByID: () => [...employeeKeys.all, 'detailByID'] as const,
   detailEmployeeByID: (id: string) => [...employeeKeys.detailByID(), id] as const,
+  loginCredential: (id: string) => [...employeeKeys.all, 'login-credential', id] as const,
 }

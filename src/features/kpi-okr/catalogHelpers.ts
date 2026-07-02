@@ -216,8 +216,14 @@ export const TRAFFIC_TEAM_IDS_FALLBACK = [
   '02d0d0d0-0001-4001-8001-000000000401',
 ] as const
 
-/** Pattern khớp tên team Traffic (fallback khi UUID không có trong allowlist). */
-const TRAFFIC_TEAM_NAME_RE = /^(huyk?\s*\d+|đvkd\d*|global\s+(japan|indo|thai|đài\s*loan|taiwan))/i
+/**
+ * Pattern khớp tên team Traffic (fallback khi UUID không có trong allowlist).
+ * Nhánh "đvkd" khớp đúng format team Traffic thật ("ĐVKD1 - Hồng Ngọc": số dính liền
+ * "đvkd", có dấu gạch ngang phía sau) — tránh khớp nhầm các team Kinh doanh khác có
+ * tên bắt đầu bằng "ĐVKD <số> ..." (vd. "ĐVKD 1 Hồng Ngọc (KD)", team Sales thật).
+ */
+const TRAFFIC_TEAM_NAME_RE =
+  /^(huyk?\s*\d+|đvkd\d+\s*-|global\s+(japan|indo|thai|đài\s*loan|taiwan))/i
 
 /**
  * Kiểm tra team có thuộc nhóm Traffic không.

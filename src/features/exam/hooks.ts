@@ -97,18 +97,37 @@ export function useSubmitExam() {
   })
 }
 
-export function useManagerSubmissions() {
+export function useWithdrawExam() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { classId?: string; scheduleId?: string }) => examApi.withdraw(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['learning'] })
+      void qc.invalidateQueries({ queryKey: examKeys.lists() })
+      void qc.invalidateQueries({ queryKey: ['my_exam_submissions'] })
+    },
+  })
+}
+
+export function useManagerSubmissions(
+  filter?: { classId?: string; scheduleId?: string },
+  options?: { enabled?: boolean }
+) {
+  const classId = filter?.classId || ''
+  const scheduleId = filter?.scheduleId || ''
   return useQuery({
-    queryKey: ['exam_submissions'],
-    queryFn: () => examApi.getSubmissions(),
+    queryKey: ['exam_submissions', classId, scheduleId],
+    queryFn: () => examApi.getSubmissions({ classId, scheduleId }),
+    enabled: options?.enabled ?? true,
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }
 
-export function useMySubmissions() {
+export function useMySubmissions(enabled = true) {
   return useQuery({
     queryKey: ['my_exam_submissions'],
     queryFn: () => examApi.getMySubmissions(),
+    enabled,
     staleTime: 60 * 1000, // 1 minute
   })
 }

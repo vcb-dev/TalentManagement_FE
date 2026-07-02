@@ -106,6 +106,18 @@ export const employeeApi = {
     const res = await apiClient.patch<unknown>(`/employees/hr/${id}`, patch)
     return res.data
   },
+
+  getLoginCredential: async (id: string) => {
+    const res = await apiClient.get<{ username: string | null }>(
+      `/employees/${id}/login-credential`
+    )
+    return res.data
+  },
+
+  upsertLoginCredential: async (id: string, body: { username: string; password: string }) => {
+    const res = await apiClient.put<{ username: string }>(`/employees/${id}/login-credential`, body)
+    return res.data
+  },
 }
 
 export type EmployeeEntity = z.infer<typeof employeeApiSchema>

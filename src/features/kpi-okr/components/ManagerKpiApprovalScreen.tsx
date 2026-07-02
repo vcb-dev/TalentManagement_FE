@@ -14,6 +14,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { getApiErrorMessage } from '@/lib/axios'
 import {
   performanceApi,
@@ -226,7 +228,9 @@ function TeamResultInline({
   }
 
   if (assignments.length === 0) {
-    return <p className="p-3 text-center text-xs text-slate-400">Chưa có kết quả KPI/OKR nào.</p>
+    return (
+      <EmptyState compact tone="subtle" title="Chưa có kết quả KPI/OKR nào" className="p-3 py-6" />
+    )
   }
 
   const grouped: { userId: string; name: string; items: PerformanceAssignment[] }[] = []
@@ -1037,7 +1041,7 @@ function TeamKpiInline({
   const assignments = assignmentsQ.data ?? []
 
   if (assignments.length === 0) {
-    return <p className="p-3 text-center text-xs text-slate-400">Chưa có KPI/OKR nào.</p>
+    return <EmptyState compact tone="subtle" title="Chưa có KPI/OKR nào" className="p-3 py-6" />
   }
 
   // Group by assignee
@@ -1380,22 +1384,16 @@ export function ManagerKpiApprovalScreen() {
 
   return (
     <div className="relative isolate mx-auto max-w-[1400px] px-3 py-6 md:px-4">
-      <div
+      <PageHeader
+        title="Duyệt KPI/OKR theo team"
+        description="Duyệt mục tiêu đầu tháng hoặc kết quả cuối tháng do Leader gửi lên."
+        inverse
+        variant="flat"
         className={cn(
-          'mb-8 border-none bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 px-4 py-5 text-white shadow-2xl rounded-3xl relative overflow-hidden sm:px-6 sm:py-6 md:p-8',
+          'relative mb-8 overflow-hidden rounded-3xl border-none bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 px-4 py-5 shadow-2xl sm:px-6 sm:py-6 md:p-8',
           SECTION_FADE_UP
         )}
-      >
-        <div className="absolute right-0 top-0 h-full w-1/3 bg-white/10 [mask-image:linear-gradient(to_left,white,transparent)]" />
-        <div className="relative z-10">
-          <h1 className="text-2xl font-black tracking-tight mb-2 sm:text-3xl">
-            Duyệt KPI/OKR theo team
-          </h1>
-          <p className="text-indigo-100/80 max-w-2xl text-sm font-medium">
-            Duyệt mục tiêu đầu tháng hoặc kết quả cuối tháng do Leader gửi lên.
-          </p>
-        </div>
-      </div>
+      />
 
       <div className="mb-4 flex flex-wrap gap-2">
         <Button
@@ -1517,14 +1515,12 @@ export function ManagerKpiApprovalScreen() {
 
       {/* Empty */}
       {!requestsQ.isLoading && requests.length === 0 && (
-        <Card className={CARD_ENTRANCE}>
-          <CardContent className="py-12 text-center">
-            <p className="text-slate-500">
-              Không có yêu cầu {approvalType === 'result' ? 'kết quả' : 'mục tiêu'} nào trong kỳ
-              này.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Clock className="h-8 w-8" />}
+          title={`Không có yêu cầu ${approvalType === 'result' ? 'kết quả' : 'mục tiêu'} nào`}
+          description="Trong kỳ đang chọn chưa có yêu cầu phê duyệt."
+          className={CARD_ENTRANCE}
+        />
       )}
 
       {/* Team cards — expandable inline KPI */}

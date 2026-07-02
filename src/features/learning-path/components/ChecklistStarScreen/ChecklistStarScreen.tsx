@@ -22,6 +22,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
   useLearningChecklist,
@@ -193,7 +194,7 @@ export function ChecklistStarScreen({
   }, [data?.items])
   const completed = data?.completedIds ?? []
   const checklist = useChecklistItem(sortedItems, completed)
-  const { data: submissions } = useStarSubmissions(starId)
+  const { data: submissions, isLoading: isLoadingSubmissions } = useStarSubmissions(starId)
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null)
   const lastSubmissionRef = useRef<any>(null)
   if (selectedSubmission) {
@@ -539,10 +540,13 @@ export function ChecklistStarScreen({
                 </div>
                 <div className="space-y-4">
                   {tasks.length === 0 ? (
-                    <p className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
-                      Chưa có nhiệm vụ cho mốc này. Thử tải lại trang; nếu vẫn trống, liên hệ quản
-                      lý hoặc đơn vị đào tạo.
-                    </p>
+                    <EmptyState
+                      icon={<ListChecks className="h-8 w-8" />}
+                      title="Chưa có nhiệm vụ cho mốc này"
+                      description="Thử tải lại trang; nếu vẫn trống, liên hệ quản lý hoặc đơn vị đào tạo."
+                      compact
+                      className="rounded-xl border border-dashed border-border bg-muted/20"
+                    />
                   ) : (
                     <div className="space-y-10">
                       {(hasStarProgression ? [1, 2, 3, 4, 5, 6] : [0]).map((starNum) => {
@@ -887,7 +891,12 @@ export function ChecklistStarScreen({
                         </div>
                       )}
 
-                      {(submissions ?? []).length > 0 ? (
+                      {isLoadingSubmissions && (submissions ?? []).length === 0 ? (
+                        <div className="flex items-center justify-center gap-2 py-6 text-sm font-medium text-gray-500">
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                          Đang tải bài nộp…
+                        </div>
+                      ) : (submissions ?? []).length > 0 ? (
                         <>
                           <ul className="divide-y divide-primary-100/60 text-left text-sm">
                             {(submissions ?? []).slice(0, 5).map((s) => (

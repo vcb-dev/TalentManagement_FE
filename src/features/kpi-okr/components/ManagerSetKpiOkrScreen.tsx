@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Settings2, Target } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { KpiOkrWorkspace } from '@/features/kpi-okr/components/KpiOkrWorkspace'
 import { SalesKpiCatalogScreen } from '@/features/kpi-okr/components/SalesKpiCatalogScreen'
 
@@ -33,6 +34,13 @@ export function ManagerSetKpiOkrScreen() {
   return (
     <div className="space-y-2 pb-6">
       <div className="mx-auto max-w-[1400px] px-3 pt-6 md:px-4">
+        <PageHeader
+          title="KPI & OKR"
+          description="Cấu hình mục tiêu và theo dõi kết quả theo team kinh doanh."
+          gradientTitle
+          variant="flat"
+          className="mb-4 border-0 pb-0"
+        />
         <div
           role="tablist"
           aria-label="Màn KPI/OKR manager"
@@ -79,28 +87,30 @@ export function ManagerSetKpiOkrScreen() {
         </div>
       </div>
 
-      <section
-        id="manager-kpi-panel-workspace"
-        role="tabpanel"
-        aria-labelledby="manager-kpi-tab-workspace"
-        hidden={activeTab !== 'workspace'}
-      >
-        <KpiOkrWorkspace
-          variant="manager"
-          title="Set KPI/OKR cho team kinh doanh"
-          description="Manager cấu hình và theo dõi toàn bộ KPI/OKR theo từng team kinh doanh, theo tháng đã chọn."
-          teamScope="business"
-        />
-      </section>
+      {activeTab === 'workspace' && (
+        <section
+          id="manager-kpi-panel-workspace"
+          role="tabpanel"
+          aria-labelledby="manager-kpi-tab-workspace"
+        >
+          <KpiOkrWorkspace
+            variant="manager"
+            title="Set KPI/OKR cho team kinh doanh"
+            description="Manager cấu hình và theo dõi toàn bộ KPI/OKR theo từng team kinh doanh, theo tháng đã chọn."
+            teamScope="business"
+          />
+        </section>
+      )}
 
-      <section
-        id="manager-kpi-panel-sales-config"
-        role="tabpanel"
-        aria-labelledby="manager-kpi-tab-sales-config"
-        hidden={activeTab !== 'sales-config'}
-      >
-        <SalesKpiCatalogScreen embedded />
-      </section>
+      {activeTab === 'sales-config' && (
+        <section
+          id="manager-kpi-panel-sales-config"
+          role="tabpanel"
+          aria-labelledby="manager-kpi-tab-sales-config"
+        >
+          <SalesKpiCatalogScreen embedded />
+        </section>
+      )}
     </div>
   )
 }

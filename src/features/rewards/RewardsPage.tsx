@@ -25,9 +25,13 @@ import {
   X,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/shared/CustomSelect'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { Button } from '@/components/ui/button'
+import { PageSkeleton } from '@/components/ui/skeleton'
 
 type Rule = {
   id: string
@@ -268,6 +272,7 @@ export default function RewardsPage() {
 
   // Loading states
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Filter states
   const [teamSearch, setTeamSearch] = useState<string>('')
@@ -322,6 +327,7 @@ export default function RewardsPage() {
     opts?: { deferEmployees?: boolean }
   ) => {
     if (!silent) setLoading(true)
+    if (!silent) setLoadError(null)
     try {
       const rulesUrl = isPrivileged ? '/reward/rules' : '/reward/my-rules'
       const tasks: Promise<void>[] = []
@@ -361,6 +367,22 @@ export default function RewardsPage() {
       await Promise.all(tasks)
     } catch (error) {
       console.error('Failed to fetch rewards data:', error)
+      if (!silent) {
+        setLoadError(
+          error &&
+            typeof error === 'object' &&
+            'response' in error &&
+            error.response &&
+            typeof error.response === 'object' &&
+            'data' in error.response &&
+            error.response.data &&
+            typeof error.response.data === 'object' &&
+            'message' in error.response.data &&
+            typeof error.response.data.message === 'string'
+            ? error.response.data.message
+            : 'Không tải được dữ liệu khen thưởng. Vui lòng thử lại.'
+        )
+      }
     } finally {
       if (!silent) setLoading(false)
     }
@@ -715,25 +737,26 @@ export default function RewardsPage() {
 
   return (
     <>
-      <div className="p-6 max-w-7xl mx-auto space-y-8 animate-fade-in">
+      <div className="mx-auto w-full max-w-[1400px] space-y-8 animate-fade-in p-6">
         {/* Header Area */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-5">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <Award className="h-7 w-7 text-indigo-600" />
-              Quản lý Khen thưởng/Phạt
-            </h1>
-            <p className="text-slate-500 text-sm mt-1 font-medium">
-              Hệ thống áp quy chuẩn theo Team và bộ phận VCB.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Quản lý Khen thưởng/Phạt"
+          description="Hệ thống áp quy chuẩn theo Team và bộ phận VCB."
+          eyebrow={<Award className="h-7 w-7 text-indigo-600" />}
+          gradientTitle
+          variant="flat"
+          className="border-b border-slate-100 pb-5"
+        />
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-            <p className="text-slate-500 text-sm italic">Đang tải dữ liệu...</p>
-          </div>
+        {loadError && !loading ? (
+          <ErrorState
+            title="Không tải được dữ liệu khen thưởng"
+            description={loadError}
+            onRetry={() => void fetchData()}
+            retrying={loading}
+          />
+        ) : loading ? (
+          <PageSkeleton />
         ) : (
           <div className="space-y-6">
             <div className="flex border-b border-slate-200">
@@ -877,8 +900,13 @@ export default function RewardsPage() {
                             ))
                           ) : (
                             <tr>
-                              <td colSpan={4} className="py-20 text-center text-slate-400 italic">
-                                Chưa có dữ liệu khen thưởng/phạt.
+                              <td colSpan={4} className="p-0">
+                                <EmptyState
+                                  icon={<Award className="h-7 w-7" />}
+                                  title="Chưa có dữ liệu khen thưởng/phạt"
+                                  compact
+                                  className="py-12"
+                                />
                               </td>
                             </tr>
                           )}
@@ -1010,9 +1038,11 @@ export default function RewardsPage() {
                                   </div>
                                 )}
                                 {allItems.length === 0 && (
-                                  <div className="py-20 text-center text-slate-300 italic font-medium uppercase tracking-widest text-xs">
-                                    Trống dữ liệu bộ phận {selectedRuleCategory}
-                                  </div>
+                                  <EmptyState
+                                    title={`Trống dữ liệu bộ phận ${selectedRuleCategory}`}
+                                    compact
+                                    className="py-16"
+                                  />
                                 )}
                               </div>
                             )}
@@ -1309,9 +1339,11 @@ export default function RewardsPage() {
                               </div>
                             )}
                             {allItems.length === 0 && (
-                              <div className="py-20 text-center text-slate-300 italic font-medium uppercase tracking-widest text-xs">
-                                Trống dữ liệu bộ phận {selectedRuleCategory}
-                              </div>
+                              <EmptyState
+                                title={`Trống dữ liệu bộ phận ${selectedRuleCategory}`}
+                                compact
+                                className="py-16"
+                              />
                             )}
                           </div>
                         )}
@@ -1437,11 +1469,12 @@ export default function RewardsPage() {
                             ))}
                             {pageItems.length === 0 && (
                               <tr>
-                                <td
-                                  colSpan={5}
-                                  className="py-20 text-center text-slate-300 italic font-medium uppercase tracking-widest text-xs"
-                                >
-                                  Không tìm thấy dữ liệu phù hợp
+                                <td colSpan={5} className="p-0">
+                                  <EmptyState
+                                    title="Không tìm thấy dữ liệu phù hợp"
+                                    compact
+                                    className="py-16"
+                                  />
                                 </td>
                               </tr>
                             )}
@@ -1610,9 +1643,11 @@ export default function RewardsPage() {
                     </button>
                   ))
                 ) : (
-                  <div className="py-24 text-center text-slate-300 italic uppercase text-xs tracking-widest">
-                    Không có dữ liệu trong mục {selectedRuleCategory}
-                  </div>
+                  <EmptyState
+                    title={`Không có dữ liệu trong mục ${selectedRuleCategory}`}
+                    compact
+                    className="py-16"
+                  />
                 )}
               </div>
 

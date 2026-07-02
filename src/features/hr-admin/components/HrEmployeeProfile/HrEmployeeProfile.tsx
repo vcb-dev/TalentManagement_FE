@@ -1,7 +1,5 @@
 import { FormProvider, useForm, useWatch, type Control } from 'react-hook-form'
-
 import type { EmployeeEntity } from '@/features/hr-admin/api'
-
 import { useAuthStore } from '@/stores/auth.store'
 import { useUploadMePortrait } from '@/features/profile/hooks'
 import { useQuery } from '@tanstack/react-query'
@@ -17,7 +15,7 @@ import {
   formatUserDateForReadonlyDisplay,
   parseStoredDateToInputValue,
 } from '@/features/profile/profileDateUtils'
-import { useId, useMemo, useState } from 'react'
+import { useId, useEffect, useMemo, useState } from 'react'
 import { profileApi } from '@/features/profile/api'
 import { toast } from 'sonner'
 import type { MyProfilePage } from '@/features/profile/types'
@@ -30,6 +28,7 @@ import { Building2, RefreshCw, Upload } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   DateController,
   InputController,
@@ -40,6 +39,7 @@ import { SelectItem } from '@/components/ui/select'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Link } from '@tanstack/react-router'
+import { FormSection } from '@/components/shared/FormSection'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { usePermission } from '@/hooks/usePermission'
 import {
@@ -48,6 +48,7 @@ import {
   useUpdateEmployee,
   useUpdateEmployeeById,
 } from '../../hooks'
+import { EmployeeLoginCredentialCard } from './EmployeeLoginCredentialCard'
 import { EMPLOYEE_PATCH_KEYS, type EditEmployeeBody, type EmployeePatchKey } from '../../types'
 export interface HrEmployeeProfileProps {
   employee: EmployeeEntity
@@ -55,7 +56,18 @@ export interface HrEmployeeProfileProps {
   initialTab?: number
 }
 export type IHrEmployeeProfileState = MeUserSelf
-type EditRecord = Record<EmployeePatchKey, string> & { extraTeamIds: string[] }
+
+type EmploymentStatusUi = 'working' | 'resigned'
+
+const EMPLOYMENT_STATUS_OPTIONS: { value: EmploymentStatusUi; label: string }[] = [
+  { value: 'working', label: 'Đang làm việc' },
+  { value: 'resigned', label: 'Đã nghỉ' },
+]
+
+type EditRecord = Record<EmployeePatchKey, string> & {
+  extraTeamIds: string[]
+  employmentStatusUi: EmploymentStatusUi
+}
 
 const fieldStackGap = 'gap-1'
 const fieldBoxClass = ''
@@ -82,7 +94,22 @@ function emptyEditRecord(): EditRecord {
       string
     >),
     extraTeamIds: [],
+    employmentStatusUi: 'working',
   }
+}
+
+function resolveEmploymentStatusUi(
+  employee: IHrEmployeeProfileState,
+  summaryStatus?: EmployeeEntity['status']
+): EmploymentStatusUi {
+  const inactive = summaryStatus
+    ? summaryStatus === 'INACTIVE'
+    : isEmploymentInactive(employee.employmentStatus)
+  return inactive ? 'resigned' : 'working'
+}
+
+function canManageEmploymentStatusRole(role: string | null | undefined): boolean {
+  return role === 'MANAGER' || role === 'HR'
 }
 
 function isEmploymentInactive(employmentStatus: string | null | undefined): boolean {
@@ -98,10 +125,39 @@ function isEmploymentInactive(employmentStatus: string | null | undefined): bool
   return /thoi viec|nghi viec|da nghi|inactive|ngung hoat dong|sa thai/.test(folded)
 }
 
+function EmploymentStatusField({ control }: { control: Control<EditRecord> }) {
+  return (
+    <div
+      className={cn(
+        'flex flex-col rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/30',
+        fieldStackGap
+      )}
+    >
+      <SelectController
+        control={control}
+        name="employmentStatusUi"
+        label="Tình trạng làm việc"
+        placeholder="Chọn tình trạng"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>Tình trạng làm việc</FieldLabel>}
+      >
+        {EMPLOYMENT_STATUS_OPTIONS.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectController>
+    </div>
+  )
+}
+
 function ProfileActionButtons({
   isInactive,
   canDeactivate,
   canReactivate,
+  showEmploymentStatusActions,
   isSaving,
   patchPending,
   onDeactivate,
@@ -111,6 +167,7 @@ function ProfileActionButtons({
   isInactive: boolean
   canDeactivate: boolean
   canReactivate: boolean
+  showEmploymentStatusActions: boolean
   isSaving: boolean
   patchPending: boolean
   onDeactivate: () => void
@@ -119,7 +176,7 @@ function ProfileActionButtons({
 }) {
   return (
     <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-      {isInactive && canReactivate ? (
+      {!showEmploymentStatusActions && isInactive && canReactivate ? (
         <Button
           type="button"
           variant="outline"
@@ -130,7 +187,7 @@ function ProfileActionButtons({
           Kích hoạt lại
         </Button>
       ) : null}
-      {!isInactive && canDeactivate ? (
+      {!showEmploymentStatusActions && !isInactive && canDeactivate ? (
         <Button
           type="button"
           variant="outline"
@@ -169,6 +226,7 @@ function userToEdit(u: IHrEmployeeProfileState): EditRecord {
     r.displayName = u.fullNameLegal
   }
   r.extraTeamIds = u.extraTeamIds ?? u.teamIds?.slice(1) ?? []
+  r.employmentStatusUi = resolveEmploymentStatusUi(u)
   return r
 }
 
@@ -543,38 +601,6 @@ function ProfileIdentityCard({
   )
 }
 
-function SectionTitle({
-  children,
-  icon,
-  variant = 'primary',
-}: {
-  children: string
-  icon?: React.ReactNode
-  variant?: 'primary' | 'indigo' | 'violet' | 'emerald'
-}) {
-  const configs = {
-    primary: 'bg-primary/10 text-primary',
-    indigo: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
-    violet: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
-    emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
-  }
-  return (
-    <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
-      <div
-        className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-lg font-bold',
-          configs[variant]
-        )}
-      >
-        {icon || <Building2 className="h-4 w-4" />}
-      </div>
-      <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
-        {children}
-      </h3>
-    </div>
-  )
-}
-
 export function HrEmployeeProfile({
   employee,
   page,
@@ -586,6 +612,7 @@ export function HrEmployeeProfile({
   const { canId } = usePermission()
   const canDeactivate = canId('hr.employees.deactivate') || canId('hr.employees.edit')
   const canReactivate = canId('hr.employees.edit')
+  const canEditLoginCredential = canId('hr.employees.edit')
   const { mutate: patchUser, isPending: patchPending } = useUpdateEmployeeById()
   const { data: employeeSummary } = useEmployee(employee.id)
   const deactivate = useDeactivateEmployee()
@@ -605,8 +632,15 @@ export function HrEmployeeProfile({
   const form = useForm<EditRecord>({
     defaultValues: userToEdit(employee),
   })
-  const { control, handleSubmit } = form
+  const { control, handleSubmit, reset } = form
   const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
+
+  useEffect(() => {
+    reset({
+      ...userToEdit(employee),
+      employmentStatusUi: resolveEmploymentStatusUi(employee, employeeSummary?.status),
+    })
+  }, [employee, employeeSummary?.status, reset])
 
   const divisions = useMemo(
     () => divisionsList.map((d) => ({ id: d.id, name: d.name })),
@@ -630,6 +664,7 @@ export function HrEmployeeProfile({
   const jobTitles = useMemo(() => jobTitlesData ?? [], [jobTitlesData])
 
   const role = user?.role ?? 'MEMBER'
+  const canManageEmploymentStatus = canManageEmploymentStatusRole(role)
   const currentLevelId = mapCurrentTitleToLevelId(page.currentLevel.title)
   const onPortraitFile = (file: File) => {
     uploadPortrait(file, {
@@ -656,19 +691,23 @@ export function HrEmployeeProfile({
     (field) => !isWorkOrgReadonlyField(field.key) && field.key !== 'directManager'
   )
   const detailSections = USER_SELF_FORM_SECTIONS.slice(1).filter((s) => s.title.trim() !== 'Khác')
-  const detailSectionVariants: ('indigo' | 'violet' | 'emerald' | 'primary')[] = [
-    'indigo',
-    'violet',
-    'emerald',
-    'primary',
-    'indigo',
-  ]
-  const onSaveProfile = handleSubmit((values) =>
-    patchUser({
-      id: employee.id,
-      patch: toPatch(values, employee) as unknown as IHrEmployeeProfileState,
-    })
-  )
+  const initialEmploymentStatusUi = resolveEmploymentStatusUi(employee, employeeSummary?.status)
+  const onSaveProfile = handleSubmit((values) => {
+    const profilePatch = toPatch(values, employee) as unknown as IHrEmployeeProfileState
+    const statusChanged =
+      canManageEmploymentStatus && values.employmentStatusUi !== initialEmploymentStatusUi
+
+    const applyStatusChange = () => {
+      if (!statusChanged) return
+      if (values.employmentStatusUi === 'resigned') {
+        deactivate.mutate(employee.id)
+        return
+      }
+      updateEmployee.mutate({ id: employee.id, patch: { status: 'ACTIVE' } })
+    }
+
+    patchUser({ id: employee.id, patch: profilePatch }, { onSuccess: applyStatusChange })
+  })
 
   const isInactive = employeeSummary
     ? employeeSummary.status === 'INACTIVE'
@@ -689,6 +728,7 @@ export function HrEmployeeProfile({
     isInactive,
     canDeactivate,
     canReactivate,
+    showEmploymentStatusActions: canManageEmploymentStatus,
     isSaving,
     patchPending,
     onDeactivate: () => setConfirmPending('deactivate'),
@@ -751,68 +791,75 @@ export function HrEmployeeProfile({
                 </div>
               </section>
 
+              <EmployeeLoginCredentialCard
+                employeeId={employee.id}
+                canEdit={canEditLoginCredential}
+              />
+
               <section className="rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
-                <div className="mb-8 flex items-center gap-3">
-                  <div className="h-8 w-1.5 rounded-full bg-gradient-to-b from-primary to-violet-600" />
-                  <h2 className="text-xl font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
-                    Chi tiết hồ sơ
-                  </h2>
-                </div>
-
-                <div className="space-y-8">
-                  <div className="rounded-2xl border border-slate-200 border-l-4 border-l-primary bg-white p-6 shadow-sm dark:border-slate-800 dark:border-l-primary dark:bg-slate-900/50">
-                    <SectionTitle variant="primary">{workSection.title}</SectionTitle>
-                    {workReadonlyFields.length > 0 ? (
-                      <div className="mb-8">
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-primary/50">
-                          Thông tin đồng bộ
-                        </p>
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {workEditableFields.length > 0 ? (
-                      <div className="border-t border-slate-100 pt-6 dark:border-slate-800">
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                          Thông tin có thể cập nhật
-                        </p>
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          {workEditableFields.map((f) => renderField(f, fieldCtx))}
-                          <div className="sm:col-span-2">
-                            <EmployeeExtraTeamsField
-                              control={control}
-                              name="extraTeamIds"
-                              primaryTeamId={selectedTeamId}
-                              allTeams={allTeamOptions}
-                            />
+                <FormSection title="Chi tiết hồ sơ" className="border-0 pb-0">
+                  <div className="space-y-8">
+                    <div className="rounded-2xl border border-slate-200 border-l-4 border-l-primary bg-white p-6 shadow-sm dark:border-slate-800 dark:border-l-primary dark:bg-slate-900/50">
+                      <FormSection
+                        title={workSection.title}
+                        icon={<Building2 className="h-4 w-4" />}
+                        className="border-0 pb-0"
+                      >
+                        {workReadonlyFields.length > 0 ? (
+                          <div className="mb-8">
+                            <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-primary/50">
+                              Thông tin đồng bộ
+                            </p>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                              {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
+                              {canManageEmploymentStatus ? (
+                                <EmploymentStatusField control={control} />
+                              ) : null}
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {detailSections.map((section, idx) => (
-                    <div
-                      key={section.title}
-                      className={cn(
-                        'rounded-2xl border border-slate-200 border-l-4 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50',
-                        idx % 3 === 0
-                          ? 'border-l-indigo-500'
-                          : idx % 3 === 1
-                            ? 'border-l-violet-500'
-                            : 'border-l-emerald-500'
-                      )}
-                    >
-                      <SectionTitle variant={detailSectionVariants[idx]}>
-                        {section.title}
-                      </SectionTitle>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        {section.fields.map((f) => renderField(f, fieldCtx))}
-                      </div>
+                        ) : null}
+                        {workEditableFields.length > 0 ? (
+                          <div className="border-t border-slate-100 pt-6 dark:border-slate-800">
+                            <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                              Thông tin có thể cập nhật
+                            </p>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                              {workEditableFields.map((f) => renderField(f, fieldCtx))}
+                              <div className="sm:col-span-2">
+                                <EmployeeExtraTeamsField
+                                  control={control}
+                                  name="extraTeamIds"
+                                  primaryTeamId={selectedTeamId}
+                                  allTeams={allTeamOptions}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+                      </FormSection>
                     </div>
-                  ))}
-                </div>
+
+                    {detailSections.map((section, idx) => (
+                      <div
+                        key={section.title}
+                        className={cn(
+                          'rounded-2xl border border-slate-200 border-l-4 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50',
+                          idx % 3 === 0
+                            ? 'border-l-indigo-500'
+                            : idx % 3 === 1
+                              ? 'border-l-violet-500'
+                              : 'border-l-emerald-500'
+                        )}
+                      >
+                        <FormSection title={section.title} className="border-0 pb-0">
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            {section.fields.map((f) => renderField(f, fieldCtx))}
+                          </div>
+                        </FormSection>
+                      </div>
+                    ))}
+                  </div>
+                </FormSection>
               </section>
             </div>
           </div>
@@ -839,23 +886,25 @@ export function HrEmployeeProfile({
           )
         : null}
 
-      <ConfirmDialog
-        open={confirmPending !== null}
-        onOpenChange={(open) => {
-          if (!open) setConfirmPending(null)
-        }}
-        title={
-          confirmPending === 'deactivate' ? 'Vô hiệu hóa tài khoản?' : 'Kích hoạt lại tài khoản?'
-        }
-        description={
-          confirmPending === 'deactivate'
-            ? 'Nhân viên sẽ không thể đăng nhập sau khi bị vô hiệu hóa.'
-            : 'Nhân viên sẽ được khôi phục quyền đăng nhập.'
-        }
-        confirmLabel={confirmPending === 'deactivate' ? 'Vô hiệu hóa' : 'Kích hoạt'}
-        destructive={confirmPending === 'deactivate'}
-        onConfirm={handleConfirmPending}
-      />
+      {!canManageEmploymentStatus ? (
+        <ConfirmDialog
+          open={confirmPending !== null}
+          onOpenChange={(open) => {
+            if (!open) setConfirmPending(null)
+          }}
+          title={
+            confirmPending === 'deactivate' ? 'Vô hiệu hóa tài khoản?' : 'Kích hoạt lại tài khoản?'
+          }
+          description={
+            confirmPending === 'deactivate'
+              ? 'Nhân viên sẽ không thể đăng nhập sau khi bị vô hiệu hóa.'
+              : 'Nhân viên sẽ được khôi phục quyền đăng nhập.'
+          }
+          confirmLabel={confirmPending === 'deactivate' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+          destructive={confirmPending === 'deactivate'}
+          onConfirm={handleConfirmPending}
+        />
+      ) : null}
     </Form>
   )
 }

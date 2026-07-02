@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { useQueries, useQuery } from '@tanstack/react-query'
 import {
   performanceApi,
@@ -155,14 +155,16 @@ function aggregatePerPersonAcrossMonths(
   >()
   for (const r of rows) {
     const prev = byUser.get(r.assigneeUserId)
-    const member = membersById.get(r.assigneeUserId)
-    const name =
-      r.assigneeDisplayName?.trim() ||
-      member?.displayName?.trim() ||
-      r.assigneeEmail?.trim() ||
-      member?.email?.trim() ||
-      prev?.name ||
-      'Thành viên'
+    let name = prev?.name
+    if (!name) {
+      const member = membersById.get(r.assigneeUserId)
+      name =
+        r.assigneeDisplayName?.trim() ||
+        member?.displayName?.trim() ||
+        r.assigneeEmail?.trim() ||
+        member?.email?.trim() ||
+        'Thành viên'
+    }
     byUser.set(r.assigneeUserId, {
       kpiOk: (prev?.kpiOk ?? 0) + r.kpiOkCount,
       kpiNot: (prev?.kpiNot ?? 0) + r.kpiNotCount,
@@ -201,8 +203,11 @@ function aggregatePerPersonFromAssignments(
   >()
   for (const a of assignments) {
     const prev = byUser.get(a.assigneeUserId)
-    const member = membersById.get(a.assigneeUserId)
-    const name = member?.displayName?.trim() || member?.email?.trim() || prev?.name || 'Thành viên'
+    let name = prev?.name
+    if (!name) {
+      const member = membersById.get(a.assigneeUserId)
+      name = member?.displayName?.trim() || member?.email?.trim() || 'Thành viên'
+    }
     const ev = (a.finalEvalStatus ?? a.managerEvalStatus ?? '').trim().toUpperCase()
     byUser.set(a.assigneeUserId, {
       kpiOk: (prev?.kpiOk ?? 0) + (a.kind === 'KPI' && ev === 'OK' ? 1 : 0),
@@ -283,6 +288,21 @@ function mergeQuestionnaires(
   }
 }
 
+function useStableQueryResultArray<T>(queries: readonly T[]): readonly T[] {
+  const ref = useRef<readonly T[]>(queries)
+  const isChanged =
+    queries.length !== ref.current.length ||
+    queries.some(
+      (q: any, i) =>
+        q?.data !== (ref.current[i] as any)?.data ||
+        q?.isLoading !== (ref.current[i] as any)?.isLoading
+    )
+  if (isChanged) {
+    ref.current = queries
+  }
+  return ref.current
+}
+
 /**
  * Gom toàn bộ truy vấn cho tab "KPI · OKR · Báo cáo" trên Tổng quan (Leader/Manager).
  * Hỗ trợ **khoảng tháng** [startMonth, endMonth] trong cùng một năm.
@@ -297,53 +317,69 @@ export function useKpiDashboardData(params: {
   onlyAssigneeUserId?: string
 }): KpiDashboardData {
   const { teamId, year, startMonth, endMonth, enabled = true, onlyAssigneeUserId } = params
-  const {
-    year: yNorm,
-    startMonth: sNorm,
-    endMonth: eNorm,
-    months,
-  } = normalizeDashboardMonthRange(year, startMonth, endMonth)
+
+  const normalizedRange = useMemo(() => {
+    return normalizeDashboardMonthRange(year, startMonth, endMonth)
+  }, [year, startMonth, endMonth])
+  const { year: yNorm, startMonth: sNorm, endMonth: eNorm, months } = normalizedRange
+
   const hasTeam = Boolean(teamId) && !isMockApiEnabled() && enabled
 
   const membersQ = useQuery({
     queryKey: ['kpi-dashboard', 'members', teamId],
     queryFn: () => organizationApi.getTeamMembers(teamId),
     enabled: hasTeam,
-    staleTime: 60_000,
+    staleTime: 300_000,
   })
 
-  const assignmentQueries = useQueries({
-    queries: months.map((m) => ({
+  const assignmentQueriesOptions = useMemo(() => {
+    return months.map((m) => ({
       queryKey: ['kpi-dashboard', 'assignments', teamId, yNorm, m] as const,
       queryFn: () => performanceApi.listAssignments(teamId, yNorm, m),
       enabled: hasTeam,
-      staleTime: 30_000,
-    })),
+      staleTime: 300_000,
+    }))
+  }, [months, teamId, yNorm, hasTeam])
+
+  const assignmentQueries = useQueries({
+    queries: assignmentQueriesOptions,
   })
 
-  const summariesQueries = useQueries({
-    queries: months.map((m) => ({
+  const summariesQueriesOptions = useMemo(() => {
+    return months.map((m) => ({
       queryKey: ['kpi-dashboard', 'summaries', teamId, yNorm, m] as const,
       queryFn: () => performanceApi.listSummaries(teamId, yNorm, m),
       enabled: hasTeam,
-      staleTime: 30_000,
-    })),
+      staleTime: 300_000,
+    }))
+  }, [months, teamId, yNorm, hasTeam])
+
+  const summariesQueries = useQueries({
+    queries: summariesQueriesOptions,
   })
 
-  const questionnaireQueries = useQueries({
-    queries: months.map((m) => ({
+  const questionnaireQueriesOptions = useMemo(() => {
+    return months.map((m) => ({
       queryKey: ['kpi-dashboard', 'questionnaire', teamId, yNorm, m] as const,
       queryFn: () => performanceApi.getQuestionnaire(teamId, yNorm, m),
       enabled: hasTeam,
-      staleTime: 30_000,
-    })),
+      staleTime: 300_000,
+    }))
+  }, [months, teamId, yNorm, hasTeam])
+
+  const questionnaireQueries = useQueries({
+    queries: questionnaireQueriesOptions,
   })
+
+  const stableAssignmentQueries = useStableQueryResultArray(assignmentQueries)
+  const stableSummariesQueries = useStableQueryResultArray(summariesQueries)
+  const stableQuestionnaireQueries = useStableQueryResultArray(questionnaireQueries)
 
   return useMemo<KpiDashboardData>(() => {
     const monthQueriesLoading =
-      assignmentQueries.some((q) => q.isLoading) ||
-      summariesQueries.some((q) => q.isLoading) ||
-      questionnaireQueries.some((q) => q.isLoading)
+      stableAssignmentQueries.some((q) => q.isLoading) ||
+      stableSummariesQueries.some((q) => q.isLoading) ||
+      stableQuestionnaireQueries.some((q) => q.isLoading)
 
     const selfId = onlyAssigneeUserId?.trim() || ''
     const isPersonal = Boolean(selfId)
@@ -353,26 +389,58 @@ export function useKpiDashboardData(params: {
     const membersById = new Map(activeMembers.map((m) => [m.userId, m]))
     const eligibleIds = new Set(activeMembers.map((m) => m.userId))
 
-    let assignments = mergeAssignments(assignmentQueries.map((q) => q.data ?? [])).filter((a) =>
-      eligibleIds.has(a.assigneeUserId)
+    let assignments = mergeAssignments(stableAssignmentQueries.map((q) => q.data ?? [])).filter(
+      (a) => eligibleIds.has(a.assigneeUserId)
     )
-    let summaries = summariesQueries
+    let summaries = stableSummariesQueries
       .flatMap((q) => q.data ?? [])
       .filter((s) => eligibleIds.has(s.assigneeUserId))
-    const questionnaire = mergeQuestionnaires(questionnaireQueries.map((q) => q.data))
+    const questionnaire = mergeQuestionnaires(stableQuestionnaireQueries.map((q) => q.data))
 
     if (isPersonal) {
       assignments = assignments.filter((a) => a.assigneeUserId === selfId)
       summaries = summaries.filter((s) => s.assigneeUserId === selfId)
     }
 
-    /* ---------- 3 card tổng quan ---------- */
-    const kpiAssigns = assignments.filter((a) => a.kind === 'KPI')
-    const okrAssigns = assignments.filter((a) => a.kind === 'OKR')
-    const kpiOk = kpiAssigns.filter(isAssignmentOk).length
-    const okrOk = okrAssigns.filter(isAssignmentOk).length
-    const kpiPct = kpiAssigns.length ? Math.round((kpiOk / kpiAssigns.length) * 100) : 0
-    const okrPct = okrAssigns.length ? Math.round((okrOk / okrAssigns.length) * 100) : 0
+    /* ---------- 3 card tổng quan & Donut trạng thái + đánh giá ---------- */
+    let kpiTotalCount = 0
+    let kpiOk = 0
+    let okrTotalCount = 0
+    let okrOk = 0
+
+    const statusBreakdown: Record<AssignmentStatusKey, number> = {
+      done: 0,
+      in_progress: 0,
+      not_started: 0,
+      blocked: 0,
+    }
+    const evalBreakdown = { ok: 0, not: 0, pending: 0 }
+
+    for (const a of assignments) {
+      const raw = (a.finalEvalStatus ?? a.managerEvalStatus ?? '').trim().toUpperCase()
+      const isOk = raw === 'OK'
+
+      if (a.kind === 'KPI') {
+        kpiTotalCount++
+        if (isOk) kpiOk++
+      } else if (a.kind === 'OKR') {
+        okrTotalCount++
+        if (isOk) okrOk++
+      }
+
+      statusBreakdown[statusOf(a)] += 1
+
+      if (raw === 'OK') {
+        evalBreakdown.ok += 1
+      } else if (raw === 'NOT') {
+        evalBreakdown.not += 1
+      } else {
+        evalBreakdown.pending += 1
+      }
+    }
+
+    const kpiPct = kpiTotalCount ? Math.round((kpiOk / kpiTotalCount) * 100) : 0
+    const okrPct = okrTotalCount ? Math.round((okrOk / okrTotalCount) * 100) : 0
 
     const teamSize = activeMembers.length
     let respondentsCount = 0
@@ -383,7 +451,7 @@ export function useKpiDashboardData(params: {
       const monthCount = months.length
       expectedSurveyMonths = monthCount
       for (let idx = 0; idx < months.length; idx++) {
-        const q = questionnaireQueries[idx]?.data
+        const q = stableQuestionnaireQueries[idx]?.data
         const answered = (q?.answers ?? []).some((a) => a.respondentUserId === selfId)
         if (answered) respondentsCount += 1
       }
@@ -395,22 +463,6 @@ export function useKpiDashboardData(params: {
       }
       respondentsCount = uniqueRespondents.size
       reportPct = teamSize > 0 ? Math.round((respondentsCount / teamSize) * 100) : 0
-    }
-
-    /* ---------- Donut trạng thái & đánh giá ---------- */
-    const statusBreakdown: Record<AssignmentStatusKey, number> = {
-      done: 0,
-      in_progress: 0,
-      not_started: 0,
-      blocked: 0,
-    }
-    const evalBreakdown = { ok: 0, not: 0, pending: 0 }
-    for (const a of assignments) {
-      statusBreakdown[statusOf(a)] += 1
-      const raw = (a.finalEvalStatus ?? a.managerEvalStatus ?? '').trim().toUpperCase()
-      if (raw === 'OK') evalBreakdown.ok += 1
-      else if (raw === 'NOT') evalBreakdown.not += 1
-      else evalBreakdown.pending += 1
     }
 
     /* ---------- Grade A/B/C — theo từng dòng summary (person-tháng) ---------- */
@@ -426,7 +478,7 @@ export function useKpiDashboardData(params: {
 
     /* ---------- Trend — mỗi tháng trong kỳ ---------- */
     const trend: TrendPoint[] = months.map((m, idx) => {
-      let rows = summariesQueries[idx]?.data ?? []
+      let rows = stableSummariesQueries[idx]?.data ?? []
       if (isPersonal) {
         rows = rows.filter((r) => r.assigneeUserId === selfId)
       }
@@ -462,8 +514,8 @@ export function useKpiDashboardData(params: {
       assignments,
       summaries,
       questionnaire,
-      kpi: { totalCount: kpiAssigns.length, okCount: kpiOk, percent: kpiPct },
-      okr: { totalCount: okrAssigns.length, okCount: okrOk, percent: okrPct },
+      kpi: { totalCount: kpiTotalCount, okCount: kpiOk, percent: kpiPct },
+      okr: { totalCount: okrTotalCount, okCount: okrOk, percent: okrPct },
       report: isPersonal
         ? { respondentsCount, percent: reportPct, expectedSurveyMonths }
         : { respondentsCount, percent: reportPct },
@@ -484,9 +536,9 @@ export function useKpiDashboardData(params: {
     months,
     membersQ.data,
     membersQ.isLoading,
-    assignmentQueries,
-    summariesQueries,
-    questionnaireQueries,
+    stableAssignmentQueries,
+    stableSummariesQueries,
+    stableQuestionnaireQueries,
     onlyAssigneeUserId,
   ])
 }

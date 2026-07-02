@@ -13,6 +13,13 @@ import type { EmployeeStatus } from '@/types/employee'
 export interface EmployeeTableProps {
   employees: EmployeeEntity[]
   isLoading: boolean
+  isError?: boolean
+  errorTitle?: string
+  errorDescription?: string
+  onRetry?: () => void
+  retrying?: boolean
+  emptyTitle?: string
+  emptyDescription?: string
   onView: (id: string) => void
   onEdit: (id: string) => void
   onDeactivate: (id: string) => void
@@ -29,6 +36,13 @@ export interface EmployeeTableProps {
 export function EmployeeTable({
   employees,
   isLoading,
+  isError = false,
+  errorTitle,
+  errorDescription,
+  onRetry,
+  retrying = false,
+  emptyTitle,
+  emptyDescription,
   onView,
   onEdit,
   onDeactivate,
@@ -109,6 +123,13 @@ export function EmployeeTable({
           columns={columns}
           data={employees}
           isLoading={isLoading}
+          isError={isError}
+          errorTitle={errorTitle ?? 'Không tải được danh sách nhân viên'}
+          errorDescription={errorDescription}
+          onRetry={onRetry}
+          retrying={retrying}
+          emptyTitle={emptyTitle ?? 'Không có nhân viên phù hợp'}
+          emptyDescription={emptyDescription}
           getRowKey={(e) => e.id}
           renderMobileRow={(e) => (
             <div className="space-y-3">

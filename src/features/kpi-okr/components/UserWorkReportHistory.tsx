@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, ChevronUp, FileText, Sparkles } from 'lucide-react'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { workReportApi, type WorkReport, type WorkReportStatus } from '../api'
 
@@ -207,18 +210,38 @@ export function UserWorkReportHistory({ userId }: { userId: string }) {
     queryFn: () => workReportApi.listUserWorkReportHistory(userId),
   })
 
+  if (historyQ.isError) {
+    return (
+      <ErrorState
+        title="Không tải được lịch sử báo cáo"
+        description="Vui lòng thử lại sau."
+        onRetry={() => void historyQ.refetch()}
+        retrying={historyQ.isFetching}
+        compact
+      />
+    )
+  }
+
   if (historyQ.isLoading) {
-    return <div className="py-8 text-center text-sm text-slate-400">Đang tải lịch sử...</div>
+    return (
+      <div className="space-y-3 py-4" role="status" aria-busy aria-label="Đang tải lịch sử">
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-24 w-full rounded-xl" />
+      </div>
+    )
   }
 
   const reports = historyQ.data ?? []
 
   if (reports.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-200 py-12 text-center dark:border-slate-800">
-        <FileText className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-        <p className="text-sm text-slate-400">Nhân sự chưa có báo cáo tổng kết nào</p>
-      </div>
+      <EmptyState
+        icon={<FileText className="h-8 w-8" />}
+        title="Chưa có báo cáo tổng kết"
+        description="Nhân sự chưa nộp báo cáo tổng kết nào."
+        compact
+      />
     )
   }
 

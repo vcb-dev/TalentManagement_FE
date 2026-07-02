@@ -10,8 +10,11 @@ import {
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { SkeletonProfileForm } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { Checkbox } from '@/components/ui/checkbox'
-import { cn } from '@/lib/utils'
+import { cn, getFileViewerUrl } from '@/lib/utils'
 import { Form } from '@/components/ui/form'
 import { TextareaController } from '@/components/ui/form-controllers'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
@@ -416,25 +419,27 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center text-muted-foreground">
-        Đang tải bài thi...
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <SkeletonProfileForm />
       </div>
     )
   }
 
   if (!submission) {
     return (
-      <div className="flex min-h-[300px] flex-col items-center justify-center gap-4">
-        <p className="text-muted-foreground">Không tìm thấy bài nộp này.</p>
-        <Button
-          type="button"
-          variant="ghost"
-          className="h-auto p-0 text-sm font-normal normal-case tracking-normal text-primary underline hover:bg-transparent"
-          onClick={() => void navigate({ to: '/exam/grader' })}
-        >
-          ← Quay lại danh sách
-        </Button>
-      </div>
+      <EmptyState
+        title="Không tìm thấy bài nộp này"
+        description="Bài nộp có thể đã bị xóa hoặc bạn không có quyền chấm."
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void navigate({ to: '/exam/grader' })}
+          >
+            ← Quay lại danh sách
+          </Button>
+        }
+      />
     )
   }
 
@@ -450,48 +455,46 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
     <Form {...gradeForm}>
       <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
         {/* Sub header */}
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-primary/10 bg-card/50 px-6 py-3 shadow-sm backdrop-blur-sm">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-auto shrink-0 gap-1 px-0 py-0 text-xs font-semibold normal-case tracking-normal text-muted-foreground hover:bg-transparent hover:text-primary"
-              onClick={() => void navigate({ to: '/exam/grader' })}
-            >
-              <ArrowLeft className="h-4 w-4" aria-hidden />
-              DS bài thi
-            </Button>
-            <div className="hidden h-4 w-px shrink-0 bg-border sm:block" />
-            <p className="min-w-0 truncate text-xs text-muted-foreground">
-              Chấm thi: <span className="font-bold text-foreground">{submission.fullName}</span>
-              {submission.learningClass?.name && ` · Lớp ${submission.learningClass.name}`}
-            </p>
-            <span className="shrink-0 rounded-md border border-border bg-card px-2 py-0.5 text-xs font-bold text-muted-foreground">
-              Vai trò: {roleLabel}
+        <PageHeader
+          onBack={() => void navigate({ to: '/exam/grader' })}
+          title={`Chấm thi: ${submission.fullName}`}
+          description={
+            <span className="inline-flex flex-wrap items-center gap-2">
+              {submission.learningClass?.name ? (
+                <span>Lớp {submission.learningClass.name}</span>
+              ) : null}
+              <span className="rounded-md border border-border bg-card px-2 py-0.5 text-xs font-bold text-muted-foreground">
+                Vai trò: {roleLabel}
+              </span>
+              <span className="text-muted-foreground">{formattedDate}</span>
             </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              loading={gradeMutation.isPending}
-              className="whitespace-nowrap rounded-lg px-3.5 py-1.5 text-xs font-medium"
-              onClick={() => handleComplete('grading')}
-            >
-              Lưu nháp
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              loading={gradeMutation.isPending}
-              className="gap-1 whitespace-nowrap rounded-lg px-3.5 py-1.5 text-xs font-bold shadow-sm"
-              onClick={() => handleComplete('done')}
-            >
-              {gradeMutation.isPending ? 'Đang lưu...' : 'Hoàn thành chấm'}
-            </Button>
-          </div>
-        </div>
+          }
+          variant="flat"
+          className="shrink-0 border-b border-primary/10 bg-card/50 px-6 py-3 shadow-sm backdrop-blur-sm"
+          actions={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                loading={gradeMutation.isPending}
+                className="whitespace-nowrap rounded-lg px-3.5 py-1.5 text-xs font-medium"
+                onClick={() => handleComplete('grading')}
+              >
+                Lưu nháp
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                loading={gradeMutation.isPending}
+                className="gap-1 whitespace-nowrap rounded-lg px-3.5 py-1.5 text-xs font-bold shadow-sm"
+                onClick={() => handleComplete('done')}
+              >
+                {gradeMutation.isPending ? 'Đang lưu...' : 'Hoàn thành chấm'}
+              </Button>
+            </>
+          }
+        />
 
         <div className="page-shell">
           <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-6 lg:grid-cols-12">
@@ -554,7 +557,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                     </div>
                     {answersObj.fileUrl && (
                       <a
-                        href={answersObj.fileUrl}
+                        href={getFileViewerUrl(answersObj.fileUrl)}
                         target="_blank"
                         rel="noreferrer"
                         className="h-9 rounded-xl px-4 flex items-center bg-primary text-white text-xs font-black uppercase tracking-widest shadow-sm hover:bg-primary/95 transition-all"
@@ -570,9 +573,12 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                     Phần làm bài của thí sinh ({answeredEntries.length} câu)
                   </h2>
                   {answeredEntries.length === 0 ? (
-                    <p className="italic text-muted-foreground">
-                      Không có câu trả lời nào được ghi nhận.
-                    </p>
+                    <EmptyState
+                      compact
+                      tone="subtle"
+                      title="Không có câu trả lời nào được ghi nhận"
+                      className="py-4 italic"
+                    />
                   ) : (
                     <div className="space-y-5">
                       {answeredEntries.map(([qId, answer], idx) => {

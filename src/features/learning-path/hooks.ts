@@ -11,6 +11,7 @@ export function useLearningLevels() {
   return useQuery({
     queryKey: learningKeys.levels(),
     queryFn: () => learningApi.levels(),
+    staleTime: 5 * 60_000,
   })
 }
 
@@ -18,13 +19,19 @@ export function useMyLearningPath() {
   return useQuery({
     queryKey: learningKeys.myPath(),
     queryFn: () => learningApi.myLearningPath(),
+    staleTime: 60_000,
   })
 }
 
-export function useMyEnrolledClass(range?: { startDate?: string; endDate?: string }) {
+export function useMyEnrolledClass(
+  range?: { startDate?: string; endDate?: string },
+  enabled = true
+) {
   return useQuery({
     queryKey: learningKeys.myEnrolledClass(range),
     queryFn: () => learningApi.myEnrolledClass(range),
+    enabled,
+    staleTime: 30_000,
     placeholderData: (previousData) => previousData,
   })
 }
@@ -33,6 +40,7 @@ export function useAvailableLearningClasses() {
   return useQuery({
     queryKey: [...learningKeys.all, 'available-classes'],
     queryFn: () => learningApi.availableClasses(),
+    staleTime: 30_000,
   })
 }
 
@@ -150,5 +158,19 @@ export function useGetFeedback(classId: string, scheduleId?: string, enabled = t
         ...(scheduleId?.length ? { scheduleId } : {}),
       }),
     enabled: enabled && !!classId?.length,
+  })
+}
+
+export function useWithdrawEvidence() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { itemId: string }) => learningApi.withdraw(data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['learning'] })
+      toast.success('Đã hủy nộp bài thành công!')
+    },
+    onError: (err) => {
+      toast.error(getApiErrorMessage(err))
+    },
   })
 }

@@ -1,22 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
+import { performanceApi } from '@/features/kpi-okr/api'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
+import { cn } from '@/lib/utils'
+import { useQuery } from '@tanstack/react-query'
 import {
+  BarChart2,
+  Building2,
   ChevronRight,
   Crown,
+  Diamond,
   Rocket,
   Sparkles,
   Star,
   Trophy,
-  Zap,
-  Eye,
-  Building2,
   Users,
-  BarChart2,
-  Diamond,
+  Zap,
 } from 'lucide-react'
-import { performanceApi, type VinhDanhHonorBoardResponse } from '@/features/kpi-okr/api'
-import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
-import { cn } from '@/lib/utils'
-import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -620,18 +620,25 @@ function TeamSlide({
 // ─── Main component ─────────────────────────────────────────────────────────
 
 export function VinhDanhSlide({ className }: { className?: string }) {
-  const { year, month } = useMemo(currentYearMonth, [])
-  const [data, setData] = useState<VinhDanhHonorBoardResponse | null>(null)
+  const { year, month } = useMemo(() => {
+    const d = new Date()
+    return { year: d.getFullYear(), month: d.getMonth() + 1 }
+  }, [])
+  // const [data, setData] = useState<VinhDanhHonorBoardResponse | null>(null)
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  useEffect(() => {
-    performanceApi
-      .getVinhDanhHonorBoard(year, month)
-      .then(setData)
-      .catch(() => setData(null))
-  }, [year, month])
+  const { data } = useQuery({
+    queryKey: ['honor-board', year, month],
+    queryFn: () => performanceApi.getVinhDanhHonorBoard(year, month),
+    staleTime: 1000 * 60 * 5,
+  })
+  // useEffect(() => {
+  //   performanceApi
+  //     .getVinhDanhHonorBoard(year, month)
+  //     .then(setData)
+  //     .catch(() => setData(null))
+  // }, [year, month])
 
   const slides = useMemo<HonorSlide[]>(() => {
     if (!data?.entries.length) return []

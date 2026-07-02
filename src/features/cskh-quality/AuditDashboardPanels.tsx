@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { EmptyState } from '@/components/shared/EmptyState'
 import {
   ChevronDown,
   Filter,
@@ -53,7 +54,7 @@ import {
   auditCreatedAtMs,
 } from './auditDashboardHelpers'
 import { parseAuditActionItems, type DisplayTranscriptLine } from './auditHelpers'
-import { CskhAdSourceBadge, CskhPageAvatar } from './cskhUi'
+import { CskhAdSourceBadge, CskhPageAvatar, CskhLoading } from './cskhUi'
 
 const SIDEBAR_INITIAL = 30
 const SIDEBAR_LOAD_MORE = 25
@@ -628,7 +629,9 @@ export function AuditConversationSidebar({
         className="min-h-0 flex-1 space-y-0.5 overflow-y-auto overscroll-y-contain px-1 pb-2 [scrollbar-width:thin]"
       >
         {visibleRows.length === 0 ? (
-          <li className="px-4 py-10 text-center text-sm text-slate-500">Không có hội thoại</li>
+          <li>
+            <EmptyState compact tone="subtle" title="Không có hội thoại" className="px-4 py-10" />
+          </li>
         ) : (
           visibleRows.map((row) => (
             <AuditSidebarRow
@@ -668,7 +671,7 @@ export function AuditTimelinePanel({
 }) {
   const events = buildTimelineEvents(transcript, auditDayLabel)
   if (!events.length) {
-    return <p className="py-8 text-center text-sm text-slate-500">Chưa có sự kiện timeline.</p>
+    return <EmptyState compact tone="subtle" title="Chưa có sự kiện timeline" className="py-8" />
   }
   return (
     <div className="space-y-0 py-2">
@@ -703,12 +706,7 @@ function CustomerIntentTabContent({
   loading?: boolean
 }) {
   if (loading) {
-    return (
-      <div className="flex items-center gap-2.5 py-8 text-base text-violet-700">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        Đang phân tích toàn bộ hội thoại…
-      </div>
-    )
+    return <CskhLoading label="Đang phân tích toàn bộ hội thoại…" />
   }
   if (!intent) {
     return (

@@ -22,7 +22,13 @@ import { cn } from '@/lib/utils'
 import { usePermission } from '@/hooks/usePermission'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
+
 type NavItem = AppNavItem
+
+const NAV_ITEM_BASE =
+  'h-10 rounded-md border border-transparent px-3 text-sm transition-colors duration-150'
+const NAV_ITEM_ACTIVE = 'bg-muted text-foreground shadow-sm border-border'
+const NAV_ITEM_INACTIVE = 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
 
 function navItemDedupeKey(item: NavItem): string {
   return item.to + (item.search !== undefined ? JSON.stringify(item.search) : '')
@@ -55,7 +61,7 @@ const NavLink = memo(function NavLink({
       <Icon
         className={cn(
           'h-[18px] w-[18px] shrink-0',
-          active || childActive ? 'text-primary-600' : 'text-muted-foreground'
+          active || childActive ? 'text-primary' : 'text-muted-foreground'
         )}
         strokeWidth={2}
       />
@@ -74,6 +80,10 @@ const NavLink = memo(function NavLink({
   )
 
   const title = collapsed ? item.label : undefined
+  const buttonClassName = cn(
+    NAV_ITEM_BASE,
+    active || childActive ? NAV_ITEM_ACTIVE : NAV_ITEM_INACTIVE
+  )
 
   if (item.children?.length) {
     return (
@@ -82,14 +92,14 @@ const NavLink = memo(function NavLink({
           type="button"
           collapsed={collapsed}
           active={active || childActive}
-          className="w-full"
+          className={cn('w-full', buttonClassName)}
           aria-expanded={isOpen}
           onClick={() => setIsOpen((v) => !v)}
         >
           <div className="flex w-full items-center gap-2">{inner}</div>
         </SidebarMenuButton>
         {isOpen && !collapsed ? (
-          <div className="mb-1 ml-3 flex flex-col gap-0.5 border-l-2 border-indigo-100/90 pl-2">
+          <div className="mb-1 ml-3 flex flex-col gap-0.5 border-l border-border pl-2">
             {item.children.map((child) => {
               const subActive = isNavItemActive(pathname, child, currentSearch)
               const ChildIcon = child.icon
@@ -100,16 +110,11 @@ const NavLink = memo(function NavLink({
                     key={navItemDedupeKey(child)}
                     collapsed={false}
                     active={false}
-                    className="h-9 cursor-pointer"
+                    className={cn('h-9 cursor-pointer', NAV_ITEM_BASE, NAV_ITEM_INACTIVE)}
                     onClick={() => toast.info('Tính năng đang phát triển')}
                   >
-                    <ChildIcon
-                      className="h-4 w-4 shrink-0 text-muted-foreground/70"
-                      strokeWidth={2}
-                    />
-                    <span className="truncate text-[13px] font-medium text-slate-500/80">
-                      {child.label}
-                    </span>
+                    <ChildIcon className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} />
+                    <span className="truncate text-[13px] font-medium">{child.label}</span>
                   </SidebarMenuButton>
                 )
               }
@@ -120,13 +125,17 @@ const NavLink = memo(function NavLink({
                   asChild
                   collapsed={false}
                   active={subActive}
-                  className="h-9"
+                  className={cn(
+                    'h-9',
+                    NAV_ITEM_BASE,
+                    subActive ? NAV_ITEM_ACTIVE : NAV_ITEM_INACTIVE
+                  )}
                 >
                   <Link to={child.to} search={child.search} preload="intent" title={child.label}>
                     <ChildIcon
                       className={cn(
                         'h-4 w-4 shrink-0',
-                        subActive ? 'text-primary-600' : 'text-muted-foreground'
+                        subActive ? 'text-primary' : 'text-muted-foreground'
                       )}
                       strokeWidth={2}
                     />
@@ -144,7 +153,12 @@ const NavLink = memo(function NavLink({
   if (item.openNewTab) {
     return (
       <SidebarMenuItem>
-        <SidebarMenuButton asChild collapsed={collapsed} active={active}>
+        <SidebarMenuButton
+          asChild
+          collapsed={collapsed}
+          active={active}
+          className={buttonClassName}
+        >
           <a href={item.to} target="_blank" rel="noopener noreferrer" title={title}>
             {inner}
           </a>
@@ -156,7 +170,12 @@ const NavLink = memo(function NavLink({
   if (item.search !== undefined) {
     return (
       <SidebarMenuItem>
-        <SidebarMenuButton asChild collapsed={collapsed} active={active}>
+        <SidebarMenuButton
+          asChild
+          collapsed={collapsed}
+          active={active}
+          className={buttonClassName}
+        >
           <Link to={item.to} search={item.search} preload="intent" title={title}>
             {inner}
           </Link>
@@ -167,7 +186,7 @@ const NavLink = memo(function NavLink({
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild collapsed={collapsed} active={active}>
+      <SidebarMenuButton asChild collapsed={collapsed} active={active} className={buttonClassName}>
         <Link to={item.to} preload="intent" title={title}>
           {inner}
         </Link>
@@ -177,8 +196,6 @@ const NavLink = memo(function NavLink({
 })
 
 export function Sidebar() {
-  const user = useAuthStore((s) => s.user)
-  // Remove early return to allow MEMBER/LEADER roles with teacher/other permissions to see sidebar items
   return <SidebarInner />
 }
 
@@ -194,13 +211,6 @@ function SidebarInner() {
   const collapsed = !sidebarOpen
 
   const groups = useMemo(() => groupedSidebarNavItems(canId, user), [canId, user])
-
-  /**
-   * Trạng thái mở/đóng từng nhóm — chỉ lưu các nhóm user đã đóng tay.
-   * - Mặc định: nhóm mở.
-   * - User click → toggle, lưu `false` nếu đóng / xoá khỏi map nếu mở lại.
-   * - Nhóm chứa item đang active luôn mở (không cho đóng) để tránh ẩn route hiện tại.
-   */
   const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(() => new Set())
 
   const isGroupOpen = (groupId: string, hasActive: boolean) => {
@@ -218,14 +228,17 @@ function SidebarInner() {
     })
   }
 
-  const displayName = user?.name ?? 'Ng\u01b0\u1eddi d\u00f9ng'
-
   return (
-    <UiSidebar collapsed={collapsed}>
-      <SidebarHeader className={cn(collapsed ? 'px-2 pb-3 pt-4' : 'px-3 pb-3 pt-4')}>
+    <UiSidebar collapsed={collapsed} className="h-full min-h-0">
+      <SidebarHeader
+        className={cn(
+          'flex h-14 shrink-0 items-center border-b border-border',
+          collapsed ? 'justify-center px-1' : 'justify-between gap-1 px-3'
+        )}
+      >
         {collapsed ? (
-          <div className="flex flex-col items-center gap-2">
-            <div className="mx-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-600 text-base font-extrabold text-white shadow-md ring-2 ring-primary-600/15">
+          <div className="flex flex-col items-center justify-center gap-0.5 py-1">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground shadow-sm">
               V
             </div>
             <Button
@@ -233,18 +246,17 @@ function SidebarInner() {
               variant="ghost"
               size="icon"
               onClick={toggleSidebar}
-              aria-label={'M\u1edf r\u1ed9ng menu'}
-              title={'M\u1edf r\u1ed9ng menu'}
-              className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              aria-label="Mở rộng menu"
+              title="Mở rộng menu"
+              className="h-6 w-6 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-              <ChevronRight className="h-5 w-5" strokeWidth={2} />
+              <ChevronRight className="h-4 w-4" strokeWidth={2} />
             </Button>
           </div>
         ) : (
-          <div className="flex items-start gap-1">
-            <div className="min-w-0 flex-1 pl-1">
-              <div className="text-lg font-extrabold tracking-tight text-primary-600">VCB HRM</div>
-              <div className="mt-1 text-sm leading-snug text-muted-foreground">{displayName}</div>
+          <>
+            <div className="min-w-0 truncate text-base font-extrabold leading-none tracking-tight text-foreground">
+              VCB HRM
             </div>
             <Button
               type="button"
@@ -253,18 +265,18 @@ function SidebarInner() {
               onClick={toggleSidebar}
               aria-label="Thu gọn menu"
               title="Thu gọn menu"
-              className="mt-0.5 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <ChevronLeft className="h-5 w-5" strokeWidth={2} />
             </Button>
-          </div>
+          </>
         )}
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup className="min-h-0 flex-1 px-2 py-3">
           <SidebarGroupContent className="h-full overflow-y-auto">
-            <nav aria-label="Menu \u0111i\u1ec1u h\u01b0\u1edbng" className="flex flex-col gap-2">
+            <nav aria-label="Menu điều hướng" className="flex flex-col gap-2">
               {groups.map((group, idx) => {
                 const groupHasActive = group.items.some((it) =>
                   isNavItemActive(pathname, it, currentSearch)
@@ -281,8 +293,8 @@ function SidebarInner() {
                         className={cn(
                           'group/header mx-1 flex items-center justify-between rounded-md px-2 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors',
                           groupHasActive
-                            ? 'text-indigo-700 dark:text-indigo-200'
-                            : 'text-muted-foreground/75 hover:bg-white/55 hover:text-foreground dark:hover:bg-white/5',
+                            ? 'text-primary'
+                            : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
                           idx === 0 ? 'mt-0' : 'mt-1'
                         )}
                       >
@@ -297,10 +309,7 @@ function SidebarInner() {
                         />
                       </button>
                     ) : idx > 0 ? (
-                      <div
-                        aria-hidden
-                        className="mx-2 my-1 h-px bg-indigo-200/50 dark:bg-indigo-900/40"
-                      />
+                      <div aria-hidden className="mx-2 my-1 h-px bg-border" />
                     ) : null}
                     {isOpen ? (
                       <SidebarMenu id={`sidebar-group-${group.id}`} className="mt-1">

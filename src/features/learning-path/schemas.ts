@@ -65,6 +65,9 @@ const scheduleSlotSchema = z.object({
     )
     .optional()
     .default([]),
+  isExam: z.boolean().optional(),
+  submission: submissionApiSchema.nullable().optional(),
+  note: z.string().nullable().optional(),
   attendance: z.string().optional(),
   makeupStatus: z.string().nullable().optional(),
   isEvaluated: z.boolean().optional(),
@@ -144,6 +147,7 @@ export const availableLearningClassSchema = z.object({
   levelFrom: z.string(),
   levelTo: z.string(),
   status: z.enum(['open', 'full', 'closed']),
+  isKnowledgeWork: z.boolean().optional(),
   capacity: z.number().int(),
   memberCount: z.number().int().nonnegative(),
   seatsLeft: z.number().int().nonnegative(),

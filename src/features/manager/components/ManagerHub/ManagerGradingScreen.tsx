@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import {
-  PAGE_HEADER_DESCRIPTION,
-  PAGE_HEADER_GRADIENT,
-  PAGE_HEADER_SURFACE,
-  PAGE_HEADER_TITLE,
-} from '@/components/shared/PageHeader'
+import { ManagerHubPageHeader } from './ManagerHubPageHeader'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { cn } from '@/lib/utils'
 import { useManagerClasses } from '@/features/manager/hooks'
 import { useManagerSubmissions } from '@/features/exam/hooks'
@@ -245,40 +243,38 @@ export function ManagerGradingScreen() {
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
       <div className="mb-8 flex flex-col gap-8">
-        <div className={cn('min-w-0', PAGE_HEADER_SURFACE)}>
-          <h1 className={PAGE_HEADER_TITLE}>
-            <span className={PAGE_HEADER_GRADIENT}>Chấm bài thi</span>
-          </h1>
-          <p className={PAGE_HEADER_DESCRIPTION}>
-            Quản lý và chấm điểm bài thi đã nộp của các thành viên. Bấm &quot;Xem tất cả bài
-            nộp&quot; để bắt đầu chấm bài.
-          </p>
-        </div>
+        <ManagerHubPageHeader
+          title="Chấm bài thi"
+          description='Quản lý và chấm điểm bài thi đã nộp của các thành viên. Bấm "Xem tất cả bài nộp" để bắt đầu chấm bài.'
+        />
 
         {/* Stats summary */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Tổng bài đã nộp
-            </p>
-            <p className="mt-1 text-3xl font-bold text-foreground">
-              {isLoadingSubmissions ? '—' : submissions.length}
-            </p>
-          </div>
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-rose-600">Chờ chấm</p>
-            <p className="mt-1 text-3xl font-bold text-rose-700">
-              {isLoadingSubmissions ? '—' : totalPending}
-            </p>
-          </div>
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-              Đã chấm xong
-            </p>
-            <p className="mt-1 text-3xl font-bold text-emerald-700">
-              {isLoadingSubmissions ? '—' : totalDone}
-            </p>
-          </div>
+          {[
+            { label: 'Tổng bài đã nộp', value: submissions.length, tone: 'default' },
+            { label: 'Chờ chấm', value: totalPending, tone: 'danger' },
+            { label: 'Đã chấm xong', value: totalDone, tone: 'success' },
+          ].map((item) => (
+            <Card key={item.label} className="border-border bg-card shadow-[var(--shadow-card)]">
+              <CardContent className="p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {item.label}
+                </p>
+                <p
+                  className={cn(
+                    'mt-1 text-3xl font-bold',
+                    item.tone === 'danger'
+                      ? 'text-danger'
+                      : item.tone === 'success'
+                        ? 'text-success-600'
+                        : 'text-foreground'
+                  )}
+                >
+                  {isLoadingSubmissions ? '—' : item.value}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Filters */}
@@ -312,15 +308,22 @@ export function ManagerGradingScreen() {
         <div>
           <div className="space-y-3 md:hidden">
             {isLoading ? (
-              <div className="rounded-xl border border-primary/15 bg-card px-4 py-8 text-center text-sm text-muted-foreground shadow-[var(--shadow-card)] ring-1 ring-primary/10">
-                Đang tải danh sách bài thi...
+              <div className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
+                <Skeleton className="h-6 w-40 rounded" />
+                <Skeleton className="h-4 w-28 rounded" />
+                <Skeleton className="h-20 w-full rounded-lg" />
               </div>
             ) : paginatedRows.length === 0 ? (
-              <div className="rounded-xl border border-primary/15 bg-card px-4 py-10 text-center text-sm text-muted-foreground shadow-[var(--shadow-card)] ring-1 ring-primary/10">
-                {filteredRows.length === 0 && allRows.length > 0
-                  ? 'Không có lịch thi nào phù hợp với bộ lọc.'
-                  : 'Chưa có bài thi nào cần chấm.'}
-              </div>
+              <EmptyState
+                compact
+                title="Chưa có bài thi nào cần chấm"
+                description={
+                  filteredRows.length === 0 && allRows.length > 0
+                    ? 'Không có lịch thi nào phù hợp với bộ lọc.'
+                    : 'Thử đổi bộ lọc hoặc quay lại sau.'
+                }
+                className="rounded-xl border border-border bg-card shadow-[var(--shadow-card)]"
+              />
             ) : (
               paginatedRows.map((row) => {
                 const temp = getTemporalStatus(row.dateIso, row.startTime, row.endTime)
@@ -443,19 +446,26 @@ export function ManagerGradingScreen() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                      Đang tải danh sách bài thi...
+                    <td colSpan={6} className="px-4 py-8">
+                      <div className="space-y-3">
+                        <Skeleton className="h-5 w-full rounded" />
+                        <Skeleton className="h-5 w-full rounded" />
+                        <Skeleton className="h-5 w-3/4 rounded" />
+                      </div>
                     </td>
                   </tr>
                 ) : paginatedRows.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="px-4 py-10 text-center text-sm text-muted-foreground"
-                    >
-                      {filteredRows.length === 0 && allRows.length > 0
-                        ? 'Không có lịch thi nào phù hợp với bộ lọc.'
-                        : 'Chưa có bài thi nào cần chấm.'}
+                    <td colSpan={6} className="px-4 py-10">
+                      <EmptyState
+                        compact
+                        title="Chưa có bài thi nào cần chấm"
+                        description={
+                          filteredRows.length === 0 && allRows.length > 0
+                            ? 'Không có lịch thi nào phù hợp với bộ lọc.'
+                            : 'Thử đổi bộ lọc hoặc quay lại sau.'
+                        }
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -715,9 +725,7 @@ export function ManagerGradingScreen() {
                   </div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center py-10">
-                  <p className="text-sm text-muted-foreground">Chưa có feedback nào.</p>
-                </div>
+                <EmptyState compact tone="subtle" title="Chưa có feedback nào" className="py-10" />
               )}
             </div>
           }

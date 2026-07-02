@@ -12,11 +12,13 @@ import {
 import { AlertTriangle, GraduationCap } from 'lucide-react'
 import { useLearningOpsSummary } from '@/features/dashboard/hooks'
 import { InfoHint } from '@/components/shared/InfoHint'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
+import { DashboardSection } from '@/components/shared/DashboardSection'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { LEVEL_LABELS, LEVELS, type LevelCode } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Button } from '@/components/ui/button'
 
 const quartOut = '[transition-timing-function:cubic-bezier(0.25,1,0.48,1)]'
 
@@ -33,28 +35,35 @@ const LEVELS_HINT = 'Số người theo cấp bậc nghề nghiệp hiện lưu 
 const FAIL_TABLE_HINT =
   'Trong kỳ đã chọn: học viên có kết quả thi Chờ học lại hoặc Chia tay. Mỗi buổi/kỳ thi chỉ tính một lần (không cộng trùng khi chấm lại). Hàng có ≥ 2 lần trượt cùng cặp cấp được tô nổi bật.'
 
-/* ──────────── Bar chart ──────────── */
-
 function LevelBarChart({
   levelData,
+  headcount,
 }: {
   levelData: { code: string; name: string; value: number }[]
+  headcount: number
 }) {
-  const total = levelData.reduce((s, d) => s + d.value, 0)
-
-  const chartData = useMemo(
+  const rawChartData = useMemo(
     () =>
-      levelData.map((entry) => ({
-        name: entry.name,
-        code: entry.code,
-        value: entry.value,
-        pct: total > 0 ? Math.round((entry.value / total) * 100) : 0,
-        fill: LEVEL_PIE_COLORS[entry.code as LevelCode] ?? 'hsl(var(--primary))',
-      })),
-    [levelData, total]
+      [...levelData]
+        .map((entry) => ({
+          name: entry.name,
+          code: entry.code,
+          value: entry.value,
+          fill: LEVEL_PIE_COLORS[entry.code as LevelCode] ?? 'hsl(var(--primary))',
+        }))
+        .sort((a, b) => b.value - a.value),
+    [levelData]
   )
 
-  const yAxisMax = Math.max(1, ...chartData.map((d) => d.value))
+  const rawTotal = rawChartData.reduce((s, d) => s + d.value, 0)
+  const total = Math.max(0, headcount)
+  const scale = rawTotal > 0 && rawTotal > total ? total / rawTotal : 1
+  const chartData = rawChartData.map((entry) => ({
+    ...entry,
+    value: Math.max(0, Math.round(entry.value * scale)),
+  }))
+
+  const yAxisMax = Math.max(1, ...chartData.map((d) => d.value), total)
 
   return (
     <div className="space-y-4">
@@ -85,6 +94,7 @@ function LevelBarChart({
                 fontSize: 13,
               }}
               formatter={(value: number) => [`${value} người`, 'Số lượng']}
+              labelFormatter={(label) => `Cấp bậc: ${label}`}
             />
             <Bar
               dataKey="value"
@@ -185,25 +195,17 @@ export function ManagerLearningOpsZone({
       </div>
 
       {isError ? (
-        <div
-          className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-          role="alert"
-        >
-          Không tải được thống kê.{' '}
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-auto p-0 font-semibold text-destructive underline hover:bg-transparent"
-            onClick={() => void refetch()}
-          >
-            Thử lại
-          </Button>
-        </div>
+        <ErrorState
+          variant="inline"
+          title="Không tải được thống kê."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+          className="rounded-2xl border-destructive/30 bg-destructive/5 text-destructive dark:border-destructive/40 dark:bg-destructive/10"
+        />
       ) : null}
 
       <div
         className={cn(
-          'overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-4 shadow-[var(--shadow-card)] sm:p-5',
           quartOut,
           CARD_ENTRANCE_HOVER,
           'transition-all duration-300 hover:border-primary/20',
@@ -211,143 +213,139 @@ export function ManagerLearningOpsZone({
         )}
         style={{ animationDelay: '40ms', ...staggerStyle(0, 50) }}
       >
-        <div className="mb-3 flex items-start gap-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/10 text-primary">
-            <GraduationCap className="h-4 w-4" strokeWidth={2} aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold uppercase tracking-wider text-primary">
-              Phân bổ nhân sự theo cấp bậc
-            </p>
-          </div>
-          <InfoHint text={LEVELS_HINT} label="Cách tính phân bổ cấp độ" />
-        </div>
-        {isLoading && !data ? (
-          <Skeleton className="h-56 w-full rounded-xl" />
-        ) : !hasAnyLevel ? (
-          <p className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-border/80 bg-muted/25 px-4 text-center text-sm text-muted-foreground">
-            Chưa có dữ liệu cấp độ trong kỳ này.
-          </p>
-        ) : (
-          <LevelBarChart levelData={levelChart} />
-        )}
+        <DashboardSection
+          title="Phân bổ nhân sự theo cấp bậc"
+          icon={<GraduationCap className="h-4 w-4" strokeWidth={2} aria-hidden />}
+          hint={<InfoHint text={LEVELS_HINT} label="Cách tính phân bổ cấp độ" />}
+          contentClassName="pt-0"
+        >
+          {isLoading && !data ? (
+            <Skeleton className="h-56 w-full rounded-xl" />
+          ) : !hasAnyLevel ? (
+            <EmptyState
+              title="Chưa có dữ liệu cấp độ trong kỳ này"
+              compact
+              className="min-h-[200px] justify-center rounded-xl border border-dashed border-border/80 bg-muted/25"
+            />
+          ) : (
+            <LevelBarChart levelData={levelChart} headcount={data?.totalHeadcount ?? 0} />
+          )}
+        </DashboardSection>
       </div>
 
-      <section
+      <div
         className={cn(
-          'overflow-hidden rounded-2xl border border-amber-500/20 bg-card/95 p-4 shadow-[var(--shadow-card)] sm:p-5',
           quartOut,
           CARD_ENTRANCE_HOVER,
           'transition-all duration-300 hover:border-amber-500/30',
           'motion-safe:animate-[dash-fade-up_0.5s_ease-out_both] motion-reduce:animate-none'
         )}
         style={{ animationDelay: '100ms' }}
-        aria-label="Học viên trượt thi trong kỳ"
       >
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-400">
-            <AlertTriangle className="h-4 w-4" strokeWidth={2} aria-hidden />
-          </div>
-          <h3 className="min-w-0 flex-1 text-sm font-bold tracking-tight text-foreground">
-            Học viên trượt thi trong kỳ
-          </h3>
-          <InfoHint text={FAIL_TABLE_HINT} label="Cách tính danh sách trượt thi" />
-        </div>
-
-        {isLoading && !data ? (
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full rounded-lg" />
-            <Skeleton className="h-10 w-full rounded-lg" />
-            <Skeleton className="h-10 w-full rounded-lg" />
-          </div>
-        ) : repeatFails.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border/80 bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
-            Không có bản ghi nào trong kỳ này.
-          </p>
-        ) : (
-          <>
-            <div className="divide-y divide-border/60 rounded-xl border border-border/60 md:hidden">
-              {repeatFails.map((row) => {
-                const lf = row.levelFrom as LevelCode
-                const lt = row.levelTo as LevelCode
-                const pairLabel = `${LEVEL_LABELS[lf] ?? row.levelFrom} → ${LEVEL_LABELS[lt] ?? row.levelTo}`
-                return (
-                  <div
-                    key={`${row.userId}-${row.levelFrom}-${row.levelTo}`}
-                    className={cn(
-                      'space-y-2 p-4 odd:bg-background/40',
-                      row.failCount >= 2 && 'bg-amber-500/5'
-                    )}
-                  >
-                    <p className="break-words font-semibold text-foreground">
-                      {row.fullName?.trim() || '—'}
-                    </p>
-                    <p className="text-xs font-medium text-foreground">{pairLabel}</p>
-                    <p className="tabular-nums text-sm text-muted-foreground">
-                      Mã NV: {row.employeeCode?.trim() || '—'}
-                    </p>
-                    <p className="break-all text-sm text-muted-foreground">
-                      {row.email?.trim() || '—'}
-                    </p>
-                    <p className="text-right text-lg font-black tabular-nums text-amber-700 dark:text-amber-400">
-                      Trượt: {row.failCount} lần
-                    </p>
-                  </div>
-                )
-              })}
+        <DashboardSection
+          title="Học viên trượt thi trong kỳ"
+          icon={<AlertTriangle className="h-4 w-4" strokeWidth={2} aria-hidden />}
+          hint={<InfoHint text={FAIL_TABLE_HINT} label="Cách tính danh sách trượt thi" />}
+          className="border-amber-500/20"
+          contentClassName="pt-0"
+        >
+          {isLoading && !data ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full rounded-lg" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+              <Skeleton className="h-10 w-full rounded-lg" />
             </div>
-            <div className="hidden overflow-x-auto rounded-xl border border-border/60 md:block">
-              <table className="w-full min-w-[640px] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border/80 bg-muted/40">
-                    <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Họ tên</th>
-                    <th className="min-w-[10rem] px-3 py-2.5 font-bold text-foreground sm:px-4">
-                      Cặp cấp thi
-                    </th>
-                    <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Mã NV</th>
-                    <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Email</th>
-                    <th className="w-28 px-3 py-2.5 text-right font-bold text-foreground sm:px-4">
-                      Lần trượt
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {repeatFails.map((row) => {
-                    const lf = row.levelFrom as LevelCode
-                    const lt = row.levelTo as LevelCode
-                    const pairLabel = `${LEVEL_LABELS[lf] ?? row.levelFrom} → ${LEVEL_LABELS[lt] ?? row.levelTo}`
-                    return (
-                      <tr
-                        key={`${row.userId}-${row.levelFrom}-${row.levelTo}`}
-                        className={cn(
-                          'border-b border-border/50 last:border-0 odd:bg-background/40 transition-colors hover:bg-muted/20',
-                          row.failCount >= 2 && 'bg-amber-500/5'
-                        )}
-                      >
-                        <td className="px-3 py-2.5 font-semibold text-foreground sm:px-4">
-                          {row.fullName?.trim() || '—'}
-                        </td>
-                        <td className="px-3 py-2.5 text-xs font-medium text-foreground sm:px-4">
-                          {pairLabel}
-                        </td>
-                        <td className="px-3 py-2.5 tabular-nums text-muted-foreground sm:px-4">
-                          {row.employeeCode?.trim() || '—'}
-                        </td>
-                        <td className="max-w-[200px] truncate px-3 py-2.5 text-muted-foreground sm:max-w-xs sm:px-4">
-                          {row.email?.trim() || '—'}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-black tabular-nums text-amber-700 dark:text-amber-400 sm:px-4">
-                          {row.failCount}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </section>
+          ) : repeatFails.length === 0 ? (
+            <EmptyState
+              title="Không có bản ghi nào trong kỳ này"
+              compact
+              className="rounded-xl border border-dashed border-border/80 bg-muted/30 py-6"
+            />
+          ) : (
+            <>
+              <div className="divide-y divide-border/60 rounded-xl border border-border/60 md:hidden">
+                {repeatFails.map((row) => {
+                  const lf = row.levelFrom as LevelCode
+                  const lt = row.levelTo as LevelCode
+                  const pairLabel = `${LEVEL_LABELS[lf] ?? row.levelFrom} → ${LEVEL_LABELS[lt] ?? row.levelTo}`
+                  return (
+                    <div
+                      key={`${row.userId}-${row.levelFrom}-${row.levelTo}`}
+                      className={cn(
+                        'space-y-2 p-4 odd:bg-background/40',
+                        row.failCount >= 2 && 'bg-amber-500/5'
+                      )}
+                    >
+                      <p className="break-words font-semibold text-foreground">
+                        {row.fullName?.trim() || '—'}
+                      </p>
+                      <p className="text-xs font-medium text-foreground">{pairLabel}</p>
+                      <p className="tabular-nums text-sm text-muted-foreground">
+                        Mã NV: {row.employeeCode?.trim() || '—'}
+                      </p>
+                      <p className="break-all text-sm text-muted-foreground">
+                        {row.email?.trim() || '—'}
+                      </p>
+                      <p className="text-right text-lg font-black tabular-nums text-amber-700 dark:text-amber-400">
+                        Trượt: {row.failCount} lần
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="hidden overflow-x-auto rounded-xl border border-border/60 md:block">
+                <table className="w-full min-w-[640px] text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border/80 bg-muted/40">
+                      <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Họ tên</th>
+                      <th className="min-w-[10rem] px-3 py-2.5 font-bold text-foreground sm:px-4">
+                        Cặp cấp thi
+                      </th>
+                      <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Mã NV</th>
+                      <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Email</th>
+                      <th className="w-28 px-3 py-2.5 text-right font-bold text-foreground sm:px-4">
+                        Lần trượt
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {repeatFails.map((row) => {
+                      const lf = row.levelFrom as LevelCode
+                      const lt = row.levelTo as LevelCode
+                      const pairLabel = `${LEVEL_LABELS[lf] ?? row.levelFrom} → ${LEVEL_LABELS[lt] ?? row.levelTo}`
+                      return (
+                        <tr
+                          key={`${row.userId}-${row.levelFrom}-${row.levelTo}`}
+                          className={cn(
+                            'border-b border-border/50 last:border-0 odd:bg-background/40 transition-colors hover:bg-muted/20',
+                            row.failCount >= 2 && 'bg-amber-500/5'
+                          )}
+                        >
+                          <td className="px-3 py-2.5 font-semibold text-foreground sm:px-4">
+                            {row.fullName?.trim() || '—'}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs font-medium text-foreground sm:px-4">
+                            {pairLabel}
+                          </td>
+                          <td className="px-3 py-2.5 tabular-nums text-muted-foreground sm:px-4">
+                            {row.employeeCode?.trim() || '—'}
+                          </td>
+                          <td className="max-w-[200px] truncate px-3 py-2.5 text-muted-foreground sm:max-w-xs sm:px-4">
+                            {row.email?.trim() || '—'}
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-black tabular-nums text-amber-700 dark:text-amber-400 sm:px-4">
+                            {row.failCount}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </DashboardSection>
+      </div>
     </div>
   )
 }

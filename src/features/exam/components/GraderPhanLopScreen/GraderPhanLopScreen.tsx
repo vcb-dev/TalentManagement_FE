@@ -2,11 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Award, CheckCircle2, ChevronRight, Info, Sparkles } from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
-import {
-  PAGE_HEADER_GRADIENT,
-  PAGE_HEADER_SURFACE,
-  PAGE_HEADER_TITLE,
-} from '@/components/shared/PageHeader'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -162,8 +158,8 @@ export function GraderPhanLopScreen({
   return (
     <Form {...classifyForm}>
       <div className="-m-5 flex min-h-[calc(100vh-3rem)] flex-col bg-app-canvas text-sm text-foreground md:-m-6 lg:-m-8">
-        <div className="page-toolbar-flat flex-col items-stretch gap-0 border-b-0 py-0 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-3 border-b border-border px-6 py-3.5">
+        <PageHeader
+          breadcrumb={
             <nav className="flex flex-wrap items-center gap-1.5 text-xs font-medium uppercase tracking-widest text-muted-foreground">
               <Button
                 type="button"
@@ -186,18 +182,13 @@ export function GraderPhanLopScreen({
                 Thí sinh — {examineeName} (đang chấm)
               </span>
             </nav>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div className={cn('min-w-0 flex-1 text-balance', PAGE_HEADER_SURFACE)}>
-                <h1 className={cn(PAGE_HEADER_TITLE, 'text-xl md:text-2xl')}>
-                  <span className={PAGE_HEADER_GRADIENT}>Xác nhận kết quả kỳ thi</span>
-                </h1>
-              </div>
-              <span className="w-fit rounded-[10px] bg-active-tag-bg px-2 py-0.5 text-xs font-medium text-active-tag-text">
-                Bạn đang chấm với vai trò: {roleLabel} (được chỉ định)
-              </span>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border px-6 py-3">
+          }
+          title="Xác nhận kết quả kỳ thi"
+          description={`Bạn đang chấm với vai trò: ${roleLabel} (được chỉ định)`}
+          gradientTitle
+          variant="flat"
+          className="border-b border-border px-6 py-3.5"
+          actions={
             <Button
               type="button"
               disabled={classify.isPending}
@@ -207,8 +198,8 @@ export function GraderPhanLopScreen({
               {classify.isPending ? 'Đang gửi…' : 'Xác nhận phân lớp'}
               <CheckCircle2 className="h-4 w-4 opacity-90" aria-hidden />
             </Button>
-          </div>
-        </div>
+          }
+        />
 
         <div className="page-shell">
           <div className="mx-auto max-w-[1400px]">
