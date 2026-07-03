@@ -10,6 +10,9 @@ const variants = cva(
         default: 'border-transparent bg-button text-button-foreground',
         outline: 'border-border text-foreground',
         muted: 'border-transparent bg-muted text-muted-foreground',
+        success: 'border-transparent bg-success-muted text-success',
+        warning: 'border-transparent bg-warning-muted text-warning',
+        danger: 'border-transparent bg-danger-muted text-danger',
       },
     },
     defaultVariants: {

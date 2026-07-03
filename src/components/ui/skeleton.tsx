@@ -165,3 +165,14 @@ export function PageSkeleton() {
     </div>
   )
 }
+
+export function SkeletonSubmissionCardList({ count = 4 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-1 gap-6" role="status" aria-busy aria-label="Đang tải danh sách">
+      <span className="sr-only">Đang tải…</span>
+      {Array.from({ length: count }, (_, i) => (
+        <Skeleton key={i} className="h-40 w-full rounded-[24px]" />
+      ))}
+    </div>
+  )
+}

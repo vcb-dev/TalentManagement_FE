@@ -15,7 +15,6 @@ export function RoomBookingPendingPanel({
   processingId,
   onApprove,
   onReject,
-  isLoading,
 }: PendingProps) {
   if (items.length === 0) {
     return (
@@ -73,7 +72,7 @@ type RecentProps = {
   isLoading?: boolean
 }
 
-export function RoomBookingRecentPanel({ items, onItemClick, isLoading }: RecentProps) {
+export function RoomBookingRecentPanel({ items, onItemClick }: RecentProps) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4">
       <h3 className="mb-3 text-sm font-bold text-foreground">Gần đây</h3>

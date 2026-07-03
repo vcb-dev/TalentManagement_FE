@@ -14,6 +14,7 @@ import { z } from 'zod'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useManagerClasses } from '@/features/manager/hooks'
+import { type examSubmissionApiSchema } from '@/features/exam/schemas'
 
 export interface GraderExamListScreenProps {
   classId?: string

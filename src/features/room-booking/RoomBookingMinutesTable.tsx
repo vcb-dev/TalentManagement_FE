@@ -16,13 +16,7 @@ type Props = {
 
 const PAGE_SIZE = 5
 
-export function RoomBookingMinutesTable({
-  items,
-  vnTime,
-  currentUserId,
-  showAllUsers,
-  isLoading,
-}: Props) {
+export function RoomBookingMinutesTable({ items, vnTime, currentUserId, showAllUsers }: Props) {
   const [currentPage, setCurrentPage] = useState(1)
 
   const rows = items
