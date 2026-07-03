@@ -6,11 +6,6 @@ import { toast } from 'sonner'
 import { Building2, RefreshCw, Upload } from 'lucide-react'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Button } from '@/components/ui/button'
-import { SkeletonProfileForm } from '@/components/ui/skeleton'
-import { PageHeader } from '@/components/shared/PageHeader'
-import { FormSection } from '@/components/shared/FormSection'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { ErrorState } from '@/components/shared/ErrorState'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Form } from '@/components/ui/form'
@@ -54,9 +49,6 @@ import {
 export interface MyProfileScreenProps {
   page: MyProfilePage | undefined
   isLoading: boolean
-  isError?: boolean
-  onRetry?: () => void
-  retrying?: boolean
 }
 
 const inputEditable =
@@ -74,6 +66,38 @@ function FieldLabel({ children }: { children: string }) {
       <span className="h-3 w-0.5 rounded-full bg-slate-300" aria-hidden />
       <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{children}</span>
     </span>
+  )
+}
+
+function SectionTitle({
+  children,
+  icon,
+  variant = 'primary',
+}: {
+  children: string
+  icon?: React.ReactNode
+  variant?: 'primary' | 'indigo' | 'violet' | 'emerald'
+}) {
+  const configs = {
+    primary: 'bg-primary/10 text-primary',
+    indigo: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
+    violet: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
+    emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+  }
+  return (
+    <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
+      <div
+        className={cn(
+          'flex h-8 w-8 items-center justify-center rounded-lg font-bold',
+          configs[variant]
+        )}
+      >
+        {icon || <Building2 className="h-4 w-4" />}
+      </div>
+      <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
+        {children}
+      </h3>
+    </div>
   )
 }
 
@@ -501,6 +525,13 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     (field) => !isWorkOrgReadonlyField(field.key) && field.key !== 'directManager'
   )
   const detailSections = USER_SELF_FORM_SECTIONS.slice(1).filter((s) => s.title.trim() !== 'Khác')
+  const detailSectionVariants: ('indigo' | 'violet' | 'emerald' | 'primary')[] = [
+    'indigo',
+    'violet',
+    'emerald',
+    'primary',
+    'indigo',
+  ]
   const onSaveProfile = handleSubmit((values) =>
     patchUser(toPatch(values, u), {
       onSuccess: () => {
@@ -545,13 +576,19 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
         </div>
 
         <div className="mx-auto w-full max-w-[1400px] px-4 md:px-6">
-          <PageHeader
-            title="Hồ sơ cá nhân"
-            description="Quản lý thông tin nhân sự và lộ trình phát triển."
-            inverse
-            variant="flat"
-            className="relative mb-8 overflow-hidden rounded-3xl border-none bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-8 shadow-2xl"
-          />
+          <div className="mb-8 border-none bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-8 text-white shadow-2xl rounded-3xl relative overflow-hidden">
+            <div className="absolute right-0 top-0 h-full w-1/3 bg-white/10 [mask-image:linear-gradient(to_left,white,transparent)]" />
+            <div className="relative z-10 flex flex-col gap-4">
+              <div className="min-w-0">
+                <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2">
+                  Hồ sơ cá nhân
+                </h1>
+                <p className="text-blue-50/80 max-w-2xl font-medium">
+                  Quản lý thông tin nhân sự và lộ trình phát triển.
+                </p>
+              </div>
+            </div>
+          </div>
 
           <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
             <div className="space-y-6">
@@ -574,62 +611,67 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
               </section>
 
               <section className="rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
-                <FormSection title="Chi tiết hồ sơ" className="border-0 pb-0">
-                  <div className="space-y-8">
-                    <div className="rounded-2xl border border-slate-200 border-l-4 border-l-primary bg-white p-6 shadow-sm dark:border-slate-800 dark:border-l-primary dark:bg-slate-900/50">
-                      <FormSection title={workSection.title} className="border-0 pb-0">
-                        {workReadonlyFields.length > 0 ? (
-                          <div className="mb-8">
-                            <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-primary/50">
-                              Thông tin đồng bộ (chỉ xem)
-                            </p>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                              {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
-                            </div>
-                          </div>
-                        ) : null}
-                        {workEditableFields.length > 0 ? (
-                          <div className="border-t border-slate-100 pt-6 dark:border-slate-800">
-                            <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                              Thông tin có thể cập nhật
-                            </p>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                              {workEditableFields.map((f) => renderField(f, fieldCtx))}
-                              <div className="sm:col-span-2">
-                                <EmployeeExtraTeamsField
-                                  control={control}
-                                  name="extraTeamIds"
-                                  primaryTeamId={selectedTeamId}
-                                  allTeams={allTeamOptions}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ) : null}
-                      </FormSection>
-                    </div>
+                <div className="mb-8 flex items-center gap-3">
+                  <div className="h-8 w-1.5 rounded-full bg-gradient-to-b from-primary to-violet-600" />
+                  <h2 className="text-xl font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
+                    Chi tiết hồ sơ
+                  </h2>
+                </div>
 
-                    {detailSections.map((section, idx) => (
-                      <div
-                        key={section.title}
-                        className={cn(
-                          'rounded-2xl border border-slate-200 border-l-4 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50',
-                          idx % 3 === 0
-                            ? 'border-l-indigo-500'
-                            : idx % 3 === 1
-                              ? 'border-l-violet-500'
-                              : 'border-l-emerald-500'
-                        )}
-                      >
-                        <FormSection title={section.title} className="border-0 pb-0">
-                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            {section.fields.map((f) => renderField(f, fieldCtx, user?.role))}
-                          </div>
-                        </FormSection>
+                <div className="space-y-8">
+                  <div className="rounded-2xl border border-slate-200 border-l-4 border-l-primary bg-white p-6 shadow-sm dark:border-slate-800 dark:border-l-primary dark:bg-slate-900/50">
+                    <SectionTitle variant="primary">{workSection.title}</SectionTitle>
+                    {workReadonlyFields.length > 0 ? (
+                      <div className="mb-8">
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-primary/50">
+                          Thông tin đồng bộ (chỉ xem)
+                        </p>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
+                        </div>
                       </div>
-                    ))}
+                    ) : null}
+                    {workEditableFields.length > 0 ? (
+                      <div className="border-t border-slate-100 pt-6 dark:border-slate-800">
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Thông tin có thể cập nhật
+                        </p>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          {workEditableFields.map((f) => renderField(f, fieldCtx))}
+                          <div className="sm:col-span-2">
+                            <EmployeeExtraTeamsField
+                              control={control}
+                              name="extraTeamIds"
+                              primaryTeamId={selectedTeamId}
+                              allTeams={allTeamOptions}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                </FormSection>
+
+                  {detailSections.map((section, idx) => (
+                    <div
+                      key={section.title}
+                      className={cn(
+                        'rounded-2xl border border-slate-200 border-l-4 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50',
+                        idx % 3 === 0
+                          ? 'border-l-indigo-500'
+                          : idx % 3 === 1
+                            ? 'border-l-violet-500'
+                            : 'border-l-emerald-500'
+                      )}
+                    >
+                      <SectionTitle variant={detailSectionVariants[idx]}>
+                        {section.title}
+                      </SectionTitle>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        {section.fields.map((f) => renderField(f, fieldCtx, user?.role))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </section>
             </div>
           </div>
@@ -667,37 +709,19 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
   )
 }
 
-export function MyProfileScreen({
-  page,
-  isLoading,
-  isError,
-  onRetry,
-  retrying,
-}: MyProfileScreenProps) {
+export function MyProfileScreen({ page, isLoading }: MyProfileScreenProps) {
   const u = page?.userRecord
 
-  if (isLoading || (!page && !isError)) {
+  if (isLoading || !page || !u) {
     return (
-      <div className="-m-5 flex min-h-[calc(100vh-3rem)] bg-slate-50/50 p-8 md:-m-6 lg:-m-8">
-        <div className="mx-auto w-full max-w-3xl">
-          <SkeletonProfileForm />
-        </div>
-      </div>
-    )
-  }
-
-  if (isError || !page || !u) {
-    return (
-      <div className="-m-5 flex min-h-[calc(100vh-3rem)] items-center justify-center bg-slate-50/50 p-8 md:-m-6 lg:-m-8">
-        {isError ? (
-          <ErrorState
-            title="Không tải được hồ sơ"
-            description="Vui lòng kiểm tra kết nối và thử lại."
-            onRetry={onRetry}
-            retrying={retrying}
-          />
+      <div className="-m-5 flex min-h-[calc(100vh-3rem)] items-center justify-center bg-slate-50/50 p-8 text-muted-foreground md:-m-6 lg:-m-8">
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-4">
+            <RefreshCw className="h-8 w-8 animate-spin text-primary/40" />
+            <span className="font-bold tracking-wide text-xs uppercase">Đang tải hồ sơ…</span>
+          </div>
         ) : (
-          <EmptyState title="Không có dữ liệu hồ sơ" description="Hồ sơ của bạn chưa sẵn sàng." />
+          'Không có dữ liệu'
         )}
       </div>
     )

@@ -4,13 +4,12 @@ import { useQuery } from '@tanstack/react-query'
 import { useParams, useSearch } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { SkeletonProfileForm } from '@/components/ui/skeleton'
 import { performanceApi } from '@/features/kpi-okr/api'
 import { Target, Star, TrendingUp, Clock, ChevronLeft, Building2, Briefcase } from 'lucide-react'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { ErrorState } from '@/components/shared/ErrorState'
-import { PageHeader } from '@/components/shared/PageHeader'
+import { OrgUserAvatar } from '@/components/shared/EmployeeAvatar'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { UserWorkReportHistory } from './UserWorkReportHistory'
@@ -24,7 +23,7 @@ export function UserSnapshotScreen() {
   const defaultYear = year ?? new Date().getFullYear()
   const defaultMonth = month ?? new Date().getMonth() + 1
 
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['performance', 'snapshot', userId, defaultYear, defaultMonth],
     queryFn: () => performanceApi.getUserSnapshot(userId, defaultYear, defaultMonth),
     enabled: !!userId,
@@ -36,27 +35,22 @@ export function UserSnapshotScreen() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <SkeletonProfileForm />
+      <div className="space-y-4 p-6">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full" />
       </div>
     )
   }
 
   if (isError || !data) {
     return (
-      <div className="p-6">
-        <ErrorState
-          title="Không thể tải hồ sơ nhân sự"
-          onRetry={() => void refetch()}
-          retrying={isFetching}
-          className="max-w-lg"
-        />
-        <div className="mt-4">
-          <Button variant="outline" size="sm" onClick={navigateBack}>
-            <ChevronLeft className="mr-1 h-4 w-4" />
-            Quay lại
-          </Button>
-        </div>
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <p className="text-slate-500">Không thể tải hồ sơ nhân sự.</p>
+        <Button variant="outline" size="sm" onClick={navigateBack}>
+          <ChevronLeft className="mr-1 h-4 w-4" />
+          Quay lại
+        </Button>
       </div>
     )
   }
@@ -65,29 +59,40 @@ export function UserSnapshotScreen() {
 
   return (
     <div className="space-y-6 p-6">
-      <PageHeader
-        onBack={navigateBack}
-        title={profile.displayName || 'Chưa có tên'}
-        description={
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {profile.jobTitle ? (
-              <span className="flex items-center gap-1">
-                <Briefcase className="h-3.5 w-3.5" />
-                {profile.jobTitle}
-              </span>
-            ) : null}
-            {profile.divisionName ? (
-              <span className="flex items-center gap-1">
-                <Building2 className="h-3.5 w-3.5" />
-                {profile.divisionName}
-                {profile.teamName ? ` / ${profile.teamName}` : ''}
-              </span>
-            ) : null}
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-4">
+          <OrgUserAvatar
+            name={profile.displayName?.trim() || profile.email?.trim() || '?'}
+            avatarUrl={resolvePublicAssetUrl(profile.avatarUrl)}
+            className="h-14 w-14 text-lg"
+          />
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+              {profile.displayName || 'Chưa có tên'}
+            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+              {profile.jobTitle && (
+                <span className="flex items-center gap-1">
+                  <Briefcase className="h-3.5 w-3.5" />
+                  {profile.jobTitle}
+                </span>
+              )}
+              {profile.divisionName && (
+                <span className="flex items-center gap-1">
+                  <Building2 className="h-3.5 w-3.5" />
+                  {profile.divisionName}
+                  {profile.teamName && ` / ${profile.teamName}`}
+                </span>
+              )}
+            </div>
           </div>
-        }
-        variant="flat"
-        className="border-0 pb-0"
-      />
+        </div>
+        <Button variant="ghost" size="sm" onClick={navigateBack}>
+          <ChevronLeft className="mr-1 h-4 w-4" />
+          Quay lại
+        </Button>
+      </div>
 
       {/* Tab nav */}
       <div className="flex gap-1 rounded-xl border border-slate-200 bg-slate-100/60 p-1 dark:border-slate-800 dark:bg-slate-900/60">
@@ -154,11 +159,7 @@ export function UserSnapshotScreen() {
                     </div>
                   </div>
                 ) : (
-                  <EmptyState
-                    title="Chưa có OKR"
-                    compact
-                    className="border-0 bg-transparent py-2"
-                  />
+                  <p className="text-sm text-slate-400">Chưa có OKR</p>
                 )}
               </CardContent>
             </Card>
@@ -188,11 +189,7 @@ export function UserSnapshotScreen() {
                     </div>
                   </div>
                 ) : (
-                  <EmptyState
-                    title="Chưa có KPI P1"
-                    compact
-                    className="border-0 bg-transparent py-2"
-                  />
+                  <p className="text-sm text-slate-400">Chưa có KPI P1</p>
                 )}
               </CardContent>
             </Card>
@@ -232,11 +229,7 @@ export function UserSnapshotScreen() {
                     </div>
                   </div>
                 ) : (
-                  <EmptyState
-                    title="Chưa có dữ liệu tháng"
-                    compact
-                    className="border-0 bg-transparent py-2"
-                  />
+                  <p className="text-sm text-slate-400">Chưa có dữ liệu tháng</p>
                 )}
               </CardContent>
             </Card>
@@ -266,11 +259,7 @@ export function UserSnapshotScreen() {
                   ))}
                 </div>
               ) : (
-                <EmptyState
-                  title="Chưa có dữ liệu quá trình công tác"
-                  compact
-                  className="border-0 bg-transparent py-4"
-                />
+                <p className="text-sm text-slate-400">Chưa có dữ liệu quá trình công tác</p>
               )}
             </CardContent>
           </Card>

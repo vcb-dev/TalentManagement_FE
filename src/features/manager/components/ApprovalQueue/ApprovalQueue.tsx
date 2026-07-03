@@ -18,9 +18,13 @@ import {
   Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { PageHeader } from '@/components/shared/PageHeader'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
-import { EmptyState } from '@/components/shared/EmptyState'
 import { SkeletonApprovalCardList } from '@/components/ui/skeleton'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
@@ -139,24 +143,30 @@ export function ApprovalQueue({
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
       <div className="animate-page-entrance flex flex-col gap-6 pb-12">
-        <PageHeader
-          title="Quản lý thăng tiến"
-          description="Phê duyệt thăng cấp bậc và thăng sao cho nhân sự đủ điều kiện. Hệ thống tự động gợi ý dựa trên kết quả học tập và KPI."
-          gradientTitle
-          surface
-          variant="flat"
-          className="rounded-[32px] border-0"
-          actions={
-            <Link
-              to="/hr-admin"
-              search={{ page: 1, pageSize: 15 }}
-              className="inline-flex items-center gap-2 rounded-2xl border border-primary/10 bg-card px-5 py-3 text-sm font-bold text-primary shadow-sm transition-all hover:bg-muted/50 active:scale-95"
-            >
-              <History className="h-4 w-4" />
-              Lịch sử duyệt
-            </Link>
-          }
-        />
+        {/* Header Section */}
+        <div className={cn('rounded-[32px] p-8 md:p-10', PAGE_HEADER_SURFACE)}>
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-2xl">
+              <h1 className={cn(PAGE_HEADER_TITLE, 'mb-3')}>
+                <span className={PAGE_HEADER_GRADIENT}>Quản lý thăng tiến</span>
+              </h1>
+              <p className={cn(PAGE_HEADER_DESCRIPTION, 'max-w-lg')}>
+                Phê duyệt thăng cấp bậc và thăng sao cho nhân sự đủ điều kiện. Hệ thống tự động gợi
+                ý dựa trên kết quả học tập và KPI.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Link
+                to="/hr-admin"
+                search={{ page: 1, pageSize: 15 }}
+                className="inline-flex items-center gap-2 rounded-2xl border border-primary/10 bg-card px-5 py-3 text-sm font-bold text-primary shadow-sm transition-all hover:bg-muted/50 active:scale-95"
+              >
+                <History className="h-4 w-4" />
+                Lịch sử duyệt
+              </Link>
+            </div>
+          </div>
+        </div>
 
         {/* Search & Filter Bar */}
         <div className="flex flex-col gap-3 rounded-3xl border border-border bg-card/50 p-3 shadow-sm backdrop-blur-md sm:flex-row sm:items-center">
@@ -392,31 +402,27 @@ export function ApprovalQueue({
 
             {/* Empty State */}
             {(showQueueEmpty || !page) && (
-              <div className="relative min-h-[400px] rounded-[40px] border-2 border-dashed border-border/60 bg-muted/20 p-12">
-                <div className="pointer-events-none absolute inset-x-0 top-8 flex justify-center">
-                  <div className="relative">
-                    <div className="absolute inset-0 animate-pulse rounded-full bg-primary/5 blur-3xl" />
-                    <div className="relative flex h-32 w-32 items-center justify-center rounded-[40px] bg-card shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)]">
-                      <UserCheck className="h-16 w-16 text-primary/20" strokeWidth={1} />
-                      <Sparkles className="absolute -right-2 -top-2 h-10 w-10 text-amber-400" />
-                    </div>
+              <div className="flex min-h-[400px] flex-col items-center justify-center rounded-[40px] border-2 border-dashed border-border/60 bg-muted/20 p-12 text-center">
+                <div className="relative mb-8">
+                  <div className="absolute inset-0 animate-pulse rounded-full bg-primary/5 blur-3xl" />
+                  <div className="relative flex h-32 w-32 items-center justify-center rounded-[40px] bg-card shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)]">
+                    <UserCheck className="h-16 w-16 text-primary/20" strokeWidth={1} />
+                    <Sparkles className="absolute -right-2 -top-2 h-10 w-10 text-amber-400" />
                   </div>
                 </div>
-                <EmptyState
-                  title="Hàng chờ trống"
-                  description="Hiện tại không có yêu cầu thăng tiến nào cần phê duyệt. Bạn đã hoàn thành xuất sắc công việc quản trị hôm nay!"
-                  action={
-                    <Button
-                      variant="ghost"
-                      onClick={() => window.location.reload()}
-                      className="rounded-2xl font-bold text-primary hover:bg-primary/5"
-                    >
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Làm mới dữ liệu
-                    </Button>
-                  }
-                  className="relative z-10 border-0 bg-transparent pt-28"
-                />
+                <h3 className="text-xl font-black text-foreground">Hàng chờ trống</h3>
+                <p className="mt-3 max-w-sm text-sm font-medium leading-relaxed text-muted-foreground">
+                  Hiện tại không có yêu cầu thăng tiến nào cần phê duyệt. Bạn đã hoàn thành xuất sắc
+                  công việc quản trị hôm nay!
+                </p>
+                <Button
+                  variant="ghost"
+                  onClick={() => window.location.reload()}
+                  className="mt-8 rounded-2xl font-bold text-primary hover:bg-primary/5"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Làm mới dữ liệu
+                </Button>
               </div>
             )}
 

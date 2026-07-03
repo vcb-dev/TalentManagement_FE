@@ -8,10 +8,7 @@ import {
 } from '@/features/kpi-okr/api'
 import { cn } from '@/lib/utils'
 
-import { EmptyState } from '@/components/shared/EmptyState'
-import { DashboardSection } from '@/components/shared/DashboardSection'
 import { CustomSelect } from '@/components/shared/CustomSelect'
-import { SkeletonStatTile } from '@/components/ui/skeleton'
 
 function formatNumber(value: number, unit: string): string {
   const isVnd = unit.toUpperCase() === 'VND'
@@ -93,10 +90,17 @@ export function TrafficHonorDetailCard({ className }: Props) {
     (data?.teamWinners.length ?? 0) > 0 || (data?.individualWinners.length ?? 0) > 0
 
   return (
-    <DashboardSection
-      title="Vinh danh Traffic Teams"
-      icon={<Zap className="h-5 w-5 text-sky-600" aria-hidden />}
-      action={
+    <section
+      className={cn('rounded-2xl border border-border bg-card p-4 shadow-sm md:p-5', className)}
+      aria-labelledby="traffic-honor-title"
+    >
+      <header className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <Zap className="h-5 w-5 text-sky-600" aria-hidden />
+          <h3 id="traffic-honor-title" className="text-base font-bold">
+            Vinh danh Traffic Teams
+          </h3>
+        </div>
         <div className="w-[170px]">
           <CustomSelect
             value={`${ym.year}-${ym.month}`}
@@ -110,20 +114,15 @@ export function TrafficHonorDetailCard({ className }: Props) {
             }))}
           />
         </div>
-      }
-      className={className}
-      contentClassName="pt-0"
-    >
+      </header>
+
       {loading && !data ? (
-        <SkeletonStatTile className="min-h-[120px]" />
+        <p className="text-sm text-muted-foreground">Đang tải…</p>
       ) : !hasAnyWinner ? (
-        <EmptyState
-          title="Chưa có dữ liệu vinh danh tháng này"
-          compact
-          className="border-0 bg-transparent py-4"
-        />
+        <p className="text-sm text-muted-foreground">Chưa có dữ liệu vinh danh tháng này.</p>
       ) : (
         <div className="space-y-4">
+          {/* Team winners — 4 metrics */}
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Giải Team
@@ -134,6 +133,8 @@ export function TrafficHonorDetailCard({ className }: Props) {
               ))}
             </div>
           </div>
+
+          {/* Individual winners — 2 metrics */}
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Giải Cá nhân
@@ -149,7 +150,7 @@ export function TrafficHonorDetailCard({ className }: Props) {
           </div>
         </div>
       )}
-    </DashboardSection>
+    </section>
   )
 }
 
@@ -161,11 +162,7 @@ function TeamWinnerCell({ winner }: { winner: TrafficHonorTeamWinner | null }) {
         {winner?.metricLabel ?? '—'}
       </div>
       {!winner ? (
-        <EmptyState
-          title="Chưa có"
-          compact
-          className="items-start border-0 bg-transparent py-1 text-left [&>div]:text-left"
-        />
+        <p className="text-sm text-muted-foreground">Chưa có</p>
       ) : (
         <div>
           <p className="truncate text-base font-semibold">{winner.teamName}</p>
@@ -201,11 +198,7 @@ function IndividualWinnerCell({ winner }: { winner: TrafficHonorIndividualWinner
         {winner?.metricLabel ?? '—'}
       </div>
       {!winner ? (
-        <EmptyState
-          title="Chưa có"
-          compact
-          className="items-start border-0 bg-transparent py-1 text-left [&>div]:text-left"
-        />
+        <p className="text-sm text-muted-foreground">Chưa có</p>
       ) : (
         <div>
           <p className="truncate text-base font-semibold">{winner.displayName}</p>

@@ -26,7 +26,6 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import { cn } from '@/lib/utils'
-import { EmptyState } from '@/components/shared/EmptyState'
 import { renderActiveDot, renderDot } from './chartStyles'
 import type {
   AssignmentStatusKey,
@@ -35,28 +34,6 @@ import type {
   TopPriorityItem,
   TrendPoint,
 } from './useKpiDashboardData'
-
-function ChartEmptyPanel({
-  title,
-  className,
-  heightClass = 'h-[220px]',
-}: {
-  title: string
-  className?: string
-  heightClass?: string
-}) {
-  return (
-    <EmptyState
-      title={title}
-      compact
-      className={cn(
-        heightClass,
-        'w-full justify-center rounded-xl border border-dashed border-border bg-transparent py-4',
-        className
-      )}
-    />
-  )
-}
 
 const STATUS_LABEL: Record<AssignmentStatusKey, string> = {
   done: 'Hoàn thành',
@@ -174,7 +151,16 @@ export function StatusDonut({
   const total = data.reduce((s, x) => s + x.value, 0)
 
   if (!total) {
-    return <ChartEmptyPanel title="Chưa có chỉ tiêu nào trong kỳ." className={className} />
+    return (
+      <div
+        className={cn(
+          'flex h-[220px] items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground',
+          className
+        )}
+      >
+        Chưa có chỉ tiêu nào trong kỳ.
+      </div>
+    )
   }
 
   return (
@@ -268,7 +254,16 @@ export function EvalBreakdownDonut({
   const total = data.reduce((s, x) => s + x.value, 0)
 
   if (!total) {
-    return <ChartEmptyPanel title="Chưa có chỉ tiêu nào trong kỳ." className={className} />
+    return (
+      <div
+        className={cn(
+          'flex h-[220px] items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground',
+          className
+        )}
+      >
+        Chưa có chỉ tiêu nào trong kỳ.
+      </div>
+    )
   }
 
   return (
@@ -367,7 +362,9 @@ export function GradeDonut({ dist, title }: { dist: GradeDistribution; title: st
         ) : null}
       </div>
       {total === 0 ? (
-        <ChartEmptyPanel title="Chưa có tổng hợp" heightClass="h-[180px]" />
+        <div className="flex h-[180px] items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">
+          Chưa có tổng hợp
+        </div>
       ) : (
         <ChartContainer config={gradeChartConfig} className="h-[180px] w-full">
           <PieChart>
@@ -427,7 +424,9 @@ const perPersonConfig = {
 export function PerPersonBar({ rows }: { rows: PerPersonBarRow[] }) {
   if (!rows.length) {
     return (
-      <ChartEmptyPanel title="Không có dữ liệu KPI/OKR trong kỳ này." heightClass="h-[260px]" />
+      <div className="flex h-[260px] items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">
+        Không có dữ liệu KPI/OKR trong kỳ này.
+      </div>
     )
   }
   const data = rows.slice(0, 10)
@@ -497,7 +496,11 @@ const trendConfig = {
 export function TrendLine({ points }: { points: TrendPoint[] }) {
   const hasAny = points.some((p) => p.hasData)
   if (!hasAny) {
-    return <ChartEmptyPanel title="Chưa có dữ liệu tổng hợp trong các tháng đã chọn." />
+    return (
+      <div className="flex h-[220px] items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">
+        Chưa có dữ liệu tổng hợp trong các tháng đã chọn.
+      </div>
+    )
   }
   return (
     <ChartContainer config={trendConfig} className="h-[220px] w-full">
@@ -555,7 +558,11 @@ export function TopPriorityList({
   nameFor: (userId: string) => string
 }) {
   if (!rows.length) {
-    return <ChartEmptyPanel title="Không có chỉ tiêu nào trong kỳ." />
+    return (
+      <div className="flex h-[220px] items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">
+        Không có chỉ tiêu nào trong kỳ.
+      </div>
+    )
   }
   return (
     <ul className="space-y-2.5">
@@ -689,7 +696,11 @@ export function MemberKpiPanel({
   )
 
   if (!rows.length) {
-    return <ChartEmptyPanel title="Không có thành viên nào trong team." />
+    return (
+      <div className="flex h-[220px] items-center justify-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">
+        Không có thành viên nào trong team.
+      </div>
+    )
   }
 
   return (
@@ -754,11 +765,9 @@ export function MemberKpiPanel({
             {isOpen && (
               <div className="border-t border-border/50 px-3 pb-3 pt-2">
                 {selectedItems.length === 0 ? (
-                  <EmptyState
-                    title="Chưa có chỉ tiêu nào được giao"
-                    compact
-                    className="border-0 bg-transparent py-3"
-                  />
+                  <p className="py-3 text-center text-xs text-muted-foreground">
+                    Chưa có chỉ tiêu nào được giao.
+                  </p>
                 ) : (
                   <ul className="mt-1 space-y-1.5">
                     {selectedItems.map((a) => {

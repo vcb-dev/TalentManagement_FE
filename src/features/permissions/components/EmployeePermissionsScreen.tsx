@@ -3,7 +3,12 @@ import { useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { Info } from 'lucide-react'
-import { PageHeader } from '@/components/shared/PageHeader'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { Breadcrumb } from '@/components/shared/Breadcrumb'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -25,8 +30,6 @@ import { getApiErrorMessage } from '@/lib/axios'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/auth'
 import { PermissionTree } from './PermissionTree'
-import { ErrorState } from '@/components/shared/ErrorState'
-import { Skeleton } from '@/components/ui/skeleton'
 
 /** Phân quyền toàn hệ thống — không tách chi nhánh. */
 const SCOPE: ScopeKey = 'global'
@@ -62,12 +65,10 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
   )
   const [dirty, setDirty] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const loadFromServer = useCallback(async () => {
     setLoading(true)
-    setLoadError(null)
     try {
       const rec = await permissionApi.getAssignment(employee.id, SCOPE)
       if (rec) {
@@ -80,9 +81,7 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
       }
       setDirty(false)
     } catch (e) {
-      const msg = getApiErrorMessage(e) || 'Không tải được phân quyền'
-      setLoadError(msg)
-      toast.error(msg)
+      toast.error(getApiErrorMessage(e) || 'Không tải được phân quyền')
     } finally {
       setLoading(false)
     }
@@ -152,56 +151,52 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
       <div className="mb-8 flex flex-col gap-8">
-        <PageHeader
-          breadcrumb={
-            <Breadcrumb
-              items={[{ label: 'Phân quyền', href: '/permissions' }, { label: employee.name }]}
-            />
-          }
-          title={`Phân quyền cho ${employee.name}`}
-          description={employee.email}
-          gradientTitle
-          surface
-          variant="flat"
-          className="border-0 pb-0"
-          actions={
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              {dirty ? (
-                <Badge
-                  variant="outline"
-                  className="border-amber-500/35 bg-amber-500/10 font-medium text-amber-900"
-                >
-                  Chỉnh sửa chưa được lưu
-                </Badge>
-              ) : (
-                <Badge variant="muted" className="font-medium">
-                  Đã đồng bộ
-                </Badge>
-              )}
-              <Button type="button" variant="outline" size="sm" asChild>
-                <Link to="/permissions">Đóng</Link>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onCancel}
-                disabled={loading || !dirty}
-              >
-                Hủy
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => void onSave()}
-                disabled={loading || !dirty}
-                loading={saving}
-              >
-                Lưu
-              </Button>
-            </div>
-          }
+        <Breadcrumb
+          items={[{ label: 'Phân quyền', href: '/permissions' }, { label: employee.name }]}
         />
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+            <h1 className={PAGE_HEADER_TITLE}>
+              <span className={PAGE_HEADER_GRADIENT}>Phân quyền cho {employee.name}</span>
+            </h1>
+            <p className={PAGE_HEADER_DESCRIPTION}>{employee.email}</p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2 lg:pb-1">
+            {dirty ? (
+              <Badge
+                variant="outline"
+                className="border-amber-500/35 bg-amber-500/10 font-medium text-amber-900"
+              >
+                Chỉnh sửa chưa được lưu
+              </Badge>
+            ) : (
+              <Badge variant="muted" className="font-medium">
+                Đã đồng bộ
+              </Badge>
+            )}
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link to="/permissions">Đóng</Link>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onCancel}
+              disabled={loading || !dirty}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void onSave()}
+              disabled={loading || !dirty}
+              loading={saving}
+            >
+              Lưu
+            </Button>
+          </div>
+        </div>
 
         <div className="flex gap-3 rounded-xl border border-primary/15 bg-gradient-to-r from-primary/[0.07] via-primary/[0.04] to-primary/[0.06] px-4 py-3.5 shadow-[var(--shadow-card)]">
           <Info className="size-5 shrink-0 text-primary" strokeWidth={2} aria-hidden />
@@ -254,25 +249,8 @@ export function EmployeePermissionsScreen({ employee }: EmployeePermissionsScree
           <h2 className="mb-4 text-base font-semibold tracking-tight text-foreground">
             Quyền chi tiết
           </h2>
-          {loadError ? (
-            <ErrorState
-              title="Không tải được phân quyền"
-              description={loadError}
-              onRetry={() => void loadFromServer()}
-              retrying={loading}
-              compact
-            />
-          ) : loading ? (
-            <div
-              className="space-y-3 py-4"
-              role="status"
-              aria-busy
-              aria-label="Đang tải phân quyền"
-            >
-              <Skeleton className="h-10 w-full rounded-lg" />
-              <Skeleton className="h-10 w-full rounded-lg" />
-              <Skeleton className="h-64 w-full rounded-xl" />
-            </div>
+          {loading ? (
+            <div className="py-12 text-center text-sm text-muted-foreground">Đang tải…</div>
           ) : (
             <PermissionTree
               selected={selected}

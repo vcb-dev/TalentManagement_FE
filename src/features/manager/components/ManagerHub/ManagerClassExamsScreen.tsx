@@ -1,11 +1,16 @@
 import { Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { CheckSquare, Circle, FileUp, ListPlus, Trash2, Users, X } from 'lucide-react'
+import { CheckSquare, Circle, FileUp, ListPlus, Loader2, Trash2, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { ManagerHubPageHeader } from './ManagerHubPageHeader'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Form } from '@/components/ui/form'
@@ -19,10 +24,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { SkeletonExamScheduleTable } from '@/components/ui/skeleton'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { ErrorState } from '@/components/shared/ErrorState'
-import { getApiErrorMessage } from '@/lib/axios'
 import { managerApi } from '@/features/manager/api'
 import { managerClassApiSchema } from '@/features/manager/schemas'
 import { managerKeys } from '@/features/manager/queryKeys'
@@ -254,14 +255,7 @@ function ClassSchedulesList({
 
 export function ManagerClassExamsScreen() {
   const [selectedClassIdForScores, setSelectedClassIdForScores] = useState<string | null>(null)
-  const {
-    data: rawClasses = [],
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching,
-  } = useManagerClasses()
+  const { data: rawClasses = [], isLoading } = useManagerClasses()
   const examItems = useMemo(() => {
     const flat: any[] = []
     rawClasses.forEach((c: any) => {
@@ -497,10 +491,15 @@ export function ManagerClassExamsScreen() {
     <>
       <ManagerScreenLayout hideHubNav hideToolbar>
         <div className="mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <ManagerHubPageHeader
-            title="Bài thi của lớp"
-            description='Danh sách các lớp quản lý và bộ câu hỏi tương ứng hiện có. Nhấn "Tạo bài thi" để gán đề cho từng lớp.'
-          />
+          <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+            <h1 className={PAGE_HEADER_TITLE}>
+              <span className={PAGE_HEADER_GRADIENT}>Bài thi của lớp</span>
+            </h1>
+            <p className={PAGE_HEADER_DESCRIPTION}>
+              Danh sách các lớp quản lý và bộ câu hỏi tương ứng hiện có. Nhấn "Tạo bài thi" để gán
+              đề cho từng lớp.
+            </p>
+          </div>
           <div className="flex flex-wrap items-center gap-4">
             <Link to="/manager/exam-schedule">
               <Button
@@ -536,70 +535,202 @@ export function ManagerClassExamsScreen() {
         </div>
 
         <div>
-          {isError ? (
-            <ErrorState
-              title="Không tải được danh sách buổi thi"
-              description={getApiErrorMessage(error)}
-              onRetry={() => void refetch()}
-              retrying={isFetching}
-            />
-          ) : isLoading ? (
-            <SkeletonExamScheduleTable rows={4} />
-          ) : (
-            <>
-              <div className="space-y-3 md:hidden">
-                {examItems.length === 0 ? (
-                  <EmptyState
-                    icon={<ListPlus className="h-8 w-8" />}
-                    title="Chưa có kỳ thi nào được lên lịch"
-                    description='Hãy tạo lịch thi tại mục "Lịch thi" để bắt đầu gán đề.'
-                    action={
-                      <Link to="/manager/exam-schedule">
-                        <Button
-                          size="sm"
-                          className="h-9 gap-2 rounded-xl text-xs font-bold shadow-sm"
-                        >
-                          <ListPlus className="h-4 w-4" />
-                          Đến trang Lịch thi
-                        </Button>
-                      </Link>
-                    }
-                    compact
-                    className="rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10"
-                  />
+          <div className="space-y-3 md:hidden">
+            {isLoading ? (
+              <div className="rounded-xl border border-primary/15 bg-card px-4 py-12 text-center shadow-[var(--shadow-card)] ring-1 ring-primary/10">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                <p className="mt-2 text-xs font-medium text-muted-foreground">
+                  Đang tải danh sách buổi thi...
+                </p>
+              </div>
+            ) : examItems.length === 0 ? (
+              <div className="rounded-xl border border-primary/15 bg-card px-4 py-10 text-center text-sm text-muted-foreground shadow-[var(--shadow-card)] ring-1 ring-primary/10">
+                <p>
+                  Chưa có kỳ thi nào được lên lịch. Hãy tạo lịch thi tại mục &quot;Lịch thi&quot; để
+                  bắt đầu gán đề.
+                </p>
+                <Link to="/manager/exam-schedule" className="mt-4 inline-block">
+                  <Button size="sm" className="h-9 gap-2 rounded-xl text-xs font-bold shadow-sm">
+                    <ListPlus className="h-4 w-4" />
+                    Đến trang Lịch thi
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              examItems.map((item) => {
+                const classUi = managerClassStatusUi(item.classStatus)
+                const teacherName = item.classTeacher?.name || '—'
+                const sessionBank = questionBankByClass[item.id]
+                const classBank = questionBankByClass[item.classId]
+                const sessionQuestionCount = questionBankQuestionCount(sessionBank)
+                const hasSessionBank = sessionQuestionCount > 0
+                return (
+                  <div
+                    key={item.id}
+                    className="space-y-3 rounded-xl border border-primary/15 bg-card p-4 shadow-[var(--shadow-card)] ring-1 ring-primary/10"
+                  >
+                    <div>
+                      <p className="font-bold text-foreground">{item.className}</p>
+                      <p className="mt-1 text-xs font-bold uppercase tracking-wider text-primary">
+                        {item.topic}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground">Ngày / giờ thi</p>
+                      <p className="font-semibold text-foreground">{item.dateIso}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {examHmRangeDisplay(item, sessionBank)}
+                      </p>
+                    </div>
+                    <p className="text-sm">
+                      <span className="font-semibold text-muted-foreground">Giáo viên: </span>
+                      {teacherName}
+                    </p>
+                    <div>
+                      <span
+                        className={cn(
+                          'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
+                          classUi.badgeClass
+                        )}
+                      >
+                        {classUi.label}
+                      </span>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3">
+                      {hasSessionBank ? (
+                        <div>
+                          <p className="font-semibold text-emerald-600">
+                            {sessionQuestionCount} câu hỏi
+                          </p>
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Thời gian: {examDurationLabelMinutes(sessionBank)} phút
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="italic text-muted-foreground">Chưa có đề riêng</p>
+                          {classBank ? (
+                            <p className="text-xs font-medium text-amber-600">(Đã có đề mẫu lớp)</p>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-10 w-full font-bold rounded-lg border-primary/20 text-primary hover:bg-primary/5"
+                        onClick={() => setSelectedClassIdForScores(item.classId)}
+                      >
+                        <Users className="mr-1 h-3 w-3" />
+                        Điểm
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className={cn(
+                          'h-10 w-full font-bold',
+                          hasSessionBank
+                            ? 'border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100'
+                            : 'shadow-sm shadow-primary/10'
+                        )}
+                        variant={hasSessionBank ? 'outline' : 'default'}
+                        onClick={() => openAssignmentModal(item.classId, item.id)}
+                      >
+                        {hasSessionBank ? 'Sửa đề thi' : 'Tạo đề thi'}
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          <div
+            className={cn(
+              'hidden overflow-x-auto rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10 transition-opacity md:block'
+            )}
+          >
+            <table className="w-full min-w-[700px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">
+                  <th className="px-3 py-3 font-semibold">Lớp & Buổi thi</th>
+                  <th className="px-3 py-3 font-semibold">Ngày thi</th>
+                  <th className="px-3 py-3 font-semibold">Giáo viên</th>
+                  <th className="px-3 py-3 font-semibold">Trạng thái lớp</th>
+                  <th className="px-3 py-3 font-semibold">Tình trạng đề thi</th>
+                  <th className="px-3 py-3 text-right font-semibold">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Đang tải danh sách buổi thi...
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : examItems.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-4 py-10 text-center text-sm text-muted-foreground"
+                    >
+                      <div className="flex flex-col items-center gap-4">
+                        <p>
+                          Chưa có kỳ thi nào được lên lịch. Hãy tạo lịch thi tại mục "Lịch thi" để
+                          bắt đầu gán đề.
+                        </p>
+                        <Link to="/manager/exam-schedule">
+                          <Button
+                            size="sm"
+                            className="h-9 rounded-xl gap-2 text-xs font-bold shadow-sm"
+                          >
+                            <ListPlus className="h-4 w-4" />
+                            Đến trang Lịch thi
+                          </Button>
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
                 ) : (
                   examItems.map((item) => {
                     const classUi = managerClassStatusUi(item.classStatus)
                     const teacherName = item.classTeacher?.name || '—'
+
                     const sessionBank = questionBankByClass[item.id]
                     const classBank = questionBankByClass[item.classId]
                     const sessionQuestionCount = questionBankQuestionCount(sessionBank)
                     const hasSessionBank = sessionQuestionCount > 0
+
                     return (
-                      <div
+                      <tr
                         key={item.id}
-                        className="space-y-3 rounded-xl border border-primary/15 bg-card p-4 shadow-[var(--shadow-card)] ring-1 ring-primary/10"
+                        className="border-t border-border/80 bg-card transition-colors hover:bg-muted/25"
                       >
-                        <div>
-                          <p className="font-bold text-foreground">{item.className}</p>
-                          <p className="mt-1 text-xs font-bold uppercase tracking-wider text-primary">
-                            {item.topic}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-muted-foreground">
-                            Ngày / giờ thi
-                          </p>
-                          <p className="font-semibold text-foreground">{item.dateIso}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {examHmRangeDisplay(item, sessionBank)}
-                          </p>
-                        </div>
-                        <p className="text-sm">
-                          <span className="font-semibold text-muted-foreground">Giáo viên: </span>
-                          {teacherName}
-                        </p>
-                        <div>
+                        <td className="px-3 py-4">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-bold text-foreground">{item.className}</span>
+                            <span className="text-xs text-primary font-bold uppercase tracking-wider">
+                              {item.topic}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-4">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-semibold text-foreground">{item.dateIso}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {examHmRangeDisplay(item, sessionBank)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 text-foreground">{teacherName}</td>
+                        <td className="px-3 py-4">
                           <span
                             className={cn(
                               'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
@@ -608,204 +739,64 @@ export function ManagerClassExamsScreen() {
                           >
                             {classUi.label}
                           </span>
-                        </div>
-                        <div className="rounded-lg bg-muted/30 p-3">
+                        </td>
+                        <td className="px-3 py-4">
                           {hasSessionBank ? (
-                            <div>
-                              <p className="font-semibold text-emerald-600">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-emerald-600 font-semibold">
                                 {sessionQuestionCount} câu hỏi
-                              </p>
-                              <p className="text-xs font-medium text-muted-foreground">
+                              </span>
+                              <span className="text-xs text-muted-foreground font-medium">
                                 Thời gian: {examDurationLabelMinutes(sessionBank)} phút
-                              </p>
+                              </span>
                             </div>
                           ) : (
-                            <div>
-                              <p className="italic text-muted-foreground">Chưa có đề riêng</p>
-                              {classBank ? (
-                                <p className="text-xs font-medium text-amber-600">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-muted-foreground italic">Chưa có đề riêng</span>
+                              {classBank && (
+                                <span className="text-xs text-amber-600 font-medium">
                                   (Đã có đề mẫu lớp)
-                                </p>
-                              ) : null}
+                                </span>
+                              )}
                             </div>
                           )}
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-10 w-full font-bold rounded-lg border-primary/20 text-primary hover:bg-primary/5"
-                            onClick={() => setSelectedClassIdForScores(item.classId)}
-                          >
-                            <Users className="mr-1 h-3 w-3" />
-                            Điểm
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            className={cn(
-                              'h-10 w-full font-bold',
-                              hasSessionBank
-                                ? 'border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100'
-                                : 'shadow-sm shadow-primary/10'
-                            )}
-                            variant={hasSessionBank ? 'outline' : 'default'}
-                            onClick={() => openAssignmentModal(item.classId, item.id)}
-                          >
-                            {hasSessionBank ? 'Sửa đề thi' : 'Tạo đề thi'}
-                          </Button>
-                        </div>
-                      </div>
+                        </td>
+                        <td className="px-3 py-4 text-right">
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="font-bold h-8 rounded-lg border-primary/20 text-primary hover:bg-primary/5"
+                              onClick={() => setSelectedClassIdForScores(item.classId)}
+                            >
+                              <Users className="h-3 w-3 mr-1" />
+                              Điểm
+                            </Button>
+
+                            <Button
+                              type="button"
+                              size="sm"
+                              className={cn(
+                                'font-bold h-8',
+                                hasSessionBank
+                                  ? 'border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100'
+                                  : 'shadow-sm shadow-primary/10'
+                              )}
+                              variant={hasSessionBank ? 'outline' : 'default'}
+                              onClick={() => openAssignmentModal(item.classId, item.id)}
+                            >
+                              {hasSessionBank ? 'Sửa đề thi' : 'Tạo đề thi'}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
                     )
                   })
                 )}
-              </div>
-
-              <div
-                className={cn(
-                  'hidden overflow-x-auto rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10 transition-opacity md:block'
-                )}
-              >
-                <table className="w-full min-w-[700px] border-collapse text-left text-sm">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">
-                      <th className="px-3 py-3 font-semibold">Lớp & Buổi thi</th>
-                      <th className="px-3 py-3 font-semibold">Ngày thi</th>
-                      <th className="px-3 py-3 font-semibold">Giáo viên</th>
-                      <th className="px-3 py-3 font-semibold">Trạng thái lớp</th>
-                      <th className="px-3 py-3 font-semibold">Tình trạng đề thi</th>
-                      <th className="px-3 py-3 text-right font-semibold">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {examItems.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-0">
-                          <EmptyState
-                            icon={<ListPlus className="h-8 w-8" />}
-                            title="Chưa có kỳ thi nào được lên lịch"
-                            description='Hãy tạo lịch thi tại mục "Lịch thi" để bắt đầu gán đề.'
-                            action={
-                              <Link to="/manager/exam-schedule">
-                                <Button
-                                  size="sm"
-                                  className="h-9 gap-2 rounded-xl text-xs font-bold shadow-sm"
-                                >
-                                  <ListPlus className="h-4 w-4" />
-                                  Đến trang Lịch thi
-                                </Button>
-                              </Link>
-                            }
-                            compact
-                          />
-                        </td>
-                      </tr>
-                    ) : (
-                      examItems.map((item) => {
-                        const classUi = managerClassStatusUi(item.classStatus)
-                        const teacherName = item.classTeacher?.name || '—'
-
-                        const sessionBank = questionBankByClass[item.id]
-                        const classBank = questionBankByClass[item.classId]
-                        const sessionQuestionCount = questionBankQuestionCount(sessionBank)
-                        const hasSessionBank = sessionQuestionCount > 0
-
-                        return (
-                          <tr
-                            key={item.id}
-                            className="border-t border-border/80 bg-card transition-colors hover:bg-muted/25"
-                          >
-                            <td className="px-3 py-4">
-                              <div className="flex flex-col gap-0.5">
-                                <span className="font-bold text-foreground">{item.className}</span>
-                                <span className="text-xs text-primary font-bold uppercase tracking-wider">
-                                  {item.topic}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-4">
-                              <div className="flex flex-col gap-0.5">
-                                <span className="font-semibold text-foreground">
-                                  {item.dateIso}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {examHmRangeDisplay(item, sessionBank)}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-4 text-foreground">{teacherName}</td>
-                            <td className="px-3 py-4">
-                              <span
-                                className={cn(
-                                  'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
-                                  classUi.badgeClass
-                                )}
-                              >
-                                {classUi.label}
-                              </span>
-                            </td>
-                            <td className="px-3 py-4">
-                              {hasSessionBank ? (
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-emerald-600 font-semibold">
-                                    {sessionQuestionCount} câu hỏi
-                                  </span>
-                                  <span className="text-xs text-muted-foreground font-medium">
-                                    Thời gian: {examDurationLabelMinutes(sessionBank)} phút
-                                  </span>
-                                </div>
-                              ) : (
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-muted-foreground italic">
-                                    Chưa có đề riêng
-                                  </span>
-                                  {classBank && (
-                                    <span className="text-xs text-amber-600 font-medium">
-                                      (Đã có đề mẫu lớp)
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-4 text-right">
-                              <div className="flex flex-wrap items-center justify-end gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="font-bold h-8 rounded-lg border-primary/20 text-primary hover:bg-primary/5"
-                                  onClick={() => setSelectedClassIdForScores(item.classId)}
-                                >
-                                  <Users className="h-3 w-3 mr-1" />
-                                  Điểm
-                                </Button>
-
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  className={cn(
-                                    'font-bold h-8',
-                                    hasSessionBank
-                                      ? 'border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100'
-                                      : 'shadow-sm shadow-primary/10'
-                                  )}
-                                  variant={hasSessionBank ? 'outline' : 'default'}
-                                  onClick={() => openAssignmentModal(item.classId, item.id)}
-                                >
-                                  {hasSessionBank ? 'Sửa đề thi' : 'Tạo đề thi'}
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {assignmentModalClassId && assignmentClass ? (

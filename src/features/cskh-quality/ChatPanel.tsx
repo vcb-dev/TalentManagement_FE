@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/axios'
-import { MessageCircle } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
 import {
   fetchInboxMessages,
   sendInboxMessage,
@@ -13,7 +13,6 @@ import {
 } from './api'
 import { ChatMessage } from './ChatMessage'
 import { ChatMessageInput } from './ChatMessageInput'
-import { CskhEmptyState, CskhLoading } from './cskhUi'
 import { TypingIndicator } from './TypingIndicator'
 import { cskhMediaProxySrc } from './messageMedia'
 
@@ -132,13 +131,14 @@ export function ChatPanel({ conversation, isCustomerTyping, onClose }: ChatPanel
         className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-gray-50 to-white"
       >
         {isLoading ? (
-          <CskhLoading label="Đang tải tin nhắn…" />
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          </div>
         ) : displayMessages.length === 0 ? (
-          <CskhEmptyState
-            icon={<MessageCircle className="h-8 w-8 text-indigo-600" />}
-            title="Không có tin nhắn nào"
-            description="Cuộc hội thoại này chưa có tin nhắn"
-          />
+          <div className="flex flex-col items-center justify-center h-full text-gray-500">
+            <AlertCircle className="w-12 h-12 mb-2 opacity-50" />
+            <p className="text-sm">Không có tin nhắn nào</p>
+          </div>
         ) : (
           <>
             {displayMessages.map((msg) => (

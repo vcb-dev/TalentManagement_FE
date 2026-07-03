@@ -8,7 +8,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export interface ConfirmDialogProps {
@@ -18,9 +17,9 @@ export interface ConfirmDialogProps {
   description?: string
   confirmLabel?: string
   cancelLabel?: string
+  /** When true, styles the confirm button as destructive (red) */
   destructive?: boolean
-  pending?: boolean
-  onConfirm: () => void | Promise<void>
+  onConfirm: () => void
 }
 
 export function ConfirmDialog({
@@ -31,7 +30,6 @@ export function ConfirmDialog({
   confirmLabel = 'Xác nhận',
   cancelLabel = 'Hủy',
   destructive = false,
-  pending = false,
   onConfirm,
 }: ConfirmDialogProps) {
   return (
@@ -39,20 +37,18 @@ export function ConfirmDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}
+          {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>{cancelLabel}</AlertDialogCancel>
-          <AlertDialogAction asChild>
-            <Button
-              type="button"
-              loading={pending}
-              variant={destructive ? 'destructive' : 'default'}
-              onClick={onConfirm}
-              className={cn('min-w-24')}
-            >
-              {confirmLabel}
-            </Button>
+          <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            className={cn(
+              destructive &&
+                'border border-danger/40 bg-danger text-white shadow-[0_2px_8px_rgb(220_38_38/0.24)] hover:bg-danger/90 focus-visible:ring-danger/30'
+            )}
+          >
+            {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

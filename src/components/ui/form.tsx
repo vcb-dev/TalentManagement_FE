@@ -43,7 +43,7 @@ function FormItem({ className, ...props }: React.HTMLAttributes<HTMLDivElement>)
   const id = React.useId()
   return (
     <FormItemContext.Provider value={{ id }}>
-      <div className={cn('space-y-1.5', className)} {...props} />
+      <div className={cn('space-y-2', className)} {...props} />
     </FormItemContext.Provider>
   )
 }
@@ -72,11 +72,7 @@ function FormLabel({ className, ...props }: React.ComponentProps<typeof Label>) 
 
   return (
     <Label
-      className={cn(
-        'text-sm font-semibold text-foreground',
-        error && 'text-destructive',
-        className
-      )}
+      className={cn('text-xs font-semibold', error && 'text-destructive', className)}
       htmlFor={formItemId}
       {...props}
     />

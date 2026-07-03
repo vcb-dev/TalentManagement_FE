@@ -1,9 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { KeyRound, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { PageHeader } from '@/components/shared/PageHeader'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { ErrorState } from '@/components/shared/ErrorState'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { PaginationPrevNext } from '@/components/ui/pagination'
 import { Card } from '@/components/ui/card'
@@ -233,20 +236,19 @@ function PermissionsIndexPage() {
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
       <div className="mb-8 flex flex-col gap-8">
-        <PageHeader
-          title="Phân quyền nhân viên"
-          description="Chọn nhân viên để gán vai trò mẫu và quyền chi tiết. Chỉ BOD và Quản lý có quyền truy cập màn hình này."
-          eyebrow={
-            <div className="inline-flex items-center gap-2 rounded-lg border border-primary/15 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary">
-              <KeyRound className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
-              Phân quyền
-            </div>
-          }
-          gradientTitle
-          surface
-          variant="flat"
-          className="border-0 pb-0"
-        />
+        <div className={cn('min-w-0', PAGE_HEADER_SURFACE)}>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-lg border border-primary/15 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary">
+            <KeyRound className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+            Phân quyền
+          </div>
+          <h1 className={PAGE_HEADER_TITLE}>
+            <span className={PAGE_HEADER_GRADIENT}>Phân quyền nhân viên</span>
+          </h1>
+          <p className={PAGE_HEADER_DESCRIPTION}>
+            Chọn nhân viên để gán vai trò mẫu và quyền chi tiết. Chỉ BOD và Quản lý có quyền truy
+            cập màn hình này.
+          </p>
+        </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-between">
           <label className="relative flex min-h-[42px] min-w-0 flex-1 rounded-xl border border-border bg-card shadow-sm ring-1 ring-border/60">
@@ -293,12 +295,22 @@ function PermissionsIndexPage() {
         </div>
 
         {isError ? (
-          <ErrorState
-            title="Không tải được danh sách nhân sự"
-            description={`Kiểm tra kết nối API (GET /employees) và quyền BOD/Quản lý. ${getApiErrorMessage(error)}`}
-            onRetry={() => void refetch()}
-            retrying={isFetching}
-          />
+          <Card className="border-destructive/30 bg-destructive/5 p-6 shadow-[var(--shadow-card)]">
+            <p className="text-sm font-medium text-destructive">
+              Không tải được danh sách nhân sự. Kiểm tra kết nối API (GET /employees) và quyền
+              BOD/Quản lý.
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">{getApiErrorMessage(error)}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => void refetch()}
+            >
+              Thử lại {isFetching ? '…' : ''}
+            </Button>
+          </Card>
         ) : isLoading ? (
           <PermissionsTableSkeleton />
         ) : (
@@ -321,16 +333,10 @@ function PermissionsIndexPage() {
                 <TableBody>
                   {rows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="p-0">
-                        <EmptyState
-                          title={
-                            search || roleFilter
-                              ? 'Không có nhân viên khớp tìm kiếm hoặc bộ lọc vai trò'
-                              : 'Không có nhân viên'
-                          }
-                          compact
-                          className="py-10"
-                        />
+                      <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                        {search || roleFilter
+                          ? 'Không có nhân viên khớp tìm kiếm hoặc bộ lọc vai trò.'
+                          : 'Không có nhân viên.'}
                       </TableCell>
                     </TableRow>
                   ) : (

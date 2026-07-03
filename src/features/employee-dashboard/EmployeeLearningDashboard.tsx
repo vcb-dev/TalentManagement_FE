@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { BarChart3, GraduationCap, Medal, Sparkles, Target, Trophy } from 'lucide-react'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
-import { ErrorState } from '@/components/shared/ErrorState'
-import { EmptyState } from '@/components/shared/EmptyState'
 import { ProgressStar } from '@/components/shared/ProgressStar/ProgressStar'
-import { PageHeader } from '@/components/shared/PageHeader'
-import { DashboardSection } from '@/components/shared/DashboardSection'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { useMyDashboard } from '@/features/dashboard/hooks'
 import { DashboardKpiOkrZone } from '@/features/employee-dashboard/components/DashboardKpiOkrZone'
 import { VinhDanhSlide } from '@/features/employee-dashboard/components/VinhDanhSlide'
@@ -19,6 +21,7 @@ import {
 } from '@/features/employee-dashboard/components/ManagerSharedReportPeriodFilter'
 import { CARD_ENTRANCE_HOVER, STAR_POP, staggerStyle } from '@/lib/cardMotion'
 import { LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
+import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { Button } from '@/components/ui/button'
@@ -155,15 +158,7 @@ export function EmployeeLearningDashboard() {
     [managerReportPeriod]
   )
 
-  const {
-    data: meDashboard,
-    isLoading,
-    isError,
-    refetch,
-    isFetching,
-  } = useMyDashboard({
-    enabled: Boolean(user),
-  })
+  const { data: meDashboard, isLoading } = useMyDashboard({ enabled: Boolean(user) })
   const apiUser = meDashboard?.user
   const greetingName = apiUser?.displayName?.trim() || user?.name?.trim() || 'bạn'
   const apiCareer = meDashboard?.career
@@ -174,14 +169,18 @@ export function EmployeeLearningDashboard() {
   const filledStars = apiCareer?.currentStars ?? meDashboard?.levelSource?.starCount ?? 0
 
   const avatarName = apiUser?.fullNameLegal?.trim() || user?.name || 'User'
-  const deptLine =
-    apiUser?.departmentName?.trim() || (user ? formatDepartment(user.departmentId) : '—')
-  const fullName =
-    apiUser?.displayName?.trim() || apiUser?.fullNameLegal?.trim() || user?.name || '—'
-  const birthDate = formatDateVi(apiUser?.birthDate)
-  const jobTitleValue = apiUser?.jobTitle || '—'
-  const teamPositionValue = apiUser?.teamPosition?.trim() || '—'
-  const levelLabelValue = levelLabel
+  const teamLine = isLoading ? 'Loading...' : apiUser?.teamGroup?.trim() || 'Khác'
+  const deptLine = isLoading
+    ? 'Loading...'
+    : apiUser?.departmentName?.trim() || (user ? formatDepartment(user.departmentId) : '—')
+  const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
+  const fullName = isLoading
+    ? 'Loading...'
+    : apiUser?.displayName?.trim() || apiUser?.fullNameLegal?.trim() || user?.name || '—'
+  const birthDate = isLoading ? 'Loading...' : formatDateVi(apiUser?.birthDate)
+  const jobTitleValue = isLoading ? 'Loading...' : apiUser?.jobTitle || '—'
+  const teamPositionValue = isLoading ? 'Loading...' : apiUser?.teamPosition?.trim() || '—'
+  const levelLabelValue = isLoading ? 'Loading...' : levelLabel
   const promotionHistory = meDashboard?.promotionHistory ?? []
   const highlightAchievements = meDashboard?.highlightAchievements ?? []
 
@@ -282,29 +281,27 @@ export function EmployeeLearningDashboard() {
       <div className="page-shell relative z-[1] space-y-6 pb-10">
         <VinhDanhSlide />
         <section className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <PageHeader
-            title={isManagerLearningDash ? 'Tổng quan quản lý' : 'Tổng quan cá nhân'}
-            description={
-              isManagerLearningDash ? (
+          <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-gradient-to-r from-primary/[0.12] to-accent/[0.1] px-3 py-0.5 text-xs font-bold uppercase tracking-widest text-primary shadow-sm">
+              <Sparkles className="h-3 w-3" aria-hidden />
+              {isManagerLearningDash ? 'Quản lý' : 'Cá nhân'}
+            </div>
+            <h1 className={PAGE_HEADER_TITLE}>
+              <span className={PAGE_HEADER_GRADIENT}>
+                {isManagerLearningDash ? 'Tổng quan quản lý' : 'Tổng quan cá nhân'}
+              </span>
+            </h1>
+            <p className={PAGE_HEADER_DESCRIPTION}>
+              {isManagerLearningDash ? (
                 <>Tổng quan nhân sự, học tập &amp; KPI theo kỳ báo cáo.</>
               ) : (
                 <>
                   Chào <span className="font-semibold text-primary">{greetingName}</span>, thu thập
                   sao và leo hạng.
                 </>
-              )
-            }
-            eyebrow={
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-gradient-to-r from-primary/[0.12] to-accent/[0.1] px-3 py-0.5 text-xs font-bold uppercase tracking-widest text-primary shadow-sm">
-                <Sparkles className="h-3 w-3" aria-hidden />
-                {isManagerLearningDash ? 'Quản lý' : 'Cá nhân'}
-              </div>
-            }
-            gradientTitle
-            surface
-            variant="flat"
-            className="min-w-0 flex-1 border-0 pb-0"
-          />
+              )}
+            </p>
+          </div>
           {!isManagerLearningDash ? (
             <div
               className={cn(
@@ -319,15 +316,6 @@ export function EmployeeLearningDashboard() {
             </div>
           ) : null}
         </section>
-
-        {isError ? (
-          <ErrorState
-            title="Không tải được dữ liệu dashboard"
-            description="Một số thông tin có thể chưa cập nhật. Vui lòng thử lại."
-            onRetry={() => void refetch()}
-            retrying={isFetching}
-          />
-        ) : null}
 
         {/* MEMBER: Profile section */}
         {!isManagerLearningDash ? (
@@ -448,11 +436,7 @@ export function EmployeeLearningDashboard() {
                       {label}
                     </dt>
                     <dd className="mt-0.5 break-words text-sm font-bold text-foreground">
-                      {isLoading ? (
-                        <Skeleton className="mt-0.5 h-4 w-[min(100%,12rem)] rounded" />
-                      ) : (
-                        value
-                      )}
+                      {value}
                     </dd>
                   </div>
                 ))}
@@ -462,18 +446,20 @@ export function EmployeeLearningDashboard() {
         ) : null}
 
         {!isManagerLearningDash ? (
-          <DashboardSection title="Lịch sử thăng cấp" contentClassName="pt-0">
+          <section
+            className="rounded-2xl border border-border/80 bg-card/95 p-4 shadow-[var(--shadow-card)]"
+            aria-label="Lịch sử thăng cấp"
+          >
+            <div className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">
+              Lịch sử thăng cấp
+            </div>
             {isLoading ? (
               <div className="space-y-1.5">
                 <Skeleton className="h-10 w-full rounded-xl" />
                 <Skeleton className="h-10 w-full rounded-xl" />
               </div>
             ) : promotionHistory.length === 0 ? (
-              <EmptyState
-                title="Chưa có lịch sử thăng cấp"
-                description="Lịch sử sẽ hiển thị khi bạn hoàn thành các mốc thăng tiến."
-                compact
-              />
+              <p className="text-xs text-muted-foreground">Chưa có lịch sử.</p>
             ) : (
               <ul className="space-y-1.5">
                 {promotionHistory.map((p, idx) => (
@@ -492,30 +478,25 @@ export function EmployeeLearningDashboard() {
                 ))}
               </ul>
             )}
-          </DashboardSection>
+          </section>
         ) : null}
 
         {!isManagerLearningDash ? (
-          <DashboardSection
-            title="Thành tựu"
-            icon={<Medal className="h-5 w-5 text-amber-500" aria-hidden />}
-            contentClassName="pt-0"
-          >
+          <section aria-labelledby="dash-highlight-achievements">
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <h2
+                id="dash-highlight-achievements"
+                className="flex items-center gap-2 text-base font-black tracking-tight text-foreground"
+              >
+                <Medal className="h-5 w-5 text-amber-500" />
+                Thành tựu
+              </h2>
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {isLoading ? (
-                <>
-                  <Skeleton className="h-24 rounded-2xl" />
-                  <Skeleton className="h-24 rounded-2xl" />
-                  <Skeleton className="h-24 rounded-2xl" />
-                  <Skeleton className="h-24 rounded-2xl" />
-                </>
-              ) : highlightAchievements.length === 0 ? (
-                <EmptyState
-                  icon={<Medal className="h-7 w-7 text-amber-500" />}
-                  title="Chưa có thành tựu"
-                  compact
-                  className="rounded-2xl border border-border/80 bg-card sm:col-span-2 xl:col-span-4"
-                />
+              {highlightAchievements.length === 0 ? (
+                <div className="rounded-2xl border border-border/80 bg-card px-4 py-4 text-sm text-muted-foreground sm:col-span-2 xl:col-span-4">
+                  Chưa có thành tựu.
+                </div>
               ) : (
                 highlightAchievements.map((achievement, idx) => {
                   const style =
@@ -561,7 +542,7 @@ export function EmployeeLearningDashboard() {
                 })
               )}
             </div>
-          </DashboardSection>
+          </section>
         ) : null}
 
         {showKpiZone ? (
@@ -662,7 +643,6 @@ export function EmployeeLearningDashboard() {
                   <DashboardKpiOkrZone
                     role={role as 'LEADER' | 'MANAGER' | 'MEMBER'}
                     paths={paths}
-                    embedded
                     managerReportPeriodFromParent={
                       isManagerLearningDash ? managerKpiPeriodBridge : null
                     }

@@ -21,8 +21,6 @@ import {
   X,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/shared/CustomSelect'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { PageHeader } from '@/components/shared/PageHeader'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
 import { CARD_ENTRANCE } from '@/lib/cardMotion'
@@ -135,7 +133,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Skeleton, SkeletonKpiTableSection } from '@/components/ui/skeleton'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   InputController,
   SelectController,
@@ -695,21 +693,25 @@ export function KpiOkrWorkspace({
         <div className="absolute bottom-8 left-1/3 h-56 w-56 -translate-x-1/2 rounded-full bg-violet-500/16 blur-3xl" />
       </div>
 
-      <PageHeader
-        title={title}
-        description={description}
-        gradientTitle
-        variant="flat"
-        className="mb-4 border-0 pb-0"
-        eyebrow={
+      {/* ── Unified toolbar (Linear-style): title + filters + context in one clean bar ── */}
+      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:gap-4">
+        {/* Title */}
+        <div className="flex items-center gap-3 min-w-0">
           <div className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400">
             <TrendingUp className="h-4.5 w-4.5" />
           </div>
-        }
-      />
+          <div className="min-w-0">
+            <h1 className="text-base font-bold text-slate-900 dark:text-slate-100 truncate">
+              {title}
+            </h1>
+            <p className="text-xs text-slate-500 truncate">{description}</p>
+          </div>
+        </div>
 
-      {/* ── Filter toolbar: team / kỳ + context badges ── */}
-      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:gap-4">
+        {/* Divider */}
+        <div className="hidden h-8 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
+
+        {/* Filters — compact inline */}
         <div className="flex flex-wrap items-center gap-2">
           {!isManagerReadOnly && !isManagerVariant && (
             <Select
@@ -2855,13 +2857,8 @@ function AssignmentTableSingleUser({
     <TableBody>
       {rows.length === 0 ? (
         <TableRow>
-          <TableCell colSpan={tableHeads.length} className="p-0">
-            <EmptyState
-              icon={<ClipboardList className="h-8 w-8" />}
-              title="Chưa có dữ liệu cho nhân sự này"
-              description="Thêm mục tiêu KPI/OKR hoặc chọn kỳ khác."
-              compact
-            />
+          <TableCell colSpan={tableHeads.length} className="h-32 text-center text-slate-400">
+            Chưa có dữ liệu cho nhân sự này.
           </TableCell>
         </TableRow>
       ) : (
@@ -3032,12 +3029,9 @@ function AssignmentTableSingleUser({
       ) : (
         <div className="divide-y divide-slate-100 border-t border-slate-100 dark:divide-slate-800 dark:border-slate-800 md:hidden">
           {rows.length === 0 ? (
-            <EmptyState
-              icon={<ClipboardList className="h-8 w-8" />}
-              title="Chưa có dữ liệu cho nhân sự này"
-              description="Thêm mục tiêu KPI/OKR hoặc chọn kỳ khác."
-              compact
-            />
+            <div className="p-8 text-center text-sm text-slate-400">
+              Chưa có dữ liệu cho nhân sự này.
+            </div>
           ) : (
             rows.map((r, idx) => {
               if (resultsReadOnly) {
@@ -3268,12 +3262,9 @@ function UserAssignmentWorkbench({
 
   if (!userEntries.length) {
     return (
-      <EmptyState
-        icon={<ClipboardList className="h-8 w-8" />}
-        title={emptyText}
-        description="Chọn kỳ khác hoặc thêm mục tiêu cho team."
-        compact
-      />
+      <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50">
+        <p className="text-sm text-slate-400">{emptyText}</p>
+      </div>
     )
   }
 
@@ -3920,13 +3911,15 @@ function ResultsSection({
       )}
 
       {!goalApproved ? (
-        <EmptyState
-          icon={<AlertTriangle className="h-8 w-8 text-amber-500" />}
-          title={`Mục tiêu KPI/OKR tháng ${month}/${year} chưa được duyệt`}
-          description="Chỉ số KPI/OKR sẽ hiển thị để nhập kết quả sau khi mục tiêu được Manager duyệt."
-          compact
-          className="border-amber-300/50 bg-amber-50/50 dark:border-amber-800/50 dark:bg-amber-950/20"
-        />
+        <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 px-6 text-center dark:border-amber-800/50 dark:bg-amber-950/20">
+          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+            Mục tiêu KPI/OKR tháng {month}/{year} chưa được duyệt.
+          </p>
+          <p className="text-xs text-amber-600/80 dark:text-amber-400/80">
+            Chỉ số KPI/OKR sẽ hiển thị để nhập kết quả sau khi mục tiêu được Manager duyệt.
+          </p>
+        </div>
       ) : (
         <>
           {isKinhDoanhTeam && !kinhDoanhResultsCloseOpen && kinhDoanhResultsCloseBounds ? (
@@ -4071,16 +4064,26 @@ function WorkReportPanel({
 
   if (!selectedTeamId) {
     return (
-      <EmptyState
-        icon={<Users className="h-8 w-8" />}
-        title="Chưa chọn nhóm"
-        description="Chọn nhóm để xem báo cáo công việc và KPI/OKR."
-        compact
-      />
+      <Card className="border-dashed border-primary/25 bg-muted/20">
+        <CardContent className="pt-6 text-sm text-muted-foreground">
+          Chọn nhóm để xem báo cáo công việc.
+        </CardContent>
+      </Card>
     )
   }
   if (loadingThis || membersLoading) {
-    return <SkeletonKpiTableSection className={cn(CARD_ENTRANCE)} />
+    return (
+      <Card className={cn(CARD_ENTRANCE)}>
+        <CardHeader>
+          <CardTitle className="text-xl">Đang tải dữ liệu KPI/OKR</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-10/12" />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -4859,11 +4862,17 @@ function SummaryPanel({
 
   if (loading) {
     return (
-      <SkeletonKpiTableSection
-        id="summary-section"
-        label={`Đang tải tổng chỉ số T${month}/${year}`}
-        className={cn('scroll-mt-24', CARD_ENTRANCE)}
-      />
+      <Card id="summary-section" className={cn('scroll-mt-24', CARD_ENTRANCE)}>
+        <CardHeader>
+          <CardTitle className="text-xl md:text-2xl font-bold text-amber-700">
+            Tổng chỉ số hiệu suất — T{month}/{year}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </CardContent>
+      </Card>
     )
   }
   if (displayRows.length === 0) {
@@ -4903,12 +4912,9 @@ function SummaryPanel({
           )}
         </CardHeader>
         <CardContent>
-          <EmptyState
-            icon={<TrendingUp className="h-8 w-8" />}
-            title="Chưa có bản tổng hợp"
-            description={emptyBlurb}
-            compact
-          />
+          <div className="flex h-32 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/30">
+            <p className="text-sm text-slate-400 text-center">{emptyBlurb}</p>
+          </div>
         </CardContent>
       </Card>
     )
@@ -5315,20 +5321,13 @@ export function FormPanel({
             </CardHeader>
             <CardContent className="space-y-6">
               {!data && (
-                <EmptyState
-                  icon={<ClipboardList className="h-8 w-8" />}
-                  title={
-                    isManagerViewOnly
-                      ? 'Chưa có form câu hỏi cho kỳ này'
-                      : 'Chưa có form cho kỳ này'
-                  }
-                  description={
-                    isManagerViewOnly
-                      ? 'Tạo câu hỏi khảo sát để nhân sự có thể trả lời.'
-                      : 'Quản lý chưa tạo câu hỏi cho kỳ này.'
-                  }
-                  compact
-                />
+                <div className="flex h-32 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/30">
+                  <p className="text-sm text-slate-400">
+                    {isManagerViewOnly
+                      ? 'Chưa có form câu hỏi cho kỳ này.'
+                      : 'Chưa có form cho kỳ này (Quản lý chưa tạo câu hỏi).'}
+                  </p>
+                </div>
               )}
 
               {data?.questions?.length ? (
@@ -5754,13 +5753,10 @@ export function FormPanel({
                     </div>
                     <div className="max-h-60 space-y-2 overflow-auto rounded-xl border border-border/60 bg-background/80 p-2 dark:bg-slate-950/50">
                       {validDraftCount === 0 ? (
-                        <EmptyState
-                          icon={<ListPlus className="h-7 w-7" />}
-                          title="Chưa có câu hợp lệ"
-                          description='Import file, dán danh sách, hoặc chuyển sang "Soạn từng câu".'
-                          compact
-                          className="border-0 bg-transparent py-4"
-                        />
+                        <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+                          Chưa có câu hợp lệ. Hãy import file, dán danh sách, hoặc chuyển sang{' '}
+                          <strong className="text-foreground">Soạn từng câu</strong>.
+                        </p>
                       ) : (
                         questionDrafts
                           .filter((q) => q.prompt.trim().length > 0)
@@ -5836,12 +5832,11 @@ export function FormPanel({
               </CardHeader>
               <CardContent>
                 {answersByRespondent.length === 0 ? (
-                  <EmptyState
-                    icon={<Users className="h-8 w-8" />}
-                    title="Chưa có phản hồi khảo sát"
-                    description="Danh sách sẽ cập nhật khi nhân sự gửi câu trả lời."
-                    compact
-                  />
+                  <div className="flex h-32 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/30">
+                    <p className="text-sm text-slate-400 text-center">
+                      Chưa có nhân sự nào trả lời khảo sát.
+                    </p>
+                  </div>
                 ) : (
                   <div className="space-y-4 max-h-[500px] overflow-auto pr-1">
                     {answersByRespondent.map((entry) => (

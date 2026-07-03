@@ -17,9 +17,12 @@ import {
   Users,
 } from 'lucide-react'
 import { OrgUserAvatar } from '@/components/shared/EmployeeAvatar'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { ErrorState } from '@/components/shared/ErrorState'
-import { PageHeader } from '@/components/shared/PageHeader'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import {
   Accordion,
   AccordionContent,
@@ -122,7 +125,7 @@ function OrgCrudNameDialog({
         if (!next) onClose()
       }}
     >
-      <DialogContent className="sm:max-w-md rounded-xl">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
@@ -731,32 +734,35 @@ export function HrOrgStructure() {
   if (structureQ.isError && !mockBanner) {
     return (
       <div className="mx-auto max-w-[1400px] px-3 py-10 md:px-4">
-        <ErrorState
-          title="Không tải được dữ liệu cơ cấu tổ chức"
-          description="Kiểm tra quyền hr.org.manage và kết nối máy chủ."
-          onRetry={() => void structureQ.refetch()}
-          retrying={structureQ.isFetching}
-        />
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="py-8 text-center">
+            <p className="text-base font-medium text-destructive">
+              Không tải được dữ liệu. Kiểm tra quyền{' '}
+              <code className="rounded bg-muted px-1">hr.org.manage</code> và kết nối máy chủ.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
     <div className="mx-auto max-w-[1400px] px-3 py-8 md:px-4">
-      <PageHeader
-        title="Phòng ban & nhóm"
-        description={
-          <>
-            Một phòng ban (đơn vị tổ chức) chứa nhiều nhóm. Mở rộng từng phòng ban để xem nhóm và
-            thành viên. Khi có quyền <code className="rounded bg-muted px-1">hr.org.manage</code>,
-            bạn có thể thêm, sửa hoặc xóa phòng ban và nhóm trên hệ thống.
-          </>
-        }
-        gradientTitle
-        surface
-        variant="flat"
-        className="mb-8 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-accent/10 to-transparent"
-      />
+      <div
+        className={cn(
+          'mb-8 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-accent/10 to-transparent p-4 md:p-6',
+          PAGE_HEADER_SURFACE
+        )}
+      >
+        <h1 className={PAGE_HEADER_TITLE}>
+          <span className={PAGE_HEADER_GRADIENT}>Phòng ban & nhóm</span>
+        </h1>
+        <p className={PAGE_HEADER_DESCRIPTION}>
+          Một phòng ban (đơn vị tổ chức) chứa nhiều nhóm. Mở rộng từng phòng ban để xem nhóm và
+          thành viên. Khi có quyền <code className="rounded bg-muted px-1">hr.org.manage</code>, bạn
+          có thể thêm, sửa hoặc xóa phòng ban và nhóm trên hệ thống.
+        </p>
+      </div>
 
       {mockBanner && (
         <Card className="mb-6 border-amber-500/40 bg-amber-500/10 shadow-none">
@@ -922,12 +928,19 @@ export function HrOrgStructure() {
         </div>
 
         {departments.length === 0 && !structureQ.isLoading && (
-          <EmptyState
-            icon={<FolderOpen className="h-8 w-8 text-primary" />}
-            title="Chưa có phòng ban"
-            description="Hãy tạo phòng ban trước. Sau khi có phòng ban, bạn mới có thể tạo nhóm trong phòng ban đó."
-            action={
-              canManageOrg && !mockBanner ? (
+          <Card className="border-dashed border-2 border-border/80 bg-muted/15 shadow-none">
+            <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                <FolderOpen className="h-8 w-8" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-base font-medium text-foreground">Chưa có phòng ban</p>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  Hãy tạo phòng ban trước. Sau khi có phòng ban, bạn mới có thể tạo nhóm trong phòng
+                  ban đó.
+                </p>
+              </div>
+              {canManageOrg && !mockBanner ? (
                 <Button
                   type="button"
                   size="sm"
@@ -937,10 +950,9 @@ export function HrOrgStructure() {
                   <Plus className="mr-1 h-3.5 w-3.5" />
                   Tạo phòng ban đầu tiên
                 </Button>
-              ) : undefined
-            }
-            className="rounded-2xl border border-dashed border-2 border-border/80 bg-muted/15"
-          />
+              ) : null}
+            </CardContent>
+          </Card>
         )}
         <Accordion
           type="multiple"
@@ -1054,27 +1066,24 @@ export function HrOrgStructure() {
                       <TableBody>
                         {dept.teams.length === 0 ? (
                           <TableRow className="hover:bg-transparent">
-                            <TableCell colSpan={4} className="p-0">
-                              <EmptyState
-                                icon={<Users className="h-7 w-7" />}
-                                title="Chưa có nhóm trong phòng ban này"
-                                action={
-                                  canManageOrg && !mockBanner ? (
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="secondary"
-                                      className="rounded-full"
-                                      onClick={() => openCreateTeamForDept(dept)}
-                                    >
-                                      <Plus className="mr-1 h-3.5 w-3.5" />
-                                      Tạo nhóm đầu tiên
-                                    </Button>
-                                  ) : undefined
-                                }
-                                compact
-                                className="py-10"
-                              />
+                            <TableCell colSpan={4} className="py-10 text-center">
+                              <div className="flex flex-col items-center gap-3">
+                                <p className="text-sm text-muted-foreground">
+                                  Chưa có nhóm trong phòng ban này.
+                                </p>
+                                {canManageOrg && !mockBanner ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    className="rounded-full"
+                                    onClick={() => openCreateTeamForDept(dept)}
+                                  >
+                                    <Plus className="mr-1 h-3.5 w-3.5" />
+                                    Tạo nhóm đầu tiên
+                                  </Button>
+                                ) : null}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ) : (
@@ -1103,26 +1112,23 @@ export function HrOrgStructure() {
 
                   <div className="md:hidden">
                     {dept.teams.length === 0 ? (
-                      <EmptyState
-                        icon={<Users className="h-7 w-7" />}
-                        title="Chưa có nhóm trong phòng ban này"
-                        action={
-                          canManageOrg && !mockBanner ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="secondary"
-                              className="rounded-full"
-                              onClick={() => openCreateTeamForDept(dept)}
-                            >
-                              <Plus className="mr-1 h-3.5 w-3.5" />
-                              Tạo nhóm đầu tiên
-                            </Button>
-                          ) : undefined
-                        }
-                        compact
-                        className="px-4 py-10"
-                      />
+                      <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          Chưa có nhóm trong phòng ban này.
+                        </p>
+                        {canManageOrg && !mockBanner ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="rounded-full"
+                            onClick={() => openCreateTeamForDept(dept)}
+                          >
+                            <Plus className="mr-1 h-3.5 w-3.5" />
+                            Tạo nhóm đầu tiên
+                          </Button>
+                        ) : null}
+                      </div>
                     ) : (
                       <ul className="space-y-3 px-2 pb-2 pt-1">
                         {teamsToShow.map((team) => (
@@ -1173,13 +1179,11 @@ export function HrOrgStructure() {
           })}
         </Accordion>
         {orgSearch.trim() && filteredDepartments.length === 0 ? (
-          <EmptyState
-            icon={<Search className="h-7 w-7" />}
-            title="Không tìm thấy kết quả"
-            description="Không có phòng ban hoặc nhóm nào khớp từ khóa tìm kiếm."
-            compact
-            className="rounded-2xl border border-dashed border-border/80 bg-muted/15"
-          />
+          <Card className="border-dashed border-border/80 bg-muted/15 shadow-none">
+            <CardContent className="py-10 text-center text-sm text-muted-foreground">
+              Không có phòng ban hoặc nhóm nào khớp từ khóa tìm kiếm.
+            </CardContent>
+          </Card>
         ) : null}
       </div>
 
@@ -1672,24 +1676,21 @@ function TeamMembersPanel({
               <Skeleton className="h-11 w-full rounded-lg" />
             </div>
           ) : members.length === 0 ? (
-            <EmptyState
-              icon={<Users className="h-8 w-8" />}
-              title="Chưa có thành viên trong nhóm"
-              action={
-                canManage ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAddOpen(true)}
-                  >
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Thêm thành viên đầu tiên
-                  </Button>
-                ) : undefined
-              }
-              className="px-4 py-16"
-            />
+            <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
+              <p className="text-sm text-muted-foreground">Chưa có thành viên trong nhóm.</p>
+              {canManage ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => setAddOpen(true)}
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Thêm thành viên đầu tiên
+                </Button>
+              ) : null}
+            </div>
           ) : (
             <Table className="min-w-[720px]">
               <TableHeader>
@@ -1707,8 +1708,11 @@ function TeamMembersPanel({
               <TableBody>
                 {filteredMembers.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={canManage ? 6 : 5} className="p-0">
-                      <EmptyState title="Không có dòng nào khớp bộ lọc" compact className="py-10" />
+                    <TableCell
+                      colSpan={canManage ? 6 : 5}
+                      className="py-10 text-center text-sm text-muted-foreground"
+                    >
+                      Không có dòng nào khớp bộ lọc.
                     </TableCell>
                   </TableRow>
                 ) : (

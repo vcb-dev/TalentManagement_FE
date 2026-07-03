@@ -22,7 +22,6 @@ import {
   XCircle,
 } from 'lucide-react'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
-import { EmptyState } from '@/components/shared/EmptyState'
 import { StarEmblem } from '@/components/icons/StarEmblem'
 import {
   useLearningChecklist,
@@ -540,13 +539,10 @@ export function ChecklistStarScreen({
                 </div>
                 <div className="space-y-4">
                   {tasks.length === 0 ? (
-                    <EmptyState
-                      icon={<ListChecks className="h-8 w-8" />}
-                      title="Chưa có nhiệm vụ cho mốc này"
-                      description="Thử tải lại trang; nếu vẫn trống, liên hệ quản lý hoặc đơn vị đào tạo."
-                      compact
-                      className="rounded-xl border border-dashed border-border bg-muted/20"
-                    />
+                    <p className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+                      Chưa có nhiệm vụ cho mốc này. Thử tải lại trang; nếu vẫn trống, liên hệ quản
+                      lý hoặc đơn vị đào tạo.
+                    </p>
                   ) : (
                     <div className="space-y-10">
                       {(hasStarProgression ? [1, 2, 3, 4, 5, 6] : [0]).map((starNum) => {

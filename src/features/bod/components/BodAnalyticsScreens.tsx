@@ -1,30 +1,29 @@
 import { PageHeader } from '@/components/shared/PageHeader'
-import { DashboardSection } from '@/components/shared/DashboardSection'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 function PlaceholderBlock({
   title,
   description,
   bullets,
-  className,
 }: {
   title: string
   description: string
   bullets: string[]
-  className?: string
 }) {
   return (
-    <DashboardSection
-      title={title}
-      description={description}
-      className={className}
-      contentClassName="pt-0"
-    >
-      <ul className="list-inside list-disc space-y-1 text-sm text-foreground/90">
-        {bullets.map((b) => (
-          <li key={b}>{b}</li>
-        ))}
-      </ul>
-    </DashboardSection>
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg">{title}</CardTitle>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </CardHeader>
+      <CardContent>
+        <ul className="list-inside list-disc space-y-1 text-sm text-foreground/90">
+          {bullets.map((b) => (
+            <li key={b}>{b}</li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -36,7 +35,6 @@ export function BodTraineeRankingScreen() {
         description="Bảng xếp hạng nhân viên tập sự theo điểm — nhận diện nhân tài nổi bật sớm."
       />
       <PlaceholderBlock
-        className="mt-4"
         title="Luồng dự kiến"
         description="Bảng xếp hạng từ dữ liệu thi/điểm tích lũy giai đoạn tập sự."
         bullets={['Lọc kỳ / phòng ban', 'Sắp xếp theo điểm', 'Export / drill-down hồ sơ']}
@@ -53,7 +51,6 @@ export function BodTeamComparisonScreen() {
         description="So sánh hiệu suất giữa các team — tỉ lệ đạt kỳ thi, tốc độ thăng cấp, số bài hoàn thành."
       />
       <PlaceholderBlock
-        className="mt-4"
         title="Luồng dự kiến"
         description="Biểu đồ so sánh đa tiêu chí giữa team."
         bullets={[

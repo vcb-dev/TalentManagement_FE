@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { FileText, Download, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { FileText, Download, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { MeetingBooking } from './api'
 import { BBH_REQUIRED_FROM_DATE } from './roomBookingConstants'
 import { formatDateVi, formatTimeRangeVi } from './roomBookingTimeUtils'
 import { requiresMeetingMinutes } from './roomBookingMinutes'
-import { EmptyState } from '@/components/shared/EmptyState'
 import { RoomBookingMinutesCell } from './RoomBookingMinutesCell'
 
 type Props = {
@@ -55,18 +54,10 @@ export function RoomBookingMinutesTable({
         </a>
       </div>
 
-      {isLoading && items.length === 0 ? (
-        <p className="flex items-center justify-center gap-2 px-4 py-6 text-center text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          Đang tải biên bản…
+      {rows.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+          Chưa có buổi họp nào cần nộp biên bản.
         </p>
-      ) : rows.length === 0 ? (
-        <EmptyState
-          icon={<FileText className="h-7 w-7" />}
-          title="Chưa có buổi họp nào cần nộp biên bản"
-          compact
-          className="px-4 py-6"
-        />
       ) : (
         <>
           <div className="overflow-x-auto">

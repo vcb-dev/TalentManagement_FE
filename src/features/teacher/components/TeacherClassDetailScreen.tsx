@@ -23,8 +23,6 @@ import {
 import { useForm, useWatch, Controller } from 'react-hook-form'
 import { toast } from 'sonner'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { PageHeader } from '@/components/shared/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -534,71 +532,68 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   return (
     <div className="-m-5 flex min-h-screen flex-col bg-[#f1f5f9] text-sm text-slate-900 md:-m-6 lg:-m-8">
       <div className="flex-1 overflow-y-auto px-4 py-10 sm:px-10 lg:px-16">
-        <div className="mx-auto w-full max-w-[1400px]">
+        <div className="mx-auto max-w-7xl">
           <div className="mb-12 space-y-6">
-            <PageHeader
-              breadcrumb={
-                <Link
-                  to="/teacher/classes"
-                  className="group inline-flex items-center gap-3 text-xs font-black uppercase tracking-[0.2em] text-slate-400 transition-all hover:text-primary"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200 transition-all group-hover:bg-primary group-hover:text-white group-hover:ring-primary">
-                    <ArrowLeft className="h-4 w-4" />
-                  </div>
-                  Danh sách lớp phụ trách
-                </Link>
-              }
-              title={title}
-              description={
-                <div className="mt-2 flex flex-wrap items-center gap-4">
+            <Link
+              to="/teacher/classes"
+              className="group inline-flex items-center gap-3 text-xs font-black uppercase tracking-[0.2em] text-slate-400 transition-all hover:text-primary"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200 transition-all group-hover:bg-primary group-hover:text-white group-hover:ring-primary">
+                <ArrowLeft className="h-4 w-4" />
+              </div>
+              Danh sách lớp phụ trách
+            </Link>
+
+            <div className="flex flex-col justify-between gap-8 md:flex-row md:items-end">
+              <div className="space-y-4">
+                <h1 className="text-5xl font-black tracking-tight text-slate-900 sm:text-6xl">
+                  {title}
+                </h1>
+                <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-1.5 text-xs font-black text-white shadow-lg shadow-emerald-500/20">
-                    <div className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                    <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                     ĐANG GIẢNG DẠY
                   </div>
                   <p className="text-sm font-semibold text-slate-500/80">
                     Hệ thống quản lý học viên và điều phối lịch đào tạo chuyên nghiệp.
                   </p>
                 </div>
-              }
-              gradientTitle
-              variant="flat"
-              className="border-0 pb-0"
-              actions={
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex h-11 items-center rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        'h-full rounded-xl px-4 text-xs font-black uppercase tracking-widest transition-all',
-                        viewMode === 'cards'
-                          ? 'bg-primary text-white shadow-lg'
-                          : 'text-slate-400 hover:bg-slate-50'
-                      )}
-                      onClick={() => setViewMode('cards')}
-                    >
-                      Dạng thẻ
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        'h-full rounded-xl px-4 text-xs font-black uppercase tracking-widest transition-all',
-                        viewMode === 'table'
-                          ? 'bg-primary text-white shadow-lg'
-                          : 'text-slate-400 hover:bg-slate-50'
-                      )}
-                      onClick={() => setViewMode('table')}
-                    >
-                      Dạng bảng
-                    </Button>
-                  </div>
-                  <Button className="h-11 rounded-2xl bg-primary px-6 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95">
-                    Xuất báo cáo
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex h-11 items-center rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      'h-full rounded-xl px-4 text-xs font-black uppercase tracking-widest transition-all',
+                      viewMode === 'cards'
+                        ? 'bg-primary text-white shadow-lg'
+                        : 'text-slate-400 hover:bg-slate-50'
+                    )}
+                    onClick={() => setViewMode('cards')}
+                  >
+                    Dạng thẻ
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      'h-full rounded-xl px-4 text-xs font-black uppercase tracking-widest transition-all',
+                      viewMode === 'table'
+                        ? 'bg-primary text-white shadow-lg'
+                        : 'text-slate-400 hover:bg-slate-50'
+                    )}
+                    onClick={() => setViewMode('table')}
+                  >
+                    Dạng bảng
                   </Button>
                 </div>
-              }
-            />
+                <Button className="h-11 rounded-2xl bg-primary px-6 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95">
+                  Xuất báo cáo
+                </Button>
+              </div>
+            </div>
           </div>
 
           {/* Search & Filters */}
@@ -1408,7 +1403,9 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                 ))}
               </div>
               {filtered.length === 0 ? (
-                <EmptyState title="Không có thành viên phù hợp" compact className="py-8" />
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Không có thành viên phù hợp.
+                </p>
               ) : null}
             </>
           )}

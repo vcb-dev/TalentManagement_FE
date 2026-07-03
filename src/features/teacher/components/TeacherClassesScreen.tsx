@@ -1,17 +1,18 @@
 import { useDeferredValue, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Filter, Search, School, ClipboardCheck } from 'lucide-react'
+import { Filter, Search, ClipboardCheck } from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
-import { PageHeader } from '@/components/shared/PageHeader'
 import { Badge } from '@/components/ui/badge'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
-import { SkeletonClassCardGrid } from '@/components/ui/skeleton'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { ErrorState } from '@/components/shared/ErrorState'
-import { getApiErrorMessage } from '@/lib/axios'
 import { cn } from '@/lib/utils'
 import { Form } from '@/components/ui/form'
 import { InputFieldController } from '@/components/ui/form-controllers'
@@ -62,14 +63,7 @@ export function TeacherClassesScreen() {
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const {
-    data: teacherClassesRaw = [],
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching,
-  } = useTeacherClasses()
+  const { data: teacherClassesRaw = [] } = useTeacherClasses()
   const rows: TeacherClassRow[] = useMemo(
     () =>
       teacherClassesRaw
@@ -125,24 +119,19 @@ export function TeacherClassesScreen() {
         <div className="page-shell">
           <div className="mb-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <PageHeader
-                title="Lớp được phân công"
-                description={
-                  <>
-                    Lớp do quản lý gán cho bạn. Vào chi tiết để xem thành viên, chấm điểm và{' '}
-                    <strong className="font-semibold text-foreground">xếp lịch học buổi</strong>{' '}
-                    (API{' '}
-                    <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                      /teacher/classes/:id/schedules
-                    </code>
-                    ).
-                  </>
-                }
-                gradientTitle
-                surface
-                variant="flat"
-                className="min-w-0 flex-1 border-0 pb-0"
-              />
+              <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+                <h1 className={PAGE_HEADER_TITLE}>
+                  <span className={PAGE_HEADER_GRADIENT}>Lớp được phân công</span>
+                </h1>
+                <p className={PAGE_HEADER_DESCRIPTION}>
+                  Lớp do quản lý gán cho bạn. Vào chi tiết để xem thành viên, chấm điểm và{' '}
+                  <strong className="font-semibold text-foreground">xếp lịch học buổi</strong> (API{' '}
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                    /teacher/classes/:id/schedules
+                  </code>
+                  ).
+                </p>
+              </div>
               <div className="flex flex-wrap items-center gap-3">
                 <Button
                   type="button"
@@ -252,122 +241,99 @@ export function TeacherClassesScreen() {
             </Form>
           </div>
 
-          {isError ? (
-            <ErrorState
-              title="Không tải được danh sách lớp"
-              description={getApiErrorMessage(error)}
-              onRetry={() => void refetch()}
-              retrying={isFetching}
-            />
-          ) : isLoading ? (
-            <SkeletonClassCardGrid count={6} />
-          ) : viewMode === 'table' ? (
-            filtered.length === 0 ? (
-              <EmptyState
-                icon={<School className="h-8 w-8" />}
-                title="Không có lớp phù hợp"
-                description="Thử đổi bộ lọc hoặc tìm kiếm với từ khóa khác."
-              />
-            ) : (
-              <div className="overflow-hidden rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10">
-                <div className="divide-y divide-border md:hidden">
-                  {filtered.map((c) => (
-                    <div key={c.id} className="space-y-3 p-4">
-                      <p className="text-base font-semibold text-foreground">{c.title}</p>
-                      <span
-                        className={cn(
-                          'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
-                          c.accent === 'primary'
-                            ? 'bg-primary/10 text-primary'
-                            : 'bg-amber-100 text-amber-900'
-                        )}
-                      >
-                        {c.periodBadge}
-                      </span>
-                      <p className="text-sm text-muted-foreground">{c.examLine}</p>
-                      <p className="text-sm font-semibold tabular-nums text-foreground">
-                        Học viên: {c.memberCount}
-                      </p>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="h-10 w-full font-semibold"
-                        asChild
-                      >
-                        <Link to="/teacher/classes/$classId" params={{ classId: c.id }}>
-                          Xem chi tiết
-                        </Link>
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">
-                        <th className="px-4 py-3 font-semibold">Tên lớp</th>
-                        <th className="px-4 py-3 font-semibold">Kỳ / nhãn</th>
-                        <th className="px-4 py-3 font-semibold">Lộ trình và nội dung</th>
-                        <th className="px-4 py-3 font-semibold text-right">Học viên</th>
-                        <th className="px-4 py-3 font-semibold text-right">Thao tác</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.map((c) => (
-                        <tr
-                          key={c.id}
-                          className="border-t border-border/80 bg-card transition-colors hover:bg-muted/30"
-                        >
-                          <td className="px-4 py-3 font-semibold text-foreground">{c.title}</td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={cn(
-                                'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
-                                c.accent === 'primary'
-                                  ? 'bg-primary/10 text-primary'
-                                  : 'bg-amber-100 text-amber-900'
-                              )}
-                            >
-                              {c.periodBadge}
-                            </span>
-                          </td>
-                          <td className="max-w-[280px] px-4 py-3 text-muted-foreground">
-                            {c.examLine}
-                          </td>
-                          <td className="px-4 py-3 text-right tabular-nums font-semibold text-foreground">
-                            {c.memberCount}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <Button
-                              variant="default"
-                              size="sm"
-                              className="min-w-[7.5rem] font-semibold"
-                              asChild
-                            >
-                              <Link to="/teacher/classes/$classId" params={{ classId: c.id }}>
-                                Xem chi tiết
-                              </Link>
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
-                  <span>
-                    Trang {page} — {filtered.length} lớp hiển thị
-                  </span>
-                  <PaginationPrevNext page={page} totalPages={totalPages} onPageChange={() => {}} />
-                </div>
+          {viewMode === 'table' ? (
+            <div className="overflow-hidden rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10">
+              <div className="divide-y divide-border md:hidden">
+                {filtered.map((c) => (
+                  <div key={c.id} className="space-y-3 p-4">
+                    <p className="text-base font-semibold text-foreground">{c.title}</p>
+                    <span
+                      className={cn(
+                        'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
+                        c.accent === 'primary'
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-amber-100 text-amber-900'
+                      )}
+                    >
+                      {c.periodBadge}
+                    </span>
+                    <p className="text-sm text-muted-foreground">{c.examLine}</p>
+                    <p className="text-sm font-semibold tabular-nums text-foreground">
+                      Học viên: {c.memberCount}
+                    </p>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-10 w-full font-semibold"
+                      asChild
+                    >
+                      <Link to="/teacher/classes/$classId" params={{ classId: c.id }}>
+                        Xem chi tiết
+                      </Link>
+                    </Button>
+                  </div>
+                ))}
               </div>
-            )
-          ) : filtered.length === 0 ? (
-            <EmptyState
-              icon={<School className="h-8 w-8" />}
-              title="Không có lớp phù hợp"
-              description="Thử đổi bộ lọc hoặc tìm kiếm với từ khóa khác."
-            />
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-primary/12 via-teal-500/8 to-violet-500/8">
+                      <th className="px-4 py-3 font-semibold">Tên lớp</th>
+                      <th className="px-4 py-3 font-semibold">Kỳ / nhãn</th>
+                      <th className="px-4 py-3 font-semibold">Lộ trình và nội dung</th>
+                      <th className="px-4 py-3 font-semibold text-right">Học viên</th>
+                      <th className="px-4 py-3 font-semibold text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((c) => (
+                      <tr
+                        key={c.id}
+                        className="border-t border-border/80 bg-card transition-colors hover:bg-muted/30"
+                      >
+                        <td className="px-4 py-3 font-semibold text-foreground">{c.title}</td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold',
+                              c.accent === 'primary'
+                                ? 'bg-primary/10 text-primary'
+                                : 'bg-amber-100 text-amber-900'
+                            )}
+                          >
+                            {c.periodBadge}
+                          </span>
+                        </td>
+                        <td className="max-w-[280px] px-4 py-3 text-muted-foreground">
+                          {c.examLine}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-semibold text-foreground">
+                          {c.memberCount}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="min-w-[7.5rem] font-semibold"
+                            asChild
+                          >
+                            <Link to="/teacher/classes/$classId" params={{ classId: c.id }}>
+                              Xem chi tiết
+                            </Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
+                <span>
+                  Trang {page} — {filtered.length} lớp hiển thị
+                </span>
+                <PaginationPrevNext page={page} totalPages={totalPages} onPageChange={() => {}} />
+              </div>
+            </div>
           ) : (
             <>
               <div
@@ -388,10 +354,15 @@ export function TeacherClassesScreen() {
                   />
                 ))}
               </div>
+              {filtered.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Không có lớp phù hợp.
+                </p>
+              ) : null}
             </>
           )}
 
-          {viewMode === 'cards' && !isLoading && !isError && filtered.length > 0 ? (
+          {viewMode === 'cards' && filtered.length > 0 ? (
             <div className="mt-4 flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground">
                 Hiển thị {filtered.length} / {rows.length} lớp

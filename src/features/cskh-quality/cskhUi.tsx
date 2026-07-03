@@ -127,10 +127,7 @@ export function CskhHero({
   stats?: ReactNode
 }) {
   return (
-    <header
-      role="banner"
-      className="relative overflow-hidden rounded-2xl border border-white/60 bg-white/70 px-5 py-6 shadow-lg shadow-indigo-100/50 backdrop-blur-xl sm:px-8 sm:py-7"
-    >
+    <header className="relative overflow-hidden rounded-2xl border border-white/60 bg-white/70 px-5 py-6 shadow-lg shadow-indigo-100/50 backdrop-blur-xl sm:px-8 sm:py-7">
       <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br from-indigo-400/20 to-violet-400/10 blur-2xl" />
       <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0 space-y-2">
@@ -596,16 +593,10 @@ export function CskhEmptyState({
 
 export function CskhLoading({ label = 'Đang tải…' }: { label?: string }) {
   return (
-    <div
-      className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-slate-500"
-      role="status"
-      aria-busy
-      aria-label={label}
-    >
-      <span className="sr-only">{label}</span>
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-slate-500">
       <div className="relative">
         <div className="absolute inset-0 animate-ping rounded-full bg-indigo-300/30" />
-        <Loader2 className="relative h-8 w-8 animate-spin text-indigo-500" aria-hidden />
+        <Loader2 className="relative h-8 w-8 animate-spin text-indigo-500" />
       </div>
       <p className="text-sm font-medium">{label}</p>
     </div>

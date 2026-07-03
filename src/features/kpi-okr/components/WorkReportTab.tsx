@@ -12,7 +12,6 @@ import {
   Upload,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { EmptyState } from '@/components/shared/EmptyState'
 import { useAuthStore } from '@/stores/auth.store'
 import { isManagerLikeRole } from '@/lib/managerLikeRole'
 import {
@@ -23,7 +22,6 @@ import {
   type WorkReportStatus,
 } from '../api'
 import { RichTextEditor } from '@/components/ui/RichTextEditor'
-import { Skeleton } from '@/components/ui/skeleton'
 import { generateWorkReportTemplate } from '../utils/workReportTemplate'
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
@@ -308,25 +306,7 @@ function MemberReportForm({
   }, [reportSyncKey, saveMut.isPending])
 
   if (reportQ.isLoading) {
-    return (
-      <div className="space-y-3 py-4" role="status" aria-busy aria-label="Đang tải báo cáo">
-        <Skeleton className="h-10 w-full rounded-lg" />
-        <Skeleton className="h-32 w-full rounded-xl" />
-        <Skeleton className="h-32 w-full rounded-xl" />
-      </div>
-    )
-  }
-
-  if (reportQ.isError) {
-    return (
-      <ErrorState
-        title="Không tải được báo cáo"
-        description="Vui lòng thử lại sau."
-        onRetry={() => void reportQ.refetch()}
-        retrying={reportQ.isFetching}
-        compact
-      />
-    )
+    return <div className="py-8 text-center text-sm text-slate-400">Đang tải...</div>
   }
 
   return (
@@ -763,13 +743,7 @@ function LeaderTeamReports({
   })
 
   if (reportsQ.isLoading) {
-    return (
-      <div className="space-y-3 py-4" role="status" aria-busy aria-label="Đang tải báo cáo">
-        <Skeleton className="h-10 w-full rounded-lg" />
-        <Skeleton className="h-32 w-full rounded-xl" />
-        <Skeleton className="h-32 w-full rounded-xl" />
-      </div>
-    )
+    return <div className="py-8 text-center text-sm text-slate-400">Đang tải...</div>
   }
 
   const reports = reportsQ.data ?? []
@@ -777,13 +751,9 @@ function LeaderTeamReports({
   return (
     <div className="space-y-4">
       {reports.length === 0 ? (
-        <EmptyState
-          icon={<FileText className="h-8 w-8" />}
-          title="Chưa có thành viên nào nộp báo cáo"
-          description="Trong kỳ này chưa có báo cáo công việc được nộp."
-          compact
-          className="rounded-lg border border-dashed border-slate-200 dark:border-slate-800"
-        />
+        <div className="rounded-lg border border-dashed border-slate-200 py-12 text-center text-sm text-slate-400">
+          Chưa có thành viên nào nộp báo cáo trong kỳ này
+        </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
           <table className="w-full text-sm">
@@ -967,12 +937,9 @@ export function WorkReportTab({
 
   if (!selectedTeamId) {
     return (
-      <EmptyState
-        title="Chưa chọn team"
-        description="Vui lòng chọn team để xem báo cáo."
-        compact
-        className="rounded-lg border border-dashed border-slate-200 dark:border-slate-800"
-      />
+      <div className="rounded-lg border border-dashed border-slate-200 py-12 text-center text-sm text-slate-400">
+        Vui lòng chọn team để xem báo cáo
+      </div>
     )
   }
 

@@ -13,13 +13,6 @@ const labels: Record<EmploymentStatus, string> = {
   RESERVED: 'Dự phòng',
 }
 
-const variants: Record<EmploymentStatus, 'success' | 'muted' | 'warning' | 'outline'> = {
-  ACTIVE: 'success',
-  INACTIVE: 'muted',
-  PROBATION: 'warning',
-  RESERVED: 'outline',
-}
-
 export function StatusBadge({ status }: StatusBadgeProps) {
-  return <Badge variant={variants[status]}>{labels[status]}</Badge>
+  return <Badge variant={status === 'ACTIVE' ? 'default' : 'muted'}>{labels[status]}</Badge>
 }

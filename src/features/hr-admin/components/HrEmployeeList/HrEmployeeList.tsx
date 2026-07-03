@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { getRouteApi, Link } from '@tanstack/react-router'
 import { useForm, useWatch } from 'react-hook-form'
-import { PageHeader } from '@/components/shared/PageHeader'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { Layers, Search, UserCheck, UserMinus, Users } from 'lucide-react'
 import { StatCard } from '@/components/shared/StatCard'
 import { toast } from 'sonner'
@@ -12,9 +17,6 @@ import type { EmployeeFilters } from '@/features/hr-admin/types'
 import { Button } from '@/components/ui/button'
 import { PaginationCardStepper } from '@/components/ui/pagination'
 import { SkeletonEmployeeCardGrid, SkeletonStatTile } from '@/components/ui/skeleton'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { ErrorState } from '@/components/shared/ErrorState'
-import { getApiErrorMessage } from '@/lib/axios'
 import { cn } from '@/lib/utils'
 import { Form } from '@/components/ui/form'
 import { InputFieldController } from '@/components/ui/form-controllers'
@@ -72,10 +74,6 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   const {
     employees,
     isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching,
     pagination,
     onView,
     onEdit,
@@ -200,49 +198,45 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         {/* Tiêu đề + nút + thống kê — bố cục như code.html, giữ màu ô thống kê hiện tại */}
         <div className="mb-8 flex flex-col gap-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <PageHeader
-              title={pageTitle}
-              description={pageSubtitle}
-              gradientTitle
-              surface
-              variant="flat"
-              className="min-w-0 flex-1 border-0 pb-0"
-              actions={
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      'inline-flex h-auto rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors',
-                      viewMode === 'table'
-                        ? 'border-button bg-button text-button-foreground'
-                        : 'border-border/80 bg-card/90 text-foreground backdrop-blur-sm hover:bg-muted'
-                    )}
-                    onClick={() => setViewMode((v) => (v === 'cards' ? 'table' : 'cards'))}
-                  >
-                    {viewMode === 'cards' ? 'Dạng bảng' : 'Dạng thẻ'}
-                  </Button>
-                  {canCreate ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-10 rounded-lg px-5 text-sm font-semibold shadow-sm"
-                      asChild
-                    >
-                      <Link to="/hr-admin/new">+ Thêm nhân sự</Link>
-                    </Button>
-                  ) : null}
-                  <Button
-                    type="button"
-                    className="h-auto rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90"
-                    onClick={() => toast.info('Xuất Excel sẽ được kết nối API sau.')}
-                  >
-                    Xuất dữ liệu
-                  </Button>
-                </>
-              }
-            />
+            <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+              <h1 className={PAGE_HEADER_TITLE}>
+                <span className={PAGE_HEADER_GRADIENT}>{pageTitle}</span>
+              </h1>
+              <p className={PAGE_HEADER_DESCRIPTION}>{pageSubtitle}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  'inline-flex h-auto rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors',
+                  viewMode === 'table'
+                    ? 'border-button bg-button text-button-foreground'
+                    : 'border-border/80 bg-card/90 text-foreground backdrop-blur-sm hover:bg-muted'
+                )}
+                onClick={() => setViewMode((v) => (v === 'cards' ? 'table' : 'cards'))}
+              >
+                {viewMode === 'cards' ? 'Dạng bảng' : 'Dạng thẻ'}
+              </Button>
+              {canCreate ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-10 rounded-lg px-5 text-sm font-semibold shadow-sm"
+                  asChild
+                >
+                  <Link to="/hr-admin/new">+ Thêm nhân sự</Link>
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                className="h-auto rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90"
+                onClick={() => toast.info('Xuất Excel sẽ được kết nối API sau.')}
+              >
+                Xuất dữ liệu
+              </Button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -344,21 +338,10 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
           </div>
         ) : null}
 
-        {isError ? (
-          <ErrorState
-            title="Không tải được danh sách nhân viên"
-            description={getApiErrorMessage(error)}
-            onRetry={() => void refetch()}
-            retrying={isFetching}
-          />
-        ) : viewMode === 'table' ? (
+        {viewMode === 'table' ? (
           <EmployeeTable
             employees={employees}
             isLoading={isLoading}
-            isError={isError}
-            errorDescription={getApiErrorMessage(error)}
-            onRetry={() => void refetch()}
-            retrying={isFetching}
             onView={onView}
             onEdit={onEdit}
             onDeactivate={onDeactivate}
@@ -368,8 +351,6 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
             listMode="hr"
             canEdit={canEdit}
             canDeactivate={canDeactivate}
-            emptyTitle="Không có nhân viên phù hợp"
-            emptyDescription="Thử đổi bộ lọc hoặc tìm kiếm với từ khóa khác."
           />
         ) : isLoading ? (
           <div className="space-y-4">
@@ -414,11 +395,9 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
               ))}
             </div>
             {employees.length === 0 ? (
-              <EmptyState
-                title="Không có nhân viên phù hợp"
-                description="Thử đổi bộ lọc hoặc tìm kiếm với từ khóa khác."
-                compact
-              />
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Không có nhân viên phù hợp.
+              </p>
             ) : null}
           </>
         )}
@@ -458,7 +437,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
           className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-3 py-2.5 shadow-[0_-6px_24px_-8px_rgba(0,0,0,0.12)] backdrop-blur-md supports-[backdrop-filter]:bg-background/80 md:hidden"
           style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom, 0px))' }}
         >
-          <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-2">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-2">
             <span className="text-center text-xs font-medium text-muted-foreground sm:text-left">
               {pagination.total === 0
                 ? 'Không có nhân viên phù hợp'

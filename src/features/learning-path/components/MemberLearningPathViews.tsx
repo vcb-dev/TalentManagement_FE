@@ -25,7 +25,6 @@ import {
   AlertCircle,
   Loader2,
 } from 'lucide-react'
-import { PageHeader } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Form } from '@/components/ui/form'
 import { DateController } from '@/components/ui/form-controllers'
@@ -57,8 +56,6 @@ import { apiClient, getApiErrorMessage } from '@/lib/axios'
 import { useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { DialogCustom } from '@/components/shared/DialogCustom/DialogCustom'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { ErrorState } from '@/components/shared/ErrorState'
 
 function Modal({
   open,
@@ -262,7 +259,7 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
   }, [deferredStartDate, deferredEndDate])
   const hasDateFilter = Boolean(scheduleRange.startDate || scheduleRange.endDate)
 
-  const { data, isLoading, isError, refetch, isFetching } = useMyEnrolledClass(scheduleRange)
+  const { data, isLoading, isError } = useMyEnrolledClass(scheduleRange)
   const { data: availableClasses = [], isLoading: isLoadingAvailable } =
     useAvailableLearningClasses()
   const registerMakeup = useRegisterMakeupSchedule()
@@ -514,23 +511,27 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
 
   if (isError) {
     return (
-      <ErrorState
-        title="Không tải được dữ liệu lớp học"
-        description="Vui lòng kiểm tra lại kết nối hoặc thử lại."
-        onRetry={() => void refetch()}
-        retrying={isFetching}
-      />
+      <div className="flex flex-col items-center justify-center rounded-3xl border border-destructive/20 bg-destructive/5 py-12 text-center">
+        <p className="text-sm font-bold text-destructive">Không tải được dữ liệu lớp học</p>
+        <p className="mt-1 text-xs text-destructive/60">
+          Vui lòng kiểm tra lại kết nối hoặc thử lại sau.
+        </p>
+      </div>
     )
   }
 
   if (enrolledClasses.length === 0) {
     return (
       <div className="space-y-6">
-        <EmptyState
-          icon={<School className="h-8 w-8" />}
-          title="Bạn chưa được xếp vào lớp nào"
-          description="Khi quản lý gán lớp, thông tin sẽ hiển thị tại đây."
-        />
+        <div className="flex flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-slate-200 bg-slate-50/50 py-16 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-slate-300 shadow-sm ring-1 ring-slate-100">
+            <School className="h-8 w-8" />
+          </div>
+          <p className="mt-4 text-sm font-bold text-slate-500">Bạn chưa được xếp vào lớp nào</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Khi quản lý gán lớp, thông tin sẽ hiển thị tại đây.
+          </p>
+        </div>
         <AvailableClassesSection isOther={isOther} />
       </div>
     )
@@ -554,15 +555,25 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
 
   return (
     <div className="space-y-10">
-      <PageHeader
-        title="Lịch học & Phản hồi"
-        description="Theo dõi lịch đào tạo, điểm danh và đánh giá chất lượng buổi học"
-        eyebrow={<Calendar className="h-8 w-8 text-primary" strokeWidth={2.5} aria-hidden />}
-        gradientTitle
-        surface
-        variant="flat"
-        className="relative overflow-hidden rounded-[2rem] bg-white/60 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] backdrop-blur-xl border-0"
-        actions={
+      <div className="relative overflow-hidden rounded-[2rem] border border-white bg-white/60 p-8 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] backdrop-blur-xl">
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-accent/5 blur-3xl" />
+
+        <div className="relative flex flex-col gap-6 md:flex-row md:items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary text-white shadow-[0_12px_24px_-8px_rgba(var(--primary-rgb),0.5)]">
+              <Calendar className="h-8 w-8" strokeWidth={2.5} />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <h2 className="text-2xl font-black tracking-tight text-slate-900">
+                Lịch học & Phản hồi
+              </h2>
+              <p className="text-sm font-bold text-slate-500/80">
+                Theo dõi lịch đào tạo, điểm danh và đánh giá chất lượng buổi học
+              </p>
+            </div>
+          </div>
+
           <Form {...filterForm}>
             <div className="flex flex-wrap items-center gap-3">
               <DateController
@@ -579,7 +590,7 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                 placeholder="Đến ngày"
                 datePickerClassName="h-10 w-[140px] rounded-xl border-slate-200 bg-white text-xs font-bold shadow-sm"
               />
-              {hasDateFilter ? (
+              {hasDateFilter && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -589,11 +600,11 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                 >
                   <X className="h-4 w-4" />
                 </Button>
-              ) : null}
+              )}
             </div>
           </Form>
-        }
-      />
+        </div>
+      </div>
 
       {enrolledClasses.map((classItem) => {
         const classReflectionTasks = getReflectionTasks(classItem)

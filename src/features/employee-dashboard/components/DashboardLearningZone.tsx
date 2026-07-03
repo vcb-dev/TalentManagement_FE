@@ -20,7 +20,6 @@ import { useMyEnrolledClass, useMyLearningPath } from '@/features/learning-path/
 import type { MeEnrolledClassSchedule } from '@/features/learning-path/schemas'
 import { LEVELS, LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -386,13 +385,9 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
                   </div>
                 </div>
               ) : (
-                <EmptyState
-                  icon={<CalendarDays className="h-7 w-7" />}
-                  title="Chưa có kỳ thi sắp tới"
-                  description="Mở mục Thi và kết quả để cập nhật."
-                  compact
-                  className="relative mb-4 rounded-2xl border border-dashed border-border bg-card/80"
-                />
+                <div className="relative mb-4 rounded-2xl border border-dashed border-border bg-card/80 p-4 text-sm font-semibold text-muted-foreground">
+                  Chưa có kỳ thi sắp tới trên hệ thống. Mở mục Thi và kết quả để cập nhật.
+                </div>
               )}
 
               {blockLoading ? (
@@ -418,12 +413,9 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
                   </div>
                 </div>
               ) : !classLoading && enrolled?.enrolledClass ? (
-                <EmptyState
-                  title="Chưa có buổi học tới"
-                  description={`Lớp ${enrolled.enrolledClass.name}: chưa có buổi học tới trên lịch.`}
-                  compact
-                  className="relative mb-4 rounded-xl border border-dashed border-border bg-card/80 py-3"
-                />
+                <p className="relative mb-4 text-xs text-muted-foreground">
+                  Lớp {enrolled.enrolledClass.name}: chưa có buổi học tới trên lịch.
+                </p>
               ) : null}
 
               <Button
@@ -473,12 +465,10 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
                   <Skeleton className="h-4 w-full" />
                 </div>
               ) : totalMs === 0 ? (
-                <EmptyState
-                  title="Chưa có mốc lộ trình"
-                  description="Khi HR/L&D thiết lập lộ trình, tiến độ sẽ hiển thị tại đây."
-                  compact
-                  className="relative border-0 bg-transparent py-2"
-                />
+                <p className="relative text-sm font-medium text-muted-foreground">
+                  Chưa có mốc lộ trình từ hệ thống. Khi HR/L&D thiết lập, bạn sẽ thấy tiến độ tại
+                  đây.
+                </p>
               ) : (
                 <>
                   <div className="relative mb-4">

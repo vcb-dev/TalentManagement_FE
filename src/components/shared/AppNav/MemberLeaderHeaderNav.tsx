@@ -162,8 +162,8 @@ export function MemberLeaderHeaderNav() {
 
           if (isSingle) {
             const linkClass = cn(
-              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 active:scale-95 border border-transparent bg-transparent text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground focus:text-foreground',
-              active && 'border-border bg-muted text-foreground shadow-sm'
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 active:scale-95 border border-transparent bg-transparent text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white focus:text-white',
+              active && 'border-white/30 bg-white/15 text-white'
             )
             return (
               <NavigationMenuItem key={group.id}>
@@ -201,12 +201,12 @@ export function MemberLeaderHeaderNav() {
                 <NavigationMenuTrigger
                   className={cn(
                     'h-10 rounded-md px-4 py-2 text-sm font-medium shadow-none',
-                    '!border-transparent !bg-transparent !text-muted-foreground',
-                    'hover:!border-border hover:!bg-muted hover:!text-foreground',
-                    'focus:!bg-muted focus:!text-foreground focus:!shadow-none',
-                    'focus-visible:!ring-2 focus-visible:!ring-primary/35 focus-visible:!ring-offset-0 focus-visible:!border-border focus-visible:!outline-none',
-                    'data-[state=open]:!border-border data-[state=open]:!bg-muted data-[state=open]:!text-foreground',
-                    active && '!border-border !bg-muted !text-foreground !shadow-sm'
+                    '!border-transparent !bg-transparent !text-white/90',
+                    'hover:!border-white/25 hover:!bg-white/10 hover:!text-white',
+                    'focus:!bg-white/10 focus:!text-white focus:!shadow-none',
+                    'focus-visible:!ring-2 focus-visible:!ring-white/35 focus-visible:!ring-offset-0 focus-visible:!border-white/25 focus-visible:!outline-none',
+                    'data-[state=open]:!border-white/30 data-[state=open]:!bg-white/15 data-[state=open]:!text-white',
+                    active && '!border-white/30 !bg-white/15 !text-white'
                   )}
                 >
                   {group.label}

@@ -4,7 +4,6 @@ import { ArrowRight, Building2, Calendar, Clock, Link2, MapPin, Shield } from 'l
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { ProgressStar } from '@/components/shared/ProgressStar/ProgressStar'
-import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Form } from '@/components/ui/form'
@@ -405,12 +404,9 @@ export function ExamResultsSchedule({
         <div className="space-y-3 md:hidden">
           {membersInClass ? (
             membersInClass.length === 0 ? (
-              <EmptyState
-                icon={<Building2 className="h-7 w-7" />}
-                title="Chưa có thành viên trong lớp"
-                compact
-                className="rounded-xl border border-border bg-card"
-              />
+              <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                Chưa có thành viên trong lớp.
+              </div>
             ) : (
               membersInClass.map((m) => (
                 <article
@@ -427,11 +423,9 @@ export function ExamResultsSchedule({
               ))
             )
           ) : combinedResults.length === 0 ? (
-            <EmptyState
-              title="Không có kết quả thi nào"
-              compact
-              className="rounded-xl border border-border bg-card"
-            />
+            <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+              Không có kết quả thi nào.
+            </div>
           ) : (
             combinedResults.map((res) => {
               const isDone = res.status === 'done'
@@ -536,13 +530,8 @@ export function ExamResultsSchedule({
                 {membersInClass ? (
                   membersInClass.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="p-0">
-                        <EmptyState
-                          icon={<Building2 className="h-7 w-7" />}
-                          title="Chưa có thành viên trong lớp"
-                          compact
-                          className="py-10"
-                        />
+                      <td colSpan={3} className="px-6 py-10 text-center text-muted-foreground">
+                        Chưa có thành viên trong lớp.
                       </td>
                     </tr>
                   ) : (
@@ -558,8 +547,8 @@ export function ExamResultsSchedule({
                   )
                 ) : combinedResults.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-0">
-                      <EmptyState title="Không có kết quả thi nào" compact className="py-10" />
+                    <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
+                      Không có kết quả thi nào.
                     </td>
                   </tr>
                 ) : (

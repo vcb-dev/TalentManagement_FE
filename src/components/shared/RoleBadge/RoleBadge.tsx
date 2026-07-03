@@ -7,9 +7,5 @@ export interface RoleBadgeProps {
 }
 
 export function RoleBadge({ role }: RoleBadgeProps) {
-  return (
-    <Badge variant="outline" className="font-medium">
-      {ROLE_LABEL_VI[role]}
-    </Badge>
-  )
+  return <Badge variant="outline">{ROLE_LABEL_VI[role]}</Badge>
 }

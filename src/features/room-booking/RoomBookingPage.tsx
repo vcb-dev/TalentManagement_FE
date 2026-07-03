@@ -14,9 +14,6 @@ import {
   FileText,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/shared/CustomSelect'
-import { PageHeader } from '@/components/shared/PageHeader'
-import { ErrorState } from '@/components/shared/ErrorState'
-import { SkeletonExamScheduleTable } from '@/components/ui/skeleton'
 import { DatePicker } from '@/components/ui/date-picker'
 import { useAuthStore } from '@/stores/auth.store'
 import {
@@ -468,13 +465,7 @@ export default function RoomBookingPage() {
   const prevBookingsCount = useRef(0)
 
   // Query Data
-  const {
-    data: bookings = [],
-    isLoading: isFetching,
-    isError: bookingsError,
-    error: bookingsQueryError,
-    refetch: refetchBookings,
-  } = useQuery({
+  const { data: bookings = [], isLoading: isFetching } = useQuery({
     queryKey: ['room-bookings'],
     queryFn: getBookings,
     staleTime: 30_000,
@@ -839,66 +830,64 @@ export default function RoomBookingPage() {
 
   return (
     <div className="animate-page-entrance min-h-screen bg-background pb-10">
-      <div className="mx-auto w-full max-w-[1400px] space-y-8 px-4 sm:px-6 lg:px-8">
-        <PageHeader
-          title="Phòng họp"
-          description="Lịch đặt và quản lý tài nguyên phòng họp tại Lumina."
-          eyebrow={
-            <div className="flex items-center gap-2">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
+        <div className="flex flex-col gap-6 pt-8 sm:flex-row sm:items-end sm:justify-between border-b border-border/40 pb-8">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
               <div className="h-2 w-8 rounded-full bg-primary" />
               <span className="text-xs font-bold uppercase tracking-wide text-primary">
                 VCB Booking
               </span>
             </div>
-          }
-          variant="flat"
-          className="border-border/40 pb-8 pt-8"
-          actions={
-            <>
-              {(createMut.isPending || updateMut.isPending || isFetching) && (
-                <div className="flex items-center gap-2 rounded-xl bg-primary/5 px-4 py-2 text-primary">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-xs font-bold uppercase tracking-wider">
-                    Đang cập nhật...
-                  </span>
-                </div>
-              )}
-              {isRoomAccount && (
-                <div className="flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5 border border-border">
-                  <span className="text-xs font-black uppercase text-muted-foreground whitespace-nowrap">
-                    Giám sát:
-                  </span>
-                  <CustomSelect
-                    value={monitoredRoom}
-                    onValueChange={(val) => {
-                      setMonitoredRoom(val)
-                      localStorage.setItem('vcb_selected_room', val)
-                    }}
-                    options={MEETING_ROOMS.map((r) => ({
-                      label: r.label,
-                      value: r.id,
-                    }))}
-                  />
-                </div>
-              )}
-              <button
-                onClick={() => speak('Hệ thống đặt phòng Lumina xin chào bạn')}
-                className="p-3 rounded-full bg-secondary hover:bg-secondary/80 transition shadow-sm"
-              >
-                <Volume2 className="h-5 w-5 text-primary" />
-              </button>
-              <button
-                onClick={() => {
-                  resetForm()
-                  setShowModal(true)
-                }}
-                className="group relative flex items-center gap-3 overflow-hidden rounded-2xl bg-primary px-8 py-4 text-sm font-bold text-primary-foreground shadow-2xl shadow-primary/30 transition-all hover:scale-105 active:scale-95"
-              >
-                <Plus className="h-5 w-5" /> Đặt phòng ngay
-              </button>
-            </>
-          }
-        />
+            <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
+              Phòng họp
+            </h1>
+            <p className="mt-2 text-base text-muted-foreground">
+              Lịch đặt và quản lý tài nguyên phòng họp tại Lumina.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {(createMut.isPending || updateMut.isPending || isFetching) && (
+              <div className="flex items-center gap-2 rounded-xl bg-primary/5 px-4 py-2 text-primary">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-xs font-bold uppercase tracking-wider">Đang cập nhật...</span>
+              </div>
+            )}
+            {isRoomAccount && (
+              <div className="flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5 border border-border">
+                <span className="text-xs font-black uppercase text-muted-foreground whitespace-nowrap">
+                  Giám sát:
+                </span>
+                <CustomSelect
+                  value={monitoredRoom}
+                  onValueChange={(val) => {
+                    setMonitoredRoom(val)
+                    localStorage.setItem('vcb_selected_room', val)
+                  }}
+                  options={MEETING_ROOMS.map((r) => ({
+                    label: r.label,
+                    value: r.id,
+                  }))}
+                />
+              </div>
+            )}
+            <button
+              onClick={() => speak('Hệ thống đặt phòng Lumina xin chào bạn')}
+              className="p-3 rounded-full bg-secondary hover:bg-secondary/80 transition shadow-sm"
+            >
+              <Volume2 className="h-5 w-5 text-primary" />
+            </button>
+            <button
+              onClick={() => {
+                resetForm()
+                setShowModal(true)
+              }}
+              className="group relative flex items-center gap-3 overflow-hidden rounded-2xl bg-primary px-8 py-4 text-sm font-bold text-primary-foreground shadow-2xl shadow-primary/30 transition-all hover:scale-105 active:scale-95"
+            >
+              <Plus className="h-5 w-5" /> Đặt phòng ngay
+            </button>
+          </div>
+        </div>
 
         {success && (
           <div className="flex items-center gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5 backdrop-blur-md animate-in slide-in-from-top-4 duration-300">
@@ -966,15 +955,10 @@ export default function RoomBookingPage() {
                 ))}
               </div>
             </div>
-            {bookingsError ? (
-              <ErrorState
-                title="Không tải được lịch đặt phòng"
-                description="Vui lòng kiểm tra kết nối và thử lại."
-                onRetry={() => void refetchBookings()}
-                retrying={isFetching}
-              />
-            ) : isFetching && bookings.length === 0 ? (
-              <SkeletonExamScheduleTable rows={4} />
+            {isFetching && bookings.length === 0 ? (
+              <div className="flex justify-center py-16">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
             ) : (
               <RoomScheduleTimeline
                 viewDate={viewDate}

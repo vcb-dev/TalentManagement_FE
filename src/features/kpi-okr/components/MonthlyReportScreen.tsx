@@ -64,8 +64,6 @@ import {
   KpiEvidenceInput,
 } from '@/features/kpi-okr/components/KpiEvidenceInput'
 import { CustomSelect } from '@/components/shared/CustomSelect'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { PageHeader } from '@/components/shared/PageHeader'
 import {
   Dialog,
   DialogContent,
@@ -1289,47 +1287,49 @@ export function MonthlyReportScreen() {
   return (
     <div className="mx-auto max-w-[1400px] px-3 py-6 md:px-4">
       {/* ── Page header: title + actions ── */}
-      <PageHeader
-        title={`Báo cáo T${month}/${year}`}
-        description={
-          canSeeTeamWide
-            ? `${selectedDept?.name ?? 'Tất cả phòng ban'} · ${assignmentsData.length} mục tiêu · ${summaryRows.length} nhân sự`
-            : 'Theo dõi tiến độ KPI/OKR cá nhân'
-        }
-        gradientTitle
-        variant="flat"
-        className="mb-5 border-0 pb-0"
-        actions={
-          <div className="flex shrink-0 items-center gap-2 pt-0.5">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-[1.75rem]">
+            Báo cáo{' '}
+            <span className="text-indigo-600 dark:text-indigo-400">
+              T{month}/{year}
+            </span>
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {canSeeTeamWide
+              ? `${selectedDept?.name ?? 'Tất cả phòng ban'} · ${assignmentsData.length} mục tiêu · ${summaryRows.length} nhân sự`
+              : 'Theo dõi tiến độ KPI/OKR cá nhân'}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 pt-0.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-lg"
+            onClick={() => {
+              void treeQ.refetch()
+              void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
+              void membersQ.refetch()
+              void summariesQ.refetch()
+              void assignmentsQ.refetch()
+            }}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Làm mới
+          </Button>
+          {canSeeTeamWide && summaryRows.length > 0 && (
             <Button
               variant="outline"
               size="sm"
               className="gap-1.5 rounded-lg"
-              onClick={() => {
-                void treeQ.refetch()
-                void qc.invalidateQueries({ queryKey: ORG_TREE_KEY })
-                void membersQ.refetch()
-                void summariesQ.refetch()
-                void assignmentsQ.refetch()
-              }}
+              onClick={handleExportExcel}
             >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Làm mới
+              <Download className="h-3.5 w-3.5" />
+              Excel
             </Button>
-            {canSeeTeamWide && summaryRows.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 rounded-lg"
-                onClick={handleExportExcel}
-              >
-                <Download className="h-3.5 w-3.5" />
-                Excel
-              </Button>
-            )}
-          </div>
-        }
-      />
+          )}
+        </div>
+      </div>
 
       {/* ── Control toolbar: filters + view switcher ── */}
       <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/60">
@@ -1507,12 +1507,11 @@ export function MonthlyReportScreen() {
 
           {/* ── KPI Summary: collapsible table (Linear-style expand/collapse) ── */}
           {!selectedTeamId ? (
-            <EmptyState
-              icon={<Users className="h-8 w-8" />}
-              title="Chưa chọn nhóm"
-              description="Chọn nhóm để xem báo cáo."
-              className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-900/50"
-            />
+            <Card className="border-dashed border-slate-300 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-900/50">
+              <CardContent className="py-10 text-center text-sm text-slate-500">
+                Chọn nhóm để xem báo cáo.
+              </CardContent>
+            </Card>
           ) : membersQ.isLoading || summariesQ.isLoading || assignmentsQ.isLoading ? (
             <Card>
               <CardContent className="space-y-3 py-8">
@@ -1620,12 +1619,9 @@ export function MonthlyReportScreen() {
                   </div>
                 )}
                 {summaryExpanded && summaryRows.length === 0 && (
-                  <EmptyState
-                    title="Chưa có dữ liệu tổng hợp"
-                    description="Trưởng nhóm tính lại ở màn KPI & OKR."
-                    compact
-                    className="border-t border-0 bg-transparent py-6"
-                  />
+                  <div className="border-t px-4 py-6 text-center text-xs text-slate-400">
+                    Chưa có dữ liệu tổng hợp. Trưởng nhóm tính lại ở màn KPI & OKR.
+                  </div>
                 )}
               </Card>
 
@@ -1698,12 +1694,9 @@ export function MonthlyReportScreen() {
                     )}
 
                     {detailRows.length === 0 ? (
-                      <EmptyState
-                        icon={<Target className="h-7 w-7" />}
-                        title="Không có mục tiêu KPI/OKR trong kỳ này"
-                        compact
-                        className="border-t border-0 bg-transparent py-6"
-                      />
+                      <div className="border-t px-4 py-6 text-center text-xs text-slate-400">
+                        Không có mục tiêu KPI/OKR trong kỳ này.
+                      </div>
                     ) : (
                       <div>
                         {/* Mobile: card stack */}

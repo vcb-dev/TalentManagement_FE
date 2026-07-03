@@ -15,7 +15,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-dialog bg-black/45 backdrop-blur-[3px] data-[state=open]:animate-[dialog-overlay-in_200ms_ease-out] data-[state=closed]:animate-[dialog-overlay-out_150ms_ease-in]',
+      'fixed inset-0 z-50 bg-black/45 backdrop-blur-[3px] data-[state=open]:animate-[dialog-overlay-in_200ms_ease-out] data-[state=closed]:animate-[dialog-overlay-out_150ms_ease-in]',
       className
     )}
     {...props}
@@ -32,7 +32,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-1/2 top-1/2 z-dialog grid w-[calc(100vw-1.5rem)] max-w-lg max-h-[min(90vh,720px)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-[var(--shadow-dialog)] outline-none duration-200 data-[state=open]:animate-[dialog-content-in_200ms_ease-out] data-[state=closed]:animate-[dialog-content-out_150ms_ease-in]',
+        'fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-1.5rem)] max-w-lg max-h-[min(90vh,720px)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl outline-none duration-200 data-[state=open]:animate-[dialog-content-in_200ms_ease-out] data-[state=closed]:animate-[dialog-content-out_150ms_ease-in]',
         className
       )}
       {...props}

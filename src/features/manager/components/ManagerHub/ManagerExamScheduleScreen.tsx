@@ -3,9 +3,13 @@ import { Calendar, Users, X, Edit3, Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import type { z } from 'zod'
 import { toast } from 'sonner'
-import { ManagerHubPageHeader } from './ManagerHubPageHeader'
+import {
+  PAGE_HEADER_DESCRIPTION,
+  PAGE_HEADER_GRADIENT,
+  PAGE_HEADER_SURFACE,
+  PAGE_HEADER_TITLE,
+} from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
@@ -15,11 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
-import { SkeletonExamScheduleTable } from '@/components/ui/skeleton'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { ErrorState } from '@/components/shared/ErrorState'
-import { getApiErrorMessage } from '@/lib/axios'
 import { cn } from '@/lib/utils'
 import {
   useAllExams,
@@ -82,14 +81,7 @@ export function ManagerExamScheduleScreen() {
   const user = useAuthStore((s) => s.user)
   const canManage =
     user?.permissionIds?.includes('manager.classes') || user?.role === 'BOD' || user?.role === 'HR'
-  const {
-    data: exams = [],
-    isLoading: loadingExams,
-    isError: examsError,
-    error: examsQueryError,
-    refetch: refetchExams,
-    isFetching: fetchingExams,
-  } = useAllExams()
+  const { data: exams = [], isLoading: loadingExams } = useAllExams()
   const { data: classes = [] } = useManagerClasses()
 
   /** `/all-exams` đôi khi không/chậm có examQuestions trong khi GET /classes (schedules nhúng) đã có — gộp để hiển thị đúng duration. */
@@ -298,7 +290,12 @@ export function ManagerExamScheduleScreen() {
     <>
       <ManagerScreenLayout hideHubNav hideToolbar>
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
-          <ManagerHubPageHeader title="Lịch thi & Người chấm" description={PAGE_SUBTITLE} />
+          <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
+            <h1 className={PAGE_HEADER_TITLE}>
+              <span className={PAGE_HEADER_GRADIENT}>Lịch thi & Người chấm</span>
+            </h1>
+            <p className={PAGE_HEADER_DESCRIPTION}>{PAGE_SUBTITLE}</p>
+          </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             {canManage && (
               <Button
@@ -385,253 +382,222 @@ export function ManagerExamScheduleScreen() {
           )}
         </div>
 
-        {examsError ? (
-          <ErrorState
-            className="mb-6"
-            title="Không tải được lịch thi"
-            description={getApiErrorMessage(examsQueryError)}
-            onRetry={() => void refetchExams()}
-            retrying={fetchingExams}
-          />
-        ) : loadingExams ? (
-          <SkeletonExamScheduleTable rows={5} />
-        ) : (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            {/* Mobile: thẻ — đủ nội dung, nút full width */}
-            <div className="divide-y divide-border md:hidden">
-              {filteredExams.length === 0 ? (
-                <EmptyState
-                  icon={<Calendar className="h-8 w-8" />}
-                  title="Không tìm thấy kỳ thi nào"
-                  description='Hãy nhấn "Tạo lịch thi mới" để bắt đầu.'
-                  action={
-                    canManage ? (
-                      <Button type="button" className="gap-2" onClick={() => openExamModal()}>
-                        <Calendar className="h-4 w-4" />
-                        Tạo lịch thi mới
-                      </Button>
-                    ) : undefined
-                  }
-                />
-              ) : (
-                filteredExams.map((e) => {
-                  const t = toExamTimelineRow(e)
-                  const badge = examBadgeForSchedule(t)
-                  const durMin = getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)
-                  const endHm = addMinutesToHm(t.startTime, durMin)
-                  return (
-                    <div key={e.id} className="space-y-3 bg-card p-4">
-                      <div className="min-w-0">
-                        <p className="text-base font-bold leading-snug text-foreground">
-                          {e.className}
-                        </p>
-                        <p className="mt-1 text-xs font-medium text-muted-foreground">{e.topic}</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p
-                          className={cn(
-                            'text-sm font-black tabular-nums',
-                            badge.muted ? 'text-muted-foreground' : 'text-foreground'
-                          )}
-                        >
-                          {formatViDate(e.dateIso)} · {e.startTime} – {endHm}
-                          <span className="ml-1 font-bold text-muted-foreground">
-                            ({durMin} phút)
-                          </span>
-                        </p>
-                        <span
-                          className={cn(
-                            'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold',
-                            badge.className
-                          )}
-                        >
-                          {badge.label}
-                        </span>
-                      </div>
-                      <div className="rounded-lg bg-muted/40 px-3 py-2">
-                        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                          Người chấm
-                        </p>
-                        <p className="mt-0.5 break-words text-sm font-bold text-foreground">
-                          {e.examTeacherName || (e.examTeacherUserId ? 'Đã gán' : 'Chưa gán')}
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-10 w-full gap-1.5 rounded-xl border-primary/20 text-xs font-bold text-primary hover:bg-primary/5"
-                          onClick={() => setSelectedClassIdForScores(e.classId)}
-                        >
-                          <Users className="h-3.5 w-3.5 shrink-0" />
-                          Học viên & Điểm
-                        </Button>
-                        {canManage ? (
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="h-10 min-w-0 flex-1 gap-1.5 rounded-xl text-xs font-bold"
-                              onClick={() => openExamModal(e.classId, e.id)}
-                            >
-                              <Edit3 className="h-3.5 w-3.5 shrink-0" />
-                              Sửa
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="h-10 shrink-0 rounded-xl px-3 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-                              onClick={() => {
-                                if (confirm('Bạn có chắc chắn muốn xóa lịch thi này?')) {
-                                  deleteSchedule.mutate({ classId: e.classId, scheduleId: e.id })
-                                }
-                              }}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : null}
-                      </div>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          {/* Mobile: thẻ — đủ nội dung, nút full width */}
+          <div className="divide-y divide-border md:hidden">
+            {filteredExams.length === 0 ? (
+              <div className="flex flex-col items-center justify-center px-4 py-16 text-muted-foreground">
+                <Calendar className="mb-4 h-10 w-10 opacity-20" />
+                <p className="font-bold">Không tìm thấy kỳ thi nào</p>
+                <p className="mt-1 text-center text-xs">
+                  Hãy nhấn &quot;Tạo lịch thi mới&quot; để bắt đầu
+                </p>
+              </div>
+            ) : (
+              filteredExams.map((e) => {
+                const t = toExamTimelineRow(e)
+                const badge = examBadgeForSchedule(t)
+                const durMin = getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)
+                const endHm = addMinutesToHm(t.startTime, durMin)
+                return (
+                  <div key={e.id} className="space-y-3 bg-card p-4">
+                    <div className="min-w-0">
+                      <p className="text-base font-bold leading-snug text-foreground">
+                        {e.className}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-muted-foreground">{e.topic}</p>
                     </div>
-                  )
-                })
-              )}
-            </div>
-
-            {/* Desktop: bảng */}
-            <div className="hidden md:block md:overflow-x-auto">
-              <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="px-5 py-4 font-bold text-foreground">Tên lớp & Kỳ thi</th>
-                    <th className="px-5 py-4 font-bold text-foreground">Thời gian</th>
-                    <th className="px-5 py-4 font-bold text-foreground">Người chấm</th>
-                    <th className="px-5 py-4 text-right font-bold text-foreground">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredExams.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="p-0">
-                        <EmptyState
-                          icon={<Calendar className="h-8 w-8" />}
-                          title="Không tìm thấy kỳ thi nào"
-                          description='Hãy nhấn "Tạo lịch thi mới" để bắt đầu.'
-                          action={
-                            canManage ? (
-                              <Button
-                                type="button"
-                                className="gap-2"
-                                onClick={() => openExamModal()}
-                              >
-                                <Calendar className="h-4 w-4" />
-                                Tạo lịch thi mới
-                              </Button>
-                            ) : undefined
-                          }
-                          compact
-                        />
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredExams.map((e) => {
-                      const t = toExamTimelineRow(e)
-                      const badge = examBadgeForSchedule(t)
-                      const durMin = getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)
-                      const endHm = addMinutesToHm(t.startTime, durMin)
-
-                      return (
-                        <tr key={e.id} className="border-b transition-colors hover:bg-muted/20">
-                          <td className="px-5 py-5">
-                            <p className="font-bold text-foreground leading-tight">{e.className}</p>
-                            <span className="mt-1 flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                              {e.topic}
-                            </span>
-                          </td>
-                          <td className="px-5 py-5">
-                            <div className="space-y-1">
-                              <p
-                                className={cn(
-                                  'font-black tabular-nums text-sm',
-                                  badge.muted ? 'text-muted-foreground' : 'text-foreground'
-                                )}
-                              >
-                                {formatViDate(e.dateIso)} · {e.startTime} – {endHm}
-                                <span className="ml-1 font-bold text-muted-foreground">
-                                  ({durMin} phút)
-                                </span>
-                              </p>
-                              <span
-                                className={cn(
-                                  'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold',
-                                  badge.className
-                                )}
-                              >
-                                {badge.label}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-5 py-5">
-                            <p className="text-xs font-bold text-foreground">
-                              {e.examTeacherName || (e.examTeacherUserId ? 'Đã gán' : 'Chưa gán')}
-                            </p>
-                          </td>
-                          <td className="px-5 py-5 text-right">
-                            <div className="flex flex-wrap items-center justify-end gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 gap-1.5 rounded-lg border-primary/20 text-xs font-bold text-primary hover:bg-primary/5"
-                                onClick={() => setSelectedClassIdForScores(e.classId)}
-                              >
-                                <Users className="h-3.5 w-3.5" />
-                                Học viên & Điểm
-                              </Button>
-                              {canManage && (
-                                <>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 gap-1.5 rounded-lg text-xs font-bold"
-                                    onClick={() => openExamModal(e.classId, e.id)}
-                                  >
-                                    <Edit3 className="h-3.5 w-3.5" />
-                                    Sửa
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-8 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-                                    onClick={() => {
-                                      if (confirm('Bạn có chắc chắn muốn xóa lịch thi này?')) {
-                                        deleteSchedule.mutate({
-                                          classId: e.classId,
-                                          scheduleId: e.id,
-                                        })
-                                      }
-                                    }}
-                                  >
-                                    <X className="h-3.5 w-3.5" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p
+                        className={cn(
+                          'text-sm font-black tabular-nums',
+                          badge.muted ? 'text-muted-foreground' : 'text-foreground'
+                        )}
+                      >
+                        {formatViDate(e.dateIso)} · {e.startTime} – {endHm}
+                        <span className="ml-1 font-bold text-muted-foreground">
+                          ({durMin} phút)
+                        </span>
+                      </p>
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold',
+                          badge.className
+                        )}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 px-3 py-2">
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                        Người chấm
+                      </p>
+                      <p className="mt-0.5 break-words text-sm font-bold text-foreground">
+                        {e.examTeacherName || (e.examTeacherUserId ? 'Đã gán' : 'Chưa gán')}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-10 w-full gap-1.5 rounded-xl border-primary/20 text-xs font-bold text-primary hover:bg-primary/5"
+                        onClick={() => setSelectedClassIdForScores(e.classId)}
+                      >
+                        <Users className="h-3.5 w-3.5 shrink-0" />
+                        Học viên & Điểm
+                      </Button>
+                      {canManage ? (
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-10 min-w-0 flex-1 gap-1.5 rounded-xl text-xs font-bold"
+                            onClick={() => openExamModal(e.classId, e.id)}
+                          >
+                            <Edit3 className="h-3.5 w-3.5 shrink-0" />
+                            Sửa
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-10 shrink-0 rounded-xl px-3 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                            onClick={() => {
+                              if (confirm('Bạn có chắc chắn muốn xóa lịch thi này?')) {
+                                deleteSchedule.mutate({ classId: e.classId, scheduleId: e.id })
+                              }
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })
+            )}
           </div>
-        )}
+
+          {/* Desktop: bảng */}
+          <div className="hidden md:block md:overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="px-5 py-4 font-bold text-foreground">Tên lớp & Kỳ thi</th>
+                  <th className="px-5 py-4 font-bold text-foreground">Thời gian</th>
+                  <th className="px-5 py-4 font-bold text-foreground">Người chấm</th>
+                  <th className="px-5 py-4 text-right font-bold text-foreground">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredExams.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-20 text-center">
+                      <div className="flex flex-col items-center justify-center text-muted-foreground">
+                        <Calendar className="mb-4 h-10 w-10 opacity-20" />
+                        <p className="font-bold">Không tìm thấy kỳ thi nào</p>
+                        <p className="text-xs">Hãy nhấn &quot;Tạo lịch thi mới&quot; để bắt đầu</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredExams.map((e) => {
+                    const t = toExamTimelineRow(e)
+                    const badge = examBadgeForSchedule(t)
+                    const durMin = getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)
+                    const endHm = addMinutesToHm(t.startTime, durMin)
+
+                    return (
+                      <tr key={e.id} className="border-b transition-colors hover:bg-muted/20">
+                        <td className="px-5 py-5">
+                          <p className="font-bold text-foreground leading-tight">{e.className}</p>
+                          <span className="mt-1 flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                            {e.topic}
+                          </span>
+                        </td>
+                        <td className="px-5 py-5">
+                          <div className="space-y-1">
+                            <p
+                              className={cn(
+                                'font-black tabular-nums text-sm',
+                                badge.muted ? 'text-muted-foreground' : 'text-foreground'
+                              )}
+                            >
+                              {formatViDate(e.dateIso)} · {e.startTime} – {endHm}
+                              <span className="ml-1 font-bold text-muted-foreground">
+                                ({durMin} phút)
+                              </span>
+                            </p>
+                            <span
+                              className={cn(
+                                'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold',
+                                badge.className
+                              )}
+                            >
+                              {badge.label}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-5">
+                          <p className="text-xs font-bold text-foreground">
+                            {e.examTeacherName || (e.examTeacherUserId ? 'Đã gán' : 'Chưa gán')}
+                          </p>
+                        </td>
+                        <td className="px-5 py-5 text-right">
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 gap-1.5 rounded-lg border-primary/20 text-xs font-bold text-primary hover:bg-primary/5"
+                              onClick={() => setSelectedClassIdForScores(e.classId)}
+                            >
+                              <Users className="h-3.5 w-3.5" />
+                              Học viên & Điểm
+                            </Button>
+                            {canManage && (
+                              <>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 gap-1.5 rounded-lg text-xs font-bold"
+                                  onClick={() => openExamModal(e.classId, e.id)}
+                                >
+                                  <Edit3 className="h-3.5 w-3.5" />
+                                  Sửa
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                  onClick={() => {
+                                    if (confirm('Bạn có chắc chắn muốn xóa lịch thi này?')) {
+                                      deleteSchedule.mutate({
+                                        classId: e.classId,
+                                        scheduleId: e.id,
+                                      })
+                                    }
+                                  }}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </ManagerScreenLayout>
 
       {examModalOpen && (

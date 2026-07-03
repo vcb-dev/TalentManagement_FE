@@ -2,7 +2,6 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useFieldArray, useWatch, type Control, type FieldValues } from 'react-hook-form'
 import { cn } from '@/lib/utils'
-import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { KpiProgressBar } from '@/features/kpi-okr/components/KpiProgressBar'
@@ -152,12 +151,9 @@ export function SubItemsEditorPanel<T extends FieldValues>({
           </div>
           <SubItemsFieldGuide />
           {fields.length === 0 ? (
-            <EmptyState
-              title="Chưa có mục con"
-              description='Nhấn "Thêm mục con" để bổ sung từng dòng theo 4 cột ở trên.'
-              compact
-              className="items-start border-0 bg-transparent py-2 text-left [&>div]:text-left"
-            />
+            <p className="text-xs text-slate-400">
+              Chưa có mục con. Nhấn &quot;Thêm mục con&quot; để bổ sung từng dòng theo 4 cột ở trên.
+            </p>
           ) : (
             <div className="space-y-2">
               <SubItemsEditorColumnHeaders />
@@ -271,12 +267,9 @@ export function SubItemsDraftEditor({
           </div>
           <SubItemsFieldGuide />
           {value.length === 0 ? (
-            <EmptyState
-              title="Chưa có mục con"
-              description='Nhấn "Thêm mục con" để bổ sung từng dòng theo 4 cột ở trên.'
-              compact
-              className="items-start border-0 bg-transparent py-2 text-left [&>div]:text-left"
-            />
+            <p className="text-xs text-slate-400">
+              Chưa có mục con. Nhấn &quot;Thêm mục con&quot; để bổ sung từng dòng theo 4 cột ở trên.
+            </p>
           ) : (
             <div className="space-y-2">
               <SubItemsEditorColumnHeaders />

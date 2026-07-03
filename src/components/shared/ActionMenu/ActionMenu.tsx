@@ -24,7 +24,6 @@ export interface ActionMenuProps {
   triggerLabel?: string
   align?: 'start' | 'end' | 'center'
   className?: string
-  disabled?: boolean
 }
 
 export function ActionMenu({
@@ -32,7 +31,6 @@ export function ActionMenu({
   triggerLabel = 'Thêm hành động',
   align = 'end',
   className,
-  disabled,
 }: ActionMenuProps) {
   return (
     <DropdownMenu>
@@ -40,28 +38,25 @@ export function ActionMenu({
         <Button
           variant="ghost"
           size="icon"
-          className={cn(
-            'h-9 w-9 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground',
-            className
-          )}
+          className={cn('h-8 w-8 rounded-lg', className)}
           aria-label={triggerLabel}
-          disabled={disabled}
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align}>
         {items.map((item, index) => (
-          <div key={`${item.label}-${index}`}>
-            {item.separator && index > 0 ? <DropdownMenuSeparator /> : null}
+          <div key={index}>
+            {item.separator && index > 0 && <DropdownMenuSeparator />}
             <DropdownMenuItem
               onClick={item.onClick}
               disabled={item.disabled}
               className={cn(
-                item.variant === 'destructive' && 'text-danger focus:bg-danger/10 focus:text-danger'
+                item.variant === 'destructive' &&
+                  'text-destructive focus:text-destructive focus:bg-destructive/10'
               )}
             >
-              {item.icon ? <span className="shrink-0">{item.icon}</span> : null}
+              {item.icon && <span className="shrink-0">{item.icon}</span>}
               {item.label}
             </DropdownMenuItem>
           </div>

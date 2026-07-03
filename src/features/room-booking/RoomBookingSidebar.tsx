@@ -1,5 +1,4 @@
 import { CheckCircle2, Clock, Loader2 } from 'lucide-react'
-import { EmptyState } from '@/components/shared/EmptyState'
 import type { MeetingBooking } from './api'
 import { formatDateVi, formatTimeRangeVi, padTime } from './roomBookingTimeUtils'
 
@@ -22,14 +21,7 @@ export function RoomBookingPendingPanel({
     return (
       <div className="rounded-2xl border border-border/60 bg-card p-4">
         <h3 className="text-sm font-bold text-foreground">Yêu cầu chờ duyệt</h3>
-        {isLoading ? (
-          <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-            Đang tải…
-          </p>
-        ) : (
-          <EmptyState compact tone="subtle" title="Không có yêu cầu nào" className="mt-2 py-4" />
-        )}
+        <p className="mt-2 text-xs text-muted-foreground">Không có yêu cầu nào.</p>
       </div>
     )
   }
@@ -86,14 +78,7 @@ export function RoomBookingRecentPanel({ items, onItemClick, isLoading }: Recent
     <div className="rounded-2xl border border-border/60 bg-card p-4">
       <h3 className="mb-3 text-sm font-bold text-foreground">Gần đây</h3>
       {items.length === 0 ? (
-        isLoading ? (
-          <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-            Đang tải…
-          </p>
-        ) : (
-          <EmptyState compact tone="subtle" title="Chưa có hoạt động" className="py-4" />
-        )
+        <p className="text-xs text-muted-foreground">Chưa có hoạt động.</p>
       ) : (
         <div className="space-y-1">
           {items.map((b) => (

@@ -1,5 +1,7 @@
 import { FormProvider, useForm, useWatch, type Control } from 'react-hook-form'
+
 import type { EmployeeEntity } from '@/features/hr-admin/api'
+
 import { useAuthStore } from '@/stores/auth.store'
 import { useUploadMePortrait } from '@/features/profile/hooks'
 import { useQuery } from '@tanstack/react-query'
@@ -28,7 +30,6 @@ import { Building2, RefreshCw, Upload } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   DateController,
   InputController,
@@ -39,7 +40,6 @@ import { SelectItem } from '@/components/ui/select'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Link } from '@tanstack/react-router'
-import { FormSection } from '@/components/shared/FormSection'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { usePermission } from '@/hooks/usePermission'
 import {
@@ -601,6 +601,38 @@ function ProfileIdentityCard({
   )
 }
 
+function SectionTitle({
+  children,
+  icon,
+  variant = 'primary',
+}: {
+  children: string
+  icon?: React.ReactNode
+  variant?: 'primary' | 'indigo' | 'violet' | 'emerald'
+}) {
+  const configs = {
+    primary: 'bg-primary/10 text-primary',
+    indigo: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
+    violet: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
+    emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+  }
+  return (
+    <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
+      <div
+        className={cn(
+          'flex h-8 w-8 items-center justify-center rounded-lg font-bold',
+          configs[variant]
+        )}
+      >
+        {icon || <Building2 className="h-4 w-4" />}
+      </div>
+      <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
+        {children}
+      </h3>
+    </div>
+  )
+}
+
 export function HrEmployeeProfile({
   employee,
   page,
@@ -691,6 +723,13 @@ export function HrEmployeeProfile({
     (field) => !isWorkOrgReadonlyField(field.key) && field.key !== 'directManager'
   )
   const detailSections = USER_SELF_FORM_SECTIONS.slice(1).filter((s) => s.title.trim() !== 'Khác')
+  const detailSectionVariants: ('indigo' | 'violet' | 'emerald' | 'primary')[] = [
+    'indigo',
+    'violet',
+    'emerald',
+    'primary',
+    'indigo',
+  ]
   const initialEmploymentStatusUi = resolveEmploymentStatusUi(employee, employeeSummary?.status)
   const onSaveProfile = handleSubmit((values) => {
     const profilePatch = toPatch(values, employee) as unknown as IHrEmployeeProfileState
@@ -797,69 +836,70 @@ export function HrEmployeeProfile({
               />
 
               <section className="rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
-                <FormSection title="Chi tiết hồ sơ" className="border-0 pb-0">
-                  <div className="space-y-8">
-                    <div className="rounded-2xl border border-slate-200 border-l-4 border-l-primary bg-white p-6 shadow-sm dark:border-slate-800 dark:border-l-primary dark:bg-slate-900/50">
-                      <FormSection
-                        title={workSection.title}
-                        icon={<Building2 className="h-4 w-4" />}
-                        className="border-0 pb-0"
-                      >
-                        {workReadonlyFields.length > 0 ? (
-                          <div className="mb-8">
-                            <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-primary/50">
-                              Thông tin đồng bộ
-                            </p>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                              {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
-                              {canManageEmploymentStatus ? (
-                                <EmploymentStatusField control={control} />
-                              ) : null}
-                            </div>
-                          </div>
-                        ) : null}
-                        {workEditableFields.length > 0 ? (
-                          <div className="border-t border-slate-100 pt-6 dark:border-slate-800">
-                            <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                              Thông tin có thể cập nhật
-                            </p>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                              {workEditableFields.map((f) => renderField(f, fieldCtx))}
-                              <div className="sm:col-span-2">
-                                <EmployeeExtraTeamsField
-                                  control={control}
-                                  name="extraTeamIds"
-                                  primaryTeamId={selectedTeamId}
-                                  allTeams={allTeamOptions}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ) : null}
-                      </FormSection>
-                    </div>
+                <div className="mb-8 flex items-center gap-3">
+                  <div className="h-8 w-1.5 rounded-full bg-gradient-to-b from-primary to-violet-600" />
+                  <h2 className="text-xl font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
+                    Chi tiết hồ sơ
+                  </h2>
+                </div>
 
-                    {detailSections.map((section, idx) => (
-                      <div
-                        key={section.title}
-                        className={cn(
-                          'rounded-2xl border border-slate-200 border-l-4 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50',
-                          idx % 3 === 0
-                            ? 'border-l-indigo-500'
-                            : idx % 3 === 1
-                              ? 'border-l-violet-500'
-                              : 'border-l-emerald-500'
-                        )}
-                      >
-                        <FormSection title={section.title} className="border-0 pb-0">
-                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            {section.fields.map((f) => renderField(f, fieldCtx))}
-                          </div>
-                        </FormSection>
+                <div className="space-y-8">
+                  <div className="rounded-2xl border border-slate-200 border-l-4 border-l-primary bg-white p-6 shadow-sm dark:border-slate-800 dark:border-l-primary dark:bg-slate-900/50">
+                    <SectionTitle variant="primary">{workSection.title}</SectionTitle>
+                    {workReadonlyFields.length > 0 ? (
+                      <div className="mb-8">
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-primary/50">
+                          Thông tin đồng bộ
+                        </p>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
+                          {canManageEmploymentStatus ? (
+                            <EmploymentStatusField control={control} />
+                          ) : null}
+                        </div>
                       </div>
-                    ))}
+                    ) : null}
+                    {workEditableFields.length > 0 ? (
+                      <div className="border-t border-slate-100 pt-6 dark:border-slate-800">
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          Thông tin có thể cập nhật
+                        </p>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          {workEditableFields.map((f) => renderField(f, fieldCtx))}
+                          <div className="sm:col-span-2">
+                            <EmployeeExtraTeamsField
+                              control={control}
+                              name="extraTeamIds"
+                              primaryTeamId={selectedTeamId}
+                              allTeams={allTeamOptions}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                </FormSection>
+
+                  {detailSections.map((section, idx) => (
+                    <div
+                      key={section.title}
+                      className={cn(
+                        'rounded-2xl border border-slate-200 border-l-4 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50',
+                        idx % 3 === 0
+                          ? 'border-l-indigo-500'
+                          : idx % 3 === 1
+                            ? 'border-l-violet-500'
+                            : 'border-l-emerald-500'
+                      )}
+                    >
+                      <SectionTitle variant={detailSectionVariants[idx]}>
+                        {section.title}
+                      </SectionTitle>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        {section.fields.map((f) => renderField(f, fieldCtx))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </section>
             </div>
           </div>

@@ -5,23 +5,25 @@ import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-base font-semibold tracking-tight transition-all duration-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-button/35 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         default:
-          'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:bg-primary/85',
-        outline: 'border border-border bg-background text-foreground shadow-sm hover:bg-muted/70',
-        ghost: 'bg-transparent text-foreground hover:bg-muted/70',
-        secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
-        destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
-        link: 'text-primary underline-offset-4 hover:underline',
+          'bg-button text-button-foreground shadow-[0_2px_8px_rgb(106_90_224/0.35)] hover:bg-button-hover active:bg-button-active',
+        outline:
+          'border border-game-accent/25 bg-card text-game-soft-foreground shadow-sm hover:bg-game-soft hover:border-game-accent/40',
+        ghost: 'rounded-xl text-game-muted hover:bg-game-soft hover:text-game-soft-foreground',
+        secondary:
+          'bg-game-soft text-game-soft-foreground shadow-sm hover:bg-[hsl(248_90%_94%)] active:bg-[hsl(248_80%_91%)]',
+        destructive:
+          'border border-danger/40 bg-danger-muted text-danger shadow-sm hover:bg-danger-muted/80 focus-visible:ring-danger/30',
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-9 rounded-md px-3',
-        lg: 'h-11 rounded-md px-6',
-        icon: 'h-10 w-10',
+        default: 'h-11 min-h-11 px-6 py-2.5',
+        sm: 'h-9 min-h-9 rounded-full px-4 text-sm',
+        lg: 'h-12 min-h-12 rounded-full px-9 text-lg',
+        icon: 'h-11 w-11 rounded-full',
       },
     },
     defaultVariants: {

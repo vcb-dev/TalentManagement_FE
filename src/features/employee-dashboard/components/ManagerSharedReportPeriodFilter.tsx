@@ -7,7 +7,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { DashboardSection } from '@/components/shared/DashboardSection'
 
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1)
 
@@ -50,26 +49,25 @@ export function ManagerSharedReportPeriodFilter({ value, onChange, className }: 
     onChange({ ...value, rangeStartMonth: start, rangeEndMonth: mm })
   }
 
-  const periodLabel =
-    rangeStartMonth === rangeEndMonth
-      ? `Tháng ${rangeStartMonth}/${reportYear}`
-      : `Từ tháng ${rangeStartMonth} đến tháng ${rangeEndMonth}/${reportYear}`
-
   return (
-    <DashboardSection
-      title="Kỳ báo cáo (cùng năm)"
-      hint={
-        <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground">
-          {periodLabel}
-        </span>
-      }
+    <section
       className={cn(
-        'bg-card/90 backdrop-blur-sm',
+        'rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm backdrop-blur-sm sm:p-5',
         'motion-safe:animate-[dash-fade-up_0.4s_ease-out_both] motion-reduce:animate-none',
         className
       )}
-      contentClassName="pt-0"
+      aria-label="Kỳ báo cáo dùng chung"
     >
+      <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Kỳ báo cáo (cùng năm)
+        </span>
+        <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground">
+          {rangeStartMonth === rangeEndMonth
+            ? `Tháng ${rangeStartMonth}/${reportYear}`
+            : `Từ tháng ${rangeStartMonth} đến tháng ${rangeEndMonth}/${reportYear}`}
+        </span>
+      </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="space-y-1">
           <span className="text-xs font-semibold text-muted-foreground">Năm</span>
@@ -116,6 +114,6 @@ export function ManagerSharedReportPeriodFilter({ value, onChange, className }: 
           </Select>
         </div>
       </div>
-    </DashboardSection>
+    </section>
   )
 }

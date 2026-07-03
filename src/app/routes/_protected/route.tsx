@@ -13,7 +13,7 @@ export const Route = createFileRoute('/_protected')({
     }
   },
   component: () => (
-    <AppShell>
+    <AppShell title={import.meta.env.VITE_APP_NAME}>
       <Outlet />
     </AppShell>
   ),
