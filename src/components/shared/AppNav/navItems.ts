@@ -377,6 +377,13 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
     permissionId: 'manager.exam_schedule',
   },
   {
+    to: '/manager/exam-papers',
+    label: 'Quản lý đề thi',
+    icon: FileText,
+    match: 'prefix',
+    permissionId: 'manager.exam_schedule',
+  },
+  {
     to: '/manager/approvals',
     label: 'Duyệt thăng cấp / sao',
     icon: ShieldCheck,
@@ -606,6 +613,7 @@ export function groupedSidebarNavItems(
         ...find(TEACHER_HEADER_ITEMS, '/teacher/classes'),
         ...find(MANAGER_OPS_ITEMS, '/manager/exam-schedule'),
         ...find(MANAGER_OPS_ITEMS, '/manager/class-exams'),
+        ...find(MANAGER_OPS_ITEMS, '/manager/exam-papers'),
         ...find(TEACHER_HEADER_ITEMS, '/exam/grader'),
         ...find(MANAGER_OPS_ITEMS, '/manager/approvals'),
         ...find(MANAGER_OPS_ITEMS, '/manager/learning-submissions'),
