@@ -149,8 +149,13 @@ export function useStartExam() {
     mutationFn: (data: { classId?: string; scheduleId?: string }) => examApi.startExam(data),
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000), // 1s, 2s
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void qc.invalidateQueries({ queryKey: ['my_exam_submissions'] })
+      // Đề thi (lớp Editor) chỉ được gán khi submission được tạo — phải refetch
+      // để lấy đề vừa gán, nếu không màn làm bài sẽ không bao giờ nhận được bank.
+      if (variables.scheduleId) {
+        void qc.invalidateQueries({ queryKey: ['exam_my_paper', variables.scheduleId] })
+      }
     },
   })
 }

@@ -44,12 +44,19 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { usePermission } from '@/hooks/usePermission'
 import {
   useDeactivateEmployee,
+  useDirectManagerOptions,
   useEmployee,
   useUpdateEmployee,
   useUpdateEmployeeById,
 } from '../../hooks'
 import { EmployeeLoginCredentialCard } from './EmployeeLoginCredentialCard'
 import { EMPLOYEE_PATCH_KEYS, type EditEmployeeBody, type EmployeePatchKey } from '../../types'
+import {
+  buildDirectManagerSelectOptions,
+  directManagerIdToStoredName,
+  resolveDirectManagerFormValue,
+  type DirectManagerOption,
+} from '../../directManagerOptions'
 export interface HrEmployeeProfileProps {
   employee: EmployeeEntity
   /** Mặc định mở tab khi vào từ URL `?mode=edit`. */
@@ -213,7 +220,10 @@ function ProfileActionButtons({
 
 const Form = FormProvider
 
-function userToEdit(u: IHrEmployeeProfileState): EditRecord {
+function userToEdit(
+  u: IHrEmployeeProfileState,
+  managers: Pick<EmployeeEntity, 'id' | 'name'>[] = []
+): EditRecord {
   const r = emptyEditRecord()
   for (const k of EMPLOYEE_PATCH_KEYS) {
     if (isDateFormField(k)) {
@@ -225,6 +235,8 @@ function userToEdit(u: IHrEmployeeProfileState): EditRecord {
   if (!r.displayName && u.fullNameLegal) {
     r.displayName = u.fullNameLegal
   }
+  const resolvedManager = resolveDirectManagerFormValue(u.directManager, managers)
+  r.directManager = resolvedManager === '__none' ? '' : resolvedManager
   r.extraTeamIds = u.extraTeamIds ?? u.teamIds?.slice(1) ?? []
   r.employmentStatusUi = resolveEmploymentStatusUi(u)
   return r
@@ -242,11 +254,18 @@ function mapCurrentTitleToLevelId(
   return 'biet_viec'
 }
 
-function toPatch(edit: EditRecord, original: IHrEmployeeProfileState): EditEmployeeBody {
+function toPatch(
+  edit: EditRecord,
+  original: IHrEmployeeProfileState,
+  managers: Pick<EmployeeEntity, 'id' | 'name'>[]
+): EditEmployeeBody {
   const nz = (s: string) => (s.trim() === '' ? null : s.trim())
   const body = {} as EditEmployeeBody
   for (const k of EMPLOYEE_PATCH_KEYS) {
-    body[k] = nz(edit[k] ?? '')
+    body[k] =
+      k === 'directManager'
+        ? directManagerIdToStoredName(edit.directManager, managers)
+        : nz(edit[k] ?? '')
   }
   const origExtras = original.extraTeamIds ?? original.teamIds?.slice(1) ?? []
   if (!extraTeamIdsEqual(edit.extraTeamIds ?? [], origExtras)) {
@@ -332,17 +351,39 @@ function renderField(
     teams?: Array<{ id: string; name: string }>
     positions?: Array<{ value: string; label: string }>
     jobTitles?: Array<{ value: string; label: string }>
+    directManagerOptions?: DirectManagerOption[]
   }
 ) {
-  const { employee, control, divisions, teams, positions, jobTitles } = ctx
-
-  const forceReadonly = field.key === 'directManager'
+  const { employee, control, divisions, teams, positions, jobTitles, directManagerOptions } = ctx
 
   if (field.kind === 'portrait') {
     return null
   }
 
-  if (isWorkOrgReadonlyField(field.key) || forceReadonly) {
+  if (field.key === 'directManager') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name="directManager"
+        label={field.label}
+        placeholder="Chọn quản lý trực tiếp"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        <SelectItem value="__none">Chưa chọn</SelectItem>
+        {(directManagerOptions ?? []).map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (isWorkOrgReadonlyField(field.key)) {
     return (
       <ProfileReadonlyInfo
         name={field.key as EmployeePatchKey}
@@ -661,18 +702,24 @@ export function HrEmployeeProfile({
     queryFn: () => organizationApi.getTeamsList(),
     staleTime: 60_000,
   })
+  const { data: directManagersData } = useDirectManagerOptions()
+  const managers = useMemo(() => directManagersData?.data ?? [], [directManagersData])
+  const directManagerOptions = useMemo(
+    () => buildDirectManagerSelectOptions(managers, employee.id, employee.directManager),
+    [managers, employee.id, employee.directManager]
+  )
   const form = useForm<EditRecord>({
-    defaultValues: userToEdit(employee),
+    defaultValues: userToEdit(employee, managers),
   })
   const { control, handleSubmit, reset } = form
   const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
 
   useEffect(() => {
     reset({
-      ...userToEdit(employee),
+      ...userToEdit(employee, managers),
       employmentStatusUi: resolveEmploymentStatusUi(employee, employeeSummary?.status),
     })
-  }, [employee, employeeSummary?.status, reset])
+  }, [employee, employeeSummary?.status, managers, reset])
 
   const divisions = useMemo(
     () => divisionsList.map((d) => ({ id: d.id, name: d.name })),
@@ -732,7 +779,7 @@ export function HrEmployeeProfile({
   ]
   const initialEmploymentStatusUi = resolveEmploymentStatusUi(employee, employeeSummary?.status)
   const onSaveProfile = handleSubmit((values) => {
-    const profilePatch = toPatch(values, employee) as unknown as IHrEmployeeProfileState
+    const profilePatch = toPatch(values, employee, managers) as unknown as IHrEmployeeProfileState
     const statusChanged =
       canManageEmploymentStatus && values.employmentStatusUi !== initialEmploymentStatusUi
 
@@ -782,6 +829,7 @@ export function HrEmployeeProfile({
     teams,
     positions,
     jobTitles,
+    directManagerOptions,
   }
   const avatarUploadInputId = useId()
 

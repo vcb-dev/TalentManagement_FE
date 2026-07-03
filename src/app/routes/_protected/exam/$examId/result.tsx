@@ -216,6 +216,7 @@ function ExamResultPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const answersRef = useRef<Record<string, string>>({})
+  const startExamRequestedRef = useRef(false)
 
   const myClassId = myClassData?.enrolledClass?.id
 
@@ -280,6 +281,14 @@ function ExamResultPage() {
         return
       }
 
+      // Chưa nộp bài — đảm bảo có submission trước (đề thi lớp Editor chỉ được gán
+      // ngẫu nhiên khi start-exam tạo submission). Không đợi bank có sẵn mới gọi,
+      // nếu không sẽ bị kẹt vì my-paper trả về null khi chưa có submission.
+      if (!activeSubmission && !startExamRequestedRef.current) {
+        startExamRequestedRef.current = true
+        startExamApi({ classId: !scheduleId ? examId : undefined, scheduleId })
+      }
+
       // If not submitted, proceed with timer initialization
       let bank = paperBank
       if (!bank && scheduleId && scheduleDetail?.examQuestions) {
@@ -322,11 +331,6 @@ function ExamResultPage() {
               finalTimeLeft = Math.max(0, Math.floor((finalEndMs - Date.now()) / 1000))
             }
           } catch {}
-        }
-
-        // Gọi startExam để ghi nhận vào DB (không ảnh hưởng timer)
-        if (!activeSubmission) {
-          startExamApi({ classId: !scheduleId ? examId : undefined, scheduleId })
         }
 
         setTimeLeft(finalTimeLeft)

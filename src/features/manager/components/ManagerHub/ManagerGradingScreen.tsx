@@ -76,6 +76,7 @@ type FlatRow = {
   total: number
   pending: number
   drafts: number
+  isEditorClass: boolean
 }
 
 export function ManagerGradingScreen() {
@@ -108,6 +109,7 @@ export function ManagerGradingScreen() {
 
     for (const c of classes) {
       const teacherName = c.teacher?.name || '—'
+      const isEditorClass = c.kind === 'EDITOR'
       const examSchedules =
         c.schedules?.filter(
           (s) => s.isExam || s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
@@ -149,6 +151,7 @@ export function ManagerGradingScreen() {
           total: classSubmissions.length,
           pending: classSubmissions.filter((s) => s.status === 'pending').length,
           drafts: classSubmissions.filter((s) => s.status === 'grading').length,
+          isEditorClass,
         })
       } else {
         for (const s of examSchedules) {
@@ -184,6 +187,7 @@ export function ManagerGradingScreen() {
             total: scheduleSubmissions.length,
             pending: scheduleSubmissions.filter((sub) => sub.status === 'pending').length,
             drafts: scheduleSubmissions.filter((sub) => sub.status === 'grading').length,
+            isEditorClass,
           })
         }
       }
@@ -240,6 +244,23 @@ export function ManagerGradingScreen() {
   const handleFilterGrading = (val: string) => {
     setFilterGrading(val)
     setPage(1)
+  }
+
+  // Lớp Editor dùng ExamPaper (đề gán ngẫu nhiên + tự chấm MCQ) — cần màn chấm riêng,
+  // khác với màn chấm theo bộ câu hỏi chung (examQuestions JSON) của các lớp khác.
+  const gotoGrading = (row: FlatRow) => {
+    if (row.isEditorClass && row.scheduleId) {
+      void navigate({
+        to: '/manager/grade-editor-exam/$scheduleId',
+        params: { scheduleId: row.scheduleId },
+      })
+      return
+    }
+    void navigate({
+      to: '/manager/grade-class/$classId',
+      params: { classId: row.classId },
+      search: row.scheduleId ? ({ scheduleId: row.scheduleId } as any) : {},
+    })
   }
 
   return (
@@ -403,13 +424,7 @@ export function ManagerGradingScreen() {
                           ? 'border-primary text-primary hover:bg-primary/5'
                           : 'bg-primary text-primary-foreground hover:bg-primary/90'
                       )}
-                      onClick={() =>
-                        void navigate({
-                          to: '/manager/grade-class/$classId',
-                          params: { classId: row.classId },
-                          search: row.scheduleId ? ({ scheduleId: row.scheduleId } as any) : {},
-                        })
-                      }
+                      onClick={() => gotoGrading(row)}
                     >
                       {row.total > 0 && row.pending === 0 && row.drafts === 0
                         ? 'Xem bài chấm thi'
@@ -554,15 +569,7 @@ export function ManagerGradingScreen() {
                                 ? 'border-primary text-primary hover:bg-primary/5'
                                 : 'bg-primary hover:bg-primary/90 text-primary-foreground'
                             )}
-                            onClick={() =>
-                              void navigate({
-                                to: '/manager/grade-class/$classId',
-                                params: { classId: row.classId },
-                                search: row.scheduleId
-                                  ? ({ scheduleId: row.scheduleId } as any)
-                                  : {},
-                              })
-                            }
+                            onClick={() => gotoGrading(row)}
                           >
                             {row.total > 0 && row.pending === 0 && row.drafts === 0
                               ? 'Xem bài chấm thi'
