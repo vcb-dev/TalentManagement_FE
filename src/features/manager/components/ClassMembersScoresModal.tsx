@@ -1,5 +1,5 @@
 ﻿import { useMemo, useState } from 'react'
-// import { useNavigate } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import type { z } from 'zod'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
@@ -21,10 +21,11 @@ import {
   Search,
   X,
   ChevronDown,
-  // ExternalLink,
+  ExternalLink,
   FileText,
+  Download,
 } from 'lucide-react'
-import { cn, getFileViewerUrl } from '@/lib/utils'
+import { cn, getFileViewerUrl, isOfficeDocumentUrl, resolveFileUrl } from '@/lib/utils'
 
 type ExamSubmission = z.infer<typeof examSubmissionApiSchema>
 
@@ -68,7 +69,9 @@ export function ClassMembersScoresModal({
                 Thành viên & Điểm số
               </DialogTitle>
               <p className="text-sm text-muted-foreground mt-1 font-medium">
-                Danh sách học viên và kết quả thi của lớp
+                {className
+                  ? `Danh sách học viên và kết quả thi — Lớp ${className}`
+                  : 'Danh sách học viên và kết quả thi của lớp'}
               </p>
             </div>
             <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
@@ -76,7 +79,6 @@ export function ClassMembersScoresModal({
             </div>
           </div>
 
-          {/* Search Bar inside Header */}
           <div className="relative mt-6 group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
             <Input
@@ -210,32 +212,37 @@ function parseSubmissionAnswers(submission: ExamSubmission): Record<string, stri
   return submission.answers as Record<string, string>
 }
 
-// function buildQuestionStemMap(submission: ExamSubmission): Record<string, string> {
-//   const map: Record<string, string> = {}
-//   const bank = submission.learningClass?.examQuestions || submission.schedule?.examQuestions
-//   const questions = (bank as { questions?: Array<{ id: string; stem: string }> } | null)?.questions
-//   questions?.forEach((q) => {
-//     map[q.id] = q.stem
-//   })
-//   return map
-// }
+function buildQuestionStemMap(submission: ExamSubmission): Record<string, string> {
+  const map: Record<string, string> = {}
+  const bank = submission.learningClass?.examQuestions || submission.schedule?.examQuestions
+  const questions = (bank as { questions?: Array<{ id: string; stem: string }> } | null)?.questions
+  questions?.forEach((q) => {
+    map[q.id] = q.stem
+  })
+  return map
+}
 
 interface SubmissionWorkPanelProps {
   submission: ExamSubmission
 }
 
 function SubmissionWorkPanel({ submission }: SubmissionWorkPanelProps) {
-  // const navigate = useNavigate()
+  const navigate = useNavigate()
   const answersObj = parseSubmissionAnswers(submission)
-  // const questionMap = useMemo(() => buildQuestionStemMap(submission), [submission])
-  // const isFileSubmission = 'fileUrl' in answersObj
-  // const answeredEntries = Object.entries(answersObj).filter(
-  //   ([key]) => key !== 'fileUrl' && key !== 'fileName'
-  // )
+  const questionMap = useMemo(() => buildQuestionStemMap(submission), [submission])
+  const isFileSubmission = 'fileUrl' in answersObj && Boolean(answersObj.fileUrl)
+  const answeredEntries = Object.entries(answersObj).filter(
+    ([key]) => key !== 'fileUrl' && key !== 'fileName'
+  )
 
-  // const openGradePage = () => {
-  //   void navigate({ to: '/exam/$examId/grade', params: { examId: submission.id } })
-  // }
+  const fileName = answersObj.fileName || 'File bài thi'
+  const fileUrl = resolveFileUrl(answersObj.fileUrl)
+  const viewerUrl = getFileViewerUrl(answersObj.fileUrl)
+  const isOfficeDoc = isOfficeDocumentUrl(fileUrl, fileName)
+
+  const openGradePage = () => {
+    void navigate({ to: '/exam/$examId/grade', params: { examId: submission.id } })
+  }
 
   return (
     <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
@@ -255,41 +262,62 @@ function SubmissionWorkPanel({ submission }: SubmissionWorkPanelProps) {
         </Button> */}
       </div>
 
-      {/* {isFileSubmission ? ( */}
-      <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <FileText className="h-4 w-4" />
+      {isFileSubmission ? (
+        <div className="rounded-xl border border-slate-100 bg-white p-3 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <FileText className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-slate-800">{fileName}</p>
+              <p className="text-xs text-slate-400">
+                {isOfficeDoc
+                  ? 'File Word/Office — xem trực tuyến hoặc tải về'
+                  : 'Học viên đã nộp file đính kèm'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={viewerUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-white hover:bg-primary/95"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              {isOfficeDoc ? 'Xem online' : 'Xem file'}
+            </a>
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              download={fileName}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Tải về
+            </a>
+          </div>
+
+          {isOfficeDoc && (
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Xem online dùng Microsoft Office Viewer (cần file public). Nếu không mở được, dùng{' '}
+              <span className="font-semibold text-slate-500">Tải về</span> để mở bằng Word trên máy.
+            </p>
+          )}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-slate-800">
-            {answersObj.fileName || 'File bài thi'}
-          </p>
-          <p className="text-xs text-slate-400">Học viên đã nộp file đính kèm</p>
-        </div>
-        {answersObj.fileUrl ? (
-          <a
-            href={getFileViewerUrl(answersObj.fileUrl)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-8 shrink-0 items-center rounded-lg bg-primary px-3 text-xs font-bold text-white hover:bg-primary/95"
-          >
-            Xem file
-          </a>
-        ) : (
-          <span className="text-xs text-slate-400 italic">Không có file</span>
-        )}
-      </div>
-      {/* ) : answeredEntries.length === 0 ? ( */}
-      {/* <p className="text-sm italic text-slate-400">Chưa có câu trả lời được ghi nhận.</p> */}
-      {/* ) : ( */}
-      {/* <div className="max-h-48 space-y-2 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200">
+      ) : answeredEntries.length === 0 ? (
+        <p className="text-sm italic text-slate-400">Chưa có câu trả lời được ghi nhận.</p>
+      ) : (
+        <div className="max-h-48 space-y-2 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200">
           {answeredEntries.map(([qId, answer], idx) => {
             const questionText = questionMap[qId] || `Câu hỏi ${idx + 1}`
             return (
               <button
                 key={qId}
                 type="button"
-                // onClick={openGradePage}
+                onClick={openGradePage}
                 className="w-full rounded-xl border border-slate-100 bg-white p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
               >
                 <p className="mb-1 text-xs font-bold text-primary">Câu {idx + 1}</p>
@@ -303,7 +331,7 @@ function SubmissionWorkPanel({ submission }: SubmissionWorkPanelProps) {
             )
           })}
         </div>
-      )} */}
+      )}
 
       {submission.schedule?.topic && (
         <p className="text-[11px] text-slate-400">
