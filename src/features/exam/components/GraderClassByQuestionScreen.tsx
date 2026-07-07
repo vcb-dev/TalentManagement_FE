@@ -1019,7 +1019,7 @@ export function GraderClassByQuestionScreen({
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Lớp này chưa được gán bộ câu hỏi.</p>
-        <Button onClick={() => void navigate({ to: '/manager/class-exams' })}>
+        <Button onClick={() => void navigate({ to: '/manager/exam-schedule' })}>
           Quản lý đề thi
         </Button>
       </div>

@@ -76,7 +76,7 @@ type FlatRow = {
   total: number
   pending: number
   drafts: number
-  isEditorClass: boolean
+  usesExamPaperSystem: boolean
 }
 
 export function ManagerGradingScreen() {
@@ -109,7 +109,6 @@ export function ManagerGradingScreen() {
 
     for (const c of classes) {
       const teacherName = c.teacher?.name || '—'
-      const isEditorClass = c.kind === 'EDITOR'
       const examSchedules =
         c.schedules?.filter(
           (s) => s.isExam || s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
@@ -151,7 +150,9 @@ export function ManagerGradingScreen() {
           total: classSubmissions.length,
           pending: classSubmissions.filter((s) => s.status === 'pending').length,
           drafts: classSubmissions.filter((s) => s.status === 'grading').length,
-          isEditorClass,
+          // Đề chuẩn (ExamPaper) luôn gắn theo schedule cụ thể — lớp không có
+          // schedule nào thì chỉ có thể là luồng JSON cũ cấp lớp.
+          usesExamPaperSystem: false,
         })
       } else {
         for (const s of examSchedules) {
@@ -187,7 +188,7 @@ export function ManagerGradingScreen() {
             total: scheduleSubmissions.length,
             pending: scheduleSubmissions.filter((sub) => sub.status === 'pending').length,
             drafts: scheduleSubmissions.filter((sub) => sub.status === 'grading').length,
-            isEditorClass,
+            usesExamPaperSystem: (s.examPaperIds?.length ?? 0) > 0,
           })
         }
       }
@@ -246,10 +247,10 @@ export function ManagerGradingScreen() {
     setPage(1)
   }
 
-  // Lớp Editor dùng ExamPaper (đề gán ngẫu nhiên + tự chấm MCQ) — cần màn chấm riêng,
-  // khác với màn chấm theo bộ câu hỏi chung (examQuestions JSON) của các lớp khác.
+  // Lịch thi có gán đề chuẩn (ExamPaper — tự chấm MCQ, gán ngẫu nhiên) cần màn chấm
+  // riêng, khác với màn chấm theo bộ câu hỏi JSON cũ của các lịch thi chưa gán đề chuẩn.
   const gotoGrading = (row: FlatRow) => {
-    if (row.isEditorClass && row.scheduleId) {
+    if (row.usesExamPaperSystem && row.scheduleId) {
       void navigate({
         to: '/manager/grade-editor-exam/$scheduleId',
         params: { scheduleId: row.scheduleId },

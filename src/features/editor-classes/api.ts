@@ -14,6 +14,7 @@ export type BulkExamScheduleInput = {
   topic?: string
   location?: string | null
   paperIds?: string[]
+  durationMinutes?: number
   dryRun?: boolean
 }
 

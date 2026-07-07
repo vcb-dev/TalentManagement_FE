@@ -3,7 +3,6 @@ import type { LucideIcon } from 'lucide-react'
 import {
   BookOpen,
   CalendarClock,
-  FileText,
   LayoutList,
   School,
   Sparkles,
@@ -25,7 +24,6 @@ const MANAGER_NAV: NavDef[] = [
   { to: '/hr-admin', label: 'Danh sách nhân sự', icon: Users, match: 'prefix' },
   { to: '/manager/classes', label: 'Chia lớp', icon: School, match: 'prefix' },
   { to: '/learning-classes', label: 'Lớp học của tôi', icon: School, match: 'prefix' },
-  { to: '/manager/exam-schedule', label: 'Lịch thi', icon: CalendarClock, match: 'prefix' },
   { to: '/manager/approvals', label: 'Thăng cấp / sao', icon: LayoutList, match: 'prefix' },
   {
     to: '/manager/learning-submissions',
@@ -34,7 +32,12 @@ const MANAGER_NAV: NavDef[] = [
     match: 'prefix',
   },
   { to: '/manager/exercises', label: 'Bài tập lộ trình', icon: BookOpen, match: 'prefix' },
-  { to: '/manager/exam-papers', label: 'Quản lý đề thi', icon: FileText, match: 'prefix' },
+  {
+    to: '/manager/exam-schedule',
+    label: 'Lịch thi & Đề thi',
+    icon: CalendarClock,
+    match: 'prefix',
+  },
   { to: '/manager/learning-materials', label: 'Tài liệu học', icon: BookOpen, match: 'prefix' },
 ]
 

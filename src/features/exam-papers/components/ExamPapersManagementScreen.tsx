@@ -3,6 +3,7 @@ import { FileText, Pencil, Plus, Power, PowerOff, Trash2, X } from 'lucide-react
 import { toast } from 'sonner'
 import { ManagerHubPageHeader } from '@/features/manager/components/ManagerHub/ManagerHubPageHeader'
 import { ManagerScreenLayout } from '@/features/manager/components/ManagerHub/ManagerScreenLayout'
+import { ExamManagementTabs } from '@/features/manager/components/ManagerHub/ExamManagementTabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -33,8 +34,6 @@ import type { ExamPaperInput, ExamPaperQuestionInput } from '@/features/exam-pap
 import { examPapersApi } from '@/features/exam-papers/api'
 
 const OPTIONS_PER_MCQ = 4
-const EXPECTED_MCQ = 20
-const EXPECTED_ESSAY = 3
 
 type McqDraft = { stem: string; options: string[]; correctIndex: number }
 type EssayDraft = { stem: string; points: number }
@@ -61,10 +60,8 @@ function toDraft(questions: ExamPaperQuestionInput[]): { mcq: McqDraft[]; essay:
   const essay = questions
     .filter((q) => q.type === 'essay')
     .map((q) => ({ stem: q.stem, points: q.points }))
-  return {
-    mcq: mcq.length > 0 ? mcq : [emptyMcq()],
-    essay: essay.length > 0 ? essay : [emptyEssay()],
-  }
+  // Không ép sẵn câu trống — đề có thể chỉ gồm trắc nghiệm hoặc chỉ tự luận
+  return { mcq, essay }
 }
 
 function toQuestions(mcq: McqDraft[], essay: EssayDraft[]): ExamPaperQuestionInput[] {
@@ -132,6 +129,10 @@ function PaperBuilderForm({
   const handleSubmit = () => {
     if (!title.trim()) {
       toast.error('Vui lòng nhập tên đề thi')
+      return
+    }
+    if (mcq.length + essay.length === 0) {
+      toast.error('Đề thi cần ít nhất 1 câu hỏi (trắc nghiệm hoặc tự luận)')
       return
     }
     for (const [idx, q] of mcq.entries()) {
@@ -223,9 +224,7 @@ function PaperBuilderForm({
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground">
-                Câu trắc nghiệm ({mcq.length}/{EXPECTED_MCQ})
-              </h3>
+              <h3 className="text-sm font-bold text-foreground">Câu trắc nghiệm ({mcq.length})</h3>
               <Button
                 type="button"
                 size="sm"
@@ -237,6 +236,11 @@ function PaperBuilderForm({
                 Thêm câu
               </Button>
             </div>
+            {mcq.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border bg-muted/10 p-3 text-xs text-muted-foreground">
+                Chưa có câu trắc nghiệm — có thể bỏ trống nếu đề chỉ gồm tự luận.
+              </p>
+            ) : null}
             <div className="space-y-3">
               {mcq.map((q, idx) => (
                 <div key={idx} className="rounded-lg border border-border bg-muted/20 p-3">
@@ -287,9 +291,7 @@ function PaperBuilderForm({
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground">
-                Câu tự luận ({essay.length}/{EXPECTED_ESSAY})
-              </h3>
+              <h3 className="text-sm font-bold text-foreground">Câu tự luận ({essay.length})</h3>
               <Button
                 type="button"
                 size="sm"
@@ -301,6 +303,11 @@ function PaperBuilderForm({
                 Thêm câu
               </Button>
             </div>
+            {essay.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border bg-muted/10 p-3 text-xs text-muted-foreground">
+                Chưa có câu tự luận — có thể bỏ trống nếu đề chỉ gồm trắc nghiệm.
+              </p>
+            ) : null}
             <div className="space-y-3">
               {essay.map((q, idx) => (
                 <div
@@ -386,10 +393,11 @@ export function ExamPapersManagementScreen() {
 
   return (
     <ManagerScreenLayout hideHubNav hideToolbar>
+      <ExamManagementTabs active="/manager/exam-papers" />
       <div className="mb-8 flex flex-col gap-6">
         <ManagerHubPageHeader
           title="Quản lý đề thi"
-          description="Tạo, sửa, xóa các đề thi (20 trắc nghiệm + 3 tự luận) dùng cho lịch thi lớp Editor — mỗi thành viên sẽ được gán ngẫu nhiên 1 đề khi tham gia thi."
+          description="Tạo, sửa, xóa các đề thi — trắc nghiệm, tự luận hoặc kết hợp cả hai — dùng cho lịch thi. Khi lịch thi gán nhiều đề, mỗi thành viên sẽ được gán ngẫu nhiên 1 đề khi tham gia thi."
           actions={
             <Button type="button" className="gap-2" onClick={() => setIsCreating(true)}>
               <Plus className="h-4 w-4" />
@@ -411,7 +419,7 @@ export function ExamPapersManagementScreen() {
           <EmptyState
             icon={<FileText className="h-8 w-8" />}
             title="Chưa có đề thi nào"
-            description="Tạo đề thi đầu tiên để dùng cho lịch thi lớp Editor."
+            description="Tạo đề thi đầu tiên để dùng khi thiết lập lịch thi."
             action={
               <Button type="button" className="gap-2" onClick={() => setIsCreating(true)}>
                 <Plus className="h-4 w-4" />

@@ -106,6 +106,7 @@ export const managerClassScheduleApiSchema = z.object({
   examTeacherName: z.string().nullable().optional(),
   examStatus: z.string().nullable().optional(),
   examQuestions: z.any().nullable().optional(),
+  examPaperIds: z.array(z.string().uuid()).optional(),
   materialRef: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

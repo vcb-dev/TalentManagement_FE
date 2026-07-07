@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { CalendarPlus, RefreshCw, School } from 'lucide-react'
+import { CalendarPlus, Loader2, RefreshCw, School } from 'lucide-react'
+import { toast } from 'sonner'
+import { addMinutesToHm } from '@/lib/examScheduleTime'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -79,17 +81,51 @@ function SyncPreviewCard({ report }: { report: SyncReport }) {
 }
 
 function BulkScheduleForm({ onResult }: { onResult: (r: BulkResult) => void }) {
-  const { data: papers = [] } = useExamPapers()
+  const { data: papers = [], isLoading: loadingPapers } = useExamPapers()
   const bulkCreate = useBulkCreateExamSchedules()
   const [dateIso, setDateIso] = useState('')
   const [startTime, setStartTime] = useState('09:00')
-  const [endTime, setEndTime] = useState('10:30')
+  const [durationInput, setDurationInput] = useState('90')
   const [topic, setTopic] = useState('Thi định kỳ lớp Editor')
   const activePapers = papers.filter((p) => p.isActive)
 
+  // Mặc định chọn tất cả đề đang kích hoạt (hành vi cũ) — chỉ dùng danh sách tự chọn khi người dùng đã chỉnh
+  const [touchedPapers, setTouchedPapers] = useState(false)
+  const [pickedPaperIds, setPickedPaperIds] = useState<string[]>([])
+  const selectedPaperIds = touchedPapers ? pickedPaperIds : activePapers.map((p) => p.id)
+
+  const togglePaper = (paperId: string) => {
+    setTouchedPapers(true)
+    setPickedPaperIds(
+      selectedPaperIds.includes(paperId)
+        ? selectedPaperIds.filter((id) => id !== paperId)
+        : [...selectedPaperIds, paperId]
+    )
+  }
+
   const submit = (dryRun: boolean) => {
     if (!dateIso) return
-    bulkCreate.mutate({ dateIso, startTime, endTime, topic, dryRun }, { onSuccess: onResult })
+    const durationMin = Number.parseInt(durationInput.trim(), 10)
+    if (!Number.isInteger(durationMin) || durationMin < 1 || durationMin > 1440) {
+      toast.error('Thời gian làm bài phải từ 1 đến 1440 phút')
+      return
+    }
+    if (selectedPaperIds.length === 0) {
+      toast.error('Chọn ít nhất 1 đề thi')
+      return
+    }
+    bulkCreate.mutate(
+      {
+        dateIso,
+        startTime,
+        endTime: addMinutesToHm(startTime, durationMin),
+        topic,
+        paperIds: selectedPaperIds,
+        durationMinutes: durationMin,
+        dryRun,
+      },
+      { onSuccess: onResult }
+    )
   }
 
   return (
@@ -111,33 +147,80 @@ function BulkScheduleForm({ onResult }: { onResult: (r: BulkResult) => void }) {
         </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-            Giờ kết thúc
+            Thời gian làm bài (phút)
           </label>
-          <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+          <Input
+            inputMode="numeric"
+            value={durationInput}
+            onChange={(e) => setDurationInput(e.target.value.replace(/\D/g, ''))}
+            placeholder="90"
+          />
         </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-muted-foreground">Chủ đề</label>
           <Input value={topic} onChange={(e) => setTopic(e.target.value)} />
         </div>
       </div>
+
+      <div className="mt-3">
+        <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+          Đề thi ({selectedPaperIds.length} đã chọn)
+        </label>
+        {loadingPapers ? (
+          <div className="flex items-center justify-center rounded-lg border border-border bg-muted/20 py-4">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          </div>
+        ) : activePapers.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground">
+            Chưa có đề thi nào đang kích hoạt — tạo đề ở màn Quản lý đề thi trước.
+          </p>
+        ) : (
+          <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border border-border bg-muted/10 p-1.5">
+            {activePapers.map((p) => (
+              <label
+                key={p.id}
+                className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 hover:bg-primary/5"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedPaperIds.includes(p.id)}
+                  onChange={() => togglePaper(p.id)}
+                  className="h-4 w-4 shrink-0 rounded border-border"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-bold text-foreground">
+                    <span className="font-mono text-primary">{p.code}</span> · {p.title}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {p.mcqCount} trắc nghiệm · {p.essayCount} tự luận
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
       <p className="mt-2 text-xs text-muted-foreground">
-        Dùng {activePapers.length} đề đang kích hoạt:{' '}
-        {activePapers.map((p) => p.code).join(', ') || '—'}. Mỗi thành viên sẽ được gán ngẫu nhiên 1
-        trong các đề này khi vào thi. Giáo viên chấm được phân công chấm chéo (không chấm lớp mình
-        dạy).
+        Giờ kết thúc = giờ bắt đầu + thời gian làm bài
+        {durationInput
+          ? ` (kết thúc ${addMinutesToHm(startTime, Number.parseInt(durationInput, 10) || 0)})`
+          : ''}
+        . Mỗi thành viên sẽ được gán ngẫu nhiên 1 trong các đề đã chọn khi vào thi. Giáo viên chấm
+        được phân công chấm chéo (không chấm lớp mình dạy).
       </p>
       <div className="mt-3 flex gap-2">
         <Button
           type="button"
           variant="outline"
-          disabled={!dateIso || bulkCreate.isPending || activePapers.length === 0}
+          disabled={!dateIso || bulkCreate.isPending || selectedPaperIds.length === 0}
           onClick={() => submit(true)}
         >
           Xem trước
         </Button>
         <Button
           type="button"
-          disabled={!dateIso || bulkCreate.isPending || activePapers.length === 0}
+          disabled={!dateIso || bulkCreate.isPending || selectedPaperIds.length === 0}
           onClick={() => submit(false)}
         >
           {bulkCreate.isPending ? 'Đang tạo...' : 'Tạo lịch thi'}

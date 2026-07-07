@@ -342,6 +342,8 @@ export function useCreateClassSchedule() {
         isExam?: boolean
         examTeacherUserId?: string | null
         examStatus?: string | null
+        examPaperIds?: string[]
+        durationMinutes?: number
       }
     }) => managerApi.createClassSchedule(classId, input),
     onSuccess: (_d, vars) => {
@@ -374,6 +376,8 @@ export function useUpdateClassSchedule() {
         isExam?: boolean
         examTeacherUserId?: string | null
         examStatus?: string | null
+        examPaperIds?: string[]
+        durationMinutes?: number
       }
     }) => managerApi.updateClassSchedule(classId, scheduleId, input),
     onSuccess: (_d, vars) => {
@@ -398,33 +402,6 @@ export function useDeleteClassSchedule() {
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
       void qc.invalidateQueries({ queryKey: ['learning'] })
       toast.success('Đã xóa lịch học')
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  })
-}
-
-export const useSaveExamQuestions = () => {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: { classId: string; questions: any }) =>
-      managerApi.saveExamQuestions(input.classId, input.questions),
-    onSuccess: (_, variables) => {
-      qc.invalidateQueries({ queryKey: ['manager', 'classes', variables.classId] })
-      toast.success('Lưu đề thi thành công')
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  })
-}
-
-export const useSaveScheduleExamQuestions = () => {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (input: { classId: string; scheduleId: string; questions: any }) =>
-      managerApi.saveScheduleExamQuestions(input.classId, input.scheduleId, input.questions),
-    onSuccess: (_, variables) => {
-      qc.invalidateQueries({ queryKey: managerKeys.classSchedules(variables.classId) })
-      qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
-      toast.success('Lưu đề thi buổi thi thành công')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   })
