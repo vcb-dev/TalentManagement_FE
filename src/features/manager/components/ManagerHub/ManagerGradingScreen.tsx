@@ -17,6 +17,10 @@ import { CustomSelect } from '@/components/shared/CustomSelect'
 import { DialogCustom } from '@/components/shared/DialogCustom/DialogCustom'
 import { useGetFeedback } from '@/features/learning-path/hooks'
 import { Loader2 } from 'lucide-react'
+import { useAuthStore } from '@/stores/auth.store'
+
+/** BOD/HR/MANAGER chấm chéo toàn hệ thống — không giới hạn theo lớp/lịch được gán. */
+const SEES_ALL_GRADING_ROLES = ['BOD', 'HR', 'MANAGER']
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
 
@@ -81,8 +85,10 @@ type FlatRow = {
 
 export function ManagerGradingScreen() {
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
   const { data: classes = [], isLoading } = useManagerClasses()
   const { data: submissions = [], isLoading: isLoadingSubmissions } = useManagerSubmissions()
+  const seesAllGrading = !!user?.role && SEES_ALL_GRADING_ROLES.includes(user.role)
   const [page, setPage] = useState(1)
   const [filterClass, setFilterClass] = useState<string>('all')
   const [filterGrading, setFilterGrading] = useState<string>('all')
@@ -107,6 +113,11 @@ export function ManagerGradingScreen() {
   const allRows: FlatRow[] = useMemo(() => {
     const result: FlatRow[] = []
 
+    type ClassSchedule = NonNullable<ManagerClassRow['schedules']>[number]
+    const isClassTeacher = (c: ManagerClassRow) => c.teacher?.userId === user?.id
+    const canGradeSchedule = (c: ManagerClassRow, s: ClassSchedule) =>
+      seesAllGrading || isClassTeacher(c) || s.examTeacherUserId === user?.id
+
     for (const c of classes) {
       const teacherName = c.teacher?.name || '—'
       const examSchedules =
@@ -116,6 +127,8 @@ export function ManagerGradingScreen() {
       const classDurationMin = (c.examQuestions as any)?.duration || 60
 
       if (examSchedules.length === 0) {
+        if (!seesAllGrading && !isClassTeacher(c)) continue
+
         const classSubmissions = submissions.filter(
           (s) => s.classId?.toLowerCase() === c.id.toLowerCase()
         )
@@ -156,6 +169,8 @@ export function ManagerGradingScreen() {
         })
       } else {
         for (const s of examSchedules) {
+          if (!canGradeSchedule(c, s)) continue
+
           const scheduleSubmissions = submissions.filter(
             (sub) => sub.scheduleId?.toLowerCase() === s.id.toLowerCase()
           )
@@ -205,7 +220,7 @@ export function ManagerGradingScreen() {
     })
 
     return result
-  }, [classes, submissions])
+  }, [classes, submissions, user?.id, seesAllGrading])
 
   // Danh sách tên lớp (cho filter)
   const classNames = useMemo(() => {

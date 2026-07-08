@@ -32,18 +32,24 @@ import {
 } from '@/features/exam-papers/hooks'
 import type { ExamPaperInput, ExamPaperQuestionInput } from '@/features/exam-papers/api'
 import { examPapersApi } from '@/features/exam-papers/api'
+import {
+  DEFAULT_ESSAY_CRITERIA_WEIGHTS,
+  ESSAY_CRITERIA,
+  sumCriteriaWeights,
+  type EssayCriteriaWeights,
+} from '@/features/exam-papers/criteria'
 
 const OPTIONS_PER_MCQ = 4
 
 type McqDraft = { stem: string; options: string[]; correctIndex: number }
-type EssayDraft = { stem: string; points: number }
+type EssayDraft = { stem: string; points: number; criteriaWeights: EssayCriteriaWeights }
 
 function emptyMcq(): McqDraft {
   return { stem: '', options: Array.from({ length: OPTIONS_PER_MCQ }, () => ''), correctIndex: 0 }
 }
 
 function emptyEssay(): EssayDraft {
-  return { stem: '', points: 1 }
+  return { stem: '', points: 1, criteriaWeights: { ...DEFAULT_ESSAY_CRITERIA_WEIGHTS } }
 }
 
 function toDraft(questions: ExamPaperQuestionInput[]): { mcq: McqDraft[]; essay: EssayDraft[] } {
@@ -59,7 +65,11 @@ function toDraft(questions: ExamPaperQuestionInput[]): { mcq: McqDraft[]; essay:
     }))
   const essay = questions
     .filter((q) => q.type === 'essay')
-    .map((q) => ({ stem: q.stem, points: q.points }))
+    .map((q) => ({
+      stem: q.stem,
+      points: q.points,
+      criteriaWeights: { ...DEFAULT_ESSAY_CRITERIA_WEIGHTS, ...(q.criteriaWeights ?? {}) },
+    }))
   // Không ép sẵn câu trống — đề có thể chỉ gồm trắc nghiệm hoặc chỉ tự luận
   return { mcq, essay }
 }
@@ -80,6 +90,7 @@ function toQuestions(mcq: McqDraft[], essay: EssayDraft[]): ExamPaperQuestionInp
       options: null,
       correctIndex: null,
       points: q.points,
+      criteriaWeights: q.criteriaWeights,
       sortOrder: mcq.length + idx,
     })),
   ]
@@ -148,6 +159,13 @@ function PaperBuilderForm({
     for (const [idx, q] of essay.entries()) {
       if (!q.stem.trim()) {
         toast.error(`Câu tự luận ${idx + 1}: thiếu nội dung`)
+        return
+      }
+      const total = sumCriteriaWeights(q.criteriaWeights)
+      if (total !== 100) {
+        toast.error(
+          `Câu tự luận ${idx + 1}: tổng thang điểm 3 tiêu chí phải bằng 100% (hiện là ${total}%)`
+        )
         return
       }
     }
@@ -309,39 +327,96 @@ function PaperBuilderForm({
               </p>
             ) : null}
             <div className="space-y-3">
-              {essay.map((q, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-start gap-2 rounded-lg border border-border bg-muted/20 p-3"
-                >
-                  <span className="mt-2 text-xs font-bold text-muted-foreground">{idx + 1}.</span>
-                  <Textarea
-                    value={q.stem}
-                    onChange={(e) => updateEssay(idx, { stem: e.target.value })}
-                    placeholder="Nội dung câu hỏi tự luận"
-                    className="min-h-[60px] flex-1 text-sm"
-                  />
-                  <div className="w-20">
-                    <label className="mb-1 block text-xs text-muted-foreground">Điểm</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={q.points}
-                      onChange={(e) => updateEssay(idx, { points: Number(e.target.value) || 0 })}
-                      className="text-sm"
-                    />
+              {essay.map((q, idx) => {
+                const weightTotal = sumCriteriaWeights(q.criteriaWeights)
+                return (
+                  <div key={idx} className="rounded-lg border border-border bg-muted/20 p-3">
+                    <div className="flex items-start gap-2">
+                      <span className="mt-2 text-xs font-bold text-muted-foreground">
+                        {idx + 1}.
+                      </span>
+                      <Textarea
+                        value={q.stem}
+                        onChange={(e) => updateEssay(idx, { stem: e.target.value })}
+                        placeholder="Nội dung câu hỏi tự luận"
+                        className="min-h-[60px] flex-1 text-sm"
+                      />
+                      <div className="w-20">
+                        <label className="mb-1 block text-xs text-muted-foreground">Điểm</label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={q.points}
+                          onChange={(e) =>
+                            updateEssay(idx, { points: Number(e.target.value) || 0 })
+                          }
+                          className="text-sm"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="mt-5 text-destructive"
+                        onClick={() => setEssay((prev) => prev.filter((_, i) => i !== idx))}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {/* Thang điểm đánh giá — text tiêu chí fix cứng, giáo viên chấm theo % này */}
+                    <div className="ml-6 mt-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-primary">
+                          Thang điểm đánh giá
+                        </span>
+                        <span
+                          className={
+                            weightTotal === 100
+                              ? 'text-xs font-bold text-emerald-600'
+                              : 'text-xs font-bold text-rose-600'
+                          }
+                        >
+                          Tổng: {weightTotal}%{weightTotal !== 100 ? ' — phải bằng 100%' : ''}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        {ESSAY_CRITERIA.map((c) => (
+                          <div key={c.id} className="flex flex-col gap-1">
+                            <label className="text-xs font-semibold text-foreground">
+                              {c.label}
+                            </label>
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={q.criteriaWeights[c.id]}
+                                onChange={(e) =>
+                                  updateEssay(idx, {
+                                    criteriaWeights: {
+                                      ...q.criteriaWeights,
+                                      [c.id]: Math.max(
+                                        0,
+                                        Math.min(100, Number(e.target.value) || 0)
+                                      ),
+                                    },
+                                  })
+                                }
+                                className="h-8 w-20 text-sm"
+                              />
+                              <span className="text-xs font-bold text-primary">%</span>
+                            </div>
+                            <p className="text-[11px] leading-snug text-muted-foreground">
+                              {c.desc}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="mt-5 text-destructive"
-                    onClick={() => setEssay((prev) => prev.filter((_, i) => i !== idx))}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>

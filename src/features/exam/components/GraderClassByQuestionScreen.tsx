@@ -10,16 +10,12 @@ import { useGradeSubmission, useManagerSubmissions } from '@/features/exam/hooks
 import { useManagerClasses } from '@/features/manager/hooks'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
+import { ESSAY_CRITERIA } from '@/features/exam-papers/criteria'
+import { extractCriteriaWeights } from '@/lib/examScheduleTime'
 
 export interface GraderClassByQuestionScreenProps {
   classId: string
   scheduleId?: string
-}
-
-const CRITERIA_WEIGHTS: Record<string, number> = {
-  ly_thuyet: 40,
-  thuc_te: 50,
-  trinh_bay: 10,
 }
 
 const RUBRIC_CRITERIA_MAP = {
@@ -229,6 +225,7 @@ export function GraderClassByQuestionScreen({
   }, [currentClass, scheduleId, classSubmissions])
 
   const gradingType = (questionBank as any)?.gradingType || 'direct'
+  const criteriaWeights = extractCriteriaWeights(questionBank)
 
   // Initialize rubric grades from existing submissions
   useEffect(() => {
@@ -457,7 +454,10 @@ export function GraderClassByQuestionScreen({
       const newCriteria = isSelected
         ? qGrade.criteria.filter((c) => c !== criteriaId)
         : [...qGrade.criteria, criteriaId]
-      const newScore = newCriteria.reduce((sum, c) => sum + (CRITERIA_WEIGHTS[c] || 0), 0)
+      const newScore = newCriteria.reduce(
+        (sum, c) => sum + (criteriaWeights[c as keyof typeof criteriaWeights] || 0),
+        0
+      )
 
       return {
         ...prev,
@@ -1208,11 +1208,7 @@ export function GraderClassByQuestionScreen({
                                 <span>Không đạt / 0%</span>
                               </label>
 
-                              {[
-                                { id: 'ly_thuyet', label: 'Đúng lý thuyết (40%)' },
-                                { id: 'thuc_te', label: 'Ví dụ thực tế (50%)' },
-                                { id: 'trinh_bay', label: 'Trình bày (10%)' },
-                              ].map((c) => (
+                              {ESSAY_CRITERIA.map((c) => (
                                 <label
                                   key={c.id}
                                   className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
@@ -1222,7 +1218,9 @@ export function GraderClassByQuestionScreen({
                                     checked={grade.criteria.includes(c.id)}
                                     onCheckedChange={() => toggleCriteria(sub.id, q.id, c.id)}
                                   />
-                                  <span>{c.label}</span>
+                                  <span>
+                                    {c.label} ({criteriaWeights[c.id]}%)
+                                  </span>
                                 </label>
                               ))}
                             </div>

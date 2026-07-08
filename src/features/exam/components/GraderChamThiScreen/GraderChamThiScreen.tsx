@@ -17,6 +17,8 @@ import { TextareaController } from '@/components/ui/form-controllers'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
 import { useGradeSubmission, useManagerSubmissions } from '@/features/exam/hooks'
+import { ESSAY_CRITERIA, type EssayCriteriaWeights } from '@/features/exam-papers/criteria'
+import { extractCriteriaWeights } from '@/lib/examScheduleTime'
 
 export interface GraderChamThiScreenProps {
   /** This is actually the submission ID */
@@ -29,12 +31,6 @@ type GradeFormValues = {
   grades: Record<string, { criteria: string[]; score: number; isGraded?: boolean }>
   totalScore?: number
   rubricGrades?: Record<string, string | null>
-}
-
-const CRITERIA_WEIGHTS: Record<string, number> = {
-  ly_thuyet: 40,
-  thuc_te: 50,
-  trinh_bay: 10,
 }
 
 const RUBRIC_CRITERIA = [
@@ -76,6 +72,7 @@ function GraderQuestionItem({
   getValues,
   setValue,
   disabled,
+  criteriaWeights,
 }: {
   qId: string
   idx: number
@@ -85,6 +82,7 @@ function GraderQuestionItem({
   getValues: UseFormGetValues<GradeFormValues>
   setValue: UseFormSetValue<GradeFormValues>
   disabled: boolean
+  criteriaWeights: EssayCriteriaWeights
 }) {
   const questionGrade = useWatch({ control, name: `grades.${qId}` }) ?? {
     criteria: [],
@@ -99,7 +97,10 @@ function GraderQuestionItem({
     const newCriteria = isSelected
       ? prevCriteria.filter((c) => c !== criteriaId)
       : [...prevCriteria, criteriaId]
-    const newScore = newCriteria.reduce((sum, c) => sum + (CRITERIA_WEIGHTS[c] || 0), 0)
+    const newScore = newCriteria.reduce(
+      (sum, c) => sum + (criteriaWeights[c as keyof EssayCriteriaWeights] || 0),
+      0
+    )
     setValue('grades', {
       ...current,
       [qId]: { criteria: newCriteria, score: newScore, isGraded: true },
@@ -176,11 +177,7 @@ function GraderQuestionItem({
             Không đạt / 0%
           </label>
 
-          {[
-            { id: 'ly_thuyet', label: 'Đúng lý thuyết (40%)' },
-            { id: 'thuc_te', label: 'Ví dụ thực tế (50%)' },
-            { id: 'trinh_bay', label: 'Trình bày (10%)' },
-          ].map((c) => (
+          {ESSAY_CRITERIA.map((c) => (
             <label
               key={c.id}
               className="flex cursor-pointer items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
@@ -191,7 +188,7 @@ function GraderQuestionItem({
                 disabled={disabled}
                 onCheckedChange={() => toggleCriteria(c.id)}
               />
-              {c.label}
+              {c.label} ({criteriaWeights[c.id]}%)
             </label>
           ))}
         </div>
@@ -286,6 +283,10 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
   }, [submission, gradeForm])
 
   const gradingType = (submission?.schedule as any)?.examQuestions?.gradingType || 'direct'
+  const criteriaWeights = extractCriteriaWeights(
+    (submission?.schedule as any)?.examQuestions ??
+      (submission?.learningClass as any)?.examQuestions
+  )
   const rubricGrades = gradeForm.getValues('rubricGrades') ?? {}
   const rubricWatch = useWatch({ control: gradeForm.control, name: 'rubricGrades' }) ?? {}
 
@@ -589,6 +590,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                             getValues={gradeForm.getValues}
                             setValue={gradeForm.setValue}
                             disabled={submission.status === 'done' && !gradeMutation.isPending}
+                            criteriaWeights={criteriaWeights}
                           />
                         )
                       })}

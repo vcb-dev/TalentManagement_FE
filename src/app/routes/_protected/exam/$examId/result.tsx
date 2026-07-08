@@ -22,7 +22,9 @@ import {
 } from '@/features/exam/hooks'
 import { useMyEnrolledClass } from '@/features/learning-path/hooks'
 import { useAuthStore } from '@/stores/auth.store'
-import { inferDurationMinutesFromStartEnd } from '@/lib/examScheduleTime'
+import { extractCriteriaWeights, inferDurationMinutesFromStartEnd } from '@/lib/examScheduleTime'
+import { ESSAY_CRITERIA } from '@/features/exam-papers/criteria'
+import { cn } from '@/lib/utils'
 
 const DEFAULT_DURATION_SECONDS = 60 * 60 // 1 tiếng mặc định
 
@@ -182,6 +184,7 @@ function ExamResultPage() {
   const { data: myPaperData, isLoading: isPaperLoading } = useMyExamPaper(scheduleId || '')
   const allLoading =
     isLoading || isSubsLoading || isClassLoading || isScheduleLoading || isPaperLoading
+  const criteriaWeights = extractCriteriaWeights(scheduleDetail?.examQuestions)
 
   // Đề thi được gán ngẫu nhiên qua lịch thi (lớp Editor) — ưu tiên trước bank JSON cũ.
   // options: [] cho câu tự luận → tái dùng nguyên UI Textarea đã có bên dưới.
@@ -530,42 +533,26 @@ function ExamResultPage() {
                 </h3>
               </div>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                    Đúng lý thuyết
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-foreground">40</span>
-                    <span className="text-sm font-bold text-primary">%</span>
+                {ESSAY_CRITERIA.map((c, i) => (
+                  <div
+                    key={c.id}
+                    className={cn(
+                      'flex flex-col gap-1.5',
+                      i > 0 && 'border-primary/10 sm:border-l sm:pl-6'
+                    )}
+                  >
+                    <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                      {c.label}
+                    </span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-foreground">
+                        {criteriaWeights[c.id]}
+                      </span>
+                      <span className="text-sm font-bold text-primary">%</span>
+                    </div>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{c.desc}</p>
                   </div>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Trình bày chính xác, đầy đủ kiến thức chuyên môn liên quan.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-1.5 border-primary/10 sm:border-l sm:pl-6">
-                  <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                    Ví dụ thực tế
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-foreground">50</span>
-                    <span className="text-sm font-bold text-primary">%</span>
-                  </div>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Có ví dụ minh họa cụ thể, sát với thực tiễn công việc tại VCB.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-1.5 border-primary/10 sm:border-l sm:pl-6">
-                  <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                    Trình bày
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-foreground">10</span>
-                    <span className="text-sm font-bold text-primary">%</span>
-                  </div>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Cách trình bày mạch lạc, rõ ràng, dễ hiểu và chuyên nghiệp.
-                  </p>
-                </div>
+                ))}
               </div>
             </div>
           )}

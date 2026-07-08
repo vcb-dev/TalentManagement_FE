@@ -6,6 +6,7 @@ import { safeParse } from '@/lib/utils'
 import { approvalItemApiSchema } from './schemas'
 import { managerApi } from './api'
 import { managerKeys } from './queryKeys'
+import type { EssayCriteriaWeights } from '@/features/exam-papers/criteria'
 
 export function useTeamProgress(teamId?: string) {
   return useQuery({
@@ -344,6 +345,7 @@ export function useCreateClassSchedule() {
         examStatus?: string | null
         examPaperIds?: string[]
         durationMinutes?: number
+        criteriaWeights?: EssayCriteriaWeights
       }
     }) => managerApi.createClassSchedule(classId, input),
     onSuccess: (_d, vars) => {
@@ -378,6 +380,7 @@ export function useUpdateClassSchedule() {
         examStatus?: string | null
         examPaperIds?: string[]
         durationMinutes?: number
+        criteriaWeights?: EssayCriteriaWeights
       }
     }) => managerApi.updateClassSchedule(classId, scheduleId, input),
     onSuccess: (_d, vars) => {

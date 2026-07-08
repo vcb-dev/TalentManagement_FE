@@ -81,6 +81,14 @@ export const examSubmissionApiSchema = z.object({
           stem: z.string(),
           options: z.array(z.string()).nullable().optional(),
           points: z.number().int(),
+          criteriaWeights: z
+            .object({
+              ly_thuyet: z.number().int(),
+              thuc_te: z.number().int(),
+              trinh_bay: z.number().int(),
+            })
+            .nullable()
+            .optional(),
           sortOrder: z.number().int(),
         })
       ),

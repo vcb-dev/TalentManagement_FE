@@ -162,6 +162,7 @@ export const examApi = {
           stem: string
           options: string[] | null
           points: number
+          criteriaWeights: { ly_thuyet: number; thuc_te: number; trinh_bay: number } | null
           sortOrder: number
         }>
       } | null

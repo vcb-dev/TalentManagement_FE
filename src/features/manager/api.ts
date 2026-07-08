@@ -5,6 +5,7 @@ import { isMockApiEnabled } from '@/lib/mockEnv'
 import { safeParse } from '@/lib/utils'
 import { MOCK_APPROVALS_PAGE } from '@/features/manager/mock/mockManagerApprovals'
 import { MOCK_TEAM_PROGRESS_PAGE } from '@/features/manager/mock/mockTeamProgress'
+import type { EssayCriteriaWeights } from '@/features/exam-papers/criteria'
 import {
   approvalItemApiSchema,
   approvalsPageApiSchema,
@@ -286,6 +287,7 @@ export const managerApi = {
       examStatus?: string | null
       examPaperIds?: string[]
       durationMinutes?: number
+      criteriaWeights?: EssayCriteriaWeights
     }
   ) => {
     const res = await apiClient.post<unknown>(`/manager/classes/${classId}/schedules`, input)
@@ -310,6 +312,7 @@ export const managerApi = {
       examStatus?: string | null
       examPaperIds?: string[]
       durationMinutes?: number
+      criteriaWeights?: EssayCriteriaWeights
     }
   ) => {
     const res = await apiClient.patch<unknown>(

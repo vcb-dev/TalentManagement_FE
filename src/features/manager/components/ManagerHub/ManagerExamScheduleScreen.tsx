@@ -33,6 +33,7 @@ import { formatViDate } from '@/lib/date'
 import {
   addMinutesToHm,
   examLiveStatus,
+  extractCriteriaWeights,
   getExamDurationMinutes,
   mergeScheduleExamQuestions,
 } from '@/lib/examScheduleTime'
@@ -42,6 +43,12 @@ import { useAuthStore } from '@/stores/auth.store'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 import { ClassMembersScoresModal } from '@/features/manager/components/ClassMembersScoresModal'
 import { useExamPapers } from '@/features/exam-papers/hooks'
+import {
+  DEFAULT_ESSAY_CRITERIA_WEIGHTS,
+  ESSAY_CRITERIA,
+  sumCriteriaWeights,
+  type EssayCriteriaWeights,
+} from '@/features/exam-papers/criteria'
 import type { managerClassApiSchema } from '@/features/manager/schemas'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
@@ -146,6 +153,9 @@ export function ManagerExamScheduleScreen() {
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
   const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([])
   const [durationInput, setDurationInput] = useState('120')
+  const [criteriaWeights, setCriteriaWeights] = useState<EssayCriteriaWeights>(
+    DEFAULT_ESSAY_CRITERIA_WEIGHTS
+  )
 
   const togglePaper = (paperId: string) => {
     setSelectedPaperIds((prev) =>
@@ -214,6 +224,7 @@ export function ManagerExamScheduleScreen() {
         const t = toExamTimelineRow(schedule)
         setDurationInput(String(getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)))
         setSelectedPaperIds(schedule.examPaperIds ?? [])
+        setCriteriaWeights(extractCriteriaWeights(t.examQuestions))
         // Find teacher info if possible
         // (Teacher info might not be in the schedule object, but we have examTeacherUserId)
       }
@@ -228,6 +239,7 @@ export function ManagerExamScheduleScreen() {
       setExamTeacher(null)
       setDurationInput('120')
       setSelectedPaperIds([])
+      setCriteriaWeights(DEFAULT_ESSAY_CRITERIA_WEIGHTS)
     }
   }
 
@@ -239,6 +251,7 @@ export function ManagerExamScheduleScreen() {
     setExamTeacher(null)
     setDurationInput('120')
     setSelectedPaperIds([])
+    setCriteriaWeights(DEFAULT_ESSAY_CRITERIA_WEIGHTS)
   }
 
   const saveExamSchedule = () => {
@@ -264,6 +277,11 @@ export function ManagerExamScheduleScreen() {
       toast.error('Thời gian làm bài phải từ 1 đến 1440 phút')
       return
     }
+    const weightTotal = sumCriteriaWeights(criteriaWeights)
+    if (weightTotal !== 100) {
+      toast.error(`Tổng thang điểm 3 tiêu chí tự luận phải bằng 100% (hiện là ${weightTotal}%)`)
+      return
+    }
     const startHm = `${examHour}:${examMinute}`
 
     const payload = {
@@ -276,6 +294,7 @@ export function ManagerExamScheduleScreen() {
       examStatus: 'open',
       durationMinutes: durationMin,
       examPaperIds: selectedPaperIds,
+      criteriaWeights,
     }
 
     if (editingScheduleId) {
@@ -740,6 +759,52 @@ export function ManagerExamScheduleScreen() {
                       : undefined
                   }
                 />
+
+                <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                  <div className="mb-1 flex items-center justify-between">
+                    <label className="text-xs font-bold uppercase tracking-wider text-primary">
+                      Thang điểm đánh giá tự luận
+                    </label>
+                    <span
+                      className={cn(
+                        'text-xs font-bold',
+                        sumCriteriaWeights(criteriaWeights) === 100
+                          ? 'text-emerald-600'
+                          : 'text-rose-600'
+                      )}
+                    >
+                      Tổng: {sumCriteriaWeights(criteriaWeights)}%
+                      {sumCriteriaWeights(criteriaWeights) !== 100 ? ' — phải bằng 100%' : ''}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Áp dụng cho câu tự luận chấm theo tiêu chí (không dùng cho lịch thi đã gán đề
+                    ExamPaper — đề đó tự có thang điểm riêng theo từng câu).
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {ESSAY_CRITERIA.map((c) => (
+                      <div key={c.id} className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-foreground">{c.label}</label>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={criteriaWeights[c.id]}
+                            onChange={(e) =>
+                              setCriteriaWeights((prev) => ({
+                                ...prev,
+                                [c.id]: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
+                              }))
+                            }
+                            className="h-8 w-20 text-sm"
+                          />
+                          <span className="text-xs font-bold text-primary">%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
                 {!editingScheduleId && (
                   <div

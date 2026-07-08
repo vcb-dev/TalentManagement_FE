@@ -2,6 +2,13 @@ import { z } from 'zod'
 
 export const examPaperQuestionTypeSchema = z.enum(['mcq', 'essay'])
 
+/** Thang điểm chấm tự luận — text tiêu chí fix cứng, chỉ % là chỉnh được (tổng 100). */
+export const essayCriteriaWeightsSchema = z.object({
+  ly_thuyet: z.number().int(),
+  thuc_te: z.number().int(),
+  trinh_bay: z.number().int(),
+})
+
 export const examPaperQuestionApiSchema = z.object({
   id: z.string().uuid().optional(),
   type: examPaperQuestionTypeSchema,
@@ -9,6 +16,7 @@ export const examPaperQuestionApiSchema = z.object({
   options: z.array(z.string()).nullable().optional(),
   correctIndex: z.number().int().nullable().optional(),
   points: z.number().int(),
+  criteriaWeights: essayCriteriaWeightsSchema.nullable().optional(),
   sortOrder: z.number().int(),
 })
 
