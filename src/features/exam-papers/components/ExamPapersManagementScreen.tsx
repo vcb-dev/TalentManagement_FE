@@ -42,14 +42,14 @@ import {
 const OPTIONS_PER_MCQ = 4
 
 type McqDraft = { stem: string; options: string[]; correctIndex: number }
-type EssayDraft = { stem: string; points: number; criteriaWeights: EssayCriteriaWeights }
+type EssayDraft = { stem: string; criteriaWeights: EssayCriteriaWeights }
 
 function emptyMcq(): McqDraft {
   return { stem: '', options: Array.from({ length: OPTIONS_PER_MCQ }, () => ''), correctIndex: 0 }
 }
 
 function emptyEssay(): EssayDraft {
-  return { stem: '', points: 1, criteriaWeights: { ...DEFAULT_ESSAY_CRITERIA_WEIGHTS } }
+  return { stem: '', criteriaWeights: { ...DEFAULT_ESSAY_CRITERIA_WEIGHTS } }
 }
 
 function toDraft(questions: ExamPaperQuestionInput[]): { mcq: McqDraft[]; essay: EssayDraft[] } {
@@ -67,7 +67,6 @@ function toDraft(questions: ExamPaperQuestionInput[]): { mcq: McqDraft[]; essay:
     .filter((q) => q.type === 'essay')
     .map((q) => ({
       stem: q.stem,
-      points: q.points,
       criteriaWeights: { ...DEFAULT_ESSAY_CRITERIA_WEIGHTS, ...(q.criteriaWeights ?? {}) },
     }))
   // Không ép sẵn câu trống — đề có thể chỉ gồm trắc nghiệm hoặc chỉ tự luận
@@ -89,7 +88,8 @@ function toQuestions(mcq: McqDraft[], essay: EssayDraft[]): ExamPaperQuestionInp
       stem: q.stem,
       options: null,
       correctIndex: null,
-      points: q.points,
+      // Điểm câu tự luận không nhập tay nữa — chấm thuần theo % thang tiêu chí
+      points: 1,
       criteriaWeights: q.criteriaWeights,
       sortOrder: mcq.length + idx,
     })),
@@ -107,6 +107,7 @@ function PaperBuilderForm({
     title: string
     description: string
     isActive: boolean
+    passScore: number
     questions: ExamPaperQuestionInput[]
   }
   onCancel: () => void
@@ -117,6 +118,7 @@ function PaperBuilderForm({
   const [title, setTitle] = useState(initial.title)
   const [description, setDescription] = useState(initial.description)
   const [isActive, setIsActive] = useState(initial.isActive)
+  const [passScore, setPassScore] = useState(initial.passScore)
   const draft = toDraft(initial.questions)
   const [mcq, setMcq] = useState<McqDraft[]>(draft.mcq)
   const [essay, setEssay] = useState<EssayDraft[]>(draft.essay)
@@ -144,6 +146,10 @@ function PaperBuilderForm({
     }
     if (mcq.length + essay.length === 0) {
       toast.error('Đề thi cần ít nhất 1 câu hỏi (trắc nghiệm hoặc tự luận)')
+      return
+    }
+    if (!Number.isInteger(passScore) || passScore < 0 || passScore > 100) {
+      toast.error('Ngưỡng điểm đạt phải là số nguyên từ 0 đến 100')
       return
     }
     for (const [idx, q] of mcq.entries()) {
@@ -174,6 +180,7 @@ function PaperBuilderForm({
       title: title.trim(),
       description: description.trim() || null,
       isActive,
+      passScore,
       questions: toQuestions(mcq, essay),
     })
   }
@@ -230,15 +237,33 @@ function PaperBuilderForm({
               className="min-h-[60px] text-sm"
             />
           </div>
-          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-              className="h-4 w-4 rounded border-border"
-            />
-            Kích hoạt (được dùng khi tạo lịch thi)
-          </label>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <input
+                type="checkbox"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                className="h-4 w-4 rounded border-border"
+              />
+              Kích hoạt (được dùng khi tạo lịch thi)
+            </label>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+                Ngưỡng điểm đạt (%)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={passScore}
+                onChange={(e) => setPassScore(Number(e.target.value) || 0)}
+                className="text-sm"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Học viên đạt điểm ≥ ngưỡng này khi chấm xong sẽ tự động được đánh giá "Đạt".
+              </p>
+            </div>
+          </div>
 
           <div>
             <div className="mb-2 flex items-center justify-between">
@@ -341,23 +366,11 @@ function PaperBuilderForm({
                         placeholder="Nội dung câu hỏi tự luận"
                         className="min-h-[60px] flex-1 text-sm"
                       />
-                      <div className="w-20">
-                        <label className="mb-1 block text-xs text-muted-foreground">Điểm</label>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={q.points}
-                          onChange={(e) =>
-                            updateEssay(idx, { points: Number(e.target.value) || 0 })
-                          }
-                          className="text-sm"
-                        />
-                      </div>
                       <Button
                         type="button"
                         size="icon"
                         variant="ghost"
-                        className="mt-5 text-destructive"
+                        className="text-destructive"
                         onClick={() => setEssay((prev) => prev.filter((_, i) => i !== idx))}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -447,6 +460,7 @@ export function ExamPapersManagementScreen() {
     title: string
     description: string
     isActive: boolean
+    passScore: number
     questions: ExamPaperQuestionInput[]
   } | null>(null)
 
@@ -458,6 +472,7 @@ export function ExamPapersManagementScreen() {
         title: detail.title,
         description: detail.description ?? '',
         isActive: detail.isActive,
+        passScore: detail.passScore,
         questions: detail.questions,
       })
       setEditingId(id)
@@ -592,7 +607,14 @@ export function ExamPapersManagementScreen() {
 
       {isCreating ? (
         <PaperBuilderForm
-          initial={{ code: '', title: '', description: '', isActive: true, questions: [] }}
+          initial={{
+            code: '',
+            title: '',
+            description: '',
+            isActive: true,
+            passScore: 80,
+            questions: [],
+          }}
           isSaving={createPaper.isPending}
           onCancel={() => setIsCreating(false)}
           onSubmit={(input) => createPaper.mutate(input, { onSuccess: () => setIsCreating(false) })}

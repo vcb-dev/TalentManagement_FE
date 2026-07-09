@@ -14,6 +14,8 @@ export type ExamPaperInput = {
   title: string
   description?: string | null
   isActive?: boolean
+  /** Ngưỡng điểm đạt (0-100%) — totalScore >= passScore thì outcome tự động là DAT khi chấm xong. */
+  passScore?: number
   questions?: ExamPaperQuestionInput[]
 }
 

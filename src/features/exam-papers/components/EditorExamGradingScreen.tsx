@@ -27,16 +27,12 @@ import type { examSubmissionApiSchema } from '@/features/exam/schemas'
 type Submission = z.infer<typeof examSubmissionApiSchema>
 type QuestionGrade = { score: number; auto?: boolean; criteria: string[] }
 
-function essayScoreFromCriteria(
-  points: number,
-  weights: EssayCriteriaWeights,
-  selectedCriteria: string[]
-): number {
-  const weightSum = ESSAY_CRITERIA.reduce(
+/** Điểm câu tự luận = tổng % các tiêu chí đạt (0–100). */
+function essayScoreFromCriteria(weights: EssayCriteriaWeights, selectedCriteria: string[]): number {
+  return ESSAY_CRITERIA.reduce(
     (sum, c) => sum + (selectedCriteria.includes(c.id) ? weights[c.id] || 0 : 0),
     0
   )
-  return Math.round((points * weightSum) / 100)
 }
 
 function questionAnswerText(answers: unknown, questionId: string): string {
@@ -84,7 +80,7 @@ function SubmissionGradingCard({ submission }: { submission: Submission }) {
 
   const essayScoreFor = (q: (typeof essayQuestions)[number]) => {
     const weights = q.criteriaWeights ?? DEFAULT_ESSAY_CRITERIA_WEIGHTS
-    return essayScoreFromCriteria(q.points, weights, essayCriteria[q.id] ?? [])
+    return essayScoreFromCriteria(weights, essayCriteria[q.id] ?? [])
   }
 
   const toggleCriteria = (qId: string, criteriaId: string) => {
@@ -103,18 +99,18 @@ function SubmissionGradingCard({ submission }: { submission: Submission }) {
     setEssayCriteria((prev) => ({ ...prev, [qId]: [] }))
   }
 
+  // Mỗi câu quy về thang 100%: trắc nghiệm đúng = 100%, tự luận = tổng % tiêu chí đạt.
+  // Điểm bài = trung bình cộng % của tất cả câu hỏi.
   const preview = useMemo(() => {
-    let earned = 0
-    let total = 0
+    const questionCount = mcqQuestions.length + essayQuestions.length
+    let sum = 0
     for (const q of mcqQuestions) {
-      total += q.points
-      earned += existingGrades[q.id]?.score ?? 0
+      sum += (existingGrades[q.id]?.score ?? 0) > 0 ? 100 : 0
     }
     for (const q of essayQuestions) {
-      total += q.points
-      earned += essayScoreFor(q)
+      sum += essayScoreFor(q)
     }
-    return total > 0 ? Math.round((earned / total) * 100) : 0
+    return questionCount > 0 ? Math.round(sum / questionCount) : 0
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mcqQuestions, essayQuestions, existingGrades, essayCriteria])
 
@@ -196,7 +192,7 @@ function SubmissionGradingCard({ submission }: { submission: Submission }) {
               </div>
               <p className="mt-1 text-muted-foreground">
                 Đáp án chọn: <span className="font-medium text-foreground">{answer || '—'}</span>
-                {' · '}Tự động chấm ({graded?.score ?? 0}/{q.points} điểm)
+                {' · '}Tự động chấm ({(graded?.score ?? 0) > 0 ? 'đúng' : 'sai'})
               </p>
             </div>
           )
@@ -227,11 +223,11 @@ function SubmissionGradingCard({ submission }: { submission: Submission }) {
               >
                 <div className="mb-2 flex items-center justify-between">
                   <span className="font-bold uppercase tracking-wider text-muted-foreground">
-                    Đánh giá theo thang điểm ({q.points} điểm)
+                    Đánh giá theo thang điểm (tổng 100%)
                   </span>
                   {isGraded && (
                     <span className="rounded-full bg-primary/10 px-2 py-0.5 font-bold text-primary">
-                      {score}/{q.points} điểm
+                      {score}%
                     </span>
                   )}
                 </div>
