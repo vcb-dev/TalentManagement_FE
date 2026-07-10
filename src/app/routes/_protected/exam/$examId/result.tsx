@@ -237,6 +237,12 @@ function ExamResultPage() {
     if (allLoading) return
 
     try {
+      // scheduleDetail.examQuestions đôi khi chỉ là metadata chấm điểm
+      // ({duration, criteriaWeights}) cho lịch dùng ExamPaper, không phải bộ câu hỏi —
+      // chỉ chấp nhận làm bank khi có mảng questions thật sự.
+      const isValidBank = (b: unknown): b is { questions: unknown[] } =>
+        Array.isArray((b as { questions?: unknown[] })?.questions)
+
       const submissionKey = `member_exam_submission_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
       const existingSubmission = localStorage.getItem(submissionKey)
 
@@ -265,16 +271,22 @@ function ExamResultPage() {
         let foundBank = paperBank
         if (!foundBank && sub) {
           // Priority 1: From submission data
-          foundBank = sub.schedule?.examQuestions || sub.learningClass?.examQuestions
+          const candidate = sub.schedule?.examQuestions || sub.learningClass?.examQuestions
+          if (isValidBank(candidate)) foundBank = candidate as typeof paperBank
         }
         if (!foundBank) {
           // Priority 2: From schedule detail
-          if (scheduleId && scheduleDetail?.examQuestions) {
-            foundBank = scheduleDetail.examQuestions
+          if (scheduleId && isValidBank(scheduleDetail?.examQuestions)) {
+            foundBank = scheduleDetail.examQuestions as typeof paperBank
           }
           // Fallback to class questions
-          if (!foundBank && !scheduleId && myClassData?.enrolledClass?.id === examId) {
-            foundBank = myClassData.enrolledClass.examQuestions
+          if (
+            !foundBank &&
+            !scheduleId &&
+            myClassData?.enrolledClass?.id === examId &&
+            isValidBank(myClassData.enrolledClass.examQuestions)
+          ) {
+            foundBank = myClassData.enrolledClass.examQuestions as typeof paperBank
           }
         }
 
@@ -294,10 +306,15 @@ function ExamResultPage() {
 
       // If not submitted, proceed with timer initialization
       let bank = paperBank
-      if (!bank && scheduleId && scheduleDetail?.examQuestions) {
-        bank = scheduleDetail.examQuestions
-      } else if (!bank && !scheduleId && myClassData?.enrolledClass?.id === examId) {
-        bank = myClassData.enrolledClass.examQuestions
+      if (!bank && scheduleId && isValidBank(scheduleDetail?.examQuestions)) {
+        bank = scheduleDetail.examQuestions as typeof paperBank
+      } else if (
+        !bank &&
+        !scheduleId &&
+        myClassData?.enrolledClass?.id === examId &&
+        isValidBank(myClassData.enrolledClass.examQuestions)
+      ) {
+        bank = myClassData.enrolledClass.examQuestions as typeof paperBank
       }
 
       if (bank) {
@@ -381,7 +398,7 @@ function ExamResultPage() {
   }, [timeLeft === null, submitted]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const unansweredCount = useMemo(() => {
-    if (!questionBank) return 0
+    if (!questionBank?.questions) return 0
     return questionBank.questions.filter((q) => !answers[q.id]?.trim()).length
   }, [questionBank, answers])
 

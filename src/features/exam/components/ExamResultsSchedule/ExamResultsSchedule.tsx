@@ -155,6 +155,8 @@ export function ExamResultsSchedule({
     }
 
     // 1. Start with all submissions
+    // "started" = mới mở bài, chưa thực sự nộp gì — không được coi là isSubmission,
+    // nếu không FE sẽ điều hướng nhầm sang màn xem-kết-quả cho bài chưa ai làm.
     const results: MergedResult[] = [...(mySubmissions || [])].map((s) => ({
       id: s.id, // This is submissionId
       classId: s.classId,
@@ -164,7 +166,7 @@ export function ExamResultsSchedule({
       status: s.status,
       outcome: s.outcome,
       score: s.totalScore,
-      isSubmission: true,
+      isSubmission: s.status !== 'started',
     }))
 
     // 2. Map scheduled exams and merge into results
