@@ -20,6 +20,8 @@ export interface EmployeeTableProps {
   onReactivate?: (id: string) => void
   pagination: PaginationState & { total: number }
   onPageChange: (page: number) => void
+  /** Đang tải dữ liệu trang mới — khoá các nút chuyển trang. */
+  busy?: boolean
   /** Danh sách HR vs team: khác cột hành động. */
   listMode?: 'hr' | 'team'
   canEdit?: boolean
@@ -35,6 +37,7 @@ export function EmployeeTable({
   onReactivate,
   pagination,
   onPageChange,
+  busy = false,
   listMode = 'hr',
   canEdit = true,
   canDeactivate = true,
@@ -182,6 +185,7 @@ export function EmployeeTable({
           page={pagination.page}
           totalPages={totalPages}
           onPageChange={onPageChange}
+          busy={busy}
         />
       </div>
     </div>

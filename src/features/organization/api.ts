@@ -145,6 +145,8 @@ export type TeamMemberRow = {
   email: string | null
   displayName: string | null
   employeeCodePrimary: string | null
+  /** Số thứ tự trong team (2 số cuối của mã nhân viên). */
+  teamOrderNumber?: string | null
   joinedAt: string
   role: Role
   status: 'ACTIVE' | 'INACTIVE' | 'PROBATION' | 'RESERVED'

@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils'
 import type { CreateEmployeeForm } from '@/features/hr-admin/schemas'
 import { EmployeeExtraTeamsField } from '@/features/hr-admin/components/EmployeeExtraTeamsField'
 import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
-import { useDirectManagerOptions } from '@/features/hr-admin/hooks'
+import { useAnyActionPending, useDirectManagerOptions } from '@/features/hr-admin/hooks'
 import { buildDirectManagerSelectOptions } from '@/features/hr-admin/directManagerOptions'
 import { teamPositionOptions } from '@/features/hr-admin/teamPositionOptions'
 import { profileApi } from '@/features/profile/api'
@@ -69,6 +69,7 @@ export interface EmployeeFormProps {
 
 export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps) {
   const navigate = useNavigate()
+  const anyActionPending = useAnyActionPending()
   const { handleSubmit, control } = form
   const { departments, teamsByDept, allTeams } = useHrOrgSelectOptions()
   const departmentId = useWatch({ control, name: 'departmentId' })
@@ -537,7 +538,7 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
               >
                 Hủy
               </Button>
-              <Button type="submit" size="lg" loading={isSubmitting}>
+              <Button type="submit" size="lg" loading={isSubmitting} disabled={anyActionPending}>
                 {isSubmitting ? 'Đang tạo…' : 'Tạo tài khoản'}
               </Button>
             </div>

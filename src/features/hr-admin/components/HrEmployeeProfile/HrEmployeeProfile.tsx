@@ -43,6 +43,7 @@ import { Link } from '@tanstack/react-router'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { usePermission } from '@/hooks/usePermission'
 import {
+  useAnyActionPending,
   useAttachmentSignedUrl,
   useDeactivateEmployee,
   useDirectManagerOptions,
@@ -349,6 +350,7 @@ function AttachmentViewerField({
   field: 'attachmentIdFront' | 'attachmentIdBack' | 'cvAttachmentRef'
 }) {
   const { mutate, isPending } = useAttachmentSignedUrl()
+  const anyActionPending = useAnyActionPending()
 
   const onView = () => {
     mutate(
@@ -380,7 +382,7 @@ function AttachmentViewerField({
           size="sm"
           className="h-9 w-fit"
           onClick={onView}
-          disabled={isPending}
+          disabled={isPending || anyActionPending}
         >
           {isPending ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
           Xem tài liệu
@@ -608,6 +610,7 @@ function ProfileIdentityCard({
   role,
   currentLevelTitle,
   portraitUploading,
+  uploadDisabled = false,
   avatarUploadInputId,
   onPortraitFile,
   fallbackUserName,
@@ -618,6 +621,8 @@ function ProfileIdentityCard({
   role: keyof typeof ROLE_LABEL_VI
   currentLevelTitle: string
   portraitUploading: boolean
+  /** Khoá nút upload khi có thao tác khác đang chạy (không hiện overlay loading trên avatar). */
+  uploadDisabled?: boolean
   avatarUploadInputId: string
   onPortraitFile: (file: File) => void
   fallbackUserName: string
@@ -656,7 +661,7 @@ function ProfileIdentityCard({
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
             className="sr-only"
-            disabled={portraitUploading}
+            disabled={portraitUploading || uploadDisabled}
             onChange={(e) => {
               const f = e.target.files?.[0]
               if (f) onPortraitFile(f)
@@ -668,7 +673,7 @@ function ProfileIdentityCard({
             className={cn(
               'absolute bottom-1 right-1 z-[2] flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-white shadow-md ring-2 ring-white transition-transform hover:scale-110 hover:bg-primary/90 active:scale-95 dark:ring-slate-900',
               'md:bottom-1.5 md:right-1.5',
-              portraitUploading && 'pointer-events-none opacity-50'
+              (portraitUploading || uploadDisabled) && 'pointer-events-none opacity-50'
             )}
             aria-label="Tải ảnh đại diện"
           >
@@ -864,7 +869,10 @@ export function HrEmployeeProfile({
   const isInactive = employeeSummary
     ? employeeSummary.status === 'INACTIVE'
     : isEmploymentInactive(employee.employmentStatus)
-  const isSaving = patchPending || deactivate.isPending || updateEmployee.isPending
+  /** Khoá mọi nút hành động khi có bất kỳ thao tác nào đang chạy (lưu, upload ảnh, mở tài liệu…). */
+  const anyActionPending = useAnyActionPending()
+  const isSaving =
+    patchPending || deactivate.isPending || updateEmployee.isPending || anyActionPending
 
   const handleConfirmPending = () => {
     if (!confirmPending) return
@@ -936,6 +944,7 @@ export function HrEmployeeProfile({
                     role={role}
                     currentLevelTitle={page.currentLevel.title}
                     portraitUploading={portraitUploading}
+                    uploadDisabled={anyActionPending}
                     avatarUploadInputId={avatarUploadInputId}
                     onPortraitFile={onPortraitFile}
                     fallbackUserName={user?.name ?? ''}

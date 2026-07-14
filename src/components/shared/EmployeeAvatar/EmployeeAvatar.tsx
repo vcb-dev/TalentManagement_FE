@@ -51,6 +51,8 @@ export function EmployeeAvatar({
             src={trimmedPhoto}
             alt=""
             className="object-cover"
+            loading="lazy"
+            decoding="async"
             referrerPolicy="no-referrer"
             onLoadingStatusChange={(status) => {
               if (status === 'error') setImageFailed(true)

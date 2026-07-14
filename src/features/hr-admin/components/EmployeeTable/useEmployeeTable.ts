@@ -52,7 +52,7 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
     id: string
   } | null>(null)
 
-  const { data, isLoading } = useEmployees(filters)
+  const { data, isLoading, isFetching } = useEmployees(filters)
   const deactivate = useDeactivateEmployee()
   const update = useUpdateEmployee()
   const navigate = useNavigate()
@@ -74,6 +74,8 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
   return {
     employees: data?.data ?? [],
     isLoading,
+    /** Đang tải trang mới (kể cả khi vẫn hiển thị data cũ) — dùng để khoá pagination/bộ lọc. */
+    isFetching,
     pagination: {
       page: filters.page,
       pageSize: filters.pageSize,

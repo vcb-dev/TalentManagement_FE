@@ -74,6 +74,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   const {
     employees,
     isLoading,
+    isFetching,
     pagination,
     onView,
     onEdit,
@@ -174,6 +175,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   }
 
   const handlePageChange = (nextPage: number) => {
+    if (isFetching) return
     setSelectedId(null)
     void navigate({
       to: '/hr-admin',
@@ -334,6 +336,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
               page={pagination.page}
               totalPages={totalPages}
               onPageChange={handlePageChange}
+              busy={isFetching}
             />
           </div>
         ) : null}
@@ -348,6 +351,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
             onReactivate={onReactivate}
             pagination={pagination}
             onPageChange={handlePageChange}
+            busy={isFetching}
             listMode="hr"
             canEdit={canEdit}
             canDeactivate={canDeactivate}
@@ -449,6 +453,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
                 page={pagination.page}
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
+                busy={isFetching}
               />
             </div>
           </div>
