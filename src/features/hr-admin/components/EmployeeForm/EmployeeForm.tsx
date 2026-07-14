@@ -1,8 +1,20 @@
 import type { ReactNode } from 'react'
+import { useMemo } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { ArrowLeft, Bell, Network, User } from 'lucide-react'
+import {
+  ArrowLeft,
+  Bell,
+  Contact,
+  FileText,
+  Info,
+  MapPin,
+  Network,
+  User,
+  Users,
+} from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { FormProvider, useWatch, type UseFormReturn } from 'react-hook-form'
+import { useQuery } from '@tanstack/react-query'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -15,6 +27,7 @@ import {
   DateController,
   InputController,
   SelectController,
+  TextareaController,
 } from '@/components/ui/form-controllers'
 import { SelectItem } from '@/components/ui/select'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
@@ -22,6 +35,10 @@ import { cn } from '@/lib/utils'
 import type { CreateEmployeeForm } from '@/features/hr-admin/schemas'
 import { EmployeeExtraTeamsField } from '@/features/hr-admin/components/EmployeeExtraTeamsField'
 import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
+import { useDirectManagerOptions } from '@/features/hr-admin/hooks'
+import { buildDirectManagerSelectOptions } from '@/features/hr-admin/directManagerOptions'
+import { teamPositionOptions } from '@/features/hr-admin/teamPositionOptions'
+import { profileApi } from '@/features/profile/api'
 
 const ROLE_OPTIONS: { value: CreateEmployeeForm['role']; label: string }[] = [
   { value: 'MEMBER', label: 'Nhân viên' },
@@ -60,6 +77,18 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
     (departmentId && teamsByDept.get(departmentId)?.length
       ? teamsByDept.get(departmentId)
       : allTeams) ?? allTeams
+
+  const { data: directManagersData } = useDirectManagerOptions()
+  const managers = useMemo(() => directManagersData?.data ?? [], [directManagersData])
+  const directManagerOptions = useMemo(
+    () => buildDirectManagerSelectOptions(managers, '', ''),
+    [managers]
+  )
+  const { data: jobTitlesData } = useQuery({
+    queryKey: ['profile', 'job-titles'],
+    queryFn: () => profileApi.getJobTitles(),
+  })
+  const jobTitles = jobTitlesData ?? []
 
   return (
     <FormProvider {...form}>
@@ -203,10 +232,287 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                       </SelectItem>
                     ))}
                   </SelectController>
+                  <SelectController
+                    control={control}
+                    name="jobTitle"
+                    label="Vị trí chuyên môn"
+                    placeholder="Chọn vị trí chuyên môn"
+                    labelClassName={labelClass}
+                    triggerClassName={selectTriggerClass}
+                  >
+                    {jobTitles.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectController>
+                  <SelectController
+                    control={control}
+                    name="teamPosition"
+                    label="Loại hợp đồng / vị trí"
+                    placeholder="Chọn loại hợp đồng / vị trí"
+                    labelClassName={labelClass}
+                    triggerClassName={selectTriggerClass}
+                  >
+                    {teamPositionOptions.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectController>
+                  <SelectController
+                    control={control}
+                    name="directManager"
+                    label="Quản lý trực tiếp"
+                    placeholder="Chọn quản lý trực tiếp"
+                    labelClassName={labelClass}
+                    triggerClassName={selectTriggerClass}
+                  >
+                    <SelectItem value="__none">Chưa chọn</SelectItem>
+                    {directManagerOptions.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectController>
+                  <InputController
+                    control={control}
+                    name="workplaceBranch"
+                    label="Chi nhánh / nơi làm việc"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="managerBlockCode"
+                    label="Mã khối theo quản lý"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
                 </div>
               </SectionCard>
 
-              <SectionCard icon={Bell} title="Thông báo hệ thống" entranceIndex={2}>
+              <SectionCard icon={Contact} title="Nhân thân & liên hệ" entranceIndex={2}>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <InputController
+                    control={control}
+                    name="displayName"
+                    label="Tên hiển thị"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="gender"
+                    label="Giới tính"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="facebookUrl"
+                    label="Facebook"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                </div>
+              </SectionCard>
+
+              <SectionCard icon={MapPin} title="Địa chỉ & học vấn" entranceIndex={3}>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <TextareaController
+                    control={control}
+                    name="addressCurrent"
+                    label="Địa chỉ hiện tại"
+                    className="md:col-span-2 lg:col-span-1"
+                    labelClassName={labelClass}
+                    textareaClassName={inputFieldClass}
+                  />
+                  <TextareaController
+                    control={control}
+                    name="addressHousehold"
+                    label="Địa chỉ hộ khẩu"
+                    className="md:col-span-2 lg:col-span-1"
+                    labelClassName={labelClass}
+                    textareaClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="hometownDetail"
+                    label="Quê quán / quê hương"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="educationLevel"
+                    label="Trình độ học vấn"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="schoolName"
+                    label="Trường / đơn vị đào tạo"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                </div>
+              </SectionCard>
+
+              <SectionCard icon={FileText} title="Giấy tờ & nhân khẩu" entranceIndex={4}>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <TextareaController
+                    control={control}
+                    name="identityDocumentInfo"
+                    label="Thông tin CCCD/CMND"
+                    className="md:col-span-2 lg:col-span-3"
+                    labelClassName={labelClass}
+                    textareaClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="maritalStatus"
+                    label="Tình trạng hôn nhân"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="ethnicity"
+                    label="Dân tộc"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="religion"
+                    label="Tôn giáo"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="insuranceBookNumber"
+                    label="Số sổ bảo hiểm"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                </div>
+              </SectionCard>
+
+              <SectionCard icon={Users} title="Gia đình & liên hệ khẩn cấp" entranceIndex={5}>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <TextareaController
+                    control={control}
+                    name="childrenInfo"
+                    label="Thông tin con cái"
+                    className="md:col-span-2 lg:col-span-3"
+                    labelClassName={labelClass}
+                    textareaClassName={inputFieldClass}
+                  />
+                  <TextareaController
+                    control={control}
+                    name="emergencyContact1"
+                    label="Liên hệ khẩn cấp 1"
+                    labelClassName={labelClass}
+                    textareaClassName={inputFieldClass}
+                  />
+                  <TextareaController
+                    control={control}
+                    name="emergencyContact2"
+                    label="Liên hệ khẩn cấp 2"
+                    labelClassName={labelClass}
+                    textareaClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="fatherGuardianContact"
+                    label="Liên hệ người giám hộ (cha)"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="motherGuardianContact"
+                    label="Liên hệ người giám hộ (mẹ)"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <TextareaController
+                    control={control}
+                    name="familyNotes"
+                    label="Ghi chú gia đình"
+                    labelClassName={labelClass}
+                    textareaClassName={inputFieldClass}
+                  />
+                </div>
+              </SectionCard>
+
+              <SectionCard icon={Info} title="Khác" entranceIndex={6}>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <TextareaController
+                    control={control}
+                    name="bankAccountInfo"
+                    label="Thông tin tài khoản ngân hàng"
+                    labelClassName={labelClass}
+                    textareaClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="vehicleInfo"
+                    label="Phương tiện"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="attachmentIdFront"
+                    label="Đính kèm mặt trước (ref)"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="attachmentIdBack"
+                    label="Đính kèm mặt sau (ref)"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <InputController
+                    control={control}
+                    name="cvAttachmentRef"
+                    label="Tham chiếu CV"
+                    labelClassName={labelClass}
+                    inputClassName={inputFieldClass}
+                  />
+                  <DateController
+                    control={control}
+                    name="profileReviewDate"
+                    label="Ngày rà soát hồ sơ"
+                    labelClassName={labelClass}
+                    datePickerClassName={inputFieldClass}
+                  />
+                  <TextareaController
+                    control={control}
+                    name="policyAcknowledgement"
+                    label="Xác nhận chính sách"
+                    className="md:col-span-2 lg:col-span-3"
+                    labelClassName={labelClass}
+                    textareaClassName={inputFieldClass}
+                  />
+                  <TextareaController
+                    control={control}
+                    name="notes"
+                    label="Ghi chú"
+                    className="md:col-span-2 lg:col-span-3"
+                    labelClassName={labelClass}
+                    textareaClassName={inputFieldClass}
+                  />
+                </div>
+              </SectionCard>
+
+              <SectionCard icon={Bell} title="Thông báo hệ thống" entranceIndex={7}>
                 <div className="space-y-4">
                   <CheckboxController
                     control={control}

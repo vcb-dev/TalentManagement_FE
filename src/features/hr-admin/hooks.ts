@@ -107,6 +107,17 @@ export function useEmployeeById(id: string) {
   })
 }
 
+/** Sinh signed URL tạm để xem CCCD/CV (bucket riêng tư) — gọi khi bấm "Xem", không tự fetch. */
+export function useAttachmentSignedUrl() {
+  return useMutation({
+    mutationFn: (args: { id: string; field: string }) =>
+      employeeApi.getAttachmentSignedUrl(args.id, args.field),
+    onError: (e) => {
+      toast.error(getApiErrorMessage(e) || 'Không thể mở tài liệu')
+    },
+  })
+}
+
 export function useUpdateEmployeeById() {
   const qc = useQueryClient()
   return useMutation({

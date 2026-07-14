@@ -43,6 +43,7 @@ import { Link } from '@tanstack/react-router'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { usePermission } from '@/hooks/usePermission'
 import {
+  useAttachmentSignedUrl,
   useDeactivateEmployee,
   useDirectManagerOptions,
   useEmployee,
@@ -51,6 +52,7 @@ import {
 } from '../../hooks'
 import { EmployeeLoginCredentialCard } from './EmployeeLoginCredentialCard'
 import { EMPLOYEE_PATCH_KEYS, type EditEmployeeBody, type EmployeePatchKey } from '../../types'
+import { teamPositionOptions } from '../../teamPositionOptions'
 import {
   buildDirectManagerSelectOptions,
   directManagerIdToStoredName,
@@ -280,14 +282,6 @@ function workOrgReadonlyValue(employee: IHrEmployeeProfileState, key: MeUserDisp
   return v == null ? '—' : String(v)
 }
 
-const teamPositionOptions = [
-  { value: 'Part-time', label: 'Part-time' },
-  { value: 'Full-time thử việc', label: 'Full-time thử việc' },
-  { value: 'Full-time chính thức', label: 'Full-time chính thức' },
-  { value: 'Thực tập sinh', label: 'Thực tập sinh' },
-  { value: 'Trưởng nhóm', label: 'Trưởng nhóm' },
-]
-
 function ProfileReadonlyInfo({
   name,
   label,
@@ -342,6 +336,62 @@ function ProfileReadonlyInfo({
   )
 }
 
+/** CCCD/CV lưu trong bucket riêng tư — xem qua signed URL tạm, không hiện đường dẫn thô. */
+function AttachmentViewerField({
+  employeeId,
+  label,
+  hasValue,
+  field,
+}: {
+  employeeId: string
+  label: string
+  hasValue: boolean
+  field: 'attachmentIdFront' | 'attachmentIdBack' | 'cvAttachmentRef'
+}) {
+  const { mutate, isPending } = useAttachmentSignedUrl()
+
+  const onView = () => {
+    mutate(
+      { id: employeeId, field },
+      {
+        onSuccess: (data) => {
+          if (!data.signedUrl) {
+            toast.error('Không tìm thấy tài liệu')
+            return
+          }
+          window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+        },
+      }
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        'flex flex-col rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/30',
+        fieldStackGap
+      )}
+    >
+      <FieldLabel>{label}</FieldLabel>
+      {hasValue ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 w-fit"
+          onClick={onView}
+          disabled={isPending}
+        >
+          {isPending ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+          Xem tài liệu
+        </Button>
+      ) : (
+        <span className="text-sm text-muted-foreground">Chưa có</span>
+      )}
+    </div>
+  )
+}
+
 function renderField(
   field: UserSelfFieldSpec,
   ctx: {
@@ -380,6 +430,22 @@ function renderField(
           </SelectItem>
         ))}
       </SelectController>
+    )
+  }
+
+  if (
+    field.key === 'attachmentIdFront' ||
+    field.key === 'attachmentIdBack' ||
+    field.key === 'cvAttachmentRef'
+  ) {
+    return (
+      <AttachmentViewerField
+        key={field.key}
+        employeeId={employee.id}
+        label={field.label}
+        hasValue={!!employee[field.key]}
+        field={field.key}
+      />
     )
   }
 
@@ -769,7 +835,7 @@ export function HrEmployeeProfile({
   const workEditableFields = workSection.fields.filter(
     (field) => !isWorkOrgReadonlyField(field.key) && field.key !== 'directManager'
   )
-  const detailSections = USER_SELF_FORM_SECTIONS.slice(1).filter((s) => s.title.trim() !== 'Khác')
+  const detailSections = USER_SELF_FORM_SECTIONS.slice(1)
   const detailSectionVariants: ('indigo' | 'violet' | 'emerald' | 'primary')[] = [
     'indigo',
     'violet',

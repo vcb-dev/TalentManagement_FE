@@ -42,6 +42,7 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
       { key: 'directManager', label: 'Quản lý trực tiếp' },
       { key: 'workplaceBranch', label: 'Chi nhánh / nơi làm việc' },
       { key: 'hrOfficerName', label: 'Cán bộ HR phụ trách' },
+      { key: 'managerBlockCode', label: 'Mã khối theo quản lý' },
     ],
   },
   {
@@ -73,6 +74,7 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
       { key: 'maritalStatus', label: 'Tình trạng hôn nhân' },
       { key: 'ethnicity', label: 'Dân tộc' },
       { key: 'religion', label: 'Tôn giáo' },
+      { key: 'insuranceBookNumber', label: 'Số sổ bảo hiểm' },
     ],
   },
   {

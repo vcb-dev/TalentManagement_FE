@@ -79,6 +79,7 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
       pageSize: filters.pageSize,
       total,
       totalPages,
+      statusCounts: data?.statusCounts,
     },
     onView: (id: string) =>
       void navigate({ to: '/hr-admin/$employeeId', params: { employeeId: id } }),

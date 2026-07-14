@@ -3,6 +3,7 @@ import { DEFAULT_DEPARTMENT_ID, DEFAULT_TEAM_ID } from '@/features/hr-admin/hrOr
 
 /** Dữ liệu demo cho `GET /me/user` khi bật mock API. */
 export const MOCK_USER_SELF: MeUserSelf = {
+  role: 'MEMBER',
   id: '00000000-0000-0000-0000-000000000001',
   larkRecordId: 'mock-record-1',
   email: 'nguyen.thanh@demo.vcb',
@@ -56,4 +57,6 @@ export const MOCK_USER_SELF: MeUserSelf = {
   notes: null,
   teamPosition: null,
   currentLearningClassName: null,
+  insuranceBookNumber: null,
+  managerBlockCode: null,
 }

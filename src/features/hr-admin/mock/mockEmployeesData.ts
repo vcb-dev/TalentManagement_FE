@@ -142,6 +142,7 @@ export function getMockEmployees(filters: EmployeeFilters): {
   page: number
   pageSize: number
   totalPages: number
+  statusCounts: { ACTIVE: number; INACTIVE: number; PROBATION: number; RESERVED: number }
 } {
   let list = [...rows]
   if (filters.teamId) {
@@ -170,7 +171,9 @@ export function getMockEmployees(filters: EmployeeFilters): {
   const start = (page - 1) * pageSize
   const data = list.slice(start, start + pageSize)
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  return { data, total, page, pageSize, totalPages }
+  const statusCounts = { ACTIVE: 0, INACTIVE: 0, PROBATION: 0, RESERVED: 0 }
+  for (const e of list) statusCounts[e.status]++
+  return { data, total, page, pageSize, totalPages, statusCounts }
 }
 
 export function getMockEmployeeById(id: string): EmployeeEntity | undefined {

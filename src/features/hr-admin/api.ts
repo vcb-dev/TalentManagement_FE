@@ -107,6 +107,16 @@ export const employeeApi = {
     return res.data
   },
 
+  getAttachmentSignedUrl: async (id: string, field: string) => {
+    if (isMockApiEnabled()) {
+      return { signedUrl: null as string | null }
+    }
+    const res = await apiClient.get<{ signedUrl: string | null }>(
+      `/employees/${id}/attachments/${field}/signed-url`
+    )
+    return res.data
+  },
+
   getLoginCredential: async (id: string) => {
     const res = await apiClient.get<{ username: string | null }>(
       `/employees/${id}/login-credential`
