@@ -245,6 +245,9 @@ export default function RewardsPage() {
   const currentUser = useAuthStore((s) => s.user)
   const isPrivileged =
     currentUser?.role === 'HR' || currentUser?.role === 'BOD' || currentUser?.role === 'MANAGER'
+  const isTeamLeader = currentUser?.role === 'LEADER'
+  // LEADER được ghi nhận thưởng/phạt cho thành viên team mình, nhưng không quản lý danh mục quy chuẩn.
+  const canLogRewards = isPrivileged || isTeamLeader
 
   // Main Tabs (Persona Tabs removed by request)
   const [adminSubTab, setAdminSubTab] = useState<'log' | 'catalog' | 'history'>('log')
@@ -316,6 +319,21 @@ export default function RewardsPage() {
     note: '',
   })
 
+  /**
+   * HR/BOD/MANAGER dùng danh bạ nhân sự đầy đủ (`/employees`); LEADER dùng roster
+   * tối giản chỉ gồm team của mình (`/reward/my-team-employees`) để tránh lộ hồ sơ
+   * HR chi tiết ngoài phạm vi tính năng thưởng/phạt.
+   */
+  const fetchTeamEmployees = async () => {
+    if (isPrivileged) {
+      const res = await apiClient.get<{ data?: Employee[] }>('/employees?pageSize=3000')
+      setEmployees(res.data?.data || [])
+    } else {
+      const res = await apiClient.get<Employee[]>('/reward/my-team-employees')
+      setEmployees(res.data || [])
+    }
+  }
+
   const fetchData = async (
     silent = false,
     scope: FetchScope = 'full',
@@ -334,16 +352,12 @@ export default function RewardsPage() {
         )
       }
 
-      if (scope === 'full' && isPrivileged && !opts?.deferEmployees) {
-        tasks.push(
-          apiClient.get<{ data?: Employee[] }>('/employees?pageSize=3000').then((res) => {
-            setEmployees(res.data?.data || [])
-          })
-        )
+      if (scope === 'full' && canLogRewards && !opts?.deferEmployees) {
+        tasks.push(fetchTeamEmployees())
       }
 
       if (scope === 'full' || scope === 'records') {
-        if (isPrivileged) {
+        if (canLogRewards) {
           tasks.push(
             apiClient.get<RecordEntity[]>('/reward/records').then((res) => {
               setAllRecords(res.data || [])
@@ -367,11 +381,8 @@ export default function RewardsPage() {
   }
 
   const fetchEmployeesInBackground = () => {
-    if (!isPrivileged) return
-    void apiClient
-      .get<{ data?: Employee[] }>('/employees?pageSize=3000')
-      .then((res) => setEmployees(res.data?.data || []))
-      .catch((error) => console.error('Failed to fetch employees:', error))
+    if (!canLogRewards) return
+    void fetchTeamEmployees().catch((error) => console.error('Failed to fetch employees:', error))
   }
 
   /** Làm mới records nền — không chặn UI, không reload employees. */
@@ -380,9 +391,9 @@ export default function RewardsPage() {
   }
 
   useEffect(() => {
-    void fetchData(false, 'full', { deferEmployees: isPrivileged })
+    void fetchData(false, 'full', { deferEmployees: canLogRewards })
     fetchEmployeesInBackground()
-  }, [isPrivileged])
+  }, [canLogRewards])
 
   useEffect(() => {
     if (!showActionPanel || !selectedEmp) return
@@ -737,25 +748,29 @@ export default function RewardsPage() {
         ) : (
           <div className="space-y-6">
             <div className="flex border-b border-slate-200">
-              {isPrivileged ? (
+              {canLogRewards ? (
                 <>
                   <button
                     onClick={() => setAdminSubTab('log')}
                     className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'log' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                   >
-                    <Users className="h-4 w-4" /> Ghi nhận theo Team
+                    <Users className="h-4 w-4" />{' '}
+                    {isPrivileged ? 'Ghi nhận theo Team' : 'Ghi nhận cho Team'}
                   </button>
-                  <button
-                    onClick={() => setAdminSubTab('catalog')}
-                    className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'catalog' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                  >
-                    <LayoutGrid className="h-4 w-4" /> Danh mục quy chuẩn
-                  </button>
+                  {isPrivileged && (
+                    <button
+                      onClick={() => setAdminSubTab('catalog')}
+                      className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'catalog' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                      <LayoutGrid className="h-4 w-4" /> Danh mục quy chuẩn
+                    </button>
+                  )}
                   <button
                     onClick={() => setAdminSubTab('history')}
                     className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'history' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                   >
-                    <History className="h-4 w-4" /> Lịch sử hệ thống
+                    <History className="h-4 w-4" />{' '}
+                    {isPrivileged ? 'Lịch sử hệ thống' : 'Lịch sử Team'}
                   </button>
                 </>
               ) : (
@@ -776,7 +791,7 @@ export default function RewardsPage() {
               )}
             </div>
 
-            {!isPrivileged ? (
+            {!canLogRewards ? (
               /* MEMBER VIEW CONTENT */
               <div className="space-y-8 animate-fade-in">
                 {mySubTab === 'history' ? (
