@@ -1502,6 +1502,7 @@ const MEMBER_STATUS_VI: Record<TeamMemberRow['status'], string> = {
   INACTIVE: 'Đã nghỉ việc',
   PROBATION: 'Thử việc',
   RESERVED: 'Dự bị / bảo lưu',
+  TRANSFERRED: 'Điều chuyển',
 }
 
 function memberStatusBadgeClassName(status: TeamMemberRow['status']) {
@@ -1510,6 +1511,7 @@ function memberStatusBadgeClassName(status: TeamMemberRow['status']) {
     status === 'INACTIVE' && 'border-destructive/45 text-destructive',
     status === 'PROBATION' && 'border-amber-500/45 text-amber-800 dark:text-amber-100',
     status === 'RESERVED' && 'border-blue-500/40 text-blue-800 dark:text-blue-100',
+    status === 'TRANSFERRED' && 'border-sky-500/40 text-sky-800 dark:text-sky-100',
     status === 'ACTIVE' && 'border-emerald-600/35 text-emerald-800 dark:text-emerald-100'
   )
 }
@@ -1538,7 +1540,14 @@ function memberRowRole(m: TeamMemberRow): Role {
 
 function memberRowStatus(m: TeamMemberRow): TeamMemberRow['status'] {
   const s = m.status
-  if (s === 'ACTIVE' || s === 'INACTIVE' || s === 'PROBATION' || s === 'RESERVED') return s
+  if (
+    s === 'ACTIVE' ||
+    s === 'INACTIVE' ||
+    s === 'PROBATION' ||
+    s === 'RESERVED' ||
+    s === 'TRANSFERRED'
+  )
+    return s
   return 'ACTIVE'
 }
 

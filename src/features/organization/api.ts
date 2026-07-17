@@ -149,7 +149,7 @@ export type TeamMemberRow = {
   teamOrderNumber?: string | null
   joinedAt: string
   role: Role
-  status: 'ACTIVE' | 'INACTIVE' | 'PROBATION' | 'RESERVED'
+  status: 'ACTIVE' | 'INACTIVE' | 'PROBATION' | 'RESERVED' | 'TRANSFERRED'
   avatarUrl: string | null
   portraitRef: string | null
   membership?: 'primary' | 'extra' | 'secondary'

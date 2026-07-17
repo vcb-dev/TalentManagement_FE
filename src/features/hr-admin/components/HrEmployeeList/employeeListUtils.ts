@@ -102,6 +102,8 @@ export function statusDotClass(status: EmployeeEntity['status']): string {
     case 'RESERVED':
     case 'PROBATION':
       return 'bg-amber-500'
+    case 'TRANSFERRED':
+      return 'bg-sky-500'
     case 'INACTIVE':
       return 'bg-slate-400'
     default:
@@ -119,6 +121,8 @@ export function statusLabelVi(status: EmployeeEntity['status']): string {
       return 'Thử việc'
     case 'RESERVED':
       return 'Bảo lưu'
+    case 'TRANSFERRED':
+      return 'Điều chuyển'
     default:
       return status
   }

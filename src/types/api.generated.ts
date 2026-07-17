@@ -188,7 +188,7 @@ export interface components {
             email: string;
             role: components["schemas"]["Role"];
             /** @enum {string} */
-            status: "ACTIVE" | "INACTIVE" | "PROBATION" | "RESERVED";
+            status: "ACTIVE" | "INACTIVE" | "PROBATION" | "RESERVED" | "TRANSFERRED";
             /** Format: uuid */
             departmentId: string;
             teamIds: string[];
@@ -274,7 +274,7 @@ export interface components {
             /** @enum {string} */
             currentLevel?: "tap_su" | "biet_viec" | "duoc_viec" | "dong_gop_ket_qua" | "tuong";
             /** @enum {string} */
-            status?: "ACTIVE" | "INACTIVE" | "PROBATION" | "RESERVED";
+            status?: "ACTIVE" | "INACTIVE" | "PROBATION" | "RESERVED" | "TRANSFERRED";
         };
         ExamResult: {
             /** Format: uuid */

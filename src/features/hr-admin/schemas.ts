@@ -128,7 +128,7 @@ export const employeeApiSchema = z.object({
   name: z.string(),
   email: employeeDirectoryEmailSchema,
   role: apiRoleSchema,
-  status: z.enum(['ACTIVE', 'INACTIVE', 'PROBATION', 'RESERVED']),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'PROBATION', 'RESERVED', 'TRANSFERRED']),
   departmentId: z
     .string()
     .transform((s) => s.trim())
@@ -162,6 +162,7 @@ export const employeeListApiSchema = z.object({
       INACTIVE: z.number(),
       PROBATION: z.number(),
       RESERVED: z.number(),
+      TRANSFERRED: z.number(),
     })
     .optional(),
 })

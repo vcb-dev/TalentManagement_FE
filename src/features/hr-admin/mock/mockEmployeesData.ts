@@ -123,6 +123,18 @@ let rows: EmployeeEntity[] = [
     },
     [MOCK_TEAM_NS01]
   ),
+  emp(
+    {
+      id: '10000000-0000-4000-8000-000000000008',
+      name: 'Đỗ Quang',
+      email: 'd.quang@vcb.com',
+      role: 'MEMBER',
+      status: 'TRANSFERRED',
+      currentLevel: 'biet_viec',
+      currentStar: 2,
+    },
+    [MOCK_TEAM_NS02]
+  ),
 ]
 
 function statusFilter(f: EmployeeFilters['status']): EmployeeEntity['status'] | undefined {
@@ -132,6 +144,7 @@ function statusFilter(f: EmployeeFilters['status']): EmployeeEntity['status'] | 
     inactive: 'INACTIVE',
     probation: 'PROBATION',
     reserved: 'RESERVED',
+    transferred: 'TRANSFERRED',
   }
   return map[f]
 }
@@ -142,7 +155,13 @@ export function getMockEmployees(filters: EmployeeFilters): {
   page: number
   pageSize: number
   totalPages: number
-  statusCounts: { ACTIVE: number; INACTIVE: number; PROBATION: number; RESERVED: number }
+  statusCounts: {
+    ACTIVE: number
+    INACTIVE: number
+    PROBATION: number
+    RESERVED: number
+    TRANSFERRED: number
+  }
 } {
   let list = [...rows]
   if (filters.teamId) {
@@ -171,7 +190,7 @@ export function getMockEmployees(filters: EmployeeFilters): {
   const start = (page - 1) * pageSize
   const data = list.slice(start, start + pageSize)
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const statusCounts = { ACTIVE: 0, INACTIVE: 0, PROBATION: 0, RESERVED: 0 }
+  const statusCounts = { ACTIVE: 0, INACTIVE: 0, PROBATION: 0, RESERVED: 0, TRANSFERRED: 0 }
   for (const e of list) statusCounts[e.status]++
   return { data, total, page, pageSize, totalPages, statusCounts }
 }

@@ -146,7 +146,7 @@
           "role": { "$ref": "#/components/schemas/Role" },
           "status": {
             "type": "string",
-            "enum": ["ACTIVE", "INACTIVE", "PROBATION", "RESERVED"]
+            "enum": ["ACTIVE", "INACTIVE", "PROBATION", "RESERVED", "TRANSFERRED"]
           },
           "departmentId": { "type": "string", "format": "uuid" },
           "teamIds": {
@@ -252,7 +252,7 @@
           },
           "status": {
             "type": "string",
-            "enum": ["ACTIVE", "INACTIVE", "PROBATION", "RESERVED"]
+            "enum": ["ACTIVE", "INACTIVE", "PROBATION", "RESERVED", "TRANSFERRED"]
           }
         }
       },

@@ -67,10 +67,11 @@ export interface HrEmployeeProfileProps {
 }
 export type IHrEmployeeProfileState = MeUserSelf
 
-type EmploymentStatusUi = 'working' | 'resigned'
+type EmploymentStatusUi = 'working' | 'resigned' | 'transferred'
 
 const EMPLOYMENT_STATUS_OPTIONS: { value: EmploymentStatusUi; label: string }[] = [
   { value: 'working', label: 'Đang làm việc' },
+  { value: 'transferred', label: 'Điều chuyển' },
   { value: 'resigned', label: 'Đã nghỉ' },
 ]
 
@@ -112,14 +113,27 @@ function resolveEmploymentStatusUi(
   employee: IHrEmployeeProfileState,
   summaryStatus?: EmployeeEntity['status']
 ): EmploymentStatusUi {
-  const inactive = summaryStatus
-    ? summaryStatus === 'INACTIVE'
-    : isEmploymentInactive(employee.employmentStatus)
-  return inactive ? 'resigned' : 'working'
+  if (summaryStatus) {
+    if (summaryStatus === 'INACTIVE') return 'resigned'
+    if (summaryStatus === 'TRANSFERRED') return 'transferred'
+    return 'working'
+  }
+  if (isEmploymentTransferred(employee.employmentStatus)) return 'transferred'
+  if (isEmploymentInactive(employee.employmentStatus)) return 'resigned'
+  return 'working'
 }
 
 function canManageEmploymentStatusRole(role: string | null | undefined): boolean {
   return role === 'MANAGER' || role === 'HR'
+}
+
+function foldEmploymentStatusText(employmentStatus: string | null | undefined): string {
+  return (employmentStatus ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
 }
 
 function isEmploymentInactive(employmentStatus: string | null | undefined): boolean {
@@ -127,12 +141,16 @@ function isEmploymentInactive(employmentStatus: string | null | undefined): bool
   if (!raw) return false
   const upper = raw.toUpperCase()
   if (upper === 'INACTIVE' || upper === 'TERMINATED') return true
-  const folded = raw
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/gi, 'd')
-    .toLowerCase()
-  return /thoi viec|nghi viec|da nghi|inactive|ngung hoat dong|sa thai/.test(folded)
+  return /thoi viec|nghi viec|da nghi|inactive|ngung hoat dong|sa thai/.test(
+    foldEmploymentStatusText(raw)
+  )
+}
+
+function isEmploymentTransferred(employmentStatus: string | null | undefined): boolean {
+  const raw = (employmentStatus ?? '').trim()
+  if (!raw) return false
+  if (raw.toUpperCase() === 'TRANSFERRED') return true
+  return /dieu chuyen|transferred/.test(foldEmploymentStatusText(raw))
 }
 
 function EmploymentStatusField({ control }: { control: Control<EditRecord> }) {
@@ -858,6 +876,10 @@ export function HrEmployeeProfile({
       if (!statusChanged) return
       if (values.employmentStatusUi === 'resigned') {
         deactivate.mutate(employee.id)
+        return
+      }
+      if (values.employmentStatusUi === 'transferred') {
+        updateEmployee.mutate({ id: employee.id, patch: { status: 'TRANSFERRED' } })
         return
       }
       updateEmployee.mutate({ id: employee.id, patch: { status: 'ACTIVE' } })

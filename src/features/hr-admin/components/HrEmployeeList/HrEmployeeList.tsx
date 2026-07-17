@@ -147,8 +147,10 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     const active = counts ? counts.ACTIVE : onPage.filter((e) => e.status === 'ACTIVE').length
     const inactive = counts ? counts.INACTIVE : onPage.filter((e) => e.status === 'INACTIVE').length
     const reserved = counts
-      ? counts.RESERVED + counts.PROBATION
-      : onPage.filter((e) => e.status === 'RESERVED' || e.status === 'PROBATION').length
+      ? counts.RESERVED + counts.PROBATION + counts.TRANSFERRED
+      : onPage.filter(
+          (e) => e.status === 'RESERVED' || e.status === 'PROBATION' || e.status === 'TRANSFERRED'
+        ).length
     const countedTotal = counts ? active + inactive + reserved : onPage.length
     const activePct = countedTotal > 0 ? Math.round((active / countedTotal) * 100) : 0
     return { total, active, inactive, reserved, activePct }
