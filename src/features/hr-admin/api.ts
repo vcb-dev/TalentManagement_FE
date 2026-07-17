@@ -5,10 +5,12 @@ import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
 import type { z } from 'zod'
 import {
   getMockEmployeeById,
+  getMockEmployeeProfileById,
   getMockEmployees,
   mockCreateEmployee,
   mockDeactivateEmployee,
   mockPatchEmployee,
+  mockUpdateEmployeeProfile,
   type CreateEmployeeMeta,
 } from './mock/mockEmployeesData'
 import { employeeApiSchema, employeeListApiSchema } from './schemas'
@@ -97,12 +99,30 @@ export const employeeApi = {
 
   // get employee by id
   getEmployeeById: async (id: string) => {
+    if (isMockApiEnabled()) {
+      const row = getMockEmployeeProfileById(id)
+      if (!row) {
+        const err = new Error('Not found') as Error & { status?: number }
+        err.status = 404
+        throw err
+      }
+      return row
+    }
     const res = await apiClient.get<IHrEmployeeProfileState>(`/employees/hr/${id}`)
     return res.data
   },
 
   // update employee by id
   updateEmployeeById: async (id: string, patch: IHrEmployeeProfileState) => {
+    if (isMockApiEnabled()) {
+      const row = mockUpdateEmployeeProfile(id, patch)
+      if (!row) {
+        const err = new Error('Not found') as Error & { status?: number }
+        err.status = 404
+        throw err
+      }
+      return row
+    }
     const res = await apiClient.patch<unknown>(`/employees/hr/${id}`, patch)
     return res.data
   },
@@ -118,6 +138,9 @@ export const employeeApi = {
   },
 
   getLoginCredential: async (id: string) => {
+    if (isMockApiEnabled()) {
+      return { username: null as string | null }
+    }
     const res = await apiClient.get<{ username: string | null }>(
       `/employees/${id}/login-credential`
     )
@@ -125,6 +148,9 @@ export const employeeApi = {
   },
 
   upsertLoginCredential: async (id: string, body: { username: string; password: string }) => {
+    if (isMockApiEnabled()) {
+      return { username: body.username }
+    }
     const res = await apiClient.put<{ username: string }>(`/employees/${id}/login-credential`, body)
     return res.data
   },

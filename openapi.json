@@ -239,6 +239,11 @@
           "role": { "$ref": "#/components/schemas/Role" },
           "departmentId": { "type": "string", "format": "uuid" },
           "teamId": { "type": "string", "format": "uuid" },
+          "extraTeamIds": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" },
+            "description": "Nhóm bổ sung (ngoài teamId theo phòng ban)"
+          },
           "phone": { "type": "string" },
           "birthDate": { "type": "string" },
           "startDate": { "type": "string", "description": "Ngày bắt đầu làm việc" },
@@ -246,6 +251,7 @@
             "type": "string",
             "description": "UUID team phụ trên FE; gửi chuỗi rỗng để xóa"
           },
+          "directManager": { "type": "string", "nullable": true },
           "currentLevel": {
             "type": "string",
             "enum": ["tap_su", "biet_viec", "duoc_viec", "dong_gop_ket_qua", "tuong"]
