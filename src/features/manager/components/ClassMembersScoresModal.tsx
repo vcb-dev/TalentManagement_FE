@@ -214,6 +214,12 @@ function parseSubmissionAnswers(submission: ExamSubmission): Record<string, stri
 
 function buildQuestionStemMap(submission: ExamSubmission): Record<string, string> {
   const map: Record<string, string> = {}
+
+  submission.examPaper?.questions?.forEach((q) => {
+    map[q.id] = q.stem
+  })
+  if (Object.keys(map).length > 0) return map
+
   const bank = submission.learningClass?.examQuestions || submission.schedule?.examQuestions
   const questions = (bank as { questions?: Array<{ id: string; stem: string }> } | null)?.questions
   questions?.forEach((q) => {
