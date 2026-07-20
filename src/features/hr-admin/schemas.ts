@@ -40,6 +40,9 @@ const optionalPhoneString = z
     { message: 'Số điện thoại cần 8–15 chữ số' }
   )
 
+/** Trường hồ sơ mở rộng dạng text tự do — rỗng = không nhập, không validate định dạng. */
+const optionalProfileString = z.string().transform((s) => s.trim())
+
 export const createEmployeeSchema = z.object({
   name: z
     .string()
@@ -57,6 +60,44 @@ export const createEmployeeSchema = z.object({
   teamId: z.string().uuid('Chọn nhóm hợp lệ'),
   phone: optionalPhoneString,
   birthDate: optionalBirthDateString,
+  // Phân công tổ chức (mở rộng)
+  jobTitle: optionalProfileString.default(''),
+  teamPosition: optionalProfileString.default(''),
+  workplaceBranch: optionalProfileString.default(''),
+  directManager: optionalProfileString.default(''),
+  // Nhân thân & liên hệ
+  displayName: optionalProfileString.default(''),
+  gender: optionalProfileString.default(''),
+  facebookUrl: optionalProfileString.default(''),
+  // Địa chỉ & học vấn
+  addressCurrent: optionalProfileString.default(''),
+  addressHousehold: optionalProfileString.default(''),
+  educationLevel: optionalProfileString.default(''),
+  schoolName: optionalProfileString.default(''),
+  hometownDetail: optionalProfileString.default(''),
+  // Giấy tờ & nhân khẩu
+  identityDocumentInfo: optionalProfileString.default(''),
+  maritalStatus: optionalProfileString.default(''),
+  ethnicity: optionalProfileString.default(''),
+  religion: optionalProfileString.default(''),
+  insuranceBookNumber: optionalProfileString.default(''),
+  // Gia đình & liên hệ khẩn cấp
+  childrenInfo: optionalProfileString.default(''),
+  emergencyContact1: optionalProfileString.default(''),
+  emergencyContact2: optionalProfileString.default(''),
+  fatherGuardianContact: optionalProfileString.default(''),
+  motherGuardianContact: optionalProfileString.default(''),
+  familyNotes: optionalProfileString.default(''),
+  // Khác
+  bankAccountInfo: optionalProfileString.default(''),
+  vehicleInfo: optionalProfileString.default(''),
+  managerBlockCode: optionalProfileString.default(''),
+  attachmentIdFront: optionalProfileString.default(''),
+  attachmentIdBack: optionalProfileString.default(''),
+  policyAcknowledgement: optionalProfileString.default(''),
+  profileReviewDate: optionalDateString.default(''),
+  cvAttachmentRef: optionalProfileString.default(''),
+  notes: optionalProfileString.default(''),
 })
 
 /** Form đầy đủ (gửi API chỉ các trường trong CreateEmployeeInput + meta mock). */
@@ -87,7 +128,7 @@ export const employeeApiSchema = z.object({
   name: z.string(),
   email: employeeDirectoryEmailSchema,
   role: apiRoleSchema,
-  status: z.enum(['ACTIVE', 'INACTIVE', 'PROBATION', 'RESERVED']),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'PROBATION', 'RESERVED', 'TRANSFERRED']),
   departmentId: z
     .string()
     .transform((s) => s.trim())
@@ -114,4 +155,14 @@ export const employeeListApiSchema = z.object({
   page: z.number(),
   pageSize: z.number(),
   totalPages: z.number(),
+  /** Đếm theo status trên toàn bộ tập đã lọc (không chỉ trang hiện tại). */
+  statusCounts: z
+    .object({
+      ACTIVE: z.number(),
+      INACTIVE: z.number(),
+      PROBATION: z.number(),
+      RESERVED: z.number(),
+      TRANSFERRED: z.number(),
+    })
+    .optional(),
 })

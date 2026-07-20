@@ -7,6 +7,7 @@ import {
   useEmployeeLoginCredential,
   useUpsertEmployeeLoginCredential,
 } from '@/features/hr-admin/loginCredentialHooks'
+import { useAnyActionPending } from '@/features/hr-admin/hooks'
 
 interface EmployeeLoginCredentialCardProps {
   employeeId: string
@@ -19,6 +20,7 @@ export function EmployeeLoginCredentialCard({
 }: EmployeeLoginCredentialCardProps) {
   const { data, isLoading } = useEmployeeLoginCredential(employeeId, canEdit)
   const upsert = useUpsertEmployeeLoginCredential(employeeId)
+  const anyActionPending = useAnyActionPending()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
@@ -81,7 +83,7 @@ export function EmployeeLoginCredentialCard({
           </div>
           <Button
             type="submit"
-            disabled={upsert.isPending || !username.trim() || password.length < 8}
+            disabled={anyActionPending || !username.trim() || password.length < 8}
           >
             {upsert.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />

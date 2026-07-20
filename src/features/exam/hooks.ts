@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { getApiErrorMessage } from '@/lib/axios'
 import { examApi } from './api'
 import { examKeys } from './queryKeys'
 import type {
@@ -148,8 +149,13 @@ export function useStartExam() {
     mutationFn: (data: { classId?: string; scheduleId?: string }) => examApi.startExam(data),
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000), // 1s, 2s
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void qc.invalidateQueries({ queryKey: ['my_exam_submissions'] })
+      // Đề thi (lớp Editor) chỉ được gán khi submission được tạo — phải refetch
+      // để lấy đề vừa gán, nếu không màn làm bài sẽ không bao giờ nhận được bank.
+      if (variables.scheduleId) {
+        void qc.invalidateQueries({ queryKey: ['exam_my_paper', variables.scheduleId] })
+      }
     },
   })
 }
@@ -160,5 +166,36 @@ export function useScheduleDetail(id: string) {
     queryFn: () => examApi.getScheduleDetail(id),
     enabled: id.length > 0,
     staleTime: 30 * 60 * 1000, // 30 minutes (questions rarely change during exam)
+  })
+}
+
+/** Đề đã gán ngẫu nhiên cho tôi trong lịch thi — chỉ có khi lịch dùng bộ đề (lớp Editor). */
+export function useMyExamPaper(scheduleId: string) {
+  return useQuery({
+    queryKey: ['exam_my_paper', scheduleId],
+    queryFn: () => examApi.getMyPaper(scheduleId),
+    enabled: scheduleId.length > 0,
+    staleTime: 30 * 60 * 1000,
+  })
+}
+
+export function useSubmissionFeedback(submissionId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['exam_submission_feedback', submissionId],
+    queryFn: () => examApi.getSubmissionFeedback(submissionId),
+    enabled: enabled && submissionId.length > 0,
+  })
+}
+
+export function useSubmitExamFeedback() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ submissionId, content }: { submissionId: string; content: string }) =>
+      examApi.submitFeedback(submissionId, content),
+    onSuccess: (_data, { submissionId }) => {
+      void qc.invalidateQueries({ queryKey: ['exam_submission_feedback', submissionId] })
+      toast.success('Đã gửi feedback')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
   })
 }

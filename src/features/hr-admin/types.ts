@@ -1,7 +1,7 @@
 import type { Role } from '@/types/auth'
 import { ME_USER_PATCH_KEYS } from '../profile/userSelf.types'
 
-export type EmployeeListStatus = 'active' | 'inactive' | 'probation' | 'reserved'
+export type EmployeeListStatus = 'active' | 'inactive' | 'probation' | 'reserved' | 'transferred'
 
 export interface EmployeeFilters {
   page: number

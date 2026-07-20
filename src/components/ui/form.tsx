@@ -4,6 +4,7 @@ import {
   Controller,
   FormProvider,
   useFormContext,
+  useFormState,
   type ControllerProps,
   type FieldPath,
   type FieldValues,
@@ -51,7 +52,12 @@ function FormItem({ className, ...props }: React.HTMLAttributes<HTMLDivElement>)
 function useFormField() {
   const fieldContext = React.useContext(FormFieldContext)
   const itemContext = React.useContext(FormItemContext)
-  const { getFieldState, formState } = useFormContext()
+  const { getFieldState, control } = useFormContext()
+  // `useFormState({ name })` isolates the re-render subscription to this field only.
+  // Reading `formState` straight off `useFormContext()` instead would mark
+  // errors/dirtyFields/touchedFields as globally watched, forcing the component that
+  // owns `useForm()` to re-render on every keystroke/select change anywhere in the form.
+  const formState = useFormState({ control, name: fieldContext.name })
 
   const fieldState = getFieldState(fieldContext.name, formState)
 

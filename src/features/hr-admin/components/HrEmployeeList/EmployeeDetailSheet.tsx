@@ -35,6 +35,12 @@ function statusBadge(status: EmployeeEntity['status']) {
           Bảo lưu / Thử việc
         </span>
       )
+    case 'TRANSFERRED':
+      return (
+        <span className="inline-flex rounded-full bg-sky-500/15 px-2.5 py-1 text-xs font-bold text-sky-900 dark:text-sky-200">
+          Điều chuyển
+        </span>
+      )
     case 'INACTIVE':
       return (
         <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">

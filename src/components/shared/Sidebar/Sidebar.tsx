@@ -177,7 +177,6 @@ const NavLink = memo(function NavLink({
 })
 
 export function Sidebar() {
-  const user = useAuthStore((s) => s.user)
   // Remove early return to allow MEMBER/LEADER roles with teacher/other permissions to see sidebar items
   return <SidebarInner />
 }

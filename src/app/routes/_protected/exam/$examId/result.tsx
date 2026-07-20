@@ -16,9 +16,15 @@ import {
   useMySubmissions,
   useScheduleDetail,
   useStartExam,
+  useMyExamPaper,
+  useSubmissionFeedback,
+  useSubmitExamFeedback,
 } from '@/features/exam/hooks'
 import { useMyEnrolledClass } from '@/features/learning-path/hooks'
 import { useAuthStore } from '@/stores/auth.store'
+import { extractCriteriaWeights, inferDurationMinutesFromStartEnd } from '@/lib/examScheduleTime'
+import { ESSAY_CRITERIA } from '@/features/exam-papers/criteria'
+import { cn } from '@/lib/utils'
 
 const DEFAULT_DURATION_SECONDS = 60 * 60 // 1 tiếng mặc định
 
@@ -119,6 +125,51 @@ const ExamQuestionCard = memo(function ExamQuestionCard({
   )
 })
 
+const ExamFeedbackCard = memo(function ExamFeedbackCard({
+  submissionId,
+}: {
+  submissionId: string
+}) {
+  const { data: feedback, isLoading } = useSubmissionFeedback(submissionId)
+  const submitFeedback = useSubmitExamFeedback()
+  const [content, setContent] = useState('')
+
+  if (isLoading) return null
+
+  if (feedback) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <p className="text-sm font-semibold text-foreground">Feedback của bạn</p>
+        <p className="mt-1 text-sm text-muted-foreground">{feedback.content}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <p className="text-sm font-semibold text-foreground">Gửi feedback về kỳ thi</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Chia sẻ cảm nhận về đề thi, cách chấm, hoặc góp ý cho giáo viên chấm bài.
+      </p>
+      <Textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder="Nhập feedback của bạn..."
+        className="mt-3 min-h-[80px] text-sm"
+      />
+      <Button
+        type="button"
+        size="sm"
+        className="mt-2"
+        disabled={!content.trim() || submitFeedback.isPending}
+        onClick={() => submitFeedback.mutate({ submissionId, content: content.trim() })}
+      >
+        {submitFeedback.isPending ? 'Đang gửi...' : 'Gửi feedback'}
+      </Button>
+    </div>
+  )
+})
+
 function ExamResultPage() {
   const { scheduleId } = Route.useSearch()
   const { examId } = Route.useParams()
@@ -130,7 +181,30 @@ function ExamResultPage() {
   const { data: mySubmissions, isLoading: isSubsLoading } = useMySubmissions()
   const { data: myClassData, isLoading: isClassLoading } = useMyEnrolledClass()
   const { data: scheduleDetail, isLoading: isScheduleLoading } = useScheduleDetail(scheduleId || '')
-  const allLoading = isLoading || isSubsLoading || isClassLoading || isScheduleLoading
+  const { data: myPaperData, isLoading: isPaperLoading } = useMyExamPaper(scheduleId || '')
+  const allLoading =
+    isLoading || isSubsLoading || isClassLoading || isScheduleLoading || isPaperLoading
+  const criteriaWeights = extractCriteriaWeights(scheduleDetail?.examQuestions)
+
+  // Đề thi được gán ngẫu nhiên qua lịch thi (lớp Editor) — ưu tiên trước bank JSON cũ.
+  // options: [] cho câu tự luận → tái dùng nguyên UI Textarea đã có bên dưới.
+  const paperBank = useMemo(() => {
+    const paper = myPaperData?.paper
+    if (!paper) return null
+    const duration =
+      scheduleDetail?.startTime && scheduleDetail?.endTime
+        ? (inferDurationMinutesFromStartEnd(scheduleDetail.startTime, scheduleDetail.endTime) ?? 60)
+        : 60
+    return {
+      title: paper.title,
+      duration,
+      questions: paper.questions.map((q) => ({
+        id: q.id,
+        stem: q.stem,
+        options: q.type === 'essay' ? [] : (q.options ?? []),
+      })),
+    }
+  }, [myPaperData, scheduleDetail])
   const { mutateAsync: submitExamApi, isPending: isSubmitting } = useSubmitExam()
   const { mutate: startExamApi } = useStartExam()
   const employeeId = '00000000-0000-4000-8000-000000000001'
@@ -145,6 +219,7 @@ function ExamResultPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const answersRef = useRef<Record<string, string>>({})
+  const startExamRequestedRef = useRef(false)
 
   const myClassId = myClassData?.enrolledClass?.id
 
@@ -162,6 +237,12 @@ function ExamResultPage() {
     if (allLoading) return
 
     try {
+      // scheduleDetail.examQuestions đôi khi chỉ là metadata chấm điểm
+      // ({duration, criteriaWeights}) cho lịch dùng ExamPaper, không phải bộ câu hỏi —
+      // chỉ chấp nhận làm bank khi có mảng questions thật sự.
+      const isValidBank = (b: unknown): b is { questions: unknown[] } =>
+        Array.isArray((b as { questions?: unknown[] })?.questions)
+
       const submissionKey = `member_exam_submission_v1:${userId}:${examId}${scheduleId ? `:${scheduleId}` : ''}`
       const existingSubmission = localStorage.getItem(submissionKey)
 
@@ -187,19 +268,25 @@ function ExamResultPage() {
         }
 
         // Load bank robustly
-        let foundBank = null
-        if (sub) {
+        let foundBank = paperBank
+        if (!foundBank && sub) {
           // Priority 1: From submission data
-          foundBank = sub.schedule?.examQuestions || sub.learningClass?.examQuestions
+          const candidate = sub.schedule?.examQuestions || sub.learningClass?.examQuestions
+          if (isValidBank(candidate)) foundBank = candidate as typeof paperBank
         }
         if (!foundBank) {
           // Priority 2: From schedule detail
-          if (scheduleId && scheduleDetail?.examQuestions) {
-            foundBank = scheduleDetail.examQuestions
+          if (scheduleId && isValidBank(scheduleDetail?.examQuestions)) {
+            foundBank = scheduleDetail.examQuestions as typeof paperBank
           }
           // Fallback to class questions
-          if (!foundBank && !scheduleId && myClassData?.enrolledClass?.id === examId) {
-            foundBank = myClassData.enrolledClass.examQuestions
+          if (
+            !foundBank &&
+            !scheduleId &&
+            myClassData?.enrolledClass?.id === examId &&
+            isValidBank(myClassData.enrolledClass.examQuestions)
+          ) {
+            foundBank = myClassData.enrolledClass.examQuestions as typeof paperBank
           }
         }
 
@@ -209,12 +296,25 @@ function ExamResultPage() {
         return
       }
 
+      // Chưa nộp bài — đảm bảo có submission trước (đề thi lớp Editor chỉ được gán
+      // ngẫu nhiên khi start-exam tạo submission). Không đợi bank có sẵn mới gọi,
+      // nếu không sẽ bị kẹt vì my-paper trả về null khi chưa có submission.
+      if (!activeSubmission && !startExamRequestedRef.current) {
+        startExamRequestedRef.current = true
+        startExamApi({ classId: !scheduleId ? examId : undefined, scheduleId })
+      }
+
       // If not submitted, proceed with timer initialization
-      let bank = null
-      if (scheduleId && scheduleDetail?.examQuestions) {
-        bank = scheduleDetail.examQuestions
-      } else if (!scheduleId && myClassData?.enrolledClass?.id === examId) {
-        bank = myClassData.enrolledClass.examQuestions
+      let bank = paperBank
+      if (!bank && scheduleId && isValidBank(scheduleDetail?.examQuestions)) {
+        bank = scheduleDetail.examQuestions as typeof paperBank
+      } else if (
+        !bank &&
+        !scheduleId &&
+        myClassData?.enrolledClass?.id === examId &&
+        isValidBank(myClassData.enrolledClass.examQuestions)
+      ) {
+        bank = myClassData.enrolledClass.examQuestions as typeof paperBank
       }
 
       if (bank) {
@@ -253,11 +353,6 @@ function ExamResultPage() {
           } catch {}
         }
 
-        // Gọi startExam để ghi nhận vào DB (không ảnh hưởng timer)
-        if (!activeSubmission) {
-          startExamApi({ classId: !scheduleId ? examId : undefined, scheduleId })
-        }
-
         setTimeLeft(finalTimeLeft)
       }
     } catch (err) {
@@ -274,6 +369,7 @@ function ExamResultPage() {
     scheduleDetail,
     activeSubmission,
     startExamApi,
+    paperBank,
   ])
 
   // Luôn giữ answersRef đồng bộ với state mới nhất
@@ -302,7 +398,7 @@ function ExamResultPage() {
   }, [timeLeft === null, submitted]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const unansweredCount = useMemo(() => {
-    if (!questionBank) return 0
+    if (!questionBank?.questions) return 0
     return questionBank.questions.filter((q) => !answers[q.id]?.trim()).length
   }, [questionBank, answers])
 
@@ -454,42 +550,26 @@ function ExamResultPage() {
                 </h3>
               </div>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                    Đúng lý thuyết
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-foreground">40</span>
-                    <span className="text-sm font-bold text-primary">%</span>
+                {ESSAY_CRITERIA.map((c, i) => (
+                  <div
+                    key={c.id}
+                    className={cn(
+                      'flex flex-col gap-1.5',
+                      i > 0 && 'border-primary/10 sm:border-l sm:pl-6'
+                    )}
+                  >
+                    <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
+                      {c.label}
+                    </span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-foreground">
+                        {criteriaWeights[c.id]}
+                      </span>
+                      <span className="text-sm font-bold text-primary">%</span>
+                    </div>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{c.desc}</p>
                   </div>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Trình bày chính xác, đầy đủ kiến thức chuyên môn liên quan.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-1.5 border-primary/10 sm:border-l sm:pl-6">
-                  <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                    Ví dụ thực tế
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-foreground">50</span>
-                    <span className="text-sm font-bold text-primary">%</span>
-                  </div>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Có ví dụ minh họa cụ thể, sát với thực tiễn công việc tại VCB.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-1.5 border-primary/10 sm:border-l sm:pl-6">
-                  <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">
-                    Trình bày
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-foreground">10</span>
-                    <span className="text-sm font-bold text-primary">%</span>
-                  </div>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Cách trình bày mạch lạc, rõ ràng, dễ hiểu và chuyên nghiệp.
-                  </p>
-                </div>
+                ))}
               </div>
             </div>
           )}
@@ -540,6 +620,9 @@ function ExamResultPage() {
               </div>
             </div>
           )}
+          {activeSubmission?.status === 'done' && activeSubmission.id ? (
+            <ExamFeedbackCard submissionId={activeSubmission.id} />
+          ) : null}
           {questionBank.questions.map((q, idx) => (
             <ExamQuestionCard
               key={q.id}

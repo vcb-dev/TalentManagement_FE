@@ -68,4 +68,31 @@ export const examSubmissionApiSchema = z.object({
     })
     .nullable()
     .optional(),
+  /** Đề gán ngẫu nhiên (lớp Editor) — có khi lịch thi dùng ExamPaper thay vì examQuestions JSON cũ. */
+  examPaper: z
+    .object({
+      id: z.string().uuid(),
+      code: z.string(),
+      title: z.string(),
+      questions: z.array(
+        z.object({
+          id: z.string().uuid(),
+          type: z.enum(['mcq', 'essay']),
+          stem: z.string(),
+          options: z.array(z.string()).nullable().optional(),
+          points: z.number().int(),
+          criteriaWeights: z
+            .object({
+              ly_thuyet: z.number().int(),
+              thuc_te: z.number().int(),
+              trinh_bay: z.number().int(),
+            })
+            .nullable()
+            .optional(),
+          sortOrder: z.number().int(),
+        })
+      ),
+    })
+    .nullable()
+    .optional(),
 })

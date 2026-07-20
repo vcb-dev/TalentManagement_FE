@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import type { LevelCode } from '@/types/level'
+import type { LevelCode } from '@/lib/constants'
 
 export type PromotionCelebration = {
   fromLevel: LevelCode | null

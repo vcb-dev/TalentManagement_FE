@@ -1442,7 +1442,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                   <p className="mt-1 text-sm font-semibold text-slate-500">
                     {isCreatingDeadlineOnly
                       ? 'Thiết lập hạn nộp bài cho học viên theo lộ trình học'
-                      : 'Thông tin chi tiết buổi đào tạo trực tiếp'}
+                      : 'Thông tin chi tiết buổi đào tạo trực tiếp; có thể lưu ngay cả khi chưa chọn học phần'}
                   </p>
                 </div>
                 <Button
@@ -1481,7 +1481,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         dateIso: vals.dateIso,
                         startTime,
                         endTime,
-                        topic: vals.topic.trim(),
+                        topic: vals.topic.trim() || 'Buổi học',
                         location: vals.location.trim() || null,
                         roadmapItemIds: isKnowledgeWork ? vals.roadmapItemIds : [],
                         roadmapItemDeadlines: isKnowledgeWork ? roadmapItemDeadlines : {},
@@ -1497,8 +1497,15 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
                         return
                       }
-                      if (!vals.roadmapItemIds.length && !vals.topic.trim()) {
-                        toast.error('Vui lòng chọn học phần hoặc nhập bài học / chủ đề.')
+                      if (
+                        isKnowledgeWork &&
+                        vals.roadmapItemIds.length === 0 &&
+                        !vals.topic.trim()
+                      ) {
+                        // để backend tự gán tiêu đề mặc định
+                      }
+                      if (!isKnowledgeWork && !vals.topic.trim()) {
+                        toast.error('Vui lòng nhập bài học ngày hôm đó.')
                         return
                       }
                       const overlap = findOverlappingSchedule(schedules, payload, editingScheduleId)

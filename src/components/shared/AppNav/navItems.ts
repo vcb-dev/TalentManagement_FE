@@ -7,7 +7,6 @@ import {
   ClipboardCheck,
   ClipboardList,
   DoorOpen,
-  FileUp,
   Headphones,
   Home,
   LayoutDashboard,
@@ -364,16 +363,15 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
   },
   {
     to: '/manager/exam-schedule',
-    label: 'Lịch thi',
+    label: 'Lịch thi & Đề thi',
     icon: Calendar,
-    match: 'prefix',
-    permissionId: 'manager.exam_schedule',
-  },
-  {
-    to: '/manager/class-exams',
-    label: 'Bài thi của lớp',
-    icon: FileUp,
-    match: 'prefix',
+    // Màn gộp 2 tab (/manager/exam-schedule + /manager/exam-papers) — sáng ở cả hai route
+    match: 'custom',
+    customMatch: (p) =>
+      p === '/manager/exam-schedule' ||
+      p.startsWith('/manager/exam-schedule/') ||
+      p === '/manager/exam-papers' ||
+      p.startsWith('/manager/exam-papers/'),
     permissionId: 'manager.exam_schedule',
   },
   {
@@ -594,7 +592,6 @@ export function groupedSidebarNavItems(
         ...find(MANAGER_OPS_ITEMS, '/manager/classes'),
         ...find(TEACHER_HEADER_ITEMS, '/teacher/classes'),
         ...find(MANAGER_OPS_ITEMS, '/manager/exam-schedule'),
-        ...find(MANAGER_OPS_ITEMS, '/manager/class-exams'),
         ...find(TEACHER_HEADER_ITEMS, '/exam/grader'),
         ...find(MANAGER_OPS_ITEMS, '/manager/approvals'),
         ...find(MANAGER_OPS_ITEMS, '/manager/learning-submissions'),

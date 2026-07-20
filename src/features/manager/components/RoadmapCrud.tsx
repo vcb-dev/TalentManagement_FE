@@ -458,7 +458,7 @@ export function RoadmapCrud() {
   return (
     <>
       <PageHeader
-        title="Quản lý lộ trình học (CRUD)"
+        title="Quản lý lộ trình học"
         description="Thêm, sửa, xoá các đầu mục lộ trình tự động hóa cho nhân sự"
       />
 

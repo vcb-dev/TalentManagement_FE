@@ -106,6 +106,7 @@ export const managerClassScheduleApiSchema = z.object({
   examTeacherName: z.string().nullable().optional(),
   examStatus: z.string().nullable().optional(),
   examQuestions: z.any().nullable().optional(),
+  examPaperIds: z.array(z.string().uuid()).optional(),
   materialRef: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -115,6 +116,7 @@ export const managerClassScheduleApiSchema = z.object({
 export const managerClassApiSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
+  kind: z.string().nullable().optional(),
   isKnowledgeWork: z.boolean().optional(),
   levelFrom: z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong']),
   levelTo: z.enum(['tap_su', 'biet_viec', 'duoc_viec', 'dong_gop_ket_qua', 'tuong']),

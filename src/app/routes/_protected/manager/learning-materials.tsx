@@ -1,16 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { requirePermissionPrefix } from '@/lib/permissionGuards'
 import { requireManagerLikeOrPermissionPrefixes } from '@/lib/routeGuards'
-import { ManagerClassExamsScreen } from '@/features/manager/components/ManagerHub/ManagerClassExamsScreen'
+import { ManagerLearningMaterialsScreen } from '@/features/learning-materials/components/ManagerLearningMaterialsScreen'
 
-export const Route = createFileRoute('/_protected/manager/class-exams')({
+export const Route = createFileRoute('/_protected/manager/learning-materials')({
   beforeLoad: () => {
     requireManagerLikeOrPermissionPrefixes(['manager.'])
     requirePermissionPrefix('manager.')
   },
-  component: ManagerClassExamsPage,
+  component: ManagerLearningMaterialsScreen,
 })
-
-function ManagerClassExamsPage() {
-  return <ManagerClassExamsScreen />
-}

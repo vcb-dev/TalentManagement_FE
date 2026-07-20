@@ -1,7 +1,12 @@
 import { PageHeader } from '@/components/shared/PageHeader'
 import { MemberClassesPanel } from '@/features/learning-path/components/MemberLearningPathViews'
+import { MyLearningMaterialsList } from '@/features/learning-materials/components/MyLearningMaterialsList'
+import { EditorClassesSection } from '@/features/editor-classes/components/EditorClassesSection'
+import { usePermission } from '@/hooks/usePermission'
 
 export function MemberLearningClassesScreen({ isOther = false }: { isOther?: boolean }) {
+  const { canId } = usePermission()
+
   return (
     <>
       <PageHeader
@@ -15,6 +20,17 @@ export function MemberLearningClassesScreen({ isOther = false }: { isOther?: boo
       <div className="pb-6">
         <MemberClassesPanel isOther={isOther} />
       </div>
+      {isOther ? (
+        <div className="pb-6">
+          <h2 className="mb-3 text-sm font-bold text-foreground">Tài liệu học</h2>
+          <MyLearningMaterialsList />
+        </div>
+      ) : null}
+      {isOther && canId('manager.classes') ? (
+        <div className="pb-6">
+          <EditorClassesSection />
+        </div>
+      ) : null}
     </>
   )
 }

@@ -74,6 +74,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   const {
     employees,
     isLoading,
+    isFetching,
     pagination,
     onView,
     onEdit,
@@ -140,16 +141,20 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
 
   const stats = useMemo(() => {
     const total = pagination.total
+    const counts = pagination.statusCounts
+    // Ưu tiên statusCounts (toàn bộ tập đã lọc từ BE); fallback trang hiện tại nếu BE cũ chưa trả về.
     const onPage = employees
-    const active = onPage.filter((e) => e.status === 'ACTIVE').length
-    const inactive = onPage.filter((e) => e.status === 'INACTIVE').length
-    const reserved = onPage.filter(
-      (e) => e.status === 'RESERVED' || e.status === 'PROBATION'
-    ).length
-    const pageCount = onPage.length
-    const activePct = pageCount > 0 ? Math.round((active / pageCount) * 100) : 0
-    return { total, active, inactive, reserved, pageCount, activePct }
-  }, [employees, pagination.total])
+    const active = counts ? counts.ACTIVE : onPage.filter((e) => e.status === 'ACTIVE').length
+    const inactive = counts ? counts.INACTIVE : onPage.filter((e) => e.status === 'INACTIVE').length
+    const reserved = counts
+      ? counts.RESERVED + counts.PROBATION + counts.TRANSFERRED
+      : onPage.filter(
+          (e) => e.status === 'RESERVED' || e.status === 'PROBATION' || e.status === 'TRANSFERRED'
+        ).length
+    const countedTotal = counts ? active + inactive + reserved : onPage.length
+    const activePct = countedTotal > 0 ? Math.round((active / countedTotal) * 100) : 0
+    return { total, active, inactive, reserved, activePct }
+  }, [employees, pagination.total, pagination.statusCounts])
 
   const pageSize = Math.max(1, filters.pageSize)
   const totalPages = pagination.totalPages ?? Math.max(1, Math.ceil(pagination.total / pageSize))
@@ -172,6 +177,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   }
 
   const handlePageChange = (nextPage: number) => {
+    if (isFetching) return
     setSelectedId(null)
     void navigate({
       to: '/hr-admin',
@@ -251,16 +257,14 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
               title="Hoạt động"
               value={stats.active}
               icon={<UserCheck className="h-5 w-5" />}
-              description={
-                stats.pageCount > 0 ? `${stats.activePct}% trên trang hiện tại` : undefined
-              }
+              description={stats.total > 0 ? `${stats.activePct}% tổng nhân sự` : undefined}
               tone="success"
             />
             <StatCard
               title="Ngừng / bảo lưu"
               value={stats.inactive + stats.reserved}
               icon={<UserMinus className="h-5 w-5" />}
-              description="trên trang hiện tại"
+              description={totalStatHint}
               tone="warning"
             />
             <StatCard
@@ -334,6 +338,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
               page={pagination.page}
               totalPages={totalPages}
               onPageChange={handlePageChange}
+              busy={isFetching}
             />
           </div>
         ) : null}
@@ -348,6 +353,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
             onReactivate={onReactivate}
             pagination={pagination}
             onPageChange={handlePageChange}
+            busy={isFetching}
             listMode="hr"
             canEdit={canEdit}
             canDeactivate={canDeactivate}
@@ -449,6 +455,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
                 page={pagination.page}
                 totalPages={totalPages}
                 onPageChange={handlePageChange}
+                busy={isFetching}
               />
             </div>
           </div>

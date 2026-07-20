@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn, getFileViewerUrl } from '@/lib/utils'
 import { useSubmission } from '@/features/exam/hooks'
+import { ESSAY_CRITERIA } from '@/features/exam-papers/criteria'
+import { extractCriteriaWeights } from '@/lib/examScheduleTime'
 
 const RUBRIC_CRITERIA = [
   {
@@ -111,6 +113,9 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
 
   const isFileSubmission = typeof answersObj === 'object' && 'fileUrl' in answersObj
   const gradingType = (submission?.schedule?.examQuestions as any)?.gradingType || 'direct'
+  const criteriaWeights = extractCriteriaWeights(
+    submission?.schedule?.examQuestions ?? submission?.learningClass?.examQuestions
+  )
   const rubricGradesObj = (submission?.grades as any)?.rubric_reading || {}
 
   const formattedDate = new Date(submission.createdAt).toLocaleString('vi-VN', {
@@ -245,30 +250,19 @@ export function MemberSubmissionResultScreen({ submissionId }: MemberSubmissionR
                               </span>
                             </div>
                             <div className="flex flex-wrap gap-4">
-                              <label className="flex cursor-default items-center gap-2 text-sm font-medium opacity-80">
-                                <Checkbox
-                                  className="shrink-0"
-                                  checked={questionGrade.criteria.includes('ly_thuyet')}
-                                  disabled
-                                />
-                                Đúng lý thuyết (40%)
-                              </label>
-                              <label className="flex cursor-default items-center gap-2 text-sm font-medium opacity-80">
-                                <Checkbox
-                                  className="shrink-0"
-                                  checked={questionGrade.criteria.includes('thuc_te')}
-                                  disabled
-                                />
-                                Ví dụ thực tế (50%)
-                              </label>
-                              <label className="flex cursor-default items-center gap-2 text-sm font-medium opacity-80">
-                                <Checkbox
-                                  className="shrink-0"
-                                  checked={questionGrade.criteria.includes('trinh_bay')}
-                                  disabled
-                                />
-                                Trình bày (10%)
-                              </label>
+                              {ESSAY_CRITERIA.map((c) => (
+                                <label
+                                  key={c.id}
+                                  className="flex cursor-default items-center gap-2 text-sm font-medium opacity-80"
+                                >
+                                  <Checkbox
+                                    className="shrink-0"
+                                    checked={questionGrade.criteria.includes(c.id)}
+                                    disabled
+                                  />
+                                  {c.label} ({criteriaWeights[c.id]}%)
+                                </label>
+                              ))}
                             </div>
 
                             {questionGrade.note && (

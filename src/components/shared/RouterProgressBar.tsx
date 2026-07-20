@@ -1,8 +1,14 @@
+import { useIsFetching, useIsMutating } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useRouterState } from '@tanstack/react-router'
 
+/** Thanh loading global: hiện khi chuyển route HOẶC khi có query/mutation nào của react-query đang chạy. */
 export function RouterProgressBar() {
-  const status = useRouterState({ select: (s) => s.status })
+  const routerStatus = useRouterState({ select: (s) => s.status })
+  const isFetching = useIsFetching()
+  const isMutating = useIsMutating()
+  const isLoading = routerStatus === 'pending' || isFetching > 0 || isMutating > 0
+
   const [width, setWidth] = useState(0)
   const [opacity, setOpacity] = useState(0)
   const fadeTimer = useRef<ReturnType<typeof setTimeout>>()
@@ -12,7 +18,7 @@ export function RouterProgressBar() {
     clearTimeout(fadeTimer.current)
     clearTimeout(completeTimer.current)
 
-    if (status === 'pending') {
+    if (isLoading) {
       setOpacity(1)
       setWidth(0)
       requestAnimationFrame(() => {
@@ -30,7 +36,7 @@ export function RouterProgressBar() {
       clearTimeout(fadeTimer.current)
       clearTimeout(completeTimer.current)
     }
-  }, [status])
+  }, [isLoading])
 
   return (
     <div

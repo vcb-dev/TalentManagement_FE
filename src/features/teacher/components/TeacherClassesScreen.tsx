@@ -1,8 +1,9 @@
 import { useDeferredValue, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Filter, Search } from 'lucide-react'
+import { Filter, Search, ClipboardCheck } from 'lucide-react'
 import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -10,8 +11,8 @@ import {
   PAGE_HEADER_TITLE,
 } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { PaginationCardStepper, PaginationPrevNext } from '@/components/ui/pagination'
-import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { Form } from '@/components/ui/form'
 import { InputFieldController } from '@/components/ui/form-controllers'
@@ -62,21 +63,29 @@ export function TeacherClassesScreen() {
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const { data: teacherClassesRaw = [], isLoading, isError } = useTeacherClasses()
+  const { data: teacherClassesRaw = [] } = useTeacherClasses()
   const rows: TeacherClassRow[] = useMemo(
     () =>
-      teacherClassesRaw.map((r) => ({
-        id: r.id,
-        title: r.name,
-        periodBadge: r.examDate
-          ? `Thi: ${new Date(r.examDate).toLocaleDateString('vi-VN')}`
-          : 'Chưa có lịch thi',
-        examLine: `${LEVEL_LABEL[r.levelFrom] || r.levelFrom} -> ${LEVEL_LABEL[r.levelTo] || r.levelTo}`,
-        memberCount: r.memberCount,
-        metaIcon: ICON_MAP[r.levelFrom] || 'school',
-        accent: ACCENT_MAP[r.levelFrom] || 'primary',
-        track: r.levelFrom as TeacherClassTrack,
-      })),
+      teacherClassesRaw
+        .filter((r) => r.isOwnClass !== false)
+        .map((r) => ({
+          id: r.id,
+          title: r.name,
+          periodBadge: r.examDate
+            ? `Thi: ${new Date(r.examDate).toLocaleDateString('vi-VN')}`
+            : 'Chưa có lịch thi',
+          examLine: `${LEVEL_LABEL[r.levelFrom] || r.levelFrom} -> ${LEVEL_LABEL[r.levelTo] || r.levelTo}`,
+          memberCount: r.memberCount,
+          metaIcon: ICON_MAP[r.levelFrom] || 'school',
+          accent: ACCENT_MAP[r.levelFrom] || 'primary',
+          track: r.levelFrom as TeacherClassTrack,
+        })),
+    [teacherClassesRaw]
+  )
+
+  // Lớp không phải mình chủ nhiệm nhưng được phân công chấm chéo bài thi (lớp Editor).
+  const crossGradingRows = useMemo(
+    () => teacherClassesRaw.filter((r) => r.isOwnClass === false && r.crossGradingScheduleId),
     [teacherClassesRaw]
   )
 
@@ -155,6 +164,36 @@ export function TeacherClassesScreen() {
             </div>
           </div>
 
+          {crossGradingRows.length > 0 ? (
+            <div className="mb-6">
+              <h2 className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground">
+                <ClipboardCheck className="h-4 w-4 text-primary" />
+                Lớp tôi chấm chéo
+              </h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {crossGradingRows.map((r) => (
+                  <Card key={`${r.id}-${r.crossGradingScheduleId}`} className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{r.name}</p>
+                        <p className="text-xs text-muted-foreground">{r.memberCount} thành viên</p>
+                      </div>
+                      <Badge variant="outline">Chấm chéo</Badge>
+                    </div>
+                    <Button type="button" size="sm" className="mt-2 w-full" asChild>
+                      <Link
+                        to="/manager/grade-editor-exam/$scheduleId"
+                        params={{ scheduleId: r.crossGradingScheduleId ?? '' }}
+                      >
+                        Chấm bài thi
+                      </Link>
+                    </Button>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div
             id="teacher-class-filters"
             className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-stretch lg:gap-4"
@@ -202,39 +241,7 @@ export function TeacherClassesScreen() {
             </Form>
           </div>
 
-          {isLoading ? (
-            <div
-              className="grid gap-8 gap-y-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-              role="status"
-              aria-busy
-              aria-label="Đang tải danh sách lớp"
-            >
-              <span className="sr-only">Đang tải lớp phụ trách…</span>
-              {Array.from({ length: 10 }, (_, i) => (
-                <div
-                  key={i}
-                  className="flex min-h-[230px] flex-col rounded-2xl border border-border/90 bg-card p-5 shadow-sm"
-                >
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <Skeleton className="h-12 w-12 rounded-xl" />
-                    <Skeleton className="h-6 w-24 rounded-full" />
-                  </div>
-                  <Skeleton className="mb-2 h-5 w-3/4 rounded" />
-                  <Skeleton className="mb-4 h-3.5 w-1/2 rounded" />
-                  <Skeleton className="mb-2 h-3.5 w-2/3 rounded" />
-                  <div className="mb-4 mt-auto flex items-center gap-2">
-                    <Skeleton className="h-1.5 flex-1 rounded-full" />
-                    <Skeleton className="h-4 w-8 shrink-0 rounded" />
-                  </div>
-                  <Skeleton className="h-9 w-full rounded-lg" />
-                </div>
-              ))}
-            </div>
-          ) : isError ? (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 py-10 text-center text-sm text-destructive">
-              Không tải được danh sách lớp. Vui lòng thử lại.
-            </div>
-          ) : viewMode === 'table' ? (
+          {viewMode === 'table' ? (
             <div className="overflow-hidden rounded-xl border border-primary/15 bg-card shadow-[var(--shadow-card)] ring-1 ring-primary/10">
               <div className="divide-y divide-border md:hidden">
                 {filtered.map((c) => (

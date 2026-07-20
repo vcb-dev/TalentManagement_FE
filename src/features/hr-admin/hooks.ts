@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/axios'
 import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
@@ -9,10 +9,23 @@ import type { IHrEmployeeProfileState } from './components/HrEmployeeProfile/HrE
 
 type EmployeeListData = Awaited<ReturnType<typeof employeeApi.getAll>>
 
+/**
+ * Có bất kỳ action (mutation) nào đang chạy không — dùng để khoá các nút hành động
+ * khác trong lúc một thao tác (lưu, vô hiệu hoá, upload ảnh, mở tài liệu…) chưa xong,
+ * tránh bấm chồng gây ghi đè/double-submit.
+ */
+export function useAnyActionPending(): boolean {
+  return useIsMutating() > 0
+}
+
 export function useEmployees(filters: EmployeeFilters) {
   return useQuery({
     queryKey: employeeKeys.list(filters),
     queryFn: () => employeeApi.getAll(filters),
+    // DB ở xa nên endpoint list tốn ~2.5s khi BE cache miss — giữ data 60s để
+    // chuyển trang/quay lại không phải chờ lại; mutation vẫn invalidate ngay.
+    staleTime: 60_000,
+    placeholderData: (prev) => prev,
   })
 }
 
@@ -104,6 +117,17 @@ export function useEmployeeById(id: string) {
     queryKey: employeeKeys.detailEmployeeByID(id),
     queryFn: () => employeeApi.getEmployeeById(id),
     enabled: id.length > 0,
+  })
+}
+
+/** Sinh signed URL tạm để xem CCCD/CV (bucket riêng tư) — gọi khi bấm "Xem", không tự fetch. */
+export function useAttachmentSignedUrl() {
+  return useMutation({
+    mutationFn: (args: { id: string; field: string }) =>
+      employeeApi.getAttachmentSignedUrl(args.id, args.field),
+    onError: (e) => {
+      toast.error(getApiErrorMessage(e) || 'Không thể mở tài liệu')
+    },
   })
 }
 

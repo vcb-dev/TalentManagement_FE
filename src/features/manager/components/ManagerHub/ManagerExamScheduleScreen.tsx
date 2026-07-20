@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Calendar, Users, X, Edit3, Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import type { z } from 'zod'
@@ -27,18 +28,27 @@ import {
   useManagerClasses,
   useTeacherOptions,
   useUpdateClassSchedule,
-  useUpdateManagerClass,
 } from '@/features/manager/hooks'
 import { formatViDate } from '@/lib/date'
 import {
   addMinutesToHm,
   examLiveStatus,
+  extractCriteriaWeights,
   getExamDurationMinutes,
   mergeScheduleExamQuestions,
 } from '@/lib/examScheduleTime'
+import { ExamPaperAssignmentFields } from './ExamPaperAssignmentFields'
+import { ExamManagementTabs } from './ExamManagementTabs'
 import { useAuthStore } from '@/stores/auth.store'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 import { ClassMembersScoresModal } from '@/features/manager/components/ClassMembersScoresModal'
+import { useExamPapers } from '@/features/exam-papers/hooks'
+import {
+  DEFAULT_ESSAY_CRITERIA_WEIGHTS,
+  ESSAY_CRITERIA,
+  sumCriteriaWeights,
+  type EssayCriteriaWeights,
+} from '@/features/exam-papers/criteria'
 import type { managerClassApiSchema } from '@/features/manager/schemas'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
@@ -83,6 +93,8 @@ export function ManagerExamScheduleScreen() {
     user?.permissionIds?.includes('manager.classes') || user?.role === 'BOD' || user?.role === 'HR'
   const { data: exams = [], isLoading: loadingExams } = useAllExams()
   const { data: classes = [] } = useManagerClasses()
+  const { data: examPapers = [] } = useExamPapers()
+  const paperById = useMemo(() => new Map(examPapers.map((p) => [p.id, p])), [examPapers])
 
   /** `/all-exams` đôi khi không/chậm có examQuestions trong khi GET /classes (schedules nhúng) đã có — gộp để hiển thị đúng duration. */
   const scheduleExamQuestionsFromClasses = useMemo(() => {
@@ -139,6 +151,17 @@ export function ManagerExamScheduleScreen() {
   const [examModalOpen, setExamModalOpen] = useState(false)
   const [examModalClassId, setExamModalClassId] = useState<string | null>(null)
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
+  const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([])
+  const [durationInput, setDurationInput] = useState('120')
+  const [criteriaWeights, setCriteriaWeights] = useState<EssayCriteriaWeights>(
+    DEFAULT_ESSAY_CRITERIA_WEIGHTS
+  )
+
+  const togglePaper = (paperId: string) => {
+    setSelectedPaperIds((prev) =>
+      prev.includes(paperId) ? prev.filter((id) => id !== paperId) : [...prev, paperId]
+    )
+  }
 
   const examForm = useForm<{
     examDate: string
@@ -198,6 +221,10 @@ export function ManagerExamScheduleScreen() {
           examTeacherQuery: '', // will set below
           topic: schedule.topic,
         })
+        const t = toExamTimelineRow(schedule)
+        setDurationInput(String(getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)))
+        setSelectedPaperIds(schedule.examPaperIds ?? [])
+        setCriteriaWeights(extractCriteriaWeights(t.examQuestions))
         // Find teacher info if possible
         // (Teacher info might not be in the schedule object, but we have examTeacherUserId)
       }
@@ -210,6 +237,9 @@ export function ManagerExamScheduleScreen() {
         topic: 'Kỳ thi năng lực',
       })
       setExamTeacher(null)
+      setDurationInput('120')
+      setSelectedPaperIds([])
+      setCriteriaWeights(DEFAULT_ESSAY_CRITERIA_WEIGHTS)
     }
   }
 
@@ -219,6 +249,9 @@ export function ManagerExamScheduleScreen() {
     setEditingScheduleId(null)
     resetExamForm()
     setExamTeacher(null)
+    setDurationInput('120')
+    setSelectedPaperIds([])
+    setCriteriaWeights(DEFAULT_ESSAY_CRITERIA_WEIGHTS)
   }
 
   const saveExamSchedule = () => {
@@ -239,21 +272,16 @@ export function ManagerExamScheduleScreen() {
       return
     }
 
-    const existing = editingScheduleId ? exams.find((ev) => ev.id === editingScheduleId) : undefined
-    const mergedQs =
-      existing != null
-        ? mergeScheduleExamQuestions(
-            mergeScheduleExamQuestions(
-              existing.examQuestions,
-              scheduleExamQuestionsFromClasses.get(existing.id)
-            ),
-            modalClass?.examQuestions ?? null
-          )
-        : null
-    const durationMin =
-      existing != null
-        ? getExamDurationMinutes(mergedQs, existing.startTime, existing.endTime)
-        : 120
+    const durationMin = Number.parseInt(durationInput.trim(), 10)
+    if (!Number.isInteger(durationMin) || durationMin < 1 || durationMin > 1440) {
+      toast.error('Thời gian làm bài phải từ 1 đến 1440 phút')
+      return
+    }
+    const weightTotal = sumCriteriaWeights(criteriaWeights)
+    if (weightTotal !== 100) {
+      toast.error(`Tổng thang điểm 3 tiêu chí tự luận phải bằng 100% (hiện là ${weightTotal}%)`)
+      return
+    }
     const startHm = `${examHour}:${examMinute}`
 
     const payload = {
@@ -264,6 +292,9 @@ export function ManagerExamScheduleScreen() {
       isExam: true,
       examTeacherUserId: finalTeacher?.userId,
       examStatus: 'open',
+      durationMinutes: durationMin,
+      examPaperIds: selectedPaperIds,
+      criteriaWeights,
     }
 
     if (editingScheduleId) {
@@ -289,6 +320,7 @@ export function ManagerExamScheduleScreen() {
   return (
     <>
       <ManagerScreenLayout hideHubNav hideToolbar>
+        <ExamManagementTabs active="/manager/exam-schedule" />
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-6">
           <div className={cn('min-w-0 flex-1', PAGE_HEADER_SURFACE)}>
             <h1 className={PAGE_HEADER_TITLE}>
@@ -385,12 +417,7 @@ export function ManagerExamScheduleScreen() {
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           {/* Mobile: thẻ — đủ nội dung, nút full width */}
           <div className="divide-y divide-border md:hidden">
-            {loadingExams ? (
-              <div className="flex items-center justify-center px-4 py-16 text-muted-foreground">
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <span className="ml-2 text-sm font-semibold">Đang tải lịch thi…</span>
-              </div>
-            ) : filteredExams.length === 0 ? (
+            {filteredExams.length === 0 ? (
               <div className="flex flex-col items-center justify-center px-4 py-16 text-muted-foreground">
                 <Calendar className="mb-4 h-10 w-10 opacity-20" />
                 <p className="font-bold">Không tìm thấy kỳ thi nào</p>
@@ -440,6 +467,19 @@ export function ManagerExamScheduleScreen() {
                       <p className="mt-0.5 break-words text-sm font-bold text-foreground">
                         {e.examTeacherName || (e.examTeacherUserId ? 'Đã gán' : 'Chưa gán')}
                       </p>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 px-3 py-2">
+                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                        Đề thi
+                      </p>
+                      {e.examPaperIds?.length ? (
+                        <p className="mt-0.5 break-words text-sm font-bold text-emerald-600">
+                          {e.examPaperIds.length} đề:{' '}
+                          {e.examPaperIds.map((id) => paperById.get(id)?.code ?? '—').join(', ')}
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 text-sm italic text-muted-foreground">Chưa gán đề</p>
+                      )}
                     </div>
                     <div className="flex flex-col gap-2">
                       <Button
@@ -494,22 +534,14 @@ export function ManagerExamScheduleScreen() {
                   <th className="px-5 py-4 font-bold text-foreground">Tên lớp & Kỳ thi</th>
                   <th className="px-5 py-4 font-bold text-foreground">Thời gian</th>
                   <th className="px-5 py-4 font-bold text-foreground">Người chấm</th>
+                  <th className="px-5 py-4 font-bold text-foreground">Tình trạng đề thi</th>
                   <th className="px-5 py-4 text-right font-bold text-foreground">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
-                {loadingExams ? (
+                {filteredExams.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-5 py-20 text-center">
-                      <div className="flex items-center justify-center text-muted-foreground">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                        <span className="ml-2 text-sm font-semibold">Đang tải lịch thi…</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : filteredExams.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-5 py-20 text-center">
+                    <td colSpan={5} className="px-5 py-20 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Calendar className="mb-4 h-10 w-10 opacity-20" />
                         <p className="font-bold">Không tìm thấy kỳ thi nào</p>
@@ -559,6 +591,18 @@ export function ManagerExamScheduleScreen() {
                           <p className="text-xs font-bold text-foreground">
                             {e.examTeacherName || (e.examTeacherUserId ? 'Đã gán' : 'Chưa gán')}
                           </p>
+                        </td>
+                        <td className="px-5 py-5">
+                          {e.examPaperIds?.length ? (
+                            <p className="text-xs font-bold text-emerald-600">
+                              {e.examPaperIds.length} đề:{' '}
+                              {e.examPaperIds
+                                .map((id) => paperById.get(id)?.code ?? '—')
+                                .join(', ')}
+                            </p>
+                          ) : (
+                            <p className="text-xs italic text-muted-foreground">Chưa gán đề</p>
+                          )}
                         </td>
                         <td className="px-5 py-5 text-right">
                           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -614,160 +658,227 @@ export function ManagerExamScheduleScreen() {
         </div>
       </ManagerScreenLayout>
 
-      {examModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="max-h-[min(92dvh,900px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-2xl animate-in zoom-in-95 duration-200 sm:p-6">
-            <div className="mb-6 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                {editingScheduleId ? 'Chỉnh sửa lịch thi' : 'Thiết lập kỳ thi mới'}
-              </h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full"
-                onClick={closeExamModal}
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-
-            <div className="space-y-5">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground ml-1">Chọn lớp học</label>
-                <Select
-                  value={examModalClassId ?? ''}
-                  onValueChange={setExamModalClassId}
-                  disabled={!!editingScheduleId}
+      {examModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="max-h-[min(92dvh,900px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-2xl animate-in zoom-in-95 duration-200 sm:p-6">
+              <div className="mb-6 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  {editingScheduleId ? 'Chỉnh sửa lịch thi' : 'Thiết lập kỳ thi mới'}
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  onClick={closeExamModal}
                 >
-                  <SelectTrigger className="h-10 w-full rounded-xl border-border bg-muted/20 font-bold">
-                    <SelectValue placeholder="Chọn lớp..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {classes.map((c) => (
-                      <SelectItem key={c.id} value={c.id} className="font-bold">
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <X className="h-5 w-5" />
+                </Button>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground ml-1">
-                  Tên kỳ thi (Topic)
-                </label>
-                <Input
-                  {...examForm.register('topic')}
-                  placeholder="Ví dụ: Kỳ thi năng lực đợt 1"
-                  className="h-10 w-full rounded-xl"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-5">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground ml-1">Ngày thi</label>
-                  <DatePicker
-                    value={watchedExamDate}
-                    onChange={(value) => setExamValue('examDate', value)}
-                    min={toLocalDateInputValue(new Date())}
+                  <label className="text-xs font-bold text-muted-foreground ml-1">
+                    Chọn lớp học
+                  </label>
+                  <Select
+                    value={examModalClassId ?? ''}
+                    onValueChange={setExamModalClassId}
+                    disabled={!!editingScheduleId}
+                  >
+                    <SelectTrigger className="h-10 w-full rounded-xl border-border bg-muted/20 font-bold">
+                      <SelectValue placeholder="Chọn lớp..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {classes.map((c) => (
+                        <SelectItem key={c.id} value={c.id} className="font-bold">
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-muted-foreground ml-1">
+                    Tên kỳ thi (Topic)
+                  </label>
+                  <Input
+                    {...examForm.register('topic')}
+                    placeholder="Ví dụ: Kỳ thi năng lực đợt 1"
                     className="h-10 w-full rounded-xl"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground ml-1">Giờ thi</label>
-                  <div className="flex items-center gap-2 px-3 py-1 bg-muted/20 rounded-xl border border-border h-10">
-                    <Input
-                      inputMode="numeric"
-                      value={watchedExamHour}
-                      onChange={(e) =>
-                        setExamValue('examHour', clampTwoDigit(e.target.value, 0, 23))
-                      }
-                      className="h-7 w-8 border-none bg-transparent p-0 text-center font-bold shadow-none focus-visible:ring-0"
-                    />
-                    <span className="font-bold text-muted-foreground">:</span>
-                    <Input
-                      inputMode="numeric"
-                      value={watchedExamMinute}
-                      onChange={(e) =>
-                        setExamValue('examMinute', clampTwoDigit(e.target.value, 0, 59))
-                      }
-                      className="h-7 w-8 border-none bg-transparent p-0 text-center font-bold shadow-none focus-visible:ring-0"
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-muted-foreground ml-1">Ngày thi</label>
+                    <DatePicker
+                      value={watchedExamDate}
+                      onChange={(value) => setExamValue('examDate', value)}
+                      min={toLocalDateInputValue(new Date())}
+                      className="h-10 w-full rounded-xl"
                     />
                   </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-muted-foreground ml-1">Giờ thi</label>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-muted/20 rounded-xl border border-border h-10">
+                      <Input
+                        inputMode="numeric"
+                        value={watchedExamHour}
+                        onChange={(e) =>
+                          setExamValue('examHour', clampTwoDigit(e.target.value, 0, 23))
+                        }
+                        className="h-7 w-8 border-none bg-transparent p-0 text-center font-bold shadow-none focus-visible:ring-0"
+                      />
+                      <span className="font-bold text-muted-foreground">:</span>
+                      <Input
+                        inputMode="numeric"
+                        value={watchedExamMinute}
+                        onChange={(e) =>
+                          setExamValue('examMinute', clampTwoDigit(e.target.value, 0, 59))
+                        }
+                        className="h-7 w-8 border-none bg-transparent p-0 text-center font-bold shadow-none focus-visible:ring-0"
+                      />
+                    </div>
+                  </div>
                 </div>
+
+                <ExamPaperAssignmentFields
+                  durationInput={durationInput}
+                  onDurationChange={setDurationInput}
+                  selectedPaperIds={selectedPaperIds}
+                  onTogglePaper={togglePaper}
+                  endTimePreview={
+                    watchedExamHour && watchedExamMinute && durationInput
+                      ? addMinutesToHm(
+                          `${watchedExamHour}:${watchedExamMinute}`,
+                          Number.parseInt(durationInput, 10) || 0
+                        )
+                      : undefined
+                  }
+                />
+
+                <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                  <div className="mb-1 flex items-center justify-between">
+                    <label className="text-xs font-bold uppercase tracking-wider text-primary">
+                      Thang điểm đánh giá tự luận
+                    </label>
+                    <span
+                      className={cn(
+                        'text-xs font-bold',
+                        sumCriteriaWeights(criteriaWeights) === 100
+                          ? 'text-emerald-600'
+                          : 'text-rose-600'
+                      )}
+                    >
+                      Tổng: {sumCriteriaWeights(criteriaWeights)}%
+                      {sumCriteriaWeights(criteriaWeights) !== 100 ? ' — phải bằng 100%' : ''}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Áp dụng cho câu tự luận chấm theo tiêu chí (không dùng cho lịch thi đã gán đề
+                    ExamPaper — đề đó tự có thang điểm riêng theo từng câu).
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {ESSAY_CRITERIA.map((c) => (
+                      <div key={c.id} className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-foreground">{c.label}</label>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={criteriaWeights[c.id]}
+                            onChange={(e) =>
+                              setCriteriaWeights((prev) => ({
+                                ...prev,
+                                [c.id]: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
+                              }))
+                            }
+                            className="h-8 w-20 text-sm"
+                          />
+                          <span className="text-xs font-bold text-primary">%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {!editingScheduleId && (
+                  <div
+                    className={cn('space-y-1.5', isTapSuClass && 'opacity-50 pointer-events-none')}
+                  >
+                    <label className="text-xs font-bold text-muted-foreground ml-1">
+                      Người chấm thi
+                    </label>
+                    <div className="search-dropdown-container relative">
+                      {isTapSuClass ? (
+                        <div className="h-10 w-full rounded-xl bg-amber-50 border border-amber-100 px-3 flex items-center text-xs text-amber-700 font-bold">
+                          Tự động gán: {modalClass?.teacher?.name || '—'}
+                        </div>
+                      ) : (
+                        <>
+                          <Input
+                            value={watchedExamTeacherQuery}
+                            onChange={(e) => setExamValue('examTeacherQuery', e.target.value)}
+                            placeholder="Tìm kiếm giáo viên..."
+                            className="h-10 w-full rounded-xl"
+                          />
+                          {watchedExamTeacherQuery.trim().length > 0 &&
+                            watchedExamTeacherQuery !== examTeacher?.name && (
+                              <div className="absolute z-50 mt-2 max-h-48 w-full overflow-auto rounded-xl border border-border bg-card p-1.5 shadow-xl">
+                                {fetchingExamTeachers ? (
+                                  <div className="flex items-center justify-center py-4">
+                                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                  </div>
+                                ) : (
+                                  examTeacherOptions.map((opt) => (
+                                    <Button
+                                      key={opt.userId}
+                                      variant="ghost"
+                                      className="h-auto w-full flex-col items-start px-3 py-2 text-left hover:bg-primary/5 rounded-lg"
+                                      onClick={() => {
+                                        setExamTeacher(opt)
+                                        setExamValue('examTeacherQuery', opt.name)
+                                      }}
+                                    >
+                                      <span className="font-bold text-xs">{opt.name}</span>
+                                      <span className="text-xs opacity-60">{opt.email}</span>
+                                    </Button>
+                                  ))
+                                )}
+                              </div>
+                            )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {!editingScheduleId && (
-                <div
-                  className={cn('space-y-1.5', isTapSuClass && 'opacity-50 pointer-events-none')}
+              <div className="mt-8 flex justify-end gap-3 pt-5 border-t">
+                <Button variant="ghost" onClick={closeExamModal} className="font-bold text-xs">
+                  Hủy
+                </Button>
+                <Button
+                  className="font-bold text-xs px-6"
+                  onClick={saveExamSchedule}
+                  disabled={
+                    !examModalClassId || createSchedule.isPending || updateSchedule.isPending
+                  }
                 >
-                  <label className="text-xs font-bold text-muted-foreground ml-1">
-                    Người chấm thi
-                  </label>
-                  <div className="search-dropdown-container relative">
-                    {isTapSuClass ? (
-                      <div className="h-10 w-full rounded-xl bg-amber-50 border border-amber-100 px-3 flex items-center text-xs text-amber-700 font-bold">
-                        Tự động gán: {modalClass?.teacher?.name || '—'}
-                      </div>
-                    ) : (
-                      <>
-                        <Input
-                          value={watchedExamTeacherQuery}
-                          onChange={(e) => setExamValue('examTeacherQuery', e.target.value)}
-                          placeholder="Tìm kiếm giáo viên..."
-                          className="h-10 w-full rounded-xl"
-                        />
-                        {watchedExamTeacherQuery.trim().length > 0 &&
-                          watchedExamTeacherQuery !== examTeacher?.name && (
-                            <div className="absolute z-50 mt-2 max-h-48 w-full overflow-auto rounded-xl border border-border bg-card p-1.5 shadow-xl">
-                              {fetchingExamTeachers ? (
-                                <div className="flex items-center justify-center py-4">
-                                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                                </div>
-                              ) : (
-                                examTeacherOptions.map((opt) => (
-                                  <Button
-                                    key={opt.userId}
-                                    variant="ghost"
-                                    className="h-auto w-full flex-col items-start px-3 py-2 text-left hover:bg-primary/5 rounded-lg"
-                                    onClick={() => {
-                                      setExamTeacher(opt)
-                                      setExamValue('examTeacherQuery', opt.name)
-                                    }}
-                                  >
-                                    <span className="font-bold text-xs">{opt.name}</span>
-                                    <span className="text-xs opacity-60">{opt.email}</span>
-                                  </Button>
-                                ))
-                              )}
-                            </div>
-                          )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
+                  {(createSchedule.isPending || updateSchedule.isPending) && (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  )}
+                  Xác nhận
+                </Button>
+              </div>
             </div>
-
-            <div className="mt-8 flex justify-end gap-3 pt-5 border-t">
-              <Button variant="ghost" onClick={closeExamModal} className="font-bold text-xs">
-                Hủy
-              </Button>
-              <Button
-                className="font-bold text-xs px-6"
-                onClick={saveExamSchedule}
-                disabled={!examModalClassId || createSchedule.isPending || updateSchedule.isPending}
-              >
-                {(createSchedule.isPending || updateSchedule.isPending) && (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                )}
-                Xác nhận
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {selectedClassIdForScores && (
         <ClassMembersScoresModal

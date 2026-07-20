@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 
-export type EmploymentStatus = 'ACTIVE' | 'INACTIVE' | 'PROBATION' | 'RESERVED'
+export type EmploymentStatus = 'ACTIVE' | 'INACTIVE' | 'PROBATION' | 'RESERVED' | 'TRANSFERRED'
 
 export interface StatusBadgeProps {
   status: EmploymentStatus
@@ -11,6 +11,7 @@ const labels: Record<EmploymentStatus, string> = {
   INACTIVE: 'Ngưng',
   PROBATION: 'Thử việc',
   RESERVED: 'Dự phòng',
+  TRANSFERRED: 'Điều chuyển',
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {

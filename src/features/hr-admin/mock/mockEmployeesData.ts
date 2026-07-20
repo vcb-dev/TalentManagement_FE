@@ -1,6 +1,7 @@
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import type { EmployeeFilters } from '@/features/hr-admin/types'
 import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
+import type { MeUserSelf } from '@/features/profile/userSelf.types'
 import { HR_DEPARTMENT_IDS, HR_TEAM_OPTIONS } from '@/features/hr-admin/hrOrgOptions'
 
 export type CreateEmployeeMeta = {
@@ -123,6 +124,18 @@ let rows: EmployeeEntity[] = [
     },
     [MOCK_TEAM_NS01]
   ),
+  emp(
+    {
+      id: '10000000-0000-4000-8000-000000000008',
+      name: 'Đỗ Quang',
+      email: 'd.quang@vcb.com',
+      role: 'MEMBER',
+      status: 'TRANSFERRED',
+      currentLevel: 'biet_viec',
+      currentStar: 2,
+    },
+    [MOCK_TEAM_NS02]
+  ),
 ]
 
 function statusFilter(f: EmployeeFilters['status']): EmployeeEntity['status'] | undefined {
@@ -132,6 +145,7 @@ function statusFilter(f: EmployeeFilters['status']): EmployeeEntity['status'] | 
     inactive: 'INACTIVE',
     probation: 'PROBATION',
     reserved: 'RESERVED',
+    transferred: 'TRANSFERRED',
   }
   return map[f]
 }
@@ -142,6 +156,13 @@ export function getMockEmployees(filters: EmployeeFilters): {
   page: number
   pageSize: number
   totalPages: number
+  statusCounts: {
+    ACTIVE: number
+    INACTIVE: number
+    PROBATION: number
+    RESERVED: number
+    TRANSFERRED: number
+  }
 } {
   let list = [...rows]
   if (filters.teamId) {
@@ -170,7 +191,9 @@ export function getMockEmployees(filters: EmployeeFilters): {
   const start = (page - 1) * pageSize
   const data = list.slice(start, start + pageSize)
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  return { data, total, page, pageSize, totalPages }
+  const statusCounts = { ACTIVE: 0, INACTIVE: 0, PROBATION: 0, RESERVED: 0, TRANSFERRED: 0 }
+  for (const e of list) statusCounts[e.status]++
+  return { data, total, page, pageSize, totalPages, statusCounts }
 }
 
 export function getMockEmployeeById(id: string): EmployeeEntity | undefined {
@@ -218,6 +241,93 @@ export function mockPatchEmployee(
   if (patch.currentLevel !== undefined) next.currentLevel = patch.currentLevel
   rows[i] = next
   return next
+}
+
+/** Hồ sơ đầy đủ (`GET/PATCH /employees/hr/:id`) — chỉ lưu phần đã chỉnh sửa, phần còn lại suy ra từ `rows`. */
+const profileOverrides = new Map<string, Partial<MeUserSelf>>()
+
+function buildMockProfile(e: EmployeeEntity): MeUserSelf {
+  return {
+    role: e.role,
+    id: e.id,
+    larkRecordId: `mock-${e.id}`,
+    email: e.email,
+    createdAt: e.createdAt,
+    updatedAt: e.updatedAt,
+    lastSyncedAt: e.updatedAt,
+    startDateWork: e.startDate ?? null,
+    employmentStatus: e.status,
+    fullNameLegal: e.name,
+    displayName: e.name,
+    employeeCodePrimary: null,
+    employeeCodeSecondary: null,
+    contractType: e.role,
+    jobTitle: null,
+    teamGroup: e.teamNames?.[0] ?? null,
+    departmentName: e.departmentName ?? null,
+    divisionId: e.departmentId || null,
+    teamId: e.teamIds[0] ?? null,
+    extraTeamIds: e.teamIds.slice(1),
+    teamIds: e.teamIds,
+    directManager: e.directManager ?? null,
+    portraitRef: e.avatarUrl ?? null,
+    gender: null,
+    birthDate: e.birthDate ?? null,
+    phonePrimary: e.phone ?? null,
+    phoneSecondary: null,
+    workplaceBranch: null,
+    educationLevel: null,
+    addressCurrent: null,
+    addressHousehold: null,
+    identityDocumentInfo: null,
+    maritalStatus: null,
+    childrenInfo: null,
+    emergencyContact1: null,
+    emergencyContact2: null,
+    schoolName: null,
+    bankAccountInfo: null,
+    vehicleInfo: null,
+    hometownDetail: null,
+    ethnicity: null,
+    religion: null,
+    familyNotes: null,
+    fatherGuardianContact: null,
+    motherGuardianContact: null,
+    attachmentIdFront: null,
+    attachmentIdBack: null,
+    policyAcknowledgement: null,
+    hrOfficerName: null,
+    facebookUrl: null,
+    socialNickname: null,
+    profileReviewDate: null,
+    cvAttachmentRef: null,
+    notes: null,
+    teamPosition: null,
+    currentLearningClassName: null,
+    insuranceBookNumber: null,
+    managerBlockCode: null,
+  }
+}
+
+export function getMockEmployeeProfileById(id: string): MeUserSelf | undefined {
+  const e = getMockEmployeeById(id)
+  if (!e) return undefined
+  return { ...buildMockProfile(e), ...profileOverrides.get(id) }
+}
+
+export function mockUpdateEmployeeProfile(
+  id: string,
+  patch: Partial<MeUserSelf>
+): MeUserSelf | undefined {
+  const e = getMockEmployeeById(id)
+  if (!e) return undefined
+  const next: Partial<MeUserSelf> = {
+    ...profileOverrides.get(id),
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  }
+  profileOverrides.set(id, next)
+  return { ...buildMockProfile(e), ...next }
 }
 
 export function mockCreateEmployee(

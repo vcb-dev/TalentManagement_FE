@@ -21,7 +21,6 @@ import {
 } from '@/features/employee-dashboard/components/ManagerSharedReportPeriodFilter'
 import { CARD_ENTRANCE_HOVER, STAR_POP, staggerStyle } from '@/lib/cardMotion'
 import { LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
-import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { Button } from '@/components/ui/button'
@@ -169,11 +168,9 @@ export function EmployeeLearningDashboard() {
   const filledStars = apiCareer?.currentStars ?? meDashboard?.levelSource?.starCount ?? 0
 
   const avatarName = apiUser?.fullNameLegal?.trim() || user?.name || 'User'
-  const teamLine = isLoading ? 'Loading...' : apiUser?.teamGroup?.trim() || 'Khác'
   const deptLine = isLoading
     ? 'Loading...'
     : apiUser?.departmentName?.trim() || (user ? formatDepartment(user.departmentId) : '—')
-  const roleLabel = user ? ROLE_LABEL_VI[user.role] : '—'
   const fullName = isLoading
     ? 'Loading...'
     : apiUser?.displayName?.trim() || apiUser?.fullNameLegal?.trim() || user?.name || '—'
@@ -493,14 +490,7 @@ export function EmployeeLearningDashboard() {
               </h2>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {isLoading ? (
-                <>
-                  <Skeleton className="h-24 rounded-2xl" />
-                  <Skeleton className="h-24 rounded-2xl" />
-                  <Skeleton className="h-24 rounded-2xl" />
-                  <Skeleton className="h-24 rounded-2xl" />
-                </>
-              ) : highlightAchievements.length === 0 ? (
+              {highlightAchievements.length === 0 ? (
                 <div className="rounded-2xl border border-border/80 bg-card px-4 py-4 text-sm text-muted-foreground sm:col-span-2 xl:col-span-4">
                   Chưa có thành tựu.
                 </div>

@@ -1,3 +1,6 @@
+import type { EssayCriteriaWeights } from '@/features/exam-papers/criteria'
+import { DEFAULT_ESSAY_CRITERIA_WEIGHTS } from '@/features/exam-papers/criteria'
+
 /** Chuẩn hóa thời lượng & hiển thị khoảng thi (theo đề đã gán hoặc endTime trong DB). */
 
 export function parseHmToMinutes(hm: string): number | null {
@@ -54,6 +57,40 @@ export function extractDurationMinutes(examQuestions: unknown): number | undefin
     if (Number.isFinite(n) && n > 0) return n
   }
   return undefined
+}
+
+/**
+ * Thang điểm chấm tự luận của bank JSON cũ (`examQuestions.criteriaWeights`) — manager có thể
+ * chỉnh qua màn "Lịch thi & Người chấm"; mặc định 40/50/10 nếu chưa cấu hình.
+ */
+export function extractCriteriaWeights(examQuestions: unknown): EssayCriteriaWeights {
+  let parsed: unknown = examQuestions
+  if (typeof parsed === 'string') {
+    const t = parsed.trim()
+    if (!t) return DEFAULT_ESSAY_CRITERIA_WEIGHTS
+    try {
+      parsed = JSON.parse(t) as unknown
+    } catch {
+      return DEFAULT_ESSAY_CRITERIA_WEIGHTS
+    }
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return DEFAULT_ESSAY_CRITERIA_WEIGHTS
+  }
+  const w = (parsed as { criteriaWeights?: unknown }).criteriaWeights
+  if (typeof w !== 'object' || w === null) return DEFAULT_ESSAY_CRITERIA_WEIGHTS
+  const record = w as Record<string, unknown>
+  const ly_thuyet = record.ly_thuyet
+  const thuc_te = record.thuc_te
+  const trinh_bay = record.trinh_bay
+  if (
+    typeof ly_thuyet === 'number' &&
+    typeof thuc_te === 'number' &&
+    typeof trinh_bay === 'number'
+  ) {
+    return { ly_thuyet, thuc_te, trinh_bay }
+  }
+  return DEFAULT_ESSAY_CRITERIA_WEIGHTS
 }
 
 /** Ưu tiên payload từ all-exams; nếu không có duration thì lấy từ schedules nhúng trong GET /classes. */

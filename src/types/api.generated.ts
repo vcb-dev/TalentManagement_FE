@@ -188,7 +188,7 @@ export interface components {
             email: string;
             role: components["schemas"]["Role"];
             /** @enum {string} */
-            status: "ACTIVE" | "INACTIVE" | "PROBATION" | "RESERVED";
+            status: "ACTIVE" | "INACTIVE" | "PROBATION" | "RESERVED" | "TRANSFERRED";
             /** Format: uuid */
             departmentId: string;
             teamIds: string[];
@@ -213,6 +213,8 @@ export interface components {
             departmentId: string;
             /** Format: uuid */
             teamId: string;
+            /** @description Nhóm bổ sung (ngoài teamId theo phòng ban) */
+            extraTeamIds?: string[];
             phone?: string;
             birthDate?: string;
             /** @description Ngày bắt đầu làm việc (start_date_work) */
@@ -221,6 +223,38 @@ export interface components {
             initialLevel?: "tap_su" | "biet_viec" | "duoc_viec" | "dong_gop_ket_qua" | "tuong";
             /** @description false = không gửi email thông báo tạo tài khoản */
             notifyEmail?: boolean;
+            displayName?: string;
+            gender?: string;
+            facebookUrl?: string;
+            jobTitle?: string;
+            teamPosition?: string;
+            workplaceBranch?: string;
+            directManager?: string | null;
+            addressCurrent?: string;
+            addressHousehold?: string;
+            educationLevel?: string;
+            schoolName?: string;
+            hometownDetail?: string;
+            identityDocumentInfo?: string;
+            maritalStatus?: string;
+            ethnicity?: string;
+            religion?: string;
+            insuranceBookNumber?: string;
+            childrenInfo?: string;
+            emergencyContact1?: string;
+            emergencyContact2?: string;
+            fatherGuardianContact?: string;
+            motherGuardianContact?: string;
+            familyNotes?: string;
+            bankAccountInfo?: string;
+            vehicleInfo?: string;
+            managerBlockCode?: string;
+            attachmentIdFront?: string;
+            attachmentIdBack?: string;
+            policyAcknowledgement?: string;
+            profileReviewDate?: string;
+            cvAttachmentRef?: string;
+            notes?: string;
         };
         PatchEmployeeInput: {
             name?: string;
@@ -231,16 +265,19 @@ export interface components {
             departmentId?: string;
             /** Format: uuid */
             teamId?: string;
+            /** @description Nhóm bổ sung (ngoài teamId theo phòng ban) */
+            extraTeamIds?: string[];
             phone?: string;
             birthDate?: string;
             /** @description Ngày bắt đầu làm việc */
             startDate?: string;
             /** @description UUID team phụ trên FE; gửi chuỗi rỗng để xóa */
             secondaryTeamId?: string;
+            directManager?: string | null;
             /** @enum {string} */
             currentLevel?: "tap_su" | "biet_viec" | "duoc_viec" | "dong_gop_ket_qua" | "tuong";
             /** @enum {string} */
-            status?: "ACTIVE" | "INACTIVE" | "PROBATION" | "RESERVED";
+            status?: "ACTIVE" | "INACTIVE" | "PROBATION" | "RESERVED" | "TRANSFERRED";
         };
         ExamResult: {
             /** Format: uuid */

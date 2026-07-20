@@ -3,6 +3,7 @@ import { FormProvider, useForm, useWatch, type Control } from 'react-hook-form'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 
 import { useAuthStore } from '@/stores/auth.store'
+import { useUploadMePortrait } from '@/features/profile/hooks'
 import { useQuery } from '@tanstack/react-query'
 import { organizationApi } from '@/features/organization/api'
 import { type MeUserDisplayKey, type MeUserSelf } from '@/features/profile/userSelf.types'
@@ -16,15 +17,18 @@ import {
   formatUserDateForReadonlyDisplay,
   parseStoredDateToInputValue,
 } from '@/features/profile/profileDateUtils'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { profileApi } from '@/features/profile/api'
+import { toast } from 'sonner'
+import { getApiErrorMessage } from '@/lib/axios'
 import { EmployeeExtraTeamsField, extraTeamIdsEqual } from '../EmployeeExtraTeamsField'
 import { levelPillText } from '../HrEmployeeList/employeeListUtils'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import type { Role } from '@/types/auth'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
-import { Building2, RefreshCw } from 'lucide-react'
+import { Building2, RefreshCw, Upload } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -40,13 +44,23 @@ import { Link } from '@tanstack/react-router'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { usePermission } from '@/hooks/usePermission'
 import {
+  useAnyActionPending,
+  useAttachmentSignedUrl,
   useDeactivateEmployee,
+  useDirectManagerOptions,
   useEmployee,
   useUpdateEmployee,
   useUpdateEmployeeById,
 } from '../../hooks'
 import { EmployeeLoginCredentialCard } from './EmployeeLoginCredentialCard'
 import { EMPLOYEE_PATCH_KEYS, type EditEmployeeBody, type EmployeePatchKey } from '../../types'
+import { teamPositionOptions } from '../../teamPositionOptions'
+import {
+  buildDirectManagerSelectOptions,
+  directManagerIdToStoredName,
+  resolveDirectManagerFormValue,
+  type DirectManagerOption,
+} from '../../directManagerOptions'
 export interface HrEmployeeProfileProps {
   employee: IHrEmployeeProfileState
   /** Mặc định mở tab khi vào từ URL `?mode=edit`. */
@@ -54,10 +68,11 @@ export interface HrEmployeeProfileProps {
 }
 export type IHrEmployeeProfileState = MeUserSelf
 
-type EmploymentStatusUi = 'working' | 'resigned'
+type EmploymentStatusUi = 'working' | 'resigned' | 'transferred'
 
 const EMPLOYMENT_STATUS_OPTIONS: { value: EmploymentStatusUi; label: string }[] = [
   { value: 'working', label: 'Đang làm việc' },
+  { value: 'transferred', label: 'Điều chuyển' },
   { value: 'resigned', label: 'Đã nghỉ' },
 ]
 
@@ -99,14 +114,27 @@ function resolveEmploymentStatusUi(
   employee: IHrEmployeeProfileState,
   summaryStatus?: EmployeeEntity['status']
 ): EmploymentStatusUi {
-  const inactive = summaryStatus
-    ? summaryStatus === 'INACTIVE'
-    : isEmploymentInactive(employee.employmentStatus)
-  return inactive ? 'resigned' : 'working'
+  if (summaryStatus) {
+    if (summaryStatus === 'INACTIVE') return 'resigned'
+    if (summaryStatus === 'TRANSFERRED') return 'transferred'
+    return 'working'
+  }
+  if (isEmploymentTransferred(employee.employmentStatus)) return 'transferred'
+  if (isEmploymentInactive(employee.employmentStatus)) return 'resigned'
+  return 'working'
 }
 
 function canManageEmploymentStatusRole(role: string | null | undefined): boolean {
   return role === 'MANAGER' || role === 'HR'
+}
+
+function foldEmploymentStatusText(employmentStatus: string | null | undefined): string {
+  return (employmentStatus ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
 }
 
 function isEmploymentInactive(employmentStatus: string | null | undefined): boolean {
@@ -114,12 +142,16 @@ function isEmploymentInactive(employmentStatus: string | null | undefined): bool
   if (!raw) return false
   const upper = raw.toUpperCase()
   if (upper === 'INACTIVE' || upper === 'TERMINATED') return true
-  const folded = raw
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/gi, 'd')
-    .toLowerCase()
-  return /thoi viec|nghi viec|da nghi|inactive|ngung hoat dong|sa thai/.test(folded)
+  return /thoi viec|nghi viec|da nghi|inactive|ngung hoat dong|sa thai/.test(
+    foldEmploymentStatusText(raw)
+  )
+}
+
+function isEmploymentTransferred(employmentStatus: string | null | undefined): boolean {
+  const raw = (employmentStatus ?? '').trim()
+  if (!raw) return false
+  if (raw.toUpperCase() === 'TRANSFERRED') return true
+  return /dieu chuyen|transferred/.test(foldEmploymentStatusText(raw))
 }
 
 function EmploymentStatusField({ control }: { control: Control<EditRecord> }) {
@@ -210,7 +242,10 @@ function ProfileActionButtons({
 
 const Form = FormProvider
 
-function userToEdit(u: IHrEmployeeProfileState): EditRecord {
+function userToEdit(
+  u: IHrEmployeeProfileState,
+  managers: Pick<EmployeeEntity, 'id' | 'name'>[] = []
+): EditRecord {
   const r = emptyEditRecord()
   for (const k of EMPLOYEE_PATCH_KEYS) {
     if (isDateFormField(k)) {
@@ -222,6 +257,8 @@ function userToEdit(u: IHrEmployeeProfileState): EditRecord {
   if (!r.displayName && u.fullNameLegal) {
     r.displayName = u.fullNameLegal
   }
+  const resolvedManager = resolveDirectManagerFormValue(u.directManager, managers)
+  r.directManager = resolvedManager === '__none' ? '' : resolvedManager
   r.extraTeamIds = u.extraTeamIds ?? u.teamIds?.slice(1) ?? []
   r.employmentStatusUi = resolveEmploymentStatusUi(u)
   return r
@@ -233,11 +270,18 @@ function toDisplayRole(role: string | null | undefined): Role {
   return 'MEMBER'
 }
 
-function toPatch(edit: EditRecord, original: IHrEmployeeProfileState): EditEmployeeBody {
+function toPatch(
+  edit: EditRecord,
+  original: IHrEmployeeProfileState,
+  managers: Pick<EmployeeEntity, 'id' | 'name'>[]
+): EditEmployeeBody {
   const nz = (s: string) => (s.trim() === '' ? null : s.trim())
   const body = {} as EditEmployeeBody
   for (const k of EMPLOYEE_PATCH_KEYS) {
-    body[k] = nz(edit[k] ?? '')
+    body[k] =
+      k === 'directManager'
+        ? directManagerIdToStoredName(edit.directManager, managers)
+        : nz(edit[k] ?? '')
   }
   const origExtras = original.extraTeamIds ?? original.teamIds?.slice(1) ?? []
   if (!extraTeamIdsEqual(edit.extraTeamIds ?? [], origExtras)) {
@@ -251,14 +295,6 @@ function workOrgReadonlyValue(employee: IHrEmployeeProfileState, key: MeUserDisp
   const v = employee[key]
   return v == null ? '—' : String(v)
 }
-
-const teamPositionOptions = [
-  { value: 'Part-time', label: 'Part-time' },
-  { value: 'Full-time thử việc', label: 'Full-time thử việc' },
-  { value: 'Full-time chính thức', label: 'Full-time chính thức' },
-  { value: 'Thực tập sinh', label: 'Thực tập sinh' },
-  { value: 'Trưởng nhóm', label: 'Trưởng nhóm' },
-]
 
 function ProfileReadonlyInfo({
   name,
@@ -314,6 +350,63 @@ function ProfileReadonlyInfo({
   )
 }
 
+/** CCCD/CV lưu trong bucket riêng tư — xem qua signed URL tạm, không hiện đường dẫn thô. */
+function AttachmentViewerField({
+  employeeId,
+  label,
+  hasValue,
+  field,
+}: {
+  employeeId: string
+  label: string
+  hasValue: boolean
+  field: 'attachmentIdFront' | 'attachmentIdBack' | 'cvAttachmentRef'
+}) {
+  const { mutate, isPending } = useAttachmentSignedUrl()
+  const anyActionPending = useAnyActionPending()
+
+  const onView = () => {
+    mutate(
+      { id: employeeId, field },
+      {
+        onSuccess: (data) => {
+          if (!data.signedUrl) {
+            toast.error('Không tìm thấy tài liệu')
+            return
+          }
+          window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+        },
+      }
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        'flex flex-col rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/30',
+        fieldStackGap
+      )}
+    >
+      <FieldLabel>{label}</FieldLabel>
+      {hasValue ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 w-fit"
+          onClick={onView}
+          disabled={isPending || anyActionPending}
+        >
+          {isPending ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+          Xem tài liệu
+        </Button>
+      ) : (
+        <span className="text-sm text-muted-foreground">Chưa có</span>
+      )}
+    </div>
+  )
+}
+
 function renderField(
   field: UserSelfFieldSpec,
   ctx: {
@@ -323,17 +416,55 @@ function renderField(
     teams?: Array<{ id: string; name: string }>
     positions?: Array<{ value: string; label: string }>
     jobTitles?: Array<{ value: string; label: string }>
+    directManagerOptions?: DirectManagerOption[]
   }
 ) {
-  const { employee, control, divisions, teams, positions, jobTitles } = ctx
-
-  const forceReadonly = field.key === 'directManager'
+  const { employee, control, divisions, teams, positions, jobTitles, directManagerOptions } = ctx
 
   if (field.kind === 'portrait') {
     return null
   }
 
-  if (isWorkOrgReadonlyField(field.key) || forceReadonly) {
+  if (field.key === 'directManager') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name="directManager"
+        label={field.label}
+        placeholder="Chọn quản lý trực tiếp"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        <SelectItem value="__none">Chưa chọn</SelectItem>
+        {(directManagerOptions ?? []).map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (
+    field.key === 'attachmentIdFront' ||
+    field.key === 'attachmentIdBack' ||
+    field.key === 'cvAttachmentRef'
+  ) {
+    return (
+      <AttachmentViewerField
+        key={field.key}
+        employeeId={employee.id}
+        label={field.label}
+        hasValue={!!employee[field.key]}
+        field={field.key}
+      />
+    )
+  }
+
+  if (isWorkOrgReadonlyField(field.key)) {
     return (
       <ProfileReadonlyInfo
         name={field.key as EmployeePatchKey}
@@ -492,6 +623,10 @@ function ProfileIdentityCard({
   role,
   currentLevelTitle,
   departmentDisplayName,
+  portraitUploading,
+  uploadDisabled = false,
+  avatarUploadInputId,
+  onPortraitFile,
   fallbackUserName,
   fallbackUserEmail,
 }: {
@@ -500,6 +635,11 @@ function ProfileIdentityCard({
   role: Role
   currentLevelTitle: string
   departmentDisplayName: string
+  portraitUploading: boolean
+  /** Khoá nút upload khi có thao tác khác đang chạy (không hiện overlay loading trên avatar). */
+  uploadDisabled?: boolean
+  avatarUploadInputId: string
+  onPortraitFile: (file: File) => void
   fallbackUserName: string
   fallbackUserEmail: string
 }) {
@@ -526,6 +666,34 @@ function ProfileIdentityCard({
             photoUrl={resolvePublicAssetUrl(portraitRef)}
             className="h-full w-full object-cover text-2xl"
           />
+          {portraitUploading && (
+            <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+              <RefreshCw className="h-6 w-6 animate-spin text-white" />
+            </div>
+          )}
+          <Input
+            id={avatarUploadInputId}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="sr-only"
+            disabled={portraitUploading || uploadDisabled}
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) onPortraitFile(f)
+              e.target.value = ''
+            }}
+          />
+          <label
+            htmlFor={avatarUploadInputId}
+            className={cn(
+              'absolute bottom-1 right-1 z-[2] flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-white shadow-md ring-2 ring-white transition-transform hover:scale-110 hover:bg-primary/90 active:scale-95 dark:ring-slate-900',
+              'md:bottom-1.5 md:right-1.5',
+              (portraitUploading || uploadDisabled) && 'pointer-events-none opacity-50'
+            )}
+            aria-label="Tải ảnh đại diện"
+          >
+            <Upload className="h-4 w-4" strokeWidth={2.25} />
+          </label>
         </div>
       </div>
 
@@ -603,6 +771,7 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
   const deactivate = useDeactivateEmployee()
   const updateEmployee = useUpdateEmployee()
   const [confirmPending, setConfirmPending] = useState<'deactivate' | 'reactivate' | null>(null)
+  const { mutate: uploadPortrait, isPending: portraitUploading } = useUploadMePortrait()
   const { data: divisionsList = [] } = useQuery({
     queryKey: ['organization', 'divisions-list'],
     queryFn: () => organizationApi.getDivisionsList(),
@@ -613,8 +782,14 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
     queryFn: () => organizationApi.getTeamsList(),
     staleTime: 60_000,
   })
+  const { data: directManagersData } = useDirectManagerOptions()
+  const managers = useMemo(() => directManagersData?.data ?? [], [directManagersData])
+  const directManagerOptions = useMemo(
+    () => buildDirectManagerSelectOptions(managers, employee.id, employee.directManager),
+    [managers, employee.id, employee.directManager]
+  )
   const form = useForm<EditRecord>({
-    defaultValues: userToEdit(employee),
+    defaultValues: userToEdit(employee, managers),
   })
   const { control, handleSubmit, reset, setValue } = form
   const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
@@ -635,11 +810,11 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
 
   useEffect(() => {
     reset({
-      ...userToEdit(employee),
+      ...userToEdit(employee, managers),
       employmentStatusUi: resolveEmploymentStatusUi(employee, employeeSummary?.status),
     })
     prevDivisionIdRef.current = employee.divisionId?.trim() ?? ''
-  }, [employee, employeeSummary?.status, reset])
+  }, [employee, employeeSummary?.status, managers, reset])
 
   const divisions = useMemo(
     () => divisionsList.map((d) => ({ id: d.id, name: d.name })),
@@ -685,6 +860,21 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
     : summaryLoading
       ? '…'
       : '—'
+  const onPortraitFile = (file: File) => {
+    uploadPortrait(file, {
+      onSuccess: (res) => {
+        toast.success('Đã cập nhật ảnh đại diện')
+        setValue('portraitRef', res.portraitRef)
+        if (viewer) {
+          useAuthStore.getState().setUser({
+            ...viewer,
+            portraitRef: res.portraitRef,
+          })
+        }
+      },
+      onError: (err) => toast.error(getApiErrorMessage(err)),
+    })
+  }
 
   const workSection = USER_SELF_FORM_SECTIONS[0]!
   const workReadonlyFields = workSection.fields.filter(
@@ -693,7 +883,7 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
   const workEditableFields = workSection.fields.filter(
     (field) => !isWorkOrgReadonlyField(field.key) && field.key !== 'directManager'
   )
-  const detailSections = USER_SELF_FORM_SECTIONS.slice(1).filter((s) => s.title.trim() !== 'Khác')
+  const detailSections = USER_SELF_FORM_SECTIONS.slice(1)
   const detailSectionVariants: ('indigo' | 'violet' | 'emerald' | 'primary')[] = [
     'indigo',
     'violet',
@@ -703,7 +893,7 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
   ]
   const initialEmploymentStatusUi = resolveEmploymentStatusUi(employee, employeeSummary?.status)
   const onSaveProfile = handleSubmit((values) => {
-    const profilePatch = toPatch(values, employee) as unknown as IHrEmployeeProfileState
+    const profilePatch = toPatch(values, employee, managers) as unknown as IHrEmployeeProfileState
     const statusChanged =
       canManageEmploymentStatus && values.employmentStatusUi !== initialEmploymentStatusUi
 
@@ -711,6 +901,10 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
       if (!statusChanged) return
       if (values.employmentStatusUi === 'resigned') {
         deactivate.mutate(employee.id)
+        return
+      }
+      if (values.employmentStatusUi === 'transferred') {
+        updateEmployee.mutate({ id: employee.id, patch: { status: 'TRANSFERRED' } })
         return
       }
       updateEmployee.mutate({ id: employee.id, patch: { status: 'ACTIVE' } })
@@ -722,7 +916,10 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
   const isInactive = employeeSummary
     ? employeeSummary.status === 'INACTIVE'
     : isEmploymentInactive(employee.employmentStatus)
-  const isSaving = patchPending || deactivate.isPending || updateEmployee.isPending
+  /** Khoá mọi nút hành động khi có bất kỳ thao tác nào đang chạy (lưu, upload ảnh, mở tài liệu…). */
+  const anyActionPending = useAnyActionPending()
+  const isSaving =
+    patchPending || deactivate.isPending || updateEmployee.isPending || anyActionPending
 
   const handleConfirmPending = () => {
     if (!confirmPending) return
@@ -753,7 +950,9 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
     teams,
     positions,
     jobTitles,
+    directManagerOptions,
   }
+  const avatarUploadInputId = useId()
   return (
     <Form {...form}>
       <div
@@ -791,6 +990,10 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
                     role={employeeRole}
                     currentLevelTitle={currentLevelTitle}
                     departmentDisplayName={departmentDisplayName}
+                    portraitUploading={portraitUploading}
+                    uploadDisabled={anyActionPending}
+                    avatarUploadInputId={avatarUploadInputId}
+                    onPortraitFile={onPortraitFile}
                     fallbackUserName={employee.displayName ?? employee.fullNameLegal ?? ''}
                     fallbackUserEmail={employee.email ?? ''}
                   />

@@ -72,9 +72,17 @@ export const authApi = {
     return safeParse(meResponseSchema, res.data, 'POST /auth/login')
   },
 
-  logout: async () => {
+  /**
+   * `accessToken` truyền tường minh vì store đã bị xóa trước khi gọi —
+   * thiếu nó BE không nhận diện được phiên khi cookie bị chặn (Bearer-only).
+   */
+  logout: async (accessToken?: string | null) => {
     if (!isMockApiEnabled()) {
-      await apiClient.post<unknown>('/auth/logout')
+      await apiClient.post<unknown>(
+        '/auth/logout',
+        undefined,
+        accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined
+      )
     }
   },
 }

@@ -17,6 +17,7 @@ import {
   Users,
 } from 'lucide-react'
 import { OrgUserAvatar } from '@/components/shared/EmployeeAvatar'
+import { useAnyActionPending } from '@/features/hr-admin/hooks'
 import {
   PAGE_HEADER_DESCRIPTION,
   PAGE_HEADER_GRADIENT,
@@ -488,7 +489,10 @@ export function HrOrgStructure() {
     onError: (e) => toast.error(readApiErrorMessage(e)),
   })
 
+  /** Khoá hành động khi CÓ BẤT KỲ mutation nào đang chạy (kể cả thêm/gỡ thành viên) — tránh bấm chồng. */
+  const anyActionPending = useAnyActionPending()
   const orgCrudPending =
+    anyActionPending ||
     createDeptM.isPending ||
     updateDeptM.isPending ||
     deleteDeptM.isPending ||
@@ -1498,6 +1502,7 @@ const MEMBER_STATUS_VI: Record<TeamMemberRow['status'], string> = {
   INACTIVE: 'Đã nghỉ việc',
   PROBATION: 'Thử việc',
   RESERVED: 'Dự bị / bảo lưu',
+  TRANSFERRED: 'Điều chuyển',
 }
 
 function memberStatusBadgeClassName(status: TeamMemberRow['status']) {
@@ -1506,6 +1511,7 @@ function memberStatusBadgeClassName(status: TeamMemberRow['status']) {
     status === 'INACTIVE' && 'border-destructive/45 text-destructive',
     status === 'PROBATION' && 'border-amber-500/45 text-amber-800 dark:text-amber-100',
     status === 'RESERVED' && 'border-blue-500/40 text-blue-800 dark:text-blue-100',
+    status === 'TRANSFERRED' && 'border-sky-500/40 text-sky-800 dark:text-sky-100',
     status === 'ACTIVE' && 'border-emerald-600/35 text-emerald-800 dark:text-emerald-100'
   )
 }
@@ -1534,7 +1540,14 @@ function memberRowRole(m: TeamMemberRow): Role {
 
 function memberRowStatus(m: TeamMemberRow): TeamMemberRow['status'] {
   const s = m.status
-  if (s === 'ACTIVE' || s === 'INACTIVE' || s === 'PROBATION' || s === 'RESERVED') return s
+  if (
+    s === 'ACTIVE' ||
+    s === 'INACTIVE' ||
+    s === 'PROBATION' ||
+    s === 'RESERVED' ||
+    s === 'TRANSFERRED'
+  )
+    return s
   return 'ACTIVE'
 }
 
@@ -1559,6 +1572,7 @@ function TeamMembersPanel({
 
   const [addOpen, setAddOpen] = useState(false)
   const [pendingRemove, setPendingRemove] = useState<TeamMemberRow | null>(null)
+  const anyActionPending = useAnyActionPending()
 
   const invalidateMembers = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: teamMembersQueryKey(teamId) })
@@ -1595,17 +1609,25 @@ function TeamMembersPanel({
 
   const filteredMembers = useMemo(() => {
     const q = deferredTableFilter.trim().toLowerCase()
-    if (!q) return members
-    return members.filter((m) => {
+    /** Sắp theo STT trong team (tăng dần), người chưa có STT xuống cuối. */
+    const orderValue = (m: TeamMemberRow) => {
+      const n = Number(m.teamOrderNumber)
+      return Number.isInteger(n) && n > 0 ? n : Number.MAX_SAFE_INTEGER
+    }
+    const sorted = [...members].sort((a, b) => orderValue(a) - orderValue(b))
+    if (!q) return sorted
+    return sorted.filter((m) => {
       const name = (m.displayName ?? '').toLowerCase()
       const email = (m.email ?? '').toLowerCase()
       const code = (m.employeeCodePrimary ?? '').toLowerCase()
+      const order = (m.teamOrderNumber ?? '').toLowerCase()
       const role = ROLE_LABEL_VI[memberRowRole(m)].toLowerCase()
       const st = MEMBER_STATUS_VI[memberRowStatus(m)].toLowerCase()
       return (
         name.includes(q) ||
         email.includes(q) ||
         code.includes(q) ||
+        order.includes(q) ||
         role.includes(q) ||
         st.includes(q)
       )
@@ -1659,7 +1681,7 @@ function TeamMembersPanel({
                 type="button"
                 className="sm:shrink-0"
                 onClick={() => setAddOpen(true)}
-                disabled={addMemberM.isPending}
+                disabled={anyActionPending}
               >
                 <UserPlus className="mr-2 h-4 w-4" />
                 Thêm thành viên
@@ -1695,7 +1717,8 @@ function TeamMembersPanel({
             <Table className="min-w-[720px]">
               <TableHeader>
                 <TableRow className="border-b border-border/80 bg-muted/30 hover:bg-muted/30">
-                  <TableHead className="w-[52px] pl-3">Ảnh</TableHead>
+                  <TableHead className="w-[56px] pl-3">STT</TableHead>
+                  <TableHead className="w-[52px]">Ảnh</TableHead>
                   <TableHead className="min-w-[140px]">Tên thành viên</TableHead>
                   <TableHead className="min-w-[180px]">Email</TableHead>
                   <TableHead className="min-w-[130px]">Vai trò</TableHead>
@@ -1709,7 +1732,7 @@ function TeamMembersPanel({
                 {filteredMembers.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
                     <TableCell
-                      colSpan={canManage ? 6 : 5}
+                      colSpan={canManage ? 7 : 6}
                       className="py-10 text-center text-sm text-muted-foreground"
                     >
                       Không có dòng nào khớp bộ lọc.
@@ -1722,7 +1745,10 @@ function TeamMembersPanel({
                     const removing = removeMemberM.isPending && removeMemberM.variables === m.userId
                     return (
                       <TableRow key={m.userId} className="group">
-                        <TableCell className="pl-3 align-middle">
+                        <TableCell className="pl-3 align-middle text-sm font-semibold tabular-nums text-muted-foreground">
+                          {m.teamOrderNumber ?? '—'}
+                        </TableCell>
+                        <TableCell className="align-middle">
                           <TeamMemberAvatarCell m={m} />
                         </TableCell>
                         <TableCell className="align-middle font-medium">
@@ -1770,7 +1796,7 @@ function TeamMembersPanel({
                                 size="sm"
                                 className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                 onClick={() => setPendingRemove(m)}
-                                disabled={removing}
+                                disabled={removing || anyActionPending}
                                 title="Gỡ nhóm chính khỏi nhóm"
                               >
                                 <UserMinus className="mr-1.5 h-4 w-4" />
@@ -1794,7 +1820,7 @@ function TeamMembersPanel({
           teamId={teamId}
           teamName={teamName}
           existingMemberIds={existingMemberIds}
-          pending={addMemberM.isPending}
+          pending={anyActionPending}
           onClose={() => setAddOpen(false)}
           onPick={(userId) => addMemberM.mutate(userId)}
         />

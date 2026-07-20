@@ -50,6 +50,7 @@ type RecordEntity = {
   year?: number | null
   month?: number | null
   createdAt: string
+  deletedAt?: string | null
   user: {
     fullNameLegal: string
     email: string
@@ -58,6 +59,9 @@ type RecordEntity = {
   createdBy: {
     fullNameLegal: string
   }
+  deletedBy?: {
+    fullNameLegal: string
+  } | null
   rule?: Rule | null
 }
 
@@ -169,6 +173,24 @@ function toOptimisticRecord(
   }
 }
 
+function extractErrorMessage(error: unknown, fallback: string): string {
+  if (
+    error &&
+    typeof error === 'object' &&
+    'response' in error &&
+    error.response &&
+    typeof error.response === 'object' &&
+    'data' in error.response &&
+    error.response.data &&
+    typeof error.response.data === 'object' &&
+    'message' in error.response.data &&
+    typeof error.response.data.message === 'string'
+  ) {
+    return error.response.data.message
+  }
+  return fallback
+}
+
 function recordPeriodFromEntity(record: RecordEntity): { year: number; month: number } {
   if (record.year != null && record.month != null) {
     return { year: record.year, month: record.month }
@@ -189,7 +211,7 @@ function getRecordedRuleIdsForUser(
   month: number
 ): Set<string> {
   const ids = records
-    .filter((r) => r.userId === userId && recordMatchesPeriod(r, year, month))
+    .filter((r) => r.userId === userId && !r.deletedAt && recordMatchesPeriod(r, year, month))
     .map((r) => r.rule?.id)
     .filter(Boolean) as string[]
   return new Set(ids)
@@ -245,6 +267,9 @@ export default function RewardsPage() {
   const currentUser = useAuthStore((s) => s.user)
   const isPrivileged =
     currentUser?.role === 'HR' || currentUser?.role === 'BOD' || currentUser?.role === 'MANAGER'
+  const isTeamLeader = currentUser?.role === 'LEADER'
+  // LEADER được ghi nhận thưởng/phạt cho thành viên team mình, nhưng không quản lý danh mục quy chuẩn.
+  const canLogRewards = isPrivileged || isTeamLeader
 
   // Main Tabs (Persona Tabs removed by request)
   const [adminSubTab, setAdminSubTab] = useState<'log' | 'catalog' | 'history'>('log')
@@ -286,6 +311,7 @@ export default function RewardsPage() {
   const [customNote, setCustomNote] = useState<string>('')
   const [submitting, setSubmitting] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [deleteRecordConfirmId, setDeleteRecordConfirmId] = useState<string | null>(null)
 
   const [historySearch, setHistorySearch] = useState<string>('')
   const [historyTeamFilter, setHistoryTeamFilter] = useState<string>('all')
@@ -316,6 +342,21 @@ export default function RewardsPage() {
     note: '',
   })
 
+  /**
+   * HR/BOD/MANAGER dùng danh bạ nhân sự đầy đủ (`/employees`); LEADER dùng roster
+   * tối giản chỉ gồm team của mình (`/reward/my-team-employees`) để tránh lộ hồ sơ
+   * HR chi tiết ngoài phạm vi tính năng thưởng/phạt.
+   */
+  const fetchTeamEmployees = async () => {
+    if (isPrivileged) {
+      const res = await apiClient.get<{ data?: Employee[] }>('/employees?pageSize=3000')
+      setEmployees(res.data?.data || [])
+    } else {
+      const res = await apiClient.get<Employee[]>('/reward/my-team-employees')
+      setEmployees(res.data || [])
+    }
+  }
+
   const fetchData = async (
     silent = false,
     scope: FetchScope = 'full',
@@ -334,18 +375,14 @@ export default function RewardsPage() {
         )
       }
 
-      if (scope === 'full' && isPrivileged && !opts?.deferEmployees) {
-        tasks.push(
-          apiClient.get<{ data?: Employee[] }>('/employees?pageSize=3000').then((res) => {
-            setEmployees(res.data?.data || [])
-          })
-        )
+      if (scope === 'full' && canLogRewards && !opts?.deferEmployees) {
+        tasks.push(fetchTeamEmployees())
       }
 
       if (scope === 'full' || scope === 'records') {
-        if (isPrivileged) {
+        if (canLogRewards) {
           tasks.push(
-            apiClient.get<RecordEntity[]>('/reward/records').then((res) => {
+            apiClient.get<RecordEntity[]>('/reward/records?includeDeleted=true').then((res) => {
               setAllRecords(res.data || [])
             })
           )
@@ -367,11 +404,8 @@ export default function RewardsPage() {
   }
 
   const fetchEmployeesInBackground = () => {
-    if (!isPrivileged) return
-    void apiClient
-      .get<{ data?: Employee[] }>('/employees?pageSize=3000')
-      .then((res) => setEmployees(res.data?.data || []))
-      .catch((error) => console.error('Failed to fetch employees:', error))
+    if (!canLogRewards) return
+    void fetchTeamEmployees().catch((error) => console.error('Failed to fetch employees:', error))
   }
 
   /** Làm mới records nền — không chặn UI, không reload employees. */
@@ -380,9 +414,9 @@ export default function RewardsPage() {
   }
 
   useEffect(() => {
-    void fetchData(false, 'full', { deferEmployees: isPrivileged })
+    void fetchData(false, 'full', { deferEmployees: canLogRewards })
     fetchEmployeesInBackground()
-  }, [isPrivileged])
+  }, [canLogRewards])
 
   useEffect(() => {
     if (!showActionPanel || !selectedEmp) return
@@ -543,22 +577,34 @@ export default function RewardsPage() {
       refreshRecordsInBackground()
     } catch (error: unknown) {
       console.error('Failed to submit rewards:', error)
-      const msg =
-        error &&
-        typeof error === 'object' &&
-        'response' in error &&
-        error.response &&
-        typeof error.response === 'object' &&
-        'data' in error.response &&
-        error.response.data &&
-        typeof error.response.data === 'object' &&
-        'message' in error.response.data &&
-        typeof error.response.data.message === 'string'
-          ? error.response.data.message
-          : 'Có lỗi xảy ra khi ghi nhận.'
-      toast.error(msg)
+      toast.error(extractErrorMessage(error, 'Có lỗi xảy ra khi ghi nhận.'))
       setSubmitting(false)
     }
+  }
+
+  const handleDeleteRecord = async (id: string) => {
+    const promise = apiClient.delete(`/reward/records/${id}`)
+
+    toast.promise(promise, {
+      loading: 'Đang xóa ghi nhận...',
+      success: () => {
+        setDeleteRecordConfirmId(null)
+        setAllRecords((prev) =>
+          prev.map((r) =>
+            r.id === id
+              ? {
+                  ...r,
+                  deletedAt: new Date().toISOString(),
+                  deletedBy: { fullNameLegal: currentUser?.name || currentUser?.email || '' },
+                }
+              : r
+          )
+        )
+        refreshRecordsInBackground()
+        return 'Đã xóa ghi nhận. Lịch sử vẫn được lưu lại để đối chiếu.'
+      },
+      error: (err: unknown) => extractErrorMessage(err, 'Không thể xóa ghi nhận này'),
+    })
   }
 
   const handleDeleteRule = async (id: string) => {
@@ -737,25 +783,29 @@ export default function RewardsPage() {
         ) : (
           <div className="space-y-6">
             <div className="flex border-b border-slate-200">
-              {isPrivileged ? (
+              {canLogRewards ? (
                 <>
                   <button
                     onClick={() => setAdminSubTab('log')}
                     className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'log' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                   >
-                    <Users className="h-4 w-4" /> Ghi nhận theo Team
+                    <Users className="h-4 w-4" />{' '}
+                    {isPrivileged ? 'Ghi nhận theo Team' : 'Ghi nhận cho Team'}
                   </button>
-                  <button
-                    onClick={() => setAdminSubTab('catalog')}
-                    className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'catalog' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                  >
-                    <LayoutGrid className="h-4 w-4" /> Danh mục quy chuẩn
-                  </button>
+                  {isPrivileged && (
+                    <button
+                      onClick={() => setAdminSubTab('catalog')}
+                      className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'catalog' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                      <LayoutGrid className="h-4 w-4" /> Danh mục quy chuẩn
+                    </button>
+                  )}
                   <button
                     onClick={() => setAdminSubTab('history')}
                     className={`px-8 py-4 text-sm font-black uppercase transition-all border-b-2 flex items-center gap-2 ${adminSubTab === 'history' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                   >
-                    <History className="h-4 w-4" /> Lịch sử hệ thống
+                    <History className="h-4 w-4" />{' '}
+                    {isPrivileged ? 'Lịch sử hệ thống' : 'Lịch sử Team'}
                   </button>
                 </>
               ) : (
@@ -776,7 +826,7 @@ export default function RewardsPage() {
               )}
             </div>
 
-            {!isPrivileged ? (
+            {!canLogRewards ? (
               /* MEMBER VIEW CONTENT */
               <div className="space-y-8 animate-fade-in">
                 {mySubTab === 'history' ? (
@@ -1364,8 +1414,9 @@ export default function RewardsPage() {
                     <History className="h-4 w-4" />
                     Tổng kỳ:{' '}
                     {
-                      allRecords.filter((r) => recordMatchesPeriod(r, recordYear, recordMonth))
-                        .length
+                      allRecords.filter(
+                        (r) => !r.deletedAt && recordMatchesPeriod(r, recordYear, recordMonth)
+                      ).length
                     }
                   </div>
                 </div>
@@ -1379,6 +1430,7 @@ export default function RewardsPage() {
                         <th className="py-5 px-6">Nội dung</th>
                         <th className="py-5 px-6">Số tiền</th>
                         <th className="py-5 px-8">Ngày</th>
+                        <th className="py-5 px-6 text-center">Tác vụ</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -1402,43 +1454,73 @@ export default function RewardsPage() {
 
                         return (
                           <>
-                            {pageItems.map((rec) => (
-                              <tr key={rec.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="py-5 px-8 font-bold">
-                                  {rec.user.fullNameLegal}
-                                  <div className="text-xs text-indigo-500 font-black uppercase mt-0.5">
-                                    {rec.user.team?.name}
-                                  </div>
-                                </td>
-                                <td className="py-5 px-6">
-                                  <span
-                                    className={`px-3 py-1 rounded-full text-xs font-black uppercase ${rec.kind === 'REWARD' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-700'}`}
-                                  >
-                                    {rec.kind === 'REWARD' ? 'Thưởng' : 'Phạt'}
-                                  </span>
-                                </td>
-                                <td className="py-5 px-6 font-medium text-slate-700">
-                                  {rec.title}
-                                  {rec.note && (
-                                    <div className="text-xs text-slate-400 italic mt-0.5 font-medium">
-                                      {rec.note}
-                                    </div>
-                                  )}
-                                </td>
-                                <td
-                                  className={`py-5 px-6 font-black ${rec.kind === 'REWARD' ? 'text-emerald-600' : 'text-rose-600'}`}
+                            {pageItems.map((rec) => {
+                              const isDeleted = !!rec.deletedAt
+                              return (
+                                <tr
+                                  key={rec.id}
+                                  className={`transition-colors ${isDeleted ? 'bg-slate-50/60 opacity-60' : 'hover:bg-slate-50'}`}
                                 >
-                                  {Number(rec.amount || 0).toLocaleString()} đ
-                                </td>
-                                <td className="py-5 px-8 text-slate-400 font-bold">
-                                  {new Date(rec.createdAt).toLocaleDateString('vi-VN')}
-                                </td>
-                              </tr>
-                            ))}
+                                  <td className="py-5 px-8 font-bold">
+                                    {rec.user.fullNameLegal}
+                                    <div className="text-xs text-indigo-500 font-black uppercase mt-0.5">
+                                      {rec.user.team?.name}
+                                    </div>
+                                  </td>
+                                  <td className="py-5 px-6">
+                                    <span
+                                      className={`px-3 py-1 rounded-full text-xs font-black uppercase ${rec.kind === 'REWARD' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-700'}`}
+                                    >
+                                      {rec.kind === 'REWARD' ? 'Thưởng' : 'Phạt'}
+                                    </span>
+                                  </td>
+                                  <td className="py-5 px-6 font-medium text-slate-700">
+                                    <span className={isDeleted ? 'line-through' : ''}>
+                                      {rec.title}
+                                    </span>
+                                    {rec.note && (
+                                      <div className="text-xs text-slate-400 italic mt-0.5 font-medium">
+                                        {rec.note}
+                                      </div>
+                                    )}
+                                    {isDeleted && (
+                                      <div className="text-xs text-rose-500 font-black uppercase mt-1 tracking-wide">
+                                        Đã xóa
+                                        {rec.deletedBy?.fullNameLegal
+                                          ? ` bởi ${rec.deletedBy.fullNameLegal}`
+                                          : ''}
+                                        {rec.deletedAt
+                                          ? ` · ${new Date(rec.deletedAt).toLocaleDateString('vi-VN')}`
+                                          : ''}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td
+                                    className={`py-5 px-6 font-black ${rec.kind === 'REWARD' ? 'text-emerald-600' : 'text-rose-600'}`}
+                                  >
+                                    {Number(rec.amount || 0).toLocaleString()} đ
+                                  </td>
+                                  <td className="py-5 px-8 text-slate-400 font-bold">
+                                    {new Date(rec.createdAt).toLocaleDateString('vi-VN')}
+                                  </td>
+                                  <td className="py-5 px-6 text-center">
+                                    {!isDeleted && (
+                                      <button
+                                        onClick={() => setDeleteRecordConfirmId(rec.id)}
+                                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                                        title="Xóa ghi nhận"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
                             {pageItems.length === 0 && (
                               <tr>
                                 <td
-                                  colSpan={5}
+                                  colSpan={6}
                                   className="py-20 text-center text-slate-300 italic font-medium uppercase tracking-widest text-xs"
                                 >
                                   Không tìm thấy dữ liệu phù hợp
@@ -1448,7 +1530,7 @@ export default function RewardsPage() {
                             {/* Pagination Row */}
                             {totalPages > 1 && (
                               <tr>
-                                <td colSpan={5} className="py-6 px-8 bg-slate-50/50">
+                                <td colSpan={6} className="py-6 px-8 bg-slate-50/50">
                                   <div className="flex items-center justify-between">
                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
                                       Trang {historyPage} / {totalPages}
@@ -1771,6 +1853,20 @@ export default function RewardsPage() {
         destructive
         onConfirm={() => {
           if (deleteConfirmId) handleDeleteRule(deleteConfirmId)
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!deleteRecordConfirmId}
+        onOpenChange={(open) => {
+          if (!open) setDeleteRecordConfirmId(null)
+        }}
+        title="Xác nhận xóa ghi nhận?"
+        description="Ghi nhận sẽ bị ẩn khỏi trạng thái đang áp dụng, nhưng vẫn được lưu lại trong lịch sử team để đối chiếu."
+        confirmLabel="Xác nhận xóa"
+        destructive
+        onConfirm={() => {
+          if (deleteRecordConfirmId) handleDeleteRecord(deleteRecordConfirmId)
         }}
       />
     </>

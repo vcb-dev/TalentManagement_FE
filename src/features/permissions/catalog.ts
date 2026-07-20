@@ -433,7 +433,7 @@ export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly stri
     'Xem nhóm & hồ sơ qua màn Nhân sự (/hr-admin) khi cần quyền xem nhóm',
     'Chia lớp (/manager/classes)',
     'Duyệt bài nộp (/manager/review-submissions)',
-    'Lịch thi, bài thi theo lớp, màn chấm (/manager/exam-schedule, /manager/class-exams, /manager/grading, …)',
+    'Lịch thi, đề thi, màn chấm (/manager/exam-schedule, /manager/exam-papers, /manager/grading, …)',
     'Duyệt thăng cấp / sao (/manager/approvals)',
     'Bài tập lộ trình cho nhóm (/manager/exercises)',
     'Phân loại bài thi, luồng thi theo cấp hình (trong ứng dụng thi, khi có quyền phân loại)',

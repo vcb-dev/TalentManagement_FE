@@ -33,11 +33,9 @@ function ExamIndexPage() {
   const { data, isLoading } = useExams({ page, pageSize }, viewMode === 'mine')
   const { data: mySubmissions } = useMySubmissions(viewMode === 'mine')
   const { data: myClassData } = useMyEnrolledClass(undefined, viewMode === 'mine')
-  const {
-    data: managedClasses = [],
-    isLoading: isManagedLoading,
-    isError: isManagedError,
-  } = useTeacherClasses(viewMode === 'managed')
+  const { data: managedClasses = [], isLoading: isManagedLoading } = useTeacherClasses(
+    viewMode === 'managed'
+  )
 
   useEffect(() => {
     setPage(1)

@@ -47,12 +47,19 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: async () => {
-      // Xóa session ở client ngay lập tức để chuyển hướng tức thì
+      // Giữ token lại trước khi xóa store — request logout bên dưới cần nó
+      // làm Bearer header để BE xóa cache phiên khi cookie không khả dụng.
+      const accessToken = useAuthStore.getState().accessToken
+
+      // Xóa session ở client ngay lập tức
       logout()
       qc.clear() // Xóa toàn bộ cache để đảm bảo an toàn bảo mật
 
-      // Gọi API logout chạy ngầm, không cần await để tránh làm chậm UI
-      authApi.logout().catch(() => {
+      // Phải đợi server xóa cookie session xong rồi mới điều hướng.
+      // Nếu không await, navigate('/') có thể chạy ensureSessionFromCookie()
+      // và gọi GET /auth/me trong lúc cookie cũ chưa kịp bị xóa (race condition),
+      // khiến phiên đăng nhập bị khôi phục lại ngay sau khi vừa logout.
+      await authApi.logout(accessToken).catch(() => {
         /* Bỏ qua lỗi vì client đã logout xong */
       })
     },
