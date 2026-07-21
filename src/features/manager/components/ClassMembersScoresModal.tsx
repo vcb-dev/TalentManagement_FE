@@ -33,25 +33,33 @@ interface ClassMembersScoresModalProps {
   isOpen: boolean
   onClose: () => void
   classId: string
+  scheduleId?: string
   className?: string
+  examTopic?: string
 }
 
 export function ClassMembersScoresModal({
   isOpen,
   onClose,
   classId,
+  scheduleId,
   className,
+  examTopic,
 }: ClassMembersScoresModalProps) {
   const { data: allSubmissions = [], isLoading } = useManagerSubmissions(
-    { classId },
+    { classId, scheduleId },
     { enabled: isOpen }
   )
   const [searchTerm, setSearchTerm] = useState('')
 
-  const classSubmissions = useMemo(
-    () => allSubmissions.filter((s) => s.classId === classId),
-    [allSubmissions, classId]
-  )
+  const classSubmissions = useMemo(() => {
+    let rows = allSubmissions.filter((s) => s.classId === classId)
+    if (scheduleId) {
+      const sid = scheduleId.toLowerCase()
+      rows = rows.filter((s) => s.scheduleId?.toLowerCase() === sid)
+    }
+    return rows
+  }, [allSubmissions, classId, scheduleId])
 
   const filteredSubmissions = useMemo(() => {
     const q = searchTerm.toLowerCase().trim()
@@ -68,10 +76,14 @@ export function ClassMembersScoresModal({
               <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">
                 Thành viên & Điểm số
               </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1 font-medium">
-                {className
-                  ? `Danh sách học viên và kết quả thi — Lớp ${className}`
-                  : 'Danh sách học viên và kết quả thi của lớp'}
+              <p className="text-sm text-muted-foreground mt-1 font-medium line-clamp-2">
+                {scheduleId && examTopic
+                  ? className
+                    ? `Kết quả thi "${examTopic}" — Lớp ${className}`
+                    : `Kết quả thi "${examTopic}"`
+                  : className
+                    ? `Danh sách học viên và kết quả thi — Lớp ${className}`
+                    : 'Danh sách học viên và kết quả thi của lớp'}
               </p>
             </div>
             <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">

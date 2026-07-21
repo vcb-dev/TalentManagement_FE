@@ -86,8 +86,15 @@ function examBadgeForSchedule(e: Parameters<typeof examLiveStatus>[1]) {
   return { label: 'Đã kết thúc', className: 'bg-slate-100 text-slate-500', muted: true }
 }
 
+interface ScoresModalTarget {
+  classId: string
+  scheduleId: string
+  className?: string
+  topic?: string
+}
+
 export function ManagerExamScheduleScreen() {
-  const [selectedClassIdForScores, setSelectedClassIdForScores] = useState<string | null>(null)
+  const [scoresModal, setScoresModal] = useState<ScoresModalTarget | null>(null)
   const user = useAuthStore((s) => s.user)
   const canManage =
     user?.permissionIds?.includes('manager.classes') || user?.role === 'BOD' || user?.role === 'HR'
@@ -487,7 +494,14 @@ export function ManagerExamScheduleScreen() {
                         variant="outline"
                         size="sm"
                         className="h-10 w-full gap-1.5 rounded-xl border-primary/20 text-xs font-bold text-primary hover:bg-primary/5"
-                        onClick={() => setSelectedClassIdForScores(e.classId)}
+                        onClick={() =>
+                          setScoresModal({
+                            classId: e.classId,
+                            scheduleId: e.id,
+                            className: e.className,
+                            topic: e.topic,
+                          })
+                        }
                       >
                         <Users className="h-3.5 w-3.5 shrink-0" />
                         Học viên & Điểm
@@ -611,7 +625,14 @@ export function ManagerExamScheduleScreen() {
                               variant="outline"
                               size="sm"
                               className="h-8 gap-1.5 rounded-lg border-primary/20 text-xs font-bold text-primary hover:bg-primary/5"
-                              onClick={() => setSelectedClassIdForScores(e.classId)}
+                              onClick={() =>
+                                setScoresModal({
+                                  classId: e.classId,
+                                  scheduleId: e.id,
+                                  className: e.className,
+                                  topic: e.topic,
+                                })
+                              }
                             >
                               <Users className="h-3.5 w-3.5" />
                               Học viên & Điểm
@@ -880,11 +901,14 @@ export function ManagerExamScheduleScreen() {
           document.body
         )}
 
-      {selectedClassIdForScores && (
+      {scoresModal && (
         <ClassMembersScoresModal
-          isOpen={!!selectedClassIdForScores}
-          onClose={() => setSelectedClassIdForScores(null)}
-          classId={selectedClassIdForScores}
+          isOpen
+          onClose={() => setScoresModal(null)}
+          classId={scoresModal.classId}
+          scheduleId={scoresModal.scheduleId}
+          className={scoresModal.className}
+          examTopic={scoresModal.topic}
         />
       )}
     </>
