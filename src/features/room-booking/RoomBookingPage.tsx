@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { toast } from 'sonner'
 import { RoomBookingDetailModal } from './RoomBookingDetailModal'
 import { RoomBookingMinutesTable } from './RoomBookingMinutesTable'
 import { RoomBookingPendingPanel, RoomBookingRecentPanel } from './RoomBookingSidebar'
@@ -45,6 +46,17 @@ import { isRescheduleRequest } from './roomBookingStatus'
 import { formatDateLongVi, formatDateVi } from './roomBookingTimeUtils'
 
 // Chị Google nói
+/**
+ * Chuẩn hoá giờ về HH:MM có zero-pad trước khi gửi lên API.
+ * Bắt buộc vì backend so sánh trùng lịch bằng chuỗi: "9:00" < "10:00" là FALSE,
+ * nên giờ thiếu số 0 sẽ lọt qua check trùng lịch.
+ */
+function padTime(t: string): string {
+  if (!t) return ''
+  const [h, m] = t.split(':')
+  return `${(h || '').padStart(2, '0')}:${(m || '').padStart(2, '0')}`
+}
+
 function speak(text: string) {
   if (!window.speechSynthesis) return
   window.speechSynthesis.cancel()
@@ -491,6 +503,7 @@ export default function RoomBookingPage() {
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
       setError(msg)
+      toast.error(msg)
       speak(`Lỗi: ${msg}`)
     },
   })
@@ -507,6 +520,7 @@ export default function RoomBookingPage() {
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
       setError(msg)
+      toast.error(msg)
       speak(`Lỗi: ${msg}`)
     },
   })
@@ -521,6 +535,7 @@ export default function RoomBookingPage() {
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
       setError(msg)
+      toast.error(msg)
       speak(`Lỗi: ${msg}`)
     },
     onSettled: () => setProcessingId(null),
@@ -536,6 +551,7 @@ export default function RoomBookingPage() {
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
       setError(msg)
+      toast.error(msg)
       speak(`Lỗi: ${msg}`)
     },
     onSettled: () => setProcessingId(null),
@@ -552,6 +568,7 @@ export default function RoomBookingPage() {
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
       setError(msg)
+      toast.error(msg)
       speak(`Lỗi: ${msg}`)
     },
     onSettled: () => setProcessingId(null),
@@ -566,6 +583,7 @@ export default function RoomBookingPage() {
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
       setError(msg)
+      toast.error(msg)
     },
     onSettled: () => setProcessingId(null),
   })
@@ -694,16 +712,35 @@ export default function RoomBookingPage() {
     e.preventDefault()
     setError('')
 
+    // Chuẩn hoá giờ ngay đầu submit: bấm Enter khi đang focus ô giờ thì onBlur chưa kịp chạy,
+    // state có thể còn là "9:00" (thiếu zero-pad) -> lọt check trùng lịch ở backend.
+    const normTimeFrom = padTime(timeFrom)
+    const normTimeTo = padTime(timeTo)
+    if (normTimeFrom !== timeFrom) setTimeFrom(normTimeFrom)
+    if (normTimeTo !== timeTo) setTimeTo(normTimeTo)
+
     // Validate Frontend
     if (!reason.trim()) {
       const m = 'Vui lòng nhập lý do đặt phòng'
       setError(m)
+      toast.error(m)
       speak(m)
       return
     }
-    if (timeFrom >= timeTo) {
+    if (
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(normTimeFrom) ||
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(normTimeTo)
+    ) {
+      const m = 'Giờ không hợp lệ, vui lòng nhập theo định dạng HH:MM'
+      setError(m)
+      toast.error(m)
+      speak(m)
+      return
+    }
+    if (normTimeFrom >= normTimeTo) {
       const m = 'Giờ kết thúc phải sau giờ bắt đầu'
       setError(m)
+      toast.error(m)
       speak(m)
       return
     }
@@ -711,18 +748,22 @@ export default function RoomBookingPage() {
     if (date < vnDate) {
       const m = 'Không thể đặt lịch trong quá khứ'
       setError(m)
+      toast.error(m)
       speak(m)
       return
     }
-    if (date === vnDate && timeFrom < vnTimeStr) {
+    if (date === vnDate && normTimeFrom < vnTimeStr) {
       const m = 'Thời gian bắt đầu không thể ở quá khứ'
       setError(m)
+      toast.error(m)
       speak(m)
       return
     }
 
     if (isUploadingDoc) {
-      setError('Vui lòng đợi tệp tin đang được tải lên...')
+      const m = 'Vui lòng đợi tệp tin đang được tải lên...'
+      setError(m)
+      toast.error(m)
       return
     }
 
@@ -730,8 +771,8 @@ export default function RoomBookingPage() {
       const payload = {
         room,
         date,
-        timeFrom,
-        timeTo,
+        timeFrom: normTimeFrom,
+        timeTo: normTimeTo,
         reason,
         note,
         isEmergency,
@@ -746,6 +787,7 @@ export default function RoomBookingPage() {
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi lưu lịch họp'
       setError(msg)
+      toast.error(msg)
       speak(`Lỗi: ${msg}`)
     }
   }
