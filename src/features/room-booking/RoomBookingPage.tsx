@@ -45,6 +45,17 @@ import { isRescheduleRequest } from './roomBookingStatus'
 import { formatDateLongVi, formatDateVi } from './roomBookingTimeUtils'
 
 // Chị Google nói
+/**
+ * Chuẩn hoá giờ về HH:MM có zero-pad trước khi gửi lên API.
+ * Bắt buộc vì backend so sánh trùng lịch bằng chuỗi: "9:00" < "10:00" là FALSE,
+ * nên giờ thiếu số 0 sẽ lọt qua check trùng lịch.
+ */
+function padTime(t: string): string {
+  if (!t) return ''
+  const [h, m] = t.split(':')
+  return `${(h || '').padStart(2, '0')}:${(m || '').padStart(2, '0')}`
+}
+
 function speak(text: string) {
   if (!window.speechSynthesis) return
   window.speechSynthesis.cancel()
@@ -694,6 +705,13 @@ export default function RoomBookingPage() {
     e.preventDefault()
     setError('')
 
+    // Chuẩn hoá giờ ngay đầu submit: bấm Enter khi đang focus ô giờ thì onBlur chưa kịp chạy,
+    // state có thể còn là "9:00" (thiếu zero-pad) -> lọt check trùng lịch ở backend.
+    const normTimeFrom = padTime(timeFrom)
+    const normTimeTo = padTime(timeTo)
+    if (normTimeFrom !== timeFrom) setTimeFrom(normTimeFrom)
+    if (normTimeTo !== timeTo) setTimeTo(normTimeTo)
+
     // Validate Frontend
     if (!reason.trim()) {
       const m = 'Vui lòng nhập lý do đặt phòng'
@@ -701,7 +719,16 @@ export default function RoomBookingPage() {
       speak(m)
       return
     }
-    if (timeFrom >= timeTo) {
+    if (
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(normTimeFrom) ||
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(normTimeTo)
+    ) {
+      const m = 'Giờ không hợp lệ, vui lòng nhập theo định dạng HH:MM'
+      setError(m)
+      speak(m)
+      return
+    }
+    if (normTimeFrom >= normTimeTo) {
       const m = 'Giờ kết thúc phải sau giờ bắt đầu'
       setError(m)
       speak(m)
@@ -714,7 +741,7 @@ export default function RoomBookingPage() {
       speak(m)
       return
     }
-    if (date === vnDate && timeFrom < vnTimeStr) {
+    if (date === vnDate && normTimeFrom < vnTimeStr) {
       const m = 'Thời gian bắt đầu không thể ở quá khứ'
       setError(m)
       speak(m)
@@ -730,8 +757,8 @@ export default function RoomBookingPage() {
       const payload = {
         room,
         date,
-        timeFrom,
-        timeTo,
+        timeFrom: normTimeFrom,
+        timeTo: normTimeTo,
         reason,
         note,
         isEmergency,
