@@ -25,6 +25,7 @@ import {
 } from '@/features/learning-path/hooks'
 import type { MeEnrolledClass, MeEnrolledClassSchedule } from '@/features/learning-path/schemas'
 import { SessionEvaluationModal } from '@/features/teacher/components/SessionEvaluationModal'
+import { resolveSubmissionDeadline } from '@/features/teacher/submissionDeadline'
 import { apiClient, getApiErrorMessage } from '@/lib/axios'
 import { cn, getFileViewerUrl } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
@@ -300,22 +301,34 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
           const isReflectionTask = isReflection && (isDeadlineSlot || ri.deadline)
 
           if (isReflectionTask || isExam || isDeadlineSlot) {
+            const { submissionDeadline } = resolveSubmissionDeadline({
+              dateIso: s.dateIso,
+              startTime: s.startTime,
+              endTime: s.endTime,
+              examQuestions: s.examQuestions,
+              roadmapItems: [{ deadline: ri.deadline }],
+            })
             tasks.push({
               ...ri,
               scheduleId: s.id,
               scheduleTopic: s.topic,
               scheduleDateIso: s.dateIso,
+              scheduleStartTime: s.startTime,
               scheduleNote: s.note,
               isExam,
               location: s.location,
-              deadline:
-                ri.deadline ||
-                (s.endTime ? `${s.dateIso}T${s.endTime}:00+07:00` : `${s.dateIso}T23:59:00+07:00`),
+              deadline: submissionDeadline,
             })
           }
         })
       } else {
         if (isExam || isDeadlineSlot) {
+          const { submissionDeadline } = resolveSubmissionDeadline({
+            dateIso: s.dateIso,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            examQuestions: s.examQuestions,
+          })
           tasks.push({
             id: s.id, // Virtual id: use scheduleId
             objective: s.topic,
@@ -323,11 +336,10 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
             scheduleId: s.id,
             scheduleTopic: s.topic,
             scheduleDateIso: s.dateIso,
+            scheduleStartTime: s.startTime,
             scheduleNote: s.note,
             isExam: true, // Treat as exam task so it uses submitExam
-            deadline: s.endTime
-              ? `${s.dateIso}T${s.endTime}:00+07:00`
-              : `${s.dateIso}T23:59:00+07:00`,
+            deadline: submissionDeadline,
             submission: s.submission || null,
           })
         }
@@ -819,7 +831,7 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
                               )}
                               <p className="text-xs font-semibold text-slate-500 mt-1 truncate">
                                 {task.isExam || task.location === 'Nộp bài trực tuyến'
-                                  ? `Thời gian mở nộp: ${task.scheduleDateIso}`
+                                  ? `Thời gian mở nộp: ${task.scheduleDateIso}${task.scheduleStartTime ? ` · ${task.scheduleStartTime}` : ''}`
                                   : `Ngày học: ${task.scheduleDateIso}`}
                               </p>
                               {task.scheduleNote && (
