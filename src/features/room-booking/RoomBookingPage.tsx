@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { toast } from 'sonner'
 import { RoomBookingDetailModal } from './RoomBookingDetailModal'
 import { RoomBookingMinutesTable } from './RoomBookingMinutesTable'
 import { RoomBookingPendingPanel, RoomBookingRecentPanel } from './RoomBookingSidebar'
@@ -502,6 +503,7 @@ export default function RoomBookingPage() {
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
       setError(msg)
+      toast.error(msg)
       speak(`Lỗi: ${msg}`)
     },
   })
@@ -518,6 +520,7 @@ export default function RoomBookingPage() {
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
       setError(msg)
+      toast.error(msg)
       speak(`Lỗi: ${msg}`)
     },
   })
@@ -532,6 +535,7 @@ export default function RoomBookingPage() {
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
       setError(msg)
+      toast.error(msg)
       speak(`Lỗi: ${msg}`)
     },
     onSettled: () => setProcessingId(null),
@@ -547,6 +551,7 @@ export default function RoomBookingPage() {
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
       setError(msg)
+      toast.error(msg)
       speak(`Lỗi: ${msg}`)
     },
     onSettled: () => setProcessingId(null),
@@ -563,6 +568,7 @@ export default function RoomBookingPage() {
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
       setError(msg)
+      toast.error(msg)
       speak(`Lỗi: ${msg}`)
     },
     onSettled: () => setProcessingId(null),
@@ -577,6 +583,7 @@ export default function RoomBookingPage() {
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi hệ thống'
       setError(msg)
+      toast.error(msg)
     },
     onSettled: () => setProcessingId(null),
   })
@@ -716,6 +723,7 @@ export default function RoomBookingPage() {
     if (!reason.trim()) {
       const m = 'Vui lòng nhập lý do đặt phòng'
       setError(m)
+      toast.error(m)
       speak(m)
       return
     }
@@ -725,12 +733,14 @@ export default function RoomBookingPage() {
     ) {
       const m = 'Giờ không hợp lệ, vui lòng nhập theo định dạng HH:MM'
       setError(m)
+      toast.error(m)
       speak(m)
       return
     }
     if (normTimeFrom >= normTimeTo) {
       const m = 'Giờ kết thúc phải sau giờ bắt đầu'
       setError(m)
+      toast.error(m)
       speak(m)
       return
     }
@@ -738,18 +748,22 @@ export default function RoomBookingPage() {
     if (date < vnDate) {
       const m = 'Không thể đặt lịch trong quá khứ'
       setError(m)
+      toast.error(m)
       speak(m)
       return
     }
     if (date === vnDate && normTimeFrom < vnTimeStr) {
       const m = 'Thời gian bắt đầu không thể ở quá khứ'
       setError(m)
+      toast.error(m)
       speak(m)
       return
     }
 
     if (isUploadingDoc) {
-      setError('Vui lòng đợi tệp tin đang được tải lên...')
+      const m = 'Vui lòng đợi tệp tin đang được tải lên...'
+      setError(m)
+      toast.error(m)
       return
     }
 
@@ -773,6 +787,7 @@ export default function RoomBookingPage() {
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Lỗi lưu lịch họp'
       setError(msg)
+      toast.error(msg)
       speak(`Lỗi: ${msg}`)
     }
   }
