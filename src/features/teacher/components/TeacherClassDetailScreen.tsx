@@ -67,6 +67,12 @@ import {
   useTeacherUpdateAttendance,
   useTeacherUpdateSchedule,
 } from '@/features/teacher/hooks'
+import {
+  buildSubmissionDeadlineIso,
+  dateIsoInVietnam,
+  formatDeadlineRange,
+  isSameDayDeadline,
+} from '@/features/teacher/submissionDeadline'
 import { joinTimeHm, splitTimeToParts } from '@/lib/time24h'
 import { cn } from '@/lib/utils'
 import { SessionEvaluationModal } from './SessionEvaluationModal'
@@ -426,18 +432,22 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
 
     let endDateIso = dateIso
     const firstItem = s.roadmapItems?.[0]
-    if (firstItem && firstItem.deadline) {
-      const d = new Date(firstItem.deadline)
-      const offsetDate = new Date(d.getTime() - d.getTimezoneOffset() * 60 * 1000)
-      endDateIso = offsetDate.toISOString().slice(0, 10) // YYYY-MM-DD
+    if (firstItem?.deadline) {
+      endDateIso = dateIsoInVietnam(firstItem.deadline)
+    } else {
+      const eq = (s as { examQuestions?: { endDateIso?: string; submissionDeadline?: string } })
+        .examQuestions
+      if (eq?.endDateIso) {
+        endDateIso = eq.endDateIso
+      } else if (eq?.submissionDeadline) {
+        endDateIso = dateIsoInVietnam(eq.submissionDeadline)
+      }
     }
 
     const deadlines: Record<string, string> = {}
     s.roadmapItems?.forEach((item) => {
       if (item.deadline) {
-        const date = new Date(item.deadline)
-        const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000)
-        deadlines[item.id] = offsetDate.toISOString().slice(0, 16)
+        deadlines[item.id] = item.deadline
       }
     })
 
@@ -719,6 +729,7 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                     resetScheduleForm()
                     scheduleForm.reset({
                       dateIso: getTodayIsoLocal(),
+                      endDateIso: getTodayIsoLocal(),
                       startHour: '00',
                       startMinute: '00',
                       endHour: '23',
@@ -862,19 +873,17 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         <p className="text-base font-black text-slate-950">{s.topic}</p>
                       </div>
                       {(() => {
-                        const firstItem = s.roadmapItems?.[0]
-                        let deadlineStr = `${s.dateIso} · ${s.startTime} - ${s.endTime}`
-                        if (firstItem && firstItem.deadline) {
-                          const dlDate = new Date(firstItem.deadline)
-                          const offsetDate = new Date(
-                            dlDate.getTime() - dlDate.getTimezoneOffset() * 60 * 1000
-                          )
-                          const endD = offsetDate.toISOString().slice(0, 10)
-                          if (endD !== s.dateIso) {
-                            const timePart = offsetDate.toISOString().slice(11, 16)
-                            deadlineStr = `${s.dateIso} (${s.startTime}) đến ${endD} (${timePart})`
-                          }
-                        }
+                        const deadlineStr = formatDeadlineRange({
+                          dateIso: s.dateIso,
+                          startTime: s.startTime,
+                          endTime: s.endTime,
+                          examQuestions: (
+                            s as {
+                              examQuestions?: { endDateIso?: string; submissionDeadline?: string }
+                            }
+                          ).examQuestions,
+                          roadmapItems: s.roadmapItems,
+                        })
                         return (
                           <p className="text-xs font-semibold text-slate-500">
                             Hạn nộp: <span className="font-bold text-slate-700">{deadlineStr}</span>
@@ -1431,16 +1440,31 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                       const startTime = joinTimeHm(vals.startHour, vals.startMinute)
                       const endTime = joinTimeHm(vals.endHour, vals.endMinute)
                       const roadmapItemDeadlines: Record<string, string> = {}
+                      const endDateIso = vals.endDateIso || vals.dateIso
+                      let examQuestionsPayload = {
+                        ...((schedules.find((x) => x.id === editingScheduleId)?.examQuestions as
+                          | Record<string, unknown>
+                          | undefined) || {}),
+                        gradingType: (vals as { gradingType?: string }).gradingType || 'direct',
+                      }
+
                       if (isCreatingDeadlineOnly) {
                         if (vals.endDateIso && vals.endDateIso < vals.dateIso) {
                           toast.error('Ngày kết thúc không được trước ngày bắt đầu.')
                           return
                         }
-                        const deadlineDateStr = vals.endDateIso || vals.dateIso
-                        const defaultDl = `${deadlineDateStr}T${endTime}:00`
-                        const dlIso = new Date(defaultDl).toISOString()
+                        if (isSameDayDeadline(vals.dateIso, endDateIso) && startTime >= endTime) {
+                          toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
+                          return
+                        }
+                        const submissionDeadline = buildSubmissionDeadlineIso(endDateIso, endTime)
                         for (const itemId of vals.roadmapItemIds) {
-                          roadmapItemDeadlines[itemId] = dlIso
+                          roadmapItemDeadlines[itemId] = submissionDeadline
+                        }
+                        examQuestionsPayload = {
+                          ...examQuestionsPayload,
+                          endDateIso,
+                          submissionDeadline,
                         }
                       }
                       const isKnowledgeWork = data?.isKnowledgeWork !== false
@@ -1453,14 +1477,10 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         roadmapItemIds: isKnowledgeWork ? vals.roadmapItemIds : [],
                         roadmapItemDeadlines: isKnowledgeWork ? roadmapItemDeadlines : {},
                         materialRef: isKnowledgeWork ? null : vals.materialRef?.trim() || null,
-                        note: (vals as any).note?.trim() || null,
-                        examQuestions: {
-                          ...((schedules.find((x) => x.id === editingScheduleId)
-                            ?.examQuestions as any) || {}),
-                          gradingType: (vals as any).gradingType || 'direct',
-                        },
+                        note: (vals as { note?: string }).note?.trim() || null,
+                        examQuestions: examQuestionsPayload,
                       }
-                      if (startTime >= endTime) {
+                      if (!isCreatingDeadlineOnly && startTime >= endTime) {
                         toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
                         return
                       }
