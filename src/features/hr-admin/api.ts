@@ -3,6 +3,7 @@ import { isMockApiEnabled } from '@/lib/mockEnv'
 import { safeParse } from '@/lib/utils'
 import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
 import type { z } from 'zod'
+import type { IHrEmployeeProfileState } from './components/HrEmployeeProfile/HrEmployeeProfile'
 import {
   getMockEmployeeById,
   getMockEmployeeProfileById,
@@ -15,9 +16,18 @@ import {
 } from './mock/mockEmployeesData'
 import { employeeApiSchema, employeeListApiSchema } from './schemas'
 import type { EmployeeFilters } from './types'
-import type { IHrEmployeeProfileState } from './components/HrEmployeeProfile/HrEmployeeProfile'
 
 export type { CreateEmployeeMeta }
+
+export type EmployeeOrgChange = {
+  id: string
+  field: string
+  fieldLabel: string
+  fromLabel: string | null
+  toLabel: string | null
+  changedAt: string
+  changedByName: string | null
+}
 
 function statusToApi(status: EmployeeFilters['status']): string | undefined {
   if (!status) return undefined
@@ -109,6 +119,12 @@ export const employeeApi = {
       return row
     }
     const res = await apiClient.get<IHrEmployeeProfileState>(`/employees/hr/${id}`)
+    return res.data
+  },
+
+  listOrgChanges: async (id: string) => {
+    if (isMockApiEnabled()) return [] as EmployeeOrgChange[]
+    const res = await apiClient.get<EmployeeOrgChange[]>(`/employees/hr/${id}/org-changes`)
     return res.data
   },
 
