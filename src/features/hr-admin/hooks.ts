@@ -1,11 +1,11 @@
-import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/axios'
 import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
+import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { employeeApi, type CreateEmployeeMeta } from './api'
+import type { IHrEmployeeProfileState } from './components/HrEmployeeProfile/HrEmployeeProfile'
 import { employeeKeys } from './queryKeys'
 import type { EmployeeFilters } from './types'
-import type { IHrEmployeeProfileState } from './components/HrEmployeeProfile/HrEmployeeProfile'
 
 type EmployeeListData = Awaited<ReturnType<typeof employeeApi.getAll>>
 
@@ -140,10 +140,19 @@ export function useUpdateEmployeeById() {
     onSuccess: (_data, { id }) => {
       void qc.invalidateQueries({ queryKey: employeeKeys.detailEmployeeByID(id) })
       void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
+      void qc.invalidateQueries({ queryKey: employeeKeys.orgChanges(id) })
       toast.success('Đã cập nhật nhân viên')
     },
     onError: (e) => {
       toast.error(getApiErrorMessage(e) || 'Không thể cập nhật nhân viên')
     },
+  })
+}
+
+export function useEmployeeOrgChanges(id: string) {
+  return useQuery({
+    queryKey: employeeKeys.orgChanges(id),
+    queryFn: () => employeeApi.listOrgChanges(id),
+    enabled: id.length > 0,
   })
 }

@@ -2,10 +2,25 @@ import { FormProvider, useForm, useWatch, type Control } from 'react-hook-form'
 
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 
-import { useAuthStore } from '@/stores/auth.store'
-import { useUploadMePortrait } from '@/features/profile/hooks'
-import { useQuery } from '@tanstack/react-query'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
+import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  DateController,
+  InputController,
+  SelectController,
+  TextareaController,
+} from '@/components/ui/form-controllers'
+import { Input } from '@/components/ui/input'
+import { SelectItem } from '@/components/ui/select'
 import { organizationApi } from '@/features/organization/api'
+import { profileApi } from '@/features/profile/api'
+import { useUploadMePortrait } from '@/features/profile/hooks'
+import {
+  formatUserDateForReadonlyDisplay,
+  parseStoredDateToInputValue,
+} from '@/features/profile/profileDateUtils'
 import { type MeUserDisplayKey, type MeUserSelf } from '@/features/profile/userSelf.types'
 import {
   isDateFormField,
@@ -13,37 +28,26 @@ import {
   USER_SELF_FORM_SECTIONS,
   type UserSelfFieldSpec,
 } from '@/features/profile/userSelfFormLayout'
-import {
-  formatUserDateForReadonlyDisplay,
-  parseStoredDateToInputValue,
-} from '@/features/profile/profileDateUtils'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { profileApi } from '@/features/profile/api'
-import { toast } from 'sonner'
-import { getApiErrorMessage } from '@/lib/axios'
-import { EmployeeExtraTeamsField, extraTeamIdsEqual } from '../EmployeeExtraTeamsField'
-import { levelPillText } from '../HrEmployeeList/employeeListUtils'
-import { ROLE_LABEL_VI } from '@/lib/roleLabels'
-import type { Role } from '@/types/auth'
-import type { PatchEmployeeInput } from '@/types/api'
-import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
-import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
-import { Building2, RefreshCw, Upload } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import {
-  DateController,
-  InputController,
-  SelectController,
-  TextareaController,
-} from '@/components/ui/form-controllers'
-import { SelectItem } from '@/components/ui/select'
-import { createPortal } from 'react-dom'
-import { Button } from '@/components/ui/button'
-import { Link } from '@tanstack/react-router'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { usePermission } from '@/hooks/usePermission'
+import { getApiErrorMessage } from '@/lib/axios'
+import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
+import { ROLE_LABEL_VI } from '@/lib/roleLabels'
+import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth.store'
+import type { PatchEmployeeInput } from '@/types/api'
+import type { Role } from '@/types/auth'
+import { useQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
+import { Building2, RefreshCw, Upload } from 'lucide-react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { toast } from 'sonner'
+import {
+  buildDirectManagerSelectOptions,
+  directManagerIdToStoredName,
+  resolveDirectManagerFormValue,
+  type DirectManagerOption,
+} from '../../directManagerOptions'
 import {
   useAnyActionPending,
   useAttachmentSignedUrl,
@@ -53,15 +57,12 @@ import {
   useUpdateEmployee,
   useUpdateEmployeeById,
 } from '../../hooks'
-import { EmployeeLoginCredentialCard } from './EmployeeLoginCredentialCard'
-import { EMPLOYEE_PATCH_KEYS, type EditEmployeeBody, type EmployeePatchKey } from '../../types'
 import { teamPositionOptions } from '../../teamPositionOptions'
-import {
-  buildDirectManagerSelectOptions,
-  directManagerIdToStoredName,
-  resolveDirectManagerFormValue,
-  type DirectManagerOption,
-} from '../../directManagerOptions'
+import { EMPLOYEE_PATCH_KEYS, type EditEmployeeBody, type EmployeePatchKey } from '../../types'
+import { EmployeeExtraTeamsField, extraTeamIdsEqual } from '../EmployeeExtraTeamsField'
+import { levelPillText } from '../HrEmployeeList/employeeListUtils'
+import { EmployeeLoginCredentialCard } from './EmployeeLoginCredentialCard'
+import { OrgChangeHistory } from './OrgChangeHistory'
 export interface HrEmployeeProfileProps {
   employee: IHrEmployeeProfileState
   /** Mặc định mở tab khi vào từ URL `?mode=edit`. */
@@ -1005,7 +1006,7 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
           <div className="absolute bottom-8 left-1/3 h-56 w-56 -translate-x-1/2 rounded-full bg-violet-500/10 blur-3xl" />
         </div>
 
-        <div className="mx-auto w-full max-w-[1400px] px-4 md:px-6">
+        <div className="mx-auto w-full px-4 md:px-6">
           <div className="mb-4 flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <Link
               to="/hr-admin"
@@ -1084,6 +1085,7 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
                               primaryTeamId={selectedTeamId}
                               allTeams={allTeamOptions}
                             />
+                            <OrgChangeHistory employeeId={employee.id} />
                           </div>
                         </div>
                       </div>
