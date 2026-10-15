@@ -1727,16 +1727,23 @@ function TeamMembersPanel({
       const order = (m.teamOrderNumber ?? '').toLowerCase()
       const role = ROLE_LABEL_VI[memberRowRole(m)].toLowerCase()
       const st = MEMBER_STATUS_VI[memberRowStatus(m)].toLowerCase()
+      const projects = (m.activeProjects ?? []).map((project) => project.name.toLowerCase())
       return (
         name.includes(q) ||
         email.includes(q) ||
         code.includes(q) ||
         order.includes(q) ||
         role.includes(q) ||
-        st.includes(q)
+        st.includes(q) ||
+        projects.some((projectName) => projectName.includes(q))
       )
     })
   }, [members, deferredTableFilter])
+
+  const hasAnyActiveProjects = useMemo(
+    () => members.some((member) => (member.activeProjects?.length ?? 0) > 0),
+    [members]
+  )
 
   const existingMemberIds = useMemo(() => new Set(members.map((m) => m.userId)), [members])
 
@@ -1773,7 +1780,11 @@ function TeamMembersPanel({
                 <Input
                   id="team-members-table-filter"
                   className="pl-9"
-                  placeholder="Tên, email, mã NV, vai trò, trạng thái…"
+                  placeholder={
+                    hasAnyActiveProjects
+                      ? 'Tên, email, mã NV, vai trò, trạng thái, dự án…'
+                      : 'Tên, email, mã NV, vai trò, trạng thái…'
+                  }
                   value={tableFilter}
                   onChange={(e) => setTableFilter(e.target.value)}
                   autoComplete="off"
@@ -1818,7 +1829,7 @@ function TeamMembersPanel({
               ) : null}
             </div>
           ) : (
-            <Table className="min-w-[720px]">
+            <Table className={hasAnyActiveProjects ? 'min-w-[940px]' : 'min-w-[720px]'}>
               <TableHeader>
                 <TableRow className="border-b border-border/80 bg-muted/30 hover:bg-muted/30">
                   <TableHead className="w-[56px] pl-3">STT</TableHead>
@@ -1826,6 +1837,9 @@ function TeamMembersPanel({
                   <TableHead className="min-w-[140px]">Tên thành viên</TableHead>
                   <TableHead className="min-w-[180px]">Email</TableHead>
                   <TableHead className="min-w-[130px]">Vai trò</TableHead>
+                  {hasAnyActiveProjects ? (
+                    <TableHead className="min-w-[210px]">Dự án đang tham gia</TableHead>
+                  ) : null}
                   <TableHead className="min-w-[130px]">Trạng thái</TableHead>
                   {canManage ? (
                     <TableHead className="w-[96px] text-right pr-3">Hành động</TableHead>
@@ -1836,7 +1850,7 @@ function TeamMembersPanel({
                 {filteredMembers.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
                     <TableCell
-                      colSpan={canManage ? 7 : 6}
+                      colSpan={(canManage ? 7 : 6) + (hasAnyActiveProjects ? 1 : 0)}
                       className="py-10 text-center text-sm text-muted-foreground"
                     >
                       Không có dòng nào khớp bộ lọc.
@@ -1846,6 +1860,7 @@ function TeamMembersPanel({
                   filteredMembers.map((m) => {
                     const role = memberRowRole(m)
                     const status = memberRowStatus(m)
+                    const activeProjects = m.activeProjects ?? []
                     const removing = removeMemberM.isPending && removeMemberM.variables === m.userId
                     return (
                       <TableRow key={m.userId} className="group">
@@ -1879,6 +1894,25 @@ function TeamMembersPanel({
                             <span className="text-sm">{ROLE_LABEL_VI[role]}</span>
                           </div>
                         </TableCell>
+                        {hasAnyActiveProjects ? (
+                          <TableCell className="align-middle">
+                            {activeProjects.length > 0 ? (
+                              <div className="flex max-w-[280px] flex-wrap gap-1.5">
+                                {activeProjects.map((project) => (
+                                  <Badge
+                                    key={project.id}
+                                    variant="outline"
+                                    className="max-w-full border-primary/20 bg-primary/[0.06] font-medium text-primary"
+                                    title={project.name}
+                                  >
+                                    <FolderOpen className="mr-1 h-3 w-3 shrink-0" aria-hidden />
+                                    <span className="truncate">{project.name}</span>
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : null}
+                          </TableCell>
+                        ) : null}
                         <TableCell className="align-middle">
                           <Badge variant="outline" className={memberStatusBadgeClassName(status)}>
                             {MEMBER_STATUS_VI[status]}

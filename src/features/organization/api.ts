@@ -158,6 +158,7 @@ export type TeamMemberRow = {
   teamPosition?: string | null
   /** false = Part-time ở team không Traffic — miễn KPI/OKR. */
   requiresKpiOkr?: boolean
+  activeProjects?: Array<{ id: string; name: string }>
 }
 
 export type EligibleUserRow = {
