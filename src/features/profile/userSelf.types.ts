@@ -8,10 +8,14 @@ export interface MeUserSelf {
   updatedAt: string
   lastSyncedAt: string | null
   startDateWork: string | null
+  /** Chỉ HR sửa. */
+  leaveDateWork: string | null
   employmentStatus: string | null
   fullNameLegal: string | null
   displayName: string | null
   employeeCodePrimary: string | null
+  /** Chỉ HR sửa. */
+  employeeIdentifier: string | null
   employeeCodeSecondary: string | null
   contractType: string | null
   jobTitle: string | null
@@ -34,6 +38,8 @@ export interface MeUserSelf {
   addressCurrent: string | null
   addressHousehold: string | null
   identityDocumentInfo: string | null
+  /** Chỉ HR sửa. */
+  identityNumber: string | null
   maritalStatus: string | null
   childrenInfo: string | null
   emergencyContact1: string | null
@@ -80,6 +86,7 @@ export const ME_USER_PATCH_KEYS = [
   'addressCurrent',
   'addressHousehold',
   'identityDocumentInfo',
+  'identityNumber',
   'maritalStatus',
   'childrenInfo',
   'emergencyContact1',

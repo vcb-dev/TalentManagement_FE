@@ -43,6 +43,10 @@ export default defineConfig(({ mode }) => {
               return 'vendor-xlsx'
             }
 
+            if (id.includes('node_modules/exceljs')) {
+              return 'vendor-exceljs'
+            }
+
             if (id.includes('node_modules/@tanstack/')) {
               return 'vendor-tanstack'
             }

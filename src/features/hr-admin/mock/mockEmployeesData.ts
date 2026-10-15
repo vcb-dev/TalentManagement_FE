@@ -3,6 +3,7 @@ import type { EmployeeFilters } from '@/features/hr-admin/types'
 import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
 import type { MeUserSelf } from '@/features/profile/userSelf.types'
 import { HR_DEPARTMENT_IDS, HR_TEAM_OPTIONS } from '@/features/hr-admin/hrOrgOptions'
+import { isoDateMatchesMonthYear } from '@/features/hr-admin/employeeListFilters'
 
 export type CreateEmployeeMeta = {
   initialLevel?: 'tap_su' | 'biet_viec'
@@ -22,13 +23,20 @@ function teamLabelForMock(teamId: string): string {
 function emp(
   p: Omit<
     EmployeeEntity,
-    'departmentId' | 'departmentName' | 'teamIds' | 'teamNames' | 'createdAt' | 'updatedAt'
+    | 'employeeCodePrimary'
+    | 'departmentId'
+    | 'departmentName'
+    | 'teamIds'
+    | 'teamNames'
+    | 'createdAt'
+    | 'updatedAt'
   >,
   teamIds: string[] = [MOCK_TEAM_NS01]
 ): EmployeeEntity {
   const now = new Date().toISOString()
   return {
     ...p,
+    employeeCodePrimary: `305250325${p.id.slice(-2)}`,
     departmentId: DEPT,
     departmentName: DEPT_NAME,
     teamIds,
@@ -179,20 +187,29 @@ export function getMockEmployees(filters: EmployeeFilters): {
   } else if (filters.role) {
     list = list.filter((e) => e.role === filters.role)
   }
-  const st = statusFilter(filters.status)
-  if (st) list = list.filter((e) => e.status === st)
   if (filters.search?.trim()) {
     const q = filters.search.trim().toLowerCase()
     list = list.filter((e) => e.name.toLowerCase().includes(q) || e.email.toLowerCase().includes(q))
   }
-  const total = list.length
-  const pageSize = Math.min(200, Math.max(1, filters.pageSize || 20))
-  const page = Math.max(1, filters.page || 1)
-  const start = (page - 1) * pageSize
-  const data = list.slice(start, start + pageSize)
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  if (filters.startMonth !== undefined || filters.startYear !== undefined) {
+    list = list.filter((e) =>
+      isoDateMatchesMonthYear(e.startDate, filters.startMonth, filters.startYear)
+    )
+  }
+  if (filters.birthMonth !== undefined) {
+    list = list.filter((e) => isoDateMatchesMonthYear(e.birthDate, filters.birthMonth))
+  }
   const statusCounts = { ACTIVE: 0, INACTIVE: 0, PROBATION: 0, RESERVED: 0, TRANSFERRED: 0 }
   for (const e of list) statusCounts[e.status]++
+  const st = statusFilter(filters.status)
+  if (st) list = list.filter((e) => e.status === st)
+  const total = list.length
+  const pageSize = Math.min(200, Math.max(1, filters.pageSize || 20))
+  const requestedPage = Math.max(1, filters.page || 1)
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const page = Math.min(requestedPage, totalPages)
+  const start = (page - 1) * pageSize
+  const data = list.slice(start, start + pageSize)
   return { data, total, page, pageSize, totalPages, statusCounts }
 }
 
@@ -256,10 +273,11 @@ function buildMockProfile(e: EmployeeEntity): MeUserSelf {
     updatedAt: e.updatedAt,
     lastSyncedAt: e.updatedAt,
     startDateWork: e.startDate ?? null,
+    leaveDateWork: null,
     employmentStatus: e.status,
     fullNameLegal: e.name,
     displayName: e.name,
-    employeeCodePrimary: null,
+    employeeCodePrimary: e.employeeCodePrimary ?? null,
     employeeCodeSecondary: null,
     contractType: e.role,
     jobTitle: null,
@@ -280,6 +298,8 @@ function buildMockProfile(e: EmployeeEntity): MeUserSelf {
     addressCurrent: null,
     addressHousehold: null,
     identityDocumentInfo: null,
+    identityNumber: null,
+    employeeIdentifier: null,
     maritalStatus: null,
     childrenInfo: null,
     emergencyContact1: null,
@@ -315,6 +335,31 @@ export function getMockEmployeeProfileById(id: string): MeUserSelf | undefined {
   return { ...buildMockProfile(e), ...profileOverrides.get(id) }
 }
 
+/** `GET /employees/export` (mock) — cùng bộ lọc với danh sách, không phân trang. */
+export function getMockEmployeesExport(filters: Omit<EmployeeFilters, 'page' | 'pageSize'>) {
+  const { data } = getMockEmployees({ ...filters, page: 1, pageSize: Number.MAX_SAFE_INTEGER })
+  return {
+    data: data.map((e) => {
+      const p = getMockEmployeeProfileById(e.id)
+      return {
+        id: e.id,
+        employeeIdentifier: p?.employeeIdentifier ?? null,
+        name: e.name,
+        birthDate: e.birthDate ?? null,
+        birthPlace: p?.hometownDetail ?? null,
+        addressHousehold: p?.addressHousehold ?? null,
+        addressCurrent: p?.addressCurrent ?? null,
+        identityDocument: p?.identityDocumentInfo ?? p?.identityNumber ?? null,
+        educationLevel: p?.educationLevel ?? null,
+        phone: e.phone ?? null,
+        teamNames: e.teamNames ?? [],
+        jobTitle: p?.jobTitle ?? null,
+        startDate: e.startDate ?? null,
+      }
+    }),
+  }
+}
+
 export function mockUpdateEmployeeProfile(
   id: string,
   patch: Partial<MeUserSelf>
@@ -336,9 +381,13 @@ export function mockCreateEmployee(
 ): EmployeeEntity {
   const now = new Date().toISOString()
   const id = crypto.randomUUID()
-  const teamIds = [input.teamId, ...(input.extraTeamIds ?? []).filter((id) => id !== input.teamId)]
+  const teamIds = input.teamId
+    ? [input.teamId, ...(input.extraTeamIds ?? []).filter((id) => id !== input.teamId)]
+    : []
   const row: EmployeeEntity = {
     id,
+    employeeCodePrimary:
+      input.employeeCodePrimary || `305250325${String(rows.length + 1).padStart(2, '0')}`,
     name: input.name,
     email: input.email,
     role: input.role,

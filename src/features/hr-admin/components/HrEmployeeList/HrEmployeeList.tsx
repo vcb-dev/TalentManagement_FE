@@ -5,21 +5,29 @@ import { Form } from '@/components/ui/form'
 import { InputFieldController } from '@/components/ui/form-controllers'
 import { PaginationCardStepper } from '@/components/ui/pagination'
 import { SkeletonEmployeeCardGrid, SkeletonStatTile } from '@/components/ui/skeleton'
-import type { EmployeeEntity } from '@/features/hr-admin/api'
+import { employeeApi, type EmployeeEntity } from '@/features/hr-admin/api'
 import { EmployeeTable } from '@/features/hr-admin/components/EmployeeTable'
 import { useEmployeeTable } from '@/features/hr-admin/components/EmployeeTable/useEmployeeTable'
 import type { EmployeeFilters } from '@/features/hr-admin/types'
+import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 import { usePermission } from '@/hooks/usePermission'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/auth'
 import { getRouteApi, Link } from '@tanstack/react-router'
-import { Layers, Search, UserCheck, UserMinus, Users } from 'lucide-react'
+import { format } from 'date-fns'
+import { Download, Layers, Loader2, Search, UserCheck, UserMinus, Users } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { EmployeeCard } from './EmployeeCard'
 import { EmployeeDetailSheet } from './EmployeeDetailSheet'
+import {
+  EmployeeFilterPopover,
+  type EmployeeListFilterPatch,
+  type EmployeeListFilterValue,
+} from './EmployeeFilterPopover'
+import { downloadEmployeesExcel } from './exportEmployeesExcel'
 
 const hrAdminListRoute = getRouteApi('/_protected/hr-admin/')
 
@@ -53,8 +61,19 @@ export interface HrEmployeeListProps {
 
 export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   const routeSearch = hrAdminListRoute.useSearch()
-  const totalStatHint = 'theo tab vai trò và tìm kiếm'
-  const { canId } = usePermission()
+  const totalStatHint = 'mọi trạng thái làm việc'
+  const { canId, role: viewerRole } = usePermission()
+  /** BE ép `teamId` cho Leader. */
+  const showTeamFilter = viewerRole !== 'LEADER'
+  const { departments: orgDepartments, teamsByDept } = useHrOrgSelectOptions()
+  const teamGroups = useMemo(
+    () =>
+      orgDepartments
+        .map((d) => ({ ...d, teams: teamsByDept.get(d.value) ?? [] }))
+        .filter((d) => d.teams.length > 0),
+    [orgDepartments, teamsByDept]
+  )
+  const [isExporting, setIsExporting] = useState(false)
   const canCreate = canId('hr.employees.create')
   const canEdit = canId('hr.employees.edit')
   const canDeactivate = canId('hr.employees.deactivate') || canId('hr.employees.edit')
@@ -69,6 +88,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     employees,
     isLoading,
     isFetching,
+    isPageResolved,
     pagination,
     onView,
     onEdit,
@@ -134,9 +154,10 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   )
 
   const stats = useMemo(() => {
-    const total = pagination.total
     const counts = pagination.statusCounts
-    // Ưu tiên statusCounts (toàn bộ tập đã lọc từ BE); fallback trang hiện tại nếu BE cũ chưa trả về.
+    const total = counts
+      ? counts.ACTIVE + counts.INACTIVE + counts.PROBATION + counts.RESERVED + counts.TRANSFERRED
+      : pagination.total
     const onPage = employees
     const active = counts ? counts.ACTIVE : onPage.filter((e) => e.status === 'ACTIVE').length
     const inactive = counts ? counts.INACTIVE : onPage.filter((e) => e.status === 'INACTIVE').length
@@ -155,6 +176,20 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   const rangeFrom = pagination.total === 0 ? 0 : (pagination.page - 1) * pageSize + 1
   const rangeTo = Math.min(pagination.page * pageSize, pagination.total)
 
+  useEffect(() => {
+    if (!isPageResolved || isFetching || filters.page <= totalPages) return
+    setSelectedId(null)
+    void navigate({
+      to: '/hr-admin',
+      search: (current) => ({
+        ...current,
+        page: totalPages,
+        pageSize: targetPageSize,
+      }),
+      replace: true,
+    })
+  }, [filters.page, isFetching, isPageResolved, navigate, targetPageSize, totalPages])
+
   const applyRoleTab = (tab: 'all' | Role) => {
     setSelectedId(null)
     void navigate({
@@ -168,6 +203,53 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         return { ...base, role: tab }
       },
     })
+  }
+
+  const appliedListFilter: EmployeeListFilterValue = {
+    status: routeSearch.status ?? 'active',
+    teamId: routeSearch.teamId,
+    startMonth: routeSearch.startMonth,
+    startYear: routeSearch.startYear,
+    birthMonth: routeSearch.birthMonth,
+  }
+
+  /** Gộp với URL mới nhất (`prev`) để chọn liên tiếp không mất lọc trước; `undefined` = bỏ lọc. */
+  const applyListFilter = (patch: EmployeeListFilterPatch) => {
+    setSelectedId(null)
+    void navigate({
+      to: '/hr-admin',
+      search: (prev) => {
+        const next: typeof prev = { ...prev, ...patch, page: 1, pageSize: targetPageSize }
+        // "Đang làm việc" là mặc định — bỏ param cho gọn link.
+        if (next.status === 'active') delete next.status
+        if (next.teamId === undefined) delete next.teamId
+        if (next.startMonth === undefined) delete next.startMonth
+        if (next.startYear === undefined) delete next.startYear
+        if (next.birthMonth === undefined) delete next.birthMonth
+        return next
+      },
+    })
+  }
+
+  const handleExportExcel = async () => {
+    if (isExporting) return
+    setIsExporting(true)
+    try {
+      const res = await employeeApi.getExportRows(filters)
+      if (res.data.length === 0) {
+        toast.info('Không có nhân sự phù hợp bộ lọc để xuất.')
+        return
+      }
+      await downloadEmployeesExcel(
+        res.data,
+        `danh-sach-nhan-su-${format(new Date(), 'yyyyMMdd-HHmm')}.xlsx`
+      )
+      toast.success(`Đã xuất ${res.data.length} nhân sự ra Excel.`)
+    } catch {
+      toast.error('Xuất Excel thất bại. Vui lòng thử lại.')
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handlePageChange = (nextPage: number) => {
@@ -229,10 +311,17 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
               ) : null}
               <Button
                 type="button"
-                className="h-auto rounded-lg bg-[#006C49] px-5 py-2.5 text-sm font-semibold text-white"
-                onClick={() => toast.info('Xuất Excel sẽ được kết nối API sau.')}
+                className="h-auto gap-2 rounded-lg bg-[#006C49] px-5 py-2.5 text-sm font-semibold text-white"
+                onClick={() => void handleExportExcel()}
+                disabled={isExporting}
+                title="Xuất toàn bộ nhân sự theo bộ lọc hiện tại"
               >
-                Xuất dữ liệu
+                {isExporting ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <Download className="size-4" aria-hidden />
+                )}
+                {isExporting ? 'Đang xuất…' : 'Xuất Excel'}
               </Button>
             </div>
           </div>
@@ -246,7 +335,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
               tone="default"
             />
             <StatCard
-              title="Hoạt động"
+              title="Nhân sự đang làm việc"
               value={stats.active}
               icon={<UserCheck className="h-5 w-5" />}
               description={stats.total > 0 ? `${stats.activePct}% tổng nhân sự` : undefined}
@@ -256,7 +345,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
               title="Ngừng / bảo lưu"
               value={stats.inactive + stats.reserved}
               icon={<UserMinus className="h-5 w-5" />}
-              description={totalStatHint}
+              description="đã nghỉ, bảo lưu, điều chuyển…"
               tone="warning"
             />
             <StatCard
@@ -269,8 +358,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
           </div>
         </div>
 
-        {/* Tab vai trò (GET /employees?role=) — và tìm kiếm */}
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
           <div
             className="flex shrink-0 flex-wrap items-center gap-1 rounded-xl border border-border/80 bg-card/90 p-1 shadow-sm ring-1 ring-border/60 backdrop-blur-sm"
             role="tablist"
@@ -300,22 +388,31 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
               )
             })}
           </div>
-          <div className="min-w-0 flex-1">
-            <Form {...searchForm}>
-              <div className="relative flex min-h-[42px] w-full min-w-0 items-center rounded-xl border border-border/80 bg-card/90 px-3 shadow-sm ring-1 ring-border/60 backdrop-blur-sm">
-                <InputFieldController
-                  control={control}
-                  name="searchDraft"
-                  type="search"
-                  placeholder="Tìm kiếm nhân sự..."
-                  aria-label="Tìm kiếm nhân sự"
-                  className="min-w-0 flex-1"
-                  wrapperClassName="min-w-0 flex-1"
-                  startSlot={<Search className="size-4 text-muted-foreground" aria-hidden />}
-                  inputClassName="h-auto min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm shadow-none focus-visible:ring-0"
-                />
-              </div>
-            </Form>
+          <div className="flex min-w-0 flex-1 gap-3">
+            <div className="min-w-0 flex-1">
+              <Form {...searchForm}>
+                <div className="relative flex min-h-[42px] w-full min-w-0 items-center rounded-xl border border-border/80 bg-card/90 px-3 shadow-sm ring-1 ring-border/60 backdrop-blur-sm">
+                  <InputFieldController
+                    control={control}
+                    name="searchDraft"
+                    type="search"
+                    placeholder="Tìm kiếm nhân sự..."
+                    aria-label="Tìm kiếm nhân sự"
+                    className="min-w-0 flex-1"
+                    wrapperClassName="min-w-0 flex-1"
+                    startSlot={<Search className="size-4 text-muted-foreground" aria-hidden />}
+                    inputClassName="h-auto min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-9 pr-3 text-sm shadow-none focus-visible:ring-0"
+                  />
+                </div>
+              </Form>
+            </div>
+
+            <EmployeeFilterPopover
+              value={appliedListFilter}
+              onChange={applyListFilter}
+              teamGroups={teamGroups}
+              showTeamFilter={showTeamFilter}
+            />
           </div>
         </div>
 

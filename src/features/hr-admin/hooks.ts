@@ -2,7 +2,12 @@ import { getApiErrorMessage } from '@/lib/axios'
 import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
 import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { employeeApi, type CreateEmployeeMeta } from './api'
+import {
+  employeeApi,
+  type CreateEmployeeMeta,
+  type IdCardPhotoField,
+  type PrivateDocField,
+} from './api'
 import type { IHrEmployeeProfileState } from './components/HrEmployeeProfile/HrEmployeeProfile'
 import { employeeKeys } from './queryKeys'
 import type { EmployeeFilters } from './types'
@@ -127,6 +132,37 @@ export function useAttachmentSignedUrl() {
       employeeApi.getAttachmentSignedUrl(args.id, args.field),
     onError: (e) => {
       toast.error(getApiErrorMessage(e) || 'Không thể mở tài liệu')
+    },
+  })
+}
+
+/** Signed URL sống 5 phút — cache 4 phút. */
+export function useAttachmentPreviewUrl(
+  id: string,
+  field: IdCardPhotoField,
+  objectPath: string | null | undefined
+) {
+  const path = objectPath?.trim() ?? ''
+  return useQuery({
+    queryKey: employeeKeys.attachmentPreview(id, field, path),
+    queryFn: () => employeeApi.getAttachmentSignedUrl(id, field),
+    enabled: id.length > 0 && path.length > 0,
+    staleTime: 4 * 60_000,
+    gcTime: 4 * 60_000,
+  })
+}
+
+/** Không refetch hồ sơ (sẽ `reset` form, mất thay đổi chưa lưu) — chỉ đánh dấu stale. */
+export function useUploadAttachment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (args: { id: string; field: PrivateDocField; file: File }) =>
+      employeeApi.uploadAttachment(args.id, args.field, args.file),
+    onSuccess: (_data, { id }) => {
+      void qc.invalidateQueries({
+        queryKey: employeeKeys.detailEmployeeByID(id),
+        refetchType: 'none',
+      })
     },
   })
 }

@@ -17,8 +17,20 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
       role: initial?.role,
       status: initial?.status,
       teamId: initial?.teamId,
+      startMonth: initial?.startMonth,
+      startYear: initial?.startYear,
+      birthMonth: initial?.birthMonth,
     }),
-    [initial?.page, initial?.pageSize, initial?.role, initial?.status, initial?.teamId]
+    [
+      initial?.page,
+      initial?.pageSize,
+      initial?.role,
+      initial?.status,
+      initial?.teamId,
+      initial?.startMonth,
+      initial?.startYear,
+      initial?.birthMonth,
+    ]
   )
 
   const [search, setSearch] = useState<string | undefined>(undefined)
@@ -52,7 +64,7 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
     id: string
   } | null>(null)
 
-  const { data, isLoading, isFetching } = useEmployees(filters)
+  const { data, isLoading, isFetching, isPlaceholderData } = useEmployees(filters)
   const deactivate = useDeactivateEmployee()
   const update = useUpdateEmployee()
   const navigate = useNavigate()
@@ -76,9 +88,12 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
     isLoading,
     /** Đang tải trang mới (kể cả khi vẫn hiển thị data cũ) — dùng để khoá pagination/bộ lọc. */
     isFetching,
+    /** false khi đang hiện dữ liệu giữ chỗ của query trước. */
+    isPageResolved: data !== undefined && !isPlaceholderData,
     pagination: {
-      page: filters.page,
-      pageSize: filters.pageSize,
+      // Dùng trang BE đã kẹp thay vì page vượt giới hạn trên URL.
+      page: isPlaceholderData ? filters.page : (data?.page ?? filters.page),
+      pageSize: isPlaceholderData ? filters.pageSize : (data?.pageSize ?? filters.pageSize),
       total,
       totalPages,
       statusCounts: data?.statusCounts,
