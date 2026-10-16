@@ -64,6 +64,8 @@ import {
 } from '../../schemas'
 import { teamPositionOptions } from '../../teamPositionOptions'
 import { EMPLOYEE_PATCH_KEYS, type EditEmployeeBody, type EmployeePatchKey } from '../../types'
+import { EMPLOYEE_CARD_STATUSES, EMPLOYEE_CARD_STATUS_LABEL } from '../../employeeCard'
+import { EmployeeCardColorField } from '../EmployeeCard'
 import { EmployeeExtraTeamsField, extraTeamIdsEqual } from '../EmployeeExtraTeamsField'
 import { EmployeeProjectsCard } from '../EmployeeProjects'
 import { CvUploadField } from '../CvAttachmentField'
@@ -598,6 +600,42 @@ function renderField(
   }
 
   const key = field.key as EmployeePatchKey
+
+  if (field.kind === 'card-status-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder="Chọn tình trạng cấp thẻ"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        <SelectItem value="__none">Chưa cập nhật</SelectItem>
+        {EMPLOYEE_CARD_STATUSES.map((s) => (
+          <SelectItem key={s} value={s}>
+            {EMPLOYEE_CARD_STATUS_LABEL[s]}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (field.kind === 'card-color-select') {
+    return (
+      <EmployeeCardColorField
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        savedColor={employee.employeeCardColor}
+        canManage={canEdit}
+      />
+    )
+  }
 
   if (field.kind === 'division-select') {
     return (

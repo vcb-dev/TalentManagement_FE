@@ -21,6 +21,8 @@ import {
   extraTeamIdsEqual,
 } from '@/features/hr-admin/components/EmployeeExtraTeamsField'
 import { MyCvUploadField } from '@/features/hr-admin/components/CvAttachmentField'
+import { EmployeeCardColorLabel } from '@/features/hr-admin/components/EmployeeCard'
+import { employeeCardStatusLabel } from '@/features/hr-admin/employeeCard'
 import { MyIdCardPhotoUploadField } from '@/features/hr-admin/components/IdCardPhotoField'
 import {
   FieldLabel,
@@ -76,6 +78,8 @@ const SELF_READONLY_KEYS: ReadonlySet<MeUserDisplayKey> = new Set<MeUserDisplayK
   'directManager',
   'email',
   'profileReviewDate',
+  'employeeCardStatus',
+  'employeeCardColorId',
 ])
 
 /** Lưu qua endpoint riêng — không gửi trong PATCH hồ sơ. */
@@ -90,7 +94,11 @@ function isSelfReadonly(key: MeUserDisplayKey): boolean {
   return SELF_READONLY_KEYS.has(key)
 }
 
-function readonlyValue(u: MeUserSelf, key: MeUserDisplayKey): string {
+function readonlyValue(u: MeUserSelf, key: MeUserDisplayKey): ReactNode {
+  if (key === 'employeeCardStatus') return employeeCardStatusLabel(u.employeeCardStatus)
+  if (key === 'employeeCardColorId') {
+    return u.employeeCardColor ? <EmployeeCardColorLabel color={u.employeeCardColor} /> : ''
+  }
   if (key === 'startDateWork' || key === 'profileReviewDate') {
     return formatUserDateForReadonlyDisplay(u[key])
   }

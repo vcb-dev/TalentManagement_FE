@@ -300,6 +300,8 @@ function buildMockProfile(e: EmployeeEntity): MeUserSelf {
     identityDocumentInfo: null,
     identityNumber: null,
     employeeIdentifier: null,
+    employeeCardStatus: null,
+    employeeCardColorId: null,
     maritalStatus: null,
     childrenInfo: null,
     emergencyContact1: null,

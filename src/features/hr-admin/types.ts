@@ -28,6 +28,8 @@ export const EMPLOYEE_PATCH_KEYS = [
   'employeeCodePrimary',
   'employeeIdentifier',
   'leaveDateWork',
+  'employeeCardStatus',
+  'employeeCardColorId',
 ] as const
 
 export type EmployeePatchKey = (typeof EMPLOYEE_PATCH_KEYS)[number]

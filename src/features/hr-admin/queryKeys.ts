@@ -15,6 +15,10 @@ export const employeeKeys = {
   projects: (id: string) => [...employeeKeys.all, 'projects', id] as const,
 }
 
+export const employeeCardColorKeys = {
+  all: ['employee-card-colors'] as const,
+}
+
 export const projectKeys = {
   all: ['projects'] as const,
   list: () => [...projectKeys.all, 'list'] as const,

@@ -4,7 +4,14 @@ export type UserSelfFieldSpec = {
   key: MeUserDisplayKey
   label: string
   multiline?: boolean
-  kind?: 'portrait' | 'division-select' | 'team-select' | 'position-select' | 'job-title-select'
+  kind?:
+    | 'portrait'
+    | 'division-select'
+    | 'team-select'
+    | 'position-select'
+    | 'job-title-select'
+    | 'card-status-select'
+    | 'card-color-select'
 }
 
 /** Các mục ngày chỉnh sửa được — `<input type="date">` (`startDateWork` chỉ đọc, không nằm đây). */
@@ -66,6 +73,8 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
       { key: 'teamPosition', label: 'Loại hợp đồng / vị trí' },
       { key: 'directManager', label: 'Quản lý trực tiếp' },
       { key: 'workplaceBranch', label: 'Chi nhánh / nơi làm việc' },
+      { key: 'employeeCardStatus', label: 'Tình trạng cấp thẻ', kind: 'card-status-select' },
+      { key: 'employeeCardColorId', label: 'Màu thẻ', kind: 'card-color-select' },
       { key: 'hrOfficerName', label: 'Cán bộ HR phụ trách' },
       { key: 'managerBlockCode', label: 'Mã khối theo quản lý' },
     ],
