@@ -1,3 +1,8 @@
+import type {
+  EmployeeCardColorSummary,
+  EmployeeCardStatus,
+} from '@/features/hr-admin/employeeCard'
+
 /** Khớp JSON `GET /me/user` (bảng `users`, không có raw_data). */
 export interface MeUserSelf {
   role: string | null
@@ -66,6 +71,12 @@ export interface MeUserSelf {
   currentLearningClassName: string | null
   insuranceBookNumber: string | null
   managerBlockCode: string | null
+  /** Chỉ HR sửa. Trống = chưa cập nhật. */
+  employeeCardStatus: EmployeeCardStatus | null
+  /** Chỉ HR sửa — id trong danh mục màu thẻ. */
+  employeeCardColorId: string | null
+  /** BE kèm theo để hiển thị tên + mã màu (cả màu đã ẩn). */
+  employeeCardColor?: EmployeeCardColorSummary | null
 }
 
 /** Khớp `USER_SELF_PATCH_KEYS` trên BE. */
@@ -118,5 +129,5 @@ export type MeUserPatchKey = (typeof ME_USER_PATCH_KEYS)[number]
 
 export type MeUserDisplayKey = Exclude<
   keyof MeUserSelf,
-  'id' | 'larkRecordId' | 'createdAt' | 'updatedAt' | 'lastSyncedAt'
+  'id' | 'larkRecordId' | 'createdAt' | 'updatedAt' | 'lastSyncedAt' | 'employeeCardColor'
 >
