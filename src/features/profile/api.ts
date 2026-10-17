@@ -9,6 +9,10 @@ import {
   type MeLearningPath,
 } from '@/features/profile/meProfileMapper'
 import type { MeUserSelf } from '@/features/profile/userSelf.types'
+import type { IdCardPhotoField } from '@/features/hr-admin/api'
+
+export type { IdCardPhotoField }
+export type MeAttachmentField = IdCardPhotoField | 'cvAttachmentRef'
 
 function rawToMeDashboard(raw: unknown): MeDashboard {
   const d = raw as Partial<MeDashboard> & {
@@ -69,6 +73,34 @@ export const profileApi = {
     const res = await apiClient.post<{ portraitRef: string }>('/me/user/portrait', body, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
+    return res.data
+  },
+
+  uploadAttachment: async (
+    field: MeAttachmentField,
+    file: File
+  ): Promise<{ field: MeAttachmentField; objectPath: string }> => {
+    if (isMockApiEnabled()) {
+      await new Promise((r) => setTimeout(r, 400))
+      return { field, objectPath: `mock/${field}.jpg` }
+    }
+    const body = new FormData()
+    body.append('file', file)
+    const res = await apiClient.post<{ field: MeAttachmentField; objectPath: string }>(
+      `/me/user/attachments/${field}`,
+      body,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    return res.data
+  },
+
+  getAttachmentSignedUrl: async (
+    field: MeAttachmentField
+  ): Promise<{ signedUrl: string | null }> => {
+    if (isMockApiEnabled()) return { signedUrl: null }
+    const res = await apiClient.get<{ signedUrl: string | null }>(
+      `/me/user/attachments/${field}/signed-url`
+    )
     return res.data
   },
 

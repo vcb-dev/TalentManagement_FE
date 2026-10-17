@@ -141,6 +141,7 @@
         ],
         "properties": {
           "id": { "type": "string", "format": "uuid" },
+          "employeeCodePrimary": { "type": "string", "nullable": true },
           "name": { "type": "string" },
           "email": { "type": "string", "format": "email" },
           "role": { "$ref": "#/components/schemas/Role" },
@@ -171,13 +172,21 @@
       },
       "CreateEmployeeInput": {
         "type": "object",
-        "required": ["name", "email", "role", "departmentId", "teamId"],
+        "required": ["name", "email", "role", "departmentId"],
         "properties": {
           "name": { "type": "string", "minLength": 2 },
           "email": { "type": "string", "format": "email" },
           "role": { "$ref": "#/components/schemas/Role" },
           "departmentId": { "type": "string", "format": "uuid" },
-          "teamId": { "type": "string", "format": "uuid" },
+          "teamId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Bắt buộc, trừ BOD (BOD không thuộc nhóm)"
+          },
+          "employeeCodePrimary": {
+            "type": "string",
+            "description": "Chỉ cho BOD: mã nhân viên HR nhập tay (11–12 chữ số); vai trò khác mã tự sinh"
+          },
           "extraTeamIds": {
             "type": "array",
             "items": { "type": "string", "format": "uuid" },
@@ -188,6 +197,32 @@
           "startDate": {
             "type": "string",
             "description": "Ngày bắt đầu làm việc (start_date_work)"
+          },
+          "leaveDate": {
+            "type": "string",
+            "description": "Ngày nghỉ việc YYYY-MM-DD (leave_date_work)"
+          },
+          "identityNumber": {
+            "type": "string",
+            "description": "Mã định danh cá nhân — CCCD 12 số hoặc CMND 9 số (identity_number)"
+          },
+          "employeeIdentifier": {
+            "type": "string",
+            "description": "Mã định danh nhân viên do HR cấp, vd. A755 (employee_identifier)"
+          },
+          "projectIds": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" },
+            "description": "Dự án tham gia ngay khi tạo"
+          },
+          "loginUsername": {
+            "type": "string",
+            "description": "Username đăng nhập (tuỳ chọn, cho người không dùng Google) — đi cùng loginPassword"
+          },
+          "loginPassword": {
+            "type": "string",
+            "minLength": 8,
+            "description": "Mật khẩu 8–128 ký tự — bắt buộc khi có loginUsername"
           },
           "initialLevel": {
             "type": "string",

@@ -53,29 +53,24 @@ export function SkeletonEmployeeCard({ className, ...props }: HTMLAttributes<HTM
   return (
     <div
       className={cn(
-        'flex min-h-[260px] flex-col rounded-2xl border border-border/90 bg-card p-5 shadow-sm',
+        'flex min-h-[280px] flex-col rounded-[1.25rem] border border-border/90 bg-card p-4 shadow-sm',
         className
       )}
       {...props}
     >
-      <div className="mb-5 flex justify-between gap-3">
-        <Skeleton className="h-[5.25rem] w-[5.25rem] shrink-0 rounded-2xl sm:h-[5.75rem] sm:w-[5.75rem]" />
+      <div className="mb-4 flex justify-between gap-3">
+        <Skeleton className="h-[4.5rem] w-[4.5rem] shrink-0 rounded-[1.1rem]" />
         <div className="flex flex-col items-end gap-2">
-          <Skeleton className="h-5 w-[6.5rem] rounded-md" />
-          <Skeleton className="h-5 w-20 rounded-md" />
-          <Skeleton className="h-4 w-24 rounded" />
+          <Skeleton className="h-6 w-20 rounded-lg" />
+          <Skeleton className="h-3 w-16 rounded" />
         </div>
       </div>
-      <div className="mb-5 space-y-2">
+      <div className="mb-4 space-y-2.5">
         <Skeleton className="h-5 w-3/4 rounded" />
-        <Skeleton className="h-3.5 w-1/2 rounded" />
-        <Skeleton className="h-3.5 w-2/3 rounded" />
+        <Skeleton className="h-12 w-full rounded-xl" />
+        <Skeleton className="h-9 w-4/5 rounded-lg" />
       </div>
-      <div className="mb-5 flex items-center gap-2">
-        <Skeleton className="h-1.5 flex-1 rounded-full" />
-        <Skeleton className="h-4 w-8 shrink-0 rounded" />
-      </div>
-      <div className="mt-auto flex gap-2">
+      <div className="mt-auto flex gap-2 border-t border-border/70 pt-3">
         <Skeleton className="h-9 min-h-9 flex-1 rounded-lg" />
         <Skeleton className="h-9 w-10 shrink-0 rounded-lg" />
       </div>

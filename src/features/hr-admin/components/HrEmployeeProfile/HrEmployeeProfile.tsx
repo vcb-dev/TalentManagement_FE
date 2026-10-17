@@ -23,8 +23,11 @@ import {
 } from '@/features/profile/profileDateUtils'
 import { type MeUserDisplayKey, type MeUserSelf } from '@/features/profile/userSelf.types'
 import {
+  employeeCodeInputRequiredMessage,
   isDateFormField,
+  isEmployeeCodeInputField,
   isWorkOrgReadonlyField,
+  roleMayHaveNoTeam,
   USER_SELF_FORM_SECTIONS,
   type UserSelfFieldSpec,
 } from '@/features/profile/userSelfFormLayout'
@@ -37,10 +40,8 @@ import { useAuthStore } from '@/stores/auth.store'
 import type { PatchEmployeeInput } from '@/types/api'
 import type { Role } from '@/types/auth'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
 import { Building2, RefreshCw, Upload } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 import {
   buildDirectManagerSelectOptions,
@@ -50,19 +51,43 @@ import {
 } from '../../directManagerOptions'
 import {
   useAnyActionPending,
-  useAttachmentSignedUrl,
   useDeactivateEmployee,
   useDirectManagerOptions,
   useEmployee,
   useUpdateEmployee,
   useUpdateEmployeeById,
 } from '../../hooks'
+import {
+  IDENTITY_NUMBER_MESSAGE,
+  IDENTITY_NUMBER_PATTERN,
+  compactIdentityNumber,
+} from '../../schemas'
 import { teamPositionOptions } from '../../teamPositionOptions'
 import { EMPLOYEE_PATCH_KEYS, type EditEmployeeBody, type EmployeePatchKey } from '../../types'
+import { EMPLOYEE_CARD_STATUSES, EMPLOYEE_CARD_STATUS_LABEL } from '../../employeeCard'
+import { EmployeeCardColorField } from '../EmployeeCard'
 import { EmployeeExtraTeamsField, extraTeamIdsEqual } from '../EmployeeExtraTeamsField'
+import { EmployeeProjectsCard } from '../EmployeeProjects'
+import { CvUploadField } from '../CvAttachmentField'
+import { IdCardPhotoUploadField } from '../IdCardPhotoField'
+import { LoginEmailHint } from '../LoginEmailHint'
+import { LOGIN_EMAIL_FORMAT } from '../../loginEmail'
 import { levelPillText } from '../HrEmployeeList/employeeListUtils'
 import { EmployeeLoginCredentialCard } from './EmployeeLoginCredentialCard'
 import { OrgChangeHistory } from './OrgChangeHistory'
+import {
+  FieldLabel,
+  ProfileDetailSection,
+  ProfileDetailsCard,
+  ProfileFieldGrid,
+  ProfileFieldGroup,
+  ProfileHeroCard,
+  ProfilePageShell,
+  ProfileStickyActionBar,
+  fieldControlClass,
+  inputEditable,
+  profilePrimaryActionClass,
+} from './profileFormLayout'
 export interface HrEmployeeProfileProps {
   employee: IHrEmployeeProfileState
   /** Mặc định mở tab khi vào từ URL `?mode=edit`. */
@@ -87,23 +112,25 @@ type EditRecord = Record<EmployeePatchKey, string> & {
   employmentStatusUi: EmploymentStatusUi
 }
 
+/** Tải lên qua endpoint riêng — không gửi trong PATCH để khỏi ghi đè file vừa tải bằng giá trị cũ. */
+const UPLOAD_MANAGED_KEYS: ReadonlySet<EmployeePatchKey> = new Set([
+  'attachmentIdFront',
+  'attachmentIdBack',
+  'cvAttachmentRef',
+])
+
+/** Field chỉ HR thấy (ngày nghỉ việc) chèn vào layout dùng chung với "Hồ sơ của tôi". */
+const HR_FORM_SECTIONS = USER_SELF_FORM_SECTIONS.map((section) => ({
+  ...section,
+  fields: section.fields.flatMap((field): UserSelfFieldSpec[] =>
+    field.key === 'startDateWork'
+      ? [field, { key: 'leaveDateWork', label: 'Ngày nghỉ việc' }]
+      : [field]
+  ),
+}))
+
 const fieldStackGap = 'gap-1'
 const fieldBoxClass = ''
-
-const inputEditable =
-  'border-slate-200 bg-white text-sm text-slate-700 shadow-sm transition-all focus:border-primary focus:ring-4 focus:ring-primary/10'
-
-const fieldControlClass =
-  'h-10 w-full rounded-xl border px-3 py-2 leading-snug outline-none transition-all'
-
-function FieldLabel({ children }: { children: string }) {
-  return (
-    <span className="mb-1.5 flex items-center gap-1.5">
-      <span className="h-3 w-0.5 rounded-full bg-slate-300" aria-hidden />
-      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{children}</span>
-    </span>
-  )
-}
 
 function emptyEditRecord(): EditRecord {
   return {
@@ -265,7 +292,7 @@ function ProfileActionButtons({
         type="button"
         disabled={isSaving}
         onClick={onSave}
-        className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 font-bold text-white shadow-lg shadow-indigo-500/25 transition-all hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] disabled:opacity-60 sm:w-auto sm:min-w-[220px] sm:px-8"
+        className={profilePrimaryActionClass}
       >
         {patchPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
         {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
@@ -313,6 +340,7 @@ function toPatch(
   const nz = (s: string) => (s.trim() === '' ? null : s.trim())
   const body = {} as EditEmployeeBody
   for (const k of EMPLOYEE_PATCH_KEYS) {
+    if (UPLOAD_MANAGED_KEYS.has(k)) continue
     body[k] =
       k === 'directManager'
         ? directManagerIdToStoredName(edit.directManager, managers)
@@ -331,17 +359,28 @@ function workOrgReadonlyValue(employee: IHrEmployeeProfileState, key: MeUserDisp
   return v == null ? '—' : String(v)
 }
 
+function employeeCodeInputRules(required: boolean, label: string) {
+  if (!required) return undefined
+  return {
+    validate: (v: unknown) =>
+      String(v ?? '').trim() !== '' || employeeCodeInputRequiredMessage(label),
+  }
+}
+
 function ProfileReadonlyInfo({
   name,
   label,
   value,
   control,
+  required = false,
 }: {
   name: EmployeePatchKey
   label: string
   value: string
   control: ReturnType<typeof useForm<EditRecord>>['control']
+  required?: boolean
 }) {
+  const rules = employeeCodeInputRules(required, label)
   return (
     <div
       className={cn(
@@ -373,71 +412,52 @@ function ProfileReadonlyInfo({
           value={value}
           name={name}
           label={label}
+          rules={rules}
           type="text"
           autoComplete="off"
           className={cn('space-y-1.5', fieldBoxClass)}
           labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
           inputClassName={cn(fieldControlClass, inputEditable)}
-          customLabel={<FieldLabel>{label}</FieldLabel>}
+          customLabel={<FieldLabel required={required}>{label}</FieldLabel>}
         />
       )}
     </div>
   )
 }
 
-/** CCCD/CV lưu trong bucket riêng tư — xem qua signed URL tạm, không hiện đường dẫn thô. */
-function AttachmentViewerField({
-  employeeId,
+/** Chỉ chặn khi HR đổi sang email sai định dạng — email cũ hỏng mà không đổi vẫn lưu được. */
+function LoginEmailField({
+  control,
   label,
-  hasValue,
-  field,
+  originalEmail,
 }: {
-  employeeId: string
+  control: Control<EditRecord>
   label: string
-  hasValue: boolean
-  field: 'attachmentIdFront' | 'attachmentIdBack' | 'cvAttachmentRef'
+  originalEmail: string | null
 }) {
-  const { mutate, isPending } = useAttachmentSignedUrl()
-  const anyActionPending = useAnyActionPending()
-
-  const onView = () => {
-    mutate(
-      { id: employeeId, field },
-      {
-        onSuccess: (data) => {
-          if (!data.signedUrl) {
-            toast.error('Không tìm thấy tài liệu')
-            return
-          }
-          window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
-        },
-      }
-    )
-  }
-
+  const email = useWatch({ control, name: 'email' })
   return (
-    <div
-      className={cn(
-        'flex flex-col rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/30',
-        fieldStackGap
-      )}
-    >
-      <FieldLabel>{label}</FieldLabel>
-      {hasValue ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 w-fit"
-          onClick={onView}
-          disabled={isPending || anyActionPending}
-        >
-          {isPending ? <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
-          Xem tài liệu
-        </Button>
-      ) : (
-        <span className="text-sm text-muted-foreground">Chưa có</span>
-      )}
+    <div className="space-y-1.5">
+      <InputController
+        control={control}
+        name="email"
+        label={label}
+        type="email"
+        autoComplete="off"
+        rules={{
+          validate: (v) => {
+            const next = String(v ?? '').trim()
+            if (next === (originalEmail ?? '').trim()) return true
+            if (!next) return 'Email đăng nhập không được để trống'
+            return LOGIN_EMAIL_FORMAT.test(next) || 'Email không đúng định dạng'
+          },
+        }}
+        className="space-y-1.5"
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        inputClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{label}</FieldLabel>}
+      />
+      <LoginEmailHint email={email} />
     </div>
   )
 }
@@ -452,13 +472,28 @@ function renderField(
     positions?: Array<{ value: string; label: string }>
     jobTitles?: Array<{ value: string; label: string }>
     directManagerOptions?: DirectManagerOption[]
+    canEdit: boolean
+    teamOptional: boolean
   }
 ) {
-  const { employee, control, divisions, teams, positions, jobTitles, directManagerOptions } = ctx
+  const {
+    employee,
+    control,
+    divisions,
+    teams,
+    positions,
+    jobTitles,
+    directManagerOptions,
+    canEdit,
+    teamOptional,
+  } = ctx
 
   if (field.kind === 'portrait') {
     return null
   }
+
+  const required = isEmployeeCodeInputField(field.key) && !(field.key === 'teamId' && teamOptional)
+  const requiredRules = employeeCodeInputRules(required, field.label)
 
   if (field.key === 'directManager') {
     return (
@@ -483,19 +518,71 @@ function renderField(
     )
   }
 
-  if (
-    field.key === 'attachmentIdFront' ||
-    field.key === 'attachmentIdBack' ||
-    field.key === 'cvAttachmentRef'
-  ) {
+  if (field.key === 'attachmentIdFront' || field.key === 'attachmentIdBack') {
     return (
-      <AttachmentViewerField
+      <div
         key={field.key}
-        employeeId={employee.id}
+        className="rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/30"
+      >
+        <IdCardPhotoUploadField
+          employeeId={employee.id}
+          field={field.key}
+          label={<FieldLabel>{field.label}</FieldLabel>}
+          objectPath={employee[field.key]}
+          canEdit={canEdit}
+        />
+      </div>
+    )
+  }
+
+  if (field.key === 'email') {
+    return (
+      <LoginEmailField
+        key={field.key}
+        control={control}
         label={field.label}
-        hasValue={!!employee[field.key]}
-        field={field.key}
+        originalEmail={employee.email}
       />
+    )
+  }
+
+  if (field.key === 'identityNumber') {
+    return (
+      <InputController
+        key={field.key}
+        control={control}
+        name="identityNumber"
+        label={field.label}
+        rules={{
+          validate: (v) => {
+            const compact = compactIdentityNumber(String(v ?? ''))
+            return !compact || IDENTITY_NUMBER_PATTERN.test(compact) || IDENTITY_NUMBER_MESSAGE
+          },
+        }}
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="12 chữ số trên CCCD"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        inputClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      />
+    )
+  }
+
+  if (field.key === 'cvAttachmentRef') {
+    return (
+      <div
+        key={field.key}
+        className="rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/30"
+      >
+        <CvUploadField
+          employeeId={employee.id}
+          label={<FieldLabel>{field.label}</FieldLabel>}
+          objectPath={employee.cvAttachmentRef}
+          canEdit={canEdit}
+        />
+      </div>
     )
   }
 
@@ -507,11 +594,48 @@ function renderField(
         label={field.label}
         value={workOrgReadonlyValue(employee, field.key)}
         control={control}
+        required={required}
       />
     )
   }
 
   const key = field.key as EmployeePatchKey
+
+  if (field.kind === 'card-status-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder="Chọn tình trạng cấp thẻ"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        <SelectItem value="__none">Chưa cập nhật</SelectItem>
+        {EMPLOYEE_CARD_STATUSES.map((s) => (
+          <SelectItem key={s} value={s}>
+            {EMPLOYEE_CARD_STATUS_LABEL[s]}
+          </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (field.kind === 'card-color-select') {
+    return (
+      <EmployeeCardColorField
+        key={field.key}
+        control={control}
+        name={key}
+        label={field.label}
+        savedColor={employee.employeeCardColor}
+        canManage={canEdit}
+      />
+    )
+  }
 
   if (field.kind === 'division-select') {
     return (
@@ -543,11 +667,12 @@ function renderField(
         control={control}
         name={key}
         label={field.label}
+        rules={requiredRules}
         placeholder="Chọn nhóm"
         className={cn('space-y-1.5', fieldBoxClass)}
         labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
         triggerClassName={cn(fieldControlClass, inputEditable)}
-        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+        customLabel={<FieldLabel required={required}>{field.label}</FieldLabel>}
       >
         <SelectItem value="__none">Chưa chọn</SelectItem>
         {teams?.map((team) => (
@@ -611,10 +736,11 @@ function renderField(
         control={control}
         name={key}
         label={field.label}
+        rules={requiredRules}
         className={cn('space-y-1.5', fieldBoxClass)}
         labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
         datePickerClassName={cn(fieldControlClass, '[color-scheme:light]', inputEditable)}
-        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+        customLabel={<FieldLabel required={required}>{field.label}</FieldLabel>}
       />
     )
   }
@@ -642,12 +768,13 @@ function renderField(
       control={control}
       name={key}
       label={field.label}
+      rules={requiredRules}
       type="text"
       autoComplete="off"
       className={cn('space-y-1.5', fieldBoxClass)}
       labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
       inputClassName={cn(fieldControlClass, inputEditable)}
-      customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      customLabel={<FieldLabel required={required}>{field.label}</FieldLabel>}
     />
   )
 }
@@ -763,45 +890,14 @@ function ProfileIdentityCard({
   )
 }
 
-function SectionTitle({
-  children,
-  icon,
-  variant = 'primary',
-}: {
-  children: string
-  icon?: React.ReactNode
-  variant?: 'primary' | 'indigo' | 'violet' | 'emerald'
-}) {
-  const configs = {
-    primary: 'bg-primary/10 text-primary',
-    indigo: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
-    violet: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
-    emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
-  }
-  return (
-    <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
-      <div
-        className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-lg font-bold',
-          configs[variant]
-        )}
-      >
-        {icon || <Building2 className="h-4 w-4" />}
-      </div>
-      <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
-        {children}
-      </h3>
-    </div>
-  )
-}
-
 export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
   const viewer = useAuthStore((s) => s.user)
   const { canId } = usePermission()
   const canDeactivate = canId('hr.employees.deactivate') || canId('hr.employees.edit')
   const canReactivate = canId('hr.employees.edit')
-  const canEditLoginCredential = canId('hr.employees.edit')
-  const canEditRole = canId('hr.employees.edit')
+  const canEditEmployee = canId('hr.employees.edit')
+  const canEditLoginCredential = canEditEmployee
+  const canEditRole = canEditEmployee
   const { mutate: patchUser, isPending: patchPending } = useUpdateEmployeeById()
   const { data: employeeSummary, isLoading: summaryLoading } = useEmployee(employee.id)
   const deactivate = useDeactivateEmployee()
@@ -830,6 +926,7 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
   const { control, handleSubmit, reset, setValue } = form
   const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
   const selectedDivisionId = useWatch({ control, name: 'divisionId' }) ?? ''
+  const selectedRole = useWatch({ control, name: 'role' })
   const prevDivisionIdRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -913,21 +1010,14 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
     })
   }
 
-  const workSection = USER_SELF_FORM_SECTIONS[0]!
+  const workSection = HR_FORM_SECTIONS[0]!
   const workReadonlyFields = workSection.fields.filter(
     (field) => isWorkOrgReadonlyField(field.key) || field.key === 'directManager'
   )
   const workEditableFields = workSection.fields.filter(
     (field) => !isWorkOrgReadonlyField(field.key) && field.key !== 'directManager'
   )
-  const detailSections = USER_SELF_FORM_SECTIONS.slice(1)
-  const detailSectionVariants: ('indigo' | 'violet' | 'emerald' | 'primary')[] = [
-    'indigo',
-    'violet',
-    'emerald',
-    'primary',
-    'indigo',
-  ]
+  const detailSections = HR_FORM_SECTIONS.slice(1)
   const initialEmploymentStatusUi = resolveEmploymentStatusUi(employee, employeeSummary?.status)
   const onSaveProfile = handleSubmit((values) => {
     const profilePatch = toPatch(values, employee, managers) as unknown as IHrEmployeeProfileState
@@ -992,152 +1082,71 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
     positions,
     jobTitles,
     directManagerOptions,
+    canEdit: canEditEmployee,
+    teamOptional: roleMayHaveNoTeam(selectedRole),
   }
   const avatarUploadInputId = useId()
   return (
     <Form {...form}>
-      <div
-        className="relative -m-5 min-h-[calc(100vh-3rem)] bg-slate-50/50 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-6 text-foreground md:-m-6 md:pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:-m-8 dark:bg-slate-950"
-        data-current-level-id={currentLevelId}
-      >
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute -left-20 -top-16 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute -right-16 top-24 h-80 w-80 rounded-full bg-indigo-500/10 blur-3xl" />
-          <div className="absolute bottom-8 left-1/3 h-56 w-56 -translate-x-1/2 rounded-full bg-violet-500/10 blur-3xl" />
-        </div>
+      <ProfilePageShell current={employee.fullNameLegal} data-current-level-id={currentLevelId}>
+        <ProfileHeroCard>
+          <ProfileIdentityCard
+            control={control}
+            u={employee}
+            role={employeeRole}
+            currentLevelTitle={currentLevelTitle}
+            departmentDisplayName={departmentDisplayName}
+            portraitUploading={portraitUploading}
+            uploadDisabled={anyActionPending}
+            avatarUploadInputId={avatarUploadInputId}
+            onPortraitFile={onPortraitFile}
+            fallbackUserName={employee.displayName ?? employee.fullNameLegal ?? ''}
+            fallbackUserEmail={employee.email ?? ''}
+          />
+        </ProfileHeroCard>
 
-        <div className="mx-auto w-full px-4 md:px-6">
-          <div className="mb-4 flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            <Link
-              to="/hr-admin"
-              search={{ page: 1, pageSize: 15 }}
-              className="font-semibold text-primary hover:underline"
-            >
-              ← Danh sách nhân sự
-            </Link>
-            <span className="text-muted-foreground/50">/</span>
-            <span className="font-semibold text-foreground">{employee.fullNameLegal}</span>
-          </div>
+        <EmployeeProjectsCard employeeId={employee.id} canEdit={canEditEmployee} />
 
-          <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-            <div className="space-y-6">
-              <section className="rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-transparent to-indigo-50/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="absolute top-0 right-0 h-48 w-48 bg-primary/5 rounded-full -mr-24 -mt-24 blur-3xl" />
-                <div className="relative z-10">
-                  <ProfileIdentityCard
+        <EmployeeLoginCredentialCard employeeId={employee.id} canEdit={canEditLoginCredential} />
+
+        <ProfileDetailsCard>
+          <ProfileDetailSection title={workSection.title} index={0}>
+            {workReadonlyFields.length > 0 ? (
+              <ProfileFieldGroup caption="Thông tin đồng bộ" tone="primary">
+                {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
+                {canManageEmploymentStatus ? <EmploymentStatusField control={control} /> : null}
+                {canEditRole ? <RoleField control={control} /> : null}
+              </ProfileFieldGroup>
+            ) : null}
+            {workEditableFields.length > 0 ? (
+              <ProfileFieldGroup caption="Thông tin có thể cập nhật" divided>
+                {workEditableFields.map((f) => renderField(f, fieldCtx))}
+                <div className="sm:col-span-2">
+                  <EmployeeExtraTeamsField
                     control={control}
-                    u={employee}
-                    role={employeeRole}
-                    currentLevelTitle={currentLevelTitle}
-                    departmentDisplayName={departmentDisplayName}
-                    portraitUploading={portraitUploading}
-                    uploadDisabled={anyActionPending}
-                    avatarUploadInputId={avatarUploadInputId}
-                    onPortraitFile={onPortraitFile}
-                    fallbackUserName={employee.displayName ?? employee.fullNameLegal ?? ''}
-                    fallbackUserEmail={employee.email ?? ''}
+                    name="extraTeamIds"
+                    primaryTeamId={selectedTeamId}
+                    allTeams={allTeamOptions}
                   />
+                  <OrgChangeHistory employeeId={employee.id} />
                 </div>
-              </section>
+              </ProfileFieldGroup>
+            ) : null}
+          </ProfileDetailSection>
 
-              <EmployeeLoginCredentialCard
-                employeeId={employee.id}
-                canEdit={canEditLoginCredential}
-              />
+          {detailSections.map((section, idx) => (
+            <ProfileDetailSection key={section.title} title={section.title} index={idx + 1}>
+              <ProfileFieldGrid>
+                {section.fields.map((f) => renderField(f, fieldCtx))}
+              </ProfileFieldGrid>
+            </ProfileDetailSection>
+          ))}
+        </ProfileDetailsCard>
+      </ProfilePageShell>
 
-              <section className="rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
-                <div className="mb-8 flex items-center gap-3">
-                  <div className="h-8 w-1.5 rounded-full bg-gradient-to-b from-primary to-violet-600" />
-                  <h2 className="text-xl font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
-                    Chi tiết hồ sơ
-                  </h2>
-                </div>
-
-                <div className="space-y-8">
-                  <div className="rounded-2xl border border-slate-200 border-l-4 border-l-primary bg-white p-6 shadow-sm dark:border-slate-800 dark:border-l-primary dark:bg-slate-900/50">
-                    <SectionTitle variant="primary">{workSection.title}</SectionTitle>
-                    {workReadonlyFields.length > 0 ? (
-                      <div className="mb-8">
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-primary/50">
-                          Thông tin đồng bộ
-                        </p>
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
-                          {canManageEmploymentStatus ? (
-                            <EmploymentStatusField control={control} />
-                          ) : null}
-                          {canEditRole ? <RoleField control={control} /> : null}
-                        </div>
-                      </div>
-                    ) : null}
-                    {workEditableFields.length > 0 ? (
-                      <div className="border-t border-slate-100 pt-6 dark:border-slate-800">
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                          Thông tin có thể cập nhật
-                        </p>
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          {workEditableFields.map((f) => renderField(f, fieldCtx))}
-                          <div className="sm:col-span-2">
-                            <EmployeeExtraTeamsField
-                              control={control}
-                              name="extraTeamIds"
-                              primaryTeamId={selectedTeamId}
-                              allTeams={allTeamOptions}
-                            />
-                            <OrgChangeHistory employeeId={employee.id} />
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {detailSections.map((section, idx) => (
-                    <div
-                      key={section.title}
-                      className={cn(
-                        'rounded-2xl border border-slate-200 border-l-4 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50',
-                        idx % 3 === 0
-                          ? 'border-l-indigo-500'
-                          : idx % 3 === 1
-                            ? 'border-l-violet-500'
-                            : 'border-l-emerald-500'
-                      )}
-                    >
-                      <SectionTitle variant={detailSectionVariants[idx]}>
-                        {section.title}
-                      </SectionTitle>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        {section.fields.map((f) => renderField(f, fieldCtx))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {typeof document !== 'undefined'
-        ? createPortal(
-            <div
-              className="pointer-events-none fixed inset-x-0 bottom-0 z-[60]"
-              role="presentation"
-            >
-              <div
-                className="pointer-events-auto border-t border-slate-200/90 bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_-12px_rgba(15,23,42,0.12)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95"
-                role="region"
-                aria-label="Thao tác hồ sơ"
-              >
-                <div className="mx-auto flex w-full max-w-[1400px]">
-                  <ProfileActionButtons {...accountActions} />
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
+      <ProfileStickyActionBar ariaLabel="Thao tác hồ sơ">
+        <ProfileActionButtons {...accountActions} />
+      </ProfileStickyActionBar>
 
       {!canManageEmploymentStatus ? (
         <ConfirmDialog

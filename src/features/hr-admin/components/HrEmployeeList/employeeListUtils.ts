@@ -114,7 +114,7 @@ export function statusDotClass(status: EmployeeEntity['status']): string {
 export function statusLabelVi(status: EmployeeEntity['status']): string {
   switch (status) {
     case 'ACTIVE':
-      return 'Hoạt động'
+      return 'Đang làm việc'
     case 'INACTIVE':
       return 'Đã nghỉ'
     case 'PROBATION':

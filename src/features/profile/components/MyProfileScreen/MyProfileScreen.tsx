@@ -1,20 +1,12 @@
-import { useId, useMemo } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useId, useMemo, useRef, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useForm, useWatch, type Control } from 'react-hook-form'
+import { FormProvider, useForm, useWatch, type Control } from 'react-hook-form'
 import { toast } from 'sonner'
 import { Building2, RefreshCw, Upload } from 'lucide-react'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Form } from '@/components/ui/form'
-import {
-  DateController,
-  InputController,
-  TextareaController,
-  SelectController,
-} from '@/components/ui/form-controllers'
 import { SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
@@ -28,6 +20,31 @@ import {
   EmployeeExtraTeamsField,
   extraTeamIdsEqual,
 } from '@/features/hr-admin/components/EmployeeExtraTeamsField'
+import { MyCvUploadField } from '@/features/hr-admin/components/CvAttachmentField'
+import { EmployeeCardColorLabel } from '@/features/hr-admin/components/EmployeeCard'
+import { employeeCardStatusLabel } from '@/features/hr-admin/employeeCard'
+import { MyIdCardPhotoUploadField } from '@/features/hr-admin/components/IdCardPhotoField'
+import {
+  FieldLabel,
+  ProfileDateField,
+  ProfileDetailSection,
+  ProfileDetailsCard,
+  ProfileFieldGrid,
+  ProfileFieldGroup,
+  ProfileHeroCard,
+  ProfileInputField,
+  ProfileReadonlyField,
+  ProfileSelectField,
+  ProfileStickyActionBar,
+  ProfileTextareaField,
+  profileFieldBoxClass,
+  profilePrimaryActionClass,
+} from '@/features/hr-admin/components/HrEmployeeProfile/profileFormLayout'
+import {
+  IDENTITY_NUMBER_MESSAGE,
+  IDENTITY_NUMBER_PATTERN,
+  compactIdentityNumber,
+} from '@/features/hr-admin/schemas'
 import type { MyProfilePage } from '@/features/profile/types'
 import {
   formatUserDateForReadonlyDisplay,
@@ -41,8 +58,11 @@ import type {
 import { ME_USER_PATCH_KEYS } from '@/features/profile/userSelf.types'
 import {
   USER_SELF_FORM_SECTIONS,
+  USER_WORK_ORG_READONLY_KEYS,
+  employeeCodeInputRequiredMessage,
   isDateFormField,
-  isWorkOrgReadonlyField,
+  isEmployeeCodeInputField,
+  roleMayHaveNoTeam,
   type UserSelfFieldSpec,
 } from '@/features/profile/userSelfFormLayout'
 
@@ -51,60 +71,39 @@ export interface MyProfileScreenProps {
   isLoading: boolean
 }
 
-const inputEditable =
-  'border-slate-200 bg-white text-sm text-slate-700 shadow-sm transition-all focus:border-primary focus:ring-4 focus:ring-primary/10'
+/** Chỉ HR sửa. */
+const SELF_READONLY_KEYS: ReadonlySet<MeUserDisplayKey> = new Set<MeUserDisplayKey>([
+  ...USER_WORK_ORG_READONLY_KEYS,
+  'employeeIdentifier',
+  'directManager',
+  'email',
+  'profileReviewDate',
+  'employeeCardStatus',
+  'employeeCardColorId',
+])
 
-const fieldControlClass =
-  'h-10 w-full rounded-xl border px-3 py-2 leading-snug outline-none transition-all'
+/** Lưu qua endpoint riêng — không gửi trong PATCH hồ sơ. */
+const UPLOAD_MANAGED_KEYS: ReadonlySet<MeUserPatchKey> = new Set<MeUserPatchKey>([
+  'portraitRef',
+  'attachmentIdFront',
+  'attachmentIdBack',
+  'cvAttachmentRef',
+])
 
-const fieldStackGap = 'gap-1'
-const fieldBoxClass = ''
-
-function FieldLabel({ children }: { children: string }) {
-  return (
-    <span className="mb-1.5 flex items-center gap-1.5">
-      <span className="h-3 w-0.5 rounded-full bg-slate-300" aria-hidden />
-      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{children}</span>
-    </span>
-  )
+function isSelfReadonly(key: MeUserDisplayKey): boolean {
+  return SELF_READONLY_KEYS.has(key)
 }
 
-function SectionTitle({
-  children,
-  icon,
-  variant = 'primary',
-}: {
-  children: string
-  icon?: React.ReactNode
-  variant?: 'primary' | 'indigo' | 'violet' | 'emerald'
-}) {
-  const configs = {
-    primary: 'bg-primary/10 text-primary',
-    indigo: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
-    violet: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
-    emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+function readonlyValue(u: MeUserSelf, key: MeUserDisplayKey): ReactNode {
+  if (key === 'employeeCardStatus') return employeeCardStatusLabel(u.employeeCardStatus)
+  if (key === 'employeeCardColorId') {
+    return u.employeeCardColor ? <EmployeeCardColorLabel color={u.employeeCardColor} /> : ''
   }
-  return (
-    <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
-      <div
-        className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-lg font-bold',
-          configs[variant]
-        )}
-      >
-        {icon || <Building2 className="h-4 w-4" />}
-      </div>
-      <h3 className="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
-        {children}
-      </h3>
-    </div>
-  )
-}
-
-function workOrgReadonlyValue(u: MeUserSelf, key: MeUserDisplayKey): string {
-  if (key === 'startDateWork') return formatUserDateForReadonlyDisplay(u.startDateWork)
+  if (key === 'startDateWork' || key === 'profileReviewDate') {
+    return formatUserDateForReadonlyDisplay(u[key])
+  }
   const v = u[key]
-  return v == null ? '—' : String(v)
+  return v == null ? '' : String(v)
 }
 
 function mapCurrentTitleToLevelId(
@@ -121,232 +120,227 @@ function mapCurrentTitleToLevelId(
 
 type EditRecord = Record<MeUserPatchKey, string> & { extraTeamIds: string[] }
 
-function emptyEditRecord(): EditRecord {
-  return {
+function userToEdit(u: MeUserSelf): EditRecord {
+  const r = {
     ...(Object.fromEntries(ME_USER_PATCH_KEYS.map((k) => [k, ''])) as Record<
       MeUserPatchKey,
       string
     >),
-    extraTeamIds: [],
+    extraTeamIds: u.extraTeamIds ?? u.teamIds?.slice(1) ?? [],
   }
-}
-
-function userToEdit(u: MeUserSelf): EditRecord {
-  const r = emptyEditRecord()
   for (const k of ME_USER_PATCH_KEYS) {
-    if (isDateFormField(k)) {
-      r[k] = parseStoredDateToInputValue(u[k])
-    } else {
-      r[k] = u[k] == null ? '' : String(u[k])
-    }
+    r[k] = isDateFormField(k) ? parseStoredDateToInputValue(u[k]) : u[k] == null ? '' : String(u[k])
   }
-  if (!r.displayName && u.fullNameLegal) {
-    r.displayName = u.fullNameLegal
-  }
-  r.extraTeamIds = u.extraTeamIds ?? u.teamIds?.slice(1) ?? []
   return r
 }
 
-function toPatch(edit: EditRecord, original: MeUserSelf): PatchMeUserBody {
-  const nz = (s: string) => (s.trim() === '' ? null : s.trim())
-  const body = {} as PatchMeUserBody
+/** Chỉ gửi field đã đổi — tránh ghi đè giá trị cũ không parse được (vd. ngày lạ từ Lark). */
+function toPatch(edit: EditRecord, initial: EditRecord): PatchMeUserBody {
+  const body: PatchMeUserBody = {}
   for (const k of ME_USER_PATCH_KEYS) {
-    body[k] = nz(edit[k] ?? '')
+    if (isSelfReadonly(k) || UPLOAD_MANAGED_KEYS.has(k)) continue
+    const next = (edit[k] ?? '').trim()
+    if (next === (initial[k] ?? '').trim()) continue
+    body[k] = next === '' ? null : next
   }
-  const origExtras = original.extraTeamIds ?? original.teamIds?.slice(1) ?? []
-  if (!extraTeamIdsEqual(edit.extraTeamIds ?? [], origExtras)) {
+  if (!extraTeamIdsEqual(edit.extraTeamIds ?? [], initial.extraTeamIds)) {
     body.extraTeamIds = edit.extraTeamIds ?? []
   }
   return body
 }
 
-function ProfileReadonlyInfo({ label, value }: { label: string; value: string }) {
-  return (
-    <div
-      className={cn(
-        'flex flex-col rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/30',
-        fieldStackGap
-      )}
-    >
-      <FieldLabel>{label}</FieldLabel>
-      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{value || '—'}</p>
-    </div>
-  )
+function validatePhone(v: string): true | string {
+  const s = v.trim()
+  if (!s) return true
+  const digits = s.replace(/\D/g, '').length
+  return (digits >= 8 && digits <= 15) || 'Số điện thoại cần 8–15 chữ số'
 }
 
-function renderField(
-  field: UserSelfFieldSpec,
-  ctx: {
-    u: MeUserSelf
-    control: ReturnType<typeof useForm<EditRecord>>['control']
-    divisions?: Array<{ id: string; name: string }>
-    teams?: Array<{ id: string; name: string }>
-    positions?: Array<{ value: string; label: string }>
-    jobTitles?: Array<{ value: string; label: string }>
-  },
-  role?: string | null
-) {
-  const { u, control, divisions, teams, positions, jobTitles } = ctx
-  const forceReadonly = field.key === 'directManager'
+function validateBirthDate(v: string): true | string {
+  if (!v) return true
+  const end = new Date()
+  end.setHours(23, 59, 59, 999)
+  return new Date(`${v}T12:00:00`) <= end || 'Ngày sinh không được sau hôm nay'
+}
 
-  if (field.kind === 'portrait') {
-    return null
-  }
+function validateIdentityNumber(v: string): true | string {
+  const compact = compactIdentityNumber(v)
+  return !compact || IDENTITY_NUMBER_PATTERN.test(compact) || IDENTITY_NUMBER_MESSAGE
+}
 
-  if (isWorkOrgReadonlyField(field.key) || forceReadonly) {
+type FieldCtx = {
+  u: MeUserSelf
+  control: Control<EditRecord>
+  divisions: Array<{ value: string; label: string }>
+  teams: Array<{ value: string; label: string }>
+  jobTitles: Array<{ value: string; label: string }>
+}
+
+function renderField(field: UserSelfFieldSpec, ctx: FieldCtx): ReactNode {
+  const { u, control, divisions, teams, jobTitles } = ctx
+
+  if (field.kind === 'portrait') return null
+
+  if (isSelfReadonly(field.key)) {
     return (
-      <ProfileReadonlyInfo
+      <ProfileReadonlyField
         key={field.key}
         label={field.label}
-        value={workOrgReadonlyValue(u, field.key)}
+        value={readonlyValue(u, field.key)}
       />
+    )
+  }
+
+  if (field.key === 'attachmentIdFront' || field.key === 'attachmentIdBack') {
+    return (
+      <div key={field.key} className={profileFieldBoxClass}>
+        <MyIdCardPhotoUploadField
+          field={field.key}
+          label={<FieldLabel>{field.label}</FieldLabel>}
+          objectPath={u[field.key]}
+        />
+      </div>
+    )
+  }
+
+  if (field.key === 'cvAttachmentRef') {
+    return (
+      <div key={field.key} className={profileFieldBoxClass}>
+        <MyCvUploadField
+          label={<FieldLabel>{field.label}</FieldLabel>}
+          objectPath={u.cvAttachmentRef}
+        />
+      </div>
     )
   }
 
   const key = field.key as MeUserPatchKey
 
-  if (field.kind === 'division-select') {
-    return (
-      <SelectController
-        key={field.key}
-        control={control}
-        name={key}
-        label={field.label}
-        placeholder="Chọn phòng ban"
-        className={cn('space-y-1.5', fieldBoxClass)}
-        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-        triggerClassName={cn(fieldControlClass, inputEditable)}
-        customLabel={<FieldLabel>{field.label}</FieldLabel>}
-      >
-        <SelectItem value="__none">Chưa chọn</SelectItem>
-        {divisions?.map((d) => (
-          <SelectItem key={d.id} value={d.id}>
-            {d.name}
-          </SelectItem>
-        ))}
-      </SelectController>
-    )
-  }
+  /** Chỉ chặn xoá trống; hồ sơ cũ đang trống vẫn lưu được các field khác. */
+  const required =
+    isEmployeeCodeInputField(field.key) && !(field.key === 'teamId' && roleMayHaveNoTeam(u.role))
+  const keepFilled = (v: string) =>
+    !required ||
+    String(v ?? '').trim() !== '' ||
+    String(u[field.key] ?? '').trim() === '' ||
+    employeeCodeInputRequiredMessage(field.label)
 
-  if (field.kind === 'team-select') {
+  if (field.kind === 'division-select' || field.kind === 'team-select') {
+    const options = field.kind === 'division-select' ? divisions : teams
     return (
-      <SelectController
-        key={field.key}
+      <ProfileSelectField
+        key={key}
         control={control}
         name={key}
         label={field.label}
-        placeholder="Chọn nhóm"
-        className={cn('space-y-1.5', fieldBoxClass)}
-        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-        triggerClassName={cn(fieldControlClass, inputEditable)}
-        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+        required={required}
+        rules={required ? { validate: keepFilled } : undefined}
+        placeholder={field.kind === 'division-select' ? 'Chọn phòng ban' : 'Chọn nhóm'}
       >
         <SelectItem value="__none">Chưa chọn</SelectItem>
-        {teams?.map((team) => (
-          <SelectItem key={team.id} value={team.id}>
-            {team.name}
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
           </SelectItem>
         ))}
-      </SelectController>
-    )
-  }
-
-  if (field.kind === 'position-select') {
-    return (
-      <SelectController
-        key={field.key}
-        control={control}
-        name={key}
-        label={field.label}
-        placeholder={field.key === 'contractType' ? 'Chọn loại hợp đồng / vị trí' : 'Chọn vị trí'}
-        className={cn('space-y-1.5', fieldBoxClass)}
-        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-        triggerClassName={cn(fieldControlClass, inputEditable)}
-        customLabel={<FieldLabel>{field.label}</FieldLabel>}
-      >
-        <SelectItem value="__none">Chưa chọn</SelectItem>
-        {positions?.map((p) => (
-          <SelectItem key={p.value} value={p.value}>
-            {p.label}
-          </SelectItem>
-        ))}
-      </SelectController>
+      </ProfileSelectField>
     )
   }
 
   if (field.kind === 'job-title-select') {
     return (
-      <SelectController
-        key={field.key}
+      <ProfileSelectField
+        key={key}
         control={control}
         name={key}
         label={field.label}
         placeholder="Chọn vị trí chuyên môn"
-        className={cn('space-y-1.5', fieldBoxClass)}
-        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-        triggerClassName={cn(fieldControlClass, inputEditable)}
-        customLabel={<FieldLabel>{field.label}</FieldLabel>}
       >
-        {jobTitles?.map((j) => (
-          <SelectItem key={j.value} value={j.value}>
-            {j.label}
+        {jobTitles.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
           </SelectItem>
         ))}
-      </SelectController>
+      </ProfileSelectField>
     )
   }
 
   if (isDateFormField(field.key)) {
     return (
-      <DateController
-        key={field.key}
+      <ProfileDateField
+        key={key}
         control={control}
         name={key}
         label={field.label}
-        className={cn('space-y-1.5', fieldBoxClass)}
-        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-        datePickerClassName={cn(fieldControlClass, '[color-scheme:light]', inputEditable)}
-        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+        required={required}
+        rules={
+          key === 'birthDate'
+            ? { validate: { notFuture: validateBirthDate, keepFilled } }
+            : undefined
+        }
       />
     )
   }
 
   if (field.multiline) {
+    return <ProfileTextareaField key={key} control={control} name={key} label={field.label} />
+  }
+
+  if (key === 'identityNumber') {
     return (
-      <TextareaController
-        key={field.key}
+      <ProfileInputField
+        key={key}
         control={control}
         name={key}
         label={field.label}
-        className={cn('space-y-1.5 sm:col-span-2 lg:col-span-2', fieldBoxClass)}
-        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-        textareaClassName={cn(
-          'min-h-[80px] w-full resize-y rounded-lg border px-3 py-2 text-sm leading-relaxed outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
-          inputEditable
-        )}
-        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+        rules={{ validate: validateIdentityNumber }}
+        inputMode="numeric"
+        placeholder="12 chữ số trên CCCD"
       />
     )
   }
 
-  return role === 'HR' || role === 'MANAGER' ? (
-    <InputController
-      key={field.key}
+  if (key === 'phonePrimary') {
+    return (
+      <ProfileInputField
+        key={key}
+        control={control}
+        name={key}
+        label={field.label}
+        rules={{ validate: validatePhone }}
+        inputMode="tel"
+        placeholder="09xx xxx xxx"
+      />
+    )
+  }
+
+  if (key === 'fullNameLegal') {
+    return (
+      <ProfileInputField
+        key={key}
+        control={control}
+        name={key}
+        label={field.label}
+        placeholder="Nhập họ và tên…"
+        rules={{
+          validate: (v) => {
+            const s = v.trim()
+            if (!s) return u.fullNameLegal?.trim() ? 'Họ và tên không được để trống' : true
+            return s.length >= 2 || 'Họ tên cần ít nhất 2 ký tự'
+          },
+        }}
+      />
+    )
+  }
+
+  return (
+    <ProfileInputField
+      key={key}
       control={control}
       name={key}
       label={field.label}
-      type="text"
-      autoComplete="off"
-      className={cn('space-y-1.5', fieldBoxClass)}
-      labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-      inputClassName={cn(fieldControlClass, inputEditable)}
-      customLabel={<FieldLabel>{field.label}</FieldLabel>}
-    />
-  ) : (
-    <ProfileReadonlyInfo
-      key={field.key}
-      label={field.label}
-      value={workOrgReadonlyValue(u, field.key)}
+      required={required}
+      rules={required ? { validate: keepFilled } : undefined}
     />
   )
 }
@@ -356,6 +350,7 @@ function ProfileIdentityCard({
   u,
   role,
   currentLevelTitle,
+  departmentName,
   portraitUploading,
   avatarUploadInputId,
   onPortraitFile,
@@ -366,6 +361,7 @@ function ProfileIdentityCard({
   u: MeUserSelf
   role: keyof typeof ROLE_LABEL_VI
   currentLevelTitle: string
+  departmentName: string
   portraitUploading: boolean
   avatarUploadInputId: string
   onPortraitFile: (file: File) => void
@@ -443,7 +439,7 @@ function ProfileIdentityCard({
           </Badge>
           <div className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
             <Building2 className="h-3 w-3" />
-            <span>{u.departmentName?.trim() || '—'}</span>
+            <span>{departmentName}</span>
           </div>
           <Badge
             variant="outline"
@@ -459,6 +455,8 @@ function ProfileIdentityCard({
 
 function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf }) {
   const user = useAuthStore((s) => s.user)
+  const formId = useId()
+  const avatarUploadInputId = useId()
   const { mutate: patchUser, isPending: patchPending } = usePatchMeUser()
   const { mutate: uploadPortrait, isPending: portraitUploading } = useUploadMePortrait()
   const { data: divisionsList = [] } = useQuery({
@@ -471,32 +469,46 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     queryFn: () => organizationApi.getTeamsList(),
     staleTime: 60_000,
   })
-  const form = useForm<EditRecord>({
-    defaultValues: userToEdit(u),
-  })
-  const { control, handleSubmit } = form
-  const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
-
-  const divisions = useMemo(
-    () => divisionsList.map((d) => ({ id: d.id, name: d.name })),
-    [divisionsList]
-  )
-  // Hiển thị tất cả nhóm, không lọc theo phòng ban
-  const teams = useMemo(() => teamsList.map((t) => ({ id: t.id, name: t.name })), [teamsList])
-  const allTeamOptions = useMemo(
-    () => teamsList.map((t) => ({ value: t.id, label: t.name })),
-    [teamsList]
-  )
-  const { data: positionsData } = useQuery({
-    queryKey: ['profile', 'positions'],
-    queryFn: () => profileApi.getPositions(),
-  })
-  const positions = useMemo(() => positionsData ?? [], [positionsData])
   const { data: jobTitlesData } = useQuery({
     queryKey: ['profile', 'job-titles'],
     queryFn: () => profileApi.getJobTitles(),
   })
+
+  const initialValues = useMemo(() => userToEdit(u), [u])
+  const form = useForm<EditRecord>({ defaultValues: initialValues })
+  const { control, handleSubmit, getValues, setValue } = form
+  const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
+  const selectedDivisionId = useWatch({ control, name: 'divisionId' }) ?? ''
+
+  const divisions = useMemo(
+    () => divisionsList.map((d) => ({ value: d.id, label: d.name })),
+    [divisionsList]
+  )
+  const teams = useMemo(() => {
+    const divisionId = selectedDivisionId.trim()
+    return teamsList
+      .filter((t) => !divisionId || t.teamGroupId === divisionId)
+      .map((t) => ({ value: t.id, label: t.name }))
+  }, [teamsList, selectedDivisionId])
+  const allTeamOptions = useMemo(
+    () => teamsList.map((t) => ({ value: t.id, label: t.name })),
+    [teamsList]
+  )
   const jobTitles = useMemo(() => jobTitlesData ?? [], [jobTitlesData])
+
+  const prevDivisionIdRef = useRef(selectedDivisionId)
+  useEffect(() => {
+    if (prevDivisionIdRef.current === selectedDivisionId) return
+    prevDivisionIdRef.current = selectedDivisionId
+    const teamId = getValues('teamId')
+    if (teamId && teamsList.length > 0 && !teams.some((t) => t.value === teamId)) {
+      setValue('teamId', '', { shouldDirty: true })
+    }
+  }, [selectedDivisionId, teams, teamsList.length, getValues, setValue])
+
+  const departmentName =
+    divisions.find((d) => d.value === selectedDivisionId)?.label ??
+    (u.departmentName?.trim() || '—')
 
   const role = user?.role ?? 'MEMBER'
   const currentLevelId = mapCurrentTitleToLevelId(page.currentLevel.title)
@@ -504,7 +516,7 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     uploadPortrait(file, {
       onSuccess: (res) => {
         toast.success('Đã cập nhật ảnh đại diện')
-        form.setValue('portraitRef', res.portraitRef)
+        setValue('portraitRef', res.portraitRef)
         // Cập nhật vào auth store để Navbar thay đổi ngay
         if (user) {
           useAuthStore.getState().setUser({
@@ -517,194 +529,130 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     })
   }
 
-  const workSection = USER_SELF_FORM_SECTIONS[0]!
-  const workReadonlyFields = workSection.fields.filter(
-    (field) => isWorkOrgReadonlyField(field.key) || field.key === 'directManager'
-  )
-  const workEditableFields = workSection.fields.filter(
-    (field) => !isWorkOrgReadonlyField(field.key) && field.key !== 'directManager'
-  )
-  const detailSections = USER_SELF_FORM_SECTIONS.slice(1).filter((s) => s.title.trim() !== 'Khác')
-  const detailSectionVariants: ('indigo' | 'violet' | 'emerald' | 'primary')[] = [
-    'indigo',
-    'violet',
-    'emerald',
-    'primary',
-    'indigo',
-  ]
-  const onSaveProfile = handleSubmit((values) =>
-    patchUser(toPatch(values, u), {
-      onSuccess: () => {
-        form.reset(values)
-        toast.success('Đã lưu')
-        if (user && values.displayName) {
-          const primary = values.teamId?.trim() || null
-          const teamIds = primary
-            ? [primary, ...(values.extraTeamIds ?? []).filter((id) => id !== primary)]
-            : [...(values.extraTeamIds ?? [])]
-          useAuthStore.getState().setUser({
-            ...user,
-            name: values.displayName,
-            teamIds,
-          })
-        }
-      },
-      onError: () => toast.error('Không lưu được. Thử lại sau.'),
-    })
+  const [workSection, ...detailSections] = USER_SELF_FORM_SECTIONS
+  const workReadonlyFields = workSection!.fields.filter((f) => isSelfReadonly(f.key))
+  const workEditableFields = workSection!.fields.filter((f) => !isSelfReadonly(f.key))
+
+  const onSubmit = handleSubmit(
+    (values) => {
+      const body = toPatch(values, initialValues)
+      if (Object.keys(body).length === 0) {
+        toast.info('Chưa có thay đổi nào để lưu')
+        return
+      }
+      patchUser(body, {
+        onSuccess: () => {
+          form.reset(values)
+          toast.success('Đã lưu hồ sơ')
+          if (user) {
+            const primary = values.teamId?.trim() || null
+            const teamIds = primary
+              ? [primary, ...(values.extraTeamIds ?? []).filter((id) => id !== primary)]
+              : [...(values.extraTeamIds ?? [])]
+            useAuthStore.getState().setUser({
+              ...user,
+              name: values.displayName.trim() || values.fullNameLegal.trim() || user.name,
+              teamIds,
+            })
+          }
+        },
+        onError: (err) => toast.error(getApiErrorMessage(err) || 'Không lưu được. Thử lại sau.'),
+      })
+    },
+    () => toast.error('Vui lòng kiểm tra lại các trường được đánh dấu')
   )
 
-  const fieldCtx = {
-    u,
-    control,
-    divisions,
-    teams,
-    positions,
-    jobTitles,
-  }
-  const avatarUploadInputId = useId()
+  const fieldCtx: FieldCtx = { u, control, divisions, teams, jobTitles }
 
   return (
-    <Form {...form}>
-      <div
-        className="relative -m-5 min-h-[calc(100vh-3rem)] bg-slate-50/50 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-6 text-foreground md:-m-6 md:pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:-m-8 dark:bg-slate-950"
-        data-current-level-id={currentLevelId}
-      >
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute -left-20 -top-16 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute -right-16 top-24 h-80 w-80 rounded-full bg-indigo-500/10 blur-3xl" />
-          <div className="absolute bottom-8 left-1/3 h-56 w-56 -translate-x-1/2 rounded-full bg-violet-500/10 blur-3xl" />
-        </div>
-
-        <div className="mx-auto w-full px-4 md:px-6">
-          <div className="mb-4 border-none bg-[#005236] p-8 text-white rounded-3xl relative overflow-hidden">
-            <div className="relative z-10 flex flex-col gap-4">
-              <div className="min-w-0">
-                <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2">
-                  Hồ sơ cá nhân
-                </h1>
-                <p className="text-blue-50/80 max-w-2xl font-medium">
-                  Quản lý thông tin nhân sự và lộ trình phát triển.
-                </p>
-              </div>
-            </div>
+    <FormProvider {...form}>
+      <form id={formId} onSubmit={onSubmit} noValidate>
+        <div
+          className="relative -m-5 min-h-[calc(100vh-3rem)] bg-slate-50/50 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-6 text-foreground md:-m-6 md:pb-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:-m-8 dark:bg-slate-950"
+          data-current-level-id={currentLevelId}
+        >
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+            <div className="absolute -left-20 -top-16 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+            <div className="absolute -right-16 top-24 h-80 w-80 rounded-full bg-indigo-500/10 blur-3xl" />
+            <div className="absolute bottom-8 left-1/3 h-56 w-56 -translate-x-1/2 rounded-full bg-violet-500/10 blur-3xl" />
           </div>
 
-          <div className="">
-            <div className="space-y-4">
-              <section className="rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50 relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-transparent to-indigo-50/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="absolute top-0 right-0 h-48 w-48 bg-primary/5 rounded-full -mr-24 -mt-24 blur-3xl" />
-                <div className="relative z-10">
-                  <ProfileIdentityCard
-                    control={control}
-                    u={u}
-                    role={role}
-                    currentLevelTitle={page.currentLevel.title}
-                    portraitUploading={portraitUploading}
-                    avatarUploadInputId={avatarUploadInputId}
-                    onPortraitFile={onPortraitFile}
-                    fallbackUserName={user?.name ?? ''}
-                    fallbackUserEmail={user?.email ?? ''}
-                  />
+          <div className="mx-auto w-full px-4 md:px-6">
+            <div className="mb-4 border-none bg-[#005236] p-8 text-white rounded-3xl relative overflow-hidden">
+              <div className="relative z-10 flex flex-col gap-4">
+                <div className="min-w-0">
+                  <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2">
+                    Hồ sơ cá nhân
+                  </h1>
+                  <p className="text-blue-50/80 max-w-2xl font-medium">
+                    Cập nhật thông tin cá nhân của bạn. Các mục do HR quản lý chỉ hiển thị để xem.
+                  </p>
                 </div>
-              </section>
+              </div>
+            </div>
 
-              <section className="rounded-3xl border border-slate-200/60 bg-white p-8 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50">
-                <div className="mb-8 flex items-center gap-3">
-                  <div className="h-8 w-1.5 rounded-full bg-gradient-to-b from-primary to-violet-600" />
-                  <h2 className="text-xl font-black uppercase tracking-wide text-slate-800 dark:text-slate-200">
-                    Chi tiết hồ sơ
-                  </h2>
-                </div>
+            <div className="space-y-6">
+              <ProfileHeroCard>
+                <ProfileIdentityCard
+                  control={control}
+                  u={u}
+                  role={role}
+                  currentLevelTitle={page.currentLevel.title}
+                  departmentName={departmentName}
+                  portraitUploading={portraitUploading}
+                  avatarUploadInputId={avatarUploadInputId}
+                  onPortraitFile={onPortraitFile}
+                  fallbackUserName={user?.name ?? ''}
+                  fallbackUserEmail={user?.email ?? ''}
+                />
+              </ProfileHeroCard>
 
-                <div className="space-y-8">
-                  <div className="rounded-2xl border border-slate-200 border-l-4 border-l-primary bg-white p-6 shadow-sm dark:border-slate-800 dark:border-l-primary dark:bg-slate-900/50">
-                    <SectionTitle variant="primary">{workSection.title}</SectionTitle>
-                    {workReadonlyFields.length > 0 ? (
-                      <div className="mb-8">
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-primary/50">
-                          Thông tin đồng bộ (chỉ xem)
-                        </p>
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {workEditableFields.length > 0 ? (
-                      <div className="border-t border-slate-100 pt-6 dark:border-slate-800">
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                          Thông tin có thể cập nhật
-                        </p>
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          {workEditableFields.map((f) => renderField(f, fieldCtx))}
-                          <div className="sm:col-span-2">
-                            <EmployeeExtraTeamsField
-                              control={control}
-                              name="extraTeamIds"
-                              primaryTeamId={selectedTeamId}
-                              allTeams={allTeamOptions}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {detailSections.map((section, idx) => (
-                    <div
-                      key={section.title}
-                      className={cn(
-                        'rounded-2xl border border-slate-200 border-l-4 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/50',
-                        idx % 3 === 0
-                          ? 'border-l-indigo-500'
-                          : idx % 3 === 1
-                            ? 'border-l-violet-500'
-                            : 'border-l-emerald-500'
-                      )}
-                    >
-                      <SectionTitle variant={detailSectionVariants[idx]}>
-                        {section.title}
-                      </SectionTitle>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        {section.fields.map((f) => renderField(f, fieldCtx, user?.role))}
-                      </div>
+              <ProfileDetailsCard>
+                <ProfileDetailSection title={workSection!.title} index={0}>
+                  <ProfileFieldGroup caption="Thông tin do HR quản lý (chỉ xem)" tone="primary">
+                    {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
+                  </ProfileFieldGroup>
+                  <ProfileFieldGroup caption="Thông tin có thể cập nhật" divided>
+                    {workEditableFields.map((f) => renderField(f, fieldCtx))}
+                    <div className="sm:col-span-2">
+                      <EmployeeExtraTeamsField
+                        control={control}
+                        name="extraTeamIds"
+                        primaryTeamId={selectedTeamId}
+                        allTeams={allTeamOptions}
+                      />
                     </div>
-                  ))}
-                </div>
-              </section>
+                  </ProfileFieldGroup>
+                </ProfileDetailSection>
+
+                {detailSections.map((section, idx) => (
+                  <ProfileDetailSection key={section.title} title={section.title} index={idx + 1}>
+                    <ProfileFieldGrid>
+                      {section.fields.map((f) => renderField(f, fieldCtx))}
+                    </ProfileFieldGrid>
+                  </ProfileDetailSection>
+                ))}
+              </ProfileDetailsCard>
             </div>
           </div>
         </div>
-      </div>
+      </form>
 
-      {typeof document !== 'undefined'
-        ? createPortal(
-            <div
-              className="pointer-events-none fixed inset-x-0 bottom-0 z-[60]"
-              role="presentation"
-            >
-              <div
-                className="pointer-events-auto border-t border-slate-200/90 bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_-12px_rgba(15,23,42,0.12)] backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95"
-                role="region"
-                aria-label="Lưu hồ sơ"
-              >
-                <div className="mx-auto flex w-full max-w-[1400px] justify-stretch sm:justify-end">
-                  <Button
-                    type="button"
-                    disabled={patchPending}
-                    onClick={onSaveProfile}
-                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 font-bold text-white shadow-lg shadow-indigo-500/25 transition-all hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] disabled:opacity-60 sm:w-auto sm:min-w-[220px] sm:px-8"
-                  >
-                    {patchPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
-                  </Button>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
-    </Form>
+      <ProfileStickyActionBar ariaLabel="Lưu hồ sơ">
+        <div className="flex w-full justify-stretch sm:justify-end">
+          {/* Portal nằm ngoài <form> — gắn nút bằng thuộc tính `form`. */}
+          <Button
+            type="submit"
+            form={formId}
+            disabled={patchPending}
+            className={profilePrimaryActionClass}
+          >
+            {patchPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {patchPending ? 'Đang lưu…' : 'Lưu thay đổi'}
+          </Button>
+        </div>
+      </ProfileStickyActionBar>
+    </FormProvider>
   )
 }
 

@@ -29,6 +29,9 @@ export interface EmployeeExtraTeamsFieldProps<T extends FieldValues> {
   label?: string
   description?: string
   className?: string
+  pickPlaceholder?: string
+  addLabel?: string
+  emptyText?: string
 }
 
 export function EmployeeExtraTeamsField<T extends FieldValues>({
@@ -40,6 +43,9 @@ export function EmployeeExtraTeamsField<T extends FieldValues>({
   label = 'Nhóm bổ sung',
   description = 'Có thể thêm nhiều nhóm khác (ngoài nhóm theo phòng ban).',
   className,
+  pickPlaceholder = 'Chọn nhóm để thêm',
+  addLabel = 'Thêm nhóm',
+  emptyText = 'Chưa có nhóm bổ sung.',
 }: EmployeeExtraTeamsFieldProps<T>) {
   const { setValue } = useFormContext<T>()
   const extraTeamIds = (useWatch({ control, name }) as string[] | undefined) ?? []
@@ -102,7 +108,7 @@ export function EmployeeExtraTeamsField<T extends FieldValues>({
           ))}
         </ul>
       ) : (
-        <p className="text-xs text-muted-foreground">Chưa có nhóm bổ sung.</p>
+        <p className="text-xs text-muted-foreground">{emptyText}</p>
       )}
 
       {!disabled && availableTeams.length > 0 ? (
@@ -110,7 +116,7 @@ export function EmployeeExtraTeamsField<T extends FieldValues>({
           <div className="min-w-[200px] flex-1">
             <Select value={pickId || undefined} onValueChange={setPickId}>
               <SelectTrigger className="h-10 w-full">
-                <SelectValue placeholder="Chọn nhóm để thêm" />
+                <SelectValue placeholder={pickPlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {availableTeams.map((t) => (
@@ -130,7 +136,7 @@ export function EmployeeExtraTeamsField<T extends FieldValues>({
             onClick={addTeam}
           >
             <Plus className="h-4 w-4" />
-            Thêm nhóm
+            {addLabel}
           </Button>
         </div>
       ) : null}

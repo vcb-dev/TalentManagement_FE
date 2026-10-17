@@ -183,6 +183,7 @@ export interface components {
         Employee: {
             /** Format: uuid */
             id: string;
+            employeeCodePrimary?: string | null;
             name: string;
             /** Format: email */
             email: string;
@@ -211,14 +212,31 @@ export interface components {
             role: components["schemas"]["Role"];
             /** Format: uuid */
             departmentId: string;
-            /** Format: uuid */
-            teamId: string;
+            /**
+             * Format: uuid
+             * @description Bắt buộc, trừ BOD (BOD không thuộc nhóm)
+             */
+            teamId?: string;
+            /** @description Chỉ cho BOD: mã nhân viên HR nhập tay (11–12 chữ số); vai trò khác mã tự sinh */
+            employeeCodePrimary?: string;
             /** @description Nhóm bổ sung (ngoài teamId theo phòng ban) */
             extraTeamIds?: string[];
             phone?: string;
             birthDate?: string;
             /** @description Ngày bắt đầu làm việc (start_date_work) */
             startDate?: string;
+            /** @description Ngày nghỉ việc YYYY-MM-DD (leave_date_work) */
+            leaveDate?: string;
+            /** @description Mã định danh cá nhân — CCCD 12 số hoặc CMND 9 số (identity_number) */
+            identityNumber?: string;
+            /** @description Mã định danh nhân viên do HR cấp, vd. A755 (employee_identifier) */
+            employeeIdentifier?: string;
+            /** @description Dự án tham gia ngay khi tạo */
+            projectIds?: string[];
+            /** @description Username đăng nhập (tuỳ chọn, cho người không dùng Google) — đi cùng loginPassword */
+            loginUsername?: string;
+            /** @description Mật khẩu 8–128 ký tự — bắt buộc khi có loginUsername */
+            loginPassword?: string;
             /** @enum {string} */
             initialLevel?: "tap_su" | "biet_viec" | "duoc_viec" | "dong_gop_ket_qua" | "tuong";
             /** @description false = không gửi email thông báo tạo tài khoản */

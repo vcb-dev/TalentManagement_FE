@@ -7,8 +7,13 @@ const hrAdminSearchSchema = z.object({
   page: z.coerce.number().int().positive().optional().default(1),
   pageSize: z.coerce.number().int().min(10).max(100).optional().default(15),
   role: z.enum(['MEMBER', 'LEADER', 'MANAGER', 'HR', 'TEACHER', 'BOD']).optional(),
-  status: z.enum(['active', 'inactive', 'probation', 'reserved', 'transferred']).optional(),
+  /** Không có → mặc định "Đang làm việc". */
+  status: z.enum(['all', 'active', 'inactive', 'probation', 'reserved', 'transferred']).optional(),
   mode: z.enum(['view', 'edit']).optional(),
+  teamId: z.string().uuid().optional().catch(undefined),
+  startMonth: z.coerce.number().int().min(1).max(12).optional().catch(undefined),
+  startYear: z.coerce.number().int().min(1900).max(2999).optional().catch(undefined),
+  birthMonth: z.coerce.number().int().min(1).max(12).optional().catch(undefined),
 })
 
 export const Route = createFileRoute('/_protected/hr-admin/')({
@@ -27,7 +32,11 @@ function HrAdminIndexPage() {
         page: search.page,
         pageSize: search.pageSize,
         role: search.role,
-        status: search.status,
+        status: search.status === 'all' ? undefined : (search.status ?? 'active'),
+        teamId: search.teamId,
+        startMonth: search.startMonth,
+        startYear: search.startYear,
+        birthMonth: search.birthMonth,
       }}
     />
   )

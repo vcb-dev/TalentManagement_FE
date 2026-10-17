@@ -13,6 +13,9 @@ export interface EmployeeFilters {
   search?: string
   /** Lọc theo team (Quản lý — UUID team). */
   teamId?: string
+  startMonth?: number
+  startYear?: number
+  birthMonth?: number
 }
 
 export type EditEmployeeBody = Partial<Record<EmployeePatchKey, string | null>> & {
@@ -23,6 +26,10 @@ export const EMPLOYEE_PATCH_KEYS = [
   ...ME_USER_PATCH_KEYS,
   'startDateWork',
   'employeeCodePrimary',
+  'employeeIdentifier',
+  'leaveDateWork',
+  'employeeCardStatus',
+  'employeeCardColorId',
 ] as const
 
 export type EmployeePatchKey = (typeof EMPLOYEE_PATCH_KEYS)[number]

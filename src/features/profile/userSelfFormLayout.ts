@@ -4,23 +4,32 @@ export type UserSelfFieldSpec = {
   key: MeUserDisplayKey
   label: string
   multiline?: boolean
-  kind?: 'portrait' | 'division-select' | 'team-select' | 'position-select' | 'job-title-select'
+  kind?:
+    | 'portrait'
+    | 'division-select'
+    | 'team-select'
+    | 'position-select'
+    | 'job-title-select'
+    | 'card-status-select'
+    | 'card-color-select'
 }
 
 /** Các mục ngày chỉnh sửa được — `<input type="date">` (`startDateWork` chỉ đọc, không nằm đây). */
 export const USER_DATE_FIELD_KEYS = [
   'birthDate',
   'profileReviewDate',
+  'leaveDateWork',
 ] as const satisfies readonly MeUserDisplayKey[]
 
 export function isDateFormField(key: MeUserDisplayKey): boolean {
   return (USER_DATE_FIELD_KEYS as readonly string[]).includes(key)
 }
 
-/** Công việc & tổ chức — chỉ xem, không PATCH / chỉnh trên form. */
+/** Công việc & tổ chức — chỉ HR sửa. */
 export const USER_WORK_ORG_READONLY_KEYS = [
   'startDateWork',
   'employeeCodePrimary',
+  'managerBlockCode',
   'hrOfficerName',
   'teamPosition',
 ] as const satisfies readonly MeUserDisplayKey[]
@@ -29,6 +38,28 @@ export function isWorkOrgReadonlyField(key: MeUserDisplayKey): boolean {
   return (USER_WORK_ORG_READONLY_KEYS as readonly string[]).includes(key)
 }
 
+/** Khớp `EMPLOYEE_CODE_INPUT_LABELS` ở BE. */
+export const EMPLOYEE_CODE_INPUT_KEYS = [
+  'managerBlockCode',
+  'startDateWork',
+  'birthDate',
+  'teamId',
+  'hometownDetail',
+] as const satisfies readonly MeUserDisplayKey[]
+
+export function isEmployeeCodeInputField(key: MeUserDisplayKey): boolean {
+  return (EMPLOYEE_CODE_INPUT_KEYS as readonly string[]).includes(key)
+}
+
+export function roleMayHaveNoTeam(role: string | null | undefined): boolean {
+  return role === 'MANAGER' || role === 'BOD'
+}
+
+export function employeeCodeInputRequiredMessage(label: string): string {
+  return `${label} là bắt buộc (dùng để sinh mã nhân viên)`
+}
+
+/** Dùng chung cho "Hồ sơ của tôi" và hồ sơ HR — thứ tự field khớp `EmployeeForm`. */
 export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec[] }[] = [
   {
     title: 'Công việc & tổ chức',
@@ -38,9 +69,12 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
       { key: 'jobTitle', label: 'Vị trí chuyên môn', kind: 'job-title-select' },
       { key: 'startDateWork', label: 'Ngày bắt đầu làm việc' },
       { key: 'employeeCodePrimary', label: 'Mã nhân viên' },
+      { key: 'employeeIdentifier', label: 'Mã định danh NV' },
       { key: 'teamPosition', label: 'Loại hợp đồng / vị trí' },
       { key: 'directManager', label: 'Quản lý trực tiếp' },
       { key: 'workplaceBranch', label: 'Chi nhánh / nơi làm việc' },
+      { key: 'employeeCardStatus', label: 'Tình trạng cấp thẻ', kind: 'card-status-select' },
+      { key: 'employeeCardColorId', label: 'Màu thẻ', kind: 'card-color-select' },
       { key: 'hrOfficerName', label: 'Cán bộ HR phụ trách' },
       { key: 'managerBlockCode', label: 'Mã khối theo quản lý' },
     ],
@@ -48,13 +82,14 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
   {
     title: 'Nhân thân & liên hệ',
     fields: [
-      { key: 'displayName', label: 'Họ tên' },
+      { key: 'fullNameLegal', label: 'Họ và tên' },
+      { key: 'displayName', label: 'Tên hiển thị' },
       { key: 'gender', label: 'Giới tính' },
       { key: 'birthDate', label: 'Ngày sinh' },
       { key: 'phonePrimary', label: 'Điện thoại chính' },
       { key: 'portraitRef', label: 'Ảnh đại diện', kind: 'portrait' },
+      { key: 'email', label: 'Email đăng nhập (Google)' },
       { key: 'facebookUrl', label: 'Facebook' },
-      { key: 'email', label: 'Email' },
     ],
   },
   {
@@ -70,7 +105,10 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
   {
     title: 'Giấy tờ & nhân khẩu',
     fields: [
+      { key: 'identityNumber', label: 'Mã định danh (số CCCD)' },
       { key: 'identityDocumentInfo', label: 'Thông tin CCCD/CMND', multiline: true },
+      { key: 'attachmentIdFront', label: 'Ảnh CCCD mặt trước' },
+      { key: 'attachmentIdBack', label: 'Ảnh CCCD mặt sau' },
       { key: 'maritalStatus', label: 'Tình trạng hôn nhân' },
       { key: 'ethnicity', label: 'Dân tộc' },
       { key: 'religion', label: 'Tôn giáo' },
@@ -93,11 +131,9 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
     fields: [
       { key: 'bankAccountInfo', label: 'Thông tin tài khoản ngân hàng', multiline: true },
       { key: 'vehicleInfo', label: 'Phương tiện' },
-      { key: 'attachmentIdFront', label: 'Đính kèm mặt trước (ref)' },
-      { key: 'attachmentIdBack', label: 'Đính kèm mặt sau (ref)' },
       { key: 'policyAcknowledgement', label: 'Xác nhận chính sách', multiline: true },
       { key: 'profileReviewDate', label: 'Ngày rà soát hồ sơ' },
-      { key: 'cvAttachmentRef', label: 'Tham chiếu CV' },
+      { key: 'cvAttachmentRef', label: 'CV' },
       { key: 'notes', label: 'Ghi chú', multiline: true },
     ],
   },
