@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
+import { requireKpiOkrEnabled, requireRoleOrPermissionPrefixes } from '@/lib/routeGuards'
 import { PageSkeleton } from '@/components/ui/skeleton'
 
 const KpiOkrComplianceScreen = lazy(() =>
@@ -11,6 +11,7 @@ const KpiOkrComplianceScreen = lazy(() =>
 
 export const Route = createFileRoute('/_protected/kpi-okr-compliance')({
   beforeLoad: () => {
+    requireKpiOkrEnabled()
     requireRoleOrPermissionPrefixes(['HR', 'BOD', 'MANAGER'], ['hr.dept.'])
   },
   component: KpiOkrCompliancePage,

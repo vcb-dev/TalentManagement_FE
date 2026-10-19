@@ -1,5 +1,6 @@
 import { redirect } from '@tanstack/react-router'
 import { resolveEffectivePermissionSet } from '@/features/permissions/resolveEffective'
+import { KPI_OKR_ENABLED, MONTHLY_REPORT_ENABLED } from '@/lib/featureFlags'
 import { MANAGER_LIKE_ROLES } from '@/lib/managerLikeRole'
 import { useAuthStore } from '@/stores/auth.store'
 import type { Role, UserSession } from '@/types/auth'
@@ -25,11 +26,18 @@ export function requireRole(...allowed: Role[]) {
   if (!allowed.includes(user.role)) throw redirect({ to: defaultEntryPathFromSession(user) })
 }
 
+/** Chặn các màn KPI/OKR khi phân hệ đang tắt (`KPI_OKR_ENABLED`) — kể cả khi gõ URL trực tiếp. */
+export function requireKpiOkrEnabled() {
+  if (KPI_OKR_ENABLED) return
+  throw redirect({ to: defaultEntryPathFromSession(useAuthStore.getState().user) })
+}
+
 /**
  * Màn KPI/OKR cá nhân (`/kpi-okr`): nhân viên (MEMBER) hoặc ai có quyền chỉnh KPI của chính mình
  * (`kpi.edit_own` trong catalog) — khớp menu & tránh nhảy về Dashboard khi role không phải MEMBER.
  */
 export function requireMemberKpiOkrRoute() {
+  requireKpiOkrEnabled()
   const user = useAuthStore.getState().user
   if (!user?.role) throw redirect({ to: '/login' })
   if (user.role === 'MEMBER') return
@@ -44,6 +52,7 @@ export function requireMemberKpiOkrRoute() {
  */
 export function requireMonthlyReportRoute() {
   const user = useAuthStore.getState().user
+  if (!MONTHLY_REPORT_ENABLED) throw redirect({ to: defaultEntryPathFromSession(user) })
   if (!user?.role) throw redirect({ to: '/login' })
   if (user.role === 'MEMBER' || user.role === 'LEADER') return
   const eff = resolveEffectivePermissionSet(user)

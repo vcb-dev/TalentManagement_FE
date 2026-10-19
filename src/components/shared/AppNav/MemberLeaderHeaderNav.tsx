@@ -14,6 +14,7 @@ import {
   NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu'
 import { usePermission } from '@/hooks/usePermission'
+import { KPI_OKR_ENABLED } from '@/lib/featureFlags'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -135,7 +136,8 @@ export function MemberLeaderHeaderNav() {
       dashboard: 'Tổng quan',
       learning: 'Học tập',
       'room-booking': isPrivileged ? 'Duyệt phòng họp' : 'Đặt phòng họp',
-      kpi: 'KPI / Báo cáo',
+      // Nhóm tự ẩn khi rỗng (cả KPI/OKR lẫn Báo cáo hàng tháng đều tắt)
+      kpi: KPI_OKR_ENABLED ? 'KPI / Báo cáo' : 'Báo cáo',
       // manager: 'Quản lý lớp',
       hr: 'Nhân sự',
       rewards: 'Khen thưởng/Phạt',
