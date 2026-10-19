@@ -4,6 +4,7 @@ import type { CreateEmployeeInput, PatchEmployeeInput } from '@/types/api'
 import type { MeUserSelf } from '@/features/profile/userSelf.types'
 import { HR_DEPARTMENT_IDS, HR_TEAM_OPTIONS } from '@/features/hr-admin/hrOrgOptions'
 import { isoDateMatchesMonthYear } from '@/features/hr-admin/employeeListFilters'
+import { EMPLOYEE_CARD_FILTER_NONE } from '@/features/hr-admin/employeeCard'
 
 export type CreateEmployeeMeta = {
   initialLevel?: 'tap_su' | 'biet_viec'
@@ -199,6 +200,14 @@ export function getMockEmployees(filters: EmployeeFilters): {
   if (filters.birthMonth !== undefined) {
     list = list.filter((e) => isoDateMatchesMonthYear(e.birthDate, filters.birthMonth))
   }
+  if (filters.cardStatus) {
+    const want = filters.cardStatus === EMPLOYEE_CARD_FILTER_NONE ? null : filters.cardStatus
+    list = list.filter((e) => (e.employeeCardStatus ?? null) === want)
+  }
+  if (filters.cardColorId) {
+    const want = filters.cardColorId === EMPLOYEE_CARD_FILTER_NONE ? null : filters.cardColorId
+    list = list.filter((e) => (e.employeeCardColorId ?? null) === want)
+  }
   const statusCounts = { ACTIVE: 0, INACTIVE: 0, PROBATION: 0, RESERVED: 0, TRANSFERRED: 0 }
   for (const e of list) statusCounts[e.status]++
   const st = statusFilter(filters.status)
@@ -318,7 +327,7 @@ function buildMockProfile(e: EmployeeEntity): MeUserSelf {
     attachmentIdFront: null,
     attachmentIdBack: null,
     policyAcknowledgement: null,
-    hrOfficerName: null,
+    teamLeaderUserId: null,
     facebookUrl: null,
     socialNickname: null,
     profileReviewDate: null,

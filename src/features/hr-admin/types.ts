@@ -1,5 +1,6 @@
 import type { Role } from '@/types/auth'
 import { ME_USER_PATCH_KEYS } from '../profile/userSelf.types'
+import type { EmployeeCardStatusFilter } from './employeeCard'
 
 export type EmployeeListStatus = 'active' | 'inactive' | 'probation' | 'reserved' | 'transferred'
 
@@ -16,6 +17,9 @@ export interface EmployeeFilters {
   startMonth?: number
   startYear?: number
   birthMonth?: number
+  cardStatus?: EmployeeCardStatusFilter
+  /** UUID màu thẻ hoặc `'none'` = chưa có màu. */
+  cardColorId?: string
 }
 
 export type EditEmployeeBody = Partial<Record<EmployeePatchKey, string | null>> & {
@@ -30,6 +34,7 @@ export const EMPLOYEE_PATCH_KEYS = [
   'leaveDateWork',
   'employeeCardStatus',
   'employeeCardColorId',
+  'teamLeaderUserId',
 ] as const
 
 export type EmployeePatchKey = (typeof EMPLOYEE_PATCH_KEYS)[number]

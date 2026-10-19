@@ -48,6 +48,16 @@ export function EmployeeTable({
   const to = Math.min(pagination.page * pageSize, pagination.total)
   const columns: DataTableColumn<EmployeeEntity>[] = [
     {
+      id: 'identifier',
+      header: 'Mã định danh',
+      cell: (e) =>
+        e.employeeIdentifier ? (
+          <span className="font-medium tabular-nums">{e.employeeIdentifier}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
       id: 'name',
       header: 'Nhân viên',
       cell: (e) => (
@@ -120,6 +130,12 @@ export function EmployeeTable({
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-foreground">{e.name}</p>
                   <p className="mt-0.5 break-all text-xs text-muted-foreground">{e.email}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Mã định danh:{' '}
+                    <span className="font-medium text-foreground">
+                      {e.employeeIdentifier ?? '—'}
+                    </span>
+                  </p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">

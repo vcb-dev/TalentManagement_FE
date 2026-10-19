@@ -10,12 +10,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  EMPLOYEE_CARD_FILTER_NONE,
+  EMPLOYEE_CARD_STATUS_LABEL,
+  EMPLOYEE_CARD_STATUSES,
+  type EmployeeCardColor,
+  type EmployeeCardStatusFilter,
+} from '@/features/hr-admin/employeeCard'
 import { cn } from '@/lib/utils'
 import {
   BriefcaseBusiness,
   Cake,
   CalendarDays,
+  IdCard,
   Network,
+  Palette,
   SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
@@ -35,6 +44,9 @@ export type EmployeeListFilterValue = {
   startMonth?: number
   startYear?: number
   birthMonth?: number
+  cardStatus?: EmployeeCardStatusFilter
+  /** UUID màu thẻ hoặc `'none'` = chưa có màu. */
+  cardColorId?: string
 }
 
 /** Key có mặt với giá trị `undefined` = bỏ lọc key đó. */
@@ -47,6 +59,8 @@ export const RESET_EMPLOYEE_LIST_FILTER: EmployeeListFilterPatch = {
   startMonth: undefined,
   startYear: undefined,
   birthMonth: undefined,
+  cardStatus: undefined,
+  cardColorId: undefined,
 }
 
 export function countActiveEmployeeFilters(v: EmployeeListFilterValue): number {
@@ -56,6 +70,8 @@ export function countActiveEmployeeFilters(v: EmployeeListFilterValue): number {
     v.startMonth !== undefined,
     v.startYear !== undefined,
     v.birthMonth !== undefined,
+    v.cardStatus !== undefined,
+    v.cardColorId !== undefined,
   ].filter(Boolean).length
 }
 
@@ -105,6 +121,8 @@ export interface EmployeeFilterPopoverProps {
   onChange: (patch: EmployeeListFilterPatch) => void
   teamGroups: TeamOptionGroup[]
   showTeamFilter: boolean
+  /** Danh mục màu thẻ — gồm cả màu đã ẩn (vẫn có người đang mang). */
+  cardColors: EmployeeCardColor[]
 }
 
 export function EmployeeFilterPopover({
@@ -112,9 +130,17 @@ export function EmployeeFilterPopover({
   onChange,
   teamGroups,
   showTeamFilter,
+  cardColors,
 }: EmployeeFilterPopoverProps) {
   const [open, setOpen] = useState(false)
-  const ids = { status: useId(), team: useId(), start: useId(), birth: useId() }
+  const ids = {
+    status: useId(),
+    team: useId(),
+    start: useId(),
+    birth: useId(),
+    cardStatus: useId(),
+    cardColor: useId(),
+  }
   const activeCount = countActiveEmployeeFilters(value)
 
   const startYearOptions = useMemo(() => {
@@ -267,6 +293,52 @@ export function EmployeeFilterPopover({
               </SelectContent>
             </Select>
           </FilterField>
+
+          <div className="grid grid-cols-2 gap-2">
+            <FilterField id={ids.cardStatus} icon={IdCard} label="Tình trạng cấp thẻ">
+              <Select
+                value={value.cardStatus ?? 'all'}
+                onValueChange={(v) =>
+                  onChange({
+                    cardStatus: v === 'all' ? undefined : (v as EmployeeCardStatusFilter),
+                  })
+                }
+              >
+                <SelectTrigger id={ids.cardStatus} className={fieldTriggerClass}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  {EMPLOYEE_CARD_STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {EMPLOYEE_CARD_STATUS_LABEL[s]}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={EMPLOYEE_CARD_FILTER_NONE}>Chưa cập nhật</SelectItem>
+                </SelectContent>
+              </Select>
+            </FilterField>
+
+            <FilterField id={ids.cardColor} icon={Palette} label="Màu thẻ">
+              <Select
+                value={value.cardColorId ?? 'all'}
+                onValueChange={(v) => onChange({ cardColorId: v === 'all' ? undefined : v })}
+              >
+                <SelectTrigger id={ids.cardColor} className={fieldTriggerClass}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-80">
+                  <SelectItem value="all">Tất cả màu</SelectItem>
+                  {cardColors.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.isActive ? c.name : `${c.name} (đã ẩn)`}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={EMPLOYEE_CARD_FILTER_NONE}>Chưa có màu</SelectItem>
+                </SelectContent>
+              </Select>
+            </FilterField>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

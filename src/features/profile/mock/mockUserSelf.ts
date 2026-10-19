@@ -54,7 +54,7 @@ export const MOCK_USER_SELF: MeUserSelf = {
   attachmentIdFront: null,
   attachmentIdBack: null,
   policyAcknowledgement: null,
-  hrOfficerName: null,
+  teamLeaderUserId: null,
   facebookUrl: null,
   socialNickname: null,
   profileReviewDate: null,

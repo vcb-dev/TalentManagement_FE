@@ -12,6 +12,7 @@ export type UserSelfFieldSpec = {
     | 'job-title-select'
     | 'card-status-select'
     | 'card-color-select'
+    | 'team-leader-select'
 }
 
 /** Các mục ngày chỉnh sửa được — `<input type="date">` (`startDateWork` chỉ đọc, không nằm đây). */
@@ -30,7 +31,6 @@ export const USER_WORK_ORG_READONLY_KEYS = [
   'startDateWork',
   'employeeCodePrimary',
   'managerBlockCode',
-  'hrOfficerName',
   'teamPosition',
 ] as const satisfies readonly MeUserDisplayKey[]
 
@@ -72,10 +72,10 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
       { key: 'employeeIdentifier', label: 'Mã định danh NV' },
       { key: 'teamPosition', label: 'Loại hợp đồng / vị trí' },
       { key: 'directManager', label: 'Quản lý trực tiếp' },
+      { key: 'teamLeaderUserId', label: 'Trưởng nhóm phụ trách', kind: 'team-leader-select' },
       { key: 'workplaceBranch', label: 'Chi nhánh / nơi làm việc' },
       { key: 'employeeCardStatus', label: 'Tình trạng cấp thẻ', kind: 'card-status-select' },
       { key: 'employeeCardColorId', label: 'Màu thẻ', kind: 'card-color-select' },
-      { key: 'hrOfficerName', label: 'Cán bộ HR phụ trách' },
       { key: 'managerBlockCode', label: 'Mã khối theo quản lý' },
     ],
   },

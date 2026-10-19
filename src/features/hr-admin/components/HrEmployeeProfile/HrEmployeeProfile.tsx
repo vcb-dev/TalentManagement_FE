@@ -13,7 +13,7 @@ import {
   TextareaController,
 } from '@/components/ui/form-controllers'
 import { Input } from '@/components/ui/input'
-import { SelectItem } from '@/components/ui/select'
+import { SelectGroup, SelectItem, SelectLabel } from '@/components/ui/select'
 import { organizationApi } from '@/features/organization/api'
 import { profileApi } from '@/features/profile/api'
 import { useUploadMePortrait } from '@/features/profile/hooks'
@@ -54,9 +54,15 @@ import {
   useDeactivateEmployee,
   useDirectManagerOptions,
   useEmployee,
+  useTeamLeaderOptions,
   useUpdateEmployee,
   useUpdateEmployeeById,
 } from '../../hooks'
+import {
+  buildTeamLeaderOptionGroups,
+  TEAM_LEADER_NONE,
+  type TeamLeaderOptionGroup,
+} from '../../teamLeaderOptions'
 import {
   IDENTITY_NUMBER_MESSAGE,
   IDENTITY_NUMBER_PATTERN,
@@ -68,6 +74,7 @@ import { EMPLOYEE_CARD_STATUSES, EMPLOYEE_CARD_STATUS_LABEL } from '../../employ
 import { EmployeeCardColorField } from '../EmployeeCard'
 import { EmployeeExtraTeamsField, extraTeamIdsEqual } from '../EmployeeExtraTeamsField'
 import { EmployeeProjectsCard } from '../EmployeeProjects'
+import { EmployeeOrderNumberField } from './EmployeeOrderNumberField'
 import { CvUploadField } from '../CvAttachmentField'
 import { IdCardPhotoUploadField } from '../IdCardPhotoField'
 import { LoginEmailHint } from '../LoginEmailHint'
@@ -344,7 +351,9 @@ function toPatch(
     body[k] =
       k === 'directManager'
         ? directManagerIdToStoredName(edit.directManager, managers)
-        : nz(edit[k] ?? '')
+        : k === 'teamLeaderUserId' && edit[k] === TEAM_LEADER_NONE
+          ? null
+          : nz(edit[k] ?? '')
   }
   const origExtras = original.extraTeamIds ?? original.teamIds?.slice(1) ?? []
   if (!extraTeamIdsEqual(edit.extraTeamIds ?? [], origExtras)) {
@@ -472,6 +481,7 @@ function renderField(
     positions?: Array<{ value: string; label: string }>
     jobTitles?: Array<{ value: string; label: string }>
     directManagerOptions?: DirectManagerOption[]
+    teamLeaderGroups?: TeamLeaderOptionGroup[]
     canEdit: boolean
     teamOptional: boolean
   }
@@ -484,6 +494,7 @@ function renderField(
     positions,
     jobTitles,
     directManagerOptions,
+    teamLeaderGroups,
     canEdit,
     teamOptional,
   } = ctx
@@ -513,6 +524,34 @@ function renderField(
           <SelectItem key={o.value} value={o.value}>
             {o.label}
           </SelectItem>
+        ))}
+      </SelectController>
+    )
+  }
+
+  if (field.kind === 'team-leader-select') {
+    return (
+      <SelectController
+        key={field.key}
+        control={control}
+        name="teamLeaderUserId"
+        label={field.label}
+        placeholder="Chọn trưởng nhóm phụ trách"
+        className={cn('space-y-1.5', fieldBoxClass)}
+        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
+        triggerClassName={cn(fieldControlClass, inputEditable)}
+        customLabel={<FieldLabel>{field.label}</FieldLabel>}
+      >
+        <SelectItem value={TEAM_LEADER_NONE}>Chưa chọn</SelectItem>
+        {(teamLeaderGroups ?? []).map((g) => (
+          <SelectGroup key={g.label}>
+            <SelectLabel className="text-xs text-muted-foreground">{g.label}</SelectLabel>
+            {g.options.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
         ))}
       </SelectController>
     )
@@ -920,6 +959,16 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
     () => buildDirectManagerSelectOptions(managers, employee.id, employee.directManager),
     [managers, employee.id, employee.directManager]
   )
+  const { data: teamLeadersData } = useTeamLeaderOptions()
+  const teamLeaderGroups = useMemo(
+    () =>
+      buildTeamLeaderOptionGroups(teamLeadersData?.data ?? [], {
+        employeeId: employee.id,
+        employeeTeamName: employee.teamGroup,
+        current: employee.teamLeader,
+      }),
+    [teamLeadersData, employee.id, employee.teamGroup, employee.teamLeader]
+  )
   const form = useForm<EditRecord>({
     defaultValues: userToEdit(employee, managers),
   })
@@ -1011,12 +1060,10 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
   }
 
   const workSection = HR_FORM_SECTIONS[0]!
-  const workReadonlyFields = workSection.fields.filter(
-    (field) => isWorkOrgReadonlyField(field.key) || field.key === 'directManager'
-  )
-  const workEditableFields = workSection.fields.filter(
-    (field) => !isWorkOrgReadonlyField(field.key) && field.key !== 'directManager'
-  )
+  const isSyncedWorkField = (key: MeUserDisplayKey) =>
+    isWorkOrgReadonlyField(key) || key === 'directManager' || key === 'teamLeaderUserId'
+  const workReadonlyFields = workSection.fields.filter((field) => isSyncedWorkField(field.key))
+  const workEditableFields = workSection.fields.filter((field) => !isSyncedWorkField(field.key))
   const detailSections = HR_FORM_SECTIONS.slice(1)
   const initialEmploymentStatusUi = resolveEmploymentStatusUi(employee, employeeSummary?.status)
   const onSaveProfile = handleSubmit((values) => {
@@ -1082,6 +1129,7 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
     positions,
     jobTitles,
     directManagerOptions,
+    teamLeaderGroups,
     canEdit: canEditEmployee,
     teamOptional: roleMayHaveNoTeam(selectedRole),
   }
@@ -1113,7 +1161,14 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
           <ProfileDetailSection title={workSection.title} index={0}>
             {workReadonlyFields.length > 0 ? (
               <ProfileFieldGroup caption="Thông tin đồng bộ" tone="primary">
-                {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
+                {workReadonlyFields.flatMap((f) =>
+                  f.key === 'startDateWork'
+                    ? [
+                        renderField(f, fieldCtx),
+                        <EmployeeOrderNumberField key="orderNumber" employeeId={employee.id} />,
+                      ]
+                    : [renderField(f, fieldCtx)]
+                )}
                 {canManageEmploymentStatus ? <EmploymentStatusField control={control} /> : null}
                 {canEditRole ? <RoleField control={control} /> : null}
               </ProfileFieldGroup>
