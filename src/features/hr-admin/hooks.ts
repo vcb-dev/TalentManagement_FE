@@ -67,6 +67,14 @@ export function useTeamLeaderOptions() {
   })
 }
 
+/** Mã định danh NV kế tiếp — gợi ý trên form Thêm nhân sự; BE cấp lại lúc lưu nên không lo trùng. */
+export function useNextEmployeeIdentifier() {
+  return useQuery({
+    queryKey: employeeKeys.nextIdentifier(),
+    queryFn: () => employeeApi.getNextIdentifier(),
+  })
+}
+
 export function useCreateEmployee() {
   const qc = useQueryClient()
   return useMutation({
@@ -75,6 +83,7 @@ export function useCreateEmployee() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
       void qc.invalidateQueries({ queryKey: employeeKeys.orderNumbers() })
+      void qc.invalidateQueries({ queryKey: employeeKeys.nextIdentifier() })
       toast.success('Đã tạo nhân viên')
     },
     onError: (e) => {

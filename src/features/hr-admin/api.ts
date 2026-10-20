@@ -107,6 +107,14 @@ export const employeeApi = {
     return safeParse(employeeApiSchema, res.data, `GET /employees/${id}`)
   },
 
+  /** GET /employees/next-identifier — mã định danh NV sẽ được tự cấp (người vào gần nhất + 1). */
+  getNextIdentifier: async (): Promise<string | null> => {
+    if (isMockApiEnabled()) return null
+    const res = await apiClient.get<{ employeeIdentifier?: unknown }>('/employees/next-identifier')
+    const code = res.data?.employeeIdentifier
+    return typeof code === 'string' && code.trim() ? code.trim() : null
+  },
+
   create: async (input: CreateEmployeeInput, meta?: CreateEmployeeMeta) => {
     if (isMockApiEnabled()) {
       return safeParse(employeeApiSchema, mockCreateEmployee(input, meta), 'POST /employees (mock)')

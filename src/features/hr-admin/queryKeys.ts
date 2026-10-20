@@ -16,6 +16,7 @@ export const employeeKeys = {
   attachmentPreview: (id: string, field: string, objectPath: string) =>
     [...employeeKeys.all, 'attachment-preview', id, field, objectPath] as const,
   projects: (id: string) => [...employeeKeys.all, 'projects', id] as const,
+  nextIdentifier: () => [...employeeKeys.all, 'next-identifier'] as const,
 }
 
 export const employeeCardColorKeys = {
