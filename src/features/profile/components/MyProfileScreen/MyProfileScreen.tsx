@@ -66,6 +66,8 @@ import {
   type UserSelfFieldSpec,
 } from '@/features/profile/userSelfFormLayout'
 
+import { teamLeaderDisplayName } from '@/features/hr-admin/teamLeaderOptions'
+
 export interface MyProfileScreenProps {
   page: MyProfilePage | undefined
   isLoading: boolean
@@ -76,6 +78,7 @@ const SELF_READONLY_KEYS: ReadonlySet<MeUserDisplayKey> = new Set<MeUserDisplayK
   ...USER_WORK_ORG_READONLY_KEYS,
   'employeeIdentifier',
   'directManager',
+  'teamLeaderUserId',
   'email',
   'profileReviewDate',
   'employeeCardStatus',
@@ -99,6 +102,7 @@ function readonlyValue(u: MeUserSelf, key: MeUserDisplayKey): ReactNode {
   if (key === 'employeeCardColorId') {
     return u.employeeCardColor ? <EmployeeCardColorLabel color={u.employeeCardColor} /> : ''
   }
+  if (key === 'teamLeaderUserId') return teamLeaderDisplayName(u.teamLeader)
   if (key === 'startDateWork' || key === 'profileReviewDate') {
     return formatUserDateForReadonlyDisplay(u[key])
   }

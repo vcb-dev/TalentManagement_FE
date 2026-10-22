@@ -51,6 +51,30 @@ export function useDirectManagerOptions() {
   })
 }
 
+const TEAM_LEADER_FILTERS: EmployeeFilters = {
+  page: 1,
+  pageSize: 500,
+  roles: 'LEADER',
+  status: 'active',
+}
+
+/** Trưởng nhóm đang làm việc cho select "Trưởng nhóm phụ trách". */
+export function useTeamLeaderOptions() {
+  return useQuery({
+    queryKey: employeeKeys.list(TEAM_LEADER_FILTERS),
+    queryFn: () => employeeApi.getAll(TEAM_LEADER_FILTERS),
+    staleTime: 5 * 60_000,
+  })
+}
+
+/** Mã định danh NV kế tiếp — gợi ý trên form Thêm nhân sự; BE cấp lại lúc lưu nên không lo trùng. */
+export function useNextEmployeeIdentifier() {
+  return useQuery({
+    queryKey: employeeKeys.nextIdentifier(),
+    queryFn: () => employeeApi.getNextIdentifier(),
+  })
+}
+
 export function useCreateEmployee() {
   const qc = useQueryClient()
   return useMutation({
@@ -58,6 +82,8 @@ export function useCreateEmployee() {
       employeeApi.create(args.input, args.meta),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
+      void qc.invalidateQueries({ queryKey: employeeKeys.orderNumbers() })
+      void qc.invalidateQueries({ queryKey: employeeKeys.nextIdentifier() })
       toast.success('Đã tạo nhân viên')
     },
     onError: (e) => {
@@ -75,6 +101,7 @@ export function useUpdateEmployee() {
       void qc.invalidateQueries({ queryKey: employeeKeys.detail(id) })
       void qc.invalidateQueries({ queryKey: employeeKeys.detailEmployeeByID(id) })
       void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
+      void qc.invalidateQueries({ queryKey: employeeKeys.orderNumbers() })
       toast.success('Đã cập nhật nhân viên')
     },
     onError: (e) => {
@@ -112,6 +139,7 @@ export function useDeactivateEmployee() {
       void qc.invalidateQueries({ queryKey: employeeKeys.detail(id) })
       void qc.invalidateQueries({ queryKey: employeeKeys.detailEmployeeByID(id) })
       void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
+      void qc.invalidateQueries({ queryKey: employeeKeys.orderNumbers() })
       toast.success('Đã vô hiệu hóa tài khoản')
     },
   })
@@ -177,11 +205,21 @@ export function useUpdateEmployeeById() {
       void qc.invalidateQueries({ queryKey: employeeKeys.detailEmployeeByID(id) })
       void qc.invalidateQueries({ queryKey: employeeKeys.lists() })
       void qc.invalidateQueries({ queryKey: employeeKeys.orgChanges(id) })
+      void qc.invalidateQueries({ queryKey: employeeKeys.orderNumbers() })
       toast.success('Đã cập nhật nhân viên')
     },
     onError: (e) => {
       toast.error(getApiErrorMessage(e) || 'Không thể cập nhật nhân viên')
     },
+  })
+}
+
+/** Query riêng (không nằm trong hồ sơ) để làm mới STT mà không `reset` form đang sửa. */
+export function useEmployeeOrderNumber(id: string) {
+  return useQuery({
+    queryKey: employeeKeys.orderNumber(id),
+    queryFn: () => employeeApi.getOrderNumber(id),
+    enabled: id.length > 0,
   })
 }
 

@@ -8,6 +8,7 @@ import { SkeletonEmployeeCardGrid, SkeletonStatTile } from '@/components/ui/skel
 import { employeeApi, type EmployeeEntity } from '@/features/hr-admin/api'
 import { EmployeeTable } from '@/features/hr-admin/components/EmployeeTable'
 import { useEmployeeTable } from '@/features/hr-admin/components/EmployeeTable/useEmployeeTable'
+import { useEmployeeCardColors } from '@/features/hr-admin/employeeCardHooks'
 import type { EmployeeFilters } from '@/features/hr-admin/types'
 import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 import { usePermission } from '@/hooks/usePermission'
@@ -73,6 +74,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         .filter((d) => d.teams.length > 0),
     [orgDepartments, teamsByDept]
   )
+  const { data: cardColors = [] } = useEmployeeCardColors()
   const [isExporting, setIsExporting] = useState(false)
   const canCreate = canId('hr.employees.create')
   const canEdit = canId('hr.employees.edit')
@@ -211,6 +213,8 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     startMonth: routeSearch.startMonth,
     startYear: routeSearch.startYear,
     birthMonth: routeSearch.birthMonth,
+    cardStatus: routeSearch.cardStatus,
+    cardColorId: routeSearch.cardColorId,
   }
 
   /** Gộp với URL mới nhất (`prev`) để chọn liên tiếp không mất lọc trước; `undefined` = bỏ lọc. */
@@ -226,6 +230,8 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         if (next.startMonth === undefined) delete next.startMonth
         if (next.startYear === undefined) delete next.startYear
         if (next.birthMonth === undefined) delete next.birthMonth
+        if (next.cardStatus === undefined) delete next.cardStatus
+        if (next.cardColorId === undefined) delete next.cardColorId
         return next
       },
     })
@@ -412,6 +418,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
               onChange={applyListFilter}
               teamGroups={teamGroups}
               showTeamFilter={showTeamFilter}
+              cardColors={cardColors}
             />
           </div>
         </div>

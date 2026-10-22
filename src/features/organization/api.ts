@@ -154,7 +154,7 @@ export type TeamMemberRow = {
   avatarUrl: string | null
   portraitRef: string | null
   membership?: 'primary' | 'extra' | 'secondary'
-  /** Vị trí trong team (Partime, Fulltime -Thử việc, Trưởng nhóm…). */
+  /** Vị trí trong team (Part-time, Full-time thử việc, Trưởng nhóm…). */
   teamPosition?: string | null
   /** false = Part-time ở team không Traffic — miễn KPI/OKR. */
   requiresKpiOkr?: boolean

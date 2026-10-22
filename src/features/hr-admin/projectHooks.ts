@@ -40,6 +40,8 @@ export function useUpdateProject() {
       void qc.invalidateQueries({ queryKey: projectKeys.all })
       // Tên / trạng thái dự án hiện trong thẻ "Dự án tham gia" của từng hồ sơ nhân sự.
       void qc.invalidateQueries({ queryKey: [...employeeKeys.all, 'projects'] })
+      // Dự án chuyển "Hoàn thành" → thành viên về đánh số theo team.
+      void qc.invalidateQueries({ queryKey: employeeKeys.orderNumbers() })
       toast.success(`Đã cập nhật dự án "${project.name}"`)
     },
     onError: (e) => {
@@ -54,6 +56,7 @@ export function useDeleteProject() {
     mutationFn: (id: string) => projectApi.remove(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: projectKeys.all })
+      void qc.invalidateQueries({ queryKey: employeeKeys.orderNumbers() })
       toast.success('Đã xoá dự án')
     },
     onError: (e) => {
@@ -89,6 +92,7 @@ function useEmployeeProjectMutation<TArgs>(
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: employeeKeys.projects(employeeId) })
       void qc.invalidateQueries({ queryKey: projectKeys.all })
+      void qc.invalidateQueries({ queryKey: employeeKeys.orderNumbers() })
       toast.success(messages.success)
     },
     onError: (e) => {
@@ -132,6 +136,7 @@ function useProjectMemberMutation<TArgs extends { employeeId: string }>(
     onSuccess: (_data, { employeeId }) => {
       void qc.invalidateQueries({ queryKey: employeeKeys.projects(employeeId) })
       void qc.invalidateQueries({ queryKey: projectKeys.all })
+      void qc.invalidateQueries({ queryKey: employeeKeys.orderNumbers() })
       toast.success(messages.success)
     },
     onError: (e) => {
@@ -149,6 +154,7 @@ export function useAddProjectMembers(projectId: string) {
         void qc.invalidateQueries({ queryKey: employeeKeys.projects(userId) })
       }
       void qc.invalidateQueries({ queryKey: projectKeys.all })
+      void qc.invalidateQueries({ queryKey: employeeKeys.orderNumbers() })
       toast.success(`Đã thêm ${addedCount} nhân sự vào dự án`)
     },
     onError: (e) => {

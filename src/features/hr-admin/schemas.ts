@@ -285,6 +285,13 @@ export const employeeApiSchema = z.object({
   startDate: z.string().nullable().optional(),
   avatarUrl: z.string().nullable().optional(),
   directManager: z.string().nullable().optional(),
+  /** Mã định danh NV do HR cấp, vd. A755. */
+  employeeIdentifier: z.string().nullable().optional(),
+  employeeCardStatus: z
+    .enum(['NOT_ISSUED', 'TEMP_CARD_ISSUED', 'PHOTO_CARD_ISSUED'])
+    .nullable()
+    .optional(),
+  employeeCardColorId: z.string().nullable().optional(),
 })
 
 export const employeeListApiSchema = z.object({

@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import type { Role, UserSession } from '@/types/auth'
+import { KPI_OKR_ENABLED, MONTHLY_REPORT_ENABLED } from '@/lib/featureFlags'
 import {
   BarChart3,
   Calendar,
@@ -72,6 +73,8 @@ export type AppNavItem = {
   /** Mở trong tab mới, không điều hướng khỏi app hiện tại */
   openNewTab?: boolean
   isDevelopment?: boolean
+  /** Cờ phân hệ (`@/lib/featureFlags`) — `false` thì ẩn mục, ưu tiên cao nhất. */
+  featureEnabled?: boolean
 }
 
 /** Trang giới thiệu Viễn Chí Bảo (`/about-us`) — mở tab mới. */
@@ -106,6 +109,7 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     match: 'prefix',
     permissionId: 'report.view',
     hiddenForRoles: ['MANAGER', 'BOD'],
+    featureEnabled: MONTHLY_REPORT_ENABLED,
   },
   {
     to: '/exam',
@@ -191,6 +195,7 @@ const HR_ITEMS: AppNavItem[] = [
     icon: ClipboardCheck,
     match: 'prefix',
     permissionId: 'hr.dept.view',
+    featureEnabled: KPI_OKR_ENABLED,
   },
   {
     to: '/hr-admin/settings/company-landing',
@@ -209,6 +214,7 @@ export const SETTINGS_ITEMS: AppNavItem[] = [
     icon: CalendarRange,
     match: 'prefix',
     permissionId: 'kpi.window_override',
+    featureEnabled: KPI_OKR_ENABLED,
   },
 ]
 
@@ -453,6 +459,7 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
     match: 'prefix',
     permissionIdsAny: ['kpi.team_view', 'kpi.team_edit'],
     hiddenForRoles: ['MANAGER', 'BOD'],
+    featureEnabled: KPI_OKR_ENABLED,
   },
   {
     to: '/leader/vinh-danh',
@@ -460,6 +467,7 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
     icon: Award,
     match: 'prefix',
     hiddenForRoles: ['LEADER', 'MEMBER', 'HR', 'TEACHER'],
+    featureEnabled: KPI_OKR_ENABLED,
   },
   {
     to: '/leader/kpi-approval',
@@ -467,6 +475,7 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
     icon: ClipboardCheck,
     match: 'prefix',
     hiddenForRoles: ['LEADER', 'MEMBER', 'HR', 'TEACHER'],
+    featureEnabled: KPI_OKR_ENABLED,
   },
   {
     to: '/monthly-report',
@@ -474,6 +483,7 @@ export const LEADER_KPI_ITEMS: AppNavItem[] = [
     icon: BarChart3,
     match: 'prefix',
     permissionId: 'report.view',
+    featureEnabled: MONTHLY_REPORT_ENABLED,
   },
 ]
 
@@ -485,6 +495,7 @@ export const MANAGER_KPI_ITEMS: AppNavItem[] = [
     match: 'prefix',
     permissionIdsAny: ['kpi.team_view', 'kpi.team_edit'],
     hiddenForRoles: ['LEADER', 'MEMBER', 'HR', 'TEACHER'],
+    featureEnabled: KPI_OKR_ENABLED,
   },
 ]
 
@@ -501,6 +512,7 @@ export function filterNavByPermissions(
   role?: Role
 ): AppNavItem[] {
   return items.filter((item) => {
+    if (item.featureEnabled === false) return false
     if (role && item.hiddenForRoles?.includes(role)) return false
     if (item.permissionIdsAny?.length) {
       return item.permissionIdsAny.some((id) => hasPermission(id))

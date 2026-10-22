@@ -14,6 +14,11 @@ export const EMPLOYEE_CARD_STATUSES = Object.keys(
   EMPLOYEE_CARD_STATUS_LABEL
 ) as EmployeeCardStatus[]
 
+/** Giá trị lọc danh sách nhân sự = chỉ lấy người chưa cập nhật tình trạng / màu thẻ (khớp BE). */
+export const EMPLOYEE_CARD_FILTER_NONE = 'none'
+
+export type EmployeeCardStatusFilter = EmployeeCardStatus | typeof EMPLOYEE_CARD_FILTER_NONE
+
 export function employeeCardStatusLabel(status: string | null | undefined): string {
   if (!status) return ''
   return EMPLOYEE_CARD_STATUS_LABEL[status as EmployeeCardStatus] ?? status
