@@ -61,6 +61,7 @@ import {
   type TeamMemberRow,
 } from '@/features/organization/api'
 import { usePermission } from '@/hooks/usePermission'
+import { KPI_OKR_ENABLED } from '@/lib/featureFlags'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { cn } from '@/lib/utils'
@@ -1337,7 +1338,8 @@ export function HrOrgStructure() {
         }}
         onSubmit={submitNameModal}
       >
-        <div className="space-y-2 pt-1">
+        {/* Ẩn khi tắt KPI/OKR — sửa nhóm vẫn gửi lại giá trị cũ (state nạp từ team) nên không mất cấu hình */}
+        <div className="space-y-2 pt-1" hidden={!KPI_OKR_ENABLED}>
           <div className="flex items-center gap-2">
             <Checkbox
               id="team-kpi-approval-flag"
@@ -1425,7 +1427,7 @@ function TeamCardMobile({
               Ngưng dùng
             </Badge>
           )}
-          {team.requiresKpiApproval && (
+          {KPI_OKR_ENABLED && team.requiresKpiApproval && (
             <Badge
               variant="outline"
               className="rounded-full border-transparent bg-primary/10 px-2 py-0 text-[10px] font-medium text-primary"
@@ -1433,7 +1435,7 @@ function TeamCardMobile({
               Duyệt KPI/OKR
             </Badge>
           )}
-          {team.catalogSeedEnabled && (
+          {KPI_OKR_ENABLED && team.catalogSeedEnabled && (
             <Badge
               variant="outline"
               className="rounded-full border-transparent bg-indigo-500/10 px-2 py-0 text-[10px] font-medium text-indigo-600 dark:text-indigo-400"
@@ -1530,7 +1532,7 @@ function FragmentTeamRow({
               Ngưng dùng
             </Badge>
           )}
-          {team.requiresKpiApproval && (
+          {KPI_OKR_ENABLED && team.requiresKpiApproval && (
             <Badge
               variant="outline"
               className="rounded-full border-transparent bg-primary/10 px-2 py-0 text-[10px] font-medium text-primary"
@@ -1538,7 +1540,7 @@ function FragmentTeamRow({
               Duyệt KPI/OKR
             </Badge>
           )}
-          {team.catalogSeedEnabled && (
+          {KPI_OKR_ENABLED && team.catalogSeedEnabled && (
             <Badge
               variant="outline"
               className="rounded-full border-transparent bg-indigo-500/10 px-2 py-0 text-[10px] font-medium text-indigo-600 dark:text-indigo-400"

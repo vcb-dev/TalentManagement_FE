@@ -33,6 +33,19 @@ export type EmployeeOrgChange = {
   changedByName: string | null
 }
 
+/**
+ * GET /employees/hr/:id/order-number — vị trí trong dự án đang tham gia (không có thì trong
+ * team chính), tăng dần theo ngày bắt đầu làm việc. Tính lúc đọc, không phải STT trong mã NV.
+ */
+export type EmployeeOrderNumber = {
+  /** `null` = không xếp số, xem `reason`. */
+  position: number | null
+  total: number
+  scope: 'PROJECT' | 'TEAM' | null
+  groupName: string | null
+  reason: 'INACTIVE' | 'NO_START_DATE' | 'NO_GROUP' | null
+}
+
 function statusToApi(status: EmployeeFilters['status']): string | undefined {
   if (!status) return undefined
   return status.toUpperCase()
@@ -51,6 +64,8 @@ function filterParams(filters: Omit<EmployeeFilters, 'page' | 'pageSize'>) {
     startMonth: filters.startMonth,
     startYear: filters.startYear,
     birthMonth: filters.birthMonth,
+    cardStatus: filters.cardStatus,
+    cardColorId: filters.cardColorId,
   }
 }
 
@@ -90,6 +105,14 @@ export const employeeApi = {
     }
     const res = await apiClient.get<unknown>(`/employees/${id}`)
     return safeParse(employeeApiSchema, res.data, `GET /employees/${id}`)
+  },
+
+  /** GET /employees/next-identifier — mã định danh NV sẽ được tự cấp (người vào gần nhất + 1). */
+  getNextIdentifier: async (): Promise<string | null> => {
+    if (isMockApiEnabled()) return null
+    const res = await apiClient.get<{ employeeIdentifier?: unknown }>('/employees/next-identifier')
+    const code = res.data?.employeeIdentifier
+    return typeof code === 'string' && code.trim() ? code.trim() : null
   },
 
   create: async (input: CreateEmployeeInput, meta?: CreateEmployeeMeta) => {
@@ -140,6 +163,20 @@ export const employeeApi = {
       return row
     }
     const res = await apiClient.get<IHrEmployeeProfileState>(`/employees/hr/${id}`)
+    return res.data
+  },
+
+  getOrderNumber: async (id: string) => {
+    if (isMockApiEnabled()) {
+      return {
+        position: null,
+        total: 0,
+        scope: null,
+        groupName: null,
+        reason: 'NO_GROUP',
+      } satisfies EmployeeOrderNumber
+    }
+    const res = await apiClient.get<EmployeeOrderNumber>(`/employees/hr/${id}/order-number`)
     return res.data
   },
 

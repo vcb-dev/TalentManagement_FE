@@ -2,6 +2,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { requirePermissionPrefix } from '@/lib/permissionGuards'
+import { requireKpiOkrEnabled } from '@/lib/routeGuards'
 import { UserSnapshotScreen } from '@/features/kpi-okr/components/UserSnapshotScreen'
 
 const snapshotSearchSchema = z.object({
@@ -11,6 +12,7 @@ const snapshotSearchSchema = z.object({
 
 export const Route = createFileRoute('/_protected/manager/people/$userId')({
   beforeLoad: () => {
+    requireKpiOkrEnabled()
     requirePermissionPrefix('kpi.snapshot_view')
   },
   validateSearch: snapshotSearchSchema,

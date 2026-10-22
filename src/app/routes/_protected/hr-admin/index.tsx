@@ -14,6 +14,16 @@ const hrAdminSearchSchema = z.object({
   startMonth: z.coerce.number().int().min(1).max(12).optional().catch(undefined),
   startYear: z.coerce.number().int().min(1900).max(2999).optional().catch(undefined),
   birthMonth: z.coerce.number().int().min(1).max(12).optional().catch(undefined),
+  /** `none` = chưa cập nhật. */
+  cardStatus: z
+    .enum(['NOT_ISSUED', 'TEMP_CARD_ISSUED', 'PHOTO_CARD_ISSUED', 'none'])
+    .optional()
+    .catch(undefined),
+  /** UUID màu thẻ hoặc `none` = chưa có màu. */
+  cardColorId: z
+    .union([z.literal('none'), z.string().uuid()])
+    .optional()
+    .catch(undefined),
 })
 
 export const Route = createFileRoute('/_protected/hr-admin/')({
@@ -37,6 +47,8 @@ function HrAdminIndexPage() {
         startMonth: search.startMonth,
         startYear: search.startYear,
         birthMonth: search.birthMonth,
+        cardStatus: search.cardStatus,
+        cardColorId: search.cardColorId,
       }}
     />
   )

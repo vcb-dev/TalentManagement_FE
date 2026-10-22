@@ -13,6 +13,7 @@ import {
 } from '@/features/employee-dashboard/components/ManagerSharedReportPeriodFilter'
 import { VinhDanhSlide } from '@/features/employee-dashboard/components/VinhDanhSlide'
 import { LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
+import { KPI_OKR_ENABLED } from '@/lib/featureFlags'
 import { isManagerLikeRole } from '@/lib/managerLikeRole'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { cn } from '@/lib/utils'
@@ -247,7 +248,9 @@ export function EmployeeLearningDashboard() {
             <section className="min-w-0 shrink-0">
               <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Tổng quan quản lý</h1>
               <p className="text-sm text-muted-foreground">
-                Nhân sự, học tập &amp; KPI theo kỳ báo cáo.
+                {KPI_OKR_ENABLED
+                  ? 'Nhân sự, học tập & KPI theo kỳ báo cáo.'
+                  : 'Nhân sự & học tập theo kỳ báo cáo.'}
               </p>
             </section>
             <ManagerSharedReportPeriodFilter
@@ -314,7 +317,7 @@ export function EmployeeLearningDashboard() {
           </section>
         ) : null}
 
-        {!isManagerLearningDash ? <VinhDanhSlide /> : null}
+        {KPI_OKR_ENABLED && !isManagerLearningDash ? <VinhDanhSlide /> : null}
 
         {showKpiZone ? (
           <div className={isManagerLearningDash ? 'space-y-3' : 'space-y-5'}>
@@ -325,55 +328,57 @@ export function EmployeeLearningDashboard() {
                 rangeEndMonth={managerReportPeriod.rangeEndMonth}
               />
             )}
-            {/* Tab switcher */}
-            <div
-              className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
-              role="tablist"
-              aria-label="Chuyển tab"
-            >
-              <div className="inline-flex rounded-lg border p-0.5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  role="tab"
-                  id="dash-tab-learning"
-                  aria-selected={tab === 'learning'}
-                  aria-controls="dash-panel-learning"
-                  tabIndex={tab === 'learning' ? 0 : -1}
-                  onClick={() => handleTabChange('learning')}
-                  className={cn(
-                    'inline-flex h-auto min-h-0 items-center gap-1.5 rounded-md px-3.5 py-2 text-sm font-bold transition-all duration-300',
-                    tab === 'learning'
-                      ? 'bg-[#006C49] text-white hover:bg-[#006C49]/90 hover:text-white'
-                      : 'text-muted-foreground hover:bg-background/80 hover:text-foreground',
-                    isPending && tab === 'learning' && 'opacity-70'
-                  )}
-                >
-                  <GraduationCap className="h-4 w-4 shrink-0" strokeWidth={2} />
-                  Học tập
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  role="tab"
-                  id="dash-tab-kpi"
-                  aria-selected={tab === 'kpi'}
-                  aria-controls="dash-panel-kpi"
-                  tabIndex={tab === 'kpi' ? 0 : -1}
-                  onClick={() => handleTabChange('kpi')}
-                  className={cn(
-                    'inline-flex h-auto min-h-0 items-center gap-1.5 rounded-md px-3.5 py-2 text-sm font-bold transition-all duration-300',
-                    tab === 'kpi'
-                      ? 'bg-[#006C49] text-white hover:bg-[#006C49]/90 hover:text-white'
-                      : 'text-muted-foreground hover:bg-background/80 hover:text-foreground',
-                    isPending && tab === 'kpi' && 'opacity-70'
-                  )}
-                >
-                  <Target className="h-4 w-4 shrink-0" strokeWidth={2} />
-                  KPI · OKR
-                </Button>
+            {/* Tab switcher — tắt KPI/OKR thì chỉ còn tab Học tập, ẩn luôn thanh chuyển tab */}
+            {KPI_OKR_ENABLED && (
+              <div
+                className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                role="tablist"
+                aria-label="Chuyển tab"
+              >
+                <div className="inline-flex rounded-lg border p-0.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    role="tab"
+                    id="dash-tab-learning"
+                    aria-selected={tab === 'learning'}
+                    aria-controls="dash-panel-learning"
+                    tabIndex={tab === 'learning' ? 0 : -1}
+                    onClick={() => handleTabChange('learning')}
+                    className={cn(
+                      'inline-flex h-auto min-h-0 items-center gap-1.5 rounded-md px-3.5 py-2 text-sm font-bold transition-all duration-300',
+                      tab === 'learning'
+                        ? 'bg-[#006C49] text-white hover:bg-[#006C49]/90 hover:text-white'
+                        : 'text-muted-foreground hover:bg-background/80 hover:text-foreground',
+                      isPending && tab === 'learning' && 'opacity-70'
+                    )}
+                  >
+                    <GraduationCap className="h-4 w-4 shrink-0" strokeWidth={2} />
+                    Học tập
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    role="tab"
+                    id="dash-tab-kpi"
+                    aria-selected={tab === 'kpi'}
+                    aria-controls="dash-panel-kpi"
+                    tabIndex={tab === 'kpi' ? 0 : -1}
+                    onClick={() => handleTabChange('kpi')}
+                    className={cn(
+                      'inline-flex h-auto min-h-0 items-center gap-1.5 rounded-md px-3.5 py-2 text-sm font-bold transition-all duration-300',
+                      tab === 'kpi'
+                        ? 'bg-[#006C49] text-white hover:bg-[#006C49]/90 hover:text-white'
+                        : 'text-muted-foreground hover:bg-background/80 hover:text-foreground',
+                      isPending && tab === 'kpi' && 'opacity-70'
+                    )}
+                  >
+                    <Target className="h-4 w-4 shrink-0" strokeWidth={2} />
+                    KPI · OKR
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
 
             <div
               id="dash-panel-learning"
@@ -402,7 +407,7 @@ export function EmployeeLearningDashboard() {
               aria-labelledby="dash-tab-kpi"
               hidden={tab !== 'kpi'}
             >
-              {tab === 'kpi' && (
+              {KPI_OKR_ENABLED && tab === 'kpi' && (
                 <>
                   {isManagerLearningDash && <VinhDanhSlide compact className="mb-3" />}
                   <DashboardKpiOkrZone

@@ -26,7 +26,11 @@ import { CvPickerField } from '@/features/hr-admin/components/CvAttachmentField'
 import { IdCardPhotoPickerField } from '@/features/hr-admin/components/IdCardPhotoField'
 import { LoginEmailHint } from '@/features/hr-admin/components/LoginEmailHint'
 import { buildDirectManagerSelectOptions } from '@/features/hr-admin/directManagerOptions'
-import { useAnyActionPending, useDirectManagerOptions } from '@/features/hr-admin/hooks'
+import {
+  useAnyActionPending,
+  useDirectManagerOptions,
+  useNextEmployeeIdentifier,
+} from '@/features/hr-admin/hooks'
 import { useProjects } from '@/features/hr-admin/projectHooks'
 import type { CreateEmployeeForm } from '@/features/hr-admin/schemas'
 import { teamPositionOptions } from '@/features/hr-admin/teamPositionOptions'
@@ -159,6 +163,7 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
     queryFn: () => profileApi.getJobTitles(),
   })
   const jobTitles = jobTitlesData ?? []
+  const { data: nextEmployeeIdentifier } = useNextEmployeeIdentifier()
 
   const backToList = () => void navigate({ to: '/hr-admin', search: { page: 1, pageSize: 15 } })
 
@@ -280,13 +285,22 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                     </p>
                   </div>
                 )}
-                <ProfileInputField
-                  control={control}
-                  name="employeeIdentifier"
-                  label="Mã định danh NV"
-                  placeholder="VD: A755"
-                  autoComplete="off"
-                />
+                <div className="space-y-1">
+                  <ProfileInputField
+                    control={control}
+                    name="employeeIdentifier"
+                    label="Mã định danh NV"
+                    placeholder={
+                      nextEmployeeIdentifier
+                        ? `Tự động: ${nextEmployeeIdentifier}`
+                        : 'Tự động cấp khi tạo'
+                    }
+                    autoComplete="off"
+                  />
+                  <p className="px-1 text-xs text-muted-foreground">
+                    Bỏ trống để tự cấp mã của người vào gần nhất + 1; chỉ nhập khi cần mã khác.
+                  </p>
+                </div>
               </ProfileFieldGroup>
 
               <ProfileFieldGroup caption="Phân công tổ chức" divided>

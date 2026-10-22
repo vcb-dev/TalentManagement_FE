@@ -18,6 +18,18 @@ describe('employee list pagination', () => {
     expect(result.data).toEqual([])
   })
 
+  it('lọc theo tình trạng / màu thẻ, `none` = chưa cập nhật', () => {
+    const all = getMockEmployees({ page: 1, pageSize: 100 })
+    const noStatus = getMockEmployees({ page: 1, pageSize: 100, cardStatus: 'none' })
+    const photoCard = getMockEmployees({ page: 1, pageSize: 100, cardStatus: 'PHOTO_CARD_ISSUED' })
+    const noColor = getMockEmployees({ page: 1, pageSize: 100, cardColorId: 'none' })
+
+    // Dữ liệu mock chưa ai được cấp thẻ / gán màu.
+    expect(noStatus.total).toBe(all.total)
+    expect(photoCard.total).toBe(0)
+    expect(noColor.total).toBe(all.total)
+  })
+
   it('chấp nhận hồ sơ đồng bộ cũ chưa có email', () => {
     const result = getMockEmployees({ page: 1, pageSize: 10 })
     const firstEmployee = result.data[0]

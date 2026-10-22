@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { requireManagerLikeOrPermissionPrefixes } from '@/lib/routeGuards'
+import { requireKpiOkrEnabled, requireManagerLikeOrPermissionPrefixes } from '@/lib/routeGuards'
 import { PageSkeleton } from '@/components/ui/skeleton'
 
 const ManagerKpiApprovalScreen = lazy(() =>
@@ -11,6 +11,7 @@ const ManagerKpiApprovalScreen = lazy(() =>
 
 export const Route = createFileRoute('/_protected/leader/kpi-approval')({
   beforeLoad: () => {
+    requireKpiOkrEnabled()
     requireManagerLikeOrPermissionPrefixes([])
   },
   component: KpiApprovalPage,

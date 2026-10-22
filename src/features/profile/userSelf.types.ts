@@ -1,7 +1,10 @@
-import type {
-  EmployeeCardColorSummary,
-  EmployeeCardStatus,
-} from '@/features/hr-admin/employeeCard'
+import type { EmployeeCardColorSummary, EmployeeCardStatus } from '@/features/hr-admin/employeeCard'
+
+export type TeamLeaderSummary = {
+  id: string
+  fullNameLegal: string | null
+  email: string | null
+}
 
 /** Khớp JSON `GET /me/user` (bảng `users`, không có raw_data). */
 export interface MeUserSelf {
@@ -61,7 +64,10 @@ export interface MeUserSelf {
   attachmentIdFront: string | null
   attachmentIdBack: string | null
   policyAcknowledgement: string | null
-  hrOfficerName: string | null
+  /** Chỉ HR sửa — id user có vai trò LEADER. */
+  teamLeaderUserId: string | null
+  /** BE kèm theo để hiển thị tên trưởng nhóm phụ trách. */
+  teamLeader?: TeamLeaderSummary | null
   facebookUrl: string | null
   socialNickname: string | null
   profileReviewDate: string | null
@@ -129,5 +135,11 @@ export type MeUserPatchKey = (typeof ME_USER_PATCH_KEYS)[number]
 
 export type MeUserDisplayKey = Exclude<
   keyof MeUserSelf,
-  'id' | 'larkRecordId' | 'createdAt' | 'updatedAt' | 'lastSyncedAt' | 'employeeCardColor'
+  | 'id'
+  | 'larkRecordId'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'lastSyncedAt'
+  | 'employeeCardColor'
+  | 'teamLeader'
 >

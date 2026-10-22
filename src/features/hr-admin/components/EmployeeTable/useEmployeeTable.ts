@@ -20,6 +20,8 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
       startMonth: initial?.startMonth,
       startYear: initial?.startYear,
       birthMonth: initial?.birthMonth,
+      cardStatus: initial?.cardStatus,
+      cardColorId: initial?.cardColorId,
     }),
     [
       initial?.page,
@@ -30,6 +32,8 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
       initial?.startMonth,
       initial?.startYear,
       initial?.birthMonth,
+      initial?.cardStatus,
+      initial?.cardColorId,
     ]
   )
 
