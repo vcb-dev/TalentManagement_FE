@@ -467,7 +467,7 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                 <ProfileTextareaField
                   control={control}
                   name="identityDocumentInfo"
-                  label="Thông tin CCCD/CMND"
+                  label="Thông tin CCCD/CMND (ngày - tháng - năm cấp, nơi cấp)"
                 />
                 <div className={profileFieldBoxClass}>
                   <IdCardPhotoPickerField
@@ -540,7 +540,11 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
                   name="bankAccountInfo"
                   label="Thông tin tài khoản ngân hàng"
                 />
-                <ProfileInputField control={control} name="vehicleInfo" label="Phương tiện" />
+                <ProfileInputField
+                  control={control}
+                  name="vehicleInfo"
+                  label="Phương tiện (Biển số xe - Hãng xe - Màu xe)"
+                />
                 <ProfileTextareaField
                   control={control}
                   name="policyAcknowledgement"

@@ -75,6 +75,8 @@ export type AppNavItem = {
   isDevelopment?: boolean
   /** Cờ phân hệ (`@/lib/featureFlags`) — `false` thì ẩn mục, ưu tiên cao nhất. */
   featureEnabled?: boolean
+  /** Ép nhóm menu trên header (`MemberLeaderHeaderNav`) thay vì suy theo `to`, vd. `'learning'`. */
+  headerGroup?: string
 }
 
 /** Trang giới thiệu Viễn Chí Bảo (`/about-us`) — mở tab mới. */
@@ -373,6 +375,16 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
     icon: School,
     match: 'prefix',
     permissionId: 'manager.classes',
+  },
+  {
+    // HR chỉ xem (`hr.classes.view`): cùng route, nằm trong menu "Học tập".
+    // Đặt sau "Chia lớp" — ai có cả `manager.classes` thì dedupe theo `to` giữ "Chia lớp".
+    to: '/manager/classes',
+    label: 'Danh sách lớp học',
+    icon: School,
+    match: 'prefix',
+    permissionId: 'hr.classes.view',
+    headerGroup: 'learning',
   },
   {
     to: '/manager/exam-schedule',

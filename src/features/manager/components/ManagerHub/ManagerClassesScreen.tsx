@@ -13,6 +13,7 @@ import {
   useTeacherOptions,
   useUpdateManagerClass,
 } from '@/features/manager/hooks'
+import { usePermission } from '@/hooks/usePermission'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import { Calendar, Loader2, PlusCircle, Search, UserPlus2, Users, X } from 'lucide-react'
@@ -50,6 +51,9 @@ const NEXT_LEVEL_BY_FROM: Record<CreateLevel, CreateLevel> = {
 }
 
 export function ManagerClassesScreen() {
+  const { canId } = usePermission()
+  /** Không có `manager.classes` (vd. HR chỉ có `hr.classes.view`) → chỉ xem, ẩn tạo/sửa/xoá. */
+  const canManage = canId('manager.classes')
   const [search, setSearch] = useState('')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createMemberQuery, setCreateMemberQuery] = useState('')
@@ -221,7 +225,9 @@ export function ManagerClassesScreen() {
         <div className="mb-8 flex flex-col gap-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className={cn('min-w-0 flex-1')}>
-              <h1 className="text-2xl font-bold text-foreground">Chia lớp học</h1>
+              <h1 className="text-2xl font-bold text-foreground">
+                {canManage ? 'Chia lớp học' : 'Danh sách lớp học'}
+              </h1>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <span className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-card px-3 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-primary/10">
@@ -296,19 +302,22 @@ export function ManagerClassesScreen() {
               className="h-auto w-full rounded-xl border border-transparent bg-muted/80 py-3 pl-11 pr-4 text-sm shadow-inner shadow-none outline-none ring-offset-background transition-all placeholder:text-muted-foreground focus-visible:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20"
             />
           </div>
-          <div className="flex shrink-0 gap-3">
-            <Button
-              type="button"
-              className="gap-2 rounded-xl px-6 py-3 text-sm font-bold shadow-md"
-              onClick={() => setIsCreateOpen((v) => !v)}
-            >
-              <PlusCircle className="h-4 w-4" strokeWidth={2} />
-              Tạo lớp
-            </Button>
-          </div>
+          {canManage ? (
+            <div className="flex shrink-0 gap-3">
+              <Button
+                type="button"
+                className="gap-2 rounded-xl px-6 py-3 text-sm font-bold shadow-md"
+                onClick={() => setIsCreateOpen((v) => !v)}
+              >
+                <PlusCircle className="h-4 w-4" strokeWidth={2} />
+                Tạo lớp
+              </Button>
+            </div>
+          ) : null}
         </div>
 
-        {isCreateOpen &&
+        {canManage &&
+          isCreateOpen &&
           createPortal(
             <div
               className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain"
@@ -582,9 +591,11 @@ export function ManagerClassesScreen() {
           <div className="rounded-xl border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
             <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
             <p className="text-sm font-semibold text-muted-foreground">Chưa có lớp học nào</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">
-              Nhấn "Tạo lớp" để tạo lớp học đầu tiên.
-            </p>
+            {canManage ? (
+              <p className="mt-1 text-xs text-muted-foreground/70">
+                Nhấn "Tạo lớp" để tạo lớp học đầu tiên.
+              </p>
+            ) : null}
           </div>
         )}
 
@@ -593,13 +604,14 @@ export function ManagerClassesScreen() {
             <ClassCard
               key={row.id}
               row={row}
-              onEdit={openEditClassModal}
-              onDelete={handleDeleteClass}
+              onEdit={canManage ? openEditClassModal : undefined}
+              onDelete={canManage ? handleDeleteClass : undefined}
             />
           ))}
         </div>
 
-        {editClassId &&
+        {canManage &&
+          editClassId &&
           createPortal(
             <div
               className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain"

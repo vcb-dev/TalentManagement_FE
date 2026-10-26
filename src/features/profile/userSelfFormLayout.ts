@@ -106,7 +106,11 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
     title: 'Giấy tờ & nhân khẩu',
     fields: [
       { key: 'identityNumber', label: 'Mã định danh (số CCCD)' },
-      { key: 'identityDocumentInfo', label: 'Thông tin CCCD/CMND', multiline: true },
+      {
+        key: 'identityDocumentInfo',
+        label: 'Thông tin CCCD/CMND (ngày - tháng - năm cấp, nơi cấp)',
+        multiline: true,
+      },
       { key: 'attachmentIdFront', label: 'Ảnh CCCD mặt trước' },
       { key: 'attachmentIdBack', label: 'Ảnh CCCD mặt sau' },
       { key: 'maritalStatus', label: 'Tình trạng hôn nhân' },
@@ -130,7 +134,7 @@ export const USER_SELF_FORM_SECTIONS: { title: string; fields: UserSelfFieldSpec
     title: 'Khác',
     fields: [
       { key: 'bankAccountInfo', label: 'Thông tin tài khoản ngân hàng', multiline: true },
-      { key: 'vehicleInfo', label: 'Phương tiện' },
+      { key: 'vehicleInfo', label: 'Phương tiện (Biển số xe - Hãng xe - Màu xe)' },
       { key: 'policyAcknowledgement', label: 'Xác nhận chính sách', multiline: true },
       { key: 'profileReviewDate', label: 'Ngày rà soát hồ sơ' },
       { key: 'cvAttachmentRef', label: 'CV' },
