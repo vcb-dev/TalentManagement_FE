@@ -25,6 +25,7 @@ type HeaderNavGroup = {
 }
 
 function routeGroup(item: AppNavItem): string {
+  if (item.headerGroup) return item.headerGroup
   if (item.to === '/about-us') return 'company'
   if (item.to.startsWith('/room-booking')) return 'room-booking'
   // if (item.to.startsWith('/manager')) return 'manager'

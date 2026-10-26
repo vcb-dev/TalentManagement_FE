@@ -54,11 +54,13 @@ import {
   DIVISIONS_WITH_TEAMS_QUERY_KEY,
   orgCrudApi,
   organizationApi,
+  TEAM_STATUS_LABEL,
   teamMembersQueryKey,
   type EligibleUserRow,
   type OrgAdminDivisionRow,
   type OrgAdminTeamRow,
   type TeamMemberRow,
+  type TeamStatus,
 } from '@/features/organization/api'
 import { usePermission } from '@/hooks/usePermission'
 import { KPI_OKR_ENABLED } from '@/lib/featureFlags'
@@ -145,6 +147,27 @@ function getDeptIcon(dept: OrgAdminDivisionRow): LucideIcon {
   const name = dept.name.toLowerCase()
   const rule = DEPT_NAME_ICON_RULES.find((r) => r.keywords.some((k) => name.includes(k)))
   return rule?.icon ?? Building2
+}
+
+const TEAM_STATUS_BADGE_CLASS: Record<Exclude<TeamStatus, 'ACTIVE'>, string> = {
+  PAUSED: 'border-warning/50 bg-warning-muted text-warning',
+  INACTIVE: 'border-danger/50 bg-danger-muted text-danger',
+}
+
+/** Badge cạnh tên nhóm — nhóm đang hoạt động thì không hiện gì. */
+function TeamStatusBadge({ status }: { status: TeamStatus }) {
+  if (status === 'ACTIVE') return null
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        'rounded px-2 py-0 text-[10px] font-bold uppercase tracking-wider',
+        TEAM_STATUS_BADGE_CLASS[status]
+      )}
+    >
+      {TEAM_STATUS_LABEL[status]}
+    </Badge>
+  )
 }
 
 function OrgCrudNameDialog({
@@ -418,6 +441,7 @@ export function HrOrgStructure() {
   const [approvalFlag, setApprovalFlag] = useState(false)
   const [catalogSeedFlag, setCatalogSeedFlag] = useState(false)
   const [initialCatalogSeedFlag, setInitialCatalogSeedFlag] = useState(false)
+  const [teamStatus, setTeamStatus] = useState<TeamStatus>('ACTIVE')
   const emptyDivisionForm = useMemo<DivisionFormValues>(
     () => ({ name: '', code: '', description: '', isActive: true }),
     []
@@ -510,12 +534,14 @@ export function HrOrgStructure() {
       name,
       requiresKpiApproval,
       catalogSeedEnabled,
+      status,
     }: {
       id: string
       name: string
       requiresKpiApproval: boolean
       catalogSeedEnabled?: boolean
-    }) => orgCrudApi.updateTeam(id, { name, requiresKpiApproval, catalogSeedEnabled }),
+      status: TeamStatus
+    }) => orgCrudApi.updateTeam(id, { name, requiresKpiApproval, catalogSeedEnabled, status }),
     onSuccess: () => {
       toast.success('Đã cập nhật nhóm')
       setCrudModal(null)
@@ -571,6 +597,15 @@ export function HrOrgStructure() {
     setCatalogSeedFlag(false)
     setInitialCatalogSeedFlag(false)
     setCrudModal({ kind: 'team-create', dept })
+  }, [])
+
+  const openEditTeam = useCallback((team: OrgAdminTeamRow) => {
+    setCrudName(team.name)
+    setApprovalFlag(team.requiresKpiApproval ?? false)
+    setCatalogSeedFlag(team.catalogSeedEnabled ?? false)
+    setInitialCatalogSeedFlag(team.catalogSeedEnabled ?? false)
+    setTeamStatus(team.status)
+    setCrudModal({ kind: 'team-edit', team })
   }, [])
 
   const submitDivisionForm = useCallback(() => {
@@ -666,11 +701,13 @@ export function HrOrgStructure() {
         name,
         requiresKpiApproval: approvalFlag,
         catalogSeedEnabled,
+        status: teamStatus,
       })
   }, [
     approvalFlag,
     catalogSeedFlag,
     initialCatalogSeedFlag,
+    teamStatus,
     crudModal,
     crudName,
     createTeamM,
@@ -1169,13 +1206,7 @@ export function HrOrgStructure() {
                               onOpenMembers={() => toggleTeamMembers(dept.id, team.id)}
                               canManageOrg={canManageOrg}
                               mockBanner={mockBanner}
-                              onEditTeam={() => {
-                                setCrudName(team.name)
-                                setApprovalFlag(team.requiresKpiApproval ?? false)
-                                setCatalogSeedFlag(team.catalogSeedEnabled ?? false)
-                                setInitialCatalogSeedFlag(team.catalogSeedEnabled ?? false)
-                                setCrudModal({ kind: 'team-edit', team })
-                              }}
+                              onEditTeam={() => openEditTeam(team)}
                               onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
                             />
                           ))
@@ -1213,13 +1244,7 @@ export function HrOrgStructure() {
                               onOpenMembers={() => toggleTeamMembers(dept.id, team.id)}
                               canManageOrg={canManageOrg}
                               mockBanner={mockBanner}
-                              onEditTeam={() => {
-                                setCrudName(team.name)
-                                setApprovalFlag(team.requiresKpiApproval ?? false)
-                                setCatalogSeedFlag(team.catalogSeedEnabled ?? false)
-                                setInitialCatalogSeedFlag(team.catalogSeedEnabled ?? false)
-                                setCrudModal({ kind: 'team-edit', team })
-                              }}
+                              onEditTeam={() => openEditTeam(team)}
                               onDeleteTeam={() => setCrudModal({ kind: 'team-delete', team })}
                             />
                           </li>
@@ -1338,6 +1363,31 @@ export function HrOrgStructure() {
         }}
         onSubmit={submitNameModal}
       >
+        {crudModal?.kind === 'team-edit' ? (
+          <div className="space-y-1.5 pt-1">
+            <Label htmlFor="team-status">Trạng thái</Label>
+            <Select
+              value={teamStatus}
+              onValueChange={(v) => setTeamStatus(v as TeamStatus)}
+              disabled={orgCrudPending}
+            >
+              <SelectTrigger id="team-status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(TEAM_STATUS_LABEL) as TeamStatus[]).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {TEAM_STATUS_LABEL[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Nhóm Tạm ngưng hoặc Ngừng hoạt động bị ẩn khỏi danh sách chọn nhóm, thành viên vẫn
+              được giữ nguyên.
+            </p>
+          </div>
+        ) : null}
         {/* Ẩn khi tắt KPI/OKR — sửa nhóm vẫn gửi lại giá trị cũ (state nạp từ team) nên không mất cấu hình */}
         <div className="space-y-2 pt-1" hidden={!KPI_OKR_ENABLED}>
           <div className="flex items-center gap-2">
@@ -1419,14 +1469,7 @@ function TeamCardMobile({
       <div className="min-w-0 space-y-2">
         <div className="flex flex-wrap items-center gap-2 break-words font-medium leading-snug text-foreground">
           {team.name}
-          {!team.isActive && (
-            <Badge
-              variant="outline"
-              className="rounded px-2 py-0 text-[10px] font-bold uppercase tracking-wider border-danger/50 bg-danger-muted text-danger"
-            >
-              Ngưng dùng
-            </Badge>
-          )}
+          <TeamStatusBadge status={team.status} />
           {KPI_OKR_ENABLED && team.requiresKpiApproval && (
             <Badge
               variant="outline"
@@ -1524,14 +1567,7 @@ function FragmentTeamRow({
       <TableCell className="py-3 pl-6 align-middle text-sm">
         <div className="flex items-center gap-2 font-medium text-foreground">
           {team.name}
-          {!team.isActive && (
-            <Badge
-              variant="outline"
-              className="rounded px-2 py-0 text-[10px] font-bold uppercase tracking-wider border-danger/50 bg-danger-muted text-danger"
-            >
-              Ngưng dùng
-            </Badge>
-          )}
+          <TeamStatusBadge status={team.status} />
           {KPI_OKR_ENABLED && team.requiresKpiApproval && (
             <Badge
               variant="outline"

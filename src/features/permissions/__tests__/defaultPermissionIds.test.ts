@@ -44,6 +44,12 @@ describe('getDefaultPermissionIdsForRole — tính đúng quyền theo role', ()
     expect(ids).toContain('reward.calculate')
   })
 
+  it('HR có hr.classes.view (xem lớp & học viên) nhưng không có manager.classes', () => {
+    const ids = getDefaultPermissionIdsForRole('HR')
+    expect(ids).toContain('hr.classes.view')
+    expect(ids).not.toContain('manager.classes')
+  })
+
   it('HR không có kpi.team_edit', () => {
     const ids = getDefaultPermissionIdsForRole('HR')
     expect(ids).not.toContain('kpi.team_edit')

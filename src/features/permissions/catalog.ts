@@ -216,6 +216,13 @@ const nodes: PermissionNode[] = [
     scope: 'global',
     legacy: { action: 'edit', resource: 'department' },
   },
+  {
+    id: 'hr.classes.view',
+    parentId: 'mod.hr',
+    label: 'Xem lớp học & học viên (chỉ xem)',
+    kind: 'function',
+    scope: 'global',
+  },
 
   { id: 'mod.manager', parentId: null, label: 'Quản lý vận hành', kind: 'module', scope: 'global' },
   {
@@ -428,6 +435,7 @@ export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly stri
   'mod.hr': [
     'Danh sách & hồ sơ nhân viên (/hr-admin, /hr-admin/$mãNhânViên)',
     'Cơ cấu phòng ban & nhóm (/hr-admin/org)',
+    'Xem lớp học & danh sách học viên, không sửa (/manager/classes)',
   ],
   'mod.manager': [
     'Xem nhóm & hồ sơ qua màn Nhân sự (/hr-admin) khi cần quyền xem nhóm',
