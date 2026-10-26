@@ -40,8 +40,9 @@ function toViDate(iso: string | null): string {
 
 interface ClassCardProps {
   row: any
-  onEdit: (row: any) => void
-  onDelete: (id: string) => void
+  /** Bỏ trống cả hai → thẻ chỉ xem (ẩn nút Sửa/Xoá), vd. HR có `hr.classes.view`. */
+  onEdit?: (row: any) => void
+  onDelete?: (id: string) => void
 }
 
 export function ClassCard({ row, onEdit, onDelete }: ClassCardProps) {
@@ -271,26 +272,32 @@ export function ClassCard({ row, onEdit, onDelete }: ClassCardProps) {
             </p>
           )}
 
-          <div className="mt-5 flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 flex-1 rounded-xl font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-              onClick={() => onDelete(row.id)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Xóa lớp
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 flex-1 rounded-xl font-bold text-primary hover:bg-primary/5"
-              onClick={() => onEdit(row)}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Chỉnh sửa
-            </Button>
-          </div>
+          {onEdit || onDelete ? (
+            <div className="mt-5 flex gap-2">
+              {onDelete ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 flex-1 rounded-xl font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                  onClick={() => onDelete(row.id)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Xóa lớp
+                </Button>
+              ) : null}
+              {onEdit ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 flex-1 rounded-xl font-bold text-primary hover:bg-primary/5"
+                  onClick={() => onEdit(row)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Chỉnh sửa
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       )}
     </div>

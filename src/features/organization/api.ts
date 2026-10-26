@@ -84,6 +84,7 @@ export const orgCrudApi = {
       isTrafficTeam?: boolean
       requiresKpiApproval?: boolean
       catalogSeedEnabled?: boolean
+      status?: TeamStatus
     }
   ): Promise<OrgMasterEntity> => {
     assertOrgCrudNotMock('sửa team')
@@ -116,6 +117,15 @@ export type OrgTreeResponse = {
   departments: OrgTreeDepartment[]
 }
 
+/** Đang hoạt động / Tạm ngưng / Ngừng hoạt động — BE giữ `isActive` = (status === 'ACTIVE'). */
+export type TeamStatus = 'ACTIVE' | 'PAUSED' | 'INACTIVE'
+
+export const TEAM_STATUS_LABEL: Record<TeamStatus, string> = {
+  ACTIVE: 'Đang hoạt động',
+  PAUSED: 'Tạm ngưng',
+  INACTIVE: 'Ngừng hoạt động',
+}
+
 /** Row từ GET /organization/divisions-with-teams (mỗi row là 1 phòng ban + teams). */
 export type OrgAdminTeamRow = {
   id: string
@@ -123,6 +133,7 @@ export type OrgAdminTeamRow = {
   /** Giữ tên `departmentId` (BC FE): id phòng ban cha (`team_groups`). */
   departmentId: string
   isActive: boolean
+  status: TeamStatus
   isTrafficTeam: boolean
   requiresKpiApproval: boolean
   catalogSeedEnabled: boolean
@@ -263,6 +274,7 @@ export const organizationApi = {
           name: t.name,
           departmentId: t.departmentId,
           isActive: true,
+          status: 'ACTIVE',
           isTrafficTeam: false,
           requiresKpiApproval: false,
           catalogSeedEnabled: false,
@@ -271,7 +283,14 @@ export const organizationApi = {
       }))
     }
     const res = await apiClient.get<OrgAdminDivisionRow[]>('/organization/divisions-with-teams')
-    return res.data
+    // BE cũ chưa trả `status` → suy từ `isActive`, để FE deploy trước BE không vỡ badge/dialog.
+    return res.data.map((d) => ({
+      ...d,
+      teams: d.teams.map((t) => ({
+        ...t,
+        status: t.status ?? (t.isActive ? 'ACTIVE' : 'INACTIVE'),
+      })),
+    }))
   },
 
   getTeamMembers: async (teamId: string): Promise<{ teamId: string; members: TeamMemberRow[] }> => {

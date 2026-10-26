@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -282,6 +283,9 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const [approvingRegistrationId, setApprovingRegistrationId] = useState<string | null>(null)
   const [rejectingRegistrationId, setRejectingRegistrationId] = useState<string | null>(null)
   const [removeTarget, setRemoveTarget] = useState<ClassMemberRow | null>(null)
+  const [deleteScheduleTarget, setDeleteScheduleTarget] = useState<
+    (typeof schedules)[number] | null
+  >(null)
   const [removeReason, setRemoveReason] = useState('')
 
   const openRemoveDialog = (member: ClassMemberRow) => {
@@ -471,10 +475,13 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
   const onDeleteSchedule = (scheduleId: string) => {
     const s = schedules.find((x) => x.id === scheduleId)
     if (!s) return
-    const ok = window.confirm(
-      `Xóa buổi học "${s.topic}" ngày ${s.dateIso} ${s.startTime} - ${s.endTime}?`
-    )
-    if (!ok) return
+    setDeleteScheduleTarget(s)
+  }
+
+  const onConfirmDeleteSchedule = () => {
+    if (!deleteScheduleTarget) return
+    const scheduleId = deleteScheduleTarget.id
+    setDeleteScheduleTarget(null)
     deleteSchedule.mutate(scheduleId, {
       onSuccess: () => {
         setActiveScheduleId(null)
@@ -1791,6 +1798,22 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
         onOpenChange={setViewEvalModalOpen}
         scheduleId={activeScheduleId || ''}
         sessionTitle={selectedSchedule?.topic || 'Buổi học'}
+      />
+
+      <ConfirmDialog
+        open={deleteScheduleTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteScheduleTarget(null)
+        }}
+        title="Xóa buổi học?"
+        description={
+          deleteScheduleTarget
+            ? `Buổi học "${deleteScheduleTarget.topic}" ngày ${deleteScheduleTarget.dateIso} ${deleteScheduleTarget.startTime} - ${deleteScheduleTarget.endTime} sẽ bị xóa.`
+            : undefined
+        }
+        confirmLabel="Xóa buổi"
+        destructive
+        onConfirm={onConfirmDeleteSchedule}
       />
 
       <Dialog

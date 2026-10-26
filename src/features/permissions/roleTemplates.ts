@@ -103,6 +103,7 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
       'hr.employees.deactivate',
       'hr.dept.view',
       'hr.org.manage',
+      'hr.classes.view',
       'kpi.window_override',
       'company.landing.edit',
       'reward.threshold_view',
