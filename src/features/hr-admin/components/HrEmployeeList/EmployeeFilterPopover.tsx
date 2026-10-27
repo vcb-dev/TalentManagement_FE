@@ -22,6 +22,7 @@ import {
   BriefcaseBusiness,
   Cake,
   CalendarDays,
+  CalendarX2,
   IdCard,
   Network,
   Palette,
@@ -43,6 +44,8 @@ export type EmployeeListFilterValue = {
   teamId?: string
   startMonth?: number
   startYear?: number
+  leaveMonth?: number
+  leaveYear?: number
   birthMonth?: number
   cardStatus?: EmployeeCardStatusFilter
   /** UUID màu thẻ hoặc `'none'` = chưa có màu. */
@@ -58,6 +61,8 @@ export const RESET_EMPLOYEE_LIST_FILTER: EmployeeListFilterPatch = {
   teamId: undefined,
   startMonth: undefined,
   startYear: undefined,
+  leaveMonth: undefined,
+  leaveYear: undefined,
   birthMonth: undefined,
   cardStatus: undefined,
   cardColorId: undefined,
@@ -69,6 +74,8 @@ export function countActiveEmployeeFilters(v: EmployeeListFilterValue): number {
     v.teamId !== undefined,
     v.startMonth !== undefined,
     v.startYear !== undefined,
+    v.leaveMonth !== undefined,
+    v.leaveYear !== undefined,
     v.birthMonth !== undefined,
     v.cardStatus !== undefined,
     v.cardColorId !== undefined,
@@ -116,6 +123,15 @@ function FilterField({
 const toSelectValue = (n: number | undefined) => (n === undefined ? 'all' : String(n))
 const fromSelectValue = (v: string) => (v === 'all' ? undefined : Number(v))
 
+/** Người đang làm việc gần như không có ngày nghỉ — chọn tháng/năm nghỉ thì bỏ lọc mặc định "Đang làm việc". */
+function withLeaveStatus(
+  current: EmployeeListFilterValue,
+  patch: Pick<EmployeeListFilterPatch, 'leaveMonth' | 'leaveYear'>
+): EmployeeListFilterPatch {
+  const picked = Object.values(patch).some((v) => v !== undefined)
+  return picked && current.status === 'active' ? { ...patch, status: 'all' } : patch
+}
+
 export interface EmployeeFilterPopoverProps {
   value: EmployeeListFilterValue
   onChange: (patch: EmployeeListFilterPatch) => void
@@ -137,13 +153,14 @@ export function EmployeeFilterPopover({
     status: useId(),
     team: useId(),
     start: useId(),
+    leave: useId(),
     birth: useId(),
     cardStatus: useId(),
     cardColor: useId(),
   }
   const activeCount = countActiveEmployeeFilters(value)
 
-  const startYearOptions = useMemo(() => {
+  const yearOptions = useMemo(() => {
     const current = new Date().getFullYear()
     return Array.from({ length: current - START_YEAR_MIN + 1 }, (_, i) => current - i)
   }, [])
@@ -265,7 +282,52 @@ export function EmployeeFilterPopover({
                 </SelectTrigger>
                 <SelectContent className="max-h-80">
                   <SelectItem value="all">Mọi năm</SelectItem>
-                  {startYearOptions.map((y) => (
+                  {yearOptions.map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      Năm {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </FilterField>
+
+          <FilterField id={ids.leave} icon={CalendarX2} label="Thời gian nghỉ việc">
+            <div className="grid grid-cols-2 gap-2">
+              <Select
+                value={toSelectValue(value.leaveMonth)}
+                onValueChange={(v) =>
+                  onChange(withLeaveStatus(value, { leaveMonth: fromSelectValue(v) }))
+                }
+              >
+                <SelectTrigger
+                  id={ids.leave}
+                  className={fieldTriggerClass}
+                  aria-label="Tháng nghỉ việc"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Mọi tháng</SelectItem>
+                  {MONTH_OPTIONS.map((m) => (
+                    <SelectItem key={m} value={String(m)}>
+                      Tháng {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={toSelectValue(value.leaveYear)}
+                onValueChange={(v) =>
+                  onChange(withLeaveStatus(value, { leaveYear: fromSelectValue(v) }))
+                }
+              >
+                <SelectTrigger className={fieldTriggerClass} aria-label="Năm nghỉ việc">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-80">
+                  <SelectItem value="all">Mọi năm</SelectItem>
+                  {yearOptions.map((y) => (
                     <SelectItem key={y} value={String(y)}>
                       Năm {y}
                     </SelectItem>

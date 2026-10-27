@@ -283,6 +283,7 @@ export const employeeApiSchema = z.object({
   phone: z.string().nullable().optional(),
   birthDate: z.string().nullable().optional(),
   startDate: z.string().nullable().optional(),
+  leaveDate: z.string().nullable().optional(),
   avatarUrl: z.string().nullable().optional(),
   directManager: z.string().nullable().optional(),
   /** Mã định danh NV do HR cấp, vd. A755. */
