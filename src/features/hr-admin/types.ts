@@ -16,6 +16,8 @@ export interface EmployeeFilters {
   teamId?: string
   startMonth?: number
   startYear?: number
+  leaveMonth?: number
+  leaveYear?: number
   birthMonth?: number
   cardStatus?: EmployeeCardStatusFilter
   /** UUID màu thẻ hoặc `'none'` = chưa có màu. */

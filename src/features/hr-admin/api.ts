@@ -63,6 +63,8 @@ function filterParams(filters: Omit<EmployeeFilters, 'page' | 'pageSize'>) {
     teamId: filters.teamId,
     startMonth: filters.startMonth,
     startYear: filters.startYear,
+    leaveMonth: filters.leaveMonth,
+    leaveYear: filters.leaveYear,
     birthMonth: filters.birthMonth,
     cardStatus: filters.cardStatus,
     cardColorId: filters.cardColorId,

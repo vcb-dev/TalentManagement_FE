@@ -13,6 +13,8 @@ const hrAdminSearchSchema = z.object({
   teamId: z.string().uuid().optional().catch(undefined),
   startMonth: z.coerce.number().int().min(1).max(12).optional().catch(undefined),
   startYear: z.coerce.number().int().min(1900).max(2999).optional().catch(undefined),
+  leaveMonth: z.coerce.number().int().min(1).max(12).optional().catch(undefined),
+  leaveYear: z.coerce.number().int().min(1900).max(2999).optional().catch(undefined),
   birthMonth: z.coerce.number().int().min(1).max(12).optional().catch(undefined),
   /** `none` = chưa cập nhật. */
   cardStatus: z
@@ -46,6 +48,8 @@ function HrAdminIndexPage() {
         teamId: search.teamId,
         startMonth: search.startMonth,
         startYear: search.startYear,
+        leaveMonth: search.leaveMonth,
+        leaveYear: search.leaveYear,
         birthMonth: search.birthMonth,
         cardStatus: search.cardStatus,
         cardColorId: search.cardColorId,
