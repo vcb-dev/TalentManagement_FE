@@ -197,6 +197,11 @@ export function getMockEmployees(filters: EmployeeFilters): {
       isoDateMatchesMonthYear(e.startDate, filters.startMonth, filters.startYear)
     )
   }
+  if (filters.leaveMonth !== undefined || filters.leaveYear !== undefined) {
+    list = list.filter((e) =>
+      isoDateMatchesMonthYear(e.leaveDate, filters.leaveMonth, filters.leaveYear)
+    )
+  }
   if (filters.birthMonth !== undefined) {
     list = list.filter((e) => isoDateMatchesMonthYear(e.birthDate, filters.birthMonth))
   }

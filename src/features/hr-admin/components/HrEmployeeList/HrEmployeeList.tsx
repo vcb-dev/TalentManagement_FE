@@ -212,6 +212,8 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     teamId: routeSearch.teamId,
     startMonth: routeSearch.startMonth,
     startYear: routeSearch.startYear,
+    leaveMonth: routeSearch.leaveMonth,
+    leaveYear: routeSearch.leaveYear,
     birthMonth: routeSearch.birthMonth,
     cardStatus: routeSearch.cardStatus,
     cardColorId: routeSearch.cardColorId,
@@ -229,6 +231,8 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         if (next.teamId === undefined) delete next.teamId
         if (next.startMonth === undefined) delete next.startMonth
         if (next.startYear === undefined) delete next.startYear
+        if (next.leaveMonth === undefined) delete next.leaveMonth
+        if (next.leaveYear === undefined) delete next.leaveYear
         if (next.birthMonth === undefined) delete next.birthMonth
         if (next.cardStatus === undefined) delete next.cardStatus
         if (next.cardColorId === undefined) delete next.cardColorId
