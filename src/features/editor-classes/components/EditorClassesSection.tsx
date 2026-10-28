@@ -1,24 +1,16 @@
-import { EmptyState } from '@/components/shared/EmptyState'
-import { ErrorState } from '@/components/shared/ErrorState'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { SkeletonSubmissionCardList } from '@/components/ui/skeleton'
-import {
-  useBulkCreateExamSchedules,
-  useEditorClasses,
-  useSyncEditorClasses,
-} from '@/features/editor-classes/hooks'
+import { useBulkCreateExamSchedules, useSyncEditorClasses } from '@/features/editor-classes/hooks'
 import type {
   bulkExamScheduleResultApiSchema,
   editorClassSyncReportApiSchema,
 } from '@/features/editor-classes/schemas'
 import { useExamPapers } from '@/features/exam-papers/hooks'
-import { getApiErrorMessage } from '@/lib/axios'
 import { addMinutesToHm } from '@/lib/examScheduleTime'
-import { CalendarPlus, Loader2, RefreshCw, School } from 'lucide-react'
-import { useState } from 'react'
+import { CalendarPlus, Loader2, RefreshCw } from 'lucide-react'
+import { type ReactNode, useState } from 'react'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
@@ -257,101 +249,69 @@ function BulkResultCard({ result }: { result: BulkResult }) {
   )
 }
 
-export function EditorClassesSection() {
-  const { data: classes = [], isLoading, isError, error, refetch, isFetching } = useEditorClasses()
+/**
+ * Khu lớp Editor trong tab "Lớp học khác" của trang Quản lý lớp học.
+ * `children` = lưới thẻ lớp Editor (dùng chung ClassCard với các lớp khác);
+ * `canManage` mở công cụ đồng bộ + tạo lịch thi hàng loạt.
+ */
+export function EditorClassesSection({
+  children,
+  canManage,
+}: {
+  children: ReactNode
+  canManage: boolean
+}) {
   const sync = useSyncEditorClasses()
   const [syncReport, setSyncReport] = useState<SyncReport | null>(null)
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null)
 
   return (
-    <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.04)]">
-      <div className="flex flex-col gap-4 border-b border-slate-50 px-8 py-5 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h3 className="text-lg font-black text-slate-900">Lớp Editor</h3>
+    <section aria-labelledby="editor-classes-heading" className="space-y-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-2xl">
+          <h2 id="editor-classes-heading" className="text-lg font-bold text-foreground">
+            Lớp Editor
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Mỗi team có editor sẽ có 1 lớp riêng — leader team làm giáo viên. Đồng bộ để tự động tạo
             lớp, thêm editor đủ 1 tháng, và tạo lịch thi hàng loạt với chấm chéo.
           </p>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="gap-2"
-            disabled={sync.isPending}
-            onClick={() => sync.mutate(true, { onSuccess: setSyncReport })}
-          >
-            <RefreshCw className="h-4 w-4" />
-            Xem trước
-          </Button>
-          <Button
-            type="button"
-            className="gap-2"
-            disabled={sync.isPending}
-            onClick={() =>
-              sync.mutate(false, {
-                onSuccess: (r) => {
-                  setSyncReport(r)
-                  void refetch()
-                },
-              })
-            }
-          >
-            <RefreshCw className="h-4 w-4" />
-            {sync.isPending ? 'Đang đồng bộ...' : 'Đồng bộ lớp Editor'}
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-4 p-5">
-        {syncReport ? <SyncPreviewCard report={syncReport} /> : null}
-
-        {isError ? (
-          <ErrorState
-            title="Không tải được danh sách lớp Editor"
-            description={getApiErrorMessage(error)}
-            onRetry={() => void refetch()}
-            retrying={isFetching}
-          />
-        ) : isLoading ? (
-          <SkeletonSubmissionCardList count={3} />
-        ) : classes.length === 0 ? (
-          <EmptyState
-            icon={<School className="h-8 w-8" />}
-            title="Chưa có lớp Editor nào"
-            description="Bấm Đồng bộ lớp Editor để tự động tạo lớp theo team đang có editor."
-          />
-        ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {classes.map((c) => (
-              <Card key={c.id} className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-foreground">{c.name}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Team: {c.teamName ?? '—'} · GV: {c.teacherName ?? '—'} · {c.memberCount} thành
-                      viên
-                    </p>
-                  </div>
-                  <Badge variant={c.status === 'closed' ? 'muted' : 'success'}>
-                    {c.status === 'closed' ? 'Đã đóng' : 'Đang hoạt động'}
-                  </Badge>
-                </div>
-                {c.latestExamSchedule ? (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Lịch thi gần nhất: {c.latestExamSchedule.dateIso} (
-                    {c.latestExamSchedule.startTime}–{c.latestExamSchedule.endTime}) · Chấm:{' '}
-                    {c.latestExamSchedule.examTeacherUser?.fullNameLegal ?? '—'}
-                  </p>
-                ) : null}
-              </Card>
-            ))}
+        {canManage ? (
+          <div className="flex shrink-0 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              disabled={sync.isPending}
+              onClick={() => sync.mutate(true, { onSuccess: setSyncReport })}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Xem trước
+            </Button>
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={sync.isPending}
+              onClick={() => sync.mutate(false, { onSuccess: setSyncReport })}
+            >
+              <RefreshCw className="h-4 w-4" />
+              {sync.isPending ? 'Đang đồng bộ...' : 'Đồng bộ lớp Editor'}
+            </Button>
           </div>
-        )}
-
-        <BulkScheduleForm onResult={setBulkResult} />
-        {bulkResult ? <BulkResultCard result={bulkResult} /> : null}
+        ) : null}
       </div>
-    </div>
+
+      {syncReport ? <SyncPreviewCard report={syncReport} /> : null}
+
+      {children}
+
+      {canManage ? (
+        <>
+          <BulkScheduleForm onResult={setBulkResult} />
+          {bulkResult ? <BulkResultCard result={bulkResult} /> : null}
+        </>
+      ) : null}
+    </section>
   )
 }
