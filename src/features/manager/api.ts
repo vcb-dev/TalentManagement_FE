@@ -150,6 +150,8 @@ export const managerApi = {
     status?: string
     capacity?: number | null
     examDate?: string | null
+    startDate?: string | null
+    endDate?: string | null
     memberUserIds?: string[]
     teacherUserId?: string | null
     isKnowledgeWork?: boolean
@@ -165,8 +167,12 @@ export const managerApi = {
       status?: string
       capacity?: number | null
       examDate?: string | null
+      startDate?: string | null
+      endDate?: string | null
       teacherUserId?: string | null
       isKnowledgeWork?: boolean
+      levelFrom?: string
+      levelTo?: string
     }
   ) => {
     const res = await apiClient.patch<unknown>(`/manager/classes/${classId}`, input)

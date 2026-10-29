@@ -33,7 +33,7 @@ import {
 } from 'lucide-react'
 import { createElement } from 'react'
 
-const Facebook = (props: any) =>
+const Facebook = ((props: React.ComponentProps<'svg'>) =>
   createElement(
     'svg',
     {
@@ -51,7 +51,7 @@ const Facebook = (props: any) =>
     createElement('path', {
       d: 'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z',
     })
-  ) as any
+  )) as unknown as LucideIcon
 
 export type NavMatchMode = 'exact' | 'prefix' | 'custom'
 
@@ -68,6 +68,8 @@ export type AppNavItem = {
   permissionIdsAny?: string[]
   /** Nếu có — ẩn mục khỏi nav nếu user đang ở một trong các role này (ưu tiên cao hơn mọi check quyền). */
   hiddenForRoles?: Role[]
+  /** Ẩn với tài khoản admin dùng chung (`isAdminAccount`) — không phải nhân sự nên không có lớp/thi cá nhân. */
+  hiddenForAdminAccount?: boolean
   /** Các mục con hiển thị dưới dạng dropdown/hover */
   children?: AppNavItem[]
   /** Mở trong tab mới, không điều hướng khỏi app hiện tại */
@@ -119,6 +121,7 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     icon: Calendar,
     match: 'prefix',
     permissionId: 'learning.view',
+    hiddenForAdminAccount: true,
   },
   {
     to: '/learning-classes',
@@ -126,13 +129,7 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     icon: School,
     match: 'prefix',
     permissionId: 'learning.view',
-  },
-  {
-    to: '/other-classes',
-    label: 'Lớp học khác',
-    icon: School,
-    match: 'prefix',
-    permissionId: 'learning.view',
+    hiddenForAdminAccount: true,
   },
   {
     to: '/rewards',
@@ -371,14 +368,14 @@ const MANAGER_OPS_ITEMS: AppNavItem[] = [
   },
   {
     to: '/manager/classes',
-    label: 'Chia lớp',
+    label: 'Quản lý lớp học',
     icon: School,
     match: 'prefix',
     permissionId: 'manager.classes',
   },
   {
     // HR chỉ xem (`hr.classes.view`): cùng route, nằm trong menu "Học tập".
-    // Đặt sau "Chia lớp" — ai có cả `manager.classes` thì dedupe theo `to` giữ "Chia lớp".
+    // Đặt sau "Quản lý lớp học" — ai có cả `manager.classes` thì dedupe theo `to` giữ nhãn quản lý.
     to: '/manager/classes',
     label: 'Danh sách lớp học',
     icon: School,
@@ -521,11 +518,13 @@ export function normalizePath(p: string): string {
 export function filterNavByPermissions(
   items: AppNavItem[],
   hasPermission: (permissionId: string) => boolean,
-  role?: Role
+  role?: Role,
+  isAdminAccount?: boolean
 ): AppNavItem[] {
   return items.filter((item) => {
     if (item.featureEnabled === false) return false
     if (role && item.hiddenForRoles?.includes(role)) return false
+    if (isAdminAccount && item.hiddenForAdminAccount) return false
     if (item.permissionIdsAny?.length) {
       return item.permissionIdsAny.some((id) => hasPermission(id))
     }
@@ -540,7 +539,8 @@ export function filterNavByPermissions(
  */
 export function flatSidebarNavItems(
   canId: (permissionId: string) => boolean,
-  role?: Role
+  role?: Role,
+  isAdminAccount?: boolean
 ): AppNavItem[] {
   const sources = [
     LEADER_KPI_ITEMS,
@@ -556,7 +556,7 @@ export function flatSidebarNavItems(
   const seen = new Set<string>()
   const out: AppNavItem[] = []
   for (const source of sources) {
-    for (const item of filterNavByPermissions(source, canId, role)) {
+    for (const item of filterNavByPermissions(source, canId, role, isAdminAccount)) {
       const key = item.to + (item.search !== undefined ? JSON.stringify(item.search) : '')
       if (seen.has(key)) continue
       seen.add(key)
@@ -585,7 +585,7 @@ export function groupedSidebarNavItems(
   const seen = new Set<string>()
   const take = (items: AppNavItem[]): AppNavItem[] => {
     const out: AppNavItem[] = []
-    for (const item of filterNavByPermissions(items, canId, role)) {
+    for (const item of filterNavByPermissions(items, canId, role, user?.isAdminAccount)) {
       const key = item.to + (item.search !== undefined ? JSON.stringify(item.search) : '')
       if (seen.has(key)) continue
       seen.add(key)
@@ -618,7 +618,6 @@ export function groupedSidebarNavItems(
       items: take([
         ...find(MEMBER_SELF_ITEMS, '/learning-path'),
         ...find(MEMBER_SELF_ITEMS, '/learning-classes'),
-        ...find(MEMBER_SELF_ITEMS, '/other-classes'),
         ...find(MEMBER_SELF_ITEMS, '/exam'),
         ...find(MANAGER_OPS_ITEMS, '/manager/classes'),
         ...find(TEACHER_HEADER_ITEMS, '/teacher/classes'),
@@ -667,12 +666,13 @@ export function groupedSidebarNavItems(
  */
 export function mergeCompactHeaderNavItems(
   canId: (permissionId: string) => boolean,
-  role?: Role
+  role?: Role,
+  isAdminAccount?: boolean
 ): AppNavItem[] {
   const seen = new Set<string>()
   const out: AppNavItem[] = []
   const push = (items: AppNavItem[]) => {
-    for (const item of filterNavByPermissions(items, canId, role)) {
+    for (const item of filterNavByPermissions(items, canId, role, isAdminAccount)) {
       const key = item.to + (item.search ? JSON.stringify(item.search) : '')
       if (seen.has(key)) continue
       seen.add(key)
@@ -691,6 +691,40 @@ export function mergeCompactHeaderNavItems(
   // push([CSKH_QUALITY_ITEM])
   return out
 }
+
+/**
+ * Route → các khoá search mà mục menu dùng để tách tab trên cùng route
+ * (vd. `/room-booking` + `tab`). Query riêng của trang (vd. `/manager/classes?tab=other`)
+ * không có ở đây nên không làm tắt highlight.
+ */
+const SEARCH_VARIANT_KEYS: Map<string, Set<string>> = (() => {
+  const map = new Map<string, Set<string>>()
+  const visit = (items: AppNavItem[]) => {
+    for (const item of items) {
+      if (item.search) {
+        const path = normalizePath(item.to)
+        const keys = map.get(path) ?? new Set<string>()
+        for (const key of Object.keys(item.search)) keys.add(key)
+        map.set(path, keys)
+      }
+      if (item.children) visit(item.children)
+    }
+  }
+  visit([
+    ...MEMBER_SELF_ITEMS,
+    ...ROOM_BOOKING_ITEMS,
+    ...HR_ITEMS,
+    ...SETTINGS_ITEMS,
+    ...BOD_ITEMS,
+    CSKH_QUALITY_ITEM,
+    ...MANAGER_OPS_ITEMS,
+    ...TEACHER_CLASS_ITEMS,
+    ...TEACHER_HEADER_ITEMS,
+    ...LEADER_KPI_ITEMS,
+    ...MANAGER_KPI_ITEMS,
+  ])
+  return map
+})()
 
 export function isNavItemActive(
   pathname: string,
@@ -722,9 +756,14 @@ export function isNavItemActive(
     return Object.entries(item.search).every(([key, value]) => currentSearch[key] === value)
   }
 
-  // 3. Nếu item không có search param nhưng URL hiện tại có (ví dụ đang ở tab requests),
-  // thì mục mặc định (không search) không được highlight.
-  if (!item.search && currentSearch && Object.keys(currentSearch).length > 0) {
+  // 3. Mục mặc định (không search) của route có tab theo search: URL đang ở tab của mục khác
+  // (vd. `?tab=requests`) thì không highlight. Chỉ xét khoá mà các mục cùng route dùng.
+  const variantKeys = SEARCH_VARIANT_KEYS.get(normalizePath(item.to))
+  if (
+    variantKeys &&
+    currentSearch &&
+    [...variantKeys].some((k) => currentSearch[k] !== undefined)
+  ) {
     return false
   }
 

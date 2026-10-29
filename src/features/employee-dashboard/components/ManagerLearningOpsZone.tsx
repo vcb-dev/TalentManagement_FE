@@ -5,7 +5,9 @@ import { useLearningOpsSummary } from '@/features/dashboard/hooks'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { LEVEL_LABELS, LEVELS, type LevelCode } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import { AlertTriangle, GraduationCap } from 'lucide-react'
+import { usePermission } from '@/hooks/usePermission'
+import { Link } from '@tanstack/react-router'
+import { BookOpen, CalendarRange, GraduationCap, School, Users } from 'lucide-react'
 import { useMemo } from 'react'
 import {
   Bar,
@@ -30,8 +32,8 @@ const LEVEL_PIE_COLORS: Record<LevelCode, string> = {
 
 const LEVELS_HINT = 'Số người theo cấp bậc nghề nghiệp hiện lưu trên hồ sơ (snapshot).'
 
-const FAIL_TABLE_HINT =
-  'Trong kỳ đã chọn: học viên có kết quả thi Chờ học lại hoặc Chia tay. Mỗi buổi/kỳ thi chỉ tính một lần (không cộng trùng khi chấm lại). Hàng có ≥ 2 lần trượt cùng cặp cấp được tô nổi bật.'
+const ACTIVE_CLASSES_HINT =
+  'Chỉ tính lớp có trạng thái Đang mở và khoảng hoạt động giao với kỳ đang lọc. Lớp cũ chưa nhập ngày bắt đầu dùng ngày tạo lớp; không có ngày kết thúc nghĩa là lớp vẫn đang tiếp tục.'
 
 /* ──────────── Bar chart ──────────── */
 
@@ -116,6 +118,19 @@ function monthRangeLabelVi(year: number, startMonth: number, endMonth: number): 
   return `T${startMonth} – T${endMonth} · ${year}`
 }
 
+function formatDateVi(value: string | null): string {
+  if (!value) return 'Chưa xác định'
+  const [year, month, day] = value.split('-')
+  return year && month && day ? `${day}/${month}/${year}` : value
+}
+
+function classPeriodLabel(startDate: string | null, endDate: string | null): string {
+  if (startDate && endDate) return `${formatDateVi(startDate)} – ${formatDateVi(endDate)}`
+  if (startDate) return `Từ ${formatDateVi(startDate)}`
+  if (endDate) return `Đến ${formatDateVi(endDate)}`
+  return 'Chưa xác định thời gian'
+}
+
 export type ManagerLearningOpsProps = {
   reportYear: number
   rangeStartMonth: number
@@ -127,6 +142,7 @@ export function ManagerLearningOpsZone({
   rangeStartMonth,
   rangeEndMonth,
 }: ManagerLearningOpsProps) {
+  const { canId } = usePermission()
   const { data, isLoading, isError, refetch, isFetching } = useLearningOpsSummary(
     reportYear,
     rangeStartMonth,
@@ -135,19 +151,6 @@ export function ManagerLearningOpsZone({
   )
 
   const rangeLabel = monthRangeLabelVi(reportYear, rangeStartMonth, rangeEndMonth)
-
-  // Deduplicate: backend query có thể trả duplicate rows cùng (userId, levelFrom, levelTo).
-  // Group by key, giữ failCount cao nhất để tránh hiển thị nhân đôi.
-  const repeatFails = useMemo(() => {
-    const raw = data?.usersWithAtLeastTwoExamFails ?? []
-    const map = new Map<string, (typeof raw)[number]>()
-    for (const row of raw) {
-      const key = `${row.userId}|${row.levelFrom}|${row.levelTo}`
-      const existing = map.get(key)
-      if (!existing || row.failCount > existing.failCount) map.set(key, row)
-    }
-    return Array.from(map.values())
-  }, [data?.usersWithAtLeastTwoExamFails])
 
   const levelChart = useMemo(() => {
     const src = data?.peopleByCareerLevel ?? {}
@@ -159,6 +162,8 @@ export function ManagerLearningOpsZone({
   }, [data?.peopleByCareerLevel])
 
   const hasAnyLevel = levelChart.some((d) => d.value > 0)
+  const openClasses = (data?.classesActiveInPeriod ?? []).filter((row) => row.status === 'open')
+  const openClassMembers = openClasses.reduce((sum, row) => sum + row.memberCount, 0)
 
   return (
     <div className="space-y-3">
@@ -233,113 +238,130 @@ export function ManagerLearningOpsZone({
 
       <section
         className={cn(
-          'overflow-hidden rounded-xl border border-amber-500/20 bg-card/95 p-3 shadow-[var(--shadow-card)] sm:p-4',
+          'overflow-hidden rounded-xl border border-border/80 bg-card/95 p-3 shadow-[var(--shadow-card)] sm:p-4',
           quartOut,
           CARD_ENTRANCE_HOVER,
-          'transition-all duration-300 hover:border-amber-500/30',
+          'transition-all duration-300 hover:border-primary/20',
           'motion-safe:animate-[dash-fade-up_0.5s_ease-out_both] motion-reduce:animate-none'
         )}
         style={{ animationDelay: '100ms' }}
-        aria-label="Học viên trượt thi trong kỳ"
+        aria-label="Lớp học đang mở trong kỳ"
       >
-        <div className="mb-2.5 flex flex-wrap items-center gap-2">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-400">
-            <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <School className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
           </div>
           <h3 className="text-sm font-bold tracking-tight text-foreground">
-            Học viên trượt thi trong kỳ
+            Lớp học đang mở trong kỳ
           </h3>
-          <InfoHint text={FAIL_TABLE_HINT} label="Cách tính danh sách trượt thi" />
+          <InfoHint text={ACTIVE_CLASSES_HINT} label="Cách tính lớp học đang mở trong kỳ" />
+          {canId('manager.classes') || canId('hr.classes.view') ? (
+            <Link
+              to="/manager/classes"
+              search={{ tab: undefined }}
+              className="ml-auto text-xs font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              Quản lý lớp học
+            </Link>
+          ) : null}
         </div>
 
         {isLoading && !data ? (
           <div className="space-y-2">
-            <Skeleton className="h-9 w-full rounded-lg" />
-            <Skeleton className="h-9 w-full rounded-lg" />
-            <Skeleton className="h-9 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-28 w-full rounded-lg" />
           </div>
-        ) : repeatFails.length === 0 ? (
+        ) : openClasses.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border/80 bg-muted/30 px-4 py-4 text-center text-sm text-muted-foreground">
-            Không có bản ghi nào trong kỳ này.
+            Chưa có lớp đang mở trong kỳ đã chọn.
           </p>
         ) : (
           <>
+            <dl className="mb-3 grid grid-cols-2 divide-x divide-border/60 rounded-lg border border-border/60 bg-muted/20">
+              <div className="px-3 py-2.5">
+                <dt className="text-xs font-medium text-muted-foreground">Lớp đang mở</dt>
+                <dd className="mt-0.5 text-xl font-black tabular-nums text-foreground">
+                  {openClasses.length}
+                </dd>
+              </div>
+              <div className="px-3 py-2.5">
+                <dt className="text-xs font-medium text-muted-foreground">Lượt học viên</dt>
+                <dd className="mt-0.5 text-xl font-black tabular-nums text-foreground">
+                  {openClassMembers}
+                </dd>
+              </div>
+            </dl>
+
             <div className="divide-y divide-border/60 rounded-xl border border-border/60 md:hidden">
-              {repeatFails.map((row) => {
-                const lf = row.levelFrom as LevelCode
-                const lt = row.levelTo as LevelCode
-                const pairLabel = `${LEVEL_LABELS[lf] ?? row.levelFrom} → ${LEVEL_LABELS[lt] ?? row.levelTo}`
-                return (
-                  <div
-                    key={`${row.userId}-${row.levelFrom}-${row.levelTo}`}
-                    className={cn(
-                      'space-y-2 p-4 odd:bg-background/40',
-                      row.failCount >= 2 && 'bg-amber-500/5'
-                    )}
-                  >
-                    <p className="break-words font-semibold text-foreground">
-                      {row.fullName?.trim() || '—'}
-                    </p>
-                    <p className="text-xs font-medium text-foreground">{pairLabel}</p>
-                    <p className="tabular-nums text-sm text-muted-foreground">
-                      Mã NV: {row.employeeCode?.trim() || '—'}
-                    </p>
-                    <p className="break-all text-sm text-muted-foreground">
-                      {row.email?.trim() || '—'}
-                    </p>
-                    <p className="text-right text-lg font-black tabular-nums text-amber-700 dark:text-amber-400">
-                      Trượt: {row.failCount} lần
-                    </p>
+              {openClasses.map((row) => (
+                <div key={row.id} className="space-y-2 p-4 odd:bg-background/40">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="break-words font-semibold text-foreground">{row.name}</p>
+                    <span className="shrink-0 rounded-full bg-success-muted px-2 py-0.5 text-xs font-semibold text-success">
+                      Đang mở
+                    </span>
                   </div>
-                )
-              })}
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <CalendarRange className="size-3.5 shrink-0" aria-hidden />
+                    {classPeriodLabel(row.startDate, row.endDate)}
+                  </p>
+                  <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      {row.isKnowledgeWork ? (
+                        <GraduationCap className="size-3.5" aria-hidden />
+                      ) : (
+                        <BookOpen className="size-3.5" aria-hidden />
+                      )}
+                      {row.isKnowledgeWork ? 'Lớp tri thức' : 'Lớp học khác'}
+                    </span>
+                    <span className="flex items-center gap-1.5 font-semibold tabular-nums text-foreground">
+                      <Users className="size-3.5" aria-hidden />
+                      {row.memberCount}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="hidden overflow-x-auto rounded-xl border border-border/60 md:block">
-              <table className="w-full min-w-[640px] text-left text-sm">
+              <table className="w-full min-w-[700px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-border/80 bg-muted/40">
-                    <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Họ tên</th>
-                    <th className="min-w-[10rem] px-3 py-2.5 font-bold text-foreground sm:px-4">
-                      Cặp cấp thi
+                    <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Tên lớp</th>
+                    <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Loại lớp</th>
+                    <th className="min-w-[13rem] px-3 py-2.5 font-bold text-foreground sm:px-4">
+                      Thời gian
                     </th>
-                    <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Mã NV</th>
-                    <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Email</th>
-                    <th className="w-28 px-3 py-2.5 text-right font-bold text-foreground sm:px-4">
-                      Lần trượt
+                    <th className="px-3 py-2.5 font-bold text-foreground sm:px-4">Trạng thái</th>
+                    <th className="w-24 px-3 py-2.5 text-right font-bold text-foreground sm:px-4">
+                      Học viên
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {repeatFails.map((row) => {
-                    const lf = row.levelFrom as LevelCode
-                    const lt = row.levelTo as LevelCode
-                    const pairLabel = `${LEVEL_LABELS[lf] ?? row.levelFrom} → ${LEVEL_LABELS[lt] ?? row.levelTo}`
-                    return (
-                      <tr
-                        key={`${row.userId}-${row.levelFrom}-${row.levelTo}`}
-                        className={cn(
-                          'border-b border-border/50 last:border-0 odd:bg-background/40 transition-colors hover:bg-muted/20',
-                          row.failCount >= 2 && 'bg-amber-500/5'
-                        )}
-                      >
-                        <td className="px-3 py-2.5 font-semibold text-foreground sm:px-4">
-                          {row.fullName?.trim() || '—'}
-                        </td>
-                        <td className="px-3 py-2.5 text-xs font-medium text-foreground sm:px-4">
-                          {pairLabel}
-                        </td>
-                        <td className="px-3 py-2.5 tabular-nums text-muted-foreground sm:px-4">
-                          {row.employeeCode?.trim() || '—'}
-                        </td>
-                        <td className="max-w-[200px] truncate px-3 py-2.5 text-muted-foreground sm:max-w-xs sm:px-4">
-                          {row.email?.trim() || '—'}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-black tabular-nums text-amber-700 dark:text-amber-400 sm:px-4">
-                          {row.failCount}
-                        </td>
-                      </tr>
-                    )
-                  })}
+                  {openClasses.map((row) => (
+                    <tr
+                      key={row.id}
+                      className="border-b border-border/50 last:border-0 odd:bg-background/40 transition-colors hover:bg-muted/20"
+                    >
+                      <td className="max-w-[16rem] px-3 py-2.5 font-semibold text-foreground sm:px-4">
+                        <span className="line-clamp-2">{row.name}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs font-medium text-muted-foreground sm:px-4">
+                        {row.isKnowledgeWork ? 'Lớp tri thức' : 'Lớp học khác'}
+                      </td>
+                      <td className="px-3 py-2.5 text-xs tabular-nums text-muted-foreground sm:px-4">
+                        {classPeriodLabel(row.startDate, row.endDate)}
+                      </td>
+                      <td className="px-3 py-2.5 sm:px-4">
+                        <span className="inline-flex rounded-full bg-success-muted px-2 py-0.5 text-xs font-semibold text-success">
+                          Đang mở
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-black tabular-nums text-foreground sm:px-4">
+                        {row.memberCount}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

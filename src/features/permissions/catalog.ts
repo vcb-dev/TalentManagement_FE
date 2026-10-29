@@ -237,7 +237,7 @@ const nodes: PermissionNode[] = [
   {
     id: 'manager.classes',
     parentId: 'mod.manager',
-    label: 'Chia lớp',
+    label: 'Quản lý lớp học',
     kind: 'function',
     scope: 'global',
   },
@@ -439,7 +439,7 @@ export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly stri
   ],
   'mod.manager': [
     'Xem nhóm & hồ sơ qua màn Nhân sự (/hr-admin) khi cần quyền xem nhóm',
-    'Chia lớp (/manager/classes)',
+    'Quản lý lớp học (/manager/classes)',
     'Duyệt bài nộp (/manager/review-submissions)',
     'Lịch thi, đề thi, màn chấm (/manager/exam-schedule, /manager/exam-papers, /manager/grading, …)',
     'Duyệt thăng cấp / sao (/manager/approvals)',

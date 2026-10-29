@@ -123,6 +123,18 @@ export const managerClassApiSchema = z.object({
   status: z.enum(['open', 'full', 'closed']),
   capacity: z.number().int().nullable(),
   examDate: z.string().datetime().nullable(),
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional()
+    .default(null),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable()
+    .optional()
+    .default(null),
   teacher: z
     .object({
       userId: z.string().uuid(),

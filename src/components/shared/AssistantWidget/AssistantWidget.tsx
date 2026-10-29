@@ -332,7 +332,7 @@ const SUGGESTIONS = [
   'Menu nào tôi được dùng?',
   'Lớp học của tôi là gì?',
   'Điểm thi lớp của tôi?',
-  'Hướng dẫn Chia lớp (Manager)',
+  'Hướng dẫn Quản lý lớp học (Manager)',
   'Đặt phòng tầng 5 lúc 9h sáng',
 ]
 
