@@ -224,6 +224,22 @@ const nodes: PermissionNode[] = [
     scope: 'global',
   },
 
+  // Không nằm trong template role nào — BE migration cấp sẵn cho tài khoản admin dùng chung.
+  {
+    id: 'mod.checklist',
+    parentId: null,
+    label: 'Checklist nhân sự',
+    kind: 'module',
+    scope: 'global',
+  },
+  {
+    id: 'checklist.manage',
+    parentId: 'mod.checklist',
+    label: 'Soạn mẫu checklist & xem mọi câu trả lời',
+    kind: 'function',
+    scope: 'global',
+  },
+
   { id: 'mod.manager', parentId: null, label: 'Quản lý vận hành', kind: 'module', scope: 'global' },
   {
     id: 'manager.team.view',
@@ -399,6 +415,7 @@ export const PERMISSION_MODULE_IDS_UI_ORDER: readonly string[] = [
   'mod.report',
   'mod.company',
   'mod.hr',
+  'mod.checklist',
   'mod.manager',
   'mod.bod',
   'mod.teacher',
@@ -436,6 +453,10 @@ export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly stri
     'Danh sách & hồ sơ nhân viên (/hr-admin, /hr-admin/$mãNhânViên)',
     'Cơ cấu phòng ban & nhóm (/hr-admin/org)',
     'Xem lớp học & danh sách học viên, không sửa (/manager/classes)',
+  ],
+  'mod.checklist': [
+    'Soạn mẫu checklist & xem câu trả lời của mọi nhân sự (/checklists?tab=templates)',
+    'Mục Checklist trong hồ sơ nhân sự (/hr-admin/$mãNhânViên)',
   ],
   'mod.manager': [
     'Xem nhóm & hồ sơ qua màn Nhân sự (/hr-admin) khi cần quyền xem nhóm',

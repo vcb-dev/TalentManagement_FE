@@ -14,6 +14,7 @@ import {
   KeyRound,
   LayoutGrid,
   LineChart,
+  ListChecks,
   ListOrdered,
   Network,
   Sparkles,
@@ -136,6 +137,27 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     label: 'Khen thưởng/Phạt',
     icon: Award,
     match: 'prefix',
+  },
+]
+
+/**
+ * Checklist nhân sự (`/checklists`, tab theo vai trò). Cùng `to`, không `search` → dedupe giữ mục đầu:
+ * nhân sự thấy "Checklist" (trang tự hiện thêm tab quản lý nếu có quyền), tài khoản admin chỉ thấy mục quản lý.
+ */
+export const CHECKLIST_ITEMS: AppNavItem[] = [
+  {
+    to: '/checklists',
+    label: 'Checklist',
+    icon: ListChecks,
+    match: 'prefix',
+    hiddenForAdminAccount: true,
+  },
+  {
+    to: '/checklists',
+    label: 'Quản lý checklist',
+    icon: ListChecks,
+    match: 'prefix',
+    permissionId: 'checklist.manage',
   },
 ]
 
@@ -546,6 +568,7 @@ export function flatSidebarNavItems(
     LEADER_KPI_ITEMS,
     MANAGER_KPI_ITEMS,
     MEMBER_SELF_ITEMS,
+    CHECKLIST_ITEMS,
     ROOM_BOOKING_ITEMS,
     MANAGER_OPS_ITEMS,
     HR_ITEMS,
@@ -608,6 +631,7 @@ export function groupedSidebarNavItems(
         ...find(LEADER_KPI_ITEMS, '/leader/vinh-danh'),
         ...find(LEADER_KPI_ITEMS, '/leader/kpi-approval'),
         ...find(MEMBER_SELF_ITEMS, '/rewards'),
+        ...CHECKLIST_ITEMS.filter((i) => !i.permissionId),
         ...find(LEADER_KPI_ITEMS, '/monthly-report'),
         ...find(MEMBER_SELF_ITEMS, '/monthly-report'),
       ]),
@@ -637,6 +661,7 @@ export function groupedSidebarNavItems(
       label: 'Quản trị Hành chính',
       items: take([
         ...find(HR_ITEMS, '/hr-admin'),
+        ...CHECKLIST_ITEMS.filter((i) => i.permissionId),
         ...find(HR_ITEMS, '/hr-admin/org'),
         ...find(HR_ITEMS, '/kpi-okr-compliance'),
         ...find(HR_ITEMS, '/hr-admin/kpi-catalog/SALES_NV'),
@@ -680,6 +705,7 @@ export function mergeCompactHeaderNavItems(
     }
   }
   push(MEMBER_SELF_ITEMS)
+  push(CHECKLIST_ITEMS)
   push(ROOM_BOOKING_ITEMS)
   push(BOD_ITEMS)
   push(HR_ITEMS)
