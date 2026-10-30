@@ -48,6 +48,7 @@ function routeGroup(item: AppNavItem): string {
   }
   if (item.to.startsWith('/dashboard')) return 'dashboard'
   if (item.to.startsWith('/rewards')) return 'rewards'
+  if (item.to.startsWith('/checklists')) return 'checklist'
   return 'other'
 }
 
@@ -57,6 +58,7 @@ function buildHeaderGroups(items: AppNavItem[], labels: Record<string, string>):
     'learning',
     'room-booking',
     'rewards',
+    'checklist',
     'kpi',
     // 'manager',
     'hr',
@@ -145,6 +147,7 @@ export function MemberLeaderHeaderNav() {
       // manager: 'Quản lý lớp',
       hr: 'Nhân sự',
       rewards: 'Khen thưởng/Phạt',
+      checklist: 'Checklist',
       teacher: 'Giảng viên',
       bod: 'BOD',
       other: 'Khác',
