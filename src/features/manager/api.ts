@@ -132,7 +132,13 @@ export const managerApi = {
   allExams: async () => {
     const res = await apiClient.get<unknown>('/manager/classes/all-exams')
     return safeParse(
-      z.array(managerClassScheduleApiSchema.extend({ className: z.string() })),
+      z.array(
+        managerClassScheduleApiSchema.extend({
+          className: z.string(),
+          submittedCount: z.number().int().optional().default(0),
+          gradedCount: z.number().int().optional().default(0),
+        })
+      ),
       res.data,
       'GET /manager/classes/all-exams'
     )

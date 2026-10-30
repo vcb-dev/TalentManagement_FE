@@ -93,6 +93,38 @@ function examBadgeForSchedule(e: Parameters<typeof examLiveStatus>[1]) {
   }
 }
 
+/** Số bài đã chấm xong / số bài đã nộp (không tính bài đang làm dở). */
+function GradingProgress({ submitted, graded }: { submitted: number; graded: number }) {
+  if (submitted === 0) {
+    return <p className="text-sm italic text-muted-foreground">Chưa có bài nộp</p>
+  }
+  const pct = Math.min(100, Math.round((graded / submitted) * 100))
+  return (
+    <div className="min-w-0">
+      <p className="text-sm font-semibold tabular-nums text-foreground">
+        {graded}
+        <span className="font-normal text-muted-foreground">/{submitted} bài đã chấm</span>
+      </p>
+      <div
+        className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-label="Tiến độ chấm thi"
+        aria-valuenow={graded}
+        aria-valuemin={0}
+        aria-valuemax={submitted}
+      >
+        <div
+          className={cn(
+            'h-full rounded-full transition-[width] duration-500 ease-out',
+            pct >= 100 ? 'bg-green-500' : 'bg-button'
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
 /** Số dòng mỗi trang của bảng lịch thi (mockup hiển thị "1 - 10 trong N kết quả"). */
 const EXAM_PAGE_SIZE = 10
 
@@ -531,6 +563,12 @@ export function ManagerExamScheduleScreen() {
                         <p className="mt-0.5 text-sm italic text-muted-foreground">Chưa gán đề</p>
                       )}
                     </div>
+                    <div className="rounded-lg bg-muted/40 px-3 py-2">
+                      <p className="mb-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                        Tiến độ chấm
+                      </p>
+                      <GradingProgress submitted={e.submittedCount} graded={e.gradedCount} />
+                    </div>
                     <div className="flex flex-col gap-2">
                       <Button
                         type="button"
@@ -592,17 +630,20 @@ export function ManagerExamScheduleScreen() {
             <table className="w-full table-fixed border-collapse text-left">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="w-[30%] max-w-[300px] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <th className="w-[24%] max-w-[300px] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Tên lớp & Kỳ thi
                   </th>
-                  <th className="w-[20%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <th className="w-[18%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Thời gian
                   </th>
-                  <th className="w-[18%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <th className="w-[16%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Người chấm
                   </th>
-                  <th className="w-[20%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <th className="w-[16%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Đề thi & Tình trạng
+                  </th>
+                  <th className="w-[14%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Tiến độ chấm
                   </th>
                   <th className="w-[12%] px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Thao tác
@@ -612,7 +653,7 @@ export function ManagerExamScheduleScreen() {
               <tbody className="divide-y divide-border">
                 {pagedExams.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-20 text-center">
+                    <td colSpan={6} className="px-4 py-20 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Calendar className="mb-4 h-10 w-10 opacity-20" />
                         <p className="font-bold">Không tìm thấy kỳ thi nào</p>
@@ -688,6 +729,9 @@ export function ManagerExamScheduleScreen() {
                           ) : (
                             <p className="text-sm italic text-muted-foreground">Chưa gán đề</p>
                           )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <GradingProgress submitted={e.submittedCount} graded={e.gradedCount} />
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
