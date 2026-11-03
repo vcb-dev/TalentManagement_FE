@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { ClipboardCheck, Settings2, Users } from 'lucide-react'
+import { ClipboardCheck, LayoutDashboard, Settings2, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { usePermission } from '@/hooks/usePermission'
@@ -7,14 +7,15 @@ import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 import { useLeaderChecklistEmployees, useMyChecklists, useSaveMyChecklist } from '../hooks'
 import { ChecklistFillPanel } from './ChecklistFillPanel'
+import { ChecklistOverviewPanel } from './ChecklistOverviewPanel'
 import { ChecklistTemplatesPanel, type ChecklistAdminView } from './ChecklistTemplatesPanel'
 import { LeaderChecklistsPanel } from './LeaderChecklistsPanel'
 
-export type ChecklistTab = 'mine' | 'leader' | 'templates'
+export type ChecklistTab = 'mine' | 'leader' | 'overview' | 'templates'
 
 export type ChecklistsSearch = {
   tab?: ChecklistTab
-  /** Checklist đang mở (tab mine / leader). */
+  /** Checklist đang mở (tab mine / leader) / đang xem số liệu (tab overview). */
   templateId?: string
   /** Nhân sự đang chọn (tab leader). */
   employeeId?: string
@@ -37,6 +38,12 @@ const TAB_META: Record<ChecklistTab, { label: string; icon: LucideIcon; descript
     icon: Users,
     description:
       'Checklist bạn điền cho nhân sự mình là trưởng nhóm phụ trách — nhân sự không thấy bản này.',
+  },
+  overview: {
+    label: 'Tổng quan',
+    icon: LayoutDashboard,
+    description:
+      'Số liệu từng câu hỏi của một checklist — lọc theo team, trưởng nhóm, thời gian vào làm; bấm vào con số để xem ai đã chọn.',
   },
   templates: {
     label: 'Quản lý checklist',
@@ -87,7 +94,7 @@ export function ChecklistsScreen({
   if (isStaff) tabs.push('mine')
   // Người đã thôi vai trò LEADER nhưng HR chưa đổi "Trưởng nhóm phụ trách" vẫn thấy tab.
   if (isStaff && (user?.role === 'LEADER' || (leaderRows?.length ?? 0) > 0)) tabs.push('leader')
-  if (canId('checklist.manage')) tabs.push('templates')
+  if (canId('checklist.manage')) tabs.push('overview', 'templates')
 
   const tab = search.tab && tabs.includes(search.tab) ? search.tab : tabs[0]
   const meta = tab ? TAB_META[tab] : null
@@ -138,10 +145,17 @@ export function ChecklistsScreen({
             templateId={search.templateId}
             onSelect={(next) => onNavigate({ tab: 'leader', ...next })}
           />
+        ) : tab === 'overview' ? (
+          <ChecklistOverviewPanel
+            templateId={search.templateId}
+            onTemplateChange={(templateId) => onNavigate({ tab: 'overview', templateId })}
+            onOpenResponses={(responses) => onNavigate({ tab: 'templates', responses })}
+          />
         ) : tab === 'templates' ? (
           <ChecklistTemplatesPanel
             view={{ view: search.view, edit: search.edit, responses: search.responses }}
             onNavigate={(next: ChecklistAdminView) => onNavigate({ tab: 'templates', ...next })}
+            onOverview={(templateId) => onNavigate({ tab: 'overview', templateId })}
           />
         ) : null}
       </div>

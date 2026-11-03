@@ -137,7 +137,11 @@ export type LeaderEmployeeChecklists = {
   items: ChecklistFillItem[]
 }
 
-export type AdminChecklistSubject = ChecklistSubject & { teamLeader: ChecklistPerson | null }
+export type AdminChecklistSubject = ChecklistSubject & {
+  teamLeader: ChecklistPerson | null
+  /** Ngày vào làm `YYYY-MM-DD`. */
+  startDateWork: string | null
+}
 
 export type ChecklistTemplateResponses = {
   template: ChecklistTemplate
