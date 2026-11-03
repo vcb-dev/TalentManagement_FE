@@ -1,8 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { MemberLearningClassesScreen } from '@/features/learning-path/components/MemberLearningClassesScreen'
-import { requireAnyPermissionId } from '@/lib/permissionGuards'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
+/** Trang cũ "Lớp học khác" — đã gộp vào "Lớp học của tôi"; giữ route để link/bookmark cũ không 404. */
 export const Route = createFileRoute('/_protected/other-classes')({
-  beforeLoad: () => requireAnyPermissionId('learning.view'),
-  component: () => <MemberLearningClassesScreen isOther={true} />,
+  beforeLoad: () => {
+    throw redirect({ to: '/learning-classes', replace: true })
+  },
 })

@@ -108,7 +108,8 @@ export function MobileHeaderNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { canId } = usePermission()
   const role = useAuthStore((s) => s.user?.role)
-  const items = mergeCompactHeaderNavItems(canId, role)
+  const isAdminAccount = useAuthStore((s) => s.user?.isAdminAccount)
+  const items = mergeCompactHeaderNavItems(canId, role, isAdminAccount)
   const [open, setOpen] = useState(false)
 
   if (items.length === 0) return null

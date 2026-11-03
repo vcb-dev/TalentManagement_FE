@@ -26,6 +26,7 @@ import { Route as ProtectedKpiOkrComplianceRouteImport } from './routes/_protect
 import { Route as ProtectedKpiOkrRouteImport } from './routes/_protected/kpi-okr'
 import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
 import { Route as ProtectedCskhQualityRouteImport } from './routes/_protected/cskh-quality'
+import { Route as ProtectedChecklistsRouteImport } from './routes/_protected/checklists'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as ProtectedPermissionsIndexRouteImport } from './routes/_protected/permissions/index'
 import { Route as ProtectedLearningPathIndexRouteImport } from './routes/_protected/learning-path/index'
@@ -159,6 +160,11 @@ const ProtectedDashboardRoute = ProtectedDashboardRouteImport.update({
 const ProtectedCskhQualityRoute = ProtectedCskhQualityRouteImport.update({
   id: '/cskh-quality',
   path: '/cskh-quality',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
+const ProtectedChecklistsRoute = ProtectedChecklistsRouteImport.update({
+  id: '/checklists',
+  path: '/checklists',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -443,6 +449,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/login': typeof AuthLoginRoute
+  '/checklists': typeof ProtectedChecklistsRoute
   '/cskh-quality': typeof ProtectedCskhQualityRoute
   '/dashboard': typeof ProtectedDashboardRoute
   '/kpi-okr': typeof ProtectedKpiOkrRoute
@@ -508,6 +515,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/login': typeof AuthLoginRoute
+  '/checklists': typeof ProtectedChecklistsRoute
   '/cskh-quality': typeof ProtectedCskhQualityRoute
   '/dashboard': typeof ProtectedDashboardRoute
   '/kpi-okr': typeof ProtectedKpiOkrRoute
@@ -576,6 +584,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/_auth/login': typeof AuthLoginRoute
+  '/_protected/checklists': typeof ProtectedChecklistsRoute
   '/_protected/cskh-quality': typeof ProtectedCskhQualityRoute
   '/_protected/dashboard': typeof ProtectedDashboardRoute
   '/_protected/kpi-okr': typeof ProtectedKpiOkrRoute
@@ -643,6 +652,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/login'
+    | '/checklists'
     | '/cskh-quality'
     | '/dashboard'
     | '/kpi-okr'
@@ -708,6 +718,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/login'
+    | '/checklists'
     | '/cskh-quality'
     | '/dashboard'
     | '/kpi-okr'
@@ -775,6 +786,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/_auth/login'
+    | '/_protected/checklists'
     | '/_protected/cskh-quality'
     | '/_protected/dashboard'
     | '/_protected/kpi-okr'
@@ -963,6 +975,13 @@ declare module '@tanstack/react-router' {
       path: '/cskh-quality'
       fullPath: '/cskh-quality'
       preLoaderRoute: typeof ProtectedCskhQualityRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
+    '/_protected/checklists': {
+      id: '/_protected/checklists'
+      path: '/checklists'
+      fullPath: '/checklists'
+      preLoaderRoute: typeof ProtectedChecklistsRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
     '/_auth/login': {
@@ -1332,6 +1351,7 @@ const ProtectedManagerGradeClassClassIdRouteWithChildren =
   )
 
 interface ProtectedRouteRouteChildren {
+  ProtectedChecklistsRoute: typeof ProtectedChecklistsRoute
   ProtectedCskhQualityRoute: typeof ProtectedCskhQualityRoute
   ProtectedDashboardRoute: typeof ProtectedDashboardRoute
   ProtectedKpiOkrRoute: typeof ProtectedKpiOkrRoute
@@ -1392,6 +1412,7 @@ interface ProtectedRouteRouteChildren {
 }
 
 const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
+  ProtectedChecklistsRoute: ProtectedChecklistsRoute,
   ProtectedCskhQualityRoute: ProtectedCskhQualityRoute,
   ProtectedDashboardRoute: ProtectedDashboardRoute,
   ProtectedKpiOkrRoute: ProtectedKpiOkrRoute,

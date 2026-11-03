@@ -75,15 +75,20 @@ export const myDashboardSchema = z.object({
 
 export type MyDashboardResponse = z.infer<typeof myDashboardSchema>
 
-const learningOpsExamRepeatFailUserSchema = z.object({
-  userId: z.string().uuid(),
-  /** Cặp cấp của kỳ thi (vd. tap_su -> biet_viec) trong kỳ. */
-  levelFrom: z.string(),
-  levelTo: z.string(),
-  fullName: z.string().nullable().optional(),
-  email: z.string().nullable().optional(),
-  employeeCode: z.string().nullable().optional(),
-  failCount: z.number().int().min(1),
+const learningOpsActiveClassSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  status: z.literal('open'),
+  isKnowledgeWork: z.boolean(),
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable(),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable(),
+  memberCount: z.number().int().nonnegative(),
 })
 
 export const learningOpsSummarySchema = z.object({
@@ -94,10 +99,8 @@ export const learningOpsSummarySchema = z.object({
   }),
   peopleByCareerLevel: z.record(z.string(), z.number().int().nonnegative()),
   levelUpCount: z.number().int().nonnegative(),
-  examNotPassedCount: z.number().int().nonnegative(),
-  classesCreatedInPeriod: z.number().int().nonnegative(),
-  /** Trong kỳ: học viên trượt thi (Chờ học lại / Chia tay), mỗi buổi/kỳ thi tính một lần. */
-  usersWithAtLeastTwoExamFails: z.array(learningOpsExamRepeatFailUserSchema).default([]),
+  /** Lớp đang mở có khoảng hoạt động giao với kỳ lọc; lớp cũ chưa có ngày dùng ngày tạo làm dự phòng. */
+  classesActiveInPeriod: z.array(learningOpsActiveClassSchema).default([]),
   /** Tổng toàn bộ hồ sơ nhân sự (mọi trạng thái) — khớp "Tổng nhân sự" của trang Danh sách nhân sự. */
   totalHeadcount: z.number().int().nonnegative(),
   /** Đúng trạng thái ACTIVE (loại inactive lẫn probation/reserved/transferred). */

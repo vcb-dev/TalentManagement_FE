@@ -1,12 +1,19 @@
-import { useState } from 'react'
-import { Eye, EyeOff, FileText, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { type ComponentProps, type ReactNode, useLayoutEffect, useRef, useState } from 'react'
+import { Eye, EyeOff, FileText, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ManagerScreenLayout } from '@/features/manager/components/ManagerHub/ManagerScreenLayout'
 import { ExamManagementTabs } from '@/features/manager/components/ManagerHub/ExamManagementTabs'
-import { BRAND_BTN_SOLID, BRAND_TEXT } from '@/components/shared/brandButtonStyles'
+import {
+  BRAND_BTN_OUTLINE,
+  BRAND_BTN_SOLID,
+  BRAND_TEXT,
+} from '@/components/shared/brandButtonStyles'
+import { FormDialog } from '@/components/shared/FormDialog'
+import { FormSection } from '@/components/shared/FormSection'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
@@ -35,10 +42,10 @@ import type { ExamPaperInput, ExamPaperQuestionInput } from '@/features/exam-pap
 import { examPapersApi } from '@/features/exam-papers/api'
 import {
   DEFAULT_ESSAY_CRITERIA_WEIGHTS,
-  ESSAY_CRITERIA,
   sumCriteriaWeights,
   type EssayCriteriaWeights,
 } from '@/features/exam-papers/criteria'
+import { CriteriaWeightsField, NO_SPINNER } from './CriteriaWeightsField'
 
 const OPTIONS_PER_MCQ = 4
 
@@ -51,6 +58,28 @@ function emptyMcq(): McqDraft {
 
 function emptyEssay(): EssayDraft {
   return { stem: '', criteriaWeights: { ...DEFAULT_ESSAY_CRITERIA_WEIGHTS } }
+}
+
+function AutoResizeTextarea({ className, value, ...props }: ComponentProps<typeof Textarea>) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    textarea.style.height = 'auto'
+    textarea.style.height = `${textarea.scrollHeight}px`
+  }, [value])
+
+  return (
+    <Textarea
+      {...props}
+      ref={textareaRef}
+      value={value}
+      rows={1}
+      className={cn('resize-none overflow-y-hidden break-words', className)}
+    />
+  )
 }
 
 function toDraft(questions: ExamPaperQuestionInput[]): { mcq: McqDraft[]; essay: EssayDraft[] } {
@@ -186,270 +215,332 @@ function PaperBuilderForm({
     })
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl border border-primary/20 bg-card shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border p-4">
-          <h2 className="text-sm font-bold text-foreground">
-            {initial.code ? `Chỉnh sửa đề ${initial.code}` : 'Thêm đề thi mới'}
-          </h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-md text-muted-foreground"
-            onClick={onCancel}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+  const [autoFocusKey, setAutoFocusKey] = useState<string | null>(null)
+  const addMcq = () => {
+    setAutoFocusKey(`mcq-${mcq.length}`)
+    setMcq((prev) => [...prev, emptyMcq()])
+  }
+  const addEssay = () => {
+    setAutoFocusKey(`essay-${essay.length}`)
+    setEssay((prev) => [...prev, emptyEssay()])
+  }
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                Mã đề (để trống để tự sinh)
-              </label>
+  const addButton = (onClick: () => void, label: string) => (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      className={cn('h-8 min-h-8 gap-1.5 rounded-lg px-3 text-xs', BRAND_BTN_OUTLINE)}
+      onClick={onClick}
+    >
+      <Plus className="h-3.5 w-3.5" />
+      {label}
+    </Button>
+  )
+
+  return (
+    <FormDialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+      title={initial.code ? `Chỉnh sửa đề ${initial.code}` : 'Thêm đề thi'}
+      description="Đề có thể gồm trắc nghiệm, tự luận hoặc cả hai."
+      icon={<FileText className="size-5" />}
+      preventDismiss
+      className="max-w-4xl"
+      footer={
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold tabular-nums text-foreground">{mcq.length}</span> trắc
+            nghiệm ·{' '}
+            <span className="font-semibold tabular-nums text-foreground">{essay.length}</span> tự
+            luận
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className={cn('px-5', BRAND_BTN_SOLID)}
+              onClick={handleSubmit}
+              disabled={isSaving}
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {isSaving ? 'Đang lưu...' : 'Lưu đề thi'}
+            </Button>
+          </div>
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        <FormSection title="Thông tin đề">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_14rem]">
+            <Field label="Tên đề thi" htmlFor="paper-title" required>
               <Input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="VD: DE_01"
-                className="text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                Tên đề thi <span className="text-danger">*</span>
-              </label>
-              <Input
+                id="paper-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="VD: Đề thi Editor tháng 7"
-                className="text-sm"
+                className="h-10 rounded-xl text-sm"
               />
-            </div>
+            </Field>
+            <Field label="Mã đề" htmlFor="paper-code" hint="Trống = tự sinh">
+              <Input
+                id="paper-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="VD: DE_01"
+                className={cn('h-10 rounded-xl text-sm', code && 'font-mono')}
+              />
+            </Field>
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-muted-foreground">Mô tả</label>
+          <Field
+            label="Mô tả"
+            htmlFor="paper-description"
+            hint="Ghi chú nội bộ, học viên không thấy"
+          >
             <Textarea
+              id="paper-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ghi chú nội bộ về đề thi (không hiển thị cho học viên)"
-              className="min-h-[60px] text-sm"
+              placeholder="Mục tiêu, phạm vi kiến thức, nguồn câu hỏi..."
+              className="min-h-[72px] rounded-xl text-sm"
             />
-          </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <input
-                type="checkbox"
+          </Field>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Field label="Ngưỡng điểm đạt" htmlFor="paper-pass-score">
+              <div className="relative w-32">
+                <Input
+                  id="paper-pass-score"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={100}
+                  value={passScore}
+                  onChange={(e) => setPassScore(Number(e.target.value) || 0)}
+                  className={cn(
+                    'h-10 rounded-xl pr-8 text-sm font-semibold tabular-nums',
+                    NO_SPINNER
+                  )}
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
+                  %
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Chấm xong đạt từ ngưỡng này sẽ tự được đánh giá &quot;Đạt&quot;.
+              </p>
+            </Field>
+            <label
+              htmlFor="paper-active"
+              className={cn(
+                'flex cursor-pointer items-start gap-3 self-start rounded-xl border p-3 transition-colors md:mt-5',
+                isActive ? 'border-button/40 bg-button/5' : 'border-border hover:bg-muted/40'
+              )}
+            >
+              <Checkbox
+                id="paper-active"
                 checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="h-4 w-4 rounded border-border"
+                onCheckedChange={(v) => setIsActive(v === true)}
+                className="mt-0.5 border-button focus-visible:ring-button/35 data-[state=checked]:bg-button data-[state=checked]:text-white"
               />
-              Kích hoạt (được dùng khi tạo lịch thi)
+              <span>
+                <span className="block text-sm font-semibold text-foreground">Kích hoạt đề</span>
+                <span className="block text-xs text-muted-foreground">
+                  Chỉ đề đang kích hoạt mới chọn được khi tạo lịch thi.
+                </span>
+              </span>
             </label>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                Ngưỡng điểm đạt (%)
-              </label>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={passScore}
-                onChange={(e) => setPassScore(Number(e.target.value) || 0)}
-                className="text-sm"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Học viên đạt điểm ≥ ngưỡng này khi chấm xong sẽ tự động được đánh giá "Đạt".
-              </p>
-            </div>
           </div>
+        </FormSection>
 
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground">Câu trắc nghiệm ({mcq.length})</h3>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="gap-1"
-                onClick={() => setMcq((prev) => [...prev, emptyMcq()])}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Thêm câu
-              </Button>
-            </div>
-            {mcq.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border bg-muted/10 p-3 text-xs text-muted-foreground">
-                Chưa có câu trắc nghiệm — có thể bỏ trống nếu đề chỉ gồm tự luận.
-              </p>
-            ) : null}
-            <div className="space-y-3">
+        <FormSection
+          title={`Câu trắc nghiệm (${mcq.length})`}
+          description="Bấm chữ cái A–D để đánh dấu đáp án đúng."
+          action={addButton(addMcq, 'Thêm câu')}
+        >
+          {mcq.length === 0 ? (
+            <EmptyQuestions text="Chưa có câu trắc nghiệm — có thể bỏ trống nếu đề chỉ gồm tự luận." />
+          ) : (
+            <ol className="space-y-3">
               {mcq.map((q, idx) => (
-                <div key={idx} className="rounded-lg border border-border bg-muted/20 p-3">
-                  <div className="mb-2 flex items-start gap-2">
-                    <span className="mt-2 text-xs font-bold text-muted-foreground">{idx + 1}.</span>
-                    <Textarea
+                <li key={idx} className="rounded-xl border border-border/80 bg-muted/20 p-4">
+                  <QuestionHeader
+                    index={idx}
+                    label="trắc nghiệm"
+                    onRemove={() => setMcq((prev) => prev.filter((_, i) => i !== idx))}
+                  >
+                    <AutoResizeTextarea
                       value={q.stem}
                       onChange={(e) => updateMcq(idx, { stem: e.target.value })}
                       placeholder="Nội dung câu hỏi"
-                      className="min-h-[44px] flex-1 text-sm"
+                      aria-label={`Nội dung câu trắc nghiệm ${idx + 1}`}
+                      autoFocus={autoFocusKey === `mcq-${idx}`}
+                      className="min-h-[52px] rounded-xl bg-card text-sm leading-relaxed"
                     />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="text-danger"
-                      onClick={() => setMcq((prev) => prev.filter((_, i) => i !== idx))}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="ml-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {q.options.map((opt, oi) => (
-                      <label key={oi} className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name={`mcq-${idx}-correct`}
-                          checked={q.correctIndex === oi}
-                          onChange={() => updateMcq(idx, { correctIndex: oi })}
-                          className="h-4 w-4 shrink-0"
-                        />
-                        <Input
-                          value={opt}
-                          onChange={(e) => updateMcqOption(idx, oi, e.target.value)}
-                          placeholder={`Đáp án ${String.fromCharCode(65 + oi)}`}
-                          className="text-sm"
-                        />
-                      </label>
-                    ))}
-                  </div>
-                  <p className="ml-6 mt-1 text-xs text-muted-foreground">
-                    Chọn radio ở đáp án đúng.
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground">Câu tự luận ({essay.length})</h3>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="gap-1"
-                onClick={() => setEssay((prev) => [...prev, emptyEssay()])}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Thêm câu
-              </Button>
-            </div>
-            {essay.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border bg-muted/10 p-3 text-xs text-muted-foreground">
-                Chưa có câu tự luận — có thể bỏ trống nếu đề chỉ gồm trắc nghiệm.
-              </p>
-            ) : null}
-            <div className="space-y-3">
-              {essay.map((q, idx) => {
-                const weightTotal = sumCriteriaWeights(q.criteriaWeights)
-                return (
-                  <div key={idx} className="rounded-lg border border-border bg-muted/20 p-3">
-                    <div className="flex items-start gap-2">
-                      <span className="mt-2 text-xs font-bold text-muted-foreground">
-                        {idx + 1}.
-                      </span>
-                      <Textarea
-                        value={q.stem}
-                        onChange={(e) => updateEssay(idx, { stem: e.target.value })}
-                        placeholder="Nội dung câu hỏi tự luận"
-                        className="min-h-[60px] flex-1 text-sm"
-                      />
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="text-danger"
-                        onClick={() => setEssay((prev) => prev.filter((_, i) => i !== idx))}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    {/* Thang điểm đánh giá — text tiêu chí fix cứng, giáo viên chấm theo % này */}
-                    <div className="ml-6 mt-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                          Thang điểm đánh giá
-                        </span>
-                        <span
-                          className={
-                            weightTotal === 100
-                              ? 'text-xs font-bold text-emerald-600'
-                              : 'text-xs font-bold text-rose-600'
-                          }
+                  </QuestionHeader>
+                  <div
+                    className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 sm:pl-9"
+                    role="radiogroup"
+                    aria-label={`Đáp án đúng của câu ${idx + 1}`}
+                  >
+                    {q.options.map((opt, oi) => {
+                      const correct = q.correctIndex === oi
+                      const letter = String.fromCharCode(65 + oi)
+                      return (
+                        <div
+                          key={oi}
+                          className={cn(
+                            'flex items-center gap-1 rounded-xl border bg-card p-1 transition-colors',
+                            correct ? 'border-button ring-1 ring-button/20' : 'border-border'
+                          )}
                         >
-                          Tổng: {weightTotal}%{weightTotal !== 100 ? ' — phải bằng 100%' : ''}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        {ESSAY_CRITERIA.map((c) => (
-                          <div key={c.id} className="flex flex-col gap-1">
-                            <label className="text-xs font-semibold text-foreground">
-                              {c.label}
-                            </label>
-                            <div className="flex items-center gap-1">
-                              <Input
-                                type="number"
-                                min={0}
-                                max={100}
-                                value={q.criteriaWeights[c.id]}
-                                onChange={(e) =>
-                                  updateEssay(idx, {
-                                    criteriaWeights: {
-                                      ...q.criteriaWeights,
-                                      [c.id]: Math.max(
-                                        0,
-                                        Math.min(100, Number(e.target.value) || 0)
-                                      ),
-                                    },
-                                  })
-                                }
-                                className="h-8 w-20 text-sm"
-                              />
-                              <span className="text-xs font-bold text-primary">%</span>
-                            </div>
-                            <p className="text-[11px] leading-snug text-muted-foreground">
-                              {c.desc}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                          <label
+                            className={cn(
+                              'flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-xs font-bold transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-button/35',
+                              correct
+                                ? 'bg-button text-white'
+                                : 'bg-muted text-muted-foreground hover:bg-button/10 hover:text-button'
+                            )}
+                            title={correct ? 'Đáp án đúng' : 'Đánh dấu là đáp án đúng'}
+                          >
+                            <input
+                              type="radio"
+                              name={`mcq-${idx}-correct`}
+                              checked={correct}
+                              onChange={() => updateMcq(idx, { correctIndex: oi })}
+                              aria-label={`Đáp án ${letter} đúng`}
+                              className="sr-only"
+                            />
+                            {letter}
+                          </label>
+                          <Input
+                            value={opt}
+                            onChange={(e) => updateMcqOption(idx, oi, e.target.value)}
+                            placeholder={`Đáp án ${letter}`}
+                            aria-label={`Câu ${idx + 1}, đáp án ${letter}`}
+                            className="h-8 border-0 bg-transparent px-2 text-sm shadow-none focus-visible:ring-0"
+                          />
+                        </div>
+                      )
+                    })}
                   </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </FormSection>
 
-        <div className="flex items-center justify-end gap-2 border-t border-border p-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Hủy
-          </Button>
-          <Button
-            type="button"
-            className={BRAND_BTN_SOLID}
-            onClick={handleSubmit}
-            disabled={isSaving}
-          >
-            {isSaving ? 'Đang lưu...' : 'Lưu đề thi'}
-          </Button>
-        </div>
+        <FormSection
+          title={`Câu tự luận (${essay.length})`}
+          description="Giáo viên chấm theo % của 3 tiêu chí; tổng phải bằng 100%."
+          action={addButton(addEssay, 'Thêm câu')}
+        >
+          {essay.length === 0 ? (
+            <EmptyQuestions text="Chưa có câu tự luận — có thể bỏ trống nếu đề chỉ gồm trắc nghiệm." />
+          ) : (
+            <ol className="space-y-3">
+              {essay.map((q, idx) => (
+                <li key={idx} className="rounded-xl border border-border/80 bg-muted/20 p-4">
+                  <QuestionHeader
+                    index={idx}
+                    label="tự luận"
+                    onRemove={() => setEssay((prev) => prev.filter((_, i) => i !== idx))}
+                  >
+                    <AutoResizeTextarea
+                      value={q.stem}
+                      onChange={(e) => updateEssay(idx, { stem: e.target.value })}
+                      placeholder="Nội dung câu hỏi tự luận"
+                      aria-label={`Nội dung câu tự luận ${idx + 1}`}
+                      autoFocus={autoFocusKey === `essay-${idx}`}
+                      className="min-h-[72px] rounded-xl bg-card text-sm leading-relaxed"
+                    />
+                  </QuestionHeader>
+                  <div className="mt-3 sm:pl-9">
+                    <CriteriaWeightsField
+                      value={q.criteriaWeights}
+                      onChange={(criteriaWeights) => updateEssay(idx, { criteriaWeights })}
+                      showDescriptions
+                      idPrefix={`essay-${idx}`}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </FormSection>
       </div>
+    </FormDialog>
+  )
+}
+
+function Field({
+  label,
+  htmlFor,
+  required,
+  hint,
+  children,
+}: {
+  label: string
+  htmlFor: string
+  required?: boolean
+  hint?: string
+  children: ReactNode
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={htmlFor} className="text-xs font-semibold text-muted-foreground">
+          {label}
+          {required ? <span className="text-danger"> *</span> : null}
+        </label>
+        {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
+      </div>
+      {children}
     </div>
+  )
+}
+
+function QuestionHeader({
+  index,
+  label,
+  onRemove,
+  children,
+}: {
+  index: number
+  label: string
+  onRemove: () => void
+  children: ReactNode
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-2.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-card text-xs font-bold tabular-nums text-foreground ring-1 ring-border">
+        {index + 1}
+      </span>
+      <div className="min-w-0 flex-1">{children}</div>
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        className="mt-1 size-8 min-h-8 shrink-0 rounded-lg text-muted-foreground hover:bg-danger-muted hover:text-danger"
+        onClick={onRemove}
+        aria-label={`Xóa câu ${label} ${index + 1}`}
+        title="Xóa câu"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  )
+}
+
+function EmptyQuestions({ text }: { text: string }) {
+  return (
+    <p className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+      {text}
+    </p>
   )
 }
 

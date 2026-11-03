@@ -1,24 +1,30 @@
-import { useState, useEffect, useMemo } from 'react'
-import { ChevronDown, ChevronUp, Loader2, Pencil, Trash2, UserPlus2, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
+import { useState } from 'react'
 import {
-  useAddClassMember,
-  useClassMemberOptions,
-  useRemoveClassMember,
-} from '@/features/manager/hooks'
+  CalendarClock,
+  CalendarRange,
+  ChevronDown,
+  GraduationCap,
+  Lock,
+  LockOpen,
+  Pencil,
+  Trash2,
+  Users,
+} from 'lucide-react'
+import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import type { ManagerClass } from '@/features/manager/types'
 
-const STATUS_LABEL: Record<'open' | 'full' | 'closed', { label: string; className: string }> = {
-  open: { label: 'Đang mở', className: 'bg-white/20 text-white backdrop-blur-md' },
-  full: { label: 'Đủ chỗ', className: 'bg-white/20 text-white backdrop-blur-md' },
-  closed: { label: 'Đã đóng', className: 'bg-white/15 text-white/90' },
-}
+type ClassStatus = 'open' | 'full' | 'closed'
 
-const HEADER_GRADIENT: Record<'open' | 'full' | 'closed', string> = {
-  open: 'from-primary via-primary-600 to-primary-700',
-  full: 'from-amber-500 to-orange-600',
-  closed: 'from-gray-500 to-gray-700',
+const STATUS: Record<ClassStatus, { label: string; className: string; dot: string }> = {
+  open: { label: 'Đang mở', className: 'bg-success-muted text-success', dot: 'bg-success' },
+  full: { label: 'Đủ chỗ', className: 'bg-warning-muted text-warning', dot: 'bg-warning' },
+  closed: {
+    label: 'Đã đóng',
+    className: 'bg-muted text-muted-foreground',
+    dot: 'bg-muted-foreground',
+  },
 }
 
 const LEVEL_LABELS: Record<string, string> = {
@@ -29,277 +35,232 @@ const LEVEL_LABELS: Record<string, string> = {
   tuong: 'Tướng',
 }
 
-const DOT_PATTERN = 'radial-gradient(circle at 2px 2px, rgb(255 255 255 / 0.35) 1px, transparent 0)'
+const DEFAULT_CAPACITY = 25
 
-function toViDate(iso: string | null): string {
-  if (!iso) return '—'
+function toViDate(iso: string): string {
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString('vi-VN')
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('vi-VN')
+}
+
+/** Buổi thi sắp tới gần nhất; hết buổi sắp tới thì lấy buổi gần nhất đã qua; không có thì ngày thi dự kiến. */
+function examLine(row: ManagerClass): string | null {
+  const exams = (row.schedules ?? [])
+    .filter((s) => s.isExam)
+    .sort((a, b) => `${a.dateIso} ${a.startTime}`.localeCompare(`${b.dateIso} ${b.startTime}`))
+  const today = new Date().toLocaleDateString('sv-SE')
+  const pick = exams.find((s) => s.dateIso >= today) ?? exams[exams.length - 1]
+  if (pick) return `${toViDate(pick.dateIso)} · ${pick.startTime}`
+  return row.examDate ? toViDate(row.examDate) : null
+}
+
+function classPeriodLine(row: ManagerClass): string | null {
+  if (row.startDate && row.endDate) {
+    return `${toViDate(row.startDate)} – ${toViDate(row.endDate)}`
+  }
+  if (row.startDate) return `Từ ${toViDate(row.startDate)}`
+  if (row.endDate) return `Đến ${toViDate(row.endDate)}`
+  return null
 }
 
 interface ClassCardProps {
-  row: any
+  row: ManagerClass
   /** Bỏ trống cả hai → thẻ chỉ xem (ẩn nút Sửa/Xoá), vd. HR có `hr.classes.view`. */
-  onEdit?: (row: any) => void
+  onEdit?: (row: ManagerClass) => void
   onDelete?: (id: string) => void
+  /** Đóng lớp (ngừng nhận đăng ký) hoặc mở lại. Bỏ trống → ẩn nút. */
+  onToggleStatus?: (row: ManagerClass) => void
 }
 
-export function ClassCard({ row, onEdit, onDelete }: ClassCardProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isExpandedMembers, setIsExpandedMembers] = useState(false)
-  const [query, setQuery] = useState('')
-  const [debouncedQuery, setDebouncedQuery] = useState('')
-  const [showDropdown, setShowDropdown] = useState(false)
+export function ClassCard({ row, onEdit, onDelete, onToggleStatus }: ClassCardProps) {
+  const [membersOpen, setMembersOpen] = useState(false)
 
-  const addMember = useAddClassMember()
-  const removeMember = useRemoveClassMember()
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(query), 300)
-    return () => clearTimeout(t)
-  }, [query])
-
-  const { data: memberOptions = [], isFetching: fetchingMemberOptions } = useClassMemberOptions(
-    debouncedQuery,
-    undefined,
-    row.teacher?.userId
-  )
-
-  const filteredOptions = useMemo(() => {
-    const joined = new Set((row.members ?? []).map((m: any) => m.userId))
-    return memberOptions.filter((o) => !joined.has(o.userId) && o.userId !== row.teacher?.userId)
-  }, [row.members, row.teacher, memberOptions])
-
-  const st = STATUS_LABEL[row.status as 'open' | 'full' | 'closed'] || STATUS_LABEL.open
-  const header = HEADER_GRADIENT[row.status as 'open' | 'full' | 'closed'] || HEADER_GRADIENT.open
+  const status = STATUS[row.status] ?? STATUS.open
+  const isClosed = row.status === 'closed'
+  const capacity = row.capacity ?? DEFAULT_CAPACITY
+  const fillPct = Math.min(100, Math.round((row.memberCount / Math.max(capacity, 1)) * 100))
+  const exam = examLine(row)
+  const classPeriod = classPeriodLine(row)
+  const isKnowledgeWork = row.isKnowledgeWork !== false
+  const isEditor = row.kind === 'EDITOR'
+  const members = row.members ?? []
+  const membersId = `class-members-${row.id}`
 
   return (
-    <div
-      className={cn(
-        'rounded-2xl border border-border/80 bg-card shadow-[var(--shadow-card)] transition-all duration-300 hover:shadow-xl',
-        showDropdown ? 'relative z-30' : 'relative z-0'
-      )}
-    >
-      <div
-        className={cn(
-          'relative overflow-hidden bg-gradient-to-r transition-all duration-300 cursor-pointer select-none',
-          header,
-          isCollapsed ? 'h-14 rounded-2xl' : 'h-24 rounded-t-2xl'
-        )}
-        onClick={() => setIsCollapsed(!isCollapsed)}
-      >
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.12]"
-          style={{ backgroundImage: DOT_PATTERN, backgroundSize: '20px 20px' }}
-        />
-        <div
-          className={cn(
-            'relative z-10 flex items-center justify-between px-6',
-            isCollapsed ? 'h-full' : 'pt-6'
-          )}
-        >
-          <div className="flex flex-col">
-            {!isCollapsed && (
-              <span
+    <article className="flex flex-col rounded-2xl border border-border/80 bg-card shadow-[var(--shadow-card)] transition-shadow duration-200 hover:shadow-[0_8px_24px_-12px_rgb(15_23_42/0.18)]">
+      <div className="flex flex-1 flex-col gap-4 p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+              status.className
+            )}
+          >
+            <span className={cn('size-1.5 rounded-full', status.dot)} aria-hidden />
+            {status.label}
+          </span>
+          {isKnowledgeWork ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-button/10 px-2.5 py-0.5 text-xs font-semibold text-button">
+              <GraduationCap className="size-3.5" aria-hidden />
+              {LEVEL_LABELS[row.levelFrom]} → {LEVEL_LABELS[row.levelTo]}
+            </span>
+          ) : isEditor ? (
+            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+              Editor · tự đồng bộ
+            </span>
+          ) : null}
+        </div>
+
+        <div className="min-w-0">
+          <h3
+            className="line-clamp-2 text-base font-bold leading-snug text-foreground"
+            title={row.name}
+          >
+            {row.name}
+          </h3>
+          <p className="mt-1 truncate text-sm text-muted-foreground">
+            Giáo viên:{' '}
+            <span className={cn('font-medium', row.teacher ? 'text-foreground' : 'italic')}>
+              {row.teacher?.name ?? 'Chưa gán'}
+            </span>
+          </p>
+        </div>
+
+        <div className="mt-auto space-y-3">
+          <div>
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="font-medium text-muted-foreground">Sĩ số</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {row.memberCount}
+                <span className="font-normal text-muted-foreground">/{capacity}</span>
+              </span>
+            </div>
+            <div
+              className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-label="Sĩ số lớp"
+              aria-valuenow={row.memberCount}
+              aria-valuemin={0}
+              aria-valuemax={capacity}
+            >
+              <div
                 className={cn(
-                  'mb-1 inline-block w-fit rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider',
-                  st.className
+                  'h-full rounded-full transition-[width] duration-500 ease-out',
+                  fillPct >= 100 ? 'bg-warning' : 'bg-button'
                 )}
-              >
-                {st.label}
-              </span>
-            )}
-            <h3
-              className={cn(
-                'font-bold leading-tight text-white transition-all',
-                isCollapsed ? 'text-base' : 'text-lg'
-              )}
-            >
-              {row.name}
-              {isCollapsed && (
-                <span className="ml-3 text-xs opacity-80 font-normal">
-                  ({row.memberCount} thành viên)
-                </span>
-              )}
-            </h3>
+                style={{ width: `${fillPct}%` }}
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {isCollapsed && (
-              <span
-                className={cn('rounded-full px-2 py-0.5 text-xs font-bold uppercase', st.className)}
-              >
-                {st.label}
-              </span>
-            )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-white/80 hover:bg-white/20 hover:text-white"
-              onClick={(e) => {
-                e.stopPropagation()
-                setIsCollapsed(!isCollapsed)
-              }}
-            >
-              {isCollapsed ? (
-                <ChevronDown className="h-5 w-5" />
-              ) : (
-                <ChevronUp className="h-5 w-5" />
-              )}
-            </Button>
-          </div>
+          {classPeriod ? (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarRange className="size-3.5 shrink-0" aria-hidden />
+              Thời gian:{' '}
+              <span className="font-medium tabular-nums text-foreground">{classPeriod}</span>
+            </p>
+          ) : null}
+          {exam ? (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarClock className="size-3.5 shrink-0" aria-hidden />
+              Lịch thi: <span className="font-medium tabular-nums text-foreground">{exam}</span>
+            </p>
+          ) : null}
         </div>
       </div>
 
-      {!isCollapsed && (
-        <div className="p-6 transition-all duration-300">
-          <div className="mb-6 flex items-center gap-4">
-            <span className="text-xs font-medium text-muted-foreground">
-              {row.memberCount} thành viên
-            </span>
-          </div>
-
-          <div className="mb-4 rounded-lg border border-border/70 bg-muted/30 p-3">
-            <p className="text-sm font-extrabold text-foreground">
-              {LEVEL_LABELS[row.levelFrom]} → {LEVEL_LABELS[row.levelTo]}
-            </p>
-            <p className="mt-1 text-sm font-bold text-foreground">
-              Kỳ thi dự kiến: {toViDate(row.examDate)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Giáo viên:{' '}
-              <span className="font-semibold text-foreground">
-                {row.teacher?.name || 'Chưa gán'}
-              </span>
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            {(() => {
-              const allMembers = row.members ?? []
-              const displayMembers = isExpandedMembers ? allMembers : allMembers.slice(0, 5)
-              return (
-                <>
-                  {displayMembers.map((m: any) => (
-                    <div
-                      key={m.userId}
-                      className="flex items-center justify-between rounded-md border bg-white px-2 py-1.5 text-xs"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-foreground">{m.name}</p>
-                        <p className="truncate text-muted-foreground">{m.email}</p>
-                      </div>
-                      {false ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          onClick={() => removeMember.mutate({ classId: row.id, userId: m.userId })}
-                          title="Xóa khỏi lớp"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      ) : null}
-                    </div>
-                  ))}
-                  {allMembers.length > 5 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto w-full py-1 text-xs font-bold text-primary hover:bg-primary/5"
-                      onClick={() => setIsExpandedMembers(!isExpandedMembers)}
-                    >
-                      {isExpandedMembers
-                        ? 'Thu gọn'
-                        : `Xem thêm ${allMembers.length - 5} học viên...`}
-                    </Button>
-                  )}
-                </>
-              )
-            })()}
-          </div>
-
-          {false ? (
-            <div className="search-dropdown-container relative mt-3">
-              <Input
-                value={query}
-                onFocus={() => setShowDropdown(true)}
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  setShowDropdown(true)
-                }}
-                placeholder="Gõ tên/email để thêm nhân sự..."
-                className="h-auto w-full rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-none outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
-              />
-              {showDropdown && query.trim().length > 0 && (
-                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-white p-1 shadow-lg">
-                  {fetchingMemberOptions ? (
-                    <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Đang tìm...
-                    </div>
-                  ) : filteredOptions.length === 0 ? (
-                    <div className="px-2 py-2 text-xs text-muted-foreground">
-                      Không có kết quả phù hợp
-                    </div>
-                  ) : (
-                    filteredOptions.map((opt) => (
-                      <Button
-                        key={opt.userId}
-                        type="button"
-                        variant="ghost"
-                        className="flex h-auto w-full flex-col items-start rounded px-2 py-1.5 text-left text-xs font-normal hover:bg-primary/10"
-                        onMouseDown={() => {
-                          addMember.mutate({ classId: row.id, userId: opt.userId })
-                          setQuery('')
-                          setShowDropdown(false)
-                        }}
-                      >
-                        <p className="font-semibold text-foreground">{opt.name}</p>
-                        <p className="text-muted-foreground">{opt.email}</p>
-                      </Button>
-                    ))
-                  )}
-                </div>
+      <div className="border-t border-border/70">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-2 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none disabled:cursor-default disabled:text-muted-foreground disabled:hover:bg-transparent"
+          aria-expanded={membersOpen}
+          aria-controls={membersId}
+          disabled={members.length === 0}
+          onClick={() => setMembersOpen((v) => !v)}
+        >
+          <span className="flex items-center gap-2">
+            <Users className="size-4 text-muted-foreground" aria-hidden />
+            {members.length === 0 ? 'Chưa có học viên' : `${members.length} học viên`}
+          </span>
+          {members.length > 0 ? (
+            <ChevronDown
+              className={cn(
+                'size-4 text-muted-foreground transition-transform duration-200',
+                membersOpen && 'rotate-180'
               )}
-            </div>
-          ) : (
-            <p className="mt-3 rounded-lg border border-dashed border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary">
-              Học viên tự đăng ký lớp; giáo viên sẽ duyệt hoặc từ chối đăng ký.
-            </p>
-          )}
+              aria-hidden
+            />
+          ) : null}
+        </button>
+        {membersOpen ? (
+          <ul id={membersId} className="max-h-64 space-y-0.5 overflow-y-auto px-3 pb-3">
+            {members.map((m) => (
+              <li
+                key={m.userId}
+                className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-muted/50"
+              >
+                <EmployeeAvatar
+                  name={m.name}
+                  className="size-7 shadow-none ring-0"
+                  fallbackClassName="bg-button/10 text-button"
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">{m.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{m.email}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
 
-          {onEdit || onDelete ? (
-            <div className="mt-5 flex gap-2">
-              {onDelete ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 flex-1 rounded-xl font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                  onClick={() => onDelete(row.id)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Xóa lớp
-                </Button>
-              ) : null}
-              {onEdit ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 flex-1 rounded-xl font-bold text-primary hover:bg-primary/5"
-                  onClick={() => onEdit(row)}
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Chỉnh sửa
-                </Button>
-              ) : null}
-            </div>
+      {onEdit || onDelete || onToggleStatus ? (
+        <div className="flex flex-wrap items-center justify-end gap-1 border-t border-border/70 px-3 py-2">
+          {onToggleStatus ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'mr-auto h-8 min-h-8 gap-1.5 rounded-lg px-3 text-muted-foreground',
+                isClosed
+                  ? 'hover:bg-success-muted hover:text-success'
+                  : 'hover:bg-warning-muted hover:text-warning'
+              )}
+              onClick={() => onToggleStatus(row)}
+            >
+              {isClosed ? (
+                <LockOpen className="size-3.5" aria-hidden />
+              ) : (
+                <Lock className="size-3.5" aria-hidden />
+              )}
+              {isClosed ? 'Mở lại lớp' : 'Đóng lớp'}
+            </Button>
+          ) : null}
+          {onEdit ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 min-h-8 gap-1.5 rounded-lg px-3 text-muted-foreground hover:bg-button/10 hover:text-button"
+              onClick={() => onEdit(row)}
+            >
+              <Pencil className="size-3.5" aria-hidden />
+              Chỉnh sửa
+            </Button>
+          ) : null}
+          {onDelete ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 min-h-8 gap-1.5 rounded-lg px-3 text-muted-foreground hover:bg-danger-muted hover:text-danger"
+              onClick={() => onDelete(row.id)}
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+              Xóa lớp
+            </Button>
           ) : null}
         </div>
-      )}
-    </div>
+      ) : null}
+    </article>
   )
 }

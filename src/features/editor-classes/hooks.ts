@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/axios'
+import { managerKeys } from '@/features/manager/queryKeys'
 import { editorClassesApi, type BulkExamScheduleInput } from './api'
 import { editorClassesKeys } from './queryKeys'
 
@@ -18,6 +19,8 @@ export function useSyncEditorClasses() {
     onSuccess: (data) => {
       if (!data.dryRun) {
         void qc.invalidateQueries({ queryKey: editorClassesKeys.list() })
+        // Trang "Quản lý lớp học" hiển thị lớp Editor từ danh sách lớp chung.
+        void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
         toast.success('Đã đồng bộ lớp Editor')
       }
     },
@@ -32,6 +35,7 @@ export function useBulkCreateExamSchedules() {
     onSuccess: (data) => {
       if (!data.dryRun) {
         void qc.invalidateQueries({ queryKey: editorClassesKeys.list() })
+        void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
         toast.success(`Đã tạo lịch thi cho ${data.createdCount} lớp`)
       }
     },

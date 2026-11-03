@@ -1,5 +1,7 @@
 import { BRAND_BTN_SOLID, BRAND_TEXT } from '@/components/shared/brandButtonStyles'
-import { OrgUserAvatar } from '@/components/shared/EmployeeAvatar'
+import { EmployeeAvatar, OrgUserAvatar } from '@/components/shared/EmployeeAvatar'
+import { FormDialog } from '@/components/shared/FormDialog'
+import { FormSection } from '@/components/shared/FormSection'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
@@ -7,13 +9,15 @@ import { NumberedPaginationBar } from '@/components/ui/pagination'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { CriteriaWeightsField } from '@/features/exam-papers/components/CriteriaWeightsField'
 import {
   DEFAULT_ESSAY_CRITERIA_WEIGHTS,
-  ESSAY_CRITERIA,
   sumCriteriaWeights,
   type EssayCriteriaWeights,
 } from '@/features/exam-papers/criteria'
@@ -40,17 +44,16 @@ import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 import { BarChart3, Calendar, Loader2, Pencil, Plus, Search, Trash2, UserX, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 import { ExamManagementTabs } from './ExamManagementTabs'
-import { ExamPaperAssignmentFields } from './ExamPaperAssignmentFields'
+import { ExamDurationField, ExamPaperPicker } from './ExamPaperAssignmentFields'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
 
-const PAGE_SUBTITLE = 'Quản lý danh sách kỳ thi, người chấm và theo dõi tiến độ thi trực tuyến.'
+const FIELD_LABEL = 'block text-xs font-semibold text-muted-foreground'
 
 function toLocalDateInputValue(value: Date): string {
   const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000)
@@ -88,6 +91,38 @@ function examBadgeForSchedule(e: Parameters<typeof examLiveStatus>[1]) {
     className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     muted: true,
   }
+}
+
+/** Số bài đã chấm xong / số bài đã nộp (không tính bài đang làm dở). */
+function GradingProgress({ submitted, graded }: { submitted: number; graded: number }) {
+  if (submitted === 0) {
+    return <p className="text-sm italic text-muted-foreground">Chưa có bài nộp</p>
+  }
+  const pct = Math.min(100, Math.round((graded / submitted) * 100))
+  return (
+    <div className="min-w-0">
+      <p className="text-sm font-semibold tabular-nums text-foreground">
+        {graded}
+        <span className="font-normal text-muted-foreground">/{submitted} bài đã chấm</span>
+      </p>
+      <div
+        className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-label="Tiến độ chấm thi"
+        aria-valuenow={graded}
+        aria-valuemin={0}
+        aria-valuemax={submitted}
+      >
+        <div
+          className={cn(
+            'h-full rounded-full transition-[width] duration-500 ease-out',
+            pct >= 100 ? 'bg-green-500' : 'bg-button'
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  )
 }
 
 /** Số dòng mỗi trang của bảng lịch thi (mockup hiển thị "1 - 10 trong N kết quả"). */
@@ -224,6 +259,41 @@ export function ManagerExamScheduleScreen() {
     name: string
     email: string
   } | null>(null)
+
+  const classGroups = useMemo(
+    () => [
+      {
+        label: 'Lớp học tri thức',
+        items: (classes as ManagerClassRow[]).filter((c) => c.isKnowledgeWork !== false),
+      },
+      {
+        label: 'Lớp học khác',
+        items: (classes as ManagerClassRow[]).filter((c) => c.isKnowledgeWork === false),
+      },
+    ],
+    [classes]
+  )
+  const examEndPreview =
+    watchedExamHour && watchedExamMinute && durationInput
+      ? addMinutesToHm(
+          `${watchedExamHour}:${watchedExamMinute}`,
+          Number.parseInt(durationInput, 10) || 0
+        )
+      : undefined
+  const scheduleSummary = (() => {
+    if (!watchedExamDate) return 'Chưa chọn ngày thi'
+    const d = new Date(`${watchedExamDate}T00:00:00`)
+    const day = Number.isNaN(d.getTime())
+      ? watchedExamDate
+      : d.toLocaleDateString('vi-VN', {
+          weekday: 'short',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        })
+    const start = `${watchedExamHour}:${watchedExamMinute}`
+    return examEndPreview ? `${day} · ${start}–${examEndPreview}` : `${day} · ${start}`
+  })()
 
   const modalClass = classes.find((c) => c.id === examModalClassId) ?? null
   const isTapSuClass = modalClass?.levelFrom === 'tap_su' && modalClass?.levelTo === 'biet_viec'
@@ -493,6 +563,12 @@ export function ManagerExamScheduleScreen() {
                         <p className="mt-0.5 text-sm italic text-muted-foreground">Chưa gán đề</p>
                       )}
                     </div>
+                    <div className="rounded-lg bg-muted/40 px-3 py-2">
+                      <p className="mb-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                        Tiến độ chấm
+                      </p>
+                      <GradingProgress submitted={e.submittedCount} graded={e.gradedCount} />
+                    </div>
                     <div className="flex flex-col gap-2">
                       <Button
                         type="button"
@@ -554,17 +630,20 @@ export function ManagerExamScheduleScreen() {
             <table className="w-full table-fixed border-collapse text-left">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="w-[30%] max-w-[300px] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <th className="w-[24%] max-w-[300px] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Tên lớp & Kỳ thi
                   </th>
-                  <th className="w-[20%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <th className="w-[18%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Thời gian
                   </th>
-                  <th className="w-[18%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <th className="w-[16%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Người chấm
                   </th>
-                  <th className="w-[20%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <th className="w-[16%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Đề thi & Tình trạng
+                  </th>
+                  <th className="w-[14%] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Tiến độ chấm
                   </th>
                   <th className="w-[12%] px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Thao tác
@@ -574,7 +653,7 @@ export function ManagerExamScheduleScreen() {
               <tbody className="divide-y divide-border">
                 {pagedExams.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-20 text-center">
+                    <td colSpan={6} className="px-4 py-20 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Calendar className="mb-4 h-10 w-10 opacity-20" />
                         <p className="font-bold">Không tìm thấy kỳ thi nào</p>
@@ -650,6 +729,9 @@ export function ManagerExamScheduleScreen() {
                           ) : (
                             <p className="text-sm italic text-muted-foreground">Chưa gán đề</p>
                           )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <GradingProgress submitted={e.submittedCount} graded={e.gradedCount} />
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -737,227 +819,235 @@ export function ManagerExamScheduleScreen() {
         </div>
       </ManagerScreenLayout>
 
-      {examModalOpen &&
-        createPortal(
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-            <div className="max-h-[min(92dvh,900px)] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-2xl animate-in zoom-in-95 duration-200 sm:p-6">
-              <div className="mb-6 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  {editingScheduleId ? 'Chỉnh sửa lịch thi' : 'Thiết lập kỳ thi mới'}
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full"
-                  onClick={closeExamModal}
+      <FormDialog
+        open={examModalOpen}
+        onOpenChange={(open) => {
+          if (!open) closeExamModal()
+        }}
+        title={editingScheduleId ? 'Chỉnh sửa lịch thi' : 'Tạo lịch thi'}
+        description="Chọn lớp, thời gian, đề thi và người chấm cho kỳ thi."
+        icon={<Calendar className="size-5" />}
+        footer={
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-semibold tabular-nums text-foreground">{scheduleSummary}</span>
+              {' · '}
+              {selectedPaperIds.length > 0 ? `${selectedPaperIds.length} đề` : 'chưa chọn đề'}
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={closeExamModal}>
+                Hủy
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className={cn('px-5', BRAND_BTN_SOLID)}
+                onClick={saveExamSchedule}
+                disabled={!examModalClassId || createSchedule.isPending || updateSchedule.isPending}
+              >
+                {createSchedule.isPending || updateSchedule.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
+                {editingScheduleId ? 'Lưu thay đổi' : 'Tạo lịch thi'}
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-6">
+          <FormSection title="Lớp & kỳ thi">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className={FIELD_LABEL}>Lớp học</label>
+                <Select
+                  value={examModalClassId ?? ''}
+                  onValueChange={setExamModalClassId}
+                  disabled={!!editingScheduleId}
                 >
-                  <X className="h-5 w-5" />
-                </Button>
+                  <SelectTrigger className="h-10 w-full rounded-xl" aria-label="Lớp học">
+                    <SelectValue placeholder="Chọn lớp..." />
+                  </SelectTrigger>
+                  {/* Danh sách render qua portal (ngoài FormDialog) → tự gán lại tông xanh. */}
+                  <SelectContent className="rounded-xl [--primary:var(--button)]">
+                    {classGroups.map((g) =>
+                      g.items.length > 0 ? (
+                        <SelectGroup key={g.label}>
+                          <SelectLabel>{g.label}</SelectLabel>
+                          {g.items.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ) : null
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
+              <div className="space-y-1.5">
+                <label htmlFor="exam-topic" className={FIELD_LABEL}>
+                  Tên kỳ thi
+                </label>
+                <Input
+                  id="exam-topic"
+                  {...examForm.register('topic')}
+                  placeholder="Ví dụ: Kỳ thi năng lực đợt 1"
+                  className="h-10 rounded-xl"
+                />
+              </div>
+            </div>
+          </FormSection>
 
-              <div className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground ml-1">
-                    Chọn lớp học
-                  </label>
-                  <Select
-                    value={examModalClassId ?? ''}
-                    onValueChange={setExamModalClassId}
-                    disabled={!!editingScheduleId}
-                  >
-                    <SelectTrigger className="h-10 w-full rounded-xl border-border bg-muted/20 font-bold">
-                      <SelectValue placeholder="Chọn lớp..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {classes.map((c) => (
-                        <SelectItem key={c.id} value={c.id} className="font-bold">
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground ml-1">
-                    Tên kỳ thi (Topic)
-                  </label>
+          <FormSection title="Thời gian">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className={FIELD_LABEL}>Ngày thi</label>
+                <DatePicker
+                  value={watchedExamDate}
+                  onChange={(value) => setExamValue('examDate', value)}
+                  min={toLocalDateInputValue(new Date())}
+                  className="h-10 w-full rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="exam-hour" className={FIELD_LABEL}>
+                  Giờ bắt đầu
+                </label>
+                <div className="flex h-10 items-center gap-1 rounded-xl border border-border bg-background px-3 shadow-sm focus-within:ring-2 focus-within:ring-button/35">
                   <Input
-                    {...examForm.register('topic')}
-                    placeholder="Ví dụ: Kỳ thi năng lực đợt 1"
-                    className="h-10 w-full rounded-xl"
+                    id="exam-hour"
+                    inputMode="numeric"
+                    aria-label="Giờ"
+                    value={watchedExamHour}
+                    onChange={(e) => setExamValue('examHour', clampTwoDigit(e.target.value, 0, 23))}
+                    className="h-7 w-8 border-none bg-transparent p-0 text-center font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                  />
+                  <span className="font-semibold text-muted-foreground">:</span>
+                  <Input
+                    inputMode="numeric"
+                    aria-label="Phút"
+                    value={watchedExamMinute}
+                    onChange={(e) =>
+                      setExamValue('examMinute', clampTwoDigit(e.target.value, 0, 59))
+                    }
+                    className="h-7 w-8 border-none bg-transparent p-0 text-center font-semibold tabular-nums shadow-none focus-visible:ring-0"
                   />
                 </div>
+              </div>
+            </div>
+            <ExamDurationField
+              durationInput={durationInput}
+              onDurationChange={setDurationInput}
+              endTimePreview={examEndPreview}
+            />
+          </FormSection>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-muted-foreground ml-1">Ngày thi</label>
-                    <DatePicker
-                      value={watchedExamDate}
-                      onChange={(value) => setExamValue('examDate', value)}
-                      min={toLocalDateInputValue(new Date())}
-                      className="h-10 w-full rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-muted-foreground ml-1">Giờ thi</label>
-                    <div className="flex items-center gap-2 px-3 py-1 bg-muted/20 rounded-xl border border-border h-10">
-                      <Input
-                        inputMode="numeric"
-                        value={watchedExamHour}
-                        onChange={(e) =>
-                          setExamValue('examHour', clampTwoDigit(e.target.value, 0, 23))
-                        }
-                        className="h-7 w-8 border-none bg-transparent p-0 text-center font-bold shadow-none focus-visible:ring-0"
-                      />
-                      <span className="font-bold text-muted-foreground">:</span>
-                      <Input
-                        inputMode="numeric"
-                        value={watchedExamMinute}
-                        onChange={(e) =>
-                          setExamValue('examMinute', clampTwoDigit(e.target.value, 0, 59))
-                        }
-                        className="h-7 w-8 border-none bg-transparent p-0 text-center font-bold shadow-none focus-visible:ring-0"
-                      />
-                    </div>
-                  </div>
-                </div>
+          <FormSection
+            title="Đề thi"
+            description="Chọn nhiều đề — mỗi học viên được gán ngẫu nhiên 1 đề khi vào thi."
+          >
+            <ExamPaperPicker selectedPaperIds={selectedPaperIds} onTogglePaper={togglePaper} />
+          </FormSection>
 
-                <ExamPaperAssignmentFields
-                  durationInput={durationInput}
-                  onDurationChange={setDurationInput}
-                  selectedPaperIds={selectedPaperIds}
-                  onTogglePaper={togglePaper}
-                  endTimePreview={
-                    watchedExamHour && watchedExamMinute && durationInput
-                      ? addMinutesToHm(
-                          `${watchedExamHour}:${watchedExamMinute}`,
-                          Number.parseInt(durationInput, 10) || 0
-                        )
-                      : undefined
-                  }
-                />
-
-                <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-4">
-                  <div className="mb-1 flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-wider text-primary">
-                      Thang điểm đánh giá tự luận
-                    </label>
-                    <span
-                      className={cn(
-                        'text-xs font-bold',
-                        sumCriteriaWeights(criteriaWeights) === 100
-                          ? 'text-emerald-600'
-                          : 'text-rose-600'
-                      )}
-                    >
-                      Tổng: {sumCriteriaWeights(criteriaWeights)}%
-                      {sumCriteriaWeights(criteriaWeights) !== 100 ? ' — phải bằng 100%' : ''}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Áp dụng cho câu tự luận chấm theo tiêu chí (không dùng cho lịch thi đã gán đề
-                    ExamPaper — đề đó tự có thang điểm riêng theo từng câu).
+          <FormSection title="Chấm thi">
+            {!editingScheduleId ? (
+              <div className="space-y-1.5">
+                <label htmlFor="exam-teacher" className={FIELD_LABEL}>
+                  Người chấm thi
+                </label>
+                {isTapSuClass ? (
+                  <p className="rounded-xl border border-warning/30 bg-warning-muted/60 px-3 py-2.5 text-sm text-foreground">
+                    Lớp Tập sự tự gán giáo viên phụ trách:{' '}
+                    <span className="font-semibold">{modalClass?.teacher?.name || '—'}</span>
                   </p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {ESSAY_CRITERIA.map((c) => (
-                      <div key={c.id} className="flex flex-col gap-1">
-                        <label className="text-xs font-semibold text-foreground">{c.label}</label>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={criteriaWeights[c.id]}
-                            onChange={(e) =>
-                              setCriteriaWeights((prev) => ({
-                                ...prev,
-                                [c.id]: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
-                              }))
-                            }
-                            className="h-8 w-20 text-sm"
-                          />
-                          <span className="text-xs font-bold text-primary">%</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {!editingScheduleId && (
-                  <div
-                    className={cn('space-y-1.5', isTapSuClass && 'opacity-50 pointer-events-none')}
-                  >
-                    <label className="text-xs font-bold text-muted-foreground ml-1">
-                      Người chấm thi
-                    </label>
-                    <div className="search-dropdown-container relative">
-                      {isTapSuClass ? (
-                        <div className="h-10 w-full rounded-xl bg-amber-50 border border-amber-100 px-3 flex items-center text-xs text-amber-700 font-bold">
-                          Tự động gán: {modalClass?.teacher?.name || '—'}
-                        </div>
-                      ) : (
-                        <>
-                          <Input
-                            value={watchedExamTeacherQuery}
-                            onChange={(e) => setExamValue('examTeacherQuery', e.target.value)}
-                            placeholder="Tìm kiếm giáo viên..."
-                            className="h-10 w-full rounded-xl"
-                          />
-                          {watchedExamTeacherQuery.trim().length > 0 &&
-                            watchedExamTeacherQuery !== examTeacher?.name && (
-                              <div className="absolute z-50 mt-2 max-h-48 w-full overflow-auto rounded-xl border border-border bg-card p-1.5 shadow-xl">
-                                {fetchingExamTeachers ? (
-                                  <div className="flex items-center justify-center py-4">
-                                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                                  </div>
-                                ) : (
-                                  examTeacherOptions.map((opt) => (
-                                    <Button
-                                      key={opt.userId}
-                                      variant="ghost"
-                                      className="h-auto w-full flex-col items-start px-3 py-2 text-left hover:bg-primary/5 rounded-lg"
-                                      onClick={() => {
-                                        setExamTeacher(opt)
-                                        setExamValue('examTeacherQuery', opt.name)
-                                      }}
-                                    >
-                                      <span className="font-bold text-xs">{opt.name}</span>
-                                      <span className="text-xs opacity-60">{opt.email}</span>
-                                    </Button>
-                                  ))
-                                )}
-                              </div>
-                            )}
-                        </>
-                      )}
+                ) : examTeacher ? (
+                  <div className="flex items-center gap-3 rounded-xl border border-button/30 bg-button/5 px-3 py-2">
+                    <EmployeeAvatar
+                      name={examTeacher.name}
+                      className="size-8 shadow-none ring-0"
+                      fallbackClassName="bg-button/10 text-button"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {examTeacher.name}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{examTeacher.email}</p>
                     </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 min-h-8 rounded-lg px-3 text-muted-foreground"
+                      onClick={() => {
+                        setExamTeacher(null)
+                        setExamValue('examTeacherQuery', '')
+                      }}
+                    >
+                      Đổi
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="exam-teacher"
+                      value={watchedExamTeacherQuery}
+                      onChange={(e) => setExamValue('examTeacherQuery', e.target.value)}
+                      placeholder="Gõ tên hoặc email giáo viên..."
+                      autoComplete="off"
+                      className="h-10 rounded-xl pl-9"
+                    />
+                    {watchedExamTeacherQuery.trim().length > 0 ? (
+                      <div className="absolute z-50 mt-1.5 max-h-56 w-full overflow-auto rounded-xl border border-border bg-card p-1.5 shadow-xl">
+                        {fetchingExamTeachers ? (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-4 w-4 animate-spin text-button" />
+                          </div>
+                        ) : examTeacherOptions.length === 0 ? (
+                          <p className="px-3 py-2.5 text-sm text-muted-foreground">
+                            Không tìm thấy giáo viên phù hợp.
+                          </p>
+                        ) : (
+                          examTeacherOptions.map((opt) => (
+                            <button
+                              key={opt.userId}
+                              type="button"
+                              className="flex w-full flex-col items-start rounded-lg px-3 py-2 text-left hover:bg-button/10 focus-visible:bg-button/10 focus-visible:outline-none"
+                              onClick={() => {
+                                setExamTeacher(opt)
+                                setExamValue('examTeacherQuery', opt.name)
+                              }}
+                            >
+                              <span className="text-sm font-semibold text-foreground">
+                                {opt.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">{opt.email}</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>
-
-              <div className="mt-8 flex justify-end gap-3 pt-5 border-t">
-                <Button variant="ghost" onClick={closeExamModal} className="font-bold text-xs">
-                  Hủy
-                </Button>
-                <Button
-                  className={cn('px-6 text-xs font-bold', BRAND_BTN_SOLID)}
-                  onClick={saveExamSchedule}
-                  disabled={
-                    !examModalClassId || createSchedule.isPending || updateSchedule.isPending
-                  }
-                >
-                  {(createSchedule.isPending || updateSchedule.isPending) && (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  )}
-                  Xác nhận
-                </Button>
+            ) : null}
+            <div className="space-y-2">
+              <div>
+                <p className={FIELD_LABEL}>Thang điểm tự luận</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Dùng khi lịch thi không gán đề — đề thi đã có thang điểm riêng cho từng câu tự
+                  luận.
+                </p>
               </div>
+              <CriteriaWeightsField
+                value={criteriaWeights}
+                onChange={setCriteriaWeights}
+                idPrefix="schedule-criteria"
+              />
             </div>
-          </div>,
-          document.body
-        )}
+          </FormSection>
+        </div>
+      </FormDialog>
 
       {scoresModal && (
         <ClassMembersScoresModal

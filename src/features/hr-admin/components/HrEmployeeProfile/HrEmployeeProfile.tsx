@@ -74,6 +74,7 @@ import { EMPLOYEE_CARD_STATUSES, EMPLOYEE_CARD_STATUS_LABEL } from '../../employ
 import { EmployeeCardColorField } from '../EmployeeCard'
 import { EmployeeExtraTeamsField, extraTeamIdsEqual } from '../EmployeeExtraTeamsField'
 import { EmployeeProjectsCard } from '../EmployeeProjects'
+import { EmployeeChecklistsCard } from '@/features/checklist/components/EmployeeChecklistsCard'
 import { EmployeeOrderNumberField } from './EmployeeOrderNumberField'
 import { CvUploadField } from '../CvAttachmentField'
 import { IdCardPhotoUploadField } from '../IdCardPhotoField'
@@ -1156,6 +1157,8 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
         <EmployeeProjectsCard employeeId={employee.id} canEdit={canEditEmployee} />
 
         <EmployeeLoginCredentialCard employeeId={employee.id} canEdit={canEditLoginCredential} />
+
+        <EmployeeChecklistsCard employeeId={employee.id} />
 
         <ProfileDetailsCard>
           <ProfileDetailSection title={workSection.title} index={0}>

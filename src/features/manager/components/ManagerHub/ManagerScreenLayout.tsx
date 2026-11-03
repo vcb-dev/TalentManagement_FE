@@ -7,7 +7,7 @@ export interface ManagerScreenLayoutProps {
   title?: string
   subtitle?: string
   toolbarExtra?: ReactNode
-  /** Ẩn thanh pill điều hướng hub (Tiến độ nhóm, Chia lớp, …) khi đã có nav ở shell. */
+  /** Ẩn thanh pill điều hướng hub (Tiến độ nhóm, Quản lý lớp học, …) khi đã có nav ở shell. */
   hideHubNav?: boolean
   /**
    * Bỏ `page-toolbar-gradient`; đặt tiêu đề trong `children` (cùng kiểu màn `/manager/team-progress`).

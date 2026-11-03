@@ -41,4 +41,6 @@ export interface UserSession {
   jobTitle?: string
   team?: string
   portraitRef?: string
+  /** Tài khoản admin dùng chung (không phải nhân sự). */
+  isAdminAccount?: boolean
 }

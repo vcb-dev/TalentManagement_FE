@@ -160,13 +160,7 @@ function MemberScheduleTableSkeleton() {
   )
 }
 
-function AvailableClassesSection({
-  currentClassIds = [],
-  isOther = false,
-}: {
-  currentClassIds?: string[]
-  isOther?: boolean
-}) {
+function AvailableClassesSection({ currentClassIds = [] }: { currentClassIds?: string[] }) {
   const { data: classes = [], isLoading } = useAvailableLearningClasses()
   const registerClass = useRegisterLearningClass()
 
@@ -174,12 +168,7 @@ function AvailableClassesSection({
     return <Skeleton className="h-48 w-full rounded-[2rem]" />
   }
 
-  const rows = classes.filter((c) => {
-    return (
-      !currentClassIds.includes(c.id) &&
-      (isOther ? c.isKnowledgeWork === false : c.isKnowledgeWork !== false)
-    )
-  })
+  const rows = classes.filter((c) => !currentClassIds.includes(c.id))
   if (!rows.length) return null
   return (
     <div className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.04)]">
@@ -202,6 +191,7 @@ function AvailableClassesSection({
               <div className="min-w-0">
                 <p className="truncate text-sm font-black text-slate-900">{c.name}</p>
                 <p className="text-xs font-semibold text-slate-500">
+                  {c.isKnowledgeWork === false ? 'Lớp học khác · ' : ''}
                   {c.memberCount}/{c.capacity} học viên · còn {c.seatsLeft} chỗ
                 </p>
               </div>
@@ -241,7 +231,7 @@ function AvailableClassesSection({
   )
 }
 
-export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
+export function MemberClassesPanel() {
   const user = useAuthStore((s) => s.user)
   const queryClient = useQueryClient()
   const filterForm = useForm<{ startDate: string; endDate: string }>({
@@ -269,9 +259,7 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
     topic: string
   } | null>(null)
 
-  const enrolledClasses = (data?.enrolledClasses ?? []).filter((c) =>
-    isOther ? c.isKnowledgeWork === false : c.isKnowledgeWork !== false
-  )
+  const enrolledClasses = data?.enrolledClasses ?? []
 
   const isDeadlineOnly = useCallback((s: any) => {
     return s.location === 'Nộp bài trực tuyến' || s.topic?.includes('Hạn nộp')
@@ -542,7 +530,7 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
             Khi quản lý gán lớp, thông tin sẽ hiển thị tại đây.
           </p>
         </div>
-        <AvailableClassesSection isOther={isOther} />
+        <AvailableClassesSection />
       </div>
     )
   }
@@ -617,6 +605,8 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
       </div>
 
       {enrolledClasses.map((classItem) => {
+        // Lớp học khác: tài liệu gắn theo buổi (`materialRef`) thay vì theo học phần lộ trình.
+        const isOther = classItem.isKnowledgeWork === false
         const classReflectionTasks = getReflectionTasks(classItem)
         const classRegularSchedules = classItem.schedules.filter((s: any) => !isDeadlineOnly(s))
         const classHasAnyMaterials = isOther
@@ -1400,10 +1390,7 @@ export function MemberClassesPanel({ isOther = false }: { isOther?: boolean }) {
         </Modal>
       )}
 
-      <AvailableClassesSection
-        currentClassIds={enrolledClasses.map((c) => c.id)}
-        isOther={isOther}
-      />
+      <AvailableClassesSection currentClassIds={enrolledClasses.map((c) => c.id)} />
       <DialogCustom
         open={feedbackModalOpen}
         onOpenChange={setFeedbackModalOpen}

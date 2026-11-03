@@ -11,7 +11,12 @@ export const ROLE_LABEL_VI: Record<Role, string> = {
 }
 
 /** Chuỗi vai trò khi có thêm quyền giảng viên (MEMBER + TEACHER, …). */
-export function formatRoleLabelsVi(user: { role: Role; roles?: Role[] }): string {
+export function formatRoleLabelsVi(user: {
+  role: Role
+  roles?: Role[]
+  isAdminAccount?: boolean
+}): string {
+  if (user.isAdminAccount) return 'Quản trị hệ thống'
   const list = user.roles?.length ? user.roles : [user.role]
   const unique = [...new Set(list)]
   return unique.map((r) => ROLE_LABEL_VI[r]).join(' · ')

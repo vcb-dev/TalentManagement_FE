@@ -39,6 +39,7 @@ export const userSessionSchema = z.object({
   jobTitle: z.string().optional(),
   team: z.string().optional(),
   portraitRef: z.string().optional(),
+  isAdminAccount: z.boolean().optional(),
 })
 
 export const meResponseSchema = z.object({
