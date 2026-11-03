@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { ChecklistsScreen } from '@/features/checklist/components/ChecklistsScreen'
 
 const checklistsSearchSchema = z.object({
-  tab: z.enum(['mine', 'leader', 'templates']).optional().catch(undefined),
+  tab: z.enum(['mine', 'leader', 'overview', 'templates']).optional().catch(undefined),
   templateId: z.string().uuid().optional().catch(undefined),
   employeeId: z.string().uuid().optional().catch(undefined),
   edit: z

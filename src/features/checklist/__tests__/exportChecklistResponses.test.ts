@@ -42,6 +42,7 @@ const DATA: ChecklistTemplateResponses = {
         employeeIdentifier: 'A001',
         teamName: 'ADS',
         teamLeader: null,
+        startDateWork: '2026-10-01',
       },
       inScope: true,
       responses: [

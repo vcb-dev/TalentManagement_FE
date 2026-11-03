@@ -164,6 +164,18 @@ body {
   /* Trùng với <link> Google Fonts trong index.html: Roboto */
   --font-primary: 'Roboto', system-ui, sans-serif;
   --font-display: 'Roboto', system-ui, sans-serif;
+  /* Biểu đồ phân loại (8 ô, thứ tự cố định, đã kiểm tra mù màu trên nền card) — ô 3, 4, 5 dưới 3:1 nên luôn kèm nhãn số. */
+  --viz-cat-1: #2a78d6;
+  --viz-cat-2: #eb6834;
+  --viz-cat-3: #1baf7a;
+  --viz-cat-4: #eda100;
+  --viz-cat-5: #e87ba4;
+  --viz-cat-6: #008300;
+  --viz-cat-7: #6250d6;
+  --viz-cat-8: #e34948;
+  /* "Bỏ trống" (xám nhạt) và "(đã xoá / ngoài thang)" (xám đậm hơn) phải phân biệt được khi đứng cạnh nhau. */
+  --viz-none: #cbd5e1;
+  --viz-removed: #8a97ab;
 }
 
 .dark {
@@ -190,6 +202,16 @@ body {
   --button-hover: 162 100% 24%;
   --button-active: 162 90% 20%;
   --shadow-card: 0 2px 12px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.06);
+  --viz-cat-1: #3987e5;
+  --viz-cat-2: #d95926;
+  --viz-cat-3: #199e70;
+  --viz-cat-4: #c98500;
+  --viz-cat-5: #d55181;
+  --viz-cat-6: #008300;
+  --viz-cat-7: #9085e9;
+  --viz-cat-8: #e66767;
+  --viz-none: #334155;
+  --viz-removed: #7b8799;
 }
 
 /* Animation dùng cho dashboard học tập (motion-reduce: tắt ở component) */

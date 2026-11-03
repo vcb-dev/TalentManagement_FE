@@ -5,6 +5,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  LayoutDashboard,
   ListChecks,
   Pencil,
   Plus,
@@ -45,6 +46,7 @@ function TemplateCard({
   onView,
   onEdit,
   onResponses,
+  onOverview,
   onToggleActive,
   onRemove,
 }: {
@@ -52,6 +54,7 @@ function TemplateCard({
   onView: () => void
   onEdit: () => void
   onResponses: () => void
+  onOverview: () => void
   onToggleActive: () => void
   onRemove: () => void
 }) {
@@ -124,6 +127,10 @@ function TemplateCard({
         <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={onResponses}>
           <ListChecks className="size-3.5" aria-hidden />
           Câu trả lời
+        </Button>
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={onOverview}>
+          <LayoutDashboard className="size-3.5" aria-hidden />
+          Tổng quan
         </Button>
         <Button type="button" variant="ghost" size="sm" className="h-8 gap-1" onClick={onEdit}>
           <Pencil className="size-3.5" aria-hidden />
@@ -229,9 +236,11 @@ function EditTemplate({ id, onDone }: { id: string; onDone: () => void }) {
 export function ChecklistTemplatesPanel({
   view,
   onNavigate,
+  onOverview,
 }: {
   view: ChecklistAdminView
   onNavigate: (next: ChecklistAdminView) => void
+  onOverview: (templateId: string) => void
 }) {
   const { data: templates = [], isLoading } = useChecklistTemplates()
   const update = useUpdateChecklistTemplate()
@@ -299,6 +308,7 @@ export function ChecklistTemplatesPanel({
               onView={() => onNavigate({ view: t.id })}
               onEdit={() => onNavigate({ edit: t.id })}
               onResponses={() => onNavigate({ responses: t.id })}
+              onOverview={() => onOverview(t.id)}
               onToggleActive={() =>
                 t.isActive
                   ? setConfirm({ action: 'deactivate', template: t })
