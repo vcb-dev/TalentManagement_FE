@@ -113,6 +113,8 @@ export const managerClassScheduleApiSchema = z.object({
   isNew: z.boolean().optional(),
 })
 
+const classCourseRefSchema = z.object({ id: z.string().uuid(), title: z.string() })
+
 export const managerClassApiSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -135,6 +137,9 @@ export const managerClassApiSchema = z.object({
     .nullable()
     .optional()
     .default(null),
+  /** Khoá học lớp dạy; `coursePath` null = dạy cả khoá. */
+  course: classCourseRefSchema.nullable().optional().default(null),
+  coursePath: classCourseRefSchema.nullable().optional().default(null),
   teacher: z
     .object({
       userId: z.string().uuid(),

@@ -41,12 +41,14 @@ function routeGroup(item: AppNavItem): string {
   }
   if (
     item.to.startsWith('/learning-path') ||
+    item.to.startsWith('/courses') ||
     item.to.startsWith('/learning-classes') ||
     item.to.startsWith('/exam')
   ) {
     return 'learning'
   }
   if (item.to.startsWith('/dashboard')) return 'dashboard'
+  if (item.to.startsWith('/activities')) return 'activities'
   if (item.to.startsWith('/rewards')) return 'rewards'
   if (item.to.startsWith('/checklists')) return 'checklist'
   return 'other'
@@ -55,6 +57,7 @@ function routeGroup(item: AppNavItem): string {
 function buildHeaderGroups(items: AppNavItem[], labels: Record<string, string>): HeaderNavGroup[] {
   const order = [
     'dashboard',
+    'activities',
     'learning',
     'room-booking',
     'rewards',
@@ -140,6 +143,7 @@ export function MemberLeaderHeaderNav() {
     () => ({
       company: 'Công ty',
       dashboard: 'Tổng quan',
+      activities: 'Hoạt động',
       learning: 'Học tập',
       'room-booking': isPrivileged ? 'Duyệt phòng họp' : 'Đặt phòng họp',
       // Nhóm tự ẩn khi rỗng (cả KPI/OKR lẫn Báo cáo hàng tháng đều tắt)
@@ -171,7 +175,7 @@ export function MemberLeaderHeaderNav() {
 
           if (isSingle) {
             const linkClass = cn(
-              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 active:scale-95 border border-transparent bg-transparent text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white focus:text-white',
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-2 py-2 text-sm font-medium min-[1500px]:px-4 transition-all duration-200 active:scale-95 border border-transparent bg-transparent text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white focus:text-white',
               active && 'border-white/30 bg-white/15 text-white'
             )
             return (
@@ -205,7 +209,8 @@ export function MemberLeaderHeaderNav() {
             <NavigationMenuItem key={group.id}>
               <NavigationMenuTrigger
                 className={cn(
-                  'h-10 rounded-md px-4 py-2 text-sm font-medium shadow-none',
+                  // Dưới 1500px nút hồ sơ hiện cả tên (tới ~214px) — giữ đệm hẹp để menu không đè lên chuông.
+                  'h-10 rounded-md px-2 py-2 text-sm font-medium shadow-none min-[1500px]:px-4',
                   '!border-transparent !bg-transparent !text-white/90',
                   'hover:!border-white/25 hover:!bg-white/10 hover:!text-white',
                   'focus:!bg-white/10 focus:!text-white focus:!shadow-none',

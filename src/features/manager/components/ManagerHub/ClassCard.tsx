@@ -1,8 +1,11 @@
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import {
+  BookMarked,
   CalendarClock,
   CalendarRange,
   ChevronDown,
+  ChevronRight,
   GraduationCap,
   Lock,
   LockOpen,
@@ -98,6 +101,26 @@ export function ClassCard({ row, onEdit, onDelete, onToggleStatus }: ClassCardPr
             <span className={cn('size-1.5 rounded-full', status.dot)} aria-hidden />
             {status.label}
           </span>
+          {row.course ? (
+            // basis-0 + min-w: chip luôn cùng hàng trạng thái, cắt "…" khi thiếu chỗ (xem đủ tên qua
+            // tooltip); nhãn cấp của lớp cũ nhường chỗ, xuống hàng dưới.
+            <div className="flex min-w-[60%] flex-1 basis-0">
+              <Link
+                to="/courses"
+                search={{ courseId: row.course.id }}
+                className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-button/10 px-2.5 py-0.5 text-xs font-semibold text-button transition-colors hover:bg-button/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-button/35"
+                title={`${row.course.title} › ${row.coursePath?.title ?? 'Cả khoá học'}`}
+              >
+                <BookMarked className="size-3.5 shrink-0" aria-hidden />
+                <span className="min-w-0 truncate">{row.course.title}</span>
+                <span className="sr-only">, </span>
+                <ChevronRight className="size-3 shrink-0" aria-hidden />
+                <span className={cn('min-w-0 truncate font-medium', !row.coursePath && 'shrink-0')}>
+                  {row.coursePath?.title ?? 'Cả khoá học'}
+                </span>
+              </Link>
+            </div>
+          ) : null}
           {isKnowledgeWork ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-button/10 px-2.5 py-0.5 text-xs font-semibold text-button">
               <GraduationCap className="size-3.5" aria-hidden />

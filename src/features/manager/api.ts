@@ -161,6 +161,9 @@ export const managerApi = {
     memberUserIds?: string[]
     teacherUserId?: string | null
     isKnowledgeWork?: boolean
+    /** Khoá học lớp dạy; kèm `coursePathId` = dạy riêng lộ trình đó, null = dạy cả khoá. */
+    courseId?: string | null
+    coursePathId?: string | null
   }) => {
     const res = await apiClient.post<unknown>('/manager/classes', input)
     return safeParse(managerClassCreateResponseSchema, res.data, 'POST /manager/classes')
@@ -179,6 +182,8 @@ export const managerApi = {
       isKnowledgeWork?: boolean
       levelFrom?: string
       levelTo?: string
+      courseId?: string | null
+      coursePathId?: string | null
     }
   ) => {
     const res = await apiClient.patch<unknown>(`/manager/classes/${classId}`, input)

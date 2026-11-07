@@ -185,6 +185,8 @@ export function useUpdateManagerClass() {
         isKnowledgeWork?: boolean
         levelFrom?: string
         levelTo?: string
+        courseId?: string | null
+        coursePathId?: string | null
       }
     }) => managerApi.updateClass(classId, input),
     onSuccess: () => {
