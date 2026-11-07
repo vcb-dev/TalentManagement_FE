@@ -75,43 +75,112 @@ export const myDashboardSchema = z.object({
 
 export type MyDashboardResponse = z.infer<typeof myDashboardSchema>
 
-const learningOpsActiveClassSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-  status: z.literal('open'),
-  isKnowledgeWork: z.boolean(),
-  startDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable(),
-  endDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable(),
-  memberCount: z.number().int().nonnegative(),
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+const countSchema = z.number().int().nonnegative()
+const bucketSchema = z.object({ key: z.string(), label: z.string(), count: countSchema })
+const labelCountSchema = z.object({ label: z.string().nullable(), count: countSchema })
+const attendanceSchema = z.object({ present: countSchema, late: countSchema, absent: countSchema })
+/** Bài đã nộp; `waiting` = đã nộp chưa có kết quả, `other` = bảo lưu / chia tay. */
+const examTallySchema = z.object({
+  submitted: countSchema,
+  passed: countSchema,
+  retake: countSchema,
+  other: countSchema,
+  waiting: countSchema,
 })
 
-export const learningOpsSummarySchema = z.object({
+export const overviewSummarySchema = z.object({
   period: z.object({
     year: z.number().int(),
     startMonth: z.number().int().min(1).max(12),
     endMonth: z.number().int().min(1).max(12),
   }),
-  peopleByCareerLevel: z.record(z.string(), z.number().int().nonnegative()),
-  levelUpCount: z.number().int().nonnegative(),
-  /** Lớp đang mở có khoảng hoạt động giao với kỳ lọc; lớp cũ chưa có ngày dùng ngày tạo làm dự phòng. */
-  classesActiveInPeriod: z.array(learningOpsActiveClassSchema).default([]),
-  /** Tổng toàn bộ hồ sơ nhân sự (mọi trạng thái) — khớp "Tổng nhân sự" của trang Danh sách nhân sự. */
-  totalHeadcount: z.number().int().nonnegative(),
-  /** Đúng trạng thái ACTIVE (loại inactive lẫn probation/reserved/transferred). */
-  activeHeadcount: z.number().int().nonnegative(),
-  /** Ngày vào làm (`startDateWork`) nằm trong kỳ lọc. */
-  newHiresInPeriod: z.number().int().nonnegative(),
-  /** Nghỉ / off: ưu tiên ngày trong dữ liệu Lark (`Ngày nghỉ việc`); không có thì fallback `updatedAt` khi đã inactive. */
-  offboardedInPeriod: z.number().int().nonnegative(),
+  today: isoDateSchema,
+  hr: z.object({
+    /** Mọi hồ sơ (kể cả đã nghỉ) — khớp "Tổng nhân sự" của trang Danh sách nhân sự khi không lọc. */
+    totalProfiles: countSchema,
+    /** Đúng trạng thái ACTIVE; mọi phần cơ cấu bên dưới chỉ tính nhóm này. */
+    active: countSchema,
+    newHires: countSchema,
+    leaves: countSchema,
+    /** Đã nghỉ nhưng không có ngày nghỉ — không xếp được vào tháng nào. */
+    leftWithoutDate: countSchema,
+    monthly: z.array(
+      z.object({
+        year: z.number().int(),
+        month: z.number().int().min(1).max(12),
+        newHires: countSchema,
+        leaves: countSchema,
+      })
+    ),
+    byDivision: z.array(
+      z.object({ id: z.string().nullable(), name: z.string(), count: countSchema })
+    ),
+    byTeam: z.array(
+      z.object({
+        id: z.string().nullable(),
+        name: z.string(),
+        divisionName: z.string().nullable(),
+        count: countSchema,
+      })
+    ),
+    byTeamPosition: z.array(labelCountSchema),
+    byGender: z.array(labelCountSchema),
+    byTenure: z.array(bucketSchema),
+    byAge: z.array(bucketSchema),
+    tenureMissing: countSchema,
+    ageMissing: countSchema,
+  }),
+  learning: z.object({
+    classes: z.object({
+      total: countSchema,
+      knowledge: countSchema,
+      other: countSchema,
+      open: countSchema,
+      closed: countSchema,
+    }),
+    enrollments: countSchema,
+    learners: countSchema,
+    activeLearners: countSchema,
+    sessions: z.object({ total: countSchema, held: countSchema, upcoming: countSchema }),
+    attendance: attendanceSchema,
+    exams: examTallySchema.extend({ schedules: countSchema }),
+    backlog: z.object({ gradingWaiting: countSchema, registrationsPending: countSchema }),
+    classRows: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        status: z.enum(['open', 'full', 'closed']),
+        isKnowledgeWork: z.boolean(),
+        kind: z.string().nullable(),
+        startDate: isoDateSchema,
+        endDate: isoDateSchema.nullable(),
+        teacherName: z.string().nullable(),
+        memberCount: countSchema,
+        sessions: z.object({ total: countSchema, held: countSchema }),
+        exams: countSchema,
+        attendance: attendanceSchema,
+        results: examTallySchema,
+      })
+    ),
+    agenda: z.array(
+      z.object({
+        id: z.string(),
+        classId: z.string(),
+        className: z.string(),
+        memberCount: countSchema,
+        dateIso: isoDateSchema,
+        startTime: z.string(),
+        endTime: z.string(),
+        topic: z.string(),
+        isExam: z.boolean(),
+        location: z.string().nullable(),
+      })
+    ),
+  }),
 })
 
-export type LearningOpsSummaryResponse = z.infer<typeof learningOpsSummarySchema>
+export type OverviewSummary = z.infer<typeof overviewSummarySchema>
 
 export const dashboardApi = {
   me: async () => {
@@ -119,10 +188,10 @@ export const dashboardApi = {
     return safeParse(myDashboardSchema, res.data, 'GET /me/dashboard')
   },
 
-  learningOpsSummary: async (year: number, startMonth: number, endMonth: number) => {
-    const res = await apiClient.get<unknown>('/me/learning-ops-summary', {
+  overviewSummary: async (year: number, startMonth: number, endMonth: number) => {
+    const res = await apiClient.get<unknown>('/me/overview-summary', {
       params: { year, startMonth, endMonth },
     })
-    return safeParse(learningOpsSummarySchema, res.data, 'GET /me/learning-ops-summary')
+    return safeParse(overviewSummarySchema, res.data, 'GET /me/overview-summary')
   },
 }

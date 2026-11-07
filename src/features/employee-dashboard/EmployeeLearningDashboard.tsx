@@ -2,16 +2,17 @@ import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { PromotionCelebrationModal } from '@/components/shared/PromotionCelebrationModal'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DashboardActivitiesCard } from '@/features/activities/components/DashboardActivitiesCard'
 import { useMyDashboard } from '@/features/dashboard/hooks'
 import { DashboardKpiOkrZone } from '@/features/employee-dashboard/components/DashboardKpiOkrZone'
 import { DashboardLearningZone } from '@/features/employee-dashboard/components/DashboardLearningZone'
-import { ManagerHrSnapshotCards } from '@/features/employee-dashboard/components/ManagerHrSnapshotCards'
-import { ManagerLearningOpsZone } from '@/features/employee-dashboard/components/ManagerLearningOpsZone'
-import {
-  ManagerSharedReportPeriodFilter,
-  type ManagerReportPeriod,
-} from '@/features/employee-dashboard/components/ManagerSharedReportPeriodFilter'
 import { VinhDanhSlide } from '@/features/employee-dashboard/components/VinhDanhSlide'
+import { ManagerOverview } from '@/features/employee-dashboard/overview/ManagerOverview'
+import { OverviewPeriodPicker } from '@/features/employee-dashboard/overview/OverviewPeriodPicker'
+import {
+  presetPeriod,
+  type OverviewPeriod,
+} from '@/features/employee-dashboard/overview/overviewModel'
 import { LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { KPI_OKR_ENABLED } from '@/lib/featureFlags'
 import { isManagerLikeRole } from '@/lib/managerLikeRole'
@@ -91,43 +92,37 @@ export function EmployeeLearningDashboard() {
     startTransition(() => setTab(t))
   }
 
-  const [managerReportPeriod, setManagerReportPeriod] = useState<ManagerReportPeriod>(() => {
-    const d = new Date()
-    return {
-      reportYear: d.getFullYear(),
-      rangeStartMonth: d.getMonth() + 1,
-      rangeEndMonth: d.getMonth() + 1,
-    }
-  })
+  // Kỳ dùng chung cho tab Nhân sự & lớp học và tab KPI/OKR của quản lý.
+  const [managerPeriod, setManagerPeriod] = useState<OverviewPeriod>(() => presetPeriod('month'))
 
   const managerKpiPeriodBridge = useMemo(
     () => ({
-      reportYear: managerReportPeriod.reportYear,
-      rangeStartMonth: managerReportPeriod.rangeStartMonth,
-      rangeEndMonth: managerReportPeriod.rangeEndMonth,
+      reportYear: managerPeriod.year,
+      rangeStartMonth: managerPeriod.startMonth,
+      rangeEndMonth: managerPeriod.endMonth,
       setReportYear: (y: number) =>
-        setManagerReportPeriod((p) => ({
+        setManagerPeriod((p) => ({
           ...p,
-          reportYear: Math.min(2035, Math.max(2020, y)),
+          year: Math.min(2035, Math.max(2020, y)),
         })),
       setRangeStartMonth: (m: number) => {
         const mm = Math.min(12, Math.max(1, m))
-        setManagerReportPeriod((p) => ({
+        setManagerPeriod((p) => ({
           ...p,
-          rangeStartMonth: mm,
-          rangeEndMonth: p.rangeEndMonth < mm ? mm : p.rangeEndMonth,
+          startMonth: mm,
+          endMonth: p.endMonth < mm ? mm : p.endMonth,
         }))
       },
       setRangeEndMonth: (m: number) => {
         const mm = Math.min(12, Math.max(1, m))
-        setManagerReportPeriod((p) => ({
+        setManagerPeriod((p) => ({
           ...p,
-          rangeStartMonth: p.rangeStartMonth > mm ? mm : p.rangeStartMonth,
-          rangeEndMonth: mm,
+          startMonth: p.startMonth > mm ? mm : p.startMonth,
+          endMonth: mm,
         }))
       },
     }),
-    [managerReportPeriod]
+    [managerPeriod]
   )
 
   const { data: meDashboard, isLoading } = useMyDashboard({ enabled: Boolean(user) })
@@ -240,24 +235,18 @@ export function EmployeeLearningDashboard() {
       <div
         className={cn(
           'relative z-[1]',
-          isManagerLearningDash ? 'space-y-3 pb-4' : 'space-y-4 pb-8'
+          isManagerLearningDash ? 'space-y-5 pb-8' : 'space-y-4 pb-8'
         )}
       >
         {isManagerLearningDash ? (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <section className="min-w-0 shrink-0">
-              <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Tổng quan quản lý</h1>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+            <section className="min-w-0">
+              <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Tổng quan</h1>
               <p className="text-sm text-muted-foreground">
-                {KPI_OKR_ENABLED
-                  ? 'Nhân sự, học tập & KPI theo kỳ báo cáo.'
-                  : 'Nhân sự & học tập theo kỳ báo cáo.'}
+                Nhân sự và lớp học toàn công ty theo kỳ báo cáo.
               </p>
             </section>
-            <ManagerSharedReportPeriodFilter
-              value={managerReportPeriod}
-              onChange={setManagerReportPeriod}
-              className="w-full shrink-0 motion-reduce:animate-none sm:flex-1 sm:min-w-[min(100%,42rem)] lg:max-w-[48rem] !rounded-lg !border-border/80 !bg-card/90 !p-2 !shadow-sm [&>div:first-child]:hidden [&>div:last-child]:grid-cols-3 [&>div:last-child]:gap-2 [&>div>div]:space-y-1 [&>div>div>span]:text-sm [&>div>div>span]:font-semibold [&_input]:h-8 [&_input]:rounded-lg [&_input]:text-xs [&_button]:h-8 [&_button]:min-h-8 [&_button]:rounded-lg [&_button]:text-xs"
-            />
+            <OverviewPeriodPicker value={managerPeriod} onChange={setManagerPeriod} />
           </div>
         ) : null}
 
@@ -319,15 +308,10 @@ export function EmployeeLearningDashboard() {
 
         {KPI_OKR_ENABLED && !isManagerLearningDash ? <VinhDanhSlide /> : null}
 
+        {!isManagerLearningDash ? <DashboardActivitiesCard /> : null}
+
         {showKpiZone ? (
-          <div className={isManagerLearningDash ? 'space-y-3' : 'space-y-5'}>
-            {isManagerLearningDash && (
-              <ManagerHrSnapshotCards
-                reportYear={managerReportPeriod.reportYear}
-                rangeStartMonth={managerReportPeriod.rangeStartMonth}
-                rangeEndMonth={managerReportPeriod.rangeEndMonth}
-              />
-            )}
+          <div className={isManagerLearningDash ? 'space-y-4' : 'space-y-5'}>
             {/* Tab switcher — tắt KPI/OKR thì chỉ còn tab Học tập, ẩn luôn thanh chuyển tab */}
             {KPI_OKR_ENABLED && (
               <div
@@ -354,7 +338,7 @@ export function EmployeeLearningDashboard() {
                     )}
                   >
                     <GraduationCap className="h-4 w-4 shrink-0" strokeWidth={2} />
-                    Học tập
+                    {isManagerLearningDash ? 'Nhân sự & lớp học' : 'Học tập'}
                   </Button>
                   <Button
                     type="button"
@@ -388,11 +372,7 @@ export function EmployeeLearningDashboard() {
             >
               {tab === 'learning' &&
                 (isManagerLearningDash ? (
-                  <ManagerLearningOpsZone
-                    reportYear={managerReportPeriod.reportYear}
-                    rangeStartMonth={managerReportPeriod.rangeStartMonth}
-                    rangeEndMonth={managerReportPeriod.rangeEndMonth}
-                  />
+                  <ManagerOverview period={managerPeriod} />
                 ) : (
                   <DashboardLearningZone
                     isLoading={isLoading}
