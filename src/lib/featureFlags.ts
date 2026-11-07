@@ -11,3 +11,10 @@ export const KPI_OKR_ENABLED = true
  * Đặt `false` để ẩn — dữ liệu/API backend không bị ảnh hưởng.
  */
 export const MONTHLY_REPORT_ENABLED = true
+
+/**
+ * Bật/tắt mục menu "Lộ trình học" (`/learning-path` — lộ trình cấp/sao): chỉ ẩn menu,
+ * route vẫn mở được vì nút "Mở lộ trình học" trên dashboard còn dẫn tới.
+ * Đặt `false` để ẩn — dữ liệu/API backend không bị ảnh hưởng.
+ */
+export const LEARNING_PATH_NAV_ENABLED = false

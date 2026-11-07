@@ -18,8 +18,8 @@ export const DEFAULT_COMPANY_LANDING_CONTENT: CompanyLandingContent = {
     subtitle:
       '10+ năm phát triển thương hiệu thủ công trên thị trường toàn cầu – kết hợp công nghệ tiên tiến nhất với những ngành nghề thủ công truyền thống nhất.',
     exploreCta: 'Khám phá câu chuyện',
-    teamImageSrc: '/Image_VCB/team_building.png',
-    teamImageAlt: 'Đội ngũ Viễn Chí Bảo — Sơ kết và team building',
+    teamImageSrc: '/Image_VCB/ra_khoi_2026.jpg',
+    teamImageAlt: 'Đội ngũ Viễn Chí Bảo — Ra Khơi, Sơ kết 2026',
   },
   visionMissionSection: {
     kicker: 'Định hướng phát triển',

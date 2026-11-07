@@ -5,11 +5,14 @@ import { getVnNow, useVnTime } from '@/hooks/useVnTime'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getRouteApi } from '@tanstack/react-router'
 import {
   AlertCircle,
+  CalendarDays,
   CheckCircle2,
   Clock,
   FileText,
+  History,
   Loader2,
   Plus,
   Upload,
@@ -20,6 +23,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 import { RoomBookingDetailModal } from './RoomBookingDetailModal'
+import { RoomBookingHistory } from './RoomBookingHistory'
 import { RoomBookingMinutesTable } from './RoomBookingMinutesTable'
 import { RoomBookingPendingPanel, RoomBookingRecentPanel } from './RoomBookingSidebar'
 import { RoomScheduleTimeline } from './RoomScheduleTimeline'
@@ -398,11 +402,23 @@ const BookingRow = memo(
   }
 )
 
+const roomBookingRoute = getRouteApi('/_protected/room-booking')
+
+const VIEW_TABS = [
+  { value: undefined, label: 'Lịch phòng họp', icon: CalendarDays },
+  { value: 'history', label: 'Lịch sử của tôi', icon: History },
+] as const
+
 export default function RoomBookingPage() {
   const queryClient = useQueryClient()
   const vnTime = useVnTime()
   const user = useAuthStore((s) => s.user)
   const isPrivileged = user?.role === 'HR' || user?.role === 'MANAGER' || user?.role === 'BOD'
+  const { tab } = roomBookingRoute.useSearch()
+  const navigateRoute = roomBookingRoute.useNavigate()
+  // Tài khoản admin dùng chung không phải nhân sự, không có lịch riêng — ẩn tab như ẩn mục menu.
+  const canViewHistory = !user?.isAdminAccount
+  const isHistoryView = canViewHistory && tab === 'history'
 
   const isRoomAccount = useMemo(() => {
     if (!user) return false
@@ -921,6 +937,39 @@ export default function RoomBookingPage() {
           </div>
         </div>
 
+        {canViewHistory ? (
+          <div
+            className="my-4 flex w-fit flex-wrap items-center gap-1 rounded-xl border border-border/80 bg-card/90 p-1 shadow-sm ring-1 ring-border/60"
+            role="tablist"
+            aria-label="Chế độ xem phòng họp"
+          >
+            {VIEW_TABS.map((t) => {
+              const selected = (t.value === 'history') === isHistoryView
+              const Icon = t.icon
+              return (
+                <Button
+                  key={t.label}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  variant={selected ? 'default' : 'ghost'}
+                  size="sm"
+                  className={cn(
+                    'rounded-lg px-3 py-2 text-xs font-semibold sm:text-sm',
+                    !selected && 'text-muted-foreground'
+                  )}
+                  onClick={() =>
+                    void navigateRoute({ search: (prev) => ({ ...prev, tab: t.value }) })
+                  }
+                >
+                  <Icon className="size-4" aria-hidden />
+                  {t.label}
+                </Button>
+              )
+            })}
+          </div>
+        ) : null}
+
         {success && (
           <div className="flex items-center gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5 backdrop-blur-md animate-in slide-in-from-top-4 duration-300">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-white">
@@ -932,99 +981,110 @@ export default function RoomBookingPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_300px]">
-          <div className="space-y-4 min-w-0">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-center">
-                <p className="text-2xl font-bold text-primary">{stats.total}</p>
-                <p className="text-xs text-muted-foreground">Tổng phòng</p>
+        {isHistoryView ? (
+          <RoomBookingHistory
+            vnTime={vnTime}
+            onOpen={setDetailBooking}
+            onCreate={() => {
+              resetForm()
+              setShowModal(true)
+            }}
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_300px]">
+            <div className="space-y-4 min-w-0">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-center">
+                  <p className="text-2xl font-bold text-primary">{stats.total}</p>
+                  <p className="text-xs text-muted-foreground">Tổng phòng</p>
+                </div>
+                <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-center">
+                  <p className="text-2xl font-bold text-indigo-600">{stats.ongoing}</p>
+                  <p className="text-xs text-muted-foreground">Đang họp</p>
+                </div>
+                <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-center">
+                  <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
+                  <p className="text-xs text-muted-foreground">Chờ duyệt</p>
+                </div>
+                <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-center">
+                  <p className="text-2xl font-bold text-emerald-600">{stats.available}</p>
+                  <p className="text-xs text-muted-foreground">Còn trống</p>
+                </div>
               </div>
-              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-center">
-                <p className="text-2xl font-bold text-indigo-600">{stats.ongoing}</p>
-                <p className="text-xs text-muted-foreground">Đang họp</p>
+              <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <DatePicker
+                    value={viewDate}
+                    onChange={setViewDate}
+                    displayLabel={dateLabel}
+                    className="h-9 w-auto min-w-[200px] justify-start rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm font-semibold shadow-none hover:border-primary/40 hover:bg-muted/50 active:scale-100"
+                  />
+                  {!isTodayView && (
+                    <button
+                      type="button"
+                      onClick={() => setViewDate(vnTime.date)}
+                      className="rounded-lg border border-primary/30 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/5"
+                    >
+                      Hôm nay
+                    </button>
+                  )}
+                  <CustomSelect
+                    value={statusFilter}
+                    onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+                    options={STATUS_FILTER_OPTIONS.map((o) => ({
+                      label: o.label,
+                      value: o.value,
+                    }))}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                  {LEGEND_ITEMS.map((item) => (
+                    <span key={item.key} className="inline-flex items-center gap-1.5">
+                      <span className={`h-2.5 w-2.5 rounded-full ${item.className}`} />
+                      {item.label}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-center">
-                <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
-                <p className="text-xs text-muted-foreground">Chờ duyệt</p>
-              </div>
-              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-center">
-                <p className="text-2xl font-bold text-emerald-600">{stats.available}</p>
-                <p className="text-xs text-muted-foreground">Còn trống</p>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <DatePicker
-                  value={viewDate}
-                  onChange={setViewDate}
-                  displayLabel={dateLabel}
-                  className="h-9 w-auto min-w-[200px] justify-start rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm font-semibold shadow-none hover:border-primary/40 hover:bg-muted/50 active:scale-100"
+              {isFetching && bookings.length === 0 ? (
+                <div className="flex justify-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <RoomScheduleTimeline
+                  viewDate={viewDate}
+                  bookings={dayBookings}
+                  vnTime={vnTime}
+                  onEmptySlotClick={openEmptySlot}
+                  onBookingClick={setDetailBooking}
                 />
-                {!isTodayView && (
-                  <button
-                    type="button"
-                    onClick={() => setViewDate(vnTime.date)}
-                    className="rounded-lg border border-primary/30 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/5"
-                  >
-                    Hôm nay
-                  </button>
-                )}
-                <CustomSelect
-                  value={statusFilter}
-                  onValueChange={(v) => setStatusFilter(v as StatusFilter)}
-                  options={STATUS_FILTER_OPTIONS.map((o) => ({
-                    label: o.label,
-                    value: o.value,
-                  }))}
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-                {LEGEND_ITEMS.map((item) => (
-                  <span key={item.key} className="inline-flex items-center gap-1.5">
-                    <span className={`h-2.5 w-2.5 rounded-full ${item.className}`} />
-                    {item.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-            {isFetching && bookings.length === 0 ? (
-              <div className="flex justify-center py-16">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : (
-              <RoomScheduleTimeline
-                viewDate={viewDate}
-                bookings={dayBookings}
+              )}
+              <RoomBookingMinutesTable
+                items={bookings}
                 vnTime={vnTime}
-                onEmptySlotClick={openEmptySlot}
-                onBookingClick={setDetailBooking}
-              />
-            )}
-            <RoomBookingMinutesTable
-              items={bookings}
-              vnTime={vnTime}
-              currentUserId={user?.id}
-              showAllUsers={isPrivileged}
-              isLoading={isFetching && bookings.length === 0}
-            />
-          </div>
-          <aside className="space-y-4 min-w-0 xl:sticky xl:top-4 xl:self-start">
-            {isPrivileged && (
-              <RoomBookingPendingPanel
-                items={pendingRequests}
-                processingId={processingId}
-                onApprove={handleApprove}
-                onReject={setRejectId}
+                currentUserId={user?.id}
+                showAllUsers={isPrivileged}
                 isLoading={isFetching && bookings.length === 0}
               />
-            )}
-            <RoomBookingRecentPanel
-              items={recentItems}
-              onItemClick={setDetailBooking}
-              isLoading={isFetching && bookings.length === 0}
-            />
-          </aside>
-        </div>
+            </div>
+            <aside className="space-y-4 min-w-0 xl:sticky xl:top-4 xl:self-start">
+              {isPrivileged && (
+                <RoomBookingPendingPanel
+                  items={pendingRequests}
+                  processingId={processingId}
+                  onApprove={handleApprove}
+                  onReject={setRejectId}
+                  isLoading={isFetching && bookings.length === 0}
+                />
+              )}
+              <RoomBookingRecentPanel
+                items={recentItems}
+                onItemClick={setDetailBooking}
+                isLoading={isFetching && bookings.length === 0}
+              />
+            </aside>
+          </div>
+        )}
       </div>
 
       {detailBooking &&

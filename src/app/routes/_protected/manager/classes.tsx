@@ -4,8 +4,16 @@ import { requireAnyPermissionId } from '@/lib/permissionGuards'
 import { ManagerClassesScreen } from '@/features/manager/components/ManagerWorkflowScreens'
 
 const classesSearchSchema = z.object({
-  /** Bỏ trống = tab "Lớp học tri thức". */
-  tab: z.enum(['other']).optional().catch(undefined),
+  /** Id khoá, hoặc 'none' = lớp chưa gắn khoá. Bỏ trống = mọi lớp. */
+  course: z
+    .union([z.literal('none'), z.string().uuid()])
+    .optional()
+    .catch(undefined),
+  /** Id lộ trình trong khoá đang lọc, hoặc 'whole' = lớp dạy cả khoá. Bỏ trống = mọi lộ trình. */
+  path: z
+    .union([z.literal('whole'), z.string().uuid()])
+    .optional()
+    .catch(undefined),
 })
 
 export const Route = createFileRoute('/_protected/manager/classes')({
@@ -18,14 +26,12 @@ export const Route = createFileRoute('/_protected/manager/classes')({
 })
 
 function ManagerClassesPage() {
-  const { tab } = Route.useSearch()
+  const { course, path } = Route.useSearch()
   const navigate = Route.useNavigate()
   return (
     <ManagerClassesScreen
-      tab={tab === 'other' ? 'other' : 'knowledge'}
-      onTabChange={(next) =>
-        void navigate({ search: { tab: next === 'other' ? 'other' : undefined }, replace: true })
-      }
+      courseFilter={{ course, path }}
+      onCourseFilterChange={(next) => void navigate({ search: next, replace: true })}
     />
   )
 }

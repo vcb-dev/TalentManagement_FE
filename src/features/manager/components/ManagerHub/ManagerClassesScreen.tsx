@@ -2,12 +2,16 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Form } from '@/components/ui/form'
-import { DateController, InputController, SelectController } from '@/components/ui/form-controllers'
+import { DateController, InputController } from '@/components/ui/form-controllers'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { SelectItem } from '@/components/ui/select'
+import { useCourseOptions } from '@/features/courses/hooks'
 import { EditorClassesSection } from '@/features/editor-classes/components/EditorClassesSection'
+import {
+  buildCourseFilterOptions,
+  matchesCourseFilter,
+  type ClassCourseFilter,
+} from '@/features/manager/classCourseFilter'
 import {
   useClassMemberOptions,
   useCreateManagerClass,
@@ -21,11 +25,9 @@ import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import type { ManagerClass } from '@/features/manager/types'
 import {
-  BookOpen,
   Calendar,
   CalendarRange,
   FilterX,
-  GraduationCap,
   Loader2,
   PlusCircle,
   Search,
@@ -35,54 +37,36 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { ClassCard } from './ClassCard'
+import { ClassCourseFields } from './ClassCourseFields'
+import { ClassCourseFilterPopover } from './ClassCourseFilterPopover'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
-
-const LEVEL_LABELS: Record<string, string> = {
-  tap_su: 'Tập sự',
-  biet_viec: 'Biết việc',
-  duoc_viec: 'Được việc',
-  dong_gop_ket_qua: 'Đóng góp kết quả',
-  tuong: 'Tướng',
-}
-
-type CreateLevel = 'tap_su' | 'biet_viec' | 'duoc_viec' | 'dong_gop_ket_qua' | 'tuong'
 
 type ClassFormValues = {
   name: string
-  levelFrom: CreateLevel
-  isKnowledgeWork: boolean
   startDate: string
   endDate: string
+  /** '' = không thuộc khoá học. */
+  courseId: string
+  /** '' = dạy cả khoá. */
+  coursePathId: string
 }
 
-const LEVEL_FLOW_OPTIONS: Array<{ value: CreateLevel; label: string }> = [
-  { value: 'tap_su', label: 'Tập sự' },
-  { value: 'biet_viec', label: 'Biết việc' },
-  { value: 'duoc_viec', label: 'Được việc' },
-  { value: 'dong_gop_ket_qua', label: 'Đóng góp kết quả' },
-  { value: 'tuong', label: 'Tướng' },
-]
-
-const NEXT_LEVEL_BY_FROM: Record<CreateLevel, CreateLevel> = {
-  tap_su: 'biet_viec',
-  biet_viec: 'duoc_viec',
-  duoc_viec: 'dong_gop_ket_qua',
-  dong_gop_ket_qua: 'tuong',
-  tuong: 'tuong',
+const EMPTY_CLASS_FORM: ClassFormValues = {
+  name: '',
+  startDate: '',
+  endDate: '',
+  courseId: '',
+  coursePathId: '',
 }
 
-/** Lớp học khác không theo cấp — lưu trọn dải Tập sự → Tướng. */
-const OTHER_CLASS_LEVELS = { levelFrom: 'tap_su', levelTo: 'tuong' } as const
-
-export type ClassTab = 'knowledge' | 'other'
-
-const CLASS_TABS: Array<{ value: ClassTab; label: string; icon: typeof GraduationCap }> = [
-  { value: 'knowledge', label: 'Lớp học tri thức', icon: GraduationCap },
-  { value: 'other', label: 'Lớp học khác', icon: BookOpen },
-]
+/**
+ * Lớp mới không còn loại lớp / cấp lớp (thay bằng khoá học & lộ trình) — lưu như "lớp học khác" cũ:
+ * trọn dải Tập sự → Tướng, ai cũng tự đăng ký được, không giới hạn 1 lớp. Lớp cũ giữ nguyên loại/cấp.
+ */
+const NEW_CLASS_TYPE = { isKnowledgeWork: false, levelFrom: 'tap_su', levelTo: 'tuong' } as const
 
 type StatusFilter = 'all' | 'open' | 'closed'
 
@@ -121,77 +105,6 @@ function matchesClassPeriod(row: ManagerClass, fromDate: string, toDate: string)
 function formatFilterDate(value: string): string {
   const [year, month, day] = value.split('-')
   return year && month && day ? `${day}/${month}/${year}` : value
-}
-
-const CLASS_TYPE_OPTIONS = [
-  {
-    isKnowledgeWork: true,
-    label: 'Lớp học tri thức',
-    hint: 'Theo cấp lộ trình. Mỗi nhân sự chỉ học 1 lớp tri thức tại một thời điểm.',
-    icon: GraduationCap,
-  },
-  {
-    isKnowledgeWork: false,
-    label: 'Lớp học khác',
-    hint: 'Không theo cấp. Nhân sự nào cũng đăng ký được, không giới hạn số lớp.',
-    icon: BookOpen,
-  },
-] as const
-
-function ClassTypeField({
-  idPrefix,
-  value,
-  onChange,
-}: {
-  idPrefix: string
-  value: boolean
-  onChange: (isKnowledgeWork: boolean) => void
-}) {
-  return (
-    <fieldset className="md:col-span-2">
-      <legend className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-        Loại lớp học
-      </legend>
-      <RadioGroup
-        value={value ? 'knowledge' : 'other'}
-        onValueChange={(v) => onChange(v === 'knowledge')}
-        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-      >
-        {CLASS_TYPE_OPTIONS.map((opt) => {
-          const selected = opt.isKnowledgeWork === value
-          const id = `${idPrefix}-${opt.isKnowledgeWork ? 'knowledge' : 'other'}`
-          const Icon = opt.icon
-          return (
-            <label
-              key={id}
-              htmlFor={id}
-              className={cn(
-                'flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors',
-                selected
-                  ? 'border-button bg-button/5 ring-1 ring-button/25'
-                  : 'border-border hover:border-button/40 hover:bg-muted/40'
-              )}
-            >
-              <RadioGroupItem
-                id={id}
-                value={opt.isKnowledgeWork ? 'knowledge' : 'other'}
-                className="mt-0.5 border-button text-button focus-visible:ring-button/35"
-              />
-              <span className="min-w-0">
-                <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                  <Icon className="size-4 text-button" aria-hidden />
-                  {opt.label}
-                </span>
-                <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-                  {opt.hint}
-                </span>
-              </span>
-            </label>
-          )
-        })}
-      </RadioGroup>
-    </fieldset>
-  )
 }
 
 function ClassGrid({
@@ -234,11 +147,11 @@ function ClassGrid({
 }
 
 export function ManagerClassesScreen({
-  tab,
-  onTabChange,
+  courseFilter,
+  onCourseFilterChange,
 }: {
-  tab: ClassTab
-  onTabChange: (tab: ClassTab) => void
+  courseFilter: ClassCourseFilter
+  onCourseFilterChange: (next: ClassCourseFilter) => void
 }) {
   const { canId } = usePermission()
   /** Không có `manager.classes` (vd. HR chỉ có `hr.classes.view`) → chỉ xem, ẩn tạo/sửa/xoá. */
@@ -287,39 +200,29 @@ export function ManagerClassesScreen({
     email: string
   } | null>(null)
 
-  const createForm = useForm<ClassFormValues>({
-    defaultValues: {
-      name: '',
-      levelFrom: 'tap_su',
-      isKnowledgeWork: true,
-      startDate: '',
-      endDate: '',
-    },
-  })
+  const createForm = useForm<ClassFormValues>({ defaultValues: EMPTY_CLASS_FORM })
   const {
     control: createControl,
     handleSubmit: handleCreateSubmit,
     reset: resetCreateForm,
+    setValue: setCreateValue,
   } = createForm
-  const createLevelFrom = useWatch({ control: createControl, name: 'levelFrom' }) ?? 'tap_su'
-  const createIsKnowledgeWork = useWatch({ control: createControl, name: 'isKnowledgeWork' })
   const createStartDate = useWatch({ control: createControl, name: 'startDate' })
   const createEndDate = useWatch({ control: createControl, name: 'endDate' })
+  const createCourseId = useWatch({ control: createControl, name: 'courseId' }) ?? ''
+  const createCoursePathId = useWatch({ control: createControl, name: 'coursePathId' }) ?? ''
 
-  const editForm = useForm<ClassFormValues>({
-    defaultValues: {
-      name: '',
-      isKnowledgeWork: true,
-      levelFrom: 'tap_su',
-      startDate: '',
-      endDate: '',
-    },
-  })
-  const { control: editControl, handleSubmit: handleEditSubmit, reset: resetEditForm } = editForm
-  const editIsKnowledgeWork = useWatch({ control: editControl, name: 'isKnowledgeWork' })
-  const editLevelFrom = useWatch({ control: editControl, name: 'levelFrom' }) ?? 'tap_su'
+  const editForm = useForm<ClassFormValues>({ defaultValues: EMPTY_CLASS_FORM })
+  const {
+    control: editControl,
+    handleSubmit: handleEditSubmit,
+    reset: resetEditForm,
+    setValue: setEditValue,
+  } = editForm
   const editStartDate = useWatch({ control: editControl, name: 'startDate' })
   const editEndDate = useWatch({ control: editControl, name: 'endDate' })
+  const editCourseId = useWatch({ control: editControl, name: 'courseId' }) ?? ''
+  const editCoursePathId = useWatch({ control: editControl, name: 'coursePathId' }) ?? ''
 
   const [deleteClassId, setDeleteClassId] = useState<string | null>(null)
   // Giữ target sau khi đóng hộp thoại để tiêu đề không nháy rỗng lúc animation thoát.
@@ -327,6 +230,14 @@ export function ManagerClassesScreen({
   const [isCloseConfirmOpen, setIsCloseConfirmOpen] = useState(false)
 
   const { data: rows = [], isLoading, isError, error } = useManagerClasses({ search })
+  const editingRow = rows.find((r) => r.id === editClassId)
+  // Cùng query với ô chọn khoá trong form — dùng cho bộ lọc khoá và gợi ý tên lớp.
+  const { data: courseOptions = [] } = useCourseOptions(true)
+  const createCourse = courseOptions.find((c) => c.id === createCourseId)
+  const createCoursePath = createCourse?.paths.find((p) => p.id === createCoursePathId)
+  const createNamePlaceholder = createCourse
+    ? `Ví dụ: ${createCoursePath?.title ?? createCourse.title} — Đợt 1`
+    : 'Ví dụ: Lớp đào tạo cán bộ nguồn — Đợt 1'
   const createClass = useCreateManagerClass()
   const deleteClass = useDeleteManagerClass()
   const updateClass = useUpdateManagerClass()
@@ -361,18 +272,20 @@ export function ManagerClassesScreen({
   }, [selectedCreateTeacher, selectedTeacher])
 
   const rowsInPeriod = rows.filter((row) => matchesClassPeriod(row, fromDate, toDate))
-  const knowledgeRows = rowsInPeriod.filter((r) => r.isKnowledgeWork !== false)
-  const otherRows = rowsInPeriod.filter((r) => r.isKnowledgeWork === false)
-  const tabRows = tab === 'other' ? otherRows : knowledgeRows
-  // Lớp Editor do hệ thống đồng bộ theo team — tách khu riêng trong tab "Lớp học khác".
-  const otherRegularRows = otherRows.filter((r) => r.kind !== 'EDITOR')
-  const editorRows = otherRows.filter((r) => r.kind === 'EDITOR')
-  const totalMembers = tabRows.reduce((a, r) => a + r.memberCount, 0)
-  const openCount = tabRows.filter((r) => matchesStatus(r, 'open')).length
-  // Thống kê phía trên giữ theo cả tab; bộ lọc trạng thái chỉ áp cho lưới lớp + số đếm tab.
+  // Lớp Editor do hệ thống đồng bộ theo team, không thuộc khoá — tách khu riêng, ẩn khi đang lọc khoá.
+  const regularRows = rowsInPeriod.filter((r) => r.kind !== 'EDITOR')
+  const courseFilterOptions = buildCourseFilterOptions(regularRows, courseOptions)
+  const hasCourseFilter = Boolean(courseFilter.course)
+  const courseRows = regularRows.filter((r) => matchesCourseFilter(r, courseFilter))
+  const editorRows = hasCourseFilter ? [] : rowsInPeriod.filter((r) => r.kind === 'EDITOR')
+  const visibleRows = [...courseRows, ...editorRows]
+  const totalMembers = visibleRows.reduce((a, r) => a + r.memberCount, 0)
+  const openCount = visibleRows.filter((r) => matchesStatus(r, 'open')).length
+  // Thống kê phía trên không theo bộ lọc trạng thái; bộ lọc trạng thái chỉ áp cho lưới lớp.
   const byStatus = (list: ManagerClass[]) => list.filter((r) => matchesStatus(r, statusFilter))
   const hasTimeFilter = Boolean(fromDate || toDate)
-  const isFiltering = search.trim() !== '' || statusFilter !== 'all' || hasTimeFilter
+  const isFiltering =
+    search.trim() !== '' || statusFilter !== 'all' || hasTimeFilter || hasCourseFilter
   const timeFilterLabel =
     fromDate && toDate
       ? `${formatFilterDate(fromDate)} – ${formatFilterDate(toDate)}`
@@ -382,13 +295,15 @@ export function ManagerClassesScreen({
           ? `Đến ${formatFilterDate(toDate)}`
           : 'Thời gian'
 
+  // Đang lọc một khoá / lộ trình → điền sẵn khoá / lộ trình đó cho lớp mới.
   const openCreateModal = () => {
+    const filterCourse = courseOptions.find((c) => c.id === courseFilter.course)
     resetCreateForm({
-      name: '',
-      levelFrom: 'tap_su',
-      isKnowledgeWork: tab === 'knowledge',
-      startDate: '',
-      endDate: '',
+      ...EMPTY_CLASS_FORM,
+      courseId: filterCourse?.id ?? '',
+      coursePathId: filterCourse?.paths.some((p) => p.id === courseFilter.path)
+        ? (courseFilter.path ?? '')
+        : '',
     })
     setIsCreateOpen(true)
   }
@@ -410,15 +325,14 @@ export function ManagerClassesScreen({
     createClass.mutate(
       {
         name: n,
-        ...(values.isKnowledgeWork
-          ? { levelFrom: values.levelFrom, levelTo: NEXT_LEVEL_BY_FROM[values.levelFrom] }
-          : OTHER_CLASS_LEVELS),
+        ...NEW_CLASS_TYPE,
         status: 'open',
         startDate: values.startDate,
         endDate: values.endDate || null,
         memberUserIds: [],
         teacherUserId: selectedCreateTeacher?.userId ?? null,
-        isKnowledgeWork: values.isKnowledgeWork,
+        courseId: values.courseId || null,
+        coursePathId: values.coursePathId || null,
       },
       {
         onSuccess: () => {
@@ -427,8 +341,12 @@ export function ManagerClassesScreen({
           setSelectedCreateMembers([])
           setCreateTeacherQuery('')
           setSelectedCreateTeacher(null)
-          // Lớp vừa tạo khác loại với tab đang xem → chuyển tab để thấy ngay.
-          onTabChange(values.isKnowledgeWork ? 'knowledge' : 'other')
+          // Lớp vừa tạo nằm ngoài khoá đang lọc → bỏ lọc khoá để thấy ngay.
+          const created = {
+            course: values.courseId ? { id: values.courseId, title: '' } : null,
+            coursePath: values.coursePathId ? { id: values.coursePathId, title: '' } : null,
+          }
+          if (!matchesCourseFilter(created, courseFilter)) onCourseFilterChange({})
         },
       }
     )
@@ -436,13 +354,7 @@ export function ManagerClassesScreen({
 
   const closeEditClassModal = () => {
     setEditClassId(null)
-    resetEditForm({
-      name: '',
-      levelFrom: 'tap_su',
-      isKnowledgeWork: true,
-      startDate: '',
-      endDate: '',
-    })
+    resetEditForm(EMPTY_CLASS_FORM)
     setEditModalTeacherQuery('')
     setSelectedTeacher(null)
   }
@@ -451,11 +363,10 @@ export function ManagerClassesScreen({
     setEditClassId(row.id)
     resetEditForm({
       name: row.name,
-      isKnowledgeWork: row.isKnowledgeWork ?? true,
-      // Lớp học khác lưu Tập sự → Tướng; khi đổi sang tri thức thì mặc định Tập sự.
-      levelFrom: row.levelFrom === 'tuong' ? 'tap_su' : row.levelFrom,
       startDate: row.startDate ?? '',
       endDate: row.endDate ?? '',
+      courseId: row.course?.id ?? '',
+      coursePathId: row.coursePath?.id ?? '',
     })
     setSelectedTeacher(row.teacher ?? null)
     setEditModalTeacherQuery('')
@@ -480,10 +391,9 @@ export function ManagerClassesScreen({
           startDate: values.startDate || null,
           endDate: values.endDate || null,
           teacherUserId: selectedTeacher?.userId ?? null,
-          isKnowledgeWork: values.isKnowledgeWork,
-          ...(values.isKnowledgeWork
-            ? { levelFrom: values.levelFrom, levelTo: NEXT_LEVEL_BY_FROM[values.levelFrom] }
-            : OTHER_CLASS_LEVELS),
+          // Không gửi loại lớp / cấp lớp → lớp cũ giữ nguyên loại & cấp đã lưu.
+          courseId: values.courseId || null,
+          coursePathId: values.coursePathId || null,
         },
       },
       {
@@ -517,47 +427,8 @@ export function ManagerClassesScreen({
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Quản lý lớp học</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Theo dõi thời gian hoạt động, trạng thái và sĩ số từng lớp.
+                  Theo dõi khoá học, thời gian hoạt động, trạng thái và sĩ số từng lớp.
                 </p>
-              </div>
-              <div
-                className="flex w-fit flex-wrap items-center gap-1 rounded-xl border border-border/80 bg-card/90 p-1 shadow-sm ring-1 ring-border/60"
-                role="tablist"
-                aria-label="Loại lớp học"
-              >
-                {CLASS_TABS.map((t) => {
-                  const selected = tab === t.value
-                  const count = byStatus(t.value === 'other' ? otherRows : knowledgeRows).length
-                  const Icon = t.icon
-                  return (
-                    <Button
-                      key={t.value}
-                      type="button"
-                      role="tab"
-                      aria-selected={selected}
-                      variant={selected ? 'default' : 'ghost'}
-                      size="sm"
-                      className={cn(
-                        'rounded-lg px-3 py-2 text-xs font-semibold sm:text-sm',
-                        !selected && 'text-muted-foreground'
-                      )}
-                      onClick={() => onTabChange(t.value)}
-                    >
-                      <Icon className="size-4" aria-hidden />
-                      {t.label}
-                      {!isLoading ? (
-                        <span
-                          className={cn(
-                            'min-w-5 rounded-full px-1.5 text-center text-xs tabular-nums',
-                            selected ? 'bg-white/20' : 'bg-muted text-muted-foreground'
-                          )}
-                        >
-                          {count}
-                        </span>
-                      ) : null}
-                    </Button>
-                  )
-                })}
               </div>
             </div>
           </div>
@@ -608,7 +479,7 @@ export function ManagerClassesScreen({
                 <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                   {hasTimeFilter ? 'Lớp trong khoảng' : 'Tổng lớp'}
                 </div>
-                <div className="text-2xl font-bold text-foreground">{tabRows.length}</div>
+                <div className="text-2xl font-bold text-foreground">{visibleRows.length}</div>
               </div>
             </div>
           </div>
@@ -624,14 +495,16 @@ export function ManagerClassesScreen({
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={
-                  tab === 'other'
-                    ? 'Tìm theo tên lớp, ví dụ: Lớp đào tạo cán bộ nguồn'
-                    : 'Tìm theo tên lớp, ví dụ: Tập sự — Đợt Q2/2026'
-                }
+                placeholder="Tìm theo tên lớp, ví dụ: Lớp đào tạo cán bộ nguồn"
                 className="h-auto w-full rounded-xl border border-transparent bg-muted/80 py-3 pl-11 pr-4 text-sm shadow-inner shadow-none outline-none ring-offset-background transition-all placeholder:text-muted-foreground focus-visible:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20"
               />
             </div>
+            <ClassCourseFilterPopover
+              value={courseFilter}
+              onChange={onCourseFilterChange}
+              courses={courseFilterOptions.courses}
+              noneCount={courseFilterOptions.noneCount}
+            />
             <Popover open={isTimeFilterOpen} onOpenChange={setIsTimeFilterOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -746,7 +619,7 @@ export function ManagerClassesScreen({
                           selected ? 'bg-button/15' : 'bg-muted text-muted-foreground'
                         )}
                       >
-                        {tabRows.filter((r) => matchesStatus(r, f.value)).length}
+                        {visibleRows.filter((r) => matchesStatus(r, f.value)).length}
                       </span>
                     ) : null}
                   </Button>
@@ -801,27 +674,20 @@ export function ManagerClassesScreen({
                   </div>
                   <Form {...createForm}>
                     <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={onCreate}>
-                      <Controller
-                        control={createControl}
-                        name="isKnowledgeWork"
-                        render={({ field }) => (
-                          <ClassTypeField
-                            idPrefix="create-class-type"
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        )}
+                      <ClassCourseFields
+                        idPrefix="create-class"
+                        value={{ courseId: createCourseId, coursePathId: createCoursePathId }}
+                        onChange={(next) => {
+                          setCreateValue('courseId', next.courseId)
+                          setCreateValue('coursePathId', next.coursePathId)
+                        }}
                       />
                       <InputController
                         control={createControl}
                         name="name"
                         label="Tên lớp"
                         required
-                        placeholder={
-                          createIsKnowledgeWork
-                            ? 'Ví dụ: Tập sự — Đợt Q2/2026'
-                            : 'Ví dụ: Lớp đào tạo cán bộ nguồn'
-                        }
+                        placeholder={createNamePlaceholder}
                         className="md:col-span-2"
                       />
                       <DateController
@@ -845,31 +711,6 @@ export function ManagerClassesScreen({
                       <p className="-mt-1 text-xs leading-relaxed text-muted-foreground md:col-span-2">
                         Ngày kết thúc có thể để trống nếu lớp chưa xác định thời điểm đóng.
                       </p>
-                      {createIsKnowledgeWork ? (
-                        <>
-                          <SelectController
-                            control={createControl}
-                            name="levelFrom"
-                            label="Cấp lớp"
-                            required
-                          >
-                            {LEVEL_FLOW_OPTIONS.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectController>
-                          <div>
-                            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                              Lộ trình
-                            </label>
-                            <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm font-medium text-foreground">
-                              {LEVEL_LABELS[createLevelFrom]} →{' '}
-                              {LEVEL_LABELS[NEXT_LEVEL_BY_FROM[createLevelFrom]]}
-                            </div>
-                          </div>
-                        </>
-                      ) : null}
                       <div className="search-dropdown-container relative md:col-span-2">
                         <label className="mb-1 block text-xs font-semibold text-muted-foreground">
                           Giáo viên phụ trách lớp
@@ -1059,61 +900,40 @@ export function ManagerClassesScreen({
         )}
 
         {!isLoading && !isError ? (
-          tab === 'knowledge' ? (
+          <div className="space-y-10">
             <ClassGrid
-              rows={byStatus(knowledgeRows)}
+              rows={byStatus(courseRows)}
               emptyTitle={
-                isFiltering
-                  ? 'Không có lớp tri thức nào khớp tìm kiếm / bộ lọc'
-                  : 'Chưa có lớp học tri thức'
+                isFiltering ? 'Không có lớp nào khớp tìm kiếm / bộ lọc' : 'Chưa có lớp học nào'
               }
               emptyHint={canManage && !isFiltering ? 'Nhấn "Tạo lớp" để tạo lớp đầu tiên.' : null}
               onEdit={canManage ? openEditClassModal : undefined}
               onDelete={canManage ? handleDeleteClass : undefined}
               onToggleStatus={canManage ? handleToggleStatus : undefined}
             />
-          ) : (
-            <div className="space-y-10">
-              <ClassGrid
-                rows={byStatus(otherRegularRows)}
-                emptyTitle={
-                  isFiltering
-                    ? 'Không có lớp học khác nào khớp tìm kiếm / bộ lọc'
-                    : 'Chưa có lớp học khác'
-                }
-                emptyHint={
-                  canManage && !isFiltering
-                    ? 'Nhấn "Tạo lớp" và chọn loại "Lớp học khác" — lớp không theo cấp, ai cũng đăng ký được.'
-                    : null
-                }
-                onEdit={canManage ? openEditClassModal : undefined}
-                onDelete={canManage ? handleDeleteClass : undefined}
-                onToggleStatus={canManage ? handleToggleStatus : undefined}
-              />
-              {canManage || editorRows.length > 0 ? (
-                <div className="border-t border-border/70 pt-8">
-                  <EditorClassesSection canManage={canManage}>
-                    {/* Không cho đóng/mở tay: "Đồng bộ lớp Editor" tự đóng lớp hết editor và mở lại khi có. */}
-                    <ClassGrid
-                      rows={byStatus(editorRows)}
-                      emptyTitle={
-                        editorRows.length > 0
-                          ? 'Không có lớp Editor nào khớp bộ lọc'
-                          : 'Chưa có lớp Editor nào'
-                      }
-                      emptyHint={
-                        canManage && editorRows.length === 0
-                          ? 'Bấm "Đồng bộ lớp Editor" để tự động tạo lớp theo team đang có editor.'
-                          : null
-                      }
-                      onEdit={canManage ? openEditClassModal : undefined}
-                      onDelete={canManage ? handleDeleteClass : undefined}
-                    />
-                  </EditorClassesSection>
-                </div>
-              ) : null}
-            </div>
-          )
+            {!hasCourseFilter && (canManage || editorRows.length > 0) ? (
+              <div className="border-t border-border/70 pt-8">
+                <EditorClassesSection canManage={canManage}>
+                  {/* Không cho đóng/mở tay: "Đồng bộ lớp Editor" tự đóng lớp hết editor và mở lại khi có. */}
+                  <ClassGrid
+                    rows={byStatus(editorRows)}
+                    emptyTitle={
+                      editorRows.length > 0
+                        ? 'Không có lớp Editor nào khớp bộ lọc'
+                        : 'Chưa có lớp Editor nào'
+                    }
+                    emptyHint={
+                      canManage && editorRows.length === 0
+                        ? 'Bấm "Đồng bộ lớp Editor" để tự động tạo lớp theo team đang có editor.'
+                        : null
+                    }
+                    onEdit={canManage ? openEditClassModal : undefined}
+                    onDelete={canManage ? handleDeleteClass : undefined}
+                  />
+                </EditorClassesSection>
+              </div>
+            ) : null}
+          </div>
         ) : null}
 
         {canManage &&
@@ -1216,42 +1036,15 @@ export function ManagerClassesScreen({
                           </div>
                         )}
                       </div>
-                      <Controller
-                        control={editControl}
-                        name="isKnowledgeWork"
-                        render={({ field }) => (
-                          <ClassTypeField
-                            idPrefix="edit-class-type"
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        )}
+                      <ClassCourseFields
+                        idPrefix="edit-class"
+                        value={{ courseId: editCourseId, coursePathId: editCoursePathId }}
+                        onChange={(next) => {
+                          setEditValue('courseId', next.courseId)
+                          setEditValue('coursePathId', next.coursePathId)
+                        }}
+                        current={editingRow}
                       />
-                      {editIsKnowledgeWork ? (
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <SelectController
-                            control={editControl}
-                            name="levelFrom"
-                            label="Cấp lớp"
-                            required
-                          >
-                            {LEVEL_FLOW_OPTIONS.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectController>
-                          <div>
-                            <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                              Lộ trình
-                            </label>
-                            <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm font-medium text-foreground">
-                              {LEVEL_LABELS[editLevelFrom]} →{' '}
-                              {LEVEL_LABELS[NEXT_LEVEL_BY_FROM[editLevelFrom]]}
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
                       <div className="mt-5 flex justify-end gap-2">
                         <Button
                           type="button"

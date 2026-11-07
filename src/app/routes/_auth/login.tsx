@@ -369,7 +369,10 @@ function LoginPage() {
       </div>
 
       <div className="mt-5 text-center text-sm text-muted-foreground">
-        <Link to="/" className="font-medium text-primary hover:underline">
+        <Link
+          to="/"
+          className="inline-block rounded-full border border-border bg-card px-4 py-1.5 font-medium text-primary shadow-[var(--shadow-card)] hover:underline"
+        >
           ← Về trang giới thiệu
         </Link>
       </div>

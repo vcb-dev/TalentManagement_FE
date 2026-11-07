@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { TimePicker } from '@/components/ui/time-picker'
 import { cn } from '@/lib/utils'
 
 type LabeledControllerProps<
@@ -327,6 +328,53 @@ export function SelectController<
               </SelectTrigger>
               <SelectContent>{children}</SelectContent>
             </Select>
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  )
+}
+
+export function TimeController<
+  TFieldValues extends FieldValues,
+  TName extends FieldPath<TFieldValues>,
+>({
+  control,
+  name,
+  label,
+  required,
+  rules,
+  className,
+  labelClassName,
+  disabled,
+  placeholder,
+  customLabel,
+}: LabeledControllerProps<TFieldValues, TName> & {
+  disabled?: boolean
+  placeholder?: string
+}) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      rules={rules}
+      render={({ field }) => (
+        <FormItem className={className}>
+          <FormLabel className={labelClassName}>
+            {customLabel || (
+              <>
+                {label} {required ? <span className="text-destructive">*</span> : null}
+              </>
+            )}
+          </FormLabel>
+          <FormControl>
+            <TimePicker
+              value={(field.value as string | undefined) ?? ''}
+              onChange={field.onChange}
+              disabled={disabled}
+              placeholder={placeholder}
+            />
           </FormControl>
           <FormMessage />
         </FormItem>

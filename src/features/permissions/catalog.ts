@@ -240,6 +240,40 @@ const nodes: PermissionNode[] = [
     scope: 'global',
   },
 
+  // Không nằm trong template role nào — BE migration cấp sẵn cho tài khoản admin dùng chung.
+  // Xem khoá học không cần quyền: mọi nhân sự đăng nhập đều xem được khoá đang mở.
+  {
+    id: 'mod.course',
+    parentId: null,
+    label: 'Khoá học & lộ trình',
+    kind: 'module',
+    scope: 'global',
+  },
+  {
+    id: 'course.manage',
+    parentId: 'mod.course',
+    label: 'Cấu hình khoá học, lộ trình & tài liệu',
+    kind: 'function',
+    scope: 'global',
+  },
+
+  // Không nằm trong template role nào — BE migration cấp sẵn cho tài khoản admin dùng chung.
+  // Xem hoạt động không cần quyền: mọi nhân sự đăng nhập đều xem được.
+  {
+    id: 'mod.activity',
+    parentId: null,
+    label: 'Hoạt động trong tháng',
+    kind: 'module',
+    scope: 'global',
+  },
+  {
+    id: 'activity.manage',
+    parentId: 'mod.activity',
+    label: 'Thêm / sửa / xoá hoạt động trong tháng',
+    kind: 'function',
+    scope: 'global',
+  },
+
   { id: 'mod.manager', parentId: null, label: 'Quản lý vận hành', kind: 'module', scope: 'global' },
   {
     id: 'manager.team.view',
@@ -416,6 +450,8 @@ export const PERMISSION_MODULE_IDS_UI_ORDER: readonly string[] = [
   'mod.company',
   'mod.hr',
   'mod.checklist',
+  'mod.course',
+  'mod.activity',
   'mod.manager',
   'mod.bod',
   'mod.teacher',
@@ -457,6 +493,12 @@ export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly stri
   'mod.checklist': [
     'Soạn mẫu checklist & xem câu trả lời của mọi nhân sự (/checklists?tab=templates)',
     'Mục Checklist trong hồ sơ nhân sự (/hr-admin/$mãNhânViên)',
+  ],
+  'mod.course': [
+    'Thêm / sửa / ẩn khoá học, lộ trình và tài liệu (/courses) — nhân sự không cần quyền này để xem',
+  ],
+  'mod.activity': [
+    'Thêm / sửa / xoá hoạt động trong tháng (/activities) — nhân sự không cần quyền này để xem',
   ],
   'mod.manager': [
     'Xem nhóm & hồ sơ qua màn Nhân sự (/hr-admin) khi cần quyền xem nhóm',

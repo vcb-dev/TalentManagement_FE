@@ -20,6 +20,17 @@
 
 @theme inline {
   --font-sans: 'Roboto', system-ui, sans-serif;
+  /* Có đủ dấu tiếng Việt, số kiểu cổ — dùng cho tờ danh sách ở trang Hoạt động (link trong index.html). */
+  --font-serif: 'Playfair Display', Georgia, serif;
+  /* Trang Hoạt động: vàng lấy đúng màu `star-emblem.png`, xanh là bản đậm của xanh thương hiệu. */
+  --color-vcb-gold: #d2a661;
+  --color-vcb-gold-soft: #f0d9ad;
+  --color-vcb-bronze: #7a5716;
+  --color-vcb-emerald: #00291f;
+  --color-vcb-emerald-mid: #005236;
+  --color-vcb-cream: #fbf6e9;
+  --color-vcb-paper: #fbf8f1;
+  --color-vcb-ink: #12261f;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -176,6 +187,9 @@ body {
   /* "Bỏ trống" (xám nhạt) và "(đã xoá / ngoài thang)" (xám đậm hơn) phải phân biệt được khi đứng cạnh nhau. */
   --viz-none: #cbd5e1;
   --viz-removed: #8a97ab;
+  /* Kết quả thi (trạng thái): Đạt / Học lại — đã kiểm tra mù màu; ô vàng dưới 3:1 nên luôn kèm số. */
+  --viz-pass: #047857;
+  --viz-retake: #eda100;
 }
 
 .dark {
@@ -212,6 +226,49 @@ body {
   --viz-cat-8: #e66767;
   --viz-none: #334155;
   --viz-removed: #7b8799;
+  --viz-pass: #199e70;
+  --viz-retake: #c98500;
+}
+
+/* Trang Hoạt động (motion-reduce: tắt ở component): ảnh đầu trang lắng xuống, các viên ngọc lần lượt gắn lên chỉ vàng. */
+@keyframes activity-hero-settle {
+  from {
+    transform: scale(1.07);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes activity-gem-in {
+  from {
+    opacity: 0;
+    transform: scale(0.55) rotate(-14deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Viên ngọc của hoạt động đang diễn ra — sáng lên theo nhịp để báo "đang chạy". */
+@keyframes activity-gem-live {
+  0%,
+  100% {
+    filter: drop-shadow(0 2px 5px rgb(210 166 97 / 0.35));
+  }
+  50% {
+    filter: drop-shadow(0 4px 16px rgb(210 166 97 / 0.95));
+  }
+}
+
+/* Tấm vé: khoét 2 lỗ tròn thật ở mép trên/dưới, ngay đường xé `--stub`. */
+.activity-ticket {
+  --notch: 10px;
+  mask:
+    radial-gradient(circle var(--notch) at var(--stub) 0, #0000 98%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at var(--stub) 100%, #0000 98%, #000) bottom / 100% 51%
+      no-repeat;
 }
 
 /* Animation dùng cho dashboard học tập (motion-reduce: tắt ở component) */
@@ -685,7 +742,7 @@ body {
     position: relative;
     min-height: 100vh;
     background:
-      url('/login-bg.png') center/cover no-repeat fixed,
+      url('/Image_VCB/ra_khoi_2026.jpg') center/cover no-repeat fixed,
       var(--login-bg);
   }
   .vcb-banner-gradient {

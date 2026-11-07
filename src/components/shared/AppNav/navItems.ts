@@ -1,14 +1,21 @@
 import type { LucideIcon } from 'lucide-react'
 import type { Role, UserSession } from '@/types/auth'
-import { KPI_OKR_ENABLED, MONTHLY_REPORT_ENABLED } from '@/lib/featureFlags'
+import {
+  KPI_OKR_ENABLED,
+  LEARNING_PATH_NAV_ENABLED,
+  MONTHLY_REPORT_ENABLED,
+} from '@/lib/featureFlags'
 import {
   BarChart3,
   Calendar,
+  CalendarDays,
   CalendarRange,
   ClipboardCheck,
   ClipboardList,
   DoorOpen,
+  GraduationCap,
   Headphones,
+  History,
   Home,
   LayoutDashboard,
   KeyRound,
@@ -101,11 +108,26 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     permissionIdsAny: ['dashboard.view', 'home.view'],
   },
   {
+    // Ai cũng xem — admin (`activity.manage`) thêm / sửa / xoá ngay trên trang.
+    to: '/activities',
+    label: 'Hoạt động trong tháng',
+    icon: CalendarDays,
+    match: 'prefix',
+  },
+  {
     to: '/learning-path',
     label: 'Lộ trình học',
     icon: ListOrdered,
     match: 'prefix',
     permissionId: 'learning.view',
+    featureEnabled: LEARNING_PATH_NAV_ENABLED,
+  },
+  {
+    // Trang khoá học mới (tách khỏi lộ trình cấp/sao) — ai cũng xem, admin cấu hình ngay trên trang.
+    to: '/courses',
+    label: 'Khoá học & lộ trình',
+    icon: GraduationCap,
+    match: 'prefix',
   },
   {
     to: '/monthly-report',
@@ -184,6 +206,15 @@ export const ROOM_BOOKING_ITEMS: AppNavItem[] = [
     icon: DoorOpen,
     match: 'prefix',
     hiddenForRoles: ['MANAGER', 'HR', 'BOD'],
+  },
+  {
+    // Mọi nhân sự (kể cả HR/quản lý) xem lịch mình đã đặt — `/room-booking/my` chỉ trả lịch của người gọi.
+    to: '/room-booking',
+    label: 'Lịch sử đặt phòng',
+    icon: History,
+    match: 'prefix',
+    search: { tab: 'history' },
+    hiddenForAdminAccount: true,
   },
 ]
 
@@ -626,6 +657,7 @@ export function groupedSidebarNavItems(
       items: take([
         ...find(LEADER_KPI_ITEMS, '/dashboard'),
         ...find(MEMBER_SELF_ITEMS, '/dashboard'),
+        ...find(MEMBER_SELF_ITEMS, '/activities'),
         ...find(LEADER_KPI_ITEMS, '/leader/kpi-okr'),
         ...find(MANAGER_KPI_ITEMS, '/manager/kpi-okr'),
         ...find(LEADER_KPI_ITEMS, '/leader/vinh-danh'),
@@ -641,6 +673,7 @@ export function groupedSidebarNavItems(
       label: 'Lớp học và thi cử',
       items: take([
         ...find(MEMBER_SELF_ITEMS, '/learning-path'),
+        ...find(MEMBER_SELF_ITEMS, '/courses'),
         ...find(MEMBER_SELF_ITEMS, '/learning-classes'),
         ...find(MEMBER_SELF_ITEMS, '/exam'),
         ...find(MANAGER_OPS_ITEMS, '/manager/classes'),

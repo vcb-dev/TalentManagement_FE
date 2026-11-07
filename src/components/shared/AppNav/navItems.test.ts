@@ -39,6 +39,34 @@ describe('mergeCompactHeaderNavItems', () => {
     for (const to of hiddenRoutes) expect(bodRoutes).toContain(to)
   })
 
+  it('hides the learning path tab for every role but keeps the courses tab', () => {
+    for (const role of ['MEMBER', 'LEADER', 'MANAGER', 'HR', 'BOD', 'TEACHER'] as const) {
+      const permissions = new Set(getDefaultPermissionIdsForRole(role))
+      const canId = (id: string) => permissions.has(id)
+      const routes = [
+        ...mergeCompactHeaderNavItems(canId, role),
+        ...groupedSidebarNavItems(canId, { role } as UserSession).flatMap((g) => g.items),
+      ].map((item) => item.to)
+
+      expect(routes).not.toContain('/learning-path')
+      expect(routes).toContain('/courses')
+    }
+  })
+
+  it('shows monthly activities to every role and to shared admin accounts', () => {
+    for (const role of ['MEMBER', 'LEADER', 'MANAGER', 'HR', 'BOD', 'TEACHER'] as const) {
+      const permissions = new Set(getDefaultPermissionIdsForRole(role))
+      const canId = (id: string) => permissions.has(id)
+      const routes = [
+        ...mergeCompactHeaderNavItems(canId, role),
+        ...mergeCompactHeaderNavItems(canId, role, true),
+        ...groupedSidebarNavItems(canId, { role } as UserSession).flatMap((g) => g.items),
+      ].map((item) => item.to)
+
+      expect(routes.filter((to) => to === '/activities')).toHaveLength(3)
+    }
+  })
+
   it('shows KPI/OKR and monthly report entries to the roles that own them', () => {
     const expectedRoutes = {
       MEMBER: ['/monthly-report'],
@@ -54,11 +82,14 @@ describe('mergeCompactHeaderNavItems', () => {
       HR: ['/monthly-report', '/kpi-okr-compliance', '/hr-admin/settings/kpi-windows'],
     } as const
     for (const [role, routes] of Object.entries(expectedRoutes)) {
-      const permissions = new Set(getDefaultPermissionIdsForRole(role as keyof typeof expectedRoutes))
-      const canId = (id: string) => permissions.has(id)
-      const headerRoutes = mergeCompactHeaderNavItems(canId, role as keyof typeof expectedRoutes).map(
-        (item) => item.to
+      const permissions = new Set(
+        getDefaultPermissionIdsForRole(role as keyof typeof expectedRoutes)
       )
+      const canId = (id: string) => permissions.has(id)
+      const headerRoutes = mergeCompactHeaderNavItems(
+        canId,
+        role as keyof typeof expectedRoutes
+      ).map((item) => item.to)
       const sidebarRoutes = groupedSidebarNavItems(canId, { role } as UserSession)
         .flatMap((g) => g.items)
         .map((item) => item.to)
