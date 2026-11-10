@@ -7,14 +7,17 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import {
+  checklistOtherKey,
   checklistQuestionNumbers,
   cleanChecklistAnswers,
+  missingOtherTexts,
   missingRequiredQuestions,
 } from '../checklistAnswers'
 import {
   CHECKLIST_LIMITS,
   type ChecklistAnswers,
   type ChecklistAnswerValue,
+  type ChecklistOption,
   type ChecklistQuestion,
 } from '../types'
 import { SquareCheckbox } from './SquareCheckbox'
@@ -203,37 +206,113 @@ export function ChecklistSectionCard({
   )
 }
 
-export function ChecklistQuestionInput({
-  question,
+/** Ô ghi rõ hiện ngay dưới lựa chọn "Khác" khi lựa chọn đó đang được chọn. */
+function OtherTextInput({
+  id,
+  option,
   value,
+  invalid,
   disabled,
   onChange,
 }: {
+  id: string
+  option: ChecklistOption
+  value: string
+  invalid?: boolean
+  disabled?: boolean
+  onChange: (text: string) => void
+}) {
+  const errorId = `${id}-error`
+  return (
+    // pl-9 = lề trái của chữ lựa chọn (px-2 + ô chọn 16px + gap 12px) để ô nhập thẳng hàng.
+    <div className="pb-1 pl-9 pr-2">
+      <Input
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        maxLength={CHECKLIST_LIMITS.shortText}
+        disabled={disabled}
+        placeholder="Ghi rõ…"
+        aria-label={`Ghi rõ cho lựa chọn "${option.label}"`}
+        aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? errorId : undefined}
+        className={cn('h-9 max-w-xl', invalid && 'border-danger focus-visible:ring-danger/40')}
+      />
+      {invalid ? (
+        <p id={errorId} className="mt-1 text-xs font-medium text-danger">
+          Ghi rõ nội dung cho lựa chọn này
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/** Đưa con trỏ vào ô ghi rõ ngay khi vừa chọn "Khác" (ô chỉ xuất hiện sau lần render tới). */
+function focusSoon(id: string) {
+  requestAnimationFrame(() => document.getElementById(id)?.focus())
+}
+
+export function ChecklistQuestionInput({
+  question,
+  value,
+  answers,
+  invalidOtherKeys,
+  disabled,
+  onChange,
+  onOtherChange,
+}: {
   question: ChecklistQuestion
   value: ChecklistAnswerValue | undefined
+  /** Cả bản trả lời — để đọc chữ ghi rõ của lựa chọn "Khác". */
+  answers?: ChecklistAnswers
+  /** Khoá `checklistOtherKey` của các lựa chọn "Khác" đã chọn mà chưa ghi rõ (chỉ khi đã bấm lưu). */
+  invalidOtherKeys?: ReadonlySet<string>
   disabled?: boolean
   onChange: (v: ChecklistAnswerValue | undefined) => void
+  onOtherChange?: (optionId: string, text: string) => void
 }) {
   const inputId = `checklist-${question.id}`
+  const otherInputId = (o: ChecklistOption) => `${inputId}-${o.id}-other`
+  const otherInput = (o: ChecklistOption, picked: boolean) => {
+    if (!o.freeText || !picked) return null
+    const key = checklistOtherKey(question.id, o.id)
+    const text = answers?.[key]
+    return (
+      <OtherTextInput
+        id={otherInputId(o)}
+        option={o}
+        value={typeof text === 'string' ? text : ''}
+        invalid={invalidOtherKeys?.has(key)}
+        disabled={disabled}
+        onChange={(t) => onOtherChange?.(o.id, t)}
+      />
+    )
+  }
   switch (question.type) {
     case 'SINGLE_CHOICE':
       return (
         <div className="space-y-2">
           <RadioGroup
             value={typeof value === 'string' ? value : ''}
-            onValueChange={(v) => onChange(v)}
+            onValueChange={(v) => {
+              onChange(v)
+              const o = question.options?.find((x) => x.id === v)
+              if (o?.freeText) focusSoon(otherInputId(o))
+            }}
             disabled={disabled}
             className="gap-1"
           >
             {question.options?.map((o) => (
-              <label
-                key={o.id}
-                htmlFor={`${inputId}-${o.id}`}
-                className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-muted/60"
-              >
-                <RadioGroupItem id={`${inputId}-${o.id}`} value={o.id} />
-                <span>{o.label}</span>
-              </label>
+              <div key={o.id}>
+                <label
+                  htmlFor={`${inputId}-${o.id}`}
+                  className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-muted/60"
+                >
+                  <RadioGroupItem id={`${inputId}-${o.id}`} value={o.id} />
+                  <span>{o.label}</span>
+                </label>
+                {otherInput(o, value === o.id)}
+              </div>
             ))}
           </RadioGroup>
           {!question.required && typeof value === 'string' && value && !disabled ? (
@@ -252,23 +331,26 @@ export function ChecklistQuestionInput({
       return (
         <div className="space-y-1">
           {question.options?.map((o) => (
-            <label
-              key={o.id}
-              htmlFor={`${inputId}-${o.id}`}
-              className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-muted/60"
-            >
-              <SquareCheckbox
-                id={`${inputId}-${o.id}`}
-                checked={picked.includes(o.id)}
-                disabled={disabled}
-                onCheckedChange={(checked) =>
-                  onChange(
-                    checked === true ? [...picked, o.id] : picked.filter((id) => id !== o.id)
-                  )
-                }
-              />
-              <span>{o.label}</span>
-            </label>
+            <div key={o.id}>
+              <label
+                htmlFor={`${inputId}-${o.id}`}
+                className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-muted/60"
+              >
+                <SquareCheckbox
+                  id={`${inputId}-${o.id}`}
+                  checked={picked.includes(o.id)}
+                  disabled={disabled}
+                  onCheckedChange={(checked) => {
+                    onChange(
+                      checked === true ? [...picked, o.id] : picked.filter((id) => id !== o.id)
+                    )
+                    if (checked === true && o.freeText) focusSoon(otherInputId(o))
+                  }}
+                />
+                <span>{o.label}</span>
+              </label>
+              {otherInput(o, picked.includes(o.id))}
+            </div>
           ))}
         </div>
       )
@@ -328,19 +410,23 @@ export function ChecklistQuestionCard({
   question,
   number,
   invalid,
+  highlight,
   children,
 }: {
   question: ChecklistQuestion
   /** Số thứ tự hiển thị (không tính tiêu đề phần). */
   number: number | undefined
+  /** Câu bắt buộc chưa trả lời — viền đỏ + dòng báo lỗi cuối thẻ. */
   invalid?: boolean
+  /** Chỉ viền đỏ (lỗi đã báo ngay tại ô, vd. "Khác" chưa ghi rõ). */
+  highlight?: boolean
   children: ReactNode
 }) {
   return (
     <div
       className={cn(
         'rounded-2xl border bg-card p-5 shadow-sm sm:p-6',
-        invalid ? 'border-danger/60 ring-1 ring-danger/30' : 'border-border/80'
+        invalid || highlight ? 'border-danger/60 ring-1 ring-danger/30' : 'border-border/80'
       )}
     >
       <div className="mb-3 space-y-1">
@@ -368,19 +454,24 @@ export function ChecklistQuestionCard({
   )
 }
 
-/** Các mục của form (tiêu đề phần + câu hỏi) — dùng chung cho form điền và xem trước. */
+/**
+ * Các mục của form (tiêu đề phần + câu hỏi) — dùng chung cho form điền và xem trước.
+ * `onChange(key, v)`: `key` là id câu hỏi, hoặc `checklistOtherKey(...)` cho chữ ghi rõ của "Khác".
+ */
 export function ChecklistFormItems({
   questions,
   answers,
   invalidIds,
+  invalidOtherKeys,
   disabled,
   onChange,
 }: {
   questions: ChecklistQuestion[]
   answers: ChecklistAnswers
   invalidIds?: ReadonlySet<string>
+  invalidOtherKeys?: ReadonlySet<string>
   disabled?: boolean
-  onChange: (id: string, v: ChecklistAnswerValue | undefined) => void
+  onChange: (key: string, v: ChecklistAnswerValue | undefined) => void
 }) {
   const numbers = checklistQuestionNumbers(questions)
   return (
@@ -394,12 +485,20 @@ export function ChecklistFormItems({
               question={q}
               number={numbers.get(q.id)}
               invalid={invalidIds?.has(q.id)}
+              highlight={q.options?.some((o) =>
+                invalidOtherKeys?.has(checklistOtherKey(q.id, o.id))
+              )}
             >
               <ChecklistQuestionInput
                 question={q}
                 value={answers[q.id]}
+                answers={answers}
+                invalidOtherKeys={invalidOtherKeys}
                 disabled={disabled}
                 onChange={(v) => onChange(q.id, v)}
+                onOtherChange={(optionId, text) =>
+                  onChange(checklistOtherKey(q.id, optionId), text || undefined)
+                }
               />
             </ChecklistQuestionCard>
           </div>
@@ -433,26 +532,42 @@ export function ChecklistForm({
     () => new Set(missingRequiredQuestions(template.questions, answers).map((q) => q.id)),
     [template.questions, answers]
   )
+  /** Lựa chọn "Khác" đã chọn mà chưa ghi rõ. */
+  const missingOther = useMemo(
+    () => missingOtherTexts(template.questions, answers),
+    [template.questions, answers]
+  )
+  const missingOtherKeys = useMemo(
+    () => new Set(missingOther.map((m) => checklistOtherKey(m.question.id, m.option.id))),
+    [missingOther]
+  )
 
-  const setAnswer = (id: string, v: ChecklistAnswerValue | undefined) =>
+  const setAnswer = (key: string, v: ChecklistAnswerValue | undefined) =>
     setAnswers((prev) => {
       const next = { ...prev }
-      if (v === undefined) delete next[id]
-      else next[id] = v
+      if (v === undefined) delete next[key]
+      else next[key] = v
       return next
     })
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     setSubmitted(true)
-    if (missing.size > 0) {
+    const otherIds = new Set(missingOther.map((m) => m.question.id))
+    const firstInvalid = template.questions.find((q) => missing.has(q.id) || otherIds.has(q.id))
+    if (firstInvalid) {
       document
-        .getElementById(`checklist-q-${[...missing][0]}`)
+        .getElementById(`checklist-q-${firstInvalid.id}`)
         ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
     onSubmit(cleanChecklistAnswers(template.questions, answers))
   }
+
+  const errors = [
+    missing.size > 0 ? `Còn ${missing.size} câu bắt buộc chưa trả lời.` : null,
+    missingOther.length > 0 ? `Còn ${missingOther.length} lựa chọn "Khác" chưa ghi rõ.` : null,
+  ].filter(Boolean)
 
   return (
     <form className="mx-auto flex max-w-3xl flex-col gap-4" onSubmit={submit} noValidate>
@@ -466,13 +581,12 @@ export function ChecklistForm({
         questions={template.questions}
         answers={answers}
         invalidIds={submitted ? missing : undefined}
+        invalidOtherKeys={submitted ? missingOtherKeys : undefined}
         disabled={saving}
         onChange={setAnswer}
       />
-      {submitted && missing.size > 0 ? (
-        <p className="text-center text-sm font-medium text-danger">
-          Còn {missing.size} câu bắt buộc chưa trả lời.
-        </p>
+      {submitted && errors.length > 0 ? (
+        <p className="text-center text-sm font-medium text-danger">{errors.join(' ')}</p>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
         <Button type="button" variant="ghost" onClick={onBack} disabled={saving}>

@@ -9,6 +9,7 @@ import {
   Plus,
   Rows3,
   Square,
+  TextCursorInput,
   Trash2,
   X,
 } from 'lucide-react'
@@ -67,8 +68,15 @@ function withType(q: ChecklistQuestion, type: ChecklistQuestionType): ChecklistQ
   return next
 }
 
-const trimOptions = (items: ChecklistOption[] | undefined) =>
-  (items ?? []).map((o) => ({ id: o.id, label: o.label.trim() }))
+/** `keepFreeText` = giữ cờ "Khác (ghi rõ)" — chỉ câu chọn một / chọn nhiều, không dùng cho lưới. */
+const trimOptions = (items: ChecklistOption[] | undefined, keepFreeText = false) =>
+  (items ?? []).map((o): ChecklistOption => {
+    const out: ChecklistOption = { id: o.id, label: o.label.trim() }
+    if (keepFreeText && o.freeText) out.freeText = true
+    return out
+  })
+
+const OTHER_LABEL = 'Khác'
 
 /** Gửi BE đúng field của loại câu hỏi (bỏ options/rows/scale còn sót khi đã đổi loại). */
 export function toQuestionPayload(q: ChecklistQuestion): ChecklistQuestion {
@@ -80,7 +88,7 @@ export function toQuestionPayload(q: ChecklistQuestion): ChecklistQuestion {
     required: q.type !== 'SECTION' && q.required,
   }
   if (q.type === 'SINGLE_CHOICE' || q.type === 'MULTIPLE_CHOICE') {
-    base.options = trimOptions(q.options)
+    base.options = trimOptions(q.options, true)
   }
   if (q.type === 'GRID') {
     base.rows = trimOptions(q.rows)
@@ -96,12 +104,17 @@ export function toQuestionPayload(q: ChecklistQuestion): ChecklistQuestion {
   return base
 }
 
-/** Danh sách nhãn sửa được (lựa chọn / dòng / cột) — Enter thêm mục ngay dưới như Google Form. */
+/**
+ * Danh sách nhãn sửa được (lựa chọn / dòng / cột) — Enter thêm mục ngay dưới như Google Form.
+ * `allowFreeText` (câu chọn một / chọn nhiều): mỗi lựa chọn bật được ô "ghi rõ" như "Khác" của
+ * Google Form, kèm nút thêm nhanh lựa chọn "Khác".
+ */
 function OptionListEditor({
   items,
   onChange,
   noun,
   icon: Icon,
+  allowFreeText,
   disabled,
 }: {
   items: ChecklistOption[]
@@ -109,9 +122,11 @@ function OptionListEditor({
   /** "Lựa chọn" | "Dòng" | "Cột". */
   noun: string
   icon: LucideIcon
+  allowFreeText?: boolean
   disabled?: boolean
 }) {
   const refs = useRef(new Map<string, HTMLInputElement>())
+  const canAdd = items.length < CHECKLIST_LIMITS.options
   const add = (afterIdx = items.length - 1) => {
     const item = { id: newChecklistId('o'), label: `${noun} ${items.length + 1}` }
     const next = [...items]
@@ -119,57 +134,130 @@ function OptionListEditor({
     onChange(next)
     requestAnimationFrame(() => refs.current.get(item.id)?.select())
   }
+  const toggleFreeText = (id: string) =>
+    onChange(
+      items.map((x) => {
+        if (x.id !== id) return x
+        if (x.freeText) return { id: x.id, label: x.label }
+        return { ...x, freeText: true }
+      })
+    )
+  /** Đã có lựa chọn tên "Khác" thì bật ô ghi rõ cho nó, không thì thêm mới ở cuối. */
+  const addOther = () => {
+    const existing = items.find(
+      (x) => x.label.trim().toLocaleLowerCase('vi') === OTHER_LABEL.toLocaleLowerCase('vi')
+    )
+    if (existing) {
+      if (!existing.freeText) toggleFreeText(existing.id)
+      return
+    }
+    onChange([...items, { id: newChecklistId('o'), label: OTHER_LABEL, freeText: true }])
+  }
+  const hasFreeText = items.some((x) => x.freeText)
   return (
     <div className="space-y-1.5">
       {items.map((o, idx) => (
-        <div key={o.id} className="flex items-center gap-2">
-          <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-          <Input
-            ref={(el) => {
-              if (el) refs.current.set(o.id, el)
-              else refs.current.delete(o.id)
-            }}
-            value={o.label}
-            onChange={(e) =>
-              onChange(items.map((x) => (x.id === o.id ? { ...x, label: e.target.value } : x)))
-            }
-            onKeyDown={(e) => {
-              // Enter = thêm mục ngay dưới; không submit form.
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                if (items.length < CHECKLIST_LIMITS.options) add(idx)
+        <div key={o.id} className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            <Input
+              ref={(el) => {
+                if (el) refs.current.set(o.id, el)
+                else refs.current.delete(o.id)
+              }}
+              value={o.label}
+              onChange={(e) =>
+                onChange(items.map((x) => (x.id === o.id ? { ...x, label: e.target.value } : x)))
               }
-            }}
-            maxLength={CHECKLIST_LIMITS.optionLabel}
-            disabled={disabled}
-            className="h-9"
-            aria-label={`${noun} ${idx + 1}`}
-          />
+              onKeyDown={(e) => {
+                // Enter = thêm mục ngay dưới; không submit form.
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  if (canAdd) add(idx)
+                }
+              }}
+              maxLength={CHECKLIST_LIMITS.optionLabel}
+              disabled={disabled}
+              className="h-9"
+              aria-label={`${noun} ${idx + 1}`}
+            />
+            {allowFreeText ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  'size-8 shrink-0',
+                  o.freeText
+                    ? 'bg-button/10 text-button hover:bg-button/15 hover:text-button'
+                    : 'text-muted-foreground'
+                )}
+                onClick={() => toggleFreeText(o.id)}
+                disabled={disabled}
+                aria-pressed={o.freeText === true}
+                aria-label={
+                  o.freeText
+                    ? `Bỏ ô ghi rõ của ${noun.toLowerCase()} ${idx + 1}`
+                    : `Cho ghi rõ khi chọn ${noun.toLowerCase()} ${idx + 1}`
+                }
+                title={
+                  o.freeText
+                    ? 'Đang bật ô ghi rõ — bấm để tắt'
+                    : 'Bật ô ghi rõ: người điền chọn mục này sẽ nhập thêm chữ (như "Khác")'
+                }
+              >
+                <TextCursorInput className="size-4" aria-hidden />
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8 shrink-0"
+              onClick={() => onChange(items.filter((x) => x.id !== o.id))}
+              disabled={disabled || items.length <= 1}
+              aria-label={`Xoá ${noun.toLowerCase()} ${idx + 1}`}
+            >
+              <X className="size-4" aria-hidden />
+            </Button>
+          </div>
+          {allowFreeText && o.freeText ? (
+            // Xem trước ô người điền sẽ thấy khi chọn mục này; thẳng hàng với ô nhãn.
+            <p className="ml-6 mr-20 rounded-md border border-dashed border-border px-3 py-1.5 text-xs italic text-muted-foreground">
+              Người điền chọn mục này sẽ ghi rõ tại đây…
+            </p>
+          ) : null}
+        </div>
+      ))}
+      {canAdd ? (
+        <div className="flex flex-wrap items-center gap-x-1">
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="size-8 shrink-0"
-            onClick={() => onChange(items.filter((x) => x.id !== o.id))}
-            disabled={disabled || items.length <= 1}
-            aria-label={`Xoá ${noun.toLowerCase()} ${idx + 1}`}
+            size="sm"
+            className="h-8 text-muted-foreground"
+            onClick={() => add()}
+            disabled={disabled}
           >
-            <X className="size-4" aria-hidden />
+            <Plus className="size-4" aria-hidden />
+            Thêm {noun.toLowerCase()}
           </Button>
+          {allowFreeText && !hasFreeText ? (
+            <>
+              <span className="text-sm text-muted-foreground">hoặc</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-button hover:text-button"
+                onClick={addOther}
+                disabled={disabled}
+              >
+                thêm "{OTHER_LABEL}"
+              </Button>
+            </>
+          ) : null}
         </div>
-      ))}
-      {items.length < CHECKLIST_LIMITS.options ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 text-muted-foreground"
-          onClick={() => add()}
-          disabled={disabled}
-        >
-          <Plus className="size-4" aria-hidden />
-          Thêm {noun.toLowerCase()}
-        </Button>
       ) : null}
     </div>
   )
@@ -265,6 +353,7 @@ export function ChecklistQuestionEditor({
                 onChange={(options) => onChange({ ...question, options })}
                 noun="Lựa chọn"
                 icon={question.type === 'SINGLE_CHOICE' ? Circle : Square}
+                allowFreeText
                 disabled={disabled}
               />
             ) : question.type === 'GRID' ? (

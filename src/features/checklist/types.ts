@@ -44,7 +44,15 @@ export const CHECKLIST_LIMITS = {
   longText: 5000,
 } as const
 
-export type ChecklistOption = { id: string; label: string }
+export type ChecklistOption = {
+  id: string
+  label: string
+  /**
+   * Chỉ ở SINGLE_CHOICE / MULTIPLE_CHOICE: lựa chọn kiểu "Khác" — chọn vào thì hiện ô để người
+   * điền ghi rõ, chữ lưu ở `answers[checklistOtherKey(câu, lựa chọn)]`.
+   */
+  freeText?: true
+}
 
 export type ChecklistScale = {
   min: 0 | 1
@@ -70,6 +78,7 @@ export type ChecklistQuestion = {
 /**
  * SINGLE_CHOICE = id lựa chọn, MULTIPLE_CHOICE = mảng id, SCALE = số, DATE = `yyyy-MM-dd`,
  * GRID = `{ [id dòng]: id cột }`, còn lại = chữ.
+ * Chữ ghi rõ của lựa chọn "Khác" nằm ở khoá riêng `checklistOtherKey(...)`.
  */
 export type ChecklistAnswerValue = string | string[] | number | Record<string, string>
 export type ChecklistAnswers = Record<string, ChecklistAnswerValue>

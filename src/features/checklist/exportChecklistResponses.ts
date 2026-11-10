@@ -35,7 +35,9 @@ export function checklistResponsesToRows(data: ChecklistTemplateResponses): {
         },
       }))
     }
-    return [{ header: q.title, value: (answers) => formatChecklistAnswer(q, answers[q.id]) }]
+    return [
+      { header: q.title, value: (answers) => formatChecklistAnswer(q, answers[q.id], answers) },
+    ]
   })
   const header = [
     'STT',
