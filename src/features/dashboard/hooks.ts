@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { dashboardApi } from './api'
+import { DEFAULT_OVERVIEW_HR_FILTER, dashboardApi, type OverviewHrFilter } from './api'
 import { dashboardKeys } from './queryKeys'
 
 export function useMyDashboard(options?: { enabled?: boolean }) {
@@ -12,15 +12,19 @@ export function useMyDashboard(options?: { enabled?: boolean }) {
   })
 }
 
-export function useLearningOpsSummary(
+/** Giữ số liệu kỳ trước trong lúc tải kỳ mới — không nháy skeleton khi đổi bộ lọc. */
+export function useOverviewSummary(
   year: number,
   startMonth: number,
   endMonth: number,
+  filter: OverviewHrFilter = DEFAULT_OVERVIEW_HR_FILTER,
   options?: { enabled?: boolean }
 ) {
   return useQuery({
-    queryKey: dashboardKeys.learningOpsSummary(year, startMonth, endMonth),
-    queryFn: () => dashboardApi.learningOpsSummary(year, startMonth, endMonth),
+    queryKey: dashboardKeys.overviewSummary(year, startMonth, endMonth, filter),
+    queryFn: () => dashboardApi.overviewSummary(year, startMonth, endMonth, filter),
     enabled: options?.enabled ?? true,
+    staleTime: 60_000,
+    placeholderData: (prev) => prev,
   })
 }
