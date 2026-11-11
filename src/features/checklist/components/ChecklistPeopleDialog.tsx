@@ -70,7 +70,11 @@ function PeopleList({
         {shown.map((row) => {
           const answer =
             target.detail && row.response
-              ? formatChecklistAnswer(target.detail, row.response.answers[target.detail.id])
+              ? formatChecklistAnswer(
+                  target.detail,
+                  row.response.answers[target.detail.id],
+                  row.response.answers
+                )
               : ''
           return (
             <li key={row.subject.id} className="flex items-start gap-3 px-3 py-2.5">

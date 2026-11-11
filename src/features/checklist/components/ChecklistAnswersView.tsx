@@ -25,7 +25,7 @@ export function ChecklistAnswersView({
           )
         }
         const grid = q.type === 'GRID' ? gridAnswerLines(q, answers[q.id]) : null
-        const text = grid ? '' : formatChecklistAnswer(q, answers[q.id])
+        const text = grid ? '' : formatChecklistAnswer(q, answers[q.id], answers)
         return (
           <div key={q.id} className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3">
             <p className="text-sm font-semibold text-foreground">

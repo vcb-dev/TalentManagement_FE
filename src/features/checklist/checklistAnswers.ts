@@ -14,6 +14,41 @@ export function newChecklistId(prefix: 'q' | 'o'): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`
 }
 
+/**
+ * Khoá lưu chữ ghi rõ của lựa chọn "Khác" trong `answers` (khớp BE). Dấu `:` không có trong
+ * mã câu hỏi nên không trùng khoá câu trả lời thường.
+ */
+export function checklistOtherKey(questionId: string, optionId: string): string {
+  return `${questionId}:${optionId}`
+}
+
+const isChoiceQuestion = (q: ChecklistQuestion) =>
+  q.type === 'SINGLE_CHOICE' || q.type === 'MULTIPLE_CHOICE'
+
+/** Id các lựa chọn đang được chọn của câu chọn một / chọn nhiều. */
+function pickedOptionIds(v: ChecklistAnswerValue | undefined): string[] {
+  if (typeof v === 'string') return v ? [v] : []
+  return Array.isArray(v) ? v : []
+}
+
+/** Lựa chọn "Khác" đang được chọn mà chưa ghi rõ — chặn gửi như câu bắt buộc. */
+export function missingOtherTexts(
+  questions: ChecklistQuestion[],
+  answers: ChecklistAnswers
+): { question: ChecklistQuestion; option: ChecklistOption }[] {
+  const out: { question: ChecklistQuestion; option: ChecklistOption }[] = []
+  for (const q of questions) {
+    if (!isChoiceQuestion(q)) continue
+    const picked = pickedOptionIds(answers[q.id])
+    for (const o of q.options ?? []) {
+      if (!o.freeText || !picked.includes(o.id)) continue
+      const text = answers[checklistOtherKey(q.id, o.id)]
+      if (typeof text !== 'string' || !text.trim()) out.push({ question: q, option: o })
+    }
+  }
+  return out
+}
+
 export function personName(p: ChecklistPerson | null | undefined): string {
   return p?.fullNameLegal?.trim() || p?.email?.trim() || '—'
 }
@@ -63,7 +98,10 @@ export function missingRequiredQuestions(
   })
 }
 
-/** Bỏ câu trống / câu không còn trong mẫu / dòng lưới để trống trước khi gửi. */
+/**
+ * Bỏ câu trống / câu không còn trong mẫu / dòng lưới để trống trước khi gửi; chỉ giữ chữ ghi rõ
+ * của lựa chọn "Khác" đang được chọn.
+ */
 export function cleanChecklistAnswers(
   questions: ChecklistQuestion[],
   answers: ChecklistAnswers
@@ -80,6 +118,15 @@ export function cleanChecklistAnswers(
       continue
     }
     out[q.id] = typeof v === 'string' ? v.trim() : v
+    if (!isChoiceQuestion(q)) continue
+    const picked = pickedOptionIds(v)
+    for (const o of q.options ?? []) {
+      const key = checklistOtherKey(q.id, o.id)
+      const text = answers[key]
+      if (o.freeText && picked.includes(o.id) && typeof text === 'string' && text.trim()) {
+        out[key] = text.trim()
+      }
+    }
   }
   return out
 }
@@ -88,6 +135,16 @@ const REMOVED_OPTION = '(lựa chọn đã xoá)'
 
 function optionLabel(options: ChecklistOption[] | undefined, id: string): string {
   return options?.find((o) => o.id === id)?.label ?? REMOVED_OPTION
+}
+
+/** Chữ ghi rõ đã lưu cho lựa chọn "Khác" (nếu có). */
+export function checklistOtherText(
+  answers: ChecklistAnswers | undefined,
+  questionId: string,
+  optionId: string
+): string {
+  const v = answers?.[checklistOtherKey(questionId, optionId)]
+  return typeof v === 'string' ? v.trim() : ''
 }
 
 /** Lưới: từng dòng đã chọn → `{ row, value }` (theo thứ tự dòng trong mẫu). */
@@ -101,17 +158,33 @@ export function gridAnswerLines(
     .map((r) => ({ row: r.label, value: optionLabel(q.options, v[r.id]!) }))
 }
 
-/** Câu trả lời dạng chữ để hiển thị / xuất Excel; trống → `''`. */
+/**
+ * Câu trả lời dạng chữ để hiển thị / xuất Excel; trống → `''`.
+ * Truyền `answers` (cả bản trả lời) để kèm chữ ghi rõ của lựa chọn "Khác":
+ * chọn một → `Khác: nội dung`, chọn nhiều → `Laptop, Thiết bị khác (nội dung)`.
+ */
 export function formatChecklistAnswer(
   q: ChecklistQuestion,
-  v: ChecklistAnswerValue | undefined
+  v: ChecklistAnswerValue | undefined,
+  answers?: ChecklistAnswers
 ): string {
   if (isAnswerEmpty(v)) return ''
+  const other = (id: string) => checklistOtherText(answers, q.id, id)
   switch (q.type) {
-    case 'SINGLE_CHOICE':
-      return typeof v === 'string' ? optionLabel(q.options, v) : String(v)
+    case 'SINGLE_CHOICE': {
+      if (typeof v !== 'string') return String(v)
+      const text = other(v)
+      return text ? `${optionLabel(q.options, v)}: ${text}` : optionLabel(q.options, v)
+    }
     case 'MULTIPLE_CHOICE':
-      return Array.isArray(v) ? v.map((id) => optionLabel(q.options, id)).join(', ') : String(v)
+      return Array.isArray(v)
+        ? v
+            .map((id) => {
+              const text = other(id)
+              return text ? `${optionLabel(q.options, id)} (${text})` : optionLabel(q.options, id)
+            })
+            .join(', ')
+        : String(v)
     case 'SCALE':
       return `${String(v)} / ${q.scale?.max ?? 5}`
     case 'DATE': {
@@ -170,13 +243,11 @@ export function validateChecklistTemplate(input: ChecklistTemplateInput): string
     }
     const label = `Câu ${++questionNo}`
     if (!q.title.trim()) return `${label}: nhập nội dung câu hỏi`
-    const error =
-      q.type === 'SINGLE_CHOICE' || q.type === 'MULTIPLE_CHOICE'
-        ? validateOptionList(q.options, label, 'lựa chọn')
-        : q.type === 'GRID'
-          ? (validateOptionList(q.rows, label, 'dòng') ??
-            validateOptionList(q.options, label, 'cột'))
-          : null
+    const error = isChoiceQuestion(q)
+      ? validateOptionList(q.options, label, 'lựa chọn')
+      : q.type === 'GRID'
+        ? (validateOptionList(q.rows, label, 'dòng') ?? validateOptionList(q.options, label, 'cột'))
+        : null
     if (error) return error
   }
   return null

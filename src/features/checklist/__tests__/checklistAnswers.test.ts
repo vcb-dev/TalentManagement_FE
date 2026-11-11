@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  checklistOtherKey,
   checklistQuestionNumbers,
   cleanChecklistAnswers,
   countChecklistQuestions,
   formatChecklistAnswer,
+  missingOtherTexts,
   missingRequiredQuestions,
   validateChecklistTemplate,
 } from '../checklistAnswers'
@@ -61,6 +63,72 @@ describe('checklist answers', () => {
     expect(formatChecklistAnswer(SCALE, 4)).toBe('4 / 5')
     expect(formatChecklistAnswer(DATE, '2026-10-29')).toBe('29/10/2026')
     expect(formatChecklistAnswer(NOTE, undefined)).toBe('')
+  })
+})
+
+describe('"Khác" (ghi rõ) options', () => {
+  const OTHER_SINGLE: ChecklistQuestion = {
+    ...SINGLE,
+    id: 'qs',
+    title: 'Nguồn tuyển',
+    required: false,
+    options: [
+      { id: 'fb', label: 'Facebook' },
+      { id: 'other', label: 'Khác', freeText: true },
+    ],
+  }
+  const OTHER_MULTI: ChecklistQuestion = {
+    ...OTHER_SINGLE,
+    id: 'qm',
+    type: 'MULTIPLE_CHOICE',
+    title: 'Thiết bị',
+    options: [
+      { id: 'laptop', label: 'Laptop' },
+      { id: 'tb_khac', label: 'Thiết bị khác', freeText: true },
+    ],
+  }
+
+  it('builds the storage key with a separator question ids cannot contain', () => {
+    expect(checklistOtherKey('qs', 'other')).toBe('qs:other')
+  })
+
+  it('lists picked "Khác" options that still have no text', () => {
+    const missing = missingOtherTexts([OTHER_SINGLE, OTHER_MULTI, NOTE], {
+      qs: 'other',
+      'qs:other': '   ',
+      qm: ['laptop', 'tb_khac'],
+      'qm:tb_khac': 'Tai nghe',
+    })
+    expect(missing.map((m) => [m.question.id, m.option.id])).toEqual([['qs', 'other']])
+    // Không chọn "Khác" thì không cần ghi rõ.
+    expect(missingOtherTexts([OTHER_SINGLE], { qs: 'fb' })).toEqual([])
+  })
+
+  it('keeps only the trimmed text of picked "Khác" options when saving', () => {
+    expect(
+      cleanChecklistAnswers([OTHER_SINGLE, OTHER_MULTI], {
+        qs: 'fb',
+        'qs:other': 'đã đổi sang Facebook nên bỏ',
+        qm: ['tb_khac'],
+        'qm:tb_khac': '  Tai nghe  ',
+        'qm:laptop': 'không phải ô Khác',
+      })
+    ).toEqual({ qs: 'fb', qm: ['tb_khac'], 'qm:tb_khac': 'Tai nghe' })
+  })
+
+  it('shows the text next to the option label', () => {
+    const answers = {
+      qs: 'other',
+      'qs:other': 'Giới thiệu',
+      qm: ['laptop', 'tb_khac'],
+      'qm:tb_khac': 'Tai nghe, chuột',
+    }
+    expect(formatChecklistAnswer(OTHER_SINGLE, answers.qs, answers)).toBe('Khác: Giới thiệu')
+    expect(formatChecklistAnswer(OTHER_MULTI, answers.qm, answers)).toBe(
+      'Laptop, Thiết bị khác (Tai nghe, chuột)'
+    )
+    // Không truyền cả bản trả lời → như cũ.
+    expect(formatChecklistAnswer(OTHER_SINGLE, 'other')).toBe('Khác')
   })
 })
 

@@ -507,7 +507,9 @@ export function TextAnswersPanel({
     })
   const preview = stat.subjectIds.slice(0, TEXT_PREVIEW).flatMap((id) => {
     const row = rowsById.get(id)
-    const text = row?.response ? formatChecklistAnswer(q, row.response.answers[q.id]) : ''
+    const text = row?.response
+      ? formatChecklistAnswer(q, row.response.answers[q.id], row.response.answers)
+      : ''
     return row && text ? [{ row, text }] : []
   })
   return (
