@@ -9,6 +9,8 @@ import type { EssayCriteriaWeights } from '@/features/exam-papers/criteria'
 import {
   approvalItemApiSchema,
   approvalsPageApiSchema,
+  examExportScheduleApiSchema,
+  examSettingsApiSchema,
   kpiMonthlyApiSchema,
   managerClassActionResponseSchema,
   managerClassApiSchema,
@@ -137,10 +139,50 @@ export const managerApi = {
           className: z.string(),
           submittedCount: z.number().int().optional().default(0),
           gradedCount: z.number().int().optional().default(0),
+          /** Lịch "Nộp bài trực tuyến" (bài phản tư). */
+          isReflection: z.boolean().optional().default(false),
+          /** Ngưỡng riêng của đợt do admin đặt; null = theo ngưỡng chung. */
+          passScore: z.number().int().nullable().optional().default(null),
+          /** Ngưỡng đang áp dụng; null khi kỳ thi có gắn đề (ngưỡng theo từng đề). */
+          effectivePassScore: z.number().int().nullable().optional().default(null),
         })
       ),
       res.data,
       'GET /manager/classes/all-exams'
+    )
+  },
+
+  examSettings: async () => {
+    const res = await apiClient.get<unknown>('/admin/exam-settings')
+    return safeParse(examSettingsApiSchema, res.data, 'GET /admin/exam-settings')
+  },
+
+  setReflectionPassScore: async (passScore: number) => {
+    const res = await apiClient.put<unknown>('/admin/exam-settings/reflection-pass-score', {
+      passScore,
+    })
+    return safeParse(examSettingsApiSchema, res.data, 'PUT reflection-pass-score')
+  },
+
+  /** `null` = bỏ ngưỡng riêng, đợt quay về ngưỡng chung. */
+  setSchedulePassScore: async (scheduleId: string, passScore: number | null) => {
+    const res = await apiClient.put<unknown>(
+      `/admin/exam-settings/schedules/${scheduleId}/pass-score`,
+      { passScore }
+    )
+    return safeParse(
+      z.object({ scheduleId: z.string(), passScore: z.number().int().nullable() }),
+      res.data,
+      'PUT schedule pass-score'
+    )
+  },
+
+  examResultsExport: async () => {
+    const res = await apiClient.get<unknown>('/manager/classes/all-exams/export')
+    return safeParse(
+      z.array(examExportScheduleApiSchema),
+      res.data,
+      'GET /manager/classes/all-exams/export'
     )
   },
 

@@ -401,7 +401,7 @@ export function GraderClassByQuestionScreen({
     for (const sub of classSubmissions) {
       const grade = fileGrades[sub.id]
       const score = getFileExamTotalScore(grade?.score ?? '', bonusGrades[sub.id] ?? 0)
-      const outcome = score >= 80 ? 'DAT' : 'CHO_HOC_LAI'
+      // Không gửi outcome: BE xếp Đạt / Chờ học lại theo ngưỡng admin cấu hình (đề → đợt → chung).
       const gradesPayload =
         gradingType === 'rubric_reading' ? { rubric_reading: rubricGrades[sub.id] || {} } : {}
 
@@ -412,7 +412,6 @@ export function GraderClassByQuestionScreen({
           graderNote: grade?.comment || '',
           status: 'done',
           totalScore: score,
-          outcome,
         })
         successCount++
       } catch {
@@ -604,7 +603,7 @@ export function GraderClassByQuestionScreen({
             )
           : 0
 
-      const outcome = totalScore >= 80 ? 'DAT' : 'CHO_HOC_LAI'
+      // Không gửi outcome: BE xếp Đạt / Chờ học lại theo ngưỡng admin cấu hình (đề → đợt → chung).
 
       try {
         await gradeMutation.mutateAsync({
@@ -613,7 +612,6 @@ export function GraderClassByQuestionScreen({
           graderNote,
           status: 'done',
           totalScore,
-          outcome,
         })
         successCount++
       } catch {
@@ -727,6 +725,9 @@ export function GraderClassByQuestionScreen({
                         </th>
                         <th className="px-4 py-4 font-bold text-slate-600 text-center w-[150px]">
                           {gradingType === 'rubric_reading' ? 'Điểm' : 'Điểm (0-100)'}
+                          <span className="mt-0.5 block text-[11px] font-semibold text-slate-400">
+                            Đạt từ {classSubmissions[0]?.passScore ?? 80} điểm
+                          </span>
                         </th>
                       </tr>
                     </thead>
@@ -1337,7 +1338,7 @@ export function GraderClassByQuestionScreen({
                           'rounded-full px-4 py-1.5 text-xs font-black tracking-tight flex items-center gap-2 border',
                           totalScore === 100
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : totalScore >= 80
+                            : totalScore >= (sub.passScore ?? 80)
                               ? 'bg-amber-50 text-amber-700 border-amber-200'
                               : 'bg-rose-50 text-rose-700 border-rose-200'
                         )}
@@ -1346,7 +1347,7 @@ export function GraderClassByQuestionScreen({
                           <>
                             <span>🟢</span> 100% - ĐẠT
                           </>
-                        ) : totalScore >= 80 ? (
+                        ) : totalScore >= (sub.passScore ?? 80) ? (
                           <>
                             <span>🟡</span> {totalScore}% - ĐẠT
                           </>

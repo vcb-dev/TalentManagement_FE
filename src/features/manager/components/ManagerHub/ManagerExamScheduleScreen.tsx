@@ -42,7 +42,23 @@ import {
 } from '@/lib/examScheduleTime'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
-import { BarChart3, Calendar, Loader2, Pencil, Plus, Search, Trash2, UserX, X } from 'lucide-react'
+import { managerApi } from '@/features/manager/api'
+import { downloadExamDataExcel, type ExamExportInfo } from '@/features/manager/exportExamData'
+import { usePermission } from '@/hooks/usePermission'
+import { getApiErrorMessage } from '@/lib/axios'
+import {
+  BarChart3,
+  Calendar,
+  Download,
+  Gauge,
+  Loader2,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  UserX,
+  X,
+} from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -50,8 +66,58 @@ import type { z } from 'zod'
 import { ExamManagementTabs } from './ExamManagementTabs'
 import { ExamDurationField, ExamPaperPicker } from './ExamPaperAssignmentFields'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
+import { ReflectionPassScoreDialog, type PassScoreTarget } from './ReflectionPassScoreDialog'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
+
+/**
+ * Ngưỡng đạt của đợt nộp bài phản tư (lịch "Nộp bài trực tuyến" không gắn đề).
+ * Admin (`grading.pass_score.manage`) bấm để đổi; người khác chỉ xem.
+ */
+function ReflectionPassScoreInfo({
+  effectivePassScore,
+  isCustom,
+  onEdit,
+}: {
+  effectivePassScore: number | null
+  isCustom: boolean
+  onEdit?: () => void
+}) {
+  const label = (
+    <>
+      <span className="whitespace-nowrap">Đạt từ {effectivePassScore ?? 80}đ</span>
+      <span
+        className={cn(
+          'whitespace-nowrap rounded px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide',
+          isCustom ? 'bg-warning-muted text-warning' : 'bg-muted text-muted-foreground'
+        )}
+      >
+        {isCustom ? 'riêng' : 'chung'}
+      </span>
+    </>
+  )
+  return (
+    <div className="min-w-0">
+      <p className="text-sm font-medium text-foreground">Bài nộp trực tuyến</p>
+      {onEdit ? (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="mt-1 inline-flex flex-wrap items-center gap-1.5 rounded-md text-xs font-semibold text-button underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-button/35"
+          title="Đổi ngưỡng đạt của đợt này"
+          aria-label={`Ngưỡng đạt ${effectivePassScore ?? 80} điểm (${isCustom ? 'riêng đợt này' : 'theo ngưỡng chung'}) — đổi`}
+        >
+          <Gauge className="size-3.5 shrink-0" aria-hidden />
+          {label}
+        </button>
+      ) : (
+        <p className="mt-1 inline-flex flex-wrap items-center gap-1.5 text-xs font-semibold text-foreground">
+          {label}
+        </p>
+      )}
+    </div>
+  )
+}
 
 const FIELD_LABEL = 'block text-xs font-semibold text-muted-foreground'
 
@@ -140,6 +206,23 @@ export function ManagerExamScheduleScreen() {
   const user = useAuthStore((s) => s.user)
   const canManage =
     user?.permissionIds?.includes('manager.classes') || user?.role === 'BOD' || user?.role === 'HR'
+  const { canId } = usePermission()
+  // Khớp guard BE của GET /manager/classes/all-exams/export (điểm mọi kỳ thi — không mở cho giáo viên).
+  const canExport =
+    canId('manager.exam_schedule') || canId('manager.classes') || canId('hr.classes.view')
+  const [isExporting, setIsExporting] = useState(false)
+  const canSetPassScore = canId('grading.pass_score.manage')
+  const [passScoreTarget, setPassScoreTarget] = useState<PassScoreTarget | null>(null)
+  const editPassScore = (e: (typeof exams)[number]) =>
+    canSetPassScore
+      ? () =>
+          setPassScoreTarget({
+            kind: 'schedule',
+            scheduleId: e.id,
+            label: `${e.className} — ${e.topic}`,
+            passScore: e.passScore,
+          })
+      : undefined
   const { data: exams = [], isLoading: loadingExams } = useAllExams()
   const { data: classes = [] } = useManagerClasses()
   const { data: examPapers = [] } = useExamPapers()
@@ -210,6 +293,63 @@ export function ManagerExamScheduleScreen() {
     () => filteredExams.slice((currentPage - 1) * EXAM_PAGE_SIZE, currentPage * EXAM_PAGE_SIZE),
     [filteredExams, currentPage]
   )
+
+  /** Xuất đúng các kỳ thi đang hiển thị (theo tìm kiếm / khoảng ngày); không lọc thì xuất tất cả. */
+  const handleExport = async () => {
+    if (filteredExams.length === 0 || isExporting) return
+    setIsExporting(true)
+    try {
+      const results = await managerApi.examResultsExport()
+      const infos: ExamExportInfo[] = filteredExams.map((e) => {
+        const t = toExamTimelineRow(e)
+        const durationMinutes = getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)
+        return {
+          scheduleId: e.id,
+          className: e.className,
+          topic: e.topic,
+          dateIso: e.dateIso,
+          startTime: e.startTime,
+          endTime: addMinutesToHm(t.startTime, durationMinutes),
+          durationMinutes,
+          statusLabel: examBadgeForSchedule(t).label,
+          location: e.location ?? null,
+          graderName: e.examTeacherName || null,
+          paperCodes: (e.examPaperIds ?? [])
+            .map((id) => paperById.get(id)?.code)
+            .filter(Boolean)
+            .join(', '),
+          // Có đề → ngưỡng theo từng đề; không đề → ngưỡng BE tính (riêng đợt / chung phản tư / 80).
+          passScoreLabel:
+            e.effectivePassScore !== null
+              ? String(e.effectivePassScore)
+              : [
+                  ...new Set(
+                    (e.examPaperIds ?? []).flatMap((id) => {
+                      const p = paperById.get(id)
+                      return p ? [p.passScore] : []
+                    })
+                  ),
+                ]
+                  .sort((a, b) => a - b)
+                  .join(', '),
+        }
+      })
+      const filters = [
+        searchQuery.trim() ? `tìm "${searchQuery.trim()}"` : '',
+        startDate ? `từ ${formatViDate(startDate)}` : '',
+        endDate ? `đến ${formatViDate(endDate)}` : '',
+      ].filter(Boolean)
+      const scopeNote = filters.length
+        ? `${infos.length} kỳ thi (lọc: ${filters.join(', ')})`
+        : `Toàn bộ ${infos.length} kỳ thi`
+      const { examCount, studentRows } = await downloadExamDataExcel(infos, results, scopeNote)
+      toast.success(`Đã xuất ${examCount} kỳ thi · ${studentRows} dòng điểm học viên`)
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const [examModalOpen, setExamModalOpen] = useState(false)
   const [examModalClassId, setExamModalClassId] = useState<string | null>(null)
@@ -424,6 +564,39 @@ export function ManagerExamScheduleScreen() {
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <ExamManagementTabs active="/manager/exam-schedule" className="mb-0" />
+            {canSetPassScore ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 gap-2 rounded-lg px-4 text-sm font-semibold"
+                title="Điểm tối thiểu để bài phản tư được Đạt"
+                onClick={() => setPassScoreTarget({ kind: 'global' })}
+              >
+                <Gauge className="h-4 w-4" aria-hidden />
+                Ngưỡng đạt phản tư
+              </Button>
+            ) : null}
+            {canExport ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 gap-2 rounded-lg px-4 text-sm font-semibold"
+                disabled={loadingExams || isExporting || filteredExams.length === 0}
+                title={
+                  filteredExams.length === exams.length
+                    ? 'Xuất toàn bộ kỳ thi, điểm và chi tiết bài làm ra Excel'
+                    : `Xuất ${filteredExams.length} kỳ thi đang lọc ra Excel`
+                }
+                onClick={() => void handleExport()}
+              >
+                {isExporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <Download className="h-4 w-4" aria-hidden />
+                )}
+                {isExporting ? 'Đang xuất…' : 'Xuất dữ liệu'}
+              </Button>
+            ) : null}
             {canManage && (
               <Button
                 type="button"
@@ -559,6 +732,14 @@ export function ManagerExamScheduleScreen() {
                           {e.examPaperIds.length} đề:{' '}
                           {e.examPaperIds.map((id) => paperById.get(id)?.code ?? '—').join(', ')}
                         </p>
+                      ) : e.isReflection ? (
+                        <div className="mt-0.5">
+                          <ReflectionPassScoreInfo
+                            effectivePassScore={e.effectivePassScore}
+                            isCustom={e.passScore !== null}
+                            onEdit={editPassScore(e)}
+                          />
+                        </div>
                       ) : (
                         <p className="mt-0.5 text-sm italic text-muted-foreground">Chưa gán đề</p>
                       )}
@@ -726,6 +907,12 @@ export function ManagerExamScheduleScreen() {
                                 .map((id) => paperById.get(id)?.code ?? '—')
                                 .join(', ')}
                             </p>
+                          ) : e.isReflection ? (
+                            <ReflectionPassScoreInfo
+                              effectivePassScore={e.effectivePassScore}
+                              isCustom={e.passScore !== null}
+                              onEdit={editPassScore(e)}
+                            />
                           ) : (
                             <p className="text-sm italic text-muted-foreground">Chưa gán đề</p>
                           )}
@@ -1059,6 +1246,13 @@ export function ManagerExamScheduleScreen() {
           examTopic={scoresModal.topic}
         />
       )}
+
+      {canSetPassScore ? (
+        <ReflectionPassScoreDialog
+          target={passScoreTarget}
+          onClose={() => setPassScoreTarget(null)}
+        />
+      ) : null}
     </>
   )
 }
