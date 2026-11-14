@@ -200,9 +200,12 @@ function GraderQuestionItem({
 function LiveTotalScore({
   control,
   answeredCount,
+  passScore,
 }: {
   control: Control<GradeFormValues>
   answeredCount: number
+  /** Ngưỡng đạt của bài (BE tính: đề → riêng đợt → chung phản tư → 80). */
+  passScore: number
 }) {
   const grades = useWatch({ control, name: 'grades' }) ?? {}
   const totalScore =
@@ -215,12 +218,12 @@ function LiveTotalScore({
         'text-lg font-black flex items-center gap-2',
         totalScore === 100
           ? 'text-emerald-600'
-          : totalScore >= 80
+          : totalScore >= passScore
             ? 'text-amber-600'
             : 'text-rose-600'
       )}
     >
-      {totalScore === 100 ? '🟢' : totalScore >= 80 ? '🟡' : '🔴'} {totalScore}%
+      {totalScore === 100 ? '🟢' : totalScore >= passScore ? '🟡' : '🔴'} {totalScore}%
     </span>
   )
 }
@@ -283,6 +286,7 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
   }, [submission, gradeForm])
 
   const gradingType = (submission?.schedule as any)?.examQuestions?.gradingType || 'direct'
+  const passScore = submission?.passScore ?? 80
   const criteriaWeights = extractCriteriaWeights(
     (submission?.schedule as any)?.examQuestions ??
       (submission?.learningClass as any)?.examQuestions
@@ -772,9 +776,14 @@ export function GraderChamThiScreen({ examId }: GraderChamThiScreenProps) {
                       <LiveTotalScore
                         control={gradeForm.control}
                         answeredCount={totalQuestionsInExam}
+                        passScore={passScore}
                       />
                     </div>
                   )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Ngưỡng đạt</span>
+                    <span className="font-bold text-foreground">Từ {passScore} điểm</span>
+                  </div>
                   <div className="my-2 h-px w-full bg-border" />
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Trạng thái</span>

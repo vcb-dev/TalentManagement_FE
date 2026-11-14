@@ -159,6 +159,65 @@ export const managerClassCreateResponseSchema = z.object({
   id: z.string().uuid(),
 })
 
+/** GET /admin/exam-settings — ngưỡng đạt chung của bài phản tư (admin `grading.pass_score.manage`). */
+export const examSettingsApiSchema = z.object({
+  reflectionPassScore: z.number().int(),
+  updatedAt: z.string().nullable(),
+  updatedByName: z.string().nullable(),
+})
+
+/** GET /manager/classes/all-exams/export — học viên, bài làm, điểm & chi tiết từng câu của mỗi lịch thi. */
+export const examExportScheduleApiSchema = z.object({
+  scheduleId: z.string(),
+  classTeacherName: z.string().nullable(),
+  courseTitle: z.string().nullable(),
+  coursePathTitle: z.string().nullable(),
+  memberCount: z.number().int().nonnegative(),
+  students: z.array(
+    z.object({
+      userId: z.string(),
+      employeeIdentifier: z.string().nullable(),
+      fullName: z.string(),
+      email: z.string().nullable(),
+      teamName: z.string().nullable(),
+      isMember: z.boolean(),
+      submission: z
+        .object({
+          id: z.string(),
+          status: z.enum(['started', 'pending', 'grading', 'done']),
+          createdAt: z.string(),
+          updatedAt: z.string(),
+          paperCode: z.string().nullable(),
+          paperTitle: z.string().nullable(),
+          passScore: z.number().nullable(),
+          totalScore: z.number().nullable(),
+          outcome: z.enum(['DAT', 'BAO_LUU', 'CHO_HOC_LAI', 'CHIA_TAY']).nullable(),
+          graderName: z.string().nullable(),
+          gradedAt: z.string().nullable(),
+          graderNote: z.string().nullable(),
+          fileName: z.string().nullable(),
+          fileUrl: z.string().nullable(),
+          studentFeedback: z.string().nullable(),
+          questions: z.array(
+            z.object({
+              order: z.number().int(),
+              stem: z.string(),
+              type: z.enum(['mcq', 'essay']),
+              answer: z.string(),
+              score: z.number().nullable(),
+              maxScore: z.number(),
+              correctAnswer: z.string().nullable(),
+              isCorrect: z.boolean().nullable(),
+              criteria: z.array(z.string()),
+              note: z.string(),
+            })
+          ),
+        })
+        .nullable(),
+    })
+  ),
+})
+
 export const managerClassActionResponseSchema = z.object({
   ok: z.boolean(),
 })

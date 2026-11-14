@@ -114,6 +114,7 @@ function ClassGrid({
   onEdit,
   onDelete,
   onToggleStatus,
+  canManageMembers,
 }: {
   rows: ManagerClass[]
   emptyTitle: string
@@ -121,6 +122,7 @@ function ClassGrid({
   onEdit?: (row: ManagerClass) => void
   onDelete?: (id: string) => void
   onToggleStatus?: (row: ManagerClass) => void
+  canManageMembers?: boolean
 }) {
   if (rows.length === 0) {
     return (
@@ -140,6 +142,7 @@ function ClassGrid({
           onEdit={onEdit}
           onDelete={onDelete}
           onToggleStatus={onToggleStatus}
+          canManageMembers={canManageMembers}
         />
       ))}
     </div>
@@ -156,6 +159,8 @@ export function ManagerClassesScreen({
   const { canId } = usePermission()
   /** Không có `manager.classes` (vd. HR chỉ có `hr.classes.view`) → chỉ xem, ẩn tạo/sửa/xoá. */
   const canManage = canId('manager.classes')
+  /** Chỉ admin: thêm / xoá học viên thẳng trên thẻ lớp (người khác: tự đăng ký + giáo viên duyệt). */
+  const canManageMembers = canId('class.members.manage')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [fromDate, setFromDate] = useState('')
@@ -856,6 +861,9 @@ export function ManagerClassesScreen({
                       <div className="rounded-xl border border-dashed border-button/25 bg-button/5 px-3 py-2.5 text-xs font-semibold text-button md:col-span-2">
                         Học viên sẽ tự đăng ký lớp sau khi lớp được tạo. Giáo viên phụ trách duyệt
                         hoặc từ chối từng đăng ký.
+                        {canManageMembers
+                          ? ' Bạn cũng có thể thêm học viên trực tiếp ở mục học viên trên thẻ lớp.'
+                          : null}
                       </div>
                       <div className="mt-5 flex justify-end gap-2 md:col-span-2">
                         <Button
@@ -910,6 +918,7 @@ export function ManagerClassesScreen({
               onEdit={canManage ? openEditClassModal : undefined}
               onDelete={canManage ? handleDeleteClass : undefined}
               onToggleStatus={canManage ? handleToggleStatus : undefined}
+              canManageMembers={canManageMembers}
             />
             {!hasCourseFilter && (canManage || editorRows.length > 0) ? (
               <div className="border-t border-border/70 pt-8">

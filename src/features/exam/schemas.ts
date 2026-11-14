@@ -52,6 +52,8 @@ export const examSubmissionApiSchema = z.object({
   gradedAt: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /** Ngưỡng đạt đang áp cho bài (đề → riêng đợt → chung bài phản tư → 80) — BE tính sẵn. */
+  passScore: z.number().int().nullable().optional(),
   learningClass: z
     .object({
       name: z.string(),

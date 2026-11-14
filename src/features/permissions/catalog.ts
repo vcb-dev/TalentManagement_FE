@@ -274,6 +274,39 @@ const nodes: PermissionNode[] = [
     scope: 'global',
   },
 
+  // Không nằm trong template role nào — BE migration cấp sẵn cho tài khoản admin dùng chung.
+  // Bình thường học viên tự đăng ký & giáo viên duyệt; quyền này để admin xếp / gỡ học viên trực tiếp.
+  {
+    id: 'mod.class_members',
+    parentId: null,
+    label: 'Xếp học viên vào lớp',
+    kind: 'module',
+    scope: 'global',
+  },
+  {
+    id: 'class.members.manage',
+    parentId: 'mod.class_members',
+    label: 'Thêm / xoá học viên trong lớp học',
+    kind: 'function',
+    scope: 'global',
+  },
+
+  // Không nằm trong template role nào — BE migration cấp sẵn cho tài khoản admin dùng chung.
+  {
+    id: 'mod.grading_config',
+    parentId: null,
+    label: 'Cấu hình chấm bài',
+    kind: 'module',
+    scope: 'global',
+  },
+  {
+    id: 'grading.pass_score.manage',
+    parentId: 'mod.grading_config',
+    label: 'Đặt ngưỡng đạt bài phản tư (chung & từng đợt)',
+    kind: 'function',
+    scope: 'global',
+  },
+
   { id: 'mod.manager', parentId: null, label: 'Quản lý vận hành', kind: 'module', scope: 'global' },
   {
     id: 'manager.team.view',
@@ -452,6 +485,8 @@ export const PERMISSION_MODULE_IDS_UI_ORDER: readonly string[] = [
   'mod.checklist',
   'mod.course',
   'mod.activity',
+  'mod.class_members',
+  'mod.grading_config',
   'mod.manager',
   'mod.bod',
   'mod.teacher',
@@ -499,6 +534,12 @@ export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly stri
   ],
   'mod.activity': [
     'Thêm / sửa / xoá hoạt động trong tháng (/activities) — nhân sự không cần quyền này để xem',
+  ],
+  'mod.class_members': [
+    'Thêm / xoá học viên ngay trên thẻ lớp (/manager/classes) — cần kèm quyền vào trang lớp học',
+  ],
+  'mod.grading_config': [
+    'Ngưỡng đạt chung của bài phản tư và ngưỡng riêng từng đợt (/manager/exam-schedule) — cần kèm quyền vào trang Lịch thi',
   ],
   'mod.manager': [
     'Xem nhóm & hồ sơ qua màn Nhân sự (/hr-admin) khi cần quyền xem nhóm',

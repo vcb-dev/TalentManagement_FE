@@ -10,13 +10,20 @@ import {
   Lock,
   LockOpen,
   Pencil,
+  Loader2,
   Trash2,
+  UserMinus,
   Users,
 } from 'lucide-react'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useRemoveClassMember } from '@/features/manager/hooks'
 import type { ManagerClass } from '@/features/manager/types'
+import { ClassMemberAdder } from './ClassMemberAdder'
+
+type ClassMember = ManagerClass['members'][number]
 
 type ClassStatus = 'open' | 'full' | 'closed'
 
@@ -72,10 +79,25 @@ interface ClassCardProps {
   onDelete?: (id: string) => void
   /** Đóng lớp (ngừng nhận đăng ký) hoặc mở lại. Bỏ trống → ẩn nút. */
   onToggleStatus?: (row: ManagerClass) => void
+  /**
+   * Admin (`class.members.manage`) thêm / xoá học viên ngay trong danh sách học viên.
+   * Không áp dụng cho lớp Editor — hệ thống tự xếp theo team, sửa tay sẽ bị đồng bộ ghi đè.
+   */
+  canManageMembers?: boolean
 }
 
-export function ClassCard({ row, onEdit, onDelete, onToggleStatus }: ClassCardProps) {
+export function ClassCard({
+  row,
+  onEdit,
+  onDelete,
+  onToggleStatus,
+  canManageMembers = false,
+}: ClassCardProps) {
   const [membersOpen, setMembersOpen] = useState(false)
+  // Giữ người đang xoá sau khi đóng hộp thoại để tiêu đề không nháy rỗng lúc animation thoát.
+  const [removeTarget, setRemoveTarget] = useState<ClassMember | null>(null)
+  const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = useState(false)
+  const removeMember = useRemoveClassMember()
 
   const status = STATUS[row.status] ?? STATUS.open
   const isClosed = row.status === 'closed'
@@ -87,6 +109,9 @@ export function ClassCard({ row, onEdit, onDelete, onToggleStatus }: ClassCardPr
   const isEditor = row.kind === 'EDITOR'
   const members = row.members ?? []
   const membersId = `class-members-${row.id}`
+  const canEditMembers = canManageMembers && !isEditor
+  const canExpandMembers = members.length > 0 || canEditMembers
+  const removingUserId = removeMember.isPending ? removeMember.variables?.userId : undefined
 
   return (
     <article className="flex flex-col rounded-2xl border border-border/80 bg-card shadow-[var(--shadow-card)] transition-shadow duration-200 hover:shadow-[0_8px_24px_-12px_rgb(15_23_42/0.18)]">
@@ -196,44 +221,92 @@ export function ClassCard({ row, onEdit, onDelete, onToggleStatus }: ClassCardPr
           className="flex w-full items-center justify-between gap-2 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none disabled:cursor-default disabled:text-muted-foreground disabled:hover:bg-transparent"
           aria-expanded={membersOpen}
           aria-controls={membersId}
-          disabled={members.length === 0}
+          disabled={!canExpandMembers}
           onClick={() => setMembersOpen((v) => !v)}
         >
           <span className="flex items-center gap-2">
             <Users className="size-4 text-muted-foreground" aria-hidden />
             {members.length === 0 ? 'Chưa có học viên' : `${members.length} học viên`}
           </span>
-          {members.length > 0 ? (
-            <ChevronDown
-              className={cn(
-                'size-4 text-muted-foreground transition-transform duration-200',
-                membersOpen && 'rotate-180'
-              )}
-              aria-hidden
-            />
+          {canExpandMembers ? (
+            <span className="flex items-center gap-2">
+              {canEditMembers && !membersOpen ? (
+                <span className="text-xs font-medium text-button">Thêm / xoá</span>
+              ) : null}
+              <ChevronDown
+                className={cn(
+                  'size-4 text-muted-foreground transition-transform duration-200',
+                  membersOpen && 'rotate-180'
+                )}
+                aria-hidden
+              />
+            </span>
           ) : null}
         </button>
         {membersOpen ? (
-          <ul id={membersId} className="max-h-64 space-y-0.5 overflow-y-auto px-3 pb-3">
-            {members.map((m) => (
-              <li
-                key={m.userId}
-                className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-muted/50"
-              >
-                <EmployeeAvatar
-                  name={m.name}
-                  className="size-7 shadow-none ring-0"
-                  fallbackClassName="bg-button/10 text-button"
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">{m.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{m.email}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div id={membersId} className="px-3 pb-3">
+            {members.length > 0 ? (
+              <ul className="max-h-64 space-y-0.5 overflow-y-auto">
+                {members.map((m) => (
+                  <li
+                    key={m.userId}
+                    className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-muted/50"
+                  >
+                    <EmployeeAvatar
+                      name={m.name}
+                      className="size-7 shadow-none ring-0"
+                      fallbackClassName="bg-button/10 text-button"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{m.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{m.email}</p>
+                    </div>
+                    {canEditMembers ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 min-h-8 shrink-0 rounded-lg text-muted-foreground hover:bg-danger-muted hover:text-danger"
+                        disabled={removeMember.isPending}
+                        aria-label={`Xoá ${m.name} khỏi lớp`}
+                        title="Xoá khỏi lớp"
+                        onClick={() => {
+                          setRemoveTarget(m)
+                          setIsRemoveConfirmOpen(true)
+                        }}
+                      >
+                        {removingUserId === m.userId ? (
+                          <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                        ) : (
+                          <UserMinus className="size-3.5" aria-hidden />
+                        )}
+                      </Button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {canEditMembers ? <ClassMemberAdder row={row} /> : null}
+          </div>
         ) : null}
       </div>
+
+      {canEditMembers ? (
+        <ConfirmDialog
+          open={isRemoveConfirmOpen}
+          onOpenChange={setIsRemoveConfirmOpen}
+          title={`Xoá "${removeTarget?.name ?? ''}" khỏi lớp?`}
+          description={`Học viên rời lớp "${row.name}"; đăng ký và lịch học bù còn treo của lớp này bị huỷ. Có thể thêm lại sau.`}
+          confirmLabel="Xoá khỏi lớp"
+          destructive
+          onConfirm={() => {
+            if (removeTarget) {
+              removeMember.mutate({ classId: row.id, userId: removeTarget.userId })
+            }
+            setIsRemoveConfirmOpen(false)
+          }}
+        />
+      ) : null}
 
       {onEdit || onDelete || onToggleStatus ? (
         <div className="flex flex-wrap items-center justify-end gap-1 border-t border-border/70 px-3 py-2">

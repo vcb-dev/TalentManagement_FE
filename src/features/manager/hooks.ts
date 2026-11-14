@@ -143,6 +143,51 @@ export function useAllExams() {
   })
 }
 
+/** Ngưỡng đạt chung bài phản tư — chỉ admin (`grading.pass_score.manage`) đọc được. */
+export function useExamSettings(enabled: boolean) {
+  return useQuery({
+    queryKey: [...managerKeys.all, 'exam-settings'],
+    queryFn: () => managerApi.examSettings(),
+    enabled,
+  })
+}
+
+/** Đổi ngưỡng → làm mới danh sách lịch thi và bài nộp (màn chấm hiện Đạt / Thi lại theo ngưỡng mới). */
+function invalidatePassScoreViews(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'exam-settings'] })
+  void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
+  void qc.invalidateQueries({ queryKey: ['exam_submissions'] })
+}
+
+export function useSetReflectionPassScore() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (passScore: number) => managerApi.setReflectionPassScore(passScore),
+    onSuccess: (data) => {
+      invalidatePassScoreViews(qc)
+      toast.success(`Đã đặt ngưỡng đạt chung của bài phản tư: ${data.reflectionPassScore} điểm`)
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
+export function useSetSchedulePassScore() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ scheduleId, passScore }: { scheduleId: string; passScore: number | null }) =>
+      managerApi.setSchedulePassScore(scheduleId, passScore),
+    onSuccess: (data) => {
+      invalidatePassScoreViews(qc)
+      toast.success(
+        data.passScore === null
+          ? 'Đợt này dùng lại ngưỡng đạt chung'
+          : `Đã đặt ngưỡng đạt riêng cho đợt này: ${data.passScore} điểm`
+      )
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
 export function useManagerClasses(params?: {
   search?: string
   levelFrom?: string
@@ -252,7 +297,7 @@ export function useAddClassMember() {
       managerApi.addClassMember(classId, userId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
-      toast.success('Đã thêm nhân sự vào lớp')
+      toast.success('Đã thêm học viên vào lớp')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   })
@@ -265,7 +310,7 @@ export function useRemoveClassMember() {
       managerApi.removeClassMember(classId, userId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
-      toast.success('Đã xóa nhân sự khỏi lớp')
+      toast.success('Đã xoá học viên khỏi lớp')
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   })
