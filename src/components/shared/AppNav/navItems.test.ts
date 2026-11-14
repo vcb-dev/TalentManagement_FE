@@ -67,37 +67,27 @@ describe('mergeCompactHeaderNavItems', () => {
     }
   })
 
-  it('shows KPI/OKR and monthly report entries to the roles that own them', () => {
-    const expectedRoutes = {
-      MEMBER: ['/monthly-report'],
-      LEADER: ['/leader/kpi-okr', '/monthly-report'],
-      MANAGER: [
-        '/manager/kpi-okr',
-        '/leader/vinh-danh',
-        '/leader/kpi-approval',
-        '/monthly-report',
-        '/kpi-okr-compliance',
-        '/hr-admin/settings/kpi-windows',
-      ],
-      HR: ['/monthly-report', '/kpi-okr-compliance', '/hr-admin/settings/kpi-windows'],
-    } as const
-    for (const [role, routes] of Object.entries(expectedRoutes)) {
-      const permissions = new Set(
-        getDefaultPermissionIdsForRole(role as keyof typeof expectedRoutes)
-      )
+  it('hides KPI/OKR and monthly report entries while those features are disabled', () => {
+    const hiddenRoutes = [
+      '/kpi-okr',
+      '/leader/kpi-okr',
+      '/manager/kpi-okr',
+      '/leader/vinh-danh',
+      '/leader/kpi-approval',
+      '/kpi-okr-compliance',
+      '/hr-admin/settings/kpi-windows',
+      '/monthly-report',
+    ]
+    for (const role of ['MEMBER', 'LEADER', 'MANAGER', 'HR', 'BOD', 'TEACHER'] as const) {
+      const permissions = new Set(getDefaultPermissionIdsForRole(role))
       const canId = (id: string) => permissions.has(id)
-      const headerRoutes = mergeCompactHeaderNavItems(
-        canId,
-        role as keyof typeof expectedRoutes
-      ).map((item) => item.to)
-      const sidebarRoutes = groupedSidebarNavItems(canId, { role } as UserSession)
-        .flatMap((g) => g.items)
-        .map((item) => item.to)
+      const routes = [
+        ...mergeCompactHeaderNavItems(canId, role),
+        ...mergeCompactHeaderNavItems(canId, role, true),
+        ...groupedSidebarNavItems(canId, { role } as UserSession).flatMap((g) => g.items),
+      ].map((item) => item.to)
 
-      for (const to of routes) {
-        expect(headerRoutes).toContain(to)
-        expect(sidebarRoutes).toContain(to)
-      }
+      for (const to of hiddenRoutes) expect(routes).not.toContain(to)
     }
   })
 })

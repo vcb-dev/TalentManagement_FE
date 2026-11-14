@@ -4,13 +4,13 @@
  * trên dashboard, cờ KPI trong Phòng ban & nhóm. Route KPI bị chặn (redirect về trang mặc định).
  * Đặt `false` để ẩn — dữ liệu/API backend không bị ảnh hưởng.
  */
-export const KPI_OKR_ENABLED = true
+export const KPI_OKR_ENABLED = false
 
 /**
  * Bật/tắt màn Báo cáo hàng tháng (`/monthly-report` — tab KPI/OKR + Tổng kết): menu + route.
  * Đặt `false` để ẩn — dữ liệu/API backend không bị ảnh hưởng.
  */
-export const MONTHLY_REPORT_ENABLED = true
+export const MONTHLY_REPORT_ENABLED = false
 
 /**
  * Bật/tắt mục menu "Lộ trình học" (`/learning-path` — lộ trình cấp/sao): chỉ ẩn menu,
