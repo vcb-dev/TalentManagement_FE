@@ -13,6 +13,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { authApi } from '@/features/auth/api'
 import { loginRequestSchema } from '@/features/auth/schemas'
 import { useLogin } from '@/features/auth/hooks'
+import { useChecklistReminderStore } from '@/features/checklist/loginReminder'
 import { defaultEntryPathFromSession } from '@/lib/routeGuards'
 import { MOCK_ACCOUNT_LIST, MOCK_PASSWORD } from '@/features/auth/mock/mockAccounts'
 import { ensureSessionFromCookie } from '@/features/auth/sessionBootstrap'
@@ -72,6 +73,8 @@ function LoginPage() {
 
   const onAuthSuccess = useCallback(() => {
     setIsRedirecting(true)
+    // Trang vừa vào sẽ nhắc nếu còn checklist chưa điền (ChecklistLoginReminder trong AppShell).
+    useChecklistReminderStore.getState().request()
     if (search.redirect && isSafeInternalRedirect(search.redirect)) {
       void navigate({ href: search.redirect })
       return
