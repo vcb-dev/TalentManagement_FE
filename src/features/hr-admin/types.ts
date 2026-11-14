@@ -14,6 +14,8 @@ export interface EmployeeFilters {
   search?: string
   /** Lọc theo team (Quản lý — UUID team). */
   teamId?: string
+  /** Ngày vào làm (1–31) — đi cùng tháng + năm khi lọc theo ngày. */
+  startDay?: number
   startMonth?: number
   startYear?: number
   leaveMonth?: number

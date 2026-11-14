@@ -210,6 +210,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   const appliedListFilter: EmployeeListFilterValue = {
     status: routeSearch.status ?? 'active',
     teamId: routeSearch.teamId,
+    startDay: routeSearch.startDay,
     startMonth: routeSearch.startMonth,
     startYear: routeSearch.startYear,
     leaveMonth: routeSearch.leaveMonth,
@@ -229,6 +230,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         // "Đang làm việc" là mặc định — bỏ param cho gọn link.
         if (next.status === 'active') delete next.status
         if (next.teamId === undefined) delete next.teamId
+        if (next.startDay === undefined) delete next.startDay
         if (next.startMonth === undefined) delete next.startMonth
         if (next.startYear === undefined) delete next.startYear
         if (next.leaveMonth === undefined) delete next.leaveMonth

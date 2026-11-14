@@ -61,6 +61,7 @@ function filterParams(filters: Omit<EmployeeFilters, 'page' | 'pageSize'>) {
     status: statusToApi(filters.status),
     search: filters.search,
     teamId: filters.teamId,
+    startDay: filters.startDay,
     startMonth: filters.startMonth,
     startYear: filters.startYear,
     leaveMonth: filters.leaveMonth,

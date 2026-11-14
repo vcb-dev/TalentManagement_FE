@@ -192,9 +192,13 @@ export function getMockEmployees(filters: EmployeeFilters): {
     const q = filters.search.trim().toLowerCase()
     list = list.filter((e) => e.name.toLowerCase().includes(q) || e.email.toLowerCase().includes(q))
   }
-  if (filters.startMonth !== undefined || filters.startYear !== undefined) {
+  if (
+    filters.startDay !== undefined ||
+    filters.startMonth !== undefined ||
+    filters.startYear !== undefined
+  ) {
     list = list.filter((e) =>
-      isoDateMatchesMonthYear(e.startDate, filters.startMonth, filters.startYear)
+      isoDateMatchesMonthYear(e.startDate, filters.startMonth, filters.startYear, filters.startDay)
     )
   }
   if (filters.leaveMonth !== undefined || filters.leaveYear !== undefined) {

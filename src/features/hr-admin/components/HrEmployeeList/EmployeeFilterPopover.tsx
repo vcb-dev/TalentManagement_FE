@@ -30,6 +30,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useId, useMemo, useState, type ReactNode } from 'react'
+import { PeriodPicker } from './PeriodPicker'
 
 export type EmployeeStatusFilter =
   | 'all'
@@ -42,6 +43,8 @@ export type EmployeeStatusFilter =
 export type EmployeeListFilterValue = {
   status: EmployeeStatusFilter
   teamId?: string
+  /** Vào làm: theo ngày (đủ 3), theo tháng (tháng + năm) hoặc theo năm. */
+  startDay?: number
   startMonth?: number
   startYear?: number
   leaveMonth?: number
@@ -59,6 +62,7 @@ export type EmployeeListFilterPatch = Partial<EmployeeListFilterValue>
 export const RESET_EMPLOYEE_LIST_FILTER: EmployeeListFilterPatch = {
   status: 'active',
   teamId: undefined,
+  startDay: undefined,
   startMonth: undefined,
   startYear: undefined,
   leaveMonth: undefined,
@@ -72,8 +76,8 @@ export function countActiveEmployeeFilters(v: EmployeeListFilterValue): number {
   return [
     v.status !== 'active',
     v.teamId !== undefined,
-    v.startMonth !== undefined,
-    v.startYear !== undefined,
+    // Ngày / tháng / năm vào làm là một bộ lọc.
+    v.startDay !== undefined || v.startMonth !== undefined || v.startYear !== undefined,
     v.leaveMonth !== undefined,
     v.leaveYear !== undefined,
     v.birthMonth !== undefined,
@@ -252,44 +256,16 @@ export function EmployeeFilterPopover({
           ) : null}
 
           <FilterField id={ids.start} icon={CalendarDays} label="Thời gian vào làm">
-            <div className="grid grid-cols-2 gap-2">
-              <Select
-                value={toSelectValue(value.startMonth)}
-                onValueChange={(v) => onChange({ startMonth: fromSelectValue(v) })}
-              >
-                <SelectTrigger
-                  id={ids.start}
-                  className={fieldTriggerClass}
-                  aria-label="Tháng vào làm"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Mọi tháng</SelectItem>
-                  {MONTH_OPTIONS.map((m) => (
-                    <SelectItem key={m} value={String(m)}>
-                      Tháng {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={toSelectValue(value.startYear)}
-                onValueChange={(v) => onChange({ startYear: fromSelectValue(v) })}
-              >
-                <SelectTrigger className={fieldTriggerClass} aria-label="Năm vào làm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-80">
-                  <SelectItem value="all">Mọi năm</SelectItem>
-                  {yearOptions.map((y) => (
-                    <SelectItem key={y} value={String(y)}>
-                      Năm {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <PeriodPicker
+              id={ids.start}
+              aria-label="Thời gian vào làm"
+              value={{ day: value.startDay, month: value.startMonth, year: value.startYear }}
+              onChange={(p) =>
+                onChange({ startDay: p.day, startMonth: p.month, startYear: p.year })
+              }
+              minYear={START_YEAR_MIN}
+              triggerClassName="rounded-md border-border bg-background shadow-none hover:bg-muted/50"
+            />
           </FilterField>
 
           <FilterField id={ids.leave} icon={CalendarX2} label="Thời gian nghỉ việc">
