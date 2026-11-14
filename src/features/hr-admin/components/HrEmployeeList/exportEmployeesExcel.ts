@@ -29,6 +29,13 @@ function isoToExcelDate(iso: string | null): CellValue {
   return m ? new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))) : raw
 }
 
+function joinNames(names: string[]): string {
+  return names
+    .map((n) => n.trim())
+    .filter(Boolean)
+    .join(', ')
+}
+
 const COLUMNS: Column[] = [
   { header: 'STT', width: 6, align: 'center', value: (_, i) => i + 1 },
   { header: 'Mã định danh', width: 13, align: 'center', value: (e) => e.employeeIdentifier ?? '' },
@@ -46,15 +53,8 @@ const COLUMNS: Column[] = [
   { header: 'CCCD / Ngày cấp - Nơi cấp', width: 34, value: (e) => e.identityDocument ?? '' },
   { header: 'Trình độ học vấn', width: 18, value: (e) => e.educationLevel ?? '' },
   { header: 'SĐT', width: 14, align: 'center', value: (e) => e.phone ?? '' },
-  {
-    header: 'Team',
-    width: 24,
-    value: (e) =>
-      e.teamNames
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .join(', '),
-  },
+  { header: 'Team', width: 24, value: (e) => joinNames(e.teamNames) },
+  { header: 'Dự án tham gia', width: 26, value: (e) => joinNames(e.projectNames) },
   { header: 'Vị trí', width: 20, value: (e) => e.jobTitle ?? '' },
   {
     header: 'Ngày bắt đầu công việc',

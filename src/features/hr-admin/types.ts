@@ -24,6 +24,8 @@ export interface EmployeeFilters {
   cardStatus?: EmployeeCardStatusFilter
   /** UUID màu thẻ hoặc `'none'` = chưa có màu. */
   cardColorId?: string
+  /** UUID dự án đang tham gia hoặc `'none'` = không tham gia dự án nào. */
+  projectId?: string
 }
 
 export type EditEmployeeBody = Partial<Record<EmployeePatchKey, string | null>> & {

@@ -373,6 +373,7 @@ export function getMockEmployeesExport(filters: Omit<EmployeeFilters, 'page' | '
         educationLevel: p?.educationLevel ?? null,
         phone: e.phone ?? null,
         teamNames: e.teamNames ?? [],
+        projectNames: [],
         jobTitle: p?.jobTitle ?? null,
         startDate: e.startDate ?? null,
       }

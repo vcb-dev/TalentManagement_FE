@@ -28,6 +28,11 @@ const hrAdminSearchSchema = z.object({
     .union([z.literal('none'), z.string().uuid()])
     .optional()
     .catch(undefined),
+  /** UUID dự án đang tham gia hoặc `none` = không tham gia dự án nào. */
+  projectId: z
+    .union([z.literal('none'), z.string().uuid()])
+    .optional()
+    .catch(undefined),
 })
 
 export const Route = createFileRoute('/_protected/hr-admin/')({
@@ -56,6 +61,7 @@ function HrAdminIndexPage() {
         birthMonth: search.birthMonth,
         cardStatus: search.cardStatus,
         cardColorId: search.cardColorId,
+        projectId: search.projectId,
       }}
     />
   )
