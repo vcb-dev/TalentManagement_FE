@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { Bell, BellOff, ChevronDown, LogOut, UserCircle } from 'lucide-react'
 import { useLogout } from '@/features/auth/hooks'
+import { ChecklistLoginReminder } from '@/features/checklist/components/ChecklistLoginReminder'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -219,6 +220,7 @@ export function AppShell({ children, title }: AppShellProps) {
       <Suspense fallback={null}>
         <AssistantWidget />
       </Suspense>
+      <ChecklistLoginReminder />
     </div>
   )
 }

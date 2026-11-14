@@ -17,12 +17,14 @@ import {
   type EmployeeCardColor,
   type EmployeeCardStatusFilter,
 } from '@/features/hr-admin/employeeCard'
+import { PROJECT_STATUS_LABEL, type ProjectEntity } from '@/features/hr-admin/projectApi'
 import { cn } from '@/lib/utils'
 import {
   BriefcaseBusiness,
   Cake,
   CalendarDays,
   CalendarX2,
+  FolderKanban,
   IdCard,
   Network,
   Palette,
@@ -30,6 +32,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useId, useMemo, useState, type ReactNode } from 'react'
+import { PeriodPicker } from './PeriodPicker'
 
 export type EmployeeStatusFilter =
   | 'all'
@@ -42,6 +45,8 @@ export type EmployeeStatusFilter =
 export type EmployeeListFilterValue = {
   status: EmployeeStatusFilter
   teamId?: string
+  /** Vào làm: theo ngày (đủ 3), theo tháng (tháng + năm) hoặc theo năm. */
+  startDay?: number
   startMonth?: number
   startYear?: number
   leaveMonth?: number
@@ -50,7 +55,12 @@ export type EmployeeListFilterValue = {
   cardStatus?: EmployeeCardStatusFilter
   /** UUID màu thẻ hoặc `'none'` = chưa có màu. */
   cardColorId?: string
+  /** UUID dự án đang tham gia hoặc `'none'` = không tham gia dự án nào. */
+  projectId?: string
 }
+
+/** Giá trị lọc "không tham gia dự án nào" — khớp BE `parseProjectFilter`. */
+export const PROJECT_FILTER_NONE = 'none'
 
 /** Key có mặt với giá trị `undefined` = bỏ lọc key đó. */
 export type EmployeeListFilterPatch = Partial<EmployeeListFilterValue>
@@ -59,6 +69,7 @@ export type EmployeeListFilterPatch = Partial<EmployeeListFilterValue>
 export const RESET_EMPLOYEE_LIST_FILTER: EmployeeListFilterPatch = {
   status: 'active',
   teamId: undefined,
+  startDay: undefined,
   startMonth: undefined,
   startYear: undefined,
   leaveMonth: undefined,
@@ -66,14 +77,16 @@ export const RESET_EMPLOYEE_LIST_FILTER: EmployeeListFilterPatch = {
   birthMonth: undefined,
   cardStatus: undefined,
   cardColorId: undefined,
+  projectId: undefined,
 }
 
 export function countActiveEmployeeFilters(v: EmployeeListFilterValue): number {
   return [
     v.status !== 'active',
     v.teamId !== undefined,
-    v.startMonth !== undefined,
-    v.startYear !== undefined,
+    v.projectId !== undefined,
+    // Ngày / tháng / năm vào làm là một bộ lọc.
+    v.startDay !== undefined || v.startMonth !== undefined || v.startYear !== undefined,
     v.leaveMonth !== undefined,
     v.leaveYear !== undefined,
     v.birthMonth !== undefined,
@@ -139,6 +152,8 @@ export interface EmployeeFilterPopoverProps {
   showTeamFilter: boolean
   /** Danh mục màu thẻ — gồm cả màu đã ẩn (vẫn có người đang mang). */
   cardColors: EmployeeCardColor[]
+  /** Mọi dự án (kể cả tạm dừng / đã kết thúc — vẫn có thể còn thành viên). */
+  projects: Pick<ProjectEntity, 'id' | 'name' | 'status'>[]
 }
 
 export function EmployeeFilterPopover({
@@ -147,11 +162,13 @@ export function EmployeeFilterPopover({
   teamGroups,
   showTeamFilter,
   cardColors,
+  projects,
 }: EmployeeFilterPopoverProps) {
   const [open, setOpen] = useState(false)
   const ids = {
     status: useId(),
     team: useId(),
+    project: useId(),
     start: useId(),
     leave: useId(),
     birth: useId(),
@@ -251,45 +268,39 @@ export function EmployeeFilterPopover({
             </FilterField>
           ) : null}
 
+          <FilterField id={ids.project} icon={FolderKanban} label="Dự án">
+            <Select
+              value={value.projectId ?? 'all'}
+              onValueChange={(v) => onChange({ projectId: v === 'all' ? undefined : v })}
+            >
+              <SelectTrigger id={ids.project} className={fieldTriggerClass}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                <SelectItem value="all">Tất cả dự án</SelectItem>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.status === 'ACTIVE'
+                      ? p.name
+                      : `${p.name} (${PROJECT_STATUS_LABEL[p.status].toLowerCase()})`}
+                  </SelectItem>
+                ))}
+                <SelectItem value={PROJECT_FILTER_NONE}>Không tham gia dự án</SelectItem>
+              </SelectContent>
+            </Select>
+          </FilterField>
+
           <FilterField id={ids.start} icon={CalendarDays} label="Thời gian vào làm">
-            <div className="grid grid-cols-2 gap-2">
-              <Select
-                value={toSelectValue(value.startMonth)}
-                onValueChange={(v) => onChange({ startMonth: fromSelectValue(v) })}
-              >
-                <SelectTrigger
-                  id={ids.start}
-                  className={fieldTriggerClass}
-                  aria-label="Tháng vào làm"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Mọi tháng</SelectItem>
-                  {MONTH_OPTIONS.map((m) => (
-                    <SelectItem key={m} value={String(m)}>
-                      Tháng {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={toSelectValue(value.startYear)}
-                onValueChange={(v) => onChange({ startYear: fromSelectValue(v) })}
-              >
-                <SelectTrigger className={fieldTriggerClass} aria-label="Năm vào làm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-80">
-                  <SelectItem value="all">Mọi năm</SelectItem>
-                  {yearOptions.map((y) => (
-                    <SelectItem key={y} value={String(y)}>
-                      Năm {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <PeriodPicker
+              id={ids.start}
+              aria-label="Thời gian vào làm"
+              value={{ day: value.startDay, month: value.startMonth, year: value.startYear }}
+              onChange={(p) =>
+                onChange({ startDay: p.day, startMonth: p.month, startYear: p.year })
+              }
+              minYear={START_YEAR_MIN}
+              triggerClassName="rounded-md border-border bg-background shadow-none hover:bg-muted/50"
+            />
           </FilterField>
 
           <FilterField id={ids.leave} icon={CalendarX2} label="Thời gian nghỉ việc">

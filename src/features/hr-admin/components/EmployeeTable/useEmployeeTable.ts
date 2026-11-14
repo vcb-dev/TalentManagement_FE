@@ -17,6 +17,7 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
       role: initial?.role,
       status: initial?.status,
       teamId: initial?.teamId,
+      startDay: initial?.startDay,
       startMonth: initial?.startMonth,
       startYear: initial?.startYear,
       leaveMonth: initial?.leaveMonth,
@@ -24,6 +25,7 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
       birthMonth: initial?.birthMonth,
       cardStatus: initial?.cardStatus,
       cardColorId: initial?.cardColorId,
+      projectId: initial?.projectId,
     }),
     [
       initial?.page,
@@ -31,6 +33,7 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
       initial?.role,
       initial?.status,
       initial?.teamId,
+      initial?.startDay,
       initial?.startMonth,
       initial?.startYear,
       initial?.leaveMonth,
@@ -38,6 +41,7 @@ export function useEmployeeTable(initial?: Partial<EmployeeFilters>) {
       initial?.birthMonth,
       initial?.cardStatus,
       initial?.cardColorId,
+      initial?.projectId,
     ]
   )
 

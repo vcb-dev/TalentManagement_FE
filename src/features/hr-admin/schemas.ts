@@ -326,6 +326,8 @@ export const employeeExportRowSchema = z.object({
   educationLevel: z.string().nullable(),
   phone: z.string().nullable(),
   teamNames: z.array(z.string()),
+  /** Dự án đang tham gia; BE cũ chưa trả → rỗng. */
+  projectNames: z.array(z.string()).default([]),
   jobTitle: z.string().nullable(),
   startDate: z.string().nullable(),
 })

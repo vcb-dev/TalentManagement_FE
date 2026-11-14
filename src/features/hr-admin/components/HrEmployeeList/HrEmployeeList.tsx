@@ -9,6 +9,7 @@ import { employeeApi, type EmployeeEntity } from '@/features/hr-admin/api'
 import { EmployeeTable } from '@/features/hr-admin/components/EmployeeTable'
 import { useEmployeeTable } from '@/features/hr-admin/components/EmployeeTable/useEmployeeTable'
 import { useEmployeeCardColors } from '@/features/hr-admin/employeeCardHooks'
+import { useProjects } from '@/features/hr-admin/projectHooks'
 import type { EmployeeFilters } from '@/features/hr-admin/types'
 import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 import { usePermission } from '@/hooks/usePermission'
@@ -75,6 +76,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     [orgDepartments, teamsByDept]
   )
   const { data: cardColors = [] } = useEmployeeCardColors()
+  const { data: projects = [] } = useProjects()
   const [isExporting, setIsExporting] = useState(false)
   const canCreate = canId('hr.employees.create')
   const canEdit = canId('hr.employees.edit')
@@ -210,6 +212,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
   const appliedListFilter: EmployeeListFilterValue = {
     status: routeSearch.status ?? 'active',
     teamId: routeSearch.teamId,
+    startDay: routeSearch.startDay,
     startMonth: routeSearch.startMonth,
     startYear: routeSearch.startYear,
     leaveMonth: routeSearch.leaveMonth,
@@ -217,6 +220,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
     birthMonth: routeSearch.birthMonth,
     cardStatus: routeSearch.cardStatus,
     cardColorId: routeSearch.cardColorId,
+    projectId: routeSearch.projectId,
   }
 
   /** Gộp với URL mới nhất (`prev`) để chọn liên tiếp không mất lọc trước; `undefined` = bỏ lọc. */
@@ -229,6 +233,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         // "Đang làm việc" là mặc định — bỏ param cho gọn link.
         if (next.status === 'active') delete next.status
         if (next.teamId === undefined) delete next.teamId
+        if (next.startDay === undefined) delete next.startDay
         if (next.startMonth === undefined) delete next.startMonth
         if (next.startYear === undefined) delete next.startYear
         if (next.leaveMonth === undefined) delete next.leaveMonth
@@ -236,6 +241,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
         if (next.birthMonth === undefined) delete next.birthMonth
         if (next.cardStatus === undefined) delete next.cardStatus
         if (next.cardColorId === undefined) delete next.cardColorId
+        if (next.projectId === undefined) delete next.projectId
         return next
       },
     })
@@ -423,6 +429,7 @@ export function HrEmployeeList({ initialFilters }: HrEmployeeListProps) {
               teamGroups={teamGroups}
               showTeamFilter={showTeamFilter}
               cardColors={cardColors}
+              projects={projects}
             />
           </div>
         </div>

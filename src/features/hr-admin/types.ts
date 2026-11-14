@@ -14,6 +14,8 @@ export interface EmployeeFilters {
   search?: string
   /** Lọc theo team (Quản lý — UUID team). */
   teamId?: string
+  /** Ngày vào làm (1–31) — đi cùng tháng + năm khi lọc theo ngày. */
+  startDay?: number
   startMonth?: number
   startYear?: number
   leaveMonth?: number
@@ -22,6 +24,8 @@ export interface EmployeeFilters {
   cardStatus?: EmployeeCardStatusFilter
   /** UUID màu thẻ hoặc `'none'` = chưa có màu. */
   cardColorId?: string
+  /** UUID dự án đang tham gia hoặc `'none'` = không tham gia dự án nào. */
+  projectId?: string
 }
 
 export type EditEmployeeBody = Partial<Record<EmployeePatchKey, string | null>> & {

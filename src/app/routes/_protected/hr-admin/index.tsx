@@ -11,6 +11,8 @@ const hrAdminSearchSchema = z.object({
   status: z.enum(['all', 'active', 'inactive', 'probation', 'reserved', 'transferred']).optional(),
   mode: z.enum(['view', 'edit']).optional(),
   teamId: z.string().uuid().optional().catch(undefined),
+  /** Vào làm: theo ngày (đủ 3), theo tháng (tháng + năm) hoặc theo năm. */
+  startDay: z.coerce.number().int().min(1).max(31).optional().catch(undefined),
   startMonth: z.coerce.number().int().min(1).max(12).optional().catch(undefined),
   startYear: z.coerce.number().int().min(1900).max(2999).optional().catch(undefined),
   leaveMonth: z.coerce.number().int().min(1).max(12).optional().catch(undefined),
@@ -23,6 +25,11 @@ const hrAdminSearchSchema = z.object({
     .catch(undefined),
   /** UUID màu thẻ hoặc `none` = chưa có màu. */
   cardColorId: z
+    .union([z.literal('none'), z.string().uuid()])
+    .optional()
+    .catch(undefined),
+  /** UUID dự án đang tham gia hoặc `none` = không tham gia dự án nào. */
+  projectId: z
     .union([z.literal('none'), z.string().uuid()])
     .optional()
     .catch(undefined),
@@ -46,6 +53,7 @@ function HrAdminIndexPage() {
         role: search.role,
         status: search.status === 'all' ? undefined : (search.status ?? 'active'),
         teamId: search.teamId,
+        startDay: search.startDay,
         startMonth: search.startMonth,
         startYear: search.startYear,
         leaveMonth: search.leaveMonth,
@@ -53,6 +61,7 @@ function HrAdminIndexPage() {
         birthMonth: search.birthMonth,
         cardStatus: search.cardStatus,
         cardColorId: search.cardColorId,
+        projectId: search.projectId,
       }}
     />
   )

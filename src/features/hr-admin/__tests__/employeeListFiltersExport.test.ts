@@ -35,6 +35,7 @@ const exportRow: EmployeeExportRow = {
   educationLevel: 'Đại học',
   phone: '0912345678',
   teamNames: ['Team A', ' ', 'Team B'],
+  projectNames: ['ĐVKD 1 - Hồng Ngọc', 'HuyK Mỹ'],
   jobTitle: 'MKT',
   startDate: '2024-11-20',
 }
@@ -53,13 +54,14 @@ describe('employeesToExportRows', () => {
       'Trình độ học vấn',
       'SĐT',
       'Team',
+      'Dự án tham gia',
       'Vị trí',
       'Ngày bắt đầu công việc',
     ])
 
     const [row, second] = employeesToExportRows([
       exportRow,
-      { ...exportRow, birthDate: '7/3/1995' },
+      { ...exportRow, birthDate: '7/3/1995', projectNames: [] },
     ])
     const col = (h: string) => row![EXPORT_HEADER.indexOf(h)]
     expect(col('STT')).toBe(1)
@@ -67,8 +69,10 @@ describe('employeesToExportRows', () => {
     expect(col('Ngày sinh')).toEqual(new Date(Date.UTC(1995, 2, 7)))
     expect(col('Ngày bắt đầu công việc')).toEqual(new Date(Date.UTC(2024, 10, 20)))
     expect(col('Team')).toBe('Team A, Team B')
+    expect(col('Dự án tham gia')).toBe('ĐVKD 1 - Hồng Ngọc, HuyK Mỹ')
     expect(col('CCCD / Ngày cấp - Nơi cấp')).toBe(exportRow.identityDocument)
     expect(second![EXPORT_HEADER.indexOf('Ngày sinh')]).toBe('7/3/1995')
+    expect(second![EXPORT_HEADER.indexOf('Dự án tham gia')]).toBe('')
   })
 })
 
