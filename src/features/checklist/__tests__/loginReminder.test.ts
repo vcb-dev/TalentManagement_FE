@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest'
-import { checklistReminderCopy, pendingChecklists } from '../loginReminder'
+import { beforeEach, describe, expect, it } from 'vitest'
+import {
+  checklistReminderCopy,
+  loginReminder,
+  loginReminderCopy,
+  pendingChecklists,
+  useChecklistReminderStore,
+} from '../loginReminder'
 import type { ChecklistFillItem, ChecklistQuestion, LeaderChecklistEmployee } from '../types'
 
 const Q = (id: string, type: ChecklistQuestion['type'] = 'SHORT_TEXT'): ChecklistQuestion => ({
@@ -108,5 +114,85 @@ describe('checklistReminderCopy', () => {
     const c = checklistReminderCopy({ self: [one], leaderEmployeeCount: 4 })
     expect(c.title).toBe('Bạn còn checklist chưa điền')
     expect(c.primary).toEqual({ tab: 'mine', templateId: 't-1' })
+  })
+})
+
+describe('useChecklistReminderStore — hoãn nhắc checklist khi sang hồ sơ', () => {
+  const store = () => useChecklistReminderStore.getState()
+  const snapshot = () => {
+    const { pending, scope, deferred } = store()
+    return { pending, scope, deferred }
+  }
+  beforeEach(() => store().reset())
+
+  it('đăng nhập → nhắc tất cả', () => {
+    store().request()
+    expect(snapshot()).toEqual({ pending: true, scope: 'all', deferred: 'none' })
+  })
+
+  it('sang hồ sơ → vào /profile → lưu hồ sơ thì nhắc lại riêng checklist, đúng một lần', () => {
+    store().request()
+    store().clear()
+    store().deferChecklists()
+    store().markOnProfile()
+    expect(snapshot()).toEqual({ pending: false, scope: 'all', deferred: 'onProfile' })
+    store().resumeChecklists()
+    expect(snapshot()).toEqual({ pending: true, scope: 'checklists', deferred: 'none' })
+    store().clear()
+    store().resumeChecklists()
+    expect(store().pending).toBe(false)
+  })
+
+  it('không hoãn thì lưu hồ sơ không nhắc gì', () => {
+    store().resumeChecklists()
+    expect(snapshot()).toEqual({ pending: false, scope: 'all', deferred: 'none' })
+  })
+
+  it('đăng nhập lại / đăng xuất bỏ lần hoãn cũ', () => {
+    store().deferChecklists()
+    store().request()
+    expect(store().deferred).toBe('none')
+    store().deferChecklists()
+    store().reset()
+    expect(snapshot()).toEqual({ pending: false, scope: 'all', deferred: 'none' })
+  })
+})
+
+describe('loginReminder / loginReminderCopy', () => {
+  const checklists = { self: [{ id: 't-1', title: 'A', questionCount: 2 }], leaderEmployeeCount: 0 }
+  const missing = [
+    { key: 'teamLeaderUserId', label: 'Trưởng nhóm phụ trách' },
+    { key: 'birthDate', label: 'Ngày sinh' },
+  ] as const
+
+  it('không còn checklist lẫn mục hồ sơ → null', () => {
+    expect(loginReminder(null, [])).toBeNull()
+  })
+
+  it('chỉ checklist → giữ nguyên nội dung cũ, nút "Điền ngay"', () => {
+    const c = loginReminderCopy(loginReminder(checklists, [])!)
+    expect(c.title).toBe('Bạn còn 1 checklist chưa điền')
+    expect(c.primary).toEqual({ to: '/checklists', search: { tab: 'mine', templateId: 't-1' } })
+    expect(c.primaryLabel).toBe('Điền ngay')
+  })
+
+  it('chỉ hồ sơ thiếu → mở trang hồ sơ', () => {
+    const c = loginReminderCopy(loginReminder(null, [...missing])!)
+    expect(c.title).toBe('Cập nhật hồ sơ cá nhân')
+    expect(c.description).toContain('thiếu 2 mục')
+    expect(c.primary).toEqual({ to: '/profile' })
+    expect(c.primaryLabel).toBe('Cập nhật ngay')
+  })
+
+  it('nhắc lại sau khi sửa hồ sơ chỉ còn phần checklist', () => {
+    const c = loginReminderCopy(loginReminder(checklists, [])!)
+    expect(c.primaryLabel).toBe('Điền ngay')
+  })
+
+  it('cả hai → gộp một hộp, nút chính vẫn là checklist', () => {
+    const c = loginReminderCopy(loginReminder(checklists, [...missing])!)
+    expect(c.title).toBe('Bạn còn việc cần hoàn thành')
+    expect(c.primary).toEqual({ to: '/checklists', search: { tab: 'mine', templateId: 't-1' } })
+    expect(c.primaryLabel).toBe('Điền checklist')
   })
 })

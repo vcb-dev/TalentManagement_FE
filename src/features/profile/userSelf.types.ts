@@ -6,6 +6,14 @@ export type TeamLeaderSummary = {
   email: string | null
 }
 
+/** Một dòng `GET /me/team-leader-options` — cùng field `EmployeeEntity` mà dropdown HR dùng. */
+export type TeamLeaderOption = {
+  id: string
+  name: string
+  employeeIdentifier: string | null
+  teamNames: string[]
+}
+
 /** Khớp JSON `GET /me/user` (bảng `users`, không có raw_data). */
 export interface MeUserSelf {
   role: string | null
@@ -64,7 +72,7 @@ export interface MeUserSelf {
   attachmentIdFront: string | null
   attachmentIdBack: string | null
   policyAcknowledgement: string | null
-  /** Chỉ HR sửa — id user có vai trò LEADER. */
+  /** Id user có vai trò LEADER — HR và chính nhân sự đều sửa được. */
   teamLeaderUserId: string | null
   /** BE kèm theo để hiển thị tên trưởng nhóm phụ trách. */
   teamLeader?: TeamLeaderSummary | null
