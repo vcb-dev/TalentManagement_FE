@@ -7,7 +7,11 @@ import {
   SHOW_PROJECT_ROLE,
   type EmployeeProjectMembership,
 } from '@/features/hr-admin/projectApi'
-import { useEmployeeProjects, useRemoveEmployeeProject } from '@/features/hr-admin/projectHooks'
+import {
+  useProjectMemberships,
+  useRemoveProjectMembership,
+  type ProjectMembershipOwner,
+} from '@/features/hr-admin/projectHooks'
 import { formatUserDateForReadonlyDisplay } from '@/features/profile/profileDateUtils'
 import { cn } from '@/lib/utils'
 import { FolderKanban, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
@@ -98,15 +102,16 @@ function MembershipRow({
   )
 }
 
+/** Thẻ dự án trong hồ sơ HR. Nhân sự tự sửa của mình ở ô "Dự án tham gia" của Hồ sơ cá nhân. */
 export function EmployeeProjectsCard({
-  employeeId,
+  owner,
   canEdit,
 }: {
-  employeeId: string
+  owner: ProjectMembershipOwner
   canEdit: boolean
 }) {
-  const { data: memberships = [], isLoading, isError } = useEmployeeProjects(employeeId)
-  const remove = useRemoveEmployeeProject(employeeId)
+  const { data: memberships = [], isLoading, isError } = useProjectMemberships(owner)
+  const remove = useRemoveProjectMembership(owner)
   const anyActionPending = useAnyActionPending()
   const [dialog, setDialog] = useState<{ membership: EmployeeProjectMembership | null } | null>(
     null
@@ -187,7 +192,7 @@ export function EmployeeProjectsCard({
       {canEdit ? (
         <>
           <ProjectMembershipDialog
-            employeeId={employeeId}
+            owner={owner}
             open={dialog !== null}
             onOpenChange={(open) => {
               if (!open) setDialog(null)

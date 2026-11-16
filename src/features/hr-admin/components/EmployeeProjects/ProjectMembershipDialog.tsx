@@ -20,9 +20,10 @@ import {
   type EmployeeProjectMembership,
 } from '@/features/hr-admin/projectApi'
 import {
-  useAssignEmployeeProject,
-  useProjects,
-  useUpdateEmployeeProject,
+  useAssignProjectMembership,
+  useSelectableProjects,
+  useUpdateProjectMembership,
+  type ProjectMembershipOwner,
 } from '@/features/hr-admin/projectHooks'
 import {
   projectMembershipFormSchema,
@@ -49,14 +50,14 @@ function toFormValues(membership: EmployeeProjectMembership | null): ProjectMemb
 }
 
 export function ProjectMembershipDialog({
-  employeeId,
+  owner,
   open,
   onOpenChange,
   membership,
   assignedProjectIds,
   employeeName,
 }: {
-  employeeId: string
+  owner: ProjectMembershipOwner
   open: boolean
   onOpenChange: (open: boolean) => void
   membership: EmployeeProjectMembership | null
@@ -65,6 +66,7 @@ export function ProjectMembershipDialog({
   /** Mở từ màn "Dự án": khoá ô dự án, hiện tên nhân sự thay vào. */
   employeeName?: string
 }) {
+  const self = owner.kind === 'self'
   const lockProject = Boolean(employeeName && membership)
   const isEdit = membership !== null
   const form = useZodForm({
@@ -72,24 +74,31 @@ export function ProjectMembershipDialog({
     defaultValues: toFormValues(membership),
   })
   const { control, handleSubmit, reset, setValue } = form
-  const { data: projects = [], isLoading: projectsLoading } = useProjects()
-  const assign = useAssignEmployeeProject(employeeId)
-  const update = useUpdateEmployeeProject(employeeId)
+  const { data: projects = [], isLoading: projectsLoading } = useSelectableProjects(owner)
+  const assign = useAssignProjectMembership(owner)
+  const update = useUpdateProjectMembership(owner)
   const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
     if (open) reset(toFormValues(membership))
   }, [open, membership, reset])
 
-  const projectOptions = useMemo(
-    () =>
-      projects.filter(
-        (p) =>
-          p.id === membership?.projectId ||
-          (p.status !== 'COMPLETED' && !assignedProjectIds.includes(p.id))
-      ),
-    [projects, membership?.projectId, assignedProjectIds]
-  )
+  const projectOptions = useMemo(() => {
+    const options = projects.filter(
+      (p) =>
+        p.id === membership?.projectId ||
+        (p.status !== 'COMPLETED' && !assignedProjectIds.includes(p.id))
+    )
+    // Nhân sự tự sửa: danh sách chọn không có dự án đã kết thúc — vẫn hiện dự án của dòng đang sửa.
+    if (membership && !options.some((p) => p.id === membership.projectId)) {
+      options.unshift({
+        id: membership.projectId,
+        name: membership.projectName,
+        status: membership.projectStatus,
+      })
+    }
+    return options
+  }, [projects, membership, assignedProjectIds])
 
   const submit = handleSubmit((values) => {
     const input = {
@@ -112,9 +121,13 @@ export function ProjectMembershipDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{isEdit ? 'Sửa dự án tham gia' : 'Gán dự án'}</DialogTitle>
+            <DialogTitle>
+              {isEdit ? 'Sửa dự án tham gia' : self ? 'Thêm dự án đang tham gia' : 'Gán dự án'}
+            </DialogTitle>
             <DialogDescription>
-              Điền ngày rời dự án khi nhân sự thôi tham gia — dòng này vẫn được giữ làm lịch sử.
+              {self
+                ? 'Khi thôi tham gia, hãy điền ngày rời dự án — dòng này vẫn được giữ làm lịch sử.'
+                : 'Điền ngày rời dự án khi nhân sự thôi tham gia — dòng này vẫn được giữ làm lịch sử.'}
             </DialogDescription>
           </DialogHeader>
           <FormProvider {...form}>
@@ -139,7 +152,9 @@ export function ProjectMembershipDialog({
                     {projectsLoading
                       ? 'Đang tải dự án…'
                       : projectOptions.length === 0
-                        ? 'Chưa có dự án nào để gán — thêm dự án mới'
+                        ? self
+                          ? 'Không còn dự án nào để chọn'
+                          : 'Chưa có dự án nào để gán — thêm dự án mới'
                         : 'Chọn dự án'}
                   </SelectItem>
                   {projectOptions.map((p) => (
@@ -150,16 +165,22 @@ export function ProjectMembershipDialog({
                     </SelectItem>
                   ))}
                 </SelectController>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto gap-1 px-1 py-0.5 font-semibold text-primary hover:bg-transparent hover:underline"
-                  onClick={() => setCreateOpen(true)}
-                >
-                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                  Thêm dự án mới
-                </Button>
+                {self ? (
+                  <p className="text-xs text-muted-foreground">
+                    Không thấy dự án của bạn? Liên hệ HR để thêm dự án mới.
+                  </p>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto gap-1 px-1 py-0.5 font-semibold text-primary hover:bg-transparent hover:underline"
+                    onClick={() => setCreateOpen(true)}
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden />
+                    Thêm dự án mới
+                  </Button>
+                )}
               </div>
               {/* Ẩn ô vẫn giữ giá trị cũ trong form → lưu lại không xoá vai trò đã có. */}
               {SHOW_PROJECT_ROLE ? (
@@ -181,20 +202,22 @@ export function ProjectMembershipDialog({
                   Hủy
                 </Button>
                 <Button type="submit" loading={assign.isPending || update.isPending}>
-                  {isEdit ? 'Lưu' : 'Gán dự án'}
+                  {isEdit ? 'Lưu' : self ? 'Thêm dự án' : 'Gán dự án'}
                 </Button>
               </DialogFooter>
             </form>
           </FormProvider>
         </DialogContent>
       </Dialog>
-      <ProjectFormDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onCreated={(project) =>
-          setValue('projectId', project.id, { shouldDirty: true, shouldValidate: true })
-        }
-      />
+      {self ? null : (
+        <ProjectFormDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          onCreated={(project) =>
+            setValue('projectId', project.id, { shouldDirty: true, shouldValidate: true })
+          }
+        />
+      )}
     </>
   )
 }

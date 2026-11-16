@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { createContext, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { ArrowLeft, Loader2, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -28,15 +28,21 @@ type FormTemplate = {
   questions: ChecklistQuestion[]
 }
 
+/** `true` khi form đang điền có câu trả lời chưa lưu — link rời trang hỏi lại trước khi đi. */
+export const ChecklistFormDirtyContext = createContext(false)
+
 export function ChecklistFormHeader({
   title,
   description,
   meta,
+  subject,
   showRequiredNote,
 }: {
   title: string
   description: string | null
   meta?: ReactNode
+  /** Khối phòng ban / nhóm / dự án / trưởng nhóm của người được đánh giá. */
+  subject?: ReactNode
   showRequiredNote?: boolean
 }) {
   return (
@@ -48,6 +54,7 @@ export function ChecklistFormHeader({
           <p className="whitespace-pre-line text-sm text-muted-foreground">{description}</p>
         ) : null}
         {meta ? <div className="text-xs text-muted-foreground">{meta}</div> : null}
+        {subject ? <div className="pt-2">{subject}</div> : null}
         {showRequiredNote ? (
           <p className="text-xs font-medium text-danger">* Câu hỏi bắt buộc</p>
         ) : null}
@@ -513,6 +520,7 @@ export function ChecklistForm({
   template,
   initialAnswers,
   meta,
+  subject,
   saving,
   onSubmit,
   onBack,
@@ -520,12 +528,18 @@ export function ChecklistForm({
   template: FormTemplate
   initialAnswers: ChecklistAnswers | null | undefined
   meta?: ReactNode
+  subject?: ReactNode
   saving?: boolean
   onSubmit: (answers: ChecklistAnswers) => void
   onBack: () => void
 }) {
   // Chỉ đọc `initialAnswers` lúc mount — nơi dùng đặt `key` theo checklist để mở lại là form mới.
   const [answers, setAnswers] = useState<ChecklistAnswers>(() => ({ ...(initialAnswers ?? {}) }))
+  const [initialSnapshot] = useState(() => JSON.stringify(initialAnswers ?? {}))
+  const dirty = useMemo(
+    () => JSON.stringify(answers) !== initialSnapshot,
+    [answers, initialSnapshot]
+  )
   const [submitted, setSubmitted] = useState(false)
 
   const missing = useMemo(
@@ -571,12 +585,15 @@ export function ChecklistForm({
 
   return (
     <form className="mx-auto flex max-w-3xl flex-col gap-4" onSubmit={submit} noValidate>
-      <ChecklistFormHeader
-        title={template.title}
-        description={template.description}
-        meta={meta}
-        showRequiredNote={template.questions.some((q) => q.required)}
-      />
+      <ChecklistFormDirtyContext.Provider value={dirty}>
+        <ChecklistFormHeader
+          title={template.title}
+          description={template.description}
+          meta={meta}
+          subject={subject}
+          showRequiredNote={template.questions.some((q) => q.required)}
+        />
+      </ChecklistFormDirtyContext.Provider>
       <ChecklistFormItems
         questions={template.questions}
         answers={answers}

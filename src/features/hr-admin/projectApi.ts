@@ -24,6 +24,9 @@ export type ProjectEntity = {
   updatedAt: string
 }
 
+/** Dự án hiện trong ô chọn khi gán / tự thêm — `ProjectEntity` cũng thoả kiểu này. */
+export type SelectableProject = Pick<ProjectEntity, 'id' | 'name' | 'status'>
+
 export type EmployeeProjectMembership = {
   id: string
   projectId: string
@@ -160,6 +163,43 @@ export const projectApi = {
     const res = await apiClient.delete<{ id: string }>(
       `/employees/hr/${employeeId}/projects/${membershipId}`
     )
+    return res.data
+  },
+}
+
+/** Nhân sự tự cập nhật dự án của mình (Hồ sơ cá nhân) — BE bỏ qua `roleInProject`. */
+export const myProjectApi = {
+  list: async () => {
+    if (isMockApiEnabled()) return [] as EmployeeProjectMembership[]
+    const res = await apiClient.get<EmployeeProjectMembership[]>('/me/projects')
+    return res.data
+  },
+
+  /** Dự án chưa kết thúc. */
+  options: async () => {
+    if (isMockApiEnabled()) return [] as SelectableProject[]
+    const res = await apiClient.get<SelectableProject[]>('/me/projects/options')
+    return res.data
+  },
+
+  assign: async (input: ProjectMembershipInput) => {
+    if (isMockApiEnabled()) mockUnsupported()
+    const res = await apiClient.post<EmployeeProjectMembership>('/me/projects', input)
+    return res.data
+  },
+
+  updateMembership: async (membershipId: string, input: Partial<ProjectMembershipInput>) => {
+    if (isMockApiEnabled()) mockUnsupported()
+    const res = await apiClient.patch<EmployeeProjectMembership>(
+      `/me/projects/${membershipId}`,
+      input
+    )
+    return res.data
+  },
+
+  removeMembership: async (membershipId: string) => {
+    if (isMockApiEnabled()) mockUnsupported()
+    const res = await apiClient.delete<{ id: string }>(`/me/projects/${membershipId}`)
     return res.data
   },
 }

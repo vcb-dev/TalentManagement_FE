@@ -696,7 +696,7 @@ export function HrProjects() {
           ) : null}
           {editMember ? (
             <ProjectMembershipDialog
-              employeeId={editMember.member.userId}
+              owner={{ kind: 'employee', employeeId: editMember.member.userId }}
               employeeName={editMember.member.name}
               open
               onOpenChange={(open) => {

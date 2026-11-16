@@ -6,13 +6,19 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { formatChecklistTime, personName } from '../checklistAnswers'
-import type { ChecklistPerson, ChecklistQuestion, ChecklistResponse } from '../types'
+import type {
+  ChecklistPerson,
+  ChecklistQuestion,
+  ChecklistResponse,
+  ChecklistSubjectInfo,
+} from '../types'
 import { ChecklistAnswersView } from './ChecklistAnswersView'
+import { ChecklistSubjectInfoGrid } from './ChecklistSubjectInfo'
 
 export type ChecklistResponseDialogTarget = {
   title: string
   questions: ChecklistQuestion[]
-  subject: ChecklistPerson
+  subject: ChecklistPerson & { info?: ChecklistSubjectInfo }
   response: ChecklistResponse
 }
 
@@ -43,6 +49,7 @@ export function ChecklistResponseDialog({
                 {' · '}Cập nhật {formatChecklistTime(target.response.updatedAt)}
               </DialogDescription>
             </DialogHeader>
+            {target.subject.info ? <ChecklistSubjectInfoGrid info={target.subject.info} /> : null}
             <ChecklistAnswersView questions={target.questions} answers={target.response.answers} />
           </>
         ) : null}
