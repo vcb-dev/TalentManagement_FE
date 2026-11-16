@@ -5,16 +5,34 @@ import { authKeys } from '@/features/auth/queryKeys'
 import { profileApi, type MeAttachmentField } from '@/features/profile/api'
 import { profileKeys } from '@/features/profile/queryKeys'
 import { dashboardKeys } from '@/features/dashboard/queryKeys'
+import { useChecklistReminderStore } from '@/features/checklist/loginReminder'
 import type { MeUserPatchKey } from '@/features/profile/userSelf.types'
 
 export type PatchMeUserBody = Partial<Record<MeUserPatchKey, string | null>> & {
   extraTeamIds?: string[]
+  teamLeaderUserId?: string | null
 }
 
 export function useMyProfilePage() {
   return useQuery({
     queryKey: profileKeys.page(),
     queryFn: () => profileApi.getPage(),
+  })
+}
+
+export function useMeUserSelf(enabled = true) {
+  return useQuery({
+    queryKey: profileKeys.userSelf(),
+    queryFn: () => profileApi.getUserSelf(),
+    enabled,
+  })
+}
+
+export function useMyTeamLeaderOptions() {
+  return useQuery({
+    queryKey: profileKeys.teamLeaderOptions(),
+    queryFn: () => profileApi.getTeamLeaderOptions(),
+    staleTime: 5 * 60_000,
   })
 }
 
@@ -31,9 +49,13 @@ export function usePatchMeUser() {
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: profileKeys.page() }),
+        qc.invalidateQueries({ queryKey: profileKeys.userSelf() }),
         qc.invalidateQueries({ queryKey: authKeys.me() }),
         qc.invalidateQueries({ queryKey: dashboardKeys.me() }),
       ])
+      // Ở đây chứ không ở `mutate(..., { onSuccess })`: lưu xong hồ sơ refetch → form mount lại,
+      // callback gắn theo component có thể không chạy.
+      useChecklistReminderStore.getState().resumeChecklists()
     },
   })
 }
@@ -67,6 +89,7 @@ export function useUploadMeAttachment() {
       profileApi.uploadAttachment(args.field, args.file),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: profileKeys.page(), refetchType: 'none' })
+      void qc.invalidateQueries({ queryKey: profileKeys.userSelf(), refetchType: 'none' })
     },
   })
 }

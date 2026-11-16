@@ -8,7 +8,7 @@ import {
   type MeExamAttempt,
   type MeLearningPath,
 } from '@/features/profile/meProfileMapper'
-import type { MeUserSelf } from '@/features/profile/userSelf.types'
+import type { MeUserSelf, TeamLeaderOption } from '@/features/profile/userSelf.types'
 import type { IdCardPhotoField } from '@/features/hr-admin/api'
 
 export type { IdCardPhotoField }
@@ -60,6 +60,20 @@ export const profileApi = {
     const userSelf = userRes.data as MeUserSelf
 
     return mapMeAggregatedToPage(dashboard, learningPath, exams, userSelf)
+  },
+
+  /** Chỉ bản ghi `users` — nhẹ hơn `getPage`, dùng cho hộp nhắc sau đăng nhập. */
+  getUserSelf: async (): Promise<MeUserSelf> => {
+    if (isMockApiEnabled()) return MOCK_MY_PROFILE_PAGE.userRecord!
+    const res = await apiClient.get<MeUserSelf>('/me/user')
+    return res.data
+  },
+
+  /** Trưởng nhóm đang làm việc — dropdown "Trưởng nhóm phụ trách" (mọi nhân sự gọi được). */
+  getTeamLeaderOptions: async (): Promise<TeamLeaderOption[]> => {
+    if (isMockApiEnabled()) return []
+    const res = await apiClient.get<TeamLeaderOption[]>('/me/team-leader-options')
+    return res.data
   },
 
   /** Upload ảnh đại diện — `multipart/form-data`, field `file`. */

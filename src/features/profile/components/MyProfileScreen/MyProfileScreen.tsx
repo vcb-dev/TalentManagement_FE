@@ -2,18 +2,25 @@ import { useEffect, useId, useMemo, useRef, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { FormProvider, useForm, useWatch, type Control } from 'react-hook-form'
 import { toast } from 'sonner'
-import { Building2, RefreshCw, Upload } from 'lucide-react'
+import { AlertCircle, Building2, RefreshCw, Upload } from 'lucide-react'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { SelectItem } from '@/components/ui/select'
+import { SelectGroup, SelectItem, SelectLabel } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/axios'
 import { resolvePublicAssetUrl } from '@/lib/publicAssetUrl'
 import { ROLE_LABEL_VI } from '@/lib/roleLabels'
 import { useAuthStore } from '@/stores/auth.store'
-import { type PatchMeUserBody, usePatchMeUser, useUploadMePortrait } from '@/features/profile/hooks'
+import {
+  type PatchMeUserBody,
+  useMyTeamLeaderOptions,
+  usePatchMeUser,
+  useUploadMePortrait,
+} from '@/features/profile/hooks'
+import { missingProfileFields } from '@/features/profile/profileCompleteness'
+import { useChecklistReminderStore } from '@/features/checklist/loginReminder'
 import { profileApi } from '@/features/profile/api'
 import { organizationApi } from '@/features/organization/api'
 import {
@@ -66,7 +73,10 @@ import {
   type UserSelfFieldSpec,
 } from '@/features/profile/userSelfFormLayout'
 
-import { teamLeaderDisplayName } from '@/features/hr-admin/teamLeaderOptions'
+import {
+  buildTeamLeaderOptionGroups,
+  type TeamLeaderOptionGroup,
+} from '@/features/hr-admin/teamLeaderOptions'
 
 export interface MyProfileScreenProps {
   page: MyProfilePage | undefined
@@ -78,7 +88,6 @@ const SELF_READONLY_KEYS: ReadonlySet<MeUserDisplayKey> = new Set<MeUserDisplayK
   ...USER_WORK_ORG_READONLY_KEYS,
   'employeeIdentifier',
   'directManager',
-  'teamLeaderUserId',
   'email',
   'profileReviewDate',
   'employeeCardStatus',
@@ -102,7 +111,6 @@ function readonlyValue(u: MeUserSelf, key: MeUserDisplayKey): ReactNode {
   if (key === 'employeeCardColorId') {
     return u.employeeCardColor ? <EmployeeCardColorLabel color={u.employeeCardColor} /> : ''
   }
-  if (key === 'teamLeaderUserId') return teamLeaderDisplayName(u.teamLeader)
   if (key === 'startDateWork' || key === 'profileReviewDate') {
     return formatUserDateForReadonlyDisplay(u[key])
   }
@@ -122,7 +130,11 @@ function mapCurrentTitleToLevelId(
   return 'biet_viec'
 }
 
-type EditRecord = Record<MeUserPatchKey, string> & { extraTeamIds: string[] }
+type EditRecord = Record<MeUserPatchKey, string> & {
+  extraTeamIds: string[]
+  /** `''` = chưa chọn (SelectController đổi "__none" → ''). */
+  teamLeaderUserId: string
+}
 
 function userToEdit(u: MeUserSelf): EditRecord {
   const r = {
@@ -131,6 +143,7 @@ function userToEdit(u: MeUserSelf): EditRecord {
       string
     >),
     extraTeamIds: u.extraTeamIds ?? u.teamIds?.slice(1) ?? [],
+    teamLeaderUserId: u.teamLeaderUserId ?? '',
   }
   for (const k of ME_USER_PATCH_KEYS) {
     r[k] = isDateFormField(k) ? parseStoredDateToInputValue(u[k]) : u[k] == null ? '' : String(u[k])
@@ -150,6 +163,8 @@ function toPatch(edit: EditRecord, initial: EditRecord): PatchMeUserBody {
   if (!extraTeamIdsEqual(edit.extraTeamIds ?? [], initial.extraTeamIds)) {
     body.extraTeamIds = edit.extraTeamIds ?? []
   }
+  const leader = (edit.teamLeaderUserId ?? '').trim()
+  if (leader !== initial.teamLeaderUserId) body.teamLeaderUserId = leader || null
   return body
 }
 
@@ -178,10 +193,11 @@ type FieldCtx = {
   divisions: Array<{ value: string; label: string }>
   teams: Array<{ value: string; label: string }>
   jobTitles: Array<{ value: string; label: string }>
+  teamLeaderGroups: TeamLeaderOptionGroup[]
 }
 
 function renderField(field: UserSelfFieldSpec, ctx: FieldCtx): ReactNode {
-  const { u, control, divisions, teams, jobTitles } = ctx
+  const { u, control, divisions, teams, jobTitles, teamLeaderGroups } = ctx
 
   if (field.kind === 'portrait') return null
 
@@ -215,6 +231,30 @@ function renderField(field: UserSelfFieldSpec, ctx: FieldCtx): ReactNode {
           objectPath={u.cvAttachmentRef}
         />
       </div>
+    )
+  }
+
+  if (field.kind === 'team-leader-select') {
+    return (
+      <ProfileSelectField
+        key={field.key}
+        control={control}
+        name="teamLeaderUserId"
+        label={field.label}
+        placeholder="Chọn trưởng nhóm phụ trách"
+      >
+        <SelectItem value="__none">Chưa chọn</SelectItem>
+        {teamLeaderGroups.map((g) => (
+          <SelectGroup key={g.label}>
+            <SelectLabel className="text-xs text-muted-foreground">{g.label}</SelectLabel>
+            {g.options.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
+      </ProfileSelectField>
     )
   }
 
@@ -499,6 +539,16 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     [teamsList]
   )
   const jobTitles = useMemo(() => jobTitlesData ?? [], [jobTitlesData])
+  const { data: teamLeaderOptions } = useMyTeamLeaderOptions()
+  const teamLeaderGroups = useMemo(
+    () =>
+      buildTeamLeaderOptionGroups(teamLeaderOptions ?? [], {
+        employeeId: u.id,
+        employeeTeamName: u.teamGroup,
+        current: u.teamLeader,
+      }),
+    [teamLeaderOptions, u.id, u.teamGroup, u.teamLeader]
+  )
 
   const prevDivisionIdRef = useRef(selectedDivisionId)
   useEffect(() => {
@@ -542,6 +592,8 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
       const body = toPatch(values, initialValues)
       if (Object.keys(body).length === 0) {
         toast.info('Chưa có thay đổi nào để lưu')
+        // Ảnh CCCD / CV lưu ngay khi tải lên — bấm Lưu không có gì đổi vẫn coi là cập nhật xong.
+        useChecklistReminderStore.getState().resumeChecklists()
         return
       }
       patchUser(body, {
@@ -566,7 +618,9 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
     () => toast.error('Vui lòng kiểm tra lại các trường được đánh dấu')
   )
 
-  const fieldCtx: FieldCtx = { u, control, divisions, teams, jobTitles }
+  const fieldCtx: FieldCtx = { u, control, divisions, teams, jobTitles, teamLeaderGroups }
+  // Theo dữ liệu đã lưu — lưu xong BE trả lại hồ sơ mới thì danh sách tự cập nhật.
+  const missingFields = missingProfileFields(u, role)
 
   return (
     <FormProvider {...form}>
@@ -592,6 +646,29 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     Cập nhật thông tin cá nhân của bạn. Các mục do HR quản lý chỉ hiển thị để xem.
                   </p>
                 </div>
+                {missingFields.length > 0 ? (
+                  <div
+                    role="status"
+                    className="flex max-w-3xl items-start gap-3 rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/20"
+                  >
+                    <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-300" aria-hidden />
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        Hồ sơ còn thiếu {missingFields.length} mục, vui lòng bổ sung
+                      </p>
+                      <ul className="mt-2 flex flex-wrap gap-1.5">
+                        {missingFields.map((f) => (
+                          <li
+                            key={f.key}
+                            className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium"
+                          >
+                            {f.label}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
 
