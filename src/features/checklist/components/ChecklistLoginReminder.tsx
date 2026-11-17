@@ -153,7 +153,7 @@ export function ChecklistLoginReminder() {
           primaryRef.current?.focus()
         }}
       >
-        <div className="flex flex-col items-center bg-gradient-to-b from-warning-muted/70 to-transparent px-6 pb-5 pt-8 text-center">
+        <div className="flex flex-col items-center px-6 pb-5 pt-8 text-center">
           <span className="flex size-16 items-center justify-center rounded-full bg-warning-muted text-warning ring-8 ring-warning-muted/40">
             <HeaderIcon className="size-8" strokeWidth={1.75} aria-hidden />
           </span>

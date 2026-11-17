@@ -32,6 +32,7 @@ export function ChecklistFillPanel({
   onSave,
   saving,
   formMeta,
+  formSubject,
   emptyTitle,
   emptyDescription,
 }: {
@@ -44,6 +45,8 @@ export function ChecklistFillPanel({
   saving: boolean
   /** Dòng phụ dưới tiêu đề form, vd. "Đang điền cho: …". */
   formMeta?: ReactNode
+  /** Khối phòng ban / nhóm / dự án / trưởng nhóm trên đầu form. */
+  formSubject?: ReactNode
   emptyTitle: string
   emptyDescription: string
 }) {
@@ -68,6 +71,7 @@ export function ChecklistFillPanel({
             title={open.template.title}
             description={open.template.description}
             meta={meta}
+            subject={formSubject}
           />
           <div className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
             <Lock className="size-4 shrink-0" aria-hidden />
@@ -93,6 +97,7 @@ export function ChecklistFillPanel({
         template={open.template}
         initialAnswers={open.response?.answers}
         meta={meta}
+        subject={formSubject}
         saving={saving}
         onBack={onClose}
         onSubmit={(answers) => onSave(open.template.id, answers)}

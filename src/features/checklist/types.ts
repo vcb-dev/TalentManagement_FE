@@ -89,9 +89,23 @@ export type ChecklistPerson = {
   email: string | null
 }
 
+/** Hiện trên đầu mọi form checklist — BE lấy từ hồ sơ hiện tại của nhân sự. */
+export type ChecklistSubjectInfo = {
+  /** Phòng ban. */
+  departmentName: string | null
+  /** Team chính trước, rồi team phụ. */
+  teamNames: string[]
+  /** Dự án đang tham gia. */
+  projectNames: string[]
+  /** "Trưởng nhóm phụ trách". */
+  teamLeaderName: string | null
+}
+
 export type ChecklistSubject = ChecklistPerson & {
   employeeIdentifier: string | null
   teamName: string | null
+  /** Không bắt buộc: FE lên trước BE vẫn chạy (ẩn khối thông tin). */
+  info?: ChecklistSubjectInfo
 }
 
 export type ChecklistTemplate = {

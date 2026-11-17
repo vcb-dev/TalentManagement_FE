@@ -1154,7 +1154,10 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
           />
         </ProfileHeroCard>
 
-        <EmployeeProjectsCard employeeId={employee.id} canEdit={canEditEmployee} />
+        <EmployeeProjectsCard
+          owner={{ kind: 'employee', employeeId: employee.id }}
+          canEdit={canEditEmployee}
+        />
 
         <EmployeeLoginCredentialCard employeeId={employee.id} canEdit={canEditLoginCredential} />
 

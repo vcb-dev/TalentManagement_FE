@@ -1,6 +1,7 @@
 export const checklistKeys = {
   all: ['checklists'] as const,
   mine: () => [...checklistKeys.all, 'mine'] as const,
+  mySubject: () => [...checklistKeys.all, 'mine', 'subject'] as const,
   leaderEmployees: () => [...checklistKeys.all, 'leader', 'employees'] as const,
   leaderEmployee: (employeeId: string) =>
     [...checklistKeys.all, 'leader', 'employee', employeeId] as const,

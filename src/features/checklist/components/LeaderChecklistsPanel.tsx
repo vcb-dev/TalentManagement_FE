@@ -13,6 +13,7 @@ import {
 } from '../hooks'
 import type { LeaderChecklistEmployee } from '../types'
 import { ChecklistFillPanel, ChecklistListSkeleton } from './ChecklistFillPanel'
+import { ChecklistSubjectInfoGrid } from './ChecklistSubjectInfo'
 
 function ProgressPill({ row }: { row: LeaderChecklistEmployee }) {
   if (row.templateCount === 0) {
@@ -99,7 +100,11 @@ function EmployeeChecklists({
         formMeta={
           <>
             Đánh giá cho: <span className="font-semibold text-foreground">{name}</span>
+            {data?.employee.employeeIdentifier ? ` (${data.employee.employeeIdentifier})` : null}
           </>
+        }
+        formSubject={
+          data?.employee.info ? <ChecklistSubjectInfoGrid info={data.employee.info} /> : undefined
         }
         emptyTitle="Chưa có checklist cho nhân sự này"
         emptyDescription="Admin chưa gán checklist trưởng nhóm nào cho team của nhân sự."

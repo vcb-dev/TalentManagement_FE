@@ -5,8 +5,14 @@ import { Button } from '@/components/ui/button'
 import { usePermission } from '@/hooks/usePermission'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
-import { useLeaderChecklistEmployees, useMyChecklists, useSaveMyChecklist } from '../hooks'
+import {
+  useLeaderChecklistEmployees,
+  useMyChecklistSubject,
+  useMyChecklists,
+  useSaveMyChecklist,
+} from '../hooks'
 import { ChecklistFillPanel } from './ChecklistFillPanel'
+import { ChecklistProfileLink, ChecklistSubjectInfoGrid } from './ChecklistSubjectInfo'
 import { ChecklistOverviewPanel } from './ChecklistOverviewPanel'
 import { ChecklistTemplatesPanel, type ChecklistAdminView } from './ChecklistTemplatesPanel'
 import { LeaderChecklistsPanel } from './LeaderChecklistsPanel'
@@ -60,6 +66,7 @@ function MyChecklistsTab({
   onOpen: (templateId: string | undefined) => void
 }) {
   const { data, isLoading } = useMyChecklists()
+  const { data: subject } = useMyChecklistSubject()
   const save = useSaveMyChecklist()
   return (
     <ChecklistFillPanel
@@ -71,6 +78,20 @@ function MyChecklistsTab({
       saving={save.isPending}
       onSave={(id, answers) =>
         save.mutate({ templateId: id, answers }, { onSuccess: () => onOpen(undefined) })
+      }
+      formSubject={
+        subject?.info ? (
+          <ChecklistSubjectInfoGrid
+            info={subject.info}
+            footer={
+              <>
+                Lấy tự động từ <span className="font-medium text-foreground">Hồ sơ cá nhân</span> —
+                nếu chưa đúng thì cập nhật <ChecklistProfileLink>tại đây</ChecklistProfileLink> (vd.
+                thêm dự án đang tham gia).
+              </>
+            }
+          />
+        ) : undefined
       }
       emptyTitle="Chưa có checklist nào cho bạn"
       emptyDescription="Checklist sẽ hiện ở đây khi admin gán checklist tự điền cho team của bạn."

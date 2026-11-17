@@ -6,6 +6,7 @@ import { profileApi, type MeAttachmentField } from '@/features/profile/api'
 import { profileKeys } from '@/features/profile/queryKeys'
 import { dashboardKeys } from '@/features/dashboard/queryKeys'
 import { useChecklistReminderStore } from '@/features/checklist/loginReminder'
+import { checklistKeys } from '@/features/checklist/queryKeys'
 import type { MeUserPatchKey } from '@/features/profile/userSelf.types'
 
 export type PatchMeUserBody = Partial<Record<MeUserPatchKey, string | null>> & {
@@ -52,6 +53,8 @@ export function usePatchMeUser() {
         qc.invalidateQueries({ queryKey: profileKeys.userSelf() }),
         qc.invalidateQueries({ queryKey: authKeys.me() }),
         qc.invalidateQueries({ queryKey: dashboardKeys.me() }),
+        // Phòng ban / nhóm / trưởng nhóm hiện trên đầu form checklist tự điền.
+        qc.invalidateQueries({ queryKey: checklistKeys.mySubject() }),
       ])
       // Ở đây chứ không ở `mutate(..., { onSuccess })`: lưu xong hồ sơ refetch → form mount lại,
       // callback gắn theo component có thể không chạy.

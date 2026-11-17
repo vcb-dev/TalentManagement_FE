@@ -144,6 +144,7 @@ export function EmployeeChecklistsCard({ employeeId }: { employeeId: string }) {
               title={previewing.title}
               description={previewing.description}
               questions={previewing.questions}
+              subjectInfo={data?.employee.info ?? null}
             />
           ) : null}
         </DialogContent>

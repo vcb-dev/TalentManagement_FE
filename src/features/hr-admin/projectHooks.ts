@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/axios'
+import { checklistKeys } from '@/features/checklist/queryKeys'
+import { profileKeys } from '@/features/profile/queryKeys'
 import {
+  myProjectApi,
   projectApi,
   type AddProjectMembersInput,
   type CreateProjectInput,
   type ProjectMembershipInput,
+  type SelectableProject,
 } from './projectApi'
 import { employeeKeys, projectKeys } from './queryKeys'
 
@@ -73,16 +77,36 @@ export function useProjectMembers(projectId: string, enabled = true) {
   })
 }
 
-export function useEmployeeProjects(employeeId: string) {
+/**
+ * Dự án của ai: HR sửa hồ sơ một nhân sự (`/employees/hr/:id/projects`), hoặc nhân sự tự sửa của
+ * mình trong Hồ sơ cá nhân (`/me/projects`).
+ */
+export type ProjectMembershipOwner = { kind: 'employee'; employeeId: string } | { kind: 'self' }
+
+function membershipsKey(owner: ProjectMembershipOwner) {
+  return owner.kind === 'self' ? profileKeys.projects() : employeeKeys.projects(owner.employeeId)
+}
+
+export function useProjectMemberships(owner: ProjectMembershipOwner) {
   return useQuery({
-    queryKey: employeeKeys.projects(employeeId),
-    queryFn: () => projectApi.listForEmployee(employeeId),
-    enabled: employeeId.length > 0,
+    queryKey: membershipsKey(owner),
+    queryFn: () =>
+      owner.kind === 'self' ? myProjectApi.list() : projectApi.listForEmployee(owner.employeeId),
+    enabled: owner.kind === 'self' || owner.employeeId.length > 0,
   })
 }
 
-function useEmployeeProjectMutation<TArgs>(
-  employeeId: string,
+/** Ô chọn dự án: HR thấy mọi dự án; nhân sự tự thêm chỉ thấy dự án chưa kết thúc. */
+export function useSelectableProjects(owner: ProjectMembershipOwner) {
+  return useQuery<SelectableProject[]>({
+    queryKey: owner.kind === 'self' ? profileKeys.projectOptions() : projectKeys.list(),
+    queryFn: () => (owner.kind === 'self' ? myProjectApi.options() : projectApi.list()),
+    staleTime: 60_000,
+  })
+}
+
+function useProjectMembershipMutation<TArgs>(
+  owner: ProjectMembershipOwner,
   mutationFn: (args: TArgs) => Promise<unknown>,
   messages: { success: string; error: string }
 ) {
@@ -90,9 +114,11 @@ function useEmployeeProjectMutation<TArgs>(
   return useMutation({
     mutationFn,
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: employeeKeys.projects(employeeId) })
+      void qc.invalidateQueries({ queryKey: membershipsKey(owner) })
       void qc.invalidateQueries({ queryKey: projectKeys.all })
       void qc.invalidateQueries({ queryKey: employeeKeys.orderNumbers() })
+      // Dự án hiện trên đầu form checklist.
+      void qc.invalidateQueries({ queryKey: checklistKeys.all })
       toast.success(messages.success)
     },
     onError: (e) => {
@@ -101,28 +127,42 @@ function useEmployeeProjectMutation<TArgs>(
   })
 }
 
-export function useAssignEmployeeProject(employeeId: string) {
-  return useEmployeeProjectMutation(
-    employeeId,
-    (input: ProjectMembershipInput) => projectApi.assign(employeeId, input),
-    { success: 'Đã gán dự án', error: 'Không thể gán dự án' }
+export function useAssignProjectMembership(owner: ProjectMembershipOwner) {
+  const self = owner.kind === 'self'
+  return useProjectMembershipMutation(
+    owner,
+    (input: ProjectMembershipInput) =>
+      owner.kind === 'self'
+        ? myProjectApi.assign(input)
+        : projectApi.assign(owner.employeeId, input),
+    self
+      ? { success: 'Đã thêm dự án', error: 'Không thể thêm dự án' }
+      : { success: 'Đã gán dự án', error: 'Không thể gán dự án' }
   )
 }
 
-export function useUpdateEmployeeProject(employeeId: string) {
-  return useEmployeeProjectMutation(
-    employeeId,
+export function useUpdateProjectMembership(owner: ProjectMembershipOwner) {
+  return useProjectMembershipMutation(
+    owner,
     (args: { membershipId: string; input: Partial<ProjectMembershipInput> }) =>
-      projectApi.updateMembership(employeeId, args.membershipId, args.input),
+      owner.kind === 'self'
+        ? myProjectApi.updateMembership(args.membershipId, args.input)
+        : projectApi.updateMembership(owner.employeeId, args.membershipId, args.input),
     { success: 'Đã cập nhật dự án', error: 'Không thể cập nhật dự án' }
   )
 }
 
-export function useRemoveEmployeeProject(employeeId: string) {
-  return useEmployeeProjectMutation(
-    employeeId,
-    (membershipId: string) => projectApi.removeMembership(employeeId, membershipId),
-    { success: 'Đã gỡ nhân sự khỏi dự án', error: 'Không thể gỡ dự án' }
+export function useRemoveProjectMembership(owner: ProjectMembershipOwner) {
+  const self = owner.kind === 'self'
+  return useProjectMembershipMutation(
+    owner,
+    (membershipId: string) =>
+      owner.kind === 'self'
+        ? myProjectApi.removeMembership(membershipId)
+        : projectApi.removeMembership(owner.employeeId, membershipId),
+    self
+      ? { success: 'Đã gỡ dự án', error: 'Không thể gỡ dự án' }
+      : { success: 'Đã gỡ nhân sự khỏi dự án', error: 'Không thể gỡ dự án' }
   )
 }
 

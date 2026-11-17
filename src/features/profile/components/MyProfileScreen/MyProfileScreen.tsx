@@ -28,6 +28,7 @@ import {
   extraTeamIdsEqual,
 } from '@/features/hr-admin/components/EmployeeExtraTeamsField'
 import { MyCvUploadField } from '@/features/hr-admin/components/CvAttachmentField'
+import { MyProjectsField } from './MyProjectsField'
 import { EmployeeCardColorLabel } from '@/features/hr-admin/components/EmployeeCard'
 import { employeeCardStatusLabel } from '@/features/hr-admin/employeeCard'
 import { MyIdCardPhotoUploadField } from '@/features/hr-admin/components/IdCardPhotoField'
@@ -82,6 +83,12 @@ export interface MyProfileScreenProps {
   page: MyProfilePage | undefined
   isLoading: boolean
 }
+
+/**
+ * Ô "Dự án tham gia" nằm ở chỗ field này — "Chi nhánh / nơi làm việc" tạm ẩn trên Hồ sơ cá nhân
+ * (dữ liệu vẫn giữ, HR vẫn sửa được; không hiện thì cũng không gửi trong PATCH).
+ */
+const PROJECTS_FIELD_SLOT: MeUserDisplayKey = 'workplaceBranch'
 
 /** Chỉ HR sửa. */
 const SELF_READONLY_KEYS: ReadonlySet<MeUserDisplayKey> = new Set<MeUserDisplayKey>([
@@ -694,7 +701,13 @@ function MyProfileScreenLoaded({ page, u }: { page: MyProfilePage; u: MeUserSelf
                     {workReadonlyFields.map((f) => renderField(f, fieldCtx))}
                   </ProfileFieldGroup>
                   <ProfileFieldGroup caption="Thông tin có thể cập nhật" divided>
-                    {workEditableFields.map((f) => renderField(f, fieldCtx))}
+                    {workEditableFields.map((f) =>
+                      f.key === PROJECTS_FIELD_SLOT ? (
+                        <MyProjectsField key="projects" />
+                      ) : (
+                        renderField(f, fieldCtx)
+                      )
+                    )}
                     <div className="sm:col-span-2">
                       <EmployeeExtraTeamsField
                         control={control}

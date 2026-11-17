@@ -3,6 +3,7 @@ import { isMockApiEnabled } from '@/lib/mockEnv'
 import type {
   ChecklistAnswers,
   ChecklistFillItem,
+  ChecklistSubject,
   ChecklistTemplate,
   ChecklistTemplateInput,
   ChecklistTemplateResponses,
@@ -21,6 +22,13 @@ export const checklistApi = {
   mine: async () => {
     if (isMockApiEnabled()) return [] as ChecklistFillItem[]
     const res = await apiClient.get<ChecklistFillItem[]>('/checklists/me')
+    return res.data
+  },
+
+  /** Phòng ban / nhóm / dự án / trưởng nhóm của mình — khối thông tin trên đầu form tự điền. */
+  mySubject: async () => {
+    if (isMockApiEnabled()) return null
+    const res = await apiClient.get<ChecklistSubject>('/checklists/me/subject')
     return res.data
   },
 

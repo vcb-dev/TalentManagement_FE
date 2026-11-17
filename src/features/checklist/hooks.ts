@@ -13,6 +13,16 @@ export function useMyChecklists(enabled = true) {
   })
 }
 
+/** Lỗi (vd. BE chưa có endpoint) → không có dữ liệu, form vẫn điền bình thường. */
+export function useMyChecklistSubject(enabled = true) {
+  return useQuery({
+    queryKey: checklistKeys.mySubject(),
+    queryFn: () => checklistApi.mySubject(),
+    enabled,
+    retry: false,
+  })
+}
+
 export function useLeaderChecklistEmployees(enabled = true) {
   return useQuery({
     queryKey: checklistKeys.leaderEmployees(),
