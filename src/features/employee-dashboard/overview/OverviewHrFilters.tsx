@@ -191,7 +191,8 @@ export function OverviewHrFilters({
         }
       >
         <SelectItem value={ALL}>Tất cả</SelectItem>
-        {OVERVIEW_CONTRACT_KEYS.map((k) => (
+        {/* "Quản lý & chuyên gia" giờ là Chức vụ, không còn là loại hợp đồng (BE vẫn nhận key cho link cũ). */}
+        {OVERVIEW_CONTRACT_KEYS.filter((k) => k !== 'lead').map((k) => (
           <SelectItem key={k} value={k}>
             {CONTRACT_META[k].label}
           </SelectItem>

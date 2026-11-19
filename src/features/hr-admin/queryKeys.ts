@@ -23,6 +23,10 @@ export const employeeCardColorKeys = {
   all: ['employee-card-colors'] as const,
 }
 
+export const employeePositionKeys = {
+  all: ['employee-positions'] as const,
+}
+
 export const projectKeys = {
   all: ['projects'] as const,
   list: () => [...projectKeys.all, 'list'] as const,

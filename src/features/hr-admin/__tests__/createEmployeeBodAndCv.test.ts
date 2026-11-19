@@ -6,6 +6,7 @@ const BASE = {
   name: 'Nguyễn Văn A',
   email: 'nguyenvana@gmail.com',
   role: 'MEMBER',
+  positionId: '33333333-3333-4333-8333-333333333333',
   departmentId: '11111111-1111-4111-8111-111111111111',
   teamId: '22222222-2222-4222-8222-222222222222',
   phone: '',
@@ -24,6 +25,10 @@ describe('tạo nhân sự — nhóm và mã nhân viên', () => {
   it('vai trò thường: bắt buộc chọn nhóm, không cần mã', () => {
     expect(issuePaths(BASE)).toEqual([])
     expect(issuePaths({ ...BASE, teamId: '' })).toEqual(['teamId'])
+  })
+
+  it('bắt buộc chọn chức vụ', () => {
+    expect(issuePaths({ ...BASE, positionId: '' })).toEqual(['positionId'])
   })
 
   it('BOD: không cần nhóm nhưng phải nhập mã nhân viên', () => {

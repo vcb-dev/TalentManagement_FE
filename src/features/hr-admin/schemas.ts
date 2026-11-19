@@ -94,7 +94,12 @@ export const createEmployeeSchema = z.object({
     .string()
     .transform((s) => s.trim())
     .pipe(z.string().min(1, 'Nhập email').email('Email không hợp lệ').max(320, 'Email quá dài')),
-  /** Không gán TEACHER từ màn tạo nhân sự (quản lý chấm thi ở luồng khác). */
+  /** Chức vụ trong danh mục — BE lấy role theo vai trò đi kèm chức vụ. */
+  positionId: z.string().uuid('Chọn chức vụ'),
+  /**
+   * Vai trò đi kèm chức vụ đang chọn (form tự đồng bộ) — dùng cho luật BOD / nhóm trên form.
+   * Không gán TEACHER từ màn tạo nhân sự (quản lý chấm thi ở luồng khác).
+   */
   role: z.enum(['MEMBER', 'LEADER', 'MANAGER', 'HR', 'BOD'], {
     errorMap: () => ({ message: 'Role không hợp lệ' }),
   }),
@@ -293,6 +298,8 @@ export const employeeApiSchema = z.object({
     .nullable()
     .optional(),
   employeeCardColorId: z.string().nullable().optional(),
+  /** Chức vụ — tên tra trong danh mục `GET /employee-positions`. */
+  positionId: z.string().nullable().optional(),
 })
 
 export const employeeListApiSchema = z.object({

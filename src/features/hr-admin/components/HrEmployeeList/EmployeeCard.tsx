@@ -2,7 +2,8 @@ import { BriefcaseBusiness, CircleHelp, Pencil, UsersRound } from 'lucide-react'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
 import { CARD_ENTRANCE, staggerStyle } from '@/lib/cardMotion'
-import { ROLE_LABEL_VI } from '@/lib/roleLabels'
+import { positionDisplayName } from '@/features/hr-admin/employeePosition'
+import { useEmployeePositions } from '@/features/hr-admin/employeePositionHooks'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { StarEmblem } from '@/components/icons/StarEmblem'
@@ -70,12 +71,13 @@ export function EmployeeCard({
   variant = 'hr',
   compact = false,
 }: EmployeeCardProps) {
+  const { data: positionCatalog } = useEmployeePositions()
   const tierLine = levelPillText(employee.currentLevel)
   const inactive = employee.status === 'INACTIVE'
   const portraitUrl = employeePortraitUrl(employee.avatarUrl)
   const teamLine = employeeTeamsDisplay(employee)
   const employeeCode = employee.employeeCodePrimary?.trim() || 'Chưa cấp'
-  const positionLabel = employee.role === 'BOD' ? 'BOD' : ROLE_LABEL_VI[employee.role]
+  const positionLabel = positionDisplayName(employee.positionId, positionCatalog, employee.role)
 
   return (
     <div

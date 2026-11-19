@@ -72,6 +72,9 @@ import { teamPositionOptions } from '../../teamPositionOptions'
 import { EMPLOYEE_PATCH_KEYS, type EditEmployeeBody, type EmployeePatchKey } from '../../types'
 import { EMPLOYEE_CARD_STATUSES, EMPLOYEE_CARD_STATUS_LABEL } from '../../employeeCard'
 import { EmployeeCardColorField } from '../EmployeeCard'
+import { EmployeePositionField } from '../EmployeePosition'
+import { positionDisplayName } from '../../employeePosition'
+import { useEmployeePositions } from '../../employeePositionHooks'
 import { EmployeeExtraTeamsField, extraTeamIdsEqual } from '../EmployeeExtraTeamsField'
 import { EmployeeProjectsCard } from '../EmployeeProjects'
 import { EmployeeChecklistsCard } from '@/features/checklist/components/EmployeeChecklistsCard'
@@ -111,13 +114,13 @@ const EMPLOYMENT_STATUS_OPTIONS: { value: EmploymentStatusUi; label: string }[] 
   { value: 'resigned', label: 'Đã nghỉ' },
 ]
 
-const ROLE_OPTIONS = Object.keys(ROLE_LABEL_VI) as Role[]
-
-/** `role` được khai báo `string` (khớp `EmployeePatchKey`) — BE bỏ qua field này ở PATCH hr/:id,
- * đổi role thực tế đi qua `useUpdateEmployee` (PATCH /employees/:id), xem `onSaveProfile`. */
+/** `role` được khai báo `string` (khớp `EmployeePatchKey`) — BE bỏ qua field này ở PATCH hr/:id.
+ * Role đổi theo chức vụ: `positionId` gửi qua `useUpdateEmployee` (PATCH /employees/:id), xem `onSaveProfile`. */
 type EditRecord = Record<EmployeePatchKey, string> & {
   extraTeamIds: string[]
   employmentStatusUi: EmploymentStatusUi
+  /** Chức vụ — '' = chưa có (dữ liệu cũ). */
+  positionId: string
 }
 
 /** Tải lên qua endpoint riêng — không gửi trong PATCH để khỏi ghi đè file vừa tải bằng giá trị cũ. */
@@ -148,6 +151,7 @@ function emptyEditRecord(): EditRecord {
     >),
     extraTeamIds: [],
     employmentStatusUi: 'working',
+    positionId: '',
   }
 }
 
@@ -216,34 +220,6 @@ function EmploymentStatusField({ control }: { control: Control<EditRecord> }) {
         {EMPLOYMENT_STATUS_OPTIONS.map((o) => (
           <SelectItem key={o.value} value={o.value}>
             {o.label}
-          </SelectItem>
-        ))}
-      </SelectController>
-    </div>
-  )
-}
-
-function RoleField({ control }: { control: Control<EditRecord> }) {
-  return (
-    <div
-      className={cn(
-        'flex flex-col rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/30',
-        fieldStackGap
-      )}
-    >
-      <SelectController
-        control={control}
-        name="role"
-        label="Vai trò hệ thống"
-        placeholder="Chọn vai trò"
-        className={cn('space-y-1.5', fieldBoxClass)}
-        labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500"
-        triggerClassName={cn(fieldControlClass, inputEditable)}
-        customLabel={<FieldLabel>Vai trò hệ thống</FieldLabel>}
-      >
-        {ROLE_OPTIONS.map((r) => (
-          <SelectItem key={r} value={r}>
-            {ROLE_LABEL_VI[r]}
           </SelectItem>
         ))}
       </SelectController>
@@ -331,6 +307,7 @@ function userToEdit(
   r.extraTeamIds = u.extraTeamIds ?? u.teamIds?.slice(1) ?? []
   r.employmentStatusUi = resolveEmploymentStatusUi(u)
   r.role = toDisplayRole(u.role)
+  r.positionId = u.positionId ?? ''
   return r
 }
 
@@ -822,7 +799,7 @@ function renderField(
 function ProfileIdentityCard({
   control,
   u,
-  role,
+  positionLabel,
   currentLevelTitle,
   departmentDisplayName,
   portraitUploading,
@@ -834,7 +811,8 @@ function ProfileIdentityCard({
 }: {
   control: Control<EditRecord>
   u: MeUserSelf
-  role: Role
+  /** Tên chức vụ (dữ liệu cũ chưa có chức vụ → nhãn vai trò). */
+  positionLabel: string
   currentLevelTitle: string
   departmentDisplayName: string
   portraitUploading: boolean
@@ -912,7 +890,7 @@ function ProfileIdentityCard({
             variant="outline"
             className="h-6 border-indigo-400/30 bg-indigo-500/10 px-2 text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
           >
-            {ROLE_LABEL_VI[role]}
+            {positionLabel}
           </Badge>
           <div className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
             <Building2 className="h-3 w-3" />
@@ -937,7 +915,9 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
   const canReactivate = canId('hr.employees.edit')
   const canEditEmployee = canId('hr.employees.edit')
   const canEditLoginCredential = canEditEmployee
-  const canEditRole = canEditEmployee
+  const canEditPosition = canEditEmployee
+  const canManagePositions = canId('position.manage')
+  const { data: positionCatalog } = useEmployeePositions()
   const { mutate: patchUser, isPending: patchPending } = useUpdateEmployeeById()
   const { data: employeeSummary, isLoading: summaryLoading } = useEmployee(employee.id)
   const deactivate = useDeactivateEmployee()
@@ -976,7 +956,7 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
   const { control, handleSubmit, reset, setValue } = form
   const selectedTeamId = useWatch({ control, name: 'teamId' }) ?? ''
   const selectedDivisionId = useWatch({ control, name: 'divisionId' }) ?? ''
-  const selectedRole = useWatch({ control, name: 'role' })
+  const selectedPositionId = useWatch({ control, name: 'positionId' })
   const prevDivisionIdRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -996,9 +976,17 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
       ...userToEdit(employee, managers),
       employmentStatusUi: resolveEmploymentStatusUi(employee, employeeSummary?.status),
       role: toDisplayRole(employeeSummary?.role ?? employee.role),
+      positionId: employeeSummary?.positionId ?? employee.positionId ?? '',
     })
     prevDivisionIdRef.current = employee.divisionId?.trim() ?? ''
-  }, [employee, employeeSummary?.status, employeeSummary?.role, managers, reset])
+  }, [
+    employee,
+    employeeSummary?.status,
+    employeeSummary?.role,
+    employeeSummary?.positionId,
+    managers,
+    reset,
+  ])
 
   const divisions = useMemo(
     () => divisionsList.map((d) => ({ id: d.id, name: d.name })),
@@ -1038,6 +1026,11 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
 
   const canManageEmploymentStatus = canManageEmploymentStatusRole(viewer?.role)
   const employeeRole = toDisplayRole(employeeSummary?.role ?? employee.role)
+  const savedPositionId = employeeSummary?.positionId ?? employee.positionId ?? null
+  const positionLabel = positionDisplayName(savedPositionId, positionCatalog, employeeRole)
+  /** Role sau khi lưu = vai trò đi kèm chức vụ đang chọn (BOD / Quản lý được bỏ trống nhóm). */
+  const selectedRole: Role =
+    positionCatalog?.find((p) => p.id === selectedPositionId)?.linkedRole ?? employeeRole
   const currentLevelId = employeeSummary?.currentLevel ?? 'tap_su'
   const currentLevelTitle = employeeSummary
     ? levelPillText(employeeSummary.currentLevel)
@@ -1071,7 +1064,8 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
     const profilePatch = toPatch(values, employee, managers) as unknown as IHrEmployeeProfileState
     const statusChanged =
       canManageEmploymentStatus && values.employmentStatusUi !== initialEmploymentStatusUi
-    const roleChanged = canEditRole && values.role !== employeeRole
+    const positionChanged =
+      canEditPosition && !!values.positionId && values.positionId !== (savedPositionId ?? '')
 
     const applyOrgChanges = () => {
       if (statusChanged && values.employmentStatusUi === 'resigned') {
@@ -1081,8 +1075,8 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
       if (statusChanged && values.employmentStatusUi !== 'resigned') {
         orgPatch.status = values.employmentStatusUi === 'transferred' ? 'TRANSFERRED' : 'ACTIVE'
       }
-      if (roleChanged) {
-        orgPatch.role = toDisplayRole(values.role)
+      if (positionChanged) {
+        orgPatch.positionId = values.positionId
       }
       if (Object.keys(orgPatch).length > 0) {
         updateEmployee.mutate({ id: employee.id, patch: orgPatch })
@@ -1142,7 +1136,7 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
           <ProfileIdentityCard
             control={control}
             u={employee}
-            role={employeeRole}
+            positionLabel={positionLabel}
             currentLevelTitle={currentLevelTitle}
             departmentDisplayName={departmentDisplayName}
             portraitUploading={portraitUploading}
@@ -1176,7 +1170,16 @@ export function HrEmployeeProfile({ employee }: HrEmployeeProfileProps) {
                     : [renderField(f, fieldCtx)]
                 )}
                 {canManageEmploymentStatus ? <EmploymentStatusField control={control} /> : null}
-                {canEditRole ? <RoleField control={control} /> : null}
+                {canEditPosition ? (
+                  <div className="flex flex-col rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/30">
+                    <EmployeePositionField
+                      control={control}
+                      name="positionId"
+                      savedPositionId={savedPositionId}
+                      canManage={canManagePositions}
+                    />
+                  </div>
+                ) : null}
               </ProfileFieldGroup>
             ) : null}
             {workEditableFields.length > 0 ? (

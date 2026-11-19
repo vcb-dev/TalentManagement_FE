@@ -2,7 +2,8 @@ import { Link } from '@tanstack/react-router'
 import { MoreHorizontal, X } from 'lucide-react'
 import type { EmployeeEntity } from '@/features/hr-admin/api'
 import { toast } from 'sonner'
-import { ROLE_LABEL_VI } from '@/lib/roleLabels'
+import { positionDisplayName } from '@/features/hr-admin/employeePosition'
+import { useEmployeePositions } from '@/features/hr-admin/employeePositionHooks'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmployeeAvatar } from '@/components/shared/EmployeeAvatar'
@@ -95,12 +96,13 @@ export function EmployeeDetailSheet({
   canDeactivate = true,
   canReactivate = true,
 }: EmployeeDetailSheetProps) {
+  const { data: positionCatalog } = useEmployeePositions()
   if (!employee) return null
 
   const xpPct = Math.min(100, Math.round((employee.currentStar / 6) * 100))
   const portraitUrl = employeePortraitUrl(employee.avatarUrl)
   const tierLine = levelPillText(employee.currentLevel)
-  const positionLabel = ROLE_LABEL_VI[employee.role]
+  const positionLabel = positionDisplayName(employee.positionId, positionCatalog, employee.role)
   const idShort = shortId(employee.id)
   const teamLine = employeeTeamsDisplay(employee)
 

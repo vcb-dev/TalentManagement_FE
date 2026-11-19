@@ -91,6 +91,8 @@ export interface MeUserSelf {
   employeeCardColorId: string | null
   /** BE kèm theo để hiển thị tên + mã màu (cả màu đã ẩn). */
   employeeCardColor?: EmployeeCardColorSummary | null
+  /** Chức vụ (`employee_positions.id`) — chỉ có ở API hồ sơ HR; đổi qua PATCH /employees/:id. */
+  positionId?: string | null
 }
 
 /** Khớp `USER_SELF_PATCH_KEYS` trên BE. */

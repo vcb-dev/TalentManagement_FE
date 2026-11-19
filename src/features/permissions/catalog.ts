@@ -292,6 +292,23 @@ const nodes: PermissionNode[] = [
   },
 
   // Không nằm trong template role nào — BE migration cấp sẵn cho tài khoản admin dùng chung.
+  // Chọn chức vụ trên hồ sơ vẫn theo `hr.employees.edit`; quyền này chỉ để sửa danh mục.
+  {
+    id: 'mod.position',
+    parentId: null,
+    label: 'Danh mục chức vụ',
+    kind: 'module',
+    scope: 'global',
+  },
+  {
+    id: 'position.manage',
+    parentId: 'mod.position',
+    label: 'Thêm / sửa / ẩn / xoá chức vụ',
+    kind: 'function',
+    scope: 'global',
+  },
+
+  // Không nằm trong template role nào — BE migration cấp sẵn cho tài khoản admin dùng chung.
   {
     id: 'mod.grading_config',
     parentId: null,
@@ -486,6 +503,7 @@ export const PERMISSION_MODULE_IDS_UI_ORDER: readonly string[] = [
   'mod.course',
   'mod.activity',
   'mod.class_members',
+  'mod.position',
   'mod.grading_config',
   'mod.manager',
   'mod.bod',
@@ -537,6 +555,9 @@ export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly stri
   ],
   'mod.class_members': [
     'Thêm / xoá học viên ngay trên thẻ lớp (/manager/classes) — cần kèm quyền vào trang lớp học',
+  ],
+  'mod.position': [
+    'Danh sách chức vụ và quyền đi kèm (nút "Quản lý danh sách chức vụ" ở hồ sơ nhân sự, /hr-admin/$mãNhânViên)',
   ],
   'mod.grading_config': [
     'Ngưỡng đạt chung của bài phản tư và ngưỡng riêng từng đợt (/manager/exam-schedule) — cần kèm quyền vào trang Lịch thi',
