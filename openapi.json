@@ -177,6 +177,11 @@
           "name": { "type": "string", "minLength": 2 },
           "email": { "type": "string", "format": "email" },
           "role": { "$ref": "#/components/schemas/Role" },
+          "positionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Chức vụ — role của nhân sự lấy theo vai trò đi kèm chức vụ"
+          },
           "departmentId": { "type": "string", "format": "uuid" },
           "teamId": {
             "type": "string",
@@ -272,6 +277,12 @@
           "name": { "type": "string", "minLength": 2 },
           "email": { "type": "string", "format": "email" },
           "role": { "$ref": "#/components/schemas/Role" },
+          "positionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Đổi chức vụ → role đổi theo vai trò đi kèm chức vụ; null = bỏ chức vụ"
+          },
           "departmentId": { "type": "string", "format": "uuid" },
           "teamId": { "type": "string", "format": "uuid" },
           "extraTeamIds": {

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { CheckboxController } from '@/components/ui/form-controllers'
 import { SelectItem } from '@/components/ui/select'
 import { EmployeeExtraTeamsField } from '@/features/hr-admin/components/EmployeeExtraTeamsField'
+import { EmployeePositionField } from '@/features/hr-admin/components/EmployeePosition'
 import { ProjectFormDialog } from '@/features/hr-admin/components/EmployeeProjects'
 import { levelPillText } from '@/features/hr-admin/components/HrEmployeeList/employeeListUtils'
 import {
@@ -26,6 +27,7 @@ import { CvPickerField } from '@/features/hr-admin/components/CvAttachmentField'
 import { IdCardPhotoPickerField } from '@/features/hr-admin/components/IdCardPhotoField'
 import { LoginEmailHint } from '@/features/hr-admin/components/LoginEmailHint'
 import { buildDirectManagerSelectOptions } from '@/features/hr-admin/directManagerOptions'
+import { useEmployeePositions } from '@/features/hr-admin/employeePositionHooks'
 import {
   useAnyActionPending,
   useDirectManagerOptions,
@@ -36,20 +38,12 @@ import type { CreateEmployeeForm } from '@/features/hr-admin/schemas'
 import { teamPositionOptions } from '@/features/hr-admin/teamPositionOptions'
 import { useHrOrgSelectOptions } from '@/features/hr-admin/useHrOrgTree'
 import { profileApi } from '@/features/profile/api'
-import { ROLE_LABEL_VI } from '@/lib/roleLabels'
+import { usePermission } from '@/hooks/usePermission'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { Building2, FolderKanban, KeyRound, Plus, RefreshCw, UserRound } from 'lucide-react'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { FormProvider, useWatch, type Control, type UseFormReturn } from 'react-hook-form'
-
-const ROLE_OPTIONS: { value: CreateEmployeeForm['role']; label: string }[] = [
-  { value: 'MEMBER', label: 'Nhân viên' },
-  { value: 'LEADER', label: 'Leader' },
-  { value: 'MANAGER', label: 'Quản lý' },
-  { value: 'HR', label: 'HR' },
-  { value: 'BOD', label: 'BOD' },
-]
 
 const LEVEL_OPTIONS: { value: CreateEmployeeForm['initialLevel']; label: string }[] = [
   { value: 'tap_su', label: 'Tập sự (mặc định)' },
@@ -65,13 +59,15 @@ export interface EmployeeFormProps {
 function NewEmployeeIdentityCard({
   control,
   departmentName,
+  positionName,
 }: {
   control: Control<CreateEmployeeForm>
   departmentName: string
+  positionName: string
 }) {
-  const [name, displayName, email, role, initialLevel] = useWatch({
+  const [name, displayName, email, initialLevel] = useWatch({
     control,
-    name: ['name', 'displayName', 'email', 'role', 'initialLevel'],
+    name: ['name', 'displayName', 'email', 'initialLevel'],
   })
   const typedName = displayName?.trim() || name?.trim() || ''
   const shownName = typedName || 'Nhân sự mới'
@@ -101,7 +97,7 @@ function NewEmployeeIdentityCard({
             variant="outline"
             className="h-6 border-indigo-400/30 bg-indigo-500/10 px-2 text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-300"
           >
-            {ROLE_LABEL_VI[role] ?? role}
+            {positionName}
           </Badge>
           <div className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
             <Building2 className="h-3 w-3" />
@@ -140,6 +136,21 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
   const departmentId = useWatch({ control, name: 'departmentId' })
   const teamId = useWatch({ control, name: 'teamId' })
   const email = useWatch({ control, name: 'email' })
+  const { canId } = usePermission()
+  const { data: positionCatalog } = useEmployeePositions()
+  const positionId = useWatch({ control, name: 'positionId' })
+  const selectedPosition = positionCatalog?.find((p) => p.id === positionId)
+  /** Mặc định chức vụ đầu tiên gắn quyền Nhân viên — như trước đây mặc định role Nhân viên. */
+  useEffect(() => {
+    if (positionId || !positionCatalog) return
+    const fallback = positionCatalog.find((p) => p.isActive && p.linkedRole === 'MEMBER')
+    if (fallback) setValue('positionId', fallback.id)
+  }, [positionCatalog, positionId, setValue])
+  /** Role theo chức vụ — giữ luật BOD (không nhóm, nhập tay mã NV) trên form. */
+  const linkedRole = selectedPosition?.linkedRole
+  useEffect(() => {
+    if (linkedRole) setValue('role', linkedRole)
+  }, [linkedRole, setValue])
   const isBod = useWatch({ control, name: 'role' }) === 'BOD'
   useEffect(() => {
     if (!isBod) return
@@ -172,7 +183,11 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
       <form id={formId} onSubmit={handleSubmit(onSubmit)} noValidate>
         <ProfilePageShell current="Thêm nhân sự mới">
           <ProfileHeroCard>
-            <NewEmployeeIdentityCard control={control} departmentName={departmentName} />
+            <NewEmployeeIdentityCard
+              control={control}
+              departmentName={departmentName}
+              positionName={selectedPosition?.name ?? 'Chưa chọn chức vụ'}
+            />
           </ProfileHeroCard>
 
           <ProfileCard
@@ -234,14 +249,13 @@ export function EmployeeForm({ form, onSubmit, isSubmitting }: EmployeeFormProps
 
           <ProfileDetailsCard>
             <ProfileDetailSection title="Công việc & tổ chức" index={0}>
-              <ProfileFieldGroup caption="Vai trò & thời gian làm việc" tone="primary">
-                <ProfileSelectField control={control} name="role" label="Vai trò hệ thống" required>
-                  {ROLE_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </ProfileSelectField>
+              <ProfileFieldGroup caption="Chức vụ & thời gian làm việc" tone="primary">
+                <EmployeePositionField
+                  control={control}
+                  name="positionId"
+                  canManage={canId('position.manage')}
+                  required
+                />
                 <ProfileSelectField control={control} name="initialLevel" label="Cấp độ ban đầu">
                   {LEVEL_OPTIONS.map((o) => (
                     <SelectItem key={o.value} value={o.value}>

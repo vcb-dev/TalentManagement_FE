@@ -210,6 +210,11 @@ export interface components {
             /** Format: email */
             email: string;
             role: components["schemas"]["Role"];
+            /**
+             * Format: uuid
+             * @description Chức vụ — role của nhân sự lấy theo vai trò đi kèm chức vụ
+             */
+            positionId?: string;
             /** Format: uuid */
             departmentId: string;
             /**
@@ -279,6 +284,11 @@ export interface components {
             /** Format: email */
             email?: string;
             role?: components["schemas"]["Role"];
+            /**
+             * Format: uuid
+             * @description Đổi chức vụ → role đổi theo vai trò đi kèm chức vụ; null = bỏ chức vụ
+             */
+            positionId?: string | null;
             /** Format: uuid */
             departmentId?: string;
             /** Format: uuid */
