@@ -11,6 +11,13 @@ export type DashboardRoadmapStep = {
   /** Đích khi bấm: `/courses?courseId=&pathId=` (lộ trình + khoá học cần cuộn tới). */
   courseId: string
   pathId: string
+  /** Mô tả khoá học (admin nhập), để trống = không hiện. */
+  description: string | null
+  sectionCount: number
+  /** Tài liệu chung của khoá + tài liệu của các học phần. */
+  materialCount: number
+  /** Khoá "theo lộ trình khác" → tên lộ trình đó (VD "Lộ trình 5 cấp độ Lao động tri thức"). */
+  linkedCourseTitle: string | null
 }
 
 /**
@@ -49,5 +56,10 @@ export function buildDashboardRoadmap(
     ...splitStepCaption(path.title),
     courseId: course.id,
     pathId: path.id,
+    description: path.description?.trim() || null,
+    sectionCount: path.sections.length,
+    materialCount:
+      path.materials.length + path.sections.reduce((n, s) => n + s.materials.length, 0),
+    linkedCourseTitle: path.linkedCourse?.title ?? null,
   }))
 }

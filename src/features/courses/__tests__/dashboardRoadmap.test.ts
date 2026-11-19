@@ -4,9 +4,23 @@ import {
   splitStepCaption,
   stripLeadingStepNumber,
 } from '../dashboardRoadmap'
-import type { CoursePath, LinkedCourse } from '../types'
+import type { CourseMaterial, CoursePath, LinkedCourse } from '../types'
 
 const HR = 'hr-roadmap'
+
+function material(id: string): CourseMaterial {
+  return {
+    id,
+    pathId: null,
+    sectionId: null,
+    title: id,
+    url: null,
+    fileRef: null,
+    fileName: null,
+    note: null,
+    sortOrder: 0,
+  }
+}
 
 function path(
   id: string,
@@ -112,20 +126,36 @@ describe('buildDashboardRoadmap', () => {
       caption: null,
       courseId: HR,
       pathId: 'p1',
+      description: null,
+      sectionCount: 0,
+      materialCount: 0,
+      linkedCourseTitle: null,
     })
-    // Bước 4 mở khoá "Lao động tri thức" ngay trong lộ trình này, không nhảy sang lộ trình 5 cấp độ.
-    expect(steps[3]).toMatchObject({ courseId: HR, pathId: 'p4' })
+    // Bước 4 mở khoá "Lao động tri thức" ngay trong lộ trình này, không nhảy sang lộ trình 5 cấp độ;
+    // tên lộ trình liên kết chỉ để hiện nhãn.
+    expect(steps[3]).toMatchObject({
+      courseId: HR,
+      pathId: 'p4',
+      linkedCourseTitle: 'Lộ trình 5 cấp độ Lao động tri thức',
+    })
   })
 
-  it('does not expand sections into steps', () => {
-    const steps = buildDashboardRoadmap({
-      id: HR,
-      paths: [path('a', 'A', { sections: ['A1', 'A2'] }), path('b', 'B')],
-    })
+  it('does not expand sections into steps, but counts them and their materials', () => {
+    const withSections = path('a', 'A', { sections: ['A1', 'A2'] })
+    withSections.description = '  Làm quen công ty  '
+    withSections.materials = [material('m0')]
+    withSections.sections[1]!.materials = [material('m1'), material('m2')]
+    const steps = buildDashboardRoadmap({ id: HR, paths: [withSections, path('b', 'B')] })
     expect(steps.map((s) => [s.number, s.title, s.pathId])).toEqual([
       [1, 'A', 'a'],
       [2, 'B', 'b'],
     ])
+    expect(steps[0]).toMatchObject({
+      description: 'Làm quen công ty',
+      sectionCount: 2,
+      materialCount: 3,
+    })
+    expect(steps[1]).toMatchObject({ description: null, sectionCount: 0, materialCount: 0 })
   })
 
   it('returns nothing for an empty roadmap', () => {
