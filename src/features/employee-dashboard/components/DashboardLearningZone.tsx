@@ -150,7 +150,7 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
             <span className="flex h-10 w-10 items-center justify-center rounded-xl text-[#006C49]">
               <Route className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
             </span>
-            <span>Lộ trình 5 cấp độ</span>
+            <span>Lộ trình 5 cấp độ Lao động tri thức</span>
           </h3>
           {isLoading ? (
             <div className="flex-1">

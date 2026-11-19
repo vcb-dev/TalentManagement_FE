@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { staggerStyle } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 
-/** Đường nối giữa các mốc — cùng màu xanh thương hiệu của thẻ "Lộ trình 5 cấp độ". */
+/** Đường nối giữa các mốc — cùng màu xanh thương hiệu của thẻ "Lộ trình 5 cấp độ Lao động tri thức". */
 const CONNECTOR = 'bg-[#006C49]/20'
 
 function StepRow({
@@ -80,9 +80,8 @@ function EmptyNote({ children }: { children: string }) {
 
 /**
  * Thẻ "Lộ trình đào tạo" ở trang cá nhân (thay "Tiến độ mốc học"): các khoá học của lộ trình admin chọn
- * "Hiện ở trang cá nhân" trên /courses. Khoá "theo lộ trình khác" (VD "Lao động tri thức" → 5 cấp độ) hoặc
- * khoá có học phần hiện thành nhóm; số bước chạy liên tục (`buildDashboardRoadmap`). Chưa theo dõi tiến độ —
- * mỗi bước mở đúng khoá học trên /courses.
+ * "Hiện ở trang cá nhân" trên /courses — mỗi khoá học là một bước (`buildDashboardRoadmap`), không bung học
+ * phần / khoá "theo lộ trình khác". Chưa theo dõi tiến độ — mỗi bước mở đúng khoá học trên /courses.
  */
 export const DashboardTrainingRoadmapCard = memo(function DashboardTrainingRoadmapCard({
   staggerIndex,
@@ -92,10 +91,10 @@ export const DashboardTrainingRoadmapCard = memo(function DashboardTrainingRoadm
   const { data: courses, isLoading: listLoading } = useCourses(false)
   const featuredId = useMemo(() => courses?.find((c) => c.showOnDashboard)?.id, [courses])
   const { data: course, isLoading: detailLoading, isError } = useCourse(featuredId, false)
-  const roadmap = useMemo(() => (course ? buildDashboardRoadmap(course) : null), [course])
+  const steps = useMemo(() => (course ? buildDashboardRoadmap(course) : null), [course])
 
   const loading = listLoading || detailLoading
-  const shown = !loading && !isError && course && roadmap ? { course, roadmap } : null
+  const shown = !loading && !isError && course && steps ? { course, steps } : null
 
   return (
     <section
@@ -115,7 +114,7 @@ export const DashboardTrainingRoadmapCard = memo(function DashboardTrainingRoadm
         {shown ? (
           <p className="mt-1 pl-7 text-sm font-semibold text-muted-foreground">
             {shown.course.title}
-            {shown.roadmap.stepCount > 0 ? ` · ${shown.roadmap.stepCount} bước` : null}
+            {shown.steps.length > 0 ? ` · ${shown.steps.length} bước` : null}
           </p>
         ) : null}
       </header>
@@ -125,50 +124,18 @@ export const DashboardTrainingRoadmapCard = memo(function DashboardTrainingRoadm
           <RoadmapSkeleton />
         ) : !shown ? (
           <EmptyNote>Chưa có lộ trình đào tạo nào được chọn hiển thị ở trang cá nhân.</EmptyNote>
-        ) : shown.roadmap.stepCount === 0 ? (
+        ) : shown.steps.length === 0 ? (
           <EmptyNote>Lộ trình đang được cập nhật khoá học.</EmptyNote>
         ) : (
           <ol aria-label={`Các bước của ${shown.course.title}`}>
-            {shown.roadmap.blocks.map((block) => {
-              const total = shown.roadmap.stepCount
-              if (block.kind === 'step') {
-                return (
-                  <StepRow
-                    key={block.step.id}
-                    step={block.step}
-                    isFirst={block.step.number === 1}
-                    isLast={block.step.number === total}
-                  />
-                )
-              }
-              const firstNumber = block.steps[0]?.number ?? 1
-              return (
-                <li
-                  key={block.id}
-                  className="rounded-2xl bg-[#006C49]/[0.05] ring-1 ring-inset ring-[#006C49]/15"
-                >
-                  {/* Hàng tên nhóm giữ đường nối chạy qua để 1–3 và 4–7 vẫn là một mạch. */}
-                  <div className="flex gap-3 px-2">
-                    <span className="flex w-8 shrink-0 justify-center" aria-hidden>
-                      <span className={cn('w-0.5', firstNumber > 1 && CONNECTOR)} />
-                    </span>
-                    <p className="pb-0.5 pt-3 text-[11px] font-bold uppercase tracking-widest text-[#006C49]">
-                      {block.title}
-                    </p>
-                  </div>
-                  <ol aria-label={block.title}>
-                    {block.steps.map((step) => (
-                      <StepRow
-                        key={step.id}
-                        step={step}
-                        isFirst={step.number === 1}
-                        isLast={step.number === total}
-                      />
-                    ))}
-                  </ol>
-                </li>
-              )
-            })}
+            {shown.steps.map((step, i) => (
+              <StepRow
+                key={step.id}
+                step={step}
+                isFirst={i === 0}
+                isLast={i === shown.steps.length - 1}
+              />
+            ))}
           </ol>
         )}
 

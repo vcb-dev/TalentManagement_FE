@@ -2,7 +2,7 @@ import type { CourseDetail } from './types'
 
 /** Một bước trên thẻ "Lộ trình đào tạo" ở trang cá nhân — số thứ tự chạy liên tục qua cả lộ trình. */
 export type DashboardRoadmapStep = {
-  /** id khoá học hoặc học phần. */
+  /** id khoá học (`course_paths.id`). */
   id: string
   number: number
   title: string
@@ -12,15 +12,6 @@ export type DashboardRoadmapStep = {
   courseId: string
   pathId: string
 }
-
-/**
- * Khoá học thường = một bước. Khoá gom nhiều bước thành nhóm (tên khoá):
- * - khoá "theo lộ trình khác" → mỗi khoá của lộ trình đó là một bước (VD "Lao động tri thức" → 5 cấp độ);
- * - khoá có học phần → mỗi học phần là một bước.
- */
-export type DashboardRoadmapBlock =
-  | { kind: 'step'; step: DashboardRoadmapStep }
-  | { kind: 'group'; id: string; title: string; steps: DashboardRoadmapStep[] }
 
 /**
  * "4. Lao động tri thức" → "Lao động tri thức": thẻ tự đánh số liên tục nên bỏ số admin gõ sẵn ở đầu tên.
@@ -44,43 +35,19 @@ export function splitStepCaption(title: string): { title: string; caption: strin
   return { title: match[2]!.trim(), caption: match[1]!.trim() }
 }
 
-function makeStep(
-  id: string,
-  number: number,
-  rawTitle: string,
-  courseId: string,
-  pathId: string
-): DashboardRoadmapStep {
-  return { id, number, ...splitStepCaption(rawTitle), courseId, pathId }
-}
-
-/** Dựng các bước theo thứ tự API trả về (khoá học, học phần, khoá của lộ trình liên kết đều đã sắp sẵn). */
-export function buildDashboardRoadmap(course: Pick<CourseDetail, 'id' | 'paths'>): {
-  blocks: DashboardRoadmapBlock[]
-  stepCount: number
-} {
-  let number = 0
-  const next = () => (number += 1)
-  const blocks = course.paths.map((path): DashboardRoadmapBlock => {
-    const groupTitle = stripLeadingStepNumber(path.title)
-    const linked = path.linkedCourse
-    if (linked && linked.paths.length > 0) {
-      return {
-        kind: 'group',
-        id: path.id,
-        title: groupTitle,
-        steps: linked.paths.map((p) => makeStep(p.id, next(), p.title, linked.id, p.id)),
-      }
-    }
-    if (path.sections.length > 0) {
-      return {
-        kind: 'group',
-        id: path.id,
-        title: groupTitle,
-        steps: path.sections.map((s) => makeStep(s.id, next(), s.title, course.id, path.id)),
-      }
-    }
-    return { kind: 'step', step: makeStep(path.id, next(), path.title, course.id, path.id) }
-  })
-  return { blocks, stepCount: number }
+/**
+ * Mỗi khoá học của lộ trình là đúng một bước, theo thứ tự API trả về. Không bung học phần hay khoá
+ * "theo lộ trình khác" — VD "4. Lao động tri thức" chỉ là bước 4 (5 cấp độ đã có thẻ
+ * "Lộ trình 5 cấp độ Lao động tri thức" riêng); chi tiết xem trên /courses.
+ */
+export function buildDashboardRoadmap(
+  course: Pick<CourseDetail, 'id' | 'paths'>
+): DashboardRoadmapStep[] {
+  return course.paths.map((path, i) => ({
+    id: path.id,
+    number: i + 1,
+    ...splitStepCaption(path.title),
+    courseId: course.id,
+    pathId: path.id,
+  }))
 }

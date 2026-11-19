@@ -7,7 +7,6 @@ import {
 import type { CoursePath, LinkedCourse } from '../types'
 
 const HR = 'hr-roadmap'
-const KW = 'kw-roadmap'
 
 function path(
   id: string,
@@ -32,7 +31,7 @@ function path(
 }
 
 const KNOWLEDGE_WORK: LinkedCourse = {
-  id: KW,
+  id: 'kw-roadmap',
   title: 'Lộ trình 5 cấp độ Lao động tri thức',
   isActive: true,
   paths: [
@@ -89,8 +88,8 @@ describe('splitStepCaption', () => {
 })
 
 describe('buildDashboardRoadmap', () => {
-  it('expands a course linked to another roadmap into that roadmap’s courses, numbered on', () => {
-    const { blocks, stepCount } = buildDashboardRoadmap({
+  it('shows each course as one step — a linked course stays a single general step', () => {
+    const steps = buildDashboardRoadmap({
       id: HR,
       paths: [
         path('p1', '1. Đào tạo Hội nhập'),
@@ -100,54 +99,36 @@ describe('buildDashboardRoadmap', () => {
       ],
     })
 
-    expect(stepCount).toBe(8)
-    expect(blocks[0]).toEqual({
-      kind: 'step',
-      step: {
-        id: 'p1',
-        number: 1,
-        title: 'Đào tạo Hội nhập',
-        caption: null,
-        courseId: HR,
-        pathId: 'p1',
-      },
-    })
-    const group = blocks[3]
-    expect(group).toMatchObject({ kind: 'group', id: 'p4', title: 'Lao động tri thức' })
-    if (group?.kind !== 'group') throw new Error('expected a group')
-    expect(group.steps.map((s) => [s.number, s.caption, s.title])).toEqual([
-      [4, 'Cấp độ 1', 'Tập sự'],
-      [5, 'Cấp độ 2', 'Biết việc'],
-      [6, 'Cấp độ 3', 'Được việc'],
-      [7, 'Cấp độ 4', 'Đóng góp kết quả'],
-      [8, 'Cấp độ 5', 'Tướng'],
+    expect(steps.map((s) => [s.number, s.title])).toEqual([
+      [1, 'Đào tạo Hội nhập'],
+      [2, 'Đào tạo Phòng ban'],
+      [3, 'Đào tạo Sản phẩm'],
+      [4, 'Lao động tri thức'],
     ])
-    // Bấm một cấp độ mở lộ trình liên kết, cuộn tới đúng khoá của cấp độ đó.
-    expect(group.steps[0]).toMatchObject({ courseId: KW, pathId: 'lv1' })
+    expect(steps[0]).toEqual({
+      id: 'p1',
+      number: 1,
+      title: 'Đào tạo Hội nhập',
+      caption: null,
+      courseId: HR,
+      pathId: 'p1',
+    })
+    // Bước 4 mở khoá "Lao động tri thức" ngay trong lộ trình này, không nhảy sang lộ trình 5 cấp độ.
+    expect(steps[3]).toMatchObject({ courseId: HR, pathId: 'p4' })
   })
 
-  it('uses sections as steps when a course is not linked', () => {
-    const { blocks, stepCount } = buildDashboardRoadmap({
+  it('does not expand sections into steps', () => {
+    const steps = buildDashboardRoadmap({
       id: HR,
       paths: [path('a', 'A', { sections: ['A1', 'A2'] }), path('b', 'B')],
     })
-    expect(stepCount).toBe(3)
-    expect(blocks[0]).toMatchObject({ kind: 'group', title: 'A' })
-    if (blocks[0]?.kind !== 'group') throw new Error('expected a group')
-    expect(blocks[0].steps[1]).toMatchObject({ number: 2, title: 'A2', courseId: HR, pathId: 'a' })
-    expect(blocks[1]).toMatchObject({ kind: 'step', step: { number: 3, title: 'B', pathId: 'b' } })
-  })
-
-  it('falls back to a single step when the linked roadmap has no courses', () => {
-    const { blocks, stepCount } = buildDashboardRoadmap({
-      id: HR,
-      paths: [path('p4', '4. Lao động tri thức', { linked: { ...KNOWLEDGE_WORK, paths: [] } })],
-    })
-    expect(stepCount).toBe(1)
-    expect(blocks[0]).toMatchObject({ kind: 'step', step: { title: 'Lao động tri thức' } })
+    expect(steps.map((s) => [s.number, s.title, s.pathId])).toEqual([
+      [1, 'A', 'a'],
+      [2, 'B', 'b'],
+    ])
   })
 
   it('returns nothing for an empty roadmap', () => {
-    expect(buildDashboardRoadmap({ id: HR, paths: [] })).toEqual({ blocks: [], stepCount: 0 })
+    expect(buildDashboardRoadmap({ id: HR, paths: [] })).toEqual([])
   })
 })
