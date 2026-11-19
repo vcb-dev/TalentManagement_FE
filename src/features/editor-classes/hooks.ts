@@ -36,6 +36,8 @@ export function useBulkCreateExamSchedules() {
       if (!data.dryRun) {
         void qc.invalidateQueries({ queryKey: editorClassesKeys.list() })
         void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
+        // Form nằm ở trang Lịch thi & Đề thi — bảng kỳ thi ở đó đọc `useAllExams`.
+        void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
         toast.success(`Đã tạo lịch thi cho ${data.createdCount} lớp`)
       }
     },

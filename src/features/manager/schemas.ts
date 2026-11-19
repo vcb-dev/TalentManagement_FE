@@ -137,7 +137,7 @@ export const managerClassApiSchema = z.object({
     .nullable()
     .optional()
     .default(null),
-  /** Khoá học lớp dạy; `coursePath` null = dạy cả khoá. */
+  /** Lộ trình lớp dạy (`course`); `coursePath` = khoá học, null = dạy cả lộ trình. */
   course: classCourseRefSchema.nullable().optional().default(null),
   coursePath: classCourseRefSchema.nullable().optional().default(null),
   teacher: z

@@ -14,7 +14,7 @@ import type { ManagerClass } from '@/features/manager/types'
 /** Radix Select không nhận value rỗng — '' trong form ↔ NONE trên ô chọn. */
 const NONE = '__none'
 
-/** Tên khoá/lộ trình có thể rất dài. Radix bỏ qua `className` của SelectValue nên cắt "…" từ trigger. */
+/** Tên lộ trình/khoá học có thể rất dài. Radix bỏ qua `className` của SelectValue nên cắt "…" từ trigger. */
 export const COURSE_SELECT_TRIGGER = 'w-full min-w-0 gap-2 [&>span]:min-w-0 [&>span]:truncate'
 /** Danh sách xổ xuống hiện đủ tên (xuống dòng khi dài) nhưng không tràn khỏi màn hình. */
 export const COURSE_SELECT_CONTENT =
@@ -23,7 +23,7 @@ export const COURSE_SELECT_CONTENT =
 export type ClassCourseValue = { courseId: string; coursePathId: string }
 
 /**
- * Khoá đang mở + khoá lớp đang gắn (nếu khoá đó đã bị ẩn) để ô chọn vẫn hiện đúng giá trị khi sửa lớp.
+ * Lộ trình đang mở + lộ trình lớp đang gắn (nếu đã bị ẩn) để ô chọn vẫn hiện đúng giá trị khi sửa lớp.
  */
 function withCurrentCourse(
   options: CourseOption[],
@@ -51,7 +51,7 @@ export function ClassCourseFields({
   idPrefix: string
   value: ClassCourseValue
   onChange: (next: ClassCourseValue) => void
-  /** Lớp đang sửa — giữ khoá/lộ trình hiện tại trong danh sách chọn. */
+  /** Lớp đang sửa — giữ lộ trình/khoá học hiện tại trong danh sách chọn. */
   current?: Pick<ManagerClass, 'course' | 'coursePath'>
 }) {
   const { data = [], isLoading, isError } = useCourseOptions(true)
@@ -64,17 +64,17 @@ export function ClassCourseFields({
   return (
     <fieldset className="md:col-span-2">
       <legend className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-        Khoá học & lộ trình
+        Lộ trình đào tạo
         {isLoading ? <Loader2 className="size-3 animate-spin" aria-label="Đang tải" /> : null}
       </legend>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="min-w-0">
           <label htmlFor={courseSelectId} className="mb-1 block text-xs text-muted-foreground">
-            Khoá học
+            Lộ trình
           </label>
           <Select
             value={value.courseId || NONE}
-            // Đổi khoá thì lộ trình cũ không còn hợp lệ — quay về "Cả khoá học".
+            // Đổi lộ trình thì khoá học cũ không còn hợp lệ — quay về "Cả lộ trình".
             onValueChange={(next) =>
               onChange({ courseId: next === NONE ? '' : next, coursePathId: '' })
             }
@@ -83,7 +83,7 @@ export function ClassCourseFields({
               <SelectValue />
             </SelectTrigger>
             <SelectContent className={COURSE_SELECT_CONTENT}>
-              <SelectItem value={NONE}>Không thuộc khoá học</SelectItem>
+              <SelectItem value={NONE}>Không thuộc lộ trình</SelectItem>
               {options.map((o) => (
                 <SelectItem key={o.id} value={o.id}>
                   {o.title}
@@ -94,7 +94,7 @@ export function ClassCourseFields({
         </div>
         <div className="min-w-0">
           <label htmlFor={pathSelectId} className="mb-1 block text-xs text-muted-foreground">
-            Lộ trình trong khoá
+            Khoá học trong lộ trình
           </label>
           <Select
             value={value.coursePathId || NONE}
@@ -109,10 +109,10 @@ export function ClassCourseFields({
             <SelectContent className={COURSE_SELECT_CONTENT}>
               <SelectItem value={NONE}>
                 {!course
-                  ? 'Chọn khoá học trước'
+                  ? 'Chọn lộ trình trước'
                   : course.paths.length === 0
-                    ? 'Cả khoá học (khoá chưa có lộ trình)'
-                    : 'Cả khoá học'}
+                    ? 'Cả lộ trình (chưa có khoá học)'
+                    : 'Cả lộ trình'}
               </SelectItem>
               {course?.paths.map((p, i) => (
                 <SelectItem key={p.id} value={p.id}>
@@ -125,31 +125,31 @@ export function ClassCourseFields({
       </div>
       <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
         {isError ? (
-          <span className="text-danger">Không tải được danh sách khoá học.</span>
+          <span className="text-danger">Không tải được danh sách lộ trình.</span>
         ) : course ? (
           <span>
             <BookMarked className="mr-1 inline size-3.5 align-[-3px] text-button" aria-hidden />
             {path ? (
               <>
-                Lớp dạy lộ trình <strong className="text-foreground">{path.title}</strong> của khoá{' '}
-                <strong className="text-foreground">{course.title}</strong>.
+                Lớp dạy khoá học <strong className="text-foreground">{path.title}</strong> của lộ
+                trình <strong className="text-foreground">{course.title}</strong>.
               </>
             ) : (
               <>
-                Lớp dạy cả khoá <strong className="text-foreground">{course.title}</strong>.
+                Lớp dạy cả lộ trình <strong className="text-foreground">{course.title}</strong>.
               </>
             )}
           </span>
         ) : !isLoading && data.length === 0 ? (
           <>
-            Chưa có khoá học nào đang mở. Khoá học do admin tạo ở trang{' '}
+            Chưa có lộ trình nào đang mở. Lộ trình do admin tạo ở trang{' '}
             <Link to="/courses" className="font-semibold text-button hover:underline">
-              Khoá học & lộ trình
+              Lộ trình đào tạo
             </Link>
             .
           </>
         ) : (
-          'Không bắt buộc. Chọn khoá để tạo lớp cho cả khoá, hoặc chọn thêm lộ trình để tạo lớp riêng cho lộ trình đó.'
+          'Không bắt buộc. Chọn lộ trình để tạo lớp cho cả lộ trình, hoặc chọn thêm khoá học để tạo lớp riêng cho khoá đó.'
         )}
       </p>
     </fieldset>

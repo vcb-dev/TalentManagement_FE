@@ -241,18 +241,18 @@ const nodes: PermissionNode[] = [
   },
 
   // Không nằm trong template role nào — BE migration cấp sẵn cho tài khoản admin dùng chung.
-  // Xem khoá học không cần quyền: mọi nhân sự đăng nhập đều xem được khoá đang mở.
+  // Xem lộ trình đào tạo không cần quyền: mọi nhân sự đăng nhập đều xem được lộ trình đang mở.
   {
     id: 'mod.course',
     parentId: null,
-    label: 'Khoá học & lộ trình',
+    label: 'Lộ trình đào tạo',
     kind: 'module',
     scope: 'global',
   },
   {
     id: 'course.manage',
     parentId: 'mod.course',
-    label: 'Cấu hình khoá học, lộ trình & tài liệu',
+    label: 'Cấu hình lộ trình, khoá học, học phần & tài liệu',
     kind: 'function',
     scope: 'global',
   },
@@ -548,7 +548,7 @@ export const PERMISSION_MODULE_UI_SCREENS: Readonly<Record<string, readonly stri
     'Mục Checklist trong hồ sơ nhân sự (/hr-admin/$mãNhânViên)',
   ],
   'mod.course': [
-    'Thêm / sửa / ẩn khoá học, lộ trình và tài liệu (/courses) — nhân sự không cần quyền này để xem',
+    'Thêm / sửa / ẩn lộ trình, khoá học, học phần và tài liệu (/courses) — nhân sự không cần quyền này để xem',
   ],
   'mod.activity': [
     'Thêm / sửa / xoá hoạt động trong tháng (/activities) — nhân sự không cần quyền này để xem',

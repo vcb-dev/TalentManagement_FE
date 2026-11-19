@@ -38,12 +38,12 @@ export function ClassCourseFilterPopover({
   const isActive = Boolean(value.course)
   const label =
     value.course === COURSE_FILTER_NONE
-      ? 'Chưa gắn khoá'
+      ? 'Chưa gắn lộ trình'
       : course
-        ? [course.title, path?.title ?? (value.path === PATH_FILTER_WHOLE ? 'Cả khoá học' : null)]
+        ? [course.title, path?.title ?? (value.path === PATH_FILTER_WHOLE ? 'Cả lộ trình' : null)]
             .filter(Boolean)
             .join(' › ')
-        : 'Khoá học'
+        : 'Lộ trình'
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -52,7 +52,7 @@ export function ClassCourseFilterPopover({
           type="button"
           variant="outline"
           aria-expanded={open}
-          aria-label={isActive ? `Khoá học: ${label}` : 'Lọc theo khoá học'}
+          aria-label={isActive ? `Lộ trình: ${label}` : 'Lọc theo lộ trình đào tạo'}
           className={cn(
             'h-auto min-h-11 w-full min-w-0 justify-between gap-2 rounded-xl border-border/80 bg-card/90 px-3 text-sm font-semibold shadow-sm ring-1 ring-border/60 sm:w-auto lg:max-w-72',
             (open || isActive) &&
@@ -73,9 +73,9 @@ export function ClassCourseFilterPopover({
       <PopoverContent align="end" sideOffset={8} className="w-[min(24rem,calc(100vw-2rem))] p-0">
         <div className="flex items-start justify-between gap-3 border-b border-border/70 px-4 py-3">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">Khoá học & lộ trình</p>
+            <p className="text-sm font-semibold text-foreground">Lộ trình đào tạo</p>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-              Lọc lớp theo khoá học và lộ trình lớp dạy
+              Lọc lớp theo lộ trình và khoá học lớp dạy
             </p>
           </div>
           <Button
@@ -96,7 +96,7 @@ export function ClassCourseFilterPopover({
               htmlFor="class-filter-course"
               className="block text-xs font-semibold text-muted-foreground"
             >
-              Khoá học
+              Lộ trình
             </label>
             <Select
               value={value.course ?? ALL}
@@ -112,7 +112,7 @@ export function ClassCourseFilterPopover({
                     {c.title} ({c.count})
                   </SelectItem>
                 ))}
-                <SelectItem value={COURSE_FILTER_NONE}>Chưa gắn khoá ({noneCount})</SelectItem>
+                <SelectItem value={COURSE_FILTER_NONE}>Chưa gắn lộ trình ({noneCount})</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -121,7 +121,7 @@ export function ClassCourseFilterPopover({
               htmlFor="class-filter-path"
               className="block text-xs font-semibold text-muted-foreground"
             >
-              Lộ trình trong khoá
+              Khoá học trong lộ trình
             </label>
             <Select
               value={value.path ?? ALL}
@@ -135,11 +135,11 @@ export function ClassCourseFilterPopover({
               </SelectTrigger>
               <SelectContent className={COURSE_SELECT_CONTENT}>
                 <SelectItem value={ALL}>
-                  {course ? 'Mọi lộ trình' : 'Chọn khoá học trước'}
+                  {course ? 'Mọi khoá học' : 'Chọn lộ trình trước'}
                 </SelectItem>
                 {course ? (
                   <SelectItem value={PATH_FILTER_WHOLE}>
-                    Lớp dạy cả khoá ({course.wholeCount})
+                    Lớp dạy cả lộ trình ({course.wholeCount})
                   </SelectItem>
                 ) : null}
                 {course?.paths.map((p, i) => (
@@ -151,7 +151,8 @@ export function ClassCourseFilterPopover({
             </Select>
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Lớp cũ tạo theo loại lớp / cấp lớp nằm ở mục "Chưa gắn khoá" cho tới khi được gắn khoá.
+            Lớp cũ tạo theo loại lớp / cấp lớp nằm ở mục "Chưa gắn lộ trình" cho tới khi được gắn lộ
+            trình.
           </p>
         </div>
       </PopoverContent>

@@ -1,4 +1,4 @@
-/** `manage` = dữ liệu admin (gồm khoá đang ẩn) — tách cache khỏi bản nhân sự. */
+/** `manage` = dữ liệu admin (gồm lộ trình đang ẩn) — tách cache khỏi bản nhân sự. */
 export const courseKeys = {
   all: ['courses'] as const,
   list: (manage: boolean) => [...courseKeys.all, 'list', manage] as const,

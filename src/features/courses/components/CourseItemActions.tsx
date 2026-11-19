@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 /**
- * Nút admin cho một mục (khoá / lộ trình / tài liệu): lên, xuống, sửa, xoá.
+ * Nút admin cho một mục (lộ trình / khoá học / học phần / tài liệu): lên, xuống, sửa, xoá.
  * Màn hẹp gộp vào menu "⋯" để 4 icon không bóp hẹp tên mục.
  */
 export function CourseItemActions({
@@ -20,7 +20,7 @@ export function CourseItemActions({
   index: number
   count: number
   disabled?: boolean
-  /** Dùng cho aria-label, vd. "lộ trình". */
+  /** Dùng cho aria-label, vd. "khoá học". */
   itemLabel: string
   onMove: (delta: -1 | 1) => void
   onEdit: () => void

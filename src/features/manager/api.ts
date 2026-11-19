@@ -203,7 +203,7 @@ export const managerApi = {
     memberUserIds?: string[]
     teacherUserId?: string | null
     isKnowledgeWork?: boolean
-    /** Khoá học lớp dạy; kèm `coursePathId` = dạy riêng lộ trình đó, null = dạy cả khoá. */
+    /** Lộ trình lớp dạy; kèm `coursePathId` = dạy riêng khoá học đó, null = dạy cả lộ trình. */
     courseId?: string | null
     coursePathId?: string | null
   }) => {

@@ -6,7 +6,7 @@ import { CourseItemActions } from './CourseItemActions'
 const LINK_CLASS =
   'inline-flex max-w-full items-center gap-1 font-medium text-button hover:underline'
 
-/** Danh sách tài liệu dạng dòng, phân cách bằng đường kẻ — nằm trong card lộ trình / khối tài liệu chung. */
+/** Danh sách tài liệu dạng dòng, phân cách bằng đường kẻ — trong học phần / card khoá học / khối tài liệu chung. */
 export function CourseMaterialList({
   materials,
   canManage,
