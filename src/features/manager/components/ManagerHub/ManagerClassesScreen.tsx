@@ -27,9 +27,11 @@ import type { ManagerClass } from '@/features/manager/types'
 import {
   Calendar,
   CalendarRange,
+  Clapperboard,
   FilterX,
   Loader2,
   PlusCircle,
+  School,
   Search,
   UserPlus2,
   Users,
@@ -149,12 +151,74 @@ function ClassGrid({
   )
 }
 
+export type ManagerClassesTab = 'classes' | 'editor'
+
+/** Thanh tab "Lớp học" | "Lớp Editor" — cùng kiểu tab của trang Lịch thi & Đề thi. */
+function ClassesTabBar({
+  active,
+  counts,
+  onChange,
+}: {
+  active: ManagerClassesTab
+  counts: Record<ManagerClassesTab, number | null>
+  onChange: (tab: ManagerClassesTab) => void
+}) {
+  const tabs: Array<{ value: ManagerClassesTab; label: string; icon: typeof School }> = [
+    { value: 'classes', label: 'Lớp học', icon: School },
+    { value: 'editor', label: 'Lớp Editor', icon: Clapperboard },
+  ]
+  return (
+    <div
+      role="tablist"
+      aria-label="Loại lớp"
+      className="flex w-fit items-center gap-1 rounded-2xl border border-border bg-muted/40 p-1"
+    >
+      {tabs.map((t) => {
+        const selected = active === t.value
+        const count = counts[t.value]
+        return (
+          <button
+            key={t.value}
+            type="button"
+            role="tab"
+            id={`classes-tab-${t.value}`}
+            aria-selected={selected}
+            aria-controls="classes-tab-panel"
+            onClick={() => onChange(t.value)}
+            className={cn(
+              'flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-button/40',
+              selected ? 'bg-[#006C49] text-white' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <t.icon className="h-3.5 w-3.5" aria-hidden />
+            {t.label}
+            {count !== null ? (
+              <span
+                className={cn(
+                  'min-w-5 rounded-full px-1.5 text-center tabular-nums',
+                  selected ? 'bg-white/20' : 'bg-muted text-muted-foreground'
+                )}
+              >
+                {count}
+              </span>
+            ) : null}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function ManagerClassesScreen({
   courseFilter,
   onCourseFilterChange,
+  tab,
+  onTabChange,
 }: {
   courseFilter: ClassCourseFilter
   onCourseFilterChange: (next: ClassCourseFilter) => void
+  tab: ManagerClassesTab
+  onTabChange: (tab: ManagerClassesTab) => void
 }) {
   const { canId } = usePermission()
   /** Không có `manager.classes` (vd. HR chỉ có `hr.classes.view`) → chỉ xem, ẩn tạo/sửa/xoá. */
@@ -277,13 +341,17 @@ export function ManagerClassesScreen({
   }, [selectedCreateTeacher, selectedTeacher])
 
   const rowsInPeriod = rows.filter((row) => matchesClassPeriod(row, fromDate, toDate))
-  // Lớp Editor do hệ thống đồng bộ theo team, không thuộc khoá — tách khu riêng, ẩn khi đang lọc khoá.
+  // Lớp Editor do hệ thống đồng bộ theo team, không thuộc khoá — nằm ở tab riêng, không theo bộ lọc khoá.
+  // Tab chỉ hiện cho người quản lý (để đồng bộ) hoặc khi đã có lớp Editor.
+  const showEditorTab = canManage || rows.some((r) => r.kind === 'EDITOR')
+  const activeTab: ManagerClassesTab = tab === 'editor' && showEditorTab ? 'editor' : 'classes'
+  const isEditorTab = activeTab === 'editor'
   const regularRows = rowsInPeriod.filter((r) => r.kind !== 'EDITOR')
   const courseFilterOptions = buildCourseFilterOptions(regularRows, courseOptions)
-  const hasCourseFilter = Boolean(courseFilter.course)
+  const hasCourseFilter = !isEditorTab && Boolean(courseFilter.course)
   const courseRows = regularRows.filter((r) => matchesCourseFilter(r, courseFilter))
-  const editorRows = hasCourseFilter ? [] : rowsInPeriod.filter((r) => r.kind === 'EDITOR')
-  const visibleRows = [...courseRows, ...editorRows]
+  const editorRows = rowsInPeriod.filter((r) => r.kind === 'EDITOR')
+  const visibleRows = isEditorTab ? editorRows : courseRows
   const totalMembers = visibleRows.reduce((a, r) => a + r.memberCount, 0)
   const openCount = visibleRows.filter((r) => matchesStatus(r, 'open')).length
   // Thống kê phía trên không theo bộ lọc trạng thái; bộ lọc trạng thái chỉ áp cho lưới lớp.
@@ -438,6 +506,17 @@ export function ManagerClassesScreen({
             </div>
           </div>
 
+          {showEditorTab ? (
+            <ClassesTabBar
+              active={activeTab}
+              counts={{
+                classes: isLoading ? null : courseRows.length,
+                editor: isLoading ? null : editorRows.length,
+              }}
+              onChange={onTabChange}
+            />
+          ) : null}
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div
               className={cn(
@@ -504,12 +583,14 @@ export function ManagerClassesScreen({
                 className="h-auto w-full rounded-xl border border-transparent bg-muted/80 py-3 pl-11 pr-4 text-sm shadow-inner shadow-none outline-none ring-offset-background transition-all placeholder:text-muted-foreground focus-visible:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20"
               />
             </div>
-            <ClassCourseFilterPopover
-              value={courseFilter}
-              onChange={onCourseFilterChange}
-              courses={courseFilterOptions.courses}
-              noneCount={courseFilterOptions.noneCount}
-            />
+            {isEditorTab ? null : (
+              <ClassCourseFilterPopover
+                value={courseFilter}
+                onChange={onCourseFilterChange}
+                courses={courseFilterOptions.courses}
+                noneCount={courseFilterOptions.noneCount}
+              />
+            )}
             <Popover open={isTimeFilterOpen} onOpenChange={setIsTimeFilterOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -631,7 +712,8 @@ export function ManagerClassesScreen({
                 )
               })}
             </div>
-            {canManage ? (
+            {/* Lớp Editor do "Đồng bộ lớp Editor" tạo — tab Editor không có nút tạo tay. */}
+            {canManage && !isEditorTab ? (
               <Button
                 type="button"
                 className="shrink-0 gap-2 rounded-xl px-6 py-3 text-sm font-bold shadow-md"
@@ -908,40 +990,43 @@ export function ManagerClassesScreen({
         )}
 
         {!isLoading && !isError ? (
-          <div className="space-y-10">
-            <ClassGrid
-              rows={byStatus(courseRows)}
-              emptyTitle={
-                isFiltering ? 'Không có lớp nào khớp tìm kiếm / bộ lọc' : 'Chưa có lớp học nào'
-              }
-              emptyHint={canManage && !isFiltering ? 'Nhấn "Tạo lớp" để tạo lớp đầu tiên.' : null}
-              onEdit={canManage ? openEditClassModal : undefined}
-              onDelete={canManage ? handleDeleteClass : undefined}
-              onToggleStatus={canManage ? handleToggleStatus : undefined}
-              canManageMembers={canManageMembers}
-            />
-            {!hasCourseFilter && (canManage || editorRows.length > 0) ? (
-              <div className="border-t border-border/70 pt-8">
-                <EditorClassesSection canManage={canManage}>
-                  {/* Không cho đóng/mở tay: "Đồng bộ lớp Editor" tự đóng lớp hết editor và mở lại khi có. */}
-                  <ClassGrid
-                    rows={byStatus(editorRows)}
-                    emptyTitle={
-                      editorRows.length > 0
-                        ? 'Không có lớp Editor nào khớp bộ lọc'
-                        : 'Chưa có lớp Editor nào'
-                    }
-                    emptyHint={
-                      canManage && editorRows.length === 0
-                        ? 'Bấm "Đồng bộ lớp Editor" để tự động tạo lớp theo team đang có editor.'
-                        : null
-                    }
-                    onEdit={canManage ? openEditClassModal : undefined}
-                    onDelete={canManage ? handleDeleteClass : undefined}
-                  />
-                </EditorClassesSection>
-              </div>
-            ) : null}
+          <div
+            id="classes-tab-panel"
+            role={showEditorTab ? 'tabpanel' : undefined}
+            aria-labelledby={showEditorTab ? `classes-tab-${activeTab}` : undefined}
+          >
+            {isEditorTab ? (
+              <EditorClassesSection canManage={canManage}>
+                {/* Không cho đóng/mở tay: "Đồng bộ lớp Editor" tự đóng lớp hết editor và mở lại khi có. */}
+                <ClassGrid
+                  rows={byStatus(editorRows)}
+                  emptyTitle={
+                    editorRows.length > 0 || isFiltering
+                      ? 'Không có lớp Editor nào khớp tìm kiếm / bộ lọc'
+                      : 'Chưa có lớp Editor nào'
+                  }
+                  emptyHint={
+                    canManage && editorRows.length === 0 && !isFiltering
+                      ? 'Bấm "Đồng bộ lớp Editor" để tự động tạo lớp theo team đang có editor.'
+                      : null
+                  }
+                  onEdit={canManage ? openEditClassModal : undefined}
+                  onDelete={canManage ? handleDeleteClass : undefined}
+                />
+              </EditorClassesSection>
+            ) : (
+              <ClassGrid
+                rows={byStatus(courseRows)}
+                emptyTitle={
+                  isFiltering ? 'Không có lớp nào khớp tìm kiếm / bộ lọc' : 'Chưa có lớp học nào'
+                }
+                emptyHint={canManage && !isFiltering ? 'Nhấn "Tạo lớp" để tạo lớp đầu tiên.' : null}
+                onEdit={canManage ? openEditClassModal : undefined}
+                onDelete={canManage ? handleDeleteClass : undefined}
+                onToggleStatus={canManage ? handleToggleStatus : undefined}
+                canManageMembers={canManageMembers}
+              />
+            )}
           </div>
         ) : null}
 

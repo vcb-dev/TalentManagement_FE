@@ -134,14 +134,14 @@ export function ClassCard({
                 to="/courses"
                 search={{ courseId: row.course.id }}
                 className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-button/10 px-2.5 py-0.5 text-xs font-semibold text-button transition-colors hover:bg-button/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-button/35"
-                title={`${row.course.title} › ${row.coursePath?.title ?? 'Cả khoá học'}`}
+                title={`${row.course.title} › ${row.coursePath?.title ?? 'Cả lộ trình'}`}
               >
                 <BookMarked className="size-3.5 shrink-0" aria-hidden />
                 <span className="min-w-0 truncate">{row.course.title}</span>
                 <span className="sr-only">, </span>
                 <ChevronRight className="size-3 shrink-0" aria-hidden />
                 <span className={cn('min-w-0 truncate font-medium', !row.coursePath && 'shrink-0')}>
-                  {row.coursePath?.title ?? 'Cả khoá học'}
+                  {row.coursePath?.title ?? 'Cả lộ trình'}
                 </span>
               </Link>
             </div>

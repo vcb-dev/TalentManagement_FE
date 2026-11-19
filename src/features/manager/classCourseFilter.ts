@@ -1,7 +1,7 @@
 import type { CourseOption } from '@/features/courses/types'
 import type { ManagerClass } from './types'
 
-/** `course` = id khoá hoặc 'none' (lớp chưa gắn khoá); `path` = id lộ trình hoặc 'whole' (lớp dạy cả khoá). */
+/** `course` = id lộ trình hoặc 'none' (lớp chưa gắn lộ trình); `path` = id khoá học hoặc 'whole' (lớp dạy cả lộ trình). */
 export type ClassCourseFilter = { course?: string; path?: string }
 
 export const COURSE_FILTER_NONE = 'none'
@@ -24,14 +24,14 @@ export type CourseFilterCourse = {
   id: string
   title: string
   count: number
-  /** Số lớp dạy cả khoá (không chọn lộ trình). */
+  /** Số lớp dạy cả lộ trình (không chọn khoá học). */
   wholeCount: number
   paths: CourseFilterPath[]
 }
 
 /**
- * Khoá đang mở (theo thứ tự trang Khoá học, kể cả khoá chưa có lớp) rồi tới khoá chỉ còn thấy qua lớp
- * (khoá đã ẩn) — kèm số lớp từng khoá / lộ trình để chọn bộ lọc.
+ * Lộ trình đang mở (theo thứ tự trang Lộ trình đào tạo, kể cả lộ trình chưa có lớp) rồi tới lộ trình chỉ
+ * còn thấy qua lớp (đã ẩn) — kèm số lớp từng lộ trình / khoá học để chọn bộ lọc.
  */
 export function buildCourseFilterOptions(
   rows: ClassCourseLink[],

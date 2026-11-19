@@ -150,13 +150,13 @@ describe('examScheduleStats', () => {
 describe('buildExamExportSheets', () => {
   const [examSheet, scoreSheet, questionSheet] = buildExamExportSheets([exam], [result])
 
-  it('sheet Kỳ thi: một dòng mỗi kỳ thi kèm khoá học và thống kê', () => {
+  it('sheet Kỳ thi: một dòng mỗi kỳ thi kèm lộ trình đào tạo và thống kê', () => {
     expect(examSheet?.rows).toHaveLength(1)
     const row = examSheet?.rows[0] ?? []
     const header = headersOf(examSheet)
     const col = (h: string) => row[header.indexOf(h)]
-    expect(col('Khoá học')).toBe('Văn hoá VCB')
-    expect(col('Lộ trình')).toBe('Cả khoá học')
+    expect(col('Lộ trình')).toBe('Văn hoá VCB')
+    expect(col('Khoá học')).toBe('Cả lộ trình')
     expect(col('Ngày thi')).toEqual(new Date(Date.UTC(2026, 10, 2)))
     expect(col('Chờ chấm')).toBe(1)
     expect(col('Tỉ lệ đạt')).toBe(0.5)

@@ -1,29 +1,16 @@
 ﻿import { memo, useMemo } from 'react'
-import {
-  BookOpen,
-  CalendarDays,
-  Check,
-  CheckCircle2,
-  CircleDashed,
-  Clock,
-  Flag,
-  Hourglass,
-  ListChecks,
-  Lock,
-  Route,
-} from 'lucide-react'
+import { CalendarDays, Check, Clock, Flag, Hourglass, Lock, Route } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { CARD_ENTRANCE_HOVER, staggerStyle } from '@/lib/cardMotion'
 import { useExams } from '@/features/exam/hooks'
 import type { ExamScheduleRow } from '@/features/exam/schemas'
-import { useMyEnrolledClass, useMyLearningPath } from '@/features/learning-path/hooks'
+import { DashboardTrainingRoadmapCard } from '@/features/employee-dashboard/components/DashboardTrainingRoadmapCard'
+import { useMyEnrolledClass } from '@/features/learning-path/hooks'
 import type { MeEnrolledClassSchedule } from '@/features/learning-path/schemas'
 import { LEVELS, LEVEL_LABELS, STARS_PER_LEVEL, type LevelCode } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-
-const quartOut = '[transition-timing-function:cubic-bezier(0.25,1,0.48,1)]'
 
 function pickNextExam(rows: ExamScheduleRow[]): ExamScheduleRow | null {
   if (!rows.length) return null
@@ -82,17 +69,6 @@ function formatSlotWhen(s: MeEnrolledClassSchedule): { dateLine: string; timeLin
   return { dateLine: dline, timeLine: tline }
 }
 
-function milestoneStatusLabel(status: 'locked' | 'in_progress' | 'done'): string {
-  switch (status) {
-    case 'done':
-      return 'Hoàn thành'
-    case 'in_progress':
-      return 'Đang làm'
-    default:
-      return 'Chưa mở'
-  }
-}
-
 export type DashboardLearningZoneProps = {
   /** Khi true, cột lộ trình hiển thị skeleton thay vì số liệu tạm. */
   isLoading?: boolean
@@ -143,7 +119,6 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
 
   const { data: examList, isLoading: examListLoading } = useExams({ page: 1, pageSize: 50 }, true)
   const { data: enrolled, isLoading: classLoading } = useMyEnrolledClass()
-  const { data: learningPath, isLoading: pathLoading } = useMyLearningPath()
 
   const nextExam = useMemo(() => pickNextExam(examList?.data ?? []), [examList?.data])
   const nextExamFmt = useMemo(
@@ -156,23 +131,7 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
   )
   const nextSlotFmt = useMemo(() => (nextSlot ? formatSlotWhen(nextSlot) : null), [nextSlot])
 
-  const milestones = learningPath?.milestones ?? []
-  const sortedMilestones = useMemo(
-    () => [...milestones].sort((a, b) => a.sortOrder - b.sortOrder),
-    [milestones]
-  )
-  const doneMs = useMemo(
-    () => sortedMilestones.filter((m: any) => m.status === 'done').length,
-    [sortedMilestones]
-  )
-  const totalMs = sortedMilestones.length
-  const roadPct = useMemo(
-    () => (totalMs > 0 ? Math.min(100, Math.round((doneMs / totalMs) * 100)) : 0),
-    [doneMs, totalMs]
-  )
-  const topMilestones = useMemo(() => sortedMilestones.slice(0, 5), [sortedMilestones])
-
-  const blockLoading = examListLoading || classLoading || pathLoading
+  const blockLoading = examListLoading || classLoading
 
   return (
     <div className="space-y-8 text-sm text-foreground">
@@ -411,99 +370,7 @@ export const DashboardLearningZone = memo(function DashboardLearningZone({
           </div>
         </div>
 
-        <div
-          className={cn(
-            'relative flex h-full flex-col overflow-hidden rounded-3xl border border-accent/20 p-6'
-          )}
-          style={staggerStyle(2, 55)}
-          aria-busy={blockLoading}
-        >
-          <h4 className="relative mb-4 flex items-center gap-2 text-lg font-black text-foreground">
-            <ListChecks
-              className="h-5 w-5 text-accent motion-safe:animate-pulse motion-reduce:animate-none"
-              strokeWidth={2}
-              aria-hidden
-            />
-            Tiến độ mốc học
-          </h4>
-          <div className="relative flex flex-1 flex-col">
-            {blockLoading ? (
-              <div className="relative space-y-4">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-2 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-            ) : totalMs === 0 ? (
-              <p className="relative text-sm font-medium text-muted-foreground">
-                Chưa có mốc lộ trình từ hệ thống. Khi HR/L&D thiết lập, bạn sẽ thấy tiến độ tại đây.
-              </p>
-            ) : (
-              <>
-                <div className="relative mb-4">
-                  <div className="mb-2 flex items-baseline justify-between gap-2">
-                    <span className="text-xs font-bold uppercase tracking-tight text-muted-foreground">
-                      Hoàn thành mốc
-                    </span>
-                    <span className="text-sm font-black tabular-nums text-primary">
-                      {doneMs}/{totalMs} ({roadPct}%)
-                    </span>
-                  </div>
-                  <div className="h-2.5 overflow-hidden rounded-full bg-border/80 p-px shadow-inner">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-primary via-accent to-primary-600 motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out"
-                      style={{ width: `${roadPct}%` }}
-                    />
-                  </div>
-                </div>
-                <ul className="relative space-y-3 md:space-y-10">
-                  {topMilestones.map((m: any, j: number) => {
-                    const Icon =
-                      m.status === 'done'
-                        ? CheckCircle2
-                        : m.status === 'in_progress'
-                          ? CircleDashed
-                          : Lock
-                    return (
-                      <li key={m.id} className="flex gap-2 text-lg" style={staggerStyle(j, 40)}>
-                        <Icon
-                          className={cn(
-                            'mt-0.5 h-4 w-4 shrink-0',
-                            m.status === 'done' && 'text-emerald-600',
-                            m.status === 'in_progress' && 'text-primary',
-                            m.status === 'locked' && 'text-muted-foreground'
-                          )}
-                          strokeWidth={2}
-                          aria-hidden
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold leading-snug text-foreground">{m.title}</p>
-                          <p className="text-xs font-semibold text-muted-foreground">
-                            {milestoneStatusLabel(m.status)}
-                          </p>
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </>
-            )}
-            <div className="relative mt-auto flex flex-col gap-2 rounded-xl border border-accent/25  p-3 text-xs font-semibold leading-snug text-muted-foreground">
-              <p>Cập nhật minh chứng, checklist sao theo từng cấp — toàn bộ nằm ở lộ trình học.</p>
-              <Button asChild size="sm" className="h-auto w-full rounded-lg py-2 text-sm font-bold">
-                <Link
-                  to="/learning-path"
-                  search={{
-                    levelId: currentLevel,
-                    starId: Math.min(Math.max(1, currentStars), STARS_PER_LEVEL[currentLevel] || 6),
-                  }}
-                >
-                  Mở lộ trình học
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DashboardTrainingRoadmapCard staggerIndex={2} />
       </div>
     </div>
   )

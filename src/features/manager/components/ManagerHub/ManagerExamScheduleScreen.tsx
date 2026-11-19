@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { EditorBulkExamDialog } from '@/features/editor-classes/components/EditorBulkExamDialog'
 import { CriteriaWeightsField } from '@/features/exam-papers/components/CriteriaWeightsField'
 import {
   DEFAULT_ESSAY_CRITERIA_WEIGHTS,
@@ -49,6 +50,7 @@ import { getApiErrorMessage } from '@/lib/axios'
 import {
   BarChart3,
   Calendar,
+  CalendarPlus,
   Download,
   Gauge,
   Loader2,
@@ -213,6 +215,9 @@ export function ManagerExamScheduleScreen() {
   const [isExporting, setIsExporting] = useState(false)
   const canSetPassScore = canId('grading.pass_score.manage')
   const [passScoreTarget, setPassScoreTarget] = useState<PassScoreTarget | null>(null)
+  // Khớp guard BE của POST /manager/editor-classes/exam-schedules/bulk (chuyển từ trang Quản lý lớp học).
+  const canBulkEditorExams = canId('manager.classes')
+  const [isEditorBulkOpen, setIsEditorBulkOpen] = useState(false)
   const editPassScore = (e: (typeof exams)[number]) =>
     canSetPassScore
       ? () =>
@@ -595,6 +600,18 @@ export function ManagerExamScheduleScreen() {
                   <Download className="h-4 w-4" aria-hidden />
                 )}
                 {isExporting ? 'Đang xuất…' : 'Xuất dữ liệu'}
+              </Button>
+            ) : null}
+            {canBulkEditorExams ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 gap-2 rounded-lg px-4 text-sm font-semibold"
+                title="Tạo lịch thi cùng lúc cho tất cả lớp Editor, giáo viên chấm chéo"
+                onClick={() => setIsEditorBulkOpen(true)}
+              >
+                <CalendarPlus className="h-4 w-4" aria-hidden />
+                Lịch thi lớp Editor
               </Button>
             ) : null}
             {canManage && (
@@ -1252,6 +1269,10 @@ export function ManagerExamScheduleScreen() {
           target={passScoreTarget}
           onClose={() => setPassScoreTarget(null)}
         />
+      ) : null}
+
+      {canBulkEditorExams ? (
+        <EditorBulkExamDialog open={isEditorBulkOpen} onOpenChange={setIsEditorBulkOpen} />
       ) : null}
     </>
   )

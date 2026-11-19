@@ -1,5 +1,16 @@
-import { useState, type ReactNode } from 'react'
-import { ArrowLeft, Eye, EyeOff, FileText, Pencil, Plus, Route, Trash2 } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import {
+  ArrowLeft,
+  BookOpen,
+  Eye,
+  EyeOff,
+  FileText,
+  Pencil,
+  Pin,
+  PinOff,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog/ConfirmDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ErrorState } from '@/components/shared/ErrorState'
@@ -7,55 +18,84 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getApiErrorMessage } from '@/lib/axios'
 import { cn } from '@/lib/utils'
+import { countCourseMaterials, countPathMaterials } from '../courseContent'
 import { moveId } from '../courseOrder'
 import {
   useCourse,
   useDeleteCourse,
   useDeleteCourseMaterial,
   useDeleteCoursePath,
+  useDeleteCourseSection,
   useReorderCourseMaterials,
   useReorderCoursePaths,
+  useReorderCourseSections,
   useUpdateCourse,
 } from '../hooks'
-import type { CourseDetail, CourseMaterial, CoursePath } from '../types'
+import type {
+  CourseDetail,
+  CourseMaterial,
+  CoursePath,
+  CourseSection,
+  MaterialTarget,
+} from '../types'
 import {
   CourseFormDialog,
   CourseMaterialFormDialog,
   CoursePathFormDialog,
+  CourseSectionFormDialog,
 } from './CourseFormDialogs'
-import { CourseItemActions } from './CourseItemActions'
 import { CourseMaterialList } from './CourseMaterialList'
-import { CourseStatusPill } from './CourseStatusPill'
+import {
+  AddItemButton,
+  COURSE_CARD_CLASS,
+  CoursePathCard,
+  type CoursePathCardActions,
+  type MaterialGroupProps,
+} from './CoursePathCard'
+import { CourseDashboardPill, CourseStatusPill } from './CourseStatusPill'
+
+/** Id DOM của một khoá học trên trang lộ trình — đích cuộn tới khi mở `/courses?courseId=&pathId=`. */
+function coursePathAnchorId(pathId: string) {
+  return `course-path-${pathId}`
+}
+
+// Nhãn: "Course" = lộ trình, "CoursePath" = khoá học, "CourseSection" = học phần (xem `types.ts`).
 
 /** Giữ bản chụp lúc mở dialog — refetch nền không reset form đang gõ. */
 type EditState =
   | { kind: 'course'; course: CourseDetail }
   | { kind: 'path'; path: CoursePath | null }
-  | { kind: 'material'; material: CourseMaterial | null; pathId: string | null }
+  | { kind: 'section'; pathId: string; section: CourseSection | null }
+  | { kind: 'material'; material: CourseMaterial | null; target: MaterialTarget }
 
 type DeleteState =
   | { kind: 'course' }
   | { kind: 'path'; path: CoursePath }
+  | { kind: 'section'; section: CourseSection }
   | { kind: 'material'; material: CourseMaterial }
 
-const CARD = 'rounded-xl border border-border/80 bg-card shadow-[var(--shadow-card)]'
-
-function countMaterials(course: CourseDetail) {
-  return course.materials.length + course.paths.reduce((n, p) => n + p.materials.length, 0)
-}
+/** Hằng số (không tạo object mới mỗi render) — form tài liệu reset theo tham chiếu `defaultTarget`. */
+const ROADMAP_TARGET: MaterialTarget = { pathId: null, sectionId: null }
 
 function deleteCopy(target: DeleteState) {
   if (target.kind === 'course') {
     return {
-      title: 'Xoá khoá học?',
+      title: 'Xoá lộ trình?',
       description:
-        'Toàn bộ lộ trình và tài liệu trong khoá sẽ bị xoá vĩnh viễn. Nếu chỉ muốn tạm ẩn với nhân sự, dùng nút "Ẩn khoá".',
+        'Toàn bộ khoá học, học phần và tài liệu trong lộ trình sẽ bị xoá vĩnh viễn. Nếu chỉ muốn tạm ẩn với nhân sự, dùng nút "Ẩn lộ trình".',
     }
   }
   if (target.kind === 'path') {
     return {
-      title: `Xoá lộ trình "${target.path.title}"?`,
-      description: `${target.path.materials.length} tài liệu trong lộ trình cũng sẽ bị xoá.`,
+      title: `Xoá khoá học "${target.path.title}"?`,
+      description: `${target.path.sections.length} học phần và ${countPathMaterials(target.path)} tài liệu trong khoá học cũng sẽ bị xoá.`,
+    }
+  }
+  if (target.kind === 'section') {
+    const n = target.section.materials.length
+    return {
+      title: `Xoá học phần "${target.section.title}"?`,
+      description: n > 0 ? `${n} tài liệu trong học phần cũng sẽ bị xoá.` : undefined,
     }
   }
   return { title: `Xoá tài liệu "${target.material.title}"?`, description: undefined }
@@ -69,8 +109,8 @@ function BackButton({ onBack }: { onBack: () => void }) {
       variant="ghost"
       size="icon"
       className="mt-0.5 size-10 shrink-0 rounded-md border border-border bg-card hover:bg-muted"
-      aria-label="Tất cả khoá học"
-      title="Tất cả khoá học"
+      aria-label="Tất cả lộ trình"
+      title="Tất cả lộ trình"
       onClick={onBack}
     >
       <ArrowLeft className="size-4 text-foreground" />
@@ -102,31 +142,20 @@ function SectionHeader({
   )
 }
 
-function AddMaterialButton({ onClick, label }: { onClick: () => void; label: string }) {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="h-8 gap-1 rounded-lg px-2 text-button hover:text-button"
-      onClick={onClick}
-    >
-      <Plus className="size-3.5" aria-hidden />
-      {label}
-    </Button>
-  )
-}
-
 /**
- * Chi tiết khoá: header gọn (← tên khoá, số liệu, nút admin) → lộ trình (cột chính) + tài liệu chung
- * (cột phụ trên màn rộng). Có `course.manage` thì sửa ngay trên trang — thêm / sửa / xoá / đổi thứ tự.
+ * Chi tiết một lộ trình: header gọn (← tên lộ trình, số liệu, nút admin) → các khoá học theo thứ tự
+ * (cột chính; mỗi khoá có học phần + tài liệu) + tài liệu chung của lộ trình (cột phụ trên màn rộng).
+ * Có `course.manage` thì sửa ngay trên trang — thêm / sửa / xoá / đổi thứ tự ở mọi cấp.
  */
 export function CourseDetailView({
   courseId,
+  focusPathId,
   canManage,
   onBack,
 }: {
   courseId: string
+  /** Khoá học cần cuộn tới & làm nổi (đến từ thẻ "Lộ trình đào tạo" ở trang cá nhân). */
+  focusPathId?: string
   canManage: boolean
   onBack: () => void
 }) {
@@ -141,11 +170,23 @@ export function CourseDetailView({
   const updateCourse = useUpdateCourse()
   const deleteCourse = useDeleteCourse()
   const deletePath = useDeleteCoursePath()
+  const deleteSection = useDeleteCourseSection()
   const deleteMaterial = useDeleteCourseMaterial()
   const reorderPaths = useReorderCoursePaths()
+  const reorderSections = useReorderCourseSections()
   const reorderMaterials = useReorderCourseMaterials()
   const [editing, setEditing] = useState<EditState | null>(null)
   const [deleting, setDeleting] = useState<DeleteState | null>(null)
+
+  // Cuộn một lần khi lộ trình vừa tải xong (theo id, không theo từng lần refetch nền).
+  const loadedCourseId = course?.id
+  useEffect(() => {
+    if (!focusPathId || !loadedCourseId) return
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    document
+      .getElementById(coursePathAnchorId(focusPathId))
+      ?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+  }, [focusPathId, loadedCourseId])
 
   if (isLoading) {
     return (
@@ -166,8 +207,8 @@ export function CourseDetailView({
       <div className="space-y-6">
         <BackButton onBack={onBack} />
         <ErrorState
-          title="Không tải được khoá học"
-          description={getApiErrorMessage(error) || 'Khoá học không tồn tại hoặc đã bị ẩn.'}
+          title="Không tải được lộ trình"
+          description={getApiErrorMessage(error) || 'Lộ trình không tồn tại hoặc đã bị ẩn.'}
           onRetry={() => void refetch()}
           retrying={isFetching}
         />
@@ -175,30 +216,54 @@ export function CourseDetailView({
     )
   }
 
-  const busy = reorderPaths.isPending || reorderMaterials.isPending
+  const busy = reorderPaths.isPending || reorderSections.isPending || reorderMaterials.isPending
 
-  const moveMaterial =
-    (group: CourseMaterial[], pathId: string | null) => (index: number, delta: -1 | 1) => {
+  const materialGroup: MaterialGroupProps = (group, target) => ({
+    canManage,
+    busy,
+    onMove: (index, delta) => {
       const ids = moveId(
         group.map((m) => m.id),
         index,
         delta
       )
-      if (ids) reorderMaterials.mutate({ courseId: course.id, pathId, ids })
-    }
+      if (ids) reorderMaterials.mutate({ courseId: course.id, target, ids })
+    },
+    onEdit: (material) => setEditing({ kind: 'material', material, target }),
+    onDelete: (material) => setDeleting({ kind: 'material', material }),
+  })
 
-  const materialHandlers = (group: CourseMaterial[], pathId: string | null) => ({
-    canManage,
-    busy,
-    onMove: moveMaterial(group, pathId),
-    onEdit: (material: CourseMaterial) => setEditing({ kind: 'material', material, pathId }),
-    onDelete: (material: CourseMaterial) => setDeleting({ kind: 'material', material }),
+  const pathActions = (path: CoursePath, index: number): CoursePathCardActions => ({
+    onMovePath: (delta) => {
+      const ids = moveId(
+        course.paths.map((p) => p.id),
+        index,
+        delta
+      )
+      if (ids) reorderPaths.mutate({ courseId: course.id, ids })
+    },
+    onEditPath: () => setEditing({ kind: 'path', path }),
+    onDeletePath: () => setDeleting({ kind: 'path', path }),
+    onAddSection: () => setEditing({ kind: 'section', pathId: path.id, section: null }),
+    onMoveSection: (sectionIndex, delta) => {
+      const ids = moveId(
+        path.sections.map((s) => s.id),
+        sectionIndex,
+        delta
+      )
+      if (ids) reorderSections.mutate({ pathId: path.id, ids })
+    },
+    onEditSection: (section) => setEditing({ kind: 'section', pathId: path.id, section }),
+    onDeleteSection: (section) => setDeleting({ kind: 'section', section }),
+    onAddMaterial: (target) => setEditing({ kind: 'material', material: null, target }),
+    materialGroup,
   })
 
   const confirmDelete = () => {
     if (!deleting) return
     if (deleting.kind === 'course') deleteCourse.mutate(course.id, { onSuccess: onBack })
     else if (deleting.kind === 'path') deletePath.mutate(deleting.path.id)
+    else if (deleting.kind === 'section') deleteSection.mutate(deleting.section.id)
     else deleteMaterial.mutate(deleting.material.id)
     setDeleting(null)
   }
@@ -219,17 +284,18 @@ export function CourseDetailView({
             </h1>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
               {canManage ? <CourseStatusPill isActive={course.isActive} /> : null}
+              {canManage && course.showOnDashboard ? <CourseDashboardPill /> : null}
               <span className="inline-flex items-center gap-1.5">
-                <Route className="size-4 shrink-0" aria-hidden />
+                <BookOpen className="size-4 shrink-0" aria-hidden />
                 <span className="font-semibold tabular-nums text-foreground">
                   {course.paths.length}
                 </span>
-                lộ trình
+                khoá học
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <FileText className="size-4 shrink-0" aria-hidden />
                 <span className="font-semibold tabular-nums text-foreground">
-                  {countMaterials(course)}
+                  {countCourseMaterials(course)}
                 </span>
                 tài liệu
               </span>
@@ -266,7 +332,31 @@ export function CourseDetailView({
               ) : (
                 <Eye className="size-3.5" aria-hidden />
               )}
-              {course.isActive ? 'Ẩn khoá' : 'Mở lại khoá'}
+              {course.isActive ? 'Ẩn lộ trình' : 'Mở lại lộ trình'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={updateCourse.isPending}
+              title={
+                course.showOnDashboard
+                  ? 'Gỡ khỏi thẻ "Lộ trình đào tạo" trên trang cá nhân của nhân sự'
+                  : 'Hiện lộ trình này ở thẻ "Lộ trình đào tạo" trên trang cá nhân — thay lộ trình đang hiện (nếu có)'
+              }
+              onClick={() =>
+                updateCourse.mutate({
+                  id: course.id,
+                  input: { showOnDashboard: !course.showOnDashboard },
+                })
+              }
+            >
+              {course.showOnDashboard ? (
+                <PinOff className="size-3.5" aria-hidden />
+              ) : (
+                <Pin className="size-3.5" aria-hidden />
+              )}
+              {course.showOnDashboard ? 'Gỡ khỏi trang cá nhân' : 'Hiện ở trang cá nhân'}
             </Button>
             <Button
               type="button"
@@ -277,7 +367,7 @@ export function CourseDetailView({
             >
               <Trash2 className="size-3.5" aria-hidden />
               {/* Màn hẹp chỉ hiện icon để 3 nút nằm gọn một hàng. */}
-              <span className="sr-only sm:not-sr-only">Xoá khoá</span>
+              <span className="sr-only sm:not-sr-only">Xoá lộ trình</span>
             </Button>
           </div>
         ) : null}
@@ -285,10 +375,10 @@ export function CourseDetailView({
 
       {!showPaths && !showShared ? (
         <EmptyState
-          icon={<Route className="size-7" />}
-          title="Nội dung khoá đang được cập nhật"
-          description="Lộ trình và tài liệu sẽ hiện ở đây khi được thêm vào khoá."
-          className={cn(CARD, 'py-10')}
+          icon={<BookOpen className="size-7" />}
+          title="Nội dung lộ trình đang được cập nhật"
+          description="Các khoá học và tài liệu sẽ hiện ở đây khi được thêm vào lộ trình."
+          className={cn(COURSE_CARD_CLASS, 'py-10')}
         />
       ) : (
         <div
@@ -298,9 +388,9 @@ export function CourseDetailView({
           )}
         >
           {showPaths ? (
-            <section className="min-w-0 space-y-3" aria-label="Lộ trình học">
+            <section className="min-w-0 space-y-3" aria-label="Khoá học trong lộ trình">
               <SectionHeader
-                title="Lộ trình học"
+                title="Khoá học trong lộ trình"
                 count={course.paths.length}
                 action={
                   canManage ? (
@@ -311,16 +401,16 @@ export function CourseDetailView({
                       onClick={() => setEditing({ kind: 'path', path: null })}
                     >
                       <Plus className="size-4" aria-hidden />
-                      Thêm lộ trình
+                      Thêm khoá học
                     </Button>
                   ) : null
                 }
               />
               {course.paths.length === 0 ? (
                 <EmptyState
-                  icon={<Route className="size-6" />}
-                  title="Khoá học chưa có lộ trình"
-                  description="Chia khoá thành các lộ trình (giai đoạn / tuần / chủ đề), mỗi lộ trình có tài liệu riêng."
+                  icon={<BookOpen className="size-6" />}
+                  title="Lộ trình chưa có khoá học"
+                  description="Thêm các khoá học theo thứ tự cần học; mỗi khoá chia thành các học phần, học phần có tài liệu riêng."
                   className="rounded-xl border border-dashed border-border py-8"
                 />
               ) : (
@@ -328,8 +418,12 @@ export function CourseDetailView({
                   {course.paths.map((path, index) => {
                     const isLast = index === course.paths.length - 1
                     return (
-                      <li key={path.id} className="flex gap-3">
-                        {/* Mốc lệch xuống 12px cho thẳng hàng với tên lộ trình; đường nối chạy liền qua khoảng cách giữa các card. */}
+                      <li
+                        key={path.id}
+                        id={coursePathAnchorId(path.id)}
+                        className="flex scroll-mt-24 gap-3"
+                      >
+                        {/* Mốc lệch xuống 12px cho thẳng hàng với tên khoá; đường nối chạy liền qua khoảng cách giữa các card. */}
                         <div className="flex flex-col items-center" aria-hidden>
                           <span className={cn('h-3 w-px shrink-0', index > 0 && 'bg-border')} />
                           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-button text-sm font-bold tabular-nums text-button-foreground">
@@ -337,60 +431,15 @@ export function CourseDetailView({
                           </span>
                           {!isLast ? <span className="w-px flex-1 bg-border" /> : null}
                         </div>
-                        <article className={cn(CARD, 'mb-3 min-w-0 flex-1 p-4')}>
-                          <div className="flex items-start justify-between gap-2">
-                            <h3 className="min-w-0 break-words pt-1 font-semibold leading-6 text-foreground">
-                              {path.title}
-                            </h3>
-                            {canManage ? (
-                              <CourseItemActions
-                                index={index}
-                                count={course.paths.length}
-                                disabled={busy}
-                                itemLabel="lộ trình"
-                                onMove={(delta) => {
-                                  const ids = moveId(
-                                    course.paths.map((p) => p.id),
-                                    index,
-                                    delta
-                                  )
-                                  if (ids) reorderPaths.mutate({ courseId: course.id, ids })
-                                }}
-                                onEdit={() => setEditing({ kind: 'path', path })}
-                                onDelete={() => setDeleting({ kind: 'path', path })}
-                              />
-                            ) : null}
-                          </div>
-                          {path.description ? (
-                            <p className="mt-1 whitespace-pre-line break-words text-sm leading-6 text-muted-foreground">
-                              {path.description}
-                            </p>
-                          ) : null}
-                          {/* Lộ trình chưa có tài liệu: nhân sự chỉ thấy một dòng ghi chú, admin thấy nút thêm. */}
-                          {path.materials.length > 0 || canManage ? (
-                            <div className="mt-3 border-t border-border/60 pt-1">
-                              <CourseMaterialList
-                                materials={path.materials}
-                                emptyText={null}
-                                {...materialHandlers(path.materials, path.id)}
-                              />
-                              {canManage ? (
-                                <AddMaterialButton
-                                  label="Thêm tài liệu"
-                                  onClick={() =>
-                                    setEditing({
-                                      kind: 'material',
-                                      material: null,
-                                      pathId: path.id,
-                                    })
-                                  }
-                                />
-                              ) : null}
-                            </div>
-                          ) : (
-                            <p className="mt-1 text-sm text-muted-foreground">Chưa có tài liệu.</p>
-                          )}
-                        </article>
+                        <CoursePathCard
+                          path={path}
+                          index={index}
+                          count={course.paths.length}
+                          canManage={canManage}
+                          busy={busy}
+                          highlighted={path.id === focusPathId}
+                          actions={pathActions(path, index)}
+                        />
                       </li>
                     )
                   })}
@@ -400,20 +449,23 @@ export function CourseDetailView({
           ) : null}
 
           {showShared ? (
-            <section className="min-w-0 space-y-3" aria-label="Tài liệu chung">
-              <SectionHeader title="Tài liệu chung" count={course.materials.length} />
-              <div className={cn(CARD, 'px-4 py-2')}>
+            <section className="min-w-0 space-y-3" aria-label="Tài liệu chung của lộ trình">
+              <SectionHeader title="Tài liệu chung của lộ trình" count={course.materials.length} />
+              <div className={cn(COURSE_CARD_CLASS, 'px-4 py-2')}>
                 <CourseMaterialList
                   materials={course.materials}
-                  emptyText="Chưa có tài liệu dùng chung cho cả khoá."
-                  {...materialHandlers(course.materials, null)}
+                  emptyText="Chưa có tài liệu dùng chung cho cả lộ trình."
+                  {...materialGroup(course.materials, ROADMAP_TARGET)}
                 />
                 {canManage ? (
                   <div className="border-t border-border/60 pt-1">
-                    <AddMaterialButton
-                      label="Thêm tài liệu chung"
-                      onClick={() => setEditing({ kind: 'material', material: null, pathId: null })}
-                    />
+                    <AddItemButton
+                      onClick={() =>
+                        setEditing({ kind: 'material', material: null, target: ROADMAP_TARGET })
+                      }
+                    >
+                      Thêm tài liệu chung
+                    </AddItemButton>
                   </div>
                 ) : null}
               </div>
@@ -435,12 +487,18 @@ export function CourseDetailView({
             courseId={course.id}
             path={editing?.kind === 'path' ? editing.path : null}
           />
+          <CourseSectionFormDialog
+            open={editing?.kind === 'section'}
+            onOpenChange={(open) => !open && setEditing(null)}
+            pathId={editing?.kind === 'section' ? editing.pathId : ''}
+            section={editing?.kind === 'section' ? editing.section : null}
+          />
           <CourseMaterialFormDialog
             open={editing?.kind === 'material'}
             onOpenChange={(open) => !open && setEditing(null)}
             course={course}
             material={editing?.kind === 'material' ? editing.material : null}
-            defaultPathId={editing?.kind === 'material' ? editing.pathId : null}
+            defaultTarget={editing?.kind === 'material' ? editing.target : ROADMAP_TARGET}
           />
           <ConfirmDialog
             open={deleting !== null}

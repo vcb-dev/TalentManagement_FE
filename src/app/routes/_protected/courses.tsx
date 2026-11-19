@@ -4,20 +4,23 @@ import { CoursesScreen } from '@/features/courses/components/CoursesScreen'
 
 const coursesSearchSchema = z.object({
   courseId: z.string().uuid().optional().catch(undefined),
+  /** Khoá học cần cuộn tới khi mở lộ trình (thẻ "Lộ trình đào tạo" ở trang cá nhân dẫn sang). */
+  pathId: z.string().uuid().optional().catch(undefined),
 })
 
-/** Ai đăng nhập cũng xem được khoá đang mở — nút cấu hình hiện theo `course.manage`, BE chặn từng API. */
+/** Ai đăng nhập cũng xem được lộ trình đào tạo đang mở — nút cấu hình hiện theo `course.manage`, BE chặn từng API. */
 export const Route = createFileRoute('/_protected/courses')({
   validateSearch: (raw) => coursesSearchSchema.parse(raw),
   component: CoursesPage,
 })
 
 function CoursesPage() {
-  const { courseId } = Route.useSearch()
+  const { courseId, pathId } = Route.useSearch()
   const navigate = Route.useNavigate()
   return (
     <CoursesScreen
       courseId={courseId}
+      focusPathId={courseId ? pathId : undefined}
       onOpenCourse={(id) => void navigate({ search: id ? { courseId: id } : {} })}
     />
   )

@@ -123,9 +123,10 @@ export const MEMBER_SELF_ITEMS: AppNavItem[] = [
     featureEnabled: LEARNING_PATH_NAV_ENABLED,
   },
   {
-    // Trang khoá học mới (tách khỏi lộ trình cấp/sao) — ai cũng xem, admin cấu hình ngay trên trang.
+    // Lộ trình đào tạo (lộ trình → khoá học → học phần; tách khỏi lộ trình cấp/sao) — ai cũng xem,
+    // admin cấu hình ngay trên trang.
     to: '/courses',
-    label: 'Khoá học & lộ trình',
+    label: 'Lộ trình đào tạo',
     icon: GraduationCap,
     match: 'prefix',
   },
