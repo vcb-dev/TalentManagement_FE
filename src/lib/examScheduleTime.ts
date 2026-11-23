@@ -1,5 +1,6 @@
 import type { EssayCriteriaWeights } from '@/features/exam-papers/criteria'
 import { DEFAULT_ESSAY_CRITERIA_WEIGHTS } from '@/features/exam-papers/criteria'
+import { explicitSubmissionDeadlineIso } from '@/features/teacher/submissionDeadline'
 
 /** Chuẩn hóa thời lượng & hiển thị khoảng thi (theo đề đã gán hoặc endTime trong DB). */
 
@@ -157,6 +158,9 @@ export function examEpochBounds(e: {
   classExamQuestions?: unknown
 }): { startMs: number; endMs: number } {
   const startMs = new Date(`${e.dateIso}T${e.startTime}:00`).getTime()
+  // Lịch "hạn nộp" có deadline tường minh (gia hạn sang ngày khác) — không suy từ thời lượng.
+  const deadlineIso = explicitSubmissionDeadlineIso(e)
+  if (deadlineIso) return { startMs, endMs: new Date(deadlineIso).getTime() }
   const dur = getExamDurationMinutes(
     e.examQuestions,
     e.startTime,

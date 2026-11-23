@@ -6,6 +6,11 @@ import { useManagerSubmissions } from '@/features/exam/hooks'
 import { useGetFeedback } from '@/features/learning-path/hooks'
 import { useManagerClasses } from '@/features/manager/hooks'
 import type { managerClassApiSchema } from '@/features/manager/schemas'
+import {
+  dateIsoInVietnam,
+  explicitSubmissionDeadlineIso,
+  timeHmInVietnam,
+} from '@/features/teacher/submissionDeadline'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 import { useNavigate } from '@tanstack/react-router'
@@ -23,11 +28,16 @@ const PAGE_SIZE = 6
 
 type TemporalStatus = 'UPCOMING' | 'IN_PROGRESS' | 'COMPLETED'
 
-function getTemporalStatus(
-  dateIso?: string,
-  startTime?: string,
-  endTime?: string
-): { label: string; badgeClass: string; status: TemporalStatus } {
+function getTemporalStatus({
+  dateIso,
+  startTime,
+  endTime,
+  endAtIso,
+}: Pick<FlatRow, 'dateIso' | 'startTime' | 'endTime' | 'endAtIso'>): {
+  label: string
+  badgeClass: string
+  status: TemporalStatus
+} {
   if (!dateIso || !startTime || !endTime) {
     return {
       label: 'Không xác định',
@@ -38,7 +48,9 @@ function getTemporalStatus(
 
   const now = new Date().getTime()
   const start = new Date(`${dateIso}T${startTime}:00+07:00`).getTime()
-  const end = new Date(`${dateIso}T${endTime}:00+07:00`).getTime()
+  const end = endAtIso
+    ? new Date(endAtIso).getTime()
+    : new Date(`${dateIso}T${endTime}:00+07:00`).getTime()
 
   if (now < start) {
     return {
@@ -61,6 +73,21 @@ function getTemporalStatus(
   }
 }
 
+function formatViDateIso(dateIso: string): string {
+  return new Date(dateIso + 'T00:00:00').toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
+/** "23/11/2026" hoặc "23/11/2026 – 24/11/2026" khi hạn nộp sang ngày khác. */
+function formatRowDateRange(dateIso: string, endDateIso?: string): string {
+  const start = formatViDateIso(dateIso)
+  if (!endDateIso || endDateIso === dateIso) return start
+  return `${start} – ${formatViDateIso(endDateIso)}`
+}
+
 type FlatRow = {
   key: string
   topic: string
@@ -72,6 +99,10 @@ type FlatRow = {
   dateIso?: string
   startTime?: string
   endTime?: string
+  /** Ngày kết thúc (khác `dateIso` khi hạn nộp kéo dài nhiều ngày). */
+  endDateIso?: string
+  /** Mốc kết thúc tuyệt đối (ISO) khi lịch có hạn nộp tường minh. */
+  endAtIso?: string
   total: number
   pending: number
   drafts: number
@@ -170,19 +201,26 @@ export function ManagerGradingScreen() {
             (sub) => sub.scheduleId?.toLowerCase() === s.id.toLowerCase()
           )
 
-          // Ưu tiên duration từ scheduleQuestions, nếu không có lấy từ classQuestions
-          const durationMin = (s.examQuestions as any)?.duration || classDurationMin
-
-          // Tính endTime thực tế: startTime + duration
-          const startParts = s.startTime.split(':')
-          const startTimeObj = new Date(`${s.dateIso}T${s.startTime}:00+07:00`)
-          const endTimeObj = new Date(startTimeObj.getTime() + durationMin * 60 * 1000)
-          const endStr = endTimeObj.toLocaleTimeString('vi-VN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-            timeZone: 'Asia/Ho_Chi_Minh',
-          })
+          // Lịch "hạn nộp" có deadline tường minh (giáo viên gia hạn, có thể sang ngày khác)
+          // → dùng đúng deadline đó thay vì suy từ giờ bắt đầu + thời lượng.
+          const deadlineIso = explicitSubmissionDeadlineIso(s)
+          let endStr: string
+          let endDateIso: string | undefined
+          if (deadlineIso) {
+            endStr = timeHmInVietnam(deadlineIso)
+            endDateIso = dateIsoInVietnam(deadlineIso)
+          } else {
+            // Ưu tiên duration từ scheduleQuestions, nếu không có lấy từ classQuestions
+            const durationMin = (s.examQuestions as any)?.duration || classDurationMin
+            const startTimeObj = new Date(`${s.dateIso}T${s.startTime}:00+07:00`)
+            const endTimeObj = new Date(startTimeObj.getTime() + durationMin * 60 * 1000)
+            endStr = endTimeObj.toLocaleTimeString('vi-VN', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+              timeZone: 'Asia/Ho_Chi_Minh',
+            })
+          }
 
           result.push({
             key: s.id,
@@ -195,6 +233,8 @@ export function ManagerGradingScreen() {
             dateIso: s.dateIso,
             startTime: s.startTime,
             endTime: endStr,
+            endDateIso,
+            endAtIso: deadlineIso ?? undefined,
             total: scheduleSubmissions.length,
             pending: scheduleSubmissions.filter((sub) => sub.status === 'pending').length,
             drafts: scheduleSubmissions.filter((sub) => sub.status === 'grading').length,
@@ -349,7 +389,7 @@ export function ManagerGradingScreen() {
               </div>
             ) : (
               paginatedRows.map((row) => {
-                const temp = getTemporalStatus(row.dateIso, row.startTime, row.endTime)
+                const temp = getTemporalStatus(row)
                 return (
                   <div
                     key={row.key}
@@ -372,11 +412,7 @@ export function ManagerGradingScreen() {
                       {row.dateIso ? (
                         <div className="mt-1">
                           <p className="text-sm font-bold text-foreground">
-                            {new Date(row.dateIso + 'T00:00:00').toLocaleDateString('vi-VN', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
-                            })}
+                            {formatRowDateRange(row.dateIso, row.endDateIso)}
                           </p>
                           {row.startTime && row.endTime ? (
                             <p className="text-xs text-muted-foreground">
@@ -480,7 +516,7 @@ export function ManagerGradingScreen() {
                   </tr>
                 ) : (
                   paginatedRows.map((row) => {
-                    const temp = getTemporalStatus(row.dateIso, row.startTime, row.endTime)
+                    const temp = getTemporalStatus(row)
                     return (
                       <tr
                         key={row.key}
@@ -499,11 +535,7 @@ export function ManagerGradingScreen() {
                           {row.dateIso ? (
                             <div className="flex flex-col items-center gap-0.5 whitespace-nowrap">
                               <span className="text-xs font-bold text-foreground">
-                                {new Date(row.dateIso + 'T00:00:00').toLocaleDateString('vi-VN', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                })}
+                                {formatRowDateRange(row.dateIso, row.endDateIso)}
                               </span>
                               {row.startTime && row.endTime ? (
                                 <span className="text-xs font-medium text-muted-foreground">
