@@ -25,15 +25,45 @@ export function timeHmInVietnam(iso: string): string {
   })
 }
 
-export function resolveSubmissionDeadline(
-  schedule: {
-    dateIso: string
-    startTime: string
-    endTime: string
-    examQuestions?: ScheduleExamQuestions | null
-    roadmapItems?: Array<{ deadline?: string | null }>
+function readExamQuestionsObject(examQuestions: unknown): ScheduleExamQuestions | null {
+  let parsed: unknown = examQuestions
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed) as unknown
+    } catch {
+      return null
+    }
   }
-): { endDateIso: string; submissionDeadline: string } {
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
+  return parsed as ScheduleExamQuestions
+}
+
+/**
+ * Hạn nộp tường minh (giáo viên đặt/gia hạn, có thể sang ngày khác) lưu trong
+ * `examQuestions.submissionDeadline` / `endDateIso`. Trả về null nếu lịch không có —
+ * khi đó caller tự tính theo giờ bắt đầu + thời lượng như lịch thi thường.
+ */
+export function explicitSubmissionDeadlineIso(schedule: {
+  endTime?: string | null
+  examQuestions?: unknown
+}): string | null {
+  const eq = readExamQuestionsObject(schedule.examQuestions)
+  if (!eq) return null
+  if (eq.submissionDeadline && !Number.isNaN(new Date(eq.submissionDeadline).getTime())) {
+    return new Date(eq.submissionDeadline).toISOString()
+  }
+  const endDateIso = eq.endDateIso?.trim()
+  if (endDateIso) return buildSubmissionDeadlineIso(endDateIso, schedule.endTime || '23:59')
+  return null
+}
+
+export function resolveSubmissionDeadline(schedule: {
+  dateIso: string
+  startTime: string
+  endTime: string
+  examQuestions?: ScheduleExamQuestions | null
+  roadmapItems?: Array<{ deadline?: string | null }>
+}): { endDateIso: string; submissionDeadline: string } {
   const roadmapDeadline = schedule.roadmapItems?.find((item) => item.deadline)?.deadline ?? null
   const fromExam = schedule.examQuestions?.submissionDeadline
   const submissionDeadline =
