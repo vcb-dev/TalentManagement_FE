@@ -155,6 +155,32 @@ export const managerClassApiSchema = z.object({
   schedules: z.array(managerClassScheduleApiSchema).optional(),
 })
 
+/** Lớp ẩn `kind = 'TEAM_EXAM'` của lịch thi theo team (BE tự tạo, không hiện ở danh sách lớp học). */
+export const TEAM_EXAM_CLASS_KIND = 'TEAM_EXAM'
+
+export const teamExamTargetTeamApiSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  departmentName: z.string().nullable(),
+})
+
+/** GET /manager/team-exams/team-options */
+export const teamExamTeamOptionsApiSchema = z.object({
+  departments: z.array(
+    z.object({
+      id: z.string().uuid(),
+      name: z.string(),
+      teams: z.array(
+        z.object({
+          id: z.string().uuid(),
+          name: z.string(),
+          memberCount: z.number().int().nonnegative(),
+        })
+      ),
+    })
+  ),
+})
+
 export const managerClassCreateResponseSchema = z.object({
   id: z.string().uuid(),
 })

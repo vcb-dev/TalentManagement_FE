@@ -25,7 +25,23 @@ import {
   orgItemApiSchema,
   orgCreateResponseApiSchema,
   managerSubmissionApiSchema,
+  teamExamTargetTeamApiSchema,
+  teamExamTeamOptionsApiSchema,
 } from './schemas'
+
+/** Lịch thi theo team — cùng trường với lịch thi của lớp, thay lớp bằng danh sách team. */
+export type TeamExamInput = {
+  teamIds: string[]
+  dateIso: string
+  startTime: string
+  endTime: string
+  topic: string
+  examTeacherUserId?: string | null
+  examStatus?: string | null
+  examPaperIds?: string[]
+  durationMinutes?: number
+  criteriaWeights?: EssayCriteriaWeights
+}
 
 function computeSummaryFromMembers(
   members: z.infer<typeof teamMemberProgressApiSchema>[]
@@ -145,10 +161,39 @@ export const managerApi = {
           passScore: z.number().int().nullable().optional().default(null),
           /** Ngưỡng đang áp dụng; null khi kỳ thi có gắn đề (ngưỡng theo từng đề). */
           effectivePassScore: z.number().int().nullable().optional().default(null),
+          submissionDeadline: z.string().nullable().optional().default(null),
+          /** `'TEAM_EXAM'` = lịch thi theo team (lớp ẩn do hệ thống tạo). */
+          classKind: z.string().nullable().optional().default(null),
+          /** Team được giao của lịch thi theo team; rỗng với lịch thi của lớp học. */
+          targetTeams: z.array(teamExamTargetTeamApiSchema).optional().default([]),
         })
       ),
       res.data,
       'GET /manager/classes/all-exams'
+    )
+  },
+
+  /** Phòng ban → team đang hoạt động (kèm số nhân sự) để chọn khi tạo lịch thi theo team. */
+  teamExamTeamOptions: async () => {
+    const res = await apiClient.get<unknown>('/manager/team-exams/team-options')
+    return safeParse(teamExamTeamOptionsApiSchema, res.data, 'GET /manager/team-exams/team-options')
+  },
+
+  createTeamExam: async (input: TeamExamInput) => {
+    const res = await apiClient.post<unknown>('/manager/team-exams', input)
+    return safeParse(
+      z.object({ id: z.string().uuid(), classId: z.string().uuid(), memberCount: z.number() }),
+      res.data,
+      'POST /manager/team-exams'
+    )
+  },
+
+  updateTeamExam: async (scheduleId: string, input: Partial<TeamExamInput>) => {
+    const res = await apiClient.patch<unknown>(`/manager/team-exams/${scheduleId}`, input)
+    return safeParse(
+      z.object({ ok: z.boolean(), memberCount: z.number() }),
+      res.data,
+      'PATCH /manager/team-exams/:scheduleId'
     )
   },
 
@@ -372,6 +417,7 @@ export const managerApi = {
       examPaperIds?: string[]
       durationMinutes?: number
       criteriaWeights?: EssayCriteriaWeights
+      endDateIso?: string
     }
   ) => {
     const res = await apiClient.patch<unknown>(

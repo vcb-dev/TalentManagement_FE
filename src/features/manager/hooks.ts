@@ -4,7 +4,7 @@ import { apiClient, getApiErrorMessage } from '@/lib/axios'
 import { isMockApiEnabled } from '@/lib/mockEnv'
 import { safeParse } from '@/lib/utils'
 import { approvalItemApiSchema } from './schemas'
-import { managerApi } from './api'
+import { managerApi, type TeamExamInput } from './api'
 import { managerKeys } from './queryKeys'
 import type { EssayCriteriaWeights } from '@/features/exam-papers/criteria'
 
@@ -432,6 +432,7 @@ export function useUpdateClassSchedule() {
         examPaperIds?: string[]
         durationMinutes?: number
         criteriaWeights?: EssayCriteriaWeights
+        endDateIso?: string
       }
     }) => managerApi.updateClassSchedule(classId, scheduleId, input),
     onSuccess: (_d, vars) => {
@@ -440,6 +441,46 @@ export function useUpdateClassSchedule() {
       void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
       void qc.invalidateQueries({ queryKey: ['learning'] })
       toast.success('Đã cập nhật lịch học')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
+export function useTeamExamTeamOptions(enabled: boolean) {
+  return useQuery({
+    queryKey: [...managerKeys.all, 'team-exam-team-options'],
+    queryFn: () => managerApi.teamExamTeamOptions(),
+    enabled,
+    staleTime: 60_000,
+  })
+}
+
+function invalidateTeamExamViews(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'all-exams'] })
+  void qc.invalidateQueries({ queryKey: [...managerKeys.all, 'classes'] })
+  void qc.invalidateQueries({ queryKey: ['learning'] })
+}
+
+export function useCreateTeamExam() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: TeamExamInput) => managerApi.createTeamExam(input),
+    onSuccess: (data) => {
+      invalidateTeamExamViews(qc)
+      toast.success(`Đã tạo lịch thi cho ${data.memberCount} nhân sự`)
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  })
+}
+
+export function useUpdateTeamExam() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ scheduleId, input }: { scheduleId: string; input: Partial<TeamExamInput> }) =>
+      managerApi.updateTeamExam(scheduleId, input),
+    onSuccess: (data) => {
+      invalidateTeamExamViews(qc)
+      toast.success(`Đã cập nhật lịch thi · ${data.memberCount} nhân sự`)
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   })
