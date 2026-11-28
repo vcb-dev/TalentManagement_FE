@@ -24,6 +24,7 @@ import { usePermission } from '@/hooks/usePermission'
 import { CARD_ENTRANCE_HOVER } from '@/lib/cardMotion'
 import { cn } from '@/lib/utils'
 import type { ManagerClass } from '@/features/manager/types'
+import { TEAM_EXAM_CLASS_KIND } from '@/features/manager/schemas'
 import {
   Calendar,
   CalendarRange,
@@ -340,7 +341,10 @@ export function ManagerClassesScreen({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [selectedCreateTeacher, selectedTeacher])
 
-  const rowsInPeriod = rows.filter((row) => matchesClassPeriod(row, fromDate, toDate))
+  // Lớp ẩn của lịch thi theo team chỉ quản lý ở trang Lịch thi — không phải lớp học.
+  const rowsInPeriod = rows.filter(
+    (row) => row.kind !== TEAM_EXAM_CLASS_KIND && matchesClassPeriod(row, fromDate, toDate)
+  )
   // Lớp Editor do hệ thống đồng bộ theo team, không thuộc khoá — nằm ở tab riêng, không theo bộ lọc khoá.
   // Tab chỉ hiện cho người quản lý (để đồng bộ) hoặc khi đã có lớp Editor.
   const showEditorTab = canManage || rows.some((r) => r.kind === 'EDITOR')

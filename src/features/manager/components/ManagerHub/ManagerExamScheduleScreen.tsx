@@ -27,12 +27,14 @@ import { ClassMembersScoresModal } from '@/features/manager/components/ClassMemb
 import {
   useAllExams,
   useCreateClassSchedule,
+  useCreateTeamExam,
   useDeleteClassSchedule,
   useManagerClasses,
   useTeacherOptions,
   useUpdateClassSchedule,
+  useUpdateTeamExam,
 } from '@/features/manager/hooks'
-import type { managerClassApiSchema } from '@/features/manager/schemas'
+import { TEAM_EXAM_CLASS_KIND, type managerClassApiSchema } from '@/features/manager/schemas'
 import { formatViDate } from '@/lib/date'
 import {
   addMinutesToHm,
@@ -67,10 +69,37 @@ import { toast } from 'sonner'
 import type { z } from 'zod'
 import { ExamManagementTabs } from './ExamManagementTabs'
 import { ExamDurationField, ExamPaperPicker } from './ExamPaperAssignmentFields'
+import { ExamTeamPicker } from './ExamTeamPicker'
 import { ManagerScreenLayout } from './ManagerScreenLayout'
 import { ReflectionPassScoreDialog, type PassScoreTarget } from './ReflectionPassScoreDialog'
+import { ReflectionWindowDialog, type ReflectionWindowTarget } from './ReflectionWindowDialog'
+import { formatWindowPoint } from '@/features/teacher/components/SubmissionWindowFields'
+import {
+  formatDateIsoVi,
+  formatWindowLength,
+  submissionWindowOf,
+  submissionWindowStatus,
+  type ScheduleExamQuestions,
+  type SubmissionWindow,
+} from '@/features/teacher/submissionDeadline'
 
 type ManagerClassRow = z.infer<typeof managerClassApiSchema>
+
+type ExamTarget = 'class' | 'teams'
+const EXAM_TARGET_OPTIONS: { value: ExamTarget; label: string }[] = [
+  { value: 'class', label: 'Lớp học' },
+  { value: 'teams', label: 'Team theo phòng ban' },
+]
+
+/** Tooltip liệt kê đủ team (kèm phòng ban) của lịch thi theo team — tên lớp chỉ hiện 3 team đầu. */
+function targetTeamsTitle(
+  teams: { name: string; departmentName: string | null }[]
+): string | undefined {
+  if (teams.length === 0) return undefined
+  return teams
+    .map((t) => (t.departmentName ? `${t.name} (${t.departmentName})` : t.name))
+    .join('\n')
+}
 
 /**
  * Ngưỡng đạt của đợt nộp bài phản tư (lịch "Nộp bài trực tuyến" không gắn đề).
@@ -159,6 +188,45 @@ function examBadgeForSchedule(e: Parameters<typeof examLiveStatus>[1]) {
     className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     muted: true,
   }
+}
+
+function reflectionBadge(w: SubmissionWindow) {
+  const s = submissionWindowStatus(Date.now(), w)
+  if (s === 'upcoming')
+    return {
+      label: 'Sắp mở',
+      className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+      muted: false,
+    }
+  if (s === 'open')
+    return {
+      label: 'Đang nhận bài',
+      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+      muted: false,
+    }
+  return {
+    label: 'Hết hạn nộp',
+    className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    muted: true,
+  }
+}
+
+function ReflectionWindowLine({ w, className }: { w: SubmissionWindow; className?: string }) {
+  const sameDay = w.closeDateIso === w.openDateIso
+  return (
+    <p
+      className={cn('tabular-nums', className)}
+      title={`Học viên nộp bài từ ${formatWindowPoint(w.openDateIso, w.openTime)} đến ${formatWindowPoint(w.closeDateIso, w.closeTime)} (${formatWindowLength(w.closeMs - w.openMs)})`}
+    >
+      Mở {w.openTime} → hạn chót{' '}
+      <span className="font-semibold text-foreground">
+        {w.closeTime}
+        {sameDay
+          ? ''
+          : ` · ${formatDateIsoVi(w.closeDateIso).slice(0, w.closeDateIso.slice(0, 4) === w.openDateIso.slice(0, 4) ? 5 : 10)}`}
+      </span>
+    </p>
+  )
 }
 
 /** Số bài đã chấm xong / số bài đã nộp (không tính bài đang làm dở). */
@@ -259,6 +327,35 @@ export function ManagerExamScheduleScreen() {
       examQuestions: mergedQs,
     }
   }
+  function reflectionWindowFor(e: (typeof exams)[number]): SubmissionWindow | null {
+    if (!e.isReflection || e.examPaperIds?.length) return null
+    return submissionWindowOf({
+      dateIso: e.dateIso,
+      startTime: e.startTime,
+      endTime: e.endTime,
+      examQuestions: (e.examQuestions ?? null) as ScheduleExamQuestions | null,
+      submissionDeadline: e.submissionDeadline,
+    })
+  }
+  const [reflectionTarget, setReflectionTarget] = useState<ReflectionWindowTarget | null>(null)
+  const openEdit = (e: (typeof exams)[number]) => {
+    if (reflectionWindowFor(e)) {
+      setReflectionTarget({
+        id: e.id,
+        classId: e.classId,
+        className: e.className,
+        topic: e.topic,
+        dateIso: e.dateIso,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        examQuestions: e.examQuestions,
+        submissionDeadline: e.submissionDeadline,
+        submittedCount: e.submittedCount,
+      })
+      return
+    }
+    openExamModal(e.classId, e.id)
+  }
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -269,7 +366,10 @@ export function ManagerExamScheduleScreen() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim()
       result = result.filter(
-        (e) => e.className.toLowerCase().includes(q) || e.topic.toLowerCase().includes(q)
+        (e) =>
+          e.className.toLowerCase().includes(q) ||
+          e.topic.toLowerCase().includes(q) ||
+          e.targetTeams.some((t) => t.name.toLowerCase().includes(q))
       )
     }
 
@@ -307,16 +407,23 @@ export function ManagerExamScheduleScreen() {
       const results = await managerApi.examResultsExport()
       const infos: ExamExportInfo[] = filteredExams.map((e) => {
         const t = toExamTimelineRow(e)
-        const durationMinutes = getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)
+        const w = reflectionWindowFor(e)
+        const durationMinutes = w
+          ? null
+          : getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)
         return {
           scheduleId: e.id,
           className: e.className,
           topic: e.topic,
           dateIso: e.dateIso,
           startTime: e.startTime,
-          endTime: addMinutesToHm(t.startTime, durationMinutes),
+          endTime: w
+            ? w.closeDateIso === w.openDateIso
+              ? w.closeTime
+              : `${w.closeTime} ${formatDateIsoVi(w.closeDateIso)}`
+            : addMinutesToHm(t.startTime, durationMinutes ?? 0),
           durationMinutes,
-          statusLabel: examBadgeForSchedule(t).label,
+          statusLabel: w ? reflectionBadge(w).label : examBadgeForSchedule(t).label,
           location: e.location ?? null,
           graderName: e.examTeacherName || null,
           paperCodes: (e.examPaperIds ?? [])
@@ -357,6 +464,9 @@ export function ManagerExamScheduleScreen() {
   }
 
   const [examModalOpen, setExamModalOpen] = useState(false)
+  /** Đối tượng dự thi: 1 lớp học, hoặc các team (nhiều phòng ban) — lớp ẩn do BE tạo. */
+  const [examTarget, setExamTarget] = useState<ExamTarget>('class')
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([])
   const [examModalClassId, setExamModalClassId] = useState<string | null>(null)
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null)
   const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([])
@@ -405,19 +515,20 @@ export function ManagerExamScheduleScreen() {
     email: string
   } | null>(null)
 
-  const classGroups = useMemo(
-    () => [
+  const classGroups = useMemo(() => {
+    // Lớp ẩn của lịch thi theo team không chọn được như lớp học.
+    const selectable = (classes as ManagerClassRow[]).filter((c) => c.kind !== TEAM_EXAM_CLASS_KIND)
+    return [
       {
         label: 'Lớp học tri thức',
-        items: (classes as ManagerClassRow[]).filter((c) => c.isKnowledgeWork !== false),
+        items: selectable.filter((c) => c.isKnowledgeWork !== false),
       },
       {
         label: 'Lớp học khác',
-        items: (classes as ManagerClassRow[]).filter((c) => c.isKnowledgeWork === false),
+        items: selectable.filter((c) => c.isKnowledgeWork === false),
       },
-    ],
-    [classes]
-  )
+    ]
+  }, [classes])
   const examEndPreview =
     watchedExamHour && watchedExamMinute && durationInput
       ? addMinutesToHm(
@@ -448,15 +559,31 @@ export function ManagerExamScheduleScreen() {
   const createSchedule = useCreateClassSchedule()
   const updateSchedule = useUpdateClassSchedule()
   const deleteSchedule = useDeleteClassSchedule()
+  const createTeamExam = useCreateTeamExam()
+  const updateTeamExam = useUpdateTeamExam()
+  const isSavingExam =
+    createSchedule.isPending ||
+    updateSchedule.isPending ||
+    createTeamExam.isPending ||
+    updateTeamExam.isPending
+  const editingTeamExam = editingScheduleId
+    ? exams.find((e) => e.id === editingScheduleId && e.classKind === TEAM_EXAM_CLASS_KIND)
+    : undefined
 
   const openExamModal = (classId?: string, scheduleId?: string) => {
     setExamModalClassId(classId ?? null)
     setEditingScheduleId(scheduleId ?? null)
     setExamModalOpen(true)
+    setExamTarget('class')
+    setSelectedTeamIds([])
 
     if (scheduleId) {
       const schedule = exams.find((e) => e.id === scheduleId)
       if (schedule) {
+        if (schedule.classKind === TEAM_EXAM_CLASS_KIND) {
+          setExamTarget('teams')
+          setSelectedTeamIds(schedule.targetTeams.map((t) => t.id))
+        }
         resetExamForm({
           examDate: schedule.dateIso,
           examHour: schedule.startTime.split(':')[0],
@@ -488,6 +615,8 @@ export function ManagerExamScheduleScreen() {
 
   const closeExamModal = () => {
     setExamModalOpen(false)
+    setExamTarget('class')
+    setSelectedTeamIds([])
     setExamModalClassId(null)
     setEditingScheduleId(null)
     resetExamForm()
@@ -498,17 +627,21 @@ export function ManagerExamScheduleScreen() {
   }
 
   const saveExamSchedule = () => {
-    if (!examModalClassId) return
+    const isTeamTarget = examTarget === 'teams'
+    if (isTeamTarget ? selectedTeamIds.length === 0 : !examModalClassId) {
+      toast.error(isTeamTarget ? 'Vui lòng chọn ít nhất 1 team' : 'Vui lòng chọn lớp học')
+      return
+    }
     const { examDate, examHour, examMinute, topic } = examForm.getValues()
     if (!examDate.trim()) {
       toast.error('Vui lòng chọn ngày giờ kỳ thi')
       return
     }
 
-    const finalTeacher = isTapSuClass ? (modalClass?.teacher ?? null) : examTeacher
+    const finalTeacher = !isTeamTarget && isTapSuClass ? (modalClass?.teacher ?? null) : examTeacher
     if (!finalTeacher && !editingScheduleId) {
       toast.error(
-        isTapSuClass
+        !isTeamTarget && isTapSuClass
           ? 'Lớp tập sự chưa có giáo viên phụ trách để tự động gán người chấm'
           : 'Vui lòng chọn giáo viên phụ trách (đồng thời là người chấm thi)'
       )
@@ -539,6 +672,25 @@ export function ManagerExamScheduleScreen() {
       examPaperIds: selectedPaperIds,
       criteriaWeights,
     }
+
+    if (isTeamTarget) {
+      if (editingScheduleId) {
+        updateTeamExam.mutate(
+          {
+            scheduleId: editingScheduleId,
+            input: { ...payload, teamIds: selectedTeamIds },
+          },
+          { onSuccess: () => closeExamModal() }
+        )
+      } else {
+        createTeamExam.mutate(
+          { ...payload, teamIds: selectedTeamIds },
+          { onSuccess: () => closeExamModal() }
+        )
+      }
+      return
+    }
+    if (!examModalClassId) return
 
     if (editingScheduleId) {
       updateSchedule.mutate(
@@ -700,13 +852,17 @@ export function ManagerExamScheduleScreen() {
             ) : (
               pagedExams.map((e) => {
                 const t = toExamTimelineRow(e)
-                const badge = examBadgeForSchedule(t)
+                const w = reflectionWindowFor(e)
+                const badge = w ? reflectionBadge(w) : examBadgeForSchedule(t)
                 const durMin = getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)
                 const endHm = addMinutesToHm(t.startTime, durMin)
                 return (
                   <div key={e.id} className="space-y-3 bg-card p-4">
                     <div className="min-w-0">
-                      <p className="text-base font-bold leading-snug text-foreground">
+                      <p
+                        className="text-base font-bold leading-snug text-foreground"
+                        title={targetTeamsTitle(e.targetTeams)}
+                      >
                         {e.className}
                       </p>
                       <p className="mt-1 text-xs font-medium text-muted-foreground">{e.topic}</p>
@@ -718,10 +874,16 @@ export function ManagerExamScheduleScreen() {
                           badge.muted ? 'text-muted-foreground' : 'text-foreground'
                         )}
                       >
-                        {formatViDate(e.dateIso)} · {e.startTime} – {endHm}
-                        <span className="ml-1 font-bold text-muted-foreground">
-                          ({durMin} phút)
-                        </span>
+                        {formatViDate(e.dateIso)}
+                        {w ? null : (
+                          <>
+                            {' '}
+                            · {e.startTime} – {endHm}
+                            <span className="ml-1 font-bold text-muted-foreground">
+                              ({durMin} phút)
+                            </span>
+                          </>
+                        )}
                       </p>
                       <span
                         className={cn(
@@ -731,6 +893,12 @@ export function ManagerExamScheduleScreen() {
                       >
                         {badge.label}
                       </span>
+                      {w ? (
+                        <ReflectionWindowLine
+                          w={w}
+                          className="basis-full text-xs text-muted-foreground"
+                        />
+                      ) : null}
                     </div>
                     <div className="rounded-lg bg-muted/40 px-3 py-2">
                       <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
@@ -795,7 +963,7 @@ export function ManagerExamScheduleScreen() {
                             size="sm"
                             variant="outline"
                             className="h-10 min-w-0 flex-1 gap-1.5 rounded-lg text-xs font-bold"
-                            onClick={() => openExamModal(e.classId, e.id)}
+                            onClick={() => openEdit(e)}
                           >
                             <Pencil className="h-3.5 w-3.5 shrink-0" />
                             Sửa
@@ -862,7 +1030,8 @@ export function ManagerExamScheduleScreen() {
                 ) : (
                   pagedExams.map((e) => {
                     const t = toExamTimelineRow(e)
-                    const badge = examBadgeForSchedule(t)
+                    const w = reflectionWindowFor(e)
+                    const badge = w ? reflectionBadge(w) : examBadgeForSchedule(t)
                     const durMin = getExamDurationMinutes(t.examQuestions, t.startTime, t.endTime)
                     const endHm = addMinutesToHm(t.startTime, durMin)
                     const graderName = e.examTeacherName || (e.examTeacherUserId ? 'Đã gán' : null)
@@ -870,7 +1039,10 @@ export function ManagerExamScheduleScreen() {
                     return (
                       <tr key={e.id} className="transition-colors hover:bg-muted/20">
                         <td className="min-w-0 max-w-[300px] px-4 py-3">
-                          <p className="truncate text-sm font-semibold leading-tight text-foreground">
+                          <p
+                            className="truncate text-sm font-semibold leading-tight text-foreground"
+                            title={targetTeamsTitle(e.targetTeams) ?? e.className}
+                          >
                             {e.className}
                           </p>
                           <p className="mt-0.5 truncate text-xs text-muted-foreground">{e.topic}</p>
@@ -894,9 +1066,16 @@ export function ManagerExamScheduleScreen() {
                               {badge.label}
                             </span>
                           </div>
-                          <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-                            {e.startTime} – {endHm} ({durMin} phút)
-                          </p>
+                          {w ? (
+                            <ReflectionWindowLine
+                              w={w}
+                              className="mt-0.5 text-xs text-muted-foreground"
+                            />
+                          ) : (
+                            <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                              {e.startTime} – {endHm} ({durMin} phút)
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           {graderName ? (
@@ -963,10 +1142,10 @@ export function ManagerExamScheduleScreen() {
                                   type="button"
                                   size="icon"
                                   variant="ghost"
-                                  aria-label="Sửa lịch thi"
-                                  title="Sửa"
+                                  aria-label={w ? 'Sửa hạn nộp phản tư' : 'Sửa lịch thi'}
+                                  title={w ? 'Sửa hạn nộp' : 'Sửa'}
                                   className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
-                                  onClick={() => openExamModal(e.classId, e.id)}
+                                  onClick={() => openEdit(e)}
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
@@ -1029,8 +1208,9 @@ export function ManagerExamScheduleScreen() {
           if (!open) closeExamModal()
         }}
         title={editingScheduleId ? 'Chỉnh sửa lịch thi' : 'Tạo lịch thi'}
-        description="Chọn lớp, thời gian, đề thi và người chấm cho kỳ thi."
+        description="Chọn lớp học hoặc các team, thời gian, đề thi và người chấm cho kỳ thi."
         icon={<Calendar className="size-5" />}
+        className="max-w-3xl"
         footer={
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
@@ -1047,11 +1227,12 @@ export function ManagerExamScheduleScreen() {
                 size="sm"
                 className={cn('px-5', BRAND_BTN_SOLID)}
                 onClick={saveExamSchedule}
-                disabled={!examModalClassId || createSchedule.isPending || updateSchedule.isPending}
+                disabled={
+                  (examTarget === 'teams' ? selectedTeamIds.length === 0 : !examModalClassId) ||
+                  isSavingExam
+                }
               >
-                {createSchedule.isPending || updateSchedule.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : null}
+                {isSavingExam ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {editingScheduleId ? 'Lưu thay đổi' : 'Tạo lịch thi'}
               </Button>
             </div>
@@ -1059,9 +1240,36 @@ export function ManagerExamScheduleScreen() {
         }
       >
         <div className="space-y-6">
-          <FormSection title="Lớp & kỳ thi">
+          <FormSection title="Đối tượng & kỳ thi">
+            <div
+              role="radiogroup"
+              aria-label="Đối tượng dự thi"
+              className="inline-flex rounded-xl border border-border bg-muted/40 p-1"
+            >
+              {EXAM_TARGET_OPTIONS.map((opt) => {
+                const active = examTarget === opt.value
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    disabled={!!editingScheduleId && !active}
+                    onClick={() => setExamTarget(opt.value)}
+                    className={cn(
+                      'h-8 rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-button/35 disabled:cursor-not-allowed disabled:opacity-50',
+                      active
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className={cn('space-y-1.5', examTarget === 'teams' && 'hidden')}>
                 <label className={FIELD_LABEL}>Lớp học</label>
                 <Select
                   value={examModalClassId ?? ''}
@@ -1100,6 +1308,20 @@ export function ManagerExamScheduleScreen() {
                 />
               </div>
             </div>
+            {examTarget === 'teams' ? (
+              <div className="space-y-1.5">
+                <p className={FIELD_LABEL}>Team dự thi</p>
+                <p className="text-xs text-muted-foreground">
+                  Chọn team ở một hoặc nhiều phòng ban — nhân sự đang làm việc thuộc team (chính
+                  hoặc phụ) sẽ thấy lịch thi này.
+                </p>
+                <ExamTeamPicker
+                  value={selectedTeamIds}
+                  onChange={setSelectedTeamIds}
+                  knownTeams={editingTeamExam?.targetTeams}
+                />
+              </div>
+            ) : null}
           </FormSection>
 
           <FormSection title="Thời gian">
@@ -1159,7 +1381,7 @@ export function ManagerExamScheduleScreen() {
                 <label htmlFor="exam-teacher" className={FIELD_LABEL}>
                   Người chấm thi
                 </label>
-                {isTapSuClass ? (
+                {examTarget === 'class' && isTapSuClass ? (
                   <p className="rounded-xl border border-warning/30 bg-warning-muted/60 px-3 py-2.5 text-sm text-foreground">
                     Lớp Tập sự tự gán giáo viên phụ trách:{' '}
                     <span className="font-semibold">{modalClass?.teacher?.name || '—'}</span>
@@ -1274,6 +1496,8 @@ export function ManagerExamScheduleScreen() {
       {canBulkEditorExams ? (
         <EditorBulkExamDialog open={isEditorBulkOpen} onOpenChange={setIsEditorBulkOpen} />
       ) : null}
+
+      <ReflectionWindowDialog target={reflectionTarget} onClose={() => setReflectionTarget(null)} />
     </>
   )
 }

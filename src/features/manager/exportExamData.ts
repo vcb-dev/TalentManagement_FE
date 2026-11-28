@@ -15,7 +15,7 @@ export type ExamExportInfo = {
   dateIso: string
   startTime: string
   endTime: string
-  durationMinutes: number
+  durationMinutes: number | null
   statusLabel: string
   location: string | null
   graderName: string | null
@@ -98,6 +98,9 @@ const EXAM_STATUS_TONE = toneOf({
   'Sắp diễn ra': 'warning',
   'Đang diễn ra': 'info',
   'Đã kết thúc': 'muted',
+  'Sắp mở': 'warning',
+  'Đang nhận bài': 'info',
+  'Hết hạn nộp': 'muted',
 })
 const SUBMISSION_TONE = toneOf({
   'Đã chấm': 'success',

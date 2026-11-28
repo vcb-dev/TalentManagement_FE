@@ -70,13 +70,17 @@ import {
 } from '@/features/teacher/hooks'
 import {
   buildSubmissionDeadlineIso,
-  dateIsoInVietnam,
   formatDeadlineRange,
-  isSameDayDeadline,
+  submissionWindowOf,
 } from '@/features/teacher/submissionDeadline'
 import { joinTimeHm, splitTimeToParts } from '@/lib/time24h'
 import { cn } from '@/lib/utils'
 import { SessionEvaluationModal } from './SessionEvaluationModal'
+import {
+  SubmissionWindowFields,
+  submissionWindowDraftError,
+  type SubmissionWindowDraft,
+} from './SubmissionWindowFields'
 import { TeacherClassMemberCard } from './TeacherClassMemberCard'
 import type { ClassMemberRow } from './teacherClassMemberTypes'
 import { ViewEvaluationsModal } from './ViewEvaluationsModal'
@@ -348,6 +352,28 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
       name: 'roadmapItemIds',
     }) ?? []
 
+  const [wOpenDate, wCloseDate, wStartHour, wStartMinute, wEndHour, wEndMinute] = useWatch({
+    control: scheduleControl,
+    name: ['dateIso', 'endDateIso', 'startHour', 'startMinute', 'endHour', 'endMinute'],
+  })
+  const windowDraft: SubmissionWindowDraft = {
+    openDate: wOpenDate ?? '',
+    openTime: joinTimeHm(wStartHour ?? '00', wStartMinute ?? '00'),
+    closeDate: wCloseDate || wOpenDate || '',
+    closeTime: joinTimeHm(wEndHour ?? '23', wEndMinute ?? '59'),
+  }
+  const setWindowDraft = (next: SubmissionWindowDraft) => {
+    const [openH, openM] = splitTimeToParts(next.openTime)
+    const [closeH, closeM] = splitTimeToParts(next.closeTime)
+    const opts = { shouldDirty: true } as const
+    setScheduleValue('dateIso', next.openDate, opts)
+    setScheduleValue('endDateIso', next.closeDate, opts)
+    setScheduleValue('startHour', openH, opts)
+    setScheduleValue('startMinute', openM, opts)
+    setScheduleValue('endHour', closeH, opts)
+    setScheduleValue('endMinute', closeM, opts)
+  }
+
   const scheduleInitial = {
     dateIso: '',
     startHour: '08',
@@ -428,25 +454,24 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
     if (!s) return
     setScheduleModalOpen(true)
     setEditingScheduleId(scheduleId)
-    setIsCreatingDeadlineOnly(isDeadlineOnly(s))
-    const [sh, sm] = splitTimeToParts(s.startTime)
-    const [eh, em] = splitTimeToParts(s.endTime)
+    const deadlineMode = isDeadlineOnly(s)
+    setIsCreatingDeadlineOnly(deadlineMode)
     const todayMin = getTodayIsoLocal()
-    const dateIso = s.dateIso >= todayMin ? s.dateIso : todayMin
-
-    let endDateIso = dateIso
-    const firstItem = s.roadmapItems?.[0]
-    if (firstItem?.deadline) {
-      endDateIso = dateIsoInVietnam(firstItem.deadline)
-    } else {
-      const eq = (s as { examQuestions?: { endDateIso?: string; submissionDeadline?: string } })
-        .examQuestions
-      if (eq?.endDateIso) {
-        endDateIso = eq.endDateIso
-      } else if (eq?.submissionDeadline) {
-        endDateIso = dateIsoInVietnam(eq.submissionDeadline)
-      }
-    }
+    const deadlineWindow = deadlineMode
+      ? submissionWindowOf({
+          dateIso: s.dateIso,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          examQuestions: (
+            s as { examQuestions?: { endDateIso?: string; submissionDeadline?: string } }
+          ).examQuestions,
+          roadmapItems: s.roadmapItems,
+        })
+      : null
+    const dateIso = deadlineMode || s.dateIso >= todayMin ? s.dateIso : todayMin
+    const endDateIso = deadlineWindow?.closeDateIso ?? dateIso
+    const [sh, sm] = splitTimeToParts(s.startTime)
+    const [eh, em] = splitTimeToParts(deadlineWindow?.closeTime ?? s.endTime)
 
     const deadlines: Record<string, string> = {}
     s.roadmapItems?.forEach((item) => {
@@ -1448,20 +1473,26 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                       const endTime = joinTimeHm(vals.endHour, vals.endMinute)
                       const roadmapItemDeadlines: Record<string, string> = {}
                       const endDateIso = vals.endDateIso || vals.dateIso
-                      let examQuestionsPayload = {
+                      const previousExamQuestions: Record<string, unknown> = {
                         ...((schedules.find((x) => x.id === editingScheduleId)?.examQuestions as
                           | Record<string, unknown>
                           | undefined) || {}),
+                      }
+                      if (isCreatingDeadlineOnly) delete previousExamQuestions.duration
+                      let examQuestionsPayload: Record<string, unknown> = {
+                        ...previousExamQuestions,
                         gradingType: (vals as { gradingType?: string }).gradingType || 'direct',
                       }
 
                       if (isCreatingDeadlineOnly) {
-                        if (vals.endDateIso && vals.endDateIso < vals.dateIso) {
-                          toast.error('Ngày kết thúc không được trước ngày bắt đầu.')
-                          return
-                        }
-                        if (isSameDayDeadline(vals.dateIso, endDateIso) && startTime >= endTime) {
-                          toast.error('Giờ kết thúc phải sau giờ bắt đầu.')
+                        const windowError = submissionWindowDraftError({
+                          openDate: vals.dateIso,
+                          openTime: startTime,
+                          closeDate: endDateIso,
+                          closeTime: endTime,
+                        })
+                        if (windowError) {
+                          toast.error(windowError)
                           return
                         }
                         const submissionDeadline = buildSubmissionDeadlineIso(endDateIso, endTime)
@@ -1502,7 +1533,9 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         toast.error('Vui lòng nhập bài học ngày hôm đó.')
                         return
                       }
-                      const overlap = findOverlappingSchedule(schedules, payload, editingScheduleId)
+                      const overlap = isCreatingDeadlineOnly
+                        ? undefined
+                        : findOverlappingSchedule(regularSchedules, payload, editingScheduleId)
                       if (overlap) {
                         toast.error(
                           `Buổi học bị trùng với "${overlap.topic}" (${overlap.startTime} - ${overlap.endTime}).`
@@ -1515,7 +1548,11 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                           {
                             onSuccess: () => {
                               closeScheduleModal()
-                              toast.success('Đã cập nhật buổi học')
+                              toast.success(
+                                isCreatingDeadlineOnly
+                                  ? 'Đã cập nhật hạn nộp'
+                                  : 'Đã cập nhật buổi học'
+                              )
                             },
                           }
                         )
@@ -1523,168 +1560,226 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                         createSchedule.mutate(payload, {
                           onSuccess: () => {
                             closeScheduleModal()
-                            toast.success('Đã thêm buổi học mới')
+                            toast.success(
+                              isCreatingDeadlineOnly ? 'Đã tạo hạn nộp' : 'Đã thêm buổi học mới'
+                            )
                           },
                         })
                       }
                     })}
                   >
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                        <DateController
-                          control={scheduleForm.control}
-                          name="dateIso"
-                          label={isCreatingDeadlineOnly ? 'Từ ngày' : 'Ngày học'}
-                          required
-                          datePickerClassName="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10"
-                        />
-                        {isCreatingDeadlineOnly && (
+                    {isCreatingDeadlineOnly ? (
+                      <>
+                        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                          <div className="mb-4">
+                            <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+                              Thời gian nhận bài
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-slate-500">
+                              Học viên nộp bài trong khoảng này — qua hạn chót, ô nộp bài sẽ đóng.
+                            </p>
+                          </div>
+                          <SubmissionWindowFields
+                            idPrefix="teacher-deadline"
+                            value={windowDraft}
+                            onChange={setWindowDraft}
+                            labelClassName="font-bold text-slate-700"
+                            controlClassName="h-11 border-slate-200 bg-white"
+                          />
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                            <InputController
+                              control={scheduleForm.control}
+                              name="topic"
+                              label="Tên đợt nộp"
+                              required
+                              placeholder="VD: Hạn nộp bài phản tư sách Trên Đường Băng"
+                              inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
+                            />
+                            <div className="space-y-2">
+                              <label className="text-xs font-bold text-slate-700">
+                                Hình thức chấm điểm
+                              </label>
+                              <Controller
+                                control={scheduleForm.control}
+                                name="gradingType"
+                                render={({ field }) => (
+                                  <Select
+                                    value={field.value || 'direct'}
+                                    onValueChange={field.onChange}
+                                  >
+                                    <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10 font-bold">
+                                      <SelectValue placeholder="Chọn hình thức chấm điểm" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-slate-200 p-1 shadow-2xl">
+                                      <SelectItem
+                                        value="direct"
+                                        className="rounded-lg py-2 font-bold text-slate-700"
+                                      >
+                                        Chấm điểm trực tiếp (0-100)
+                                      </SelectItem>
+                                      <SelectItem
+                                        value="rubric_reading"
+                                        className="rounded-lg py-2 font-bold text-slate-700"
+                                      >
+                                        Chấm theo rubric Đọc sách (Chưa đạt, Đạt, Tốt)
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              />
+                            </div>
+                          </div>
+                          <div className="mt-5">
+                            <TextareaController
+                              control={scheduleForm.control}
+                              name="note"
+                              label="Hướng dẫn cho học viên"
+                              placeholder="Câu hỏi gợi ý, yêu cầu bài phản tư..."
+                              rows={5}
+                              textareaClassName="rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10 font-medium"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                           <DateController
                             control={scheduleForm.control}
-                            name="endDateIso"
-                            label="Đến ngày"
+                            name="dateIso"
+                            label="Ngày học"
                             required
                             datePickerClassName="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10"
                           />
-                        )}
-                        <InputController
-                          control={scheduleForm.control}
-                          name="location"
-                          label="Địa điểm / Phòng"
-                          placeholder="VD: Phòng họp A, Zoom..."
-                          inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
-                        />
-                        {(!(data?.isKnowledgeWork !== false) ||
-                          isCreatingDeadlineOnly ||
-                          selectedRoadmapItemIds.length === 0) && (
                           <InputController
                             control={scheduleForm.control}
-                            name="topic"
-                            label="Bài học ngày hôm đó / Chủ đề"
-                            required
-                            placeholder="VD: Hạn nộp bài phản tư..."
+                            name="location"
+                            label="Địa điểm / Phòng"
+                            placeholder="VD: Phòng họp A, Zoom..."
                             inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
                           />
-                        )}
-                      </div>
+                          {(!(data?.isKnowledgeWork !== false) ||
+                            selectedRoadmapItemIds.length === 0) && (
+                            <InputController
+                              control={scheduleForm.control}
+                              name="topic"
+                              label="Bài học ngày hôm đó / Chủ đề"
+                              required
+                              placeholder="VD: Hạn nộp bài phản tư..."
+                              inputClassName="h-11 rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10"
+                            />
+                          )}
+                        </div>
 
-                      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-                        <div className="space-y-2 lg:col-span-2">
-                          <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                            Hình thức chấm điểm
-                          </label>
-                          <Controller
+                        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                          <div className="space-y-2 lg:col-span-2">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                              Hình thức chấm điểm
+                            </label>
+                            <Controller
+                              control={scheduleForm.control}
+                              name="gradingType"
+                              render={({ field }) => (
+                                <Select
+                                  value={field.value || 'direct'}
+                                  onValueChange={field.onChange}
+                                >
+                                  <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10 font-bold">
+                                    <SelectValue placeholder="Chọn hình thức chấm điểm" />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-xl border-slate-200 p-1 shadow-2xl">
+                                    <SelectItem
+                                      value="direct"
+                                      className="rounded-lg py-2 font-bold text-slate-700"
+                                    >
+                                      Chấm điểm trực tiếp (0-100)
+                                    </SelectItem>
+                                    <SelectItem
+                                      value="rubric_reading"
+                                      className="rounded-lg py-2 font-bold text-slate-700"
+                                    >
+                                      Chấm theo rubric Đọc sách (Chưa đạt, Đạt, Tốt)
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-5 space-y-2">
+                          <TextareaController
                             control={scheduleForm.control}
-                            name="gradingType"
-                            render={({ field }) => (
-                              <Select
-                                value={field.value || 'direct'}
-                                onValueChange={field.onChange}
-                              >
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-white focus:ring-primary/10 font-bold">
-                                  <SelectValue placeholder="Chọn hình thức chấm điểm" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-slate-200 p-1 shadow-2xl">
-                                  <SelectItem
-                                    value="direct"
-                                    className="rounded-lg py-2 font-bold text-slate-700"
-                                  >
-                                    Chấm điểm trực tiếp (0-100)
-                                  </SelectItem>
-                                  <SelectItem
-                                    value="rubric_reading"
-                                    className="rounded-lg py-2 font-bold text-slate-700"
-                                  >
-                                    Chấm theo rubric Đọc sách (Chưa đạt, Đạt, Tốt)
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
+                            name="note"
+                            label="Ghi chú"
+                            placeholder="Nhập ghi chú cho hạn nộp..."
+                            rows={6}
+                            textareaClassName="rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10 font-medium"
                           />
                         </div>
-                      </div>
 
-                      <div className="mt-5 space-y-2">
-                        <TextareaController
-                          control={scheduleForm.control}
-                          name="note"
-                          label="Ghi chú"
-                          placeholder="Nhập ghi chú cho hạn nộp..."
-                          rows={6}
-                          textareaClassName="rounded-xl border-slate-200 bg-white focus-visible:ring-primary/10 font-medium"
-                        />
-                      </div>
-
-                      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-                        <div className="space-y-2">
-                          <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                            {isCreatingDeadlineOnly ? 'Khung giờ mở nộp' : 'Thời gian bắt đầu'}
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <InputController
-                              control={scheduleForm.control}
-                              name="startHour"
-                              label="Giờ"
-                              labelClassName="sr-only"
-                              type="number"
-                              className="w-20"
-                              inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
-                            />
-                            <span className="font-bold text-slate-300">:</span>
-                            <InputController
-                              control={scheduleForm.control}
-                              name="startMinute"
-                              label="Phút"
-                              labelClassName="sr-only"
-                              type="number"
-                              className="w-20"
-                              inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
+                        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                          <div className="space-y-2">
                             <label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                              {isCreatingDeadlineOnly ? 'Khung giờ đóng nộp' : 'Thời gian kết thúc'}
+                              Thời gian bắt đầu
                             </label>
+                            <div className="flex items-center gap-2">
+                              <InputController
+                                control={scheduleForm.control}
+                                name="startHour"
+                                label="Giờ"
+                                labelClassName="sr-only"
+                                type="number"
+                                className="w-20"
+                                inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
+                              />
+                              <span className="font-bold text-slate-300">:</span>
+                              <InputController
+                                control={scheduleForm.control}
+                                name="startMinute"
+                                label="Phút"
+                                labelClassName="sr-only"
+                                type="number"
+                                className="w-20"
+                                inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
+                              />
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <InputController
-                              control={scheduleForm.control}
-                              name="endHour"
-                              label="Giờ"
-                              labelClassName="sr-only"
-                              type="number"
-                              className="w-20"
-                              inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
-                            />
-                            <span className="font-bold text-slate-300">:</span>
-                            <InputController
-                              control={scheduleForm.control}
-                              name="endMinute"
-                              label="Phút"
-                              labelClassName="sr-only"
-                              type="number"
-                              className="w-20"
-                              inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
-                            />
+
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <label className="text-xs font-black uppercase tracking-widest text-slate-500">
+                                Thời gian kết thúc
+                              </label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <InputController
+                                control={scheduleForm.control}
+                                name="endHour"
+                                label="Giờ"
+                                labelClassName="sr-only"
+                                type="number"
+                                className="w-20"
+                                inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
+                              />
+                              <span className="font-bold text-slate-300">:</span>
+                              <InputController
+                                control={scheduleForm.control}
+                                name="endMinute"
+                                label="Phút"
+                                labelClassName="sr-only"
+                                type="number"
+                                className="w-20"
+                                inputClassName="h-11 rounded-xl border-slate-200 bg-white text-center font-bold"
+                              />
+                            </div>
                           </div>
                         </div>
-                        {isCreatingDeadlineOnly && selectedRoadmapDuplicateCounts.length > 0
-                          ? selectedRoadmapDuplicateCounts.map((entry) => (
-                              <Badge
-                                key={entry.itemId}
-                                variant="outline"
-                                className="rounded-lg border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"
-                                title={entry.objective}
-                              >
-                                {entry.objective}: Lần {entry.selectionNumber}
-                              </Badge>
-                            ))
-                          : null}
                       </div>
-                    </div>
+                    )}
 
                     {data?.isKnowledgeWork !== false && (
                       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1696,6 +1791,23 @@ export function TeacherClassDetailScreen({ classId }: { classId: string }) {
                             Đã chọn {selectedRoadmapItemIds.length} học phần
                           </span>
                         </div>
+                        {isCreatingDeadlineOnly && selectedRoadmapDuplicateCounts.length > 0 ? (
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs font-semibold text-amber-700">
+                              Đã có hạn nộp trước đó:
+                            </span>
+                            {selectedRoadmapDuplicateCounts.map((entry) => (
+                              <Badge
+                                key={entry.itemId}
+                                variant="outline"
+                                className="rounded-lg border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"
+                                title={entry.objective}
+                              >
+                                {entry.objective}: Lần {entry.selectionNumber}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : null}
                         <div className="mt-3 max-h-64 space-y-4 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
                           {roadmapItemsByTopic.length === 0 ? (
                             <p className="text-sm font-semibold text-slate-400">

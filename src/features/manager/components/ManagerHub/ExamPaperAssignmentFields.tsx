@@ -173,7 +173,8 @@ export function ExamPaperPicker({
                   />
                   <span
                     className={cn(
-                      'flex size-[18px] shrink-0 items-center justify-center rounded-md border transition-colors',
+                      // Ô vuông cho chọn nhiều — `rounded-md` theo --radius thành hình tròn như nút radio.
+                      'flex size-4.5 shrink-0 items-center justify-center rounded-[5px] border transition-colors',
                       checked ? 'border-button bg-button text-white' : 'border-border bg-card'
                     )}
                     aria-hidden
